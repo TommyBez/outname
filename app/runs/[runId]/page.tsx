@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { requireSession } from "@/lib/auth-guard"
@@ -6,8 +7,8 @@ import { AppShell } from "@/components/app-shell"
 import { DigestView } from "@/components/digest-view"
 import { RunStatus } from "@/components/run-status"
 import { formatDateTime } from "@/lib/format"
-
-export const dynamic = "force-dynamic"
+import { DigestSkeleton } from "@/components/skeletons"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default async function RunDetailPage({
   params,
@@ -16,10 +17,6 @@ export default async function RunDetailPage({
 }) {
   await requireSession()
   const { runId } = await params
-  const run = await getRunById(runId)
-  if (!run) notFound()
-
-  const { digest, items } = await getDigestWithItems(runId)
 
   return (
     <AppShell>
@@ -30,6 +27,38 @@ export default async function RunDetailPage({
         ← History
       </Link>
 
+      <Suspense fallback={<DetailFallback />}>
+        <RunDetail runId={runId} />
+      </Suspense>
+    </AppShell>
+  )
+}
+
+function DetailFallback() {
+  return (
+    <>
+      <header className="mb-12 flex flex-col gap-4 md:mb-16">
+        <Skeleton className="h-3 w-28" />
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <Skeleton className="h-9 w-80" />
+          <Skeleton className="h-4 w-24" />
+        </div>
+        <Skeleton className="h-3 w-40" />
+      </header>
+      <DigestSkeleton />
+    </>
+  )
+}
+
+async function RunDetail({ runId }: { runId: string }) {
+  const run = await getRunById(runId)
+  if (!run) notFound()
+
+  const { digest, items } =
+    run.status === "completed" ? await getDigestWithItems(runId) : { digest: null, items: [] }
+
+  return (
+    <>
       <header className="mb-12 flex flex-col gap-4 md:mb-16">
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
           {run.trigger} run
@@ -66,6 +95,6 @@ export default async function RunDetailPage({
       ) : (
         <DigestView items={items} summary={digest?.summary ?? null} />
       )}
-    </AppShell>
+    </>
   )
 }

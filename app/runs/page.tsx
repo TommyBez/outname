@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import Link from "next/link"
 import { requireSession } from "@/lib/auth-guard"
 import { getAllRuns } from "@/lib/data"
@@ -5,12 +6,10 @@ import { AppShell } from "@/components/app-shell"
 import { RunStatus } from "@/components/run-status"
 import { TriggerButton } from "@/components/trigger-button"
 import { formatDateTime } from "@/lib/format"
-
-export const dynamic = "force-dynamic"
+import { RunListSkeleton } from "@/components/skeletons"
 
 export default async function RunsPage() {
   await requireSession()
-  const runs = await getAllRuns()
 
   return (
     <AppShell>
@@ -26,41 +25,53 @@ export default async function RunsPage() {
         </div>
       </header>
 
-      {runs.length === 0 ? (
-        <div className="border-t border-border pt-10">
-          <p className="font-serif text-2xl leading-snug">No runs yet.</p>
-          <p className="mt-3 text-sm text-muted-foreground">
-            Trigger your first inbox review to see it here.
-          </p>
-        </div>
-      ) : (
-        <ul className="flex flex-col divide-y divide-border border-y border-border">
-          {runs.map((run) => (
-            <li key={run.id}>
-              <Link
-                href={`/runs/${run.id}`}
-                className="grid grid-cols-[1fr_auto] items-baseline gap-6 py-5 transition-opacity hover:opacity-70 md:grid-cols-[1fr_auto_auto] md:gap-10"
-              >
-                <div className="flex flex-col gap-1.5 min-w-0">
-                  <span className="font-serif text-lg font-medium leading-tight">
-                    {formatDateTime(run.startedAt)}
-                  </span>
-                  <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-                    {run.trigger} · {run.emailsScanned} email{run.emailsScanned === 1 ? "" : "s"}
-                  </span>
-                </div>
-                <RunStatus runId={run.id} initialStatus={run.status as any} showTime={false} />
-                <span
-                  aria-hidden
-                  className="hidden text-muted-foreground transition-transform md:inline-block"
-                >
-                  →
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      <Suspense fallback={<RunListSkeleton />}>
+        <RunList />
+      </Suspense>
     </AppShell>
+  )
+}
+
+async function RunList() {
+  const runs = await getAllRuns()
+
+  if (runs.length === 0) {
+    return (
+      <div className="border-t border-border pt-10">
+        <p className="font-serif text-2xl leading-snug">No runs yet.</p>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Trigger your first inbox review to see it here.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <ul className="flex flex-col divide-y divide-border border-y border-border">
+      {runs.map((run) => (
+        <li key={run.id}>
+          <Link
+            href={`/runs/${run.id}`}
+            className="grid grid-cols-[1fr_auto] items-baseline gap-6 py-5 transition-opacity hover:opacity-70 md:grid-cols-[1fr_auto_auto] md:gap-10"
+          >
+            <div className="flex flex-col gap-1.5 min-w-0">
+              <span className="font-serif text-lg font-medium leading-tight">
+                {formatDateTime(run.startedAt)}
+              </span>
+              <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+                {run.trigger} · {run.emailsScanned} email{run.emailsScanned === 1 ? "" : "s"}
+              </span>
+            </div>
+            <RunStatus runId={run.id} initialStatus={run.status as any} showTime={false} />
+            <span
+              aria-hidden
+              className="hidden text-muted-foreground transition-transform md:inline-block"
+            >
+              →
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
   )
 }

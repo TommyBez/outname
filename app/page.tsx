@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import Link from "next/link"
 import { requireSession } from "@/lib/auth-guard"
 import { getLatestRun, getDigestWithItems } from "@/lib/data"
@@ -9,15 +10,15 @@ import { TriggerButton } from "@/components/trigger-button"
 import { CATEGORY_META, CATEGORY_ORDER } from "@/lib/categories"
 import type { Category, DigestItem } from "@/lib/db/schema"
 import { formatLongDate, formatRelative } from "@/lib/format"
-
-export const dynamic = "force-dynamic"
+import {
+  ConnectionNoticeSkeleton,
+  DigestSkeleton,
+  HeaderStatusSkeleton,
+  SummarySkeleton,
+} from "@/components/skeletons"
 
 export default async function DashboardPage() {
   await requireSession()
-  const [latest, connection] = await Promise.all([getLatestRun(), getGmailConnection()])
-  const { digest, items } = latest ? await getDigestWithItems(latest.id) : { digest: null, items: [] }
-  const notConnected = !connection
-  const expired = !!connection && connection.status !== "active"
 
   return (
     <AppShell>
@@ -29,36 +30,98 @@ export default async function DashboardPage() {
           <h1 className="font-serif text-4xl font-medium leading-[1.05] tracking-tight text-balance md:text-6xl">
             Morning briefing.
           </h1>
-          <div className="flex items-center gap-4 text-sm">
-            {latest && <RunStatus runId={latest.id} initialStatus={latest.status as any} />}
-            <TriggerButton variant="outline" />
-          </div>
+          <Suspense fallback={<HeaderStatusSkeleton />}>
+            <HeaderStatus />
+          </Suspense>
         </div>
       </header>
 
-      {(notConnected || expired) && <ConnectionNotice expired={!!expired} />}
+      <Suspense fallback={<ConnectionNoticeSkeleton />}>
+        <ConnectionNotice />
+      </Suspense>
 
-      {!latest ? (
-        <EmptyState />
-      ) : latest.status === "running" ? (
-        <RunningState />
-      ) : latest.status === "failed" ? (
-        <FailedState error={latest.error} />
-      ) : (
-        <>
-          <Summary items={items} latestRunAt={latest.startedAt} />
-          <DigestView items={items} summary={digest?.summary ?? null} />
-          <footer className="mt-16 border-t border-border pt-6">
-            <Link
-              href="/runs"
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              View full history →
-            </Link>
-          </footer>
-        </>
-      )}
+      <Suspense fallback={<DashboardBodyFallback />}>
+        <DashboardBody />
+      </Suspense>
     </AppShell>
+  )
+}
+
+async function HeaderStatus() {
+  const latest = await getLatestRun()
+  return (
+    <div className="flex items-center gap-4 text-sm">
+      {latest && <RunStatus runId={latest.id} initialStatus={latest.status as any} />}
+      <TriggerButton variant="outline" />
+    </div>
+  )
+}
+
+async function ConnectionNotice() {
+  const connection = await getGmailConnection()
+  const notConnected = !connection
+  const expired = !!connection && connection.status !== "active"
+  if (!notConnected && !expired) return null
+
+  return (
+    <div className="mb-12 border-y border-border py-5">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p
+            className={`font-mono text-xs uppercase tracking-[0.2em] ${
+              expired ? "text-destructive" : "text-muted-foreground"
+            }`}
+          >
+            {expired ? "Connection expired" : "Not connected"}
+          </p>
+          <p className="mt-1.5 font-serif text-lg font-medium">
+            {expired
+              ? "Reconnect Gmail to resume your daily briefings."
+              : "Connect Gmail so the agent can read your inbox."}
+          </p>
+        </div>
+        <Link
+          href="/api/google/connect"
+          className="inline-flex shrink-0 items-center justify-center rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background transition-opacity hover:opacity-90"
+        >
+          {expired ? "Reconnect" : "Connect Gmail"}
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+function DashboardBodyFallback() {
+  return (
+    <>
+      <SummarySkeleton />
+      <DigestSkeleton />
+    </>
+  )
+}
+
+async function DashboardBody() {
+  const latest = await getLatestRun()
+  if (!latest) return <EmptyState />
+
+  if (latest.status === "running") return <RunningState />
+  if (latest.status === "failed") return <FailedState error={latest.error} />
+
+  const { digest, items } = await getDigestWithItems(latest.id)
+
+  return (
+    <>
+      <Summary items={items} latestRunAt={latest.startedAt} />
+      <DigestView items={items} summary={digest?.summary ?? null} />
+      <footer className="mt-16 border-t border-border pt-6">
+        <Link
+          href="/runs"
+          className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          View full history →
+        </Link>
+      </footer>
+    </>
   )
 }
 
@@ -78,9 +141,7 @@ function Summary({ items, latestRunAt }: { items: DigestItem[]; latestRunAt: Dat
         <p className="mt-3 font-serif text-6xl font-medium leading-none tabular-nums md:text-7xl">
           {total}
         </p>
-        <p className="mt-3 text-xs text-muted-foreground">
-          {formatRelative(latestRunAt)}
-        </p>
+        <p className="mt-3 text-xs text-muted-foreground">{formatRelative(latestRunAt)}</p>
       </div>
       <dl className="grid grid-cols-2 gap-x-10 gap-y-6 self-end sm:grid-cols-4">
         {counts.map(({ c, n }) => {
@@ -98,31 +159,6 @@ function Summary({ items, latestRunAt }: { items: DigestItem[]; latestRunAt: Dat
         })}
       </dl>
     </section>
-  )
-}
-
-function ConnectionNotice({ expired }: { expired: boolean }) {
-  return (
-    <div className="mb-12 border-y border-border py-5">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className={`font-mono text-xs uppercase tracking-[0.2em] ${expired ? "text-destructive" : "text-muted-foreground"}`}>
-            {expired ? "Connection expired" : "Not connected"}
-          </p>
-          <p className="mt-1.5 font-serif text-lg font-medium">
-            {expired
-              ? "Reconnect Gmail to resume your daily briefings."
-              : "Connect Gmail so the agent can read your inbox."}
-          </p>
-        </div>
-        <Link
-          href="/api/google/connect"
-          className="inline-flex shrink-0 items-center justify-center rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background transition-opacity hover:opacity-90"
-        >
-          {expired ? "Reconnect" : "Connect Gmail"}
-        </Link>
-      </div>
-    </div>
   )
 }
 

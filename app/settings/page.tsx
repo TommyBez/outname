@@ -1,29 +1,18 @@
-import { requireSession } from "@/lib/auth-guard"
+import { Suspense } from "react"
+import { requireSession, getSession } from "@/lib/auth-guard"
 import { AppShell } from "@/components/app-shell"
 import { TriggerButton } from "@/components/trigger-button"
 import { GmailConnect } from "@/components/gmail-connect"
 import { getGmailConnection } from "@/lib/google-oauth"
-
-export const dynamic = "force-dynamic"
+import { AccountSkeleton, GmailSectionSkeleton } from "@/components/skeletons"
 
 export default async function SettingsPage({
   searchParams,
 }: {
   searchParams: Promise<{ gmail?: string; reason?: string }>
 }) {
-  const session = await requireSession()
+  await requireSession()
   const sp = await searchParams
-  const connectionRow = await getGmailConnection()
-
-  const connection = connectionRow
-    ? {
-        email: connectionRow.email,
-        status: connectionRow.status,
-        scopes: connectionRow.scopes,
-        connectedAt: connectionRow.connectedAt.toISOString(),
-        lastError: connectionRow.lastError,
-      }
-    : null
 
   return (
     <AppShell>
@@ -52,7 +41,9 @@ export default async function SettingsPage({
 
       <div className="flex flex-col divide-y divide-border">
         <Section title="Gmail">
-          <GmailConnect connection={connection} />
+          <Suspense fallback={<GmailSectionSkeleton />}>
+            <GmailSection />
+          </Suspense>
         </Section>
 
         <Section title="Schedule">
@@ -68,12 +59,37 @@ export default async function SettingsPage({
         </Section>
 
         <Section title="Account">
-          <Row label="Signed in as">
-            <p className="font-serif text-xl font-medium leading-tight">{session.user.email}</p>
-          </Row>
+          <Suspense fallback={<AccountSkeleton />}>
+            <AccountSection />
+          </Suspense>
         </Section>
       </div>
     </AppShell>
+  )
+}
+
+async function GmailSection() {
+  const connectionRow = await getGmailConnection()
+  const connection = connectionRow
+    ? {
+        email: connectionRow.email,
+        status: connectionRow.status,
+        scopes: connectionRow.scopes,
+        connectedAt: connectionRow.connectedAt.toISOString(),
+        lastError: connectionRow.lastError,
+      }
+    : null
+  return <GmailConnect connection={connection} />
+}
+
+async function AccountSection() {
+  const session = await getSession()
+  return (
+    <Row label="Signed in as">
+      <p className="font-serif text-xl font-medium leading-tight">
+        {session?.user.email ?? "—"}
+      </p>
+    </Row>
   )
 }
 
