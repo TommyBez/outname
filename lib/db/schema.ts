@@ -113,7 +113,24 @@ export const digestItems = pgTable(
   }),
 )
 
+export const gmailConnection = pgTable("gmail_connection", {
+  id: text("id").primaryKey().default("singleton"),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  refreshToken: text("refresh_token").notNull(),
+  accessToken: text("access_token"),
+  accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
+  scopes: text("scopes").notNull(),
+  status: text("status").notNull().default("active"), // active | expired | revoked
+  lastError: text("last_error"),
+  connectedAt: timestamp("connected_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+})
+
 export type Run = typeof runs.$inferSelect
 export type Digest = typeof digests.$inferSelect
 export type DigestItem = typeof digestItems.$inferSelect
+export type GmailConnection = typeof gmailConnection.$inferSelect
 export type Category = "urgent" | "reply" | "fyi" | "noise"

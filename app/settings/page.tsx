@@ -3,11 +3,29 @@ import { AppShell } from "@/components/app-shell"
 import { TriggerButton } from "@/components/trigger-button"
 import { Field, FieldLabel, FieldDescription } from "@/components/ui/field"
 import { CATEGORY_META, CATEGORY_ORDER } from "@/lib/categories"
+import { GmailConnect } from "@/components/gmail-connect"
+import { getGmailConnection } from "@/lib/google-oauth"
 
 export const dynamic = "force-dynamic"
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ gmail?: string; reason?: string }>
+}) {
   const session = await requireSession()
+  const sp = await searchParams
+  const connectionRow = await getGmailConnection()
+
+  const connection = connectionRow
+    ? {
+        email: connectionRow.email,
+        status: connectionRow.status,
+        scopes: connectionRow.scopes,
+        connectedAt: connectionRow.connectedAt.toISOString(),
+        lastError: connectionRow.lastError,
+      }
+    : null
 
   return (
     <AppShell>
@@ -18,10 +36,29 @@ export default async function SettingsPage() {
         <h1 className="mt-2 font-serif text-3xl font-medium">Agent configuration</h1>
       </div>
 
+      {sp.gmail === "error" ? (
+        <div className="mb-6 rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm">
+          <p className="font-medium text-destructive">Could not connect Gmail</p>
+          <p className="mt-1 font-mono text-xs text-muted-foreground">
+            {sp.reason ?? "unknown error"}
+          </p>
+        </div>
+      ) : null}
+      {sp.gmail === "connected" ? (
+        <div className="mb-6 rounded-md border border-[var(--color-success)]/40 bg-[var(--color-success)]/10 p-4 text-sm">
+          <p className="font-medium">Gmail connected successfully.</p>
+        </div>
+      ) : null}
+
       <div className="flex flex-col gap-8">
         <section className="rounded-lg border border-border bg-card p-6">
+          <h2 className="mb-4 font-serif text-xl font-medium">Gmail connection</h2>
+          <GmailConnect connection={connection} />
+        </section>
+
+        <section className="rounded-lg border border-border bg-card p-6">
           <h2 className="mb-4 font-serif text-xl font-medium">Schedule</h2>
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <Field>
               <FieldLabel>Daily run (cron)</FieldLabel>
               <p className="font-mono text-sm">07:00 UTC · ~08:00 Europe/Rome</p>
@@ -46,7 +83,7 @@ export default async function SettingsPage() {
             <PipelineStep
               n={2}
               title="Read emails"
-              detail="gws CLI executed inside a Vercel Sandbox using GOOGLE_WORKSPACE_CLI_TOKEN."
+              detail="gws CLI executed inside a Vercel Sandbox using OAuth credentials refreshed on every run."
             />
             <PipelineStep
               n={3}

@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { runs } from "@/lib/db/schema"
 import { dailyInboxReview } from "@/workflows/daily-inbox-review"
+import { getGmailConnection } from "@/lib/google-oauth"
 
 function nanoid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
@@ -26,6 +27,20 @@ async function isAuthorized(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const trigger = await isAuthorized(req)
   if (!trigger) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
+
+  const conn = await getGmailConnection()
+  if (!conn) {
+    return NextResponse.json(
+      { error: "Gmail is not connected. Go to /settings and click Connect Gmail." },
+      { status: 412 },
+    )
+  }
+  if (conn.status !== "active") {
+    return NextResponse.json(
+      { error: `Gmail connection is ${conn.status}. Reconnect it in /settings.` },
+      { status: 412 },
+    )
+  }
 
   const runId = nanoid()
 

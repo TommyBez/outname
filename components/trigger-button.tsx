@@ -22,7 +22,10 @@ export function TriggerButton({
     setIsLoading(true)
     try {
       const res = await fetch("/api/workflow/trigger", { method: "POST" })
-      if (!res.ok) throw new Error(await res.text())
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: res.statusText }))
+        throw new Error(body.error ?? `HTTP ${res.status}`)
+      }
       const { runId } = await res.json()
       toast.success("Run started", { description: `ID ${runId.slice(0, 8)}` })
       startTransition(() => router.refresh())

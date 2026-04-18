@@ -1,7 +1,8 @@
 import Link from "next/link"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, AlertTriangle, Link2 } from "lucide-react"
 import { requireSession } from "@/lib/auth-guard"
 import { getLatestRun, getDigestWithItems } from "@/lib/data"
+import { getGmailConnection } from "@/lib/google-oauth"
 import { AppShell } from "@/components/app-shell"
 import { DigestView } from "@/components/digest-view"
 import { RunStatus } from "@/components/run-status"
@@ -9,13 +10,16 @@ import { TriggerButton } from "@/components/trigger-button"
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent } from "@/components/ui/empty"
 import { formatDateTime } from "@/lib/format"
 import { Sparkles } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 export const dynamic = "force-dynamic"
 
 export default async function DashboardPage() {
   await requireSession()
-  const latest = await getLatestRun()
+  const [latest, connection] = await Promise.all([getLatestRun(), getGmailConnection()])
   const { digest, items } = latest ? await getDigestWithItems(latest.id) : { digest: null, items: [] }
+  const notConnected = !connection
+  const expired = connection && connection.status !== "active"
 
   const today = new Date().toLocaleDateString(undefined, {
     weekday: "long",
@@ -47,6 +51,38 @@ export default async function DashboardPage() {
           <TriggerButton />
         </div>
       </div>
+
+      {(notConnected || expired) && (
+        <div
+          className={`mb-8 flex items-start gap-3 rounded-lg border p-4 ${
+            expired
+              ? "border-destructive/40 bg-destructive/5"
+              : "border-[var(--color-accent)]/40 bg-[var(--color-accent)]/10"
+          }`}
+        >
+          <AlertTriangle
+            className={`mt-0.5 size-5 shrink-0 ${
+              expired ? "text-destructive" : "text-[var(--color-accent)]"
+            }`}
+          />
+          <div className="flex-1">
+            <p className="font-medium">
+              {expired ? "Gmail connection expired" : "Gmail is not connected"}
+            </p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              {expired
+                ? "The last authentication attempt failed. Reconnect to resume daily digests."
+                : "Connect your Google account so the agent can read your inbox. Read-only access."}
+            </p>
+          </div>
+          <Button asChild size="sm">
+            <Link href="/api/google/connect">
+              <Link2 className="mr-2 size-4" />
+              {expired ? "Reconnect" : "Connect Gmail"}
+            </Link>
+          </Button>
+        </div>
+      )}
 
       {!latest ? (
         <Empty>
