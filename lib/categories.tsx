@@ -1,38 +1,37 @@
-import { AlertTriangle, MessageSquareReply, Info, EyeOff } from "lucide-react"
 import type { Category } from "@/lib/db/schema"
 
 export const CATEGORY_ORDER: Category[] = ["urgent", "reply", "fyi", "noise"]
 
 export const CATEGORY_META: Record<
   Category,
-  { label: string; description: string; icon: typeof AlertTriangle; dot: string; chip: string }
+  { label: string; shortLabel: string; description: string; tone: string; rule: string }
 > = {
   urgent: {
     label: "Urgent",
+    shortLabel: "Urgent",
     description: "Time-sensitive. Action needed soon.",
-    icon: AlertTriangle,
-    dot: "bg-destructive",
-    chip: "bg-destructive/10 text-destructive border-destructive/20",
+    tone: "text-destructive",
+    rule: "bg-destructive",
   },
   reply: {
-    label: "Needs reply",
+    label: "Needs a reply",
+    shortLabel: "To reply",
     description: "Personal responses expected.",
-    icon: MessageSquareReply,
-    dot: "bg-accent",
-    chip: "bg-accent/15 text-accent-foreground border-accent/30",
+    tone: "text-foreground",
+    rule: "bg-foreground",
   },
   fyi: {
-    label: "FYI",
+    label: "For your information",
+    shortLabel: "FYI",
     description: "Informational, no action required.",
-    icon: Info,
-    dot: "bg-chart-3",
-    chip: "bg-chart-3/10 text-chart-3 border-chart-3/20",
+    tone: "text-muted-foreground",
+    rule: "bg-muted-foreground/60",
   },
   noise: {
     label: "Noise",
+    shortLabel: "Noise",
     description: "Newsletters, promotions, automated.",
-    icon: EyeOff,
-    dot: "bg-muted-foreground",
-    chip: "bg-muted text-muted-foreground border-border",
+    tone: "text-muted-foreground",
+    rule: "bg-muted-foreground/30",
   },
 }

@@ -10,8 +10,7 @@ const fraunces = Fraunces({ subsets: ["latin"], variable: "--font-fraunces" })
 
 export const metadata: Metadata = {
   title: "Inbox Assistant",
-  description: "Your daily AI-curated email digest",
-  generator: "v0.app",
+  description: "Your morning briefing.",
 }
 
 export default function RootLayout({

@@ -1,11 +1,9 @@
 import Link from "next/link"
-import { ChevronRight } from "lucide-react"
 import { requireSession } from "@/lib/auth-guard"
 import { getAllRuns } from "@/lib/data"
 import { AppShell } from "@/components/app-shell"
 import { RunStatus } from "@/components/run-status"
 import { TriggerButton } from "@/components/trigger-button"
-import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "@/components/ui/empty"
 import { formatDateTime } from "@/lib/format"
 
 export const dynamic = "force-dynamic"
@@ -16,41 +14,48 @@ export default async function RunsPage() {
 
   return (
     <AppShell>
-      <div className="mb-8 flex items-end justify-between">
-        <div>
-          <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-            History
-          </p>
-          <h1 className="mt-2 font-serif text-3xl font-medium">All runs</h1>
+      <header className="mb-10 flex flex-col gap-2 md:mb-14">
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
+          History
+        </p>
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <h1 className="font-serif text-4xl font-medium leading-tight tracking-tight md:text-5xl">
+            All runs
+          </h1>
+          <TriggerButton variant="outline" />
         </div>
-        <TriggerButton variant="outline" />
-      </div>
+      </header>
 
       {runs.length === 0 ? (
-        <Empty>
-          <EmptyHeader>
-            <EmptyTitle>No runs yet</EmptyTitle>
-            <EmptyDescription>Trigger your first inbox review to see it here.</EmptyDescription>
-          </EmptyHeader>
-        </Empty>
+        <div className="border-t border-border pt-10">
+          <p className="font-serif text-2xl leading-snug">No runs yet.</p>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Trigger your first inbox review to see it here.
+          </p>
+        </div>
       ) : (
-        <ul className="divide-y divide-border rounded-lg border border-border bg-card">
+        <ul className="flex flex-col divide-y divide-border border-y border-border">
           {runs.map((run) => (
             <li key={run.id}>
               <Link
                 href={`/runs/${run.id}`}
-                className="grid grid-cols-[1fr_auto_auto] items-center gap-4 px-5 py-4 transition-colors hover:bg-secondary/40"
+                className="grid grid-cols-[1fr_auto] items-baseline gap-6 py-5 transition-opacity hover:opacity-70 md:grid-cols-[1fr_auto_auto] md:gap-10"
               >
-                <div className="flex flex-col gap-1 min-w-0">
-                  <span className="truncate font-medium">
+                <div className="flex flex-col gap-1.5 min-w-0">
+                  <span className="font-serif text-lg font-medium leading-tight">
                     {formatDateTime(run.startedAt)}
                   </span>
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {run.trigger} · {run.emailsScanned} emails · id {run.id.slice(0, 8)}
+                  <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+                    {run.trigger} · {run.emailsScanned} email{run.emailsScanned === 1 ? "" : "s"}
                   </span>
                 </div>
-                <RunStatus runId={run.id} initialStatus={run.status as any} compact />
-                <ChevronRight className="size-4 text-muted-foreground" />
+                <RunStatus runId={run.id} initialStatus={run.status as any} showTime={false} />
+                <span
+                  aria-hidden
+                  className="hidden text-muted-foreground transition-transform md:inline-block"
+                >
+                  →
+                </span>
               </Link>
             </li>
           ))}

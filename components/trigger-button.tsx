@@ -2,17 +2,19 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { Play } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
+import { cn } from "@/lib/utils"
 
 export function TriggerButton({
   variant = "default",
   label = "Run now",
+  className,
 }: {
-  variant?: "default" | "outline"
+  variant?: "default" | "outline" | "link"
   label?: string
+  className?: string
 }) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
@@ -30,12 +32,28 @@ export function TriggerButton({
       toast.success("Run started", { description: `ID ${runId.slice(0, 8)}` })
       startTransition(() => router.refresh())
     } catch (err) {
-      toast.error("Failed to start run", {
+      toast.error("Could not start run", {
         description: err instanceof Error ? err.message : "Unknown error",
       })
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (variant === "link") {
+    return (
+      <button
+        type="button"
+        onClick={trigger}
+        disabled={isLoading || isPending}
+        className={cn(
+          "text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50",
+          className,
+        )}
+      >
+        {isLoading ? "Starting…" : label}
+      </button>
+    )
   }
 
   return (
@@ -44,10 +62,10 @@ export function TriggerButton({
       size="sm"
       onClick={trigger}
       disabled={isLoading || isPending}
-      className="gap-2"
+      className={cn("font-medium", className)}
     >
-      {isLoading ? <Spinner className="size-3.5" /> : <Play className="size-3.5" />}
-      {label}
+      {isLoading ? <Spinner className="mr-1 size-3.5" /> : null}
+      {isLoading ? "Starting…" : label}
     </Button>
   )
 }

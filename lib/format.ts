@@ -24,6 +24,22 @@ export function formatDateTime(date: Date | string | null | undefined): string {
   })
 }
 
+export function formatTime(date: Date | string | null | undefined): string {
+  if (!date) return "—"
+  const d = typeof date === "string" ? new Date(date) : date
+  return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
+}
+
+export function formatLongDate(date: Date | string | null | undefined): string {
+  if (!date) return "—"
+  const d = typeof date === "string" ? new Date(date) : date
+  return d.toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  })
+}
+
 export function parseSender(raw: string | null): { name: string; email: string } {
   if (!raw) return { name: "Unknown", email: "" }
   const match = raw.match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/)

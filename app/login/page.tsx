@@ -17,14 +17,11 @@ export default async function LoginPage({
 
   const { from } = await searchParams
   return (
-    <main className="min-h-svh grid place-items-center bg-background px-4">
+    <main className="min-h-svh grid place-items-center bg-background px-6">
       <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+        <div className="mb-10">
+          <h1 className="font-serif text-3xl font-medium leading-tight tracking-tight">
             Inbox Assistant
-          </p>
-          <h1 className="mt-2 text-balance font-serif text-3xl font-medium leading-tight">
-            Good to see you.
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Sign in to read today&apos;s briefing.

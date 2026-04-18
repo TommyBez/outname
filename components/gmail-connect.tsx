@@ -4,7 +4,6 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
-import { CheckCircle2, AlertTriangle, Link2, Unlink } from "lucide-react"
 
 interface Props {
   connection: {
@@ -36,22 +35,18 @@ export function GmailConnect({ connection }: Props) {
 
   if (!connection) {
     return (
-      <div className="flex flex-col gap-3">
-        <div className="flex items-start gap-3 rounded-md border border-dashed border-border p-4">
-          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-[var(--color-accent)]" />
-          <div>
-            <p className="font-medium">Gmail is not connected</p>
-            <p className="text-sm text-muted-foreground">
-              Connect your Google account so the agent can read your inbox. Read-only access only.
-            </p>
-          </div>
+      <div className="flex flex-col gap-5">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            Not connected
+          </p>
+          <p className="mt-2 font-serif text-lg leading-snug">
+            The agent needs read-only access to your inbox.
+          </p>
         </div>
         <div>
           <Button asChild>
-            <a href="/api/google/connect">
-              <Link2 className="mr-2 size-4" />
-              Connect Gmail
-            </a>
+            <a href="/api/google/connect">Connect Gmail</a>
           </Button>
         </div>
       </div>
@@ -61,48 +56,48 @@ export function GmailConnect({ connection }: Props) {
   const expired = connection.status !== "active"
 
   return (
-    <div className="flex flex-col gap-3">
-      <div
-        className={`flex items-start gap-3 rounded-md border p-4 ${
-          expired
-            ? "border-destructive/40 bg-destructive/5"
-            : "border-border bg-[var(--color-muted)]/40"
-        }`}
-      >
-        {expired ? (
-          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-destructive" />
-        ) : (
-          <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-[var(--color-success)]" />
-        )}
-        <div className="flex-1">
-          <p className="font-medium">
-            {expired ? "Gmail connection needs attention" : "Connected"}
+    <div className="flex flex-col gap-5">
+      <div>
+        <div className="flex items-center gap-2">
+          <span
+            aria-hidden
+            className={`inline-block size-1.5 rounded-full ${expired ? "bg-destructive" : "bg-foreground/60"}`}
+          />
+          <p className={`font-mono text-xs uppercase tracking-[0.2em] ${expired ? "text-destructive" : "text-muted-foreground"}`}>
+            {expired ? "Needs attention" : "Connected"}
           </p>
-          <p className="mt-0.5 font-mono text-sm">{connection.email}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Connected {new Date(connection.connectedAt).toLocaleDateString()} · Status:{" "}
-            <span className={expired ? "text-destructive" : ""}>{connection.status}</span>
-          </p>
-          {expired && connection.lastError ? (
-            <p className="mt-2 rounded bg-background/60 p-2 font-mono text-xs text-muted-foreground">
-              {connection.lastError}
-            </p>
-          ) : null}
         </div>
+        <p className="mt-2 font-serif text-lg font-medium leading-snug">{connection.email}</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Linked {new Date(connection.connectedAt).toLocaleDateString()}
+        </p>
+        {expired && connection.lastError ? (
+          <pre className="mt-3 max-h-32 overflow-auto rounded-md border border-border bg-muted/40 p-3 font-mono text-xs text-muted-foreground">
+            {connection.lastError}
+          </pre>
+        ) : null}
       </div>
-      <div className="flex gap-2">
+      <div className="flex items-center gap-3">
         {expired ? (
-          <Button asChild>
-            <a href="/api/google/connect">
-              <Link2 className="mr-2 size-4" />
-              Reconnect Gmail
-            </a>
+          <Button asChild size="sm">
+            <a href="/api/google/connect">Reconnect</a>
           </Button>
         ) : null}
-        <Button variant="outline" onClick={disconnect} disabled={busy}>
-          {busy ? <Spinner className="mr-2 size-4" /> : <Unlink className="mr-2 size-4" />}
-          Disconnect
-        </Button>
+        <button
+          type="button"
+          onClick={disconnect}
+          disabled={busy}
+          className="text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline disabled:opacity-50"
+        >
+          {busy ? (
+            <span className="inline-flex items-center gap-2">
+              <Spinner className="size-3.5" />
+              Disconnecting…
+            </span>
+          ) : (
+            "Disconnect"
+          )}
+        </button>
       </div>
     </div>
   )

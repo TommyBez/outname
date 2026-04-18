@@ -30,9 +30,12 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       <div className="flex flex-col gap-2">
-        <Label htmlFor="email" className="text-xs font-medium uppercase tracking-wide">
+        <Label
+          htmlFor="email"
+          className="font-mono text-xs uppercase tracking-[0.15em] text-muted-foreground"
+        >
           Email
         </Label>
         <Input
@@ -45,7 +48,10 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
         />
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="password" className="text-xs font-medium uppercase tracking-wide">
+        <Label
+          htmlFor="password"
+          className="font-mono text-xs uppercase tracking-[0.15em] text-muted-foreground"
+        >
           Password
         </Label>
         <Input
