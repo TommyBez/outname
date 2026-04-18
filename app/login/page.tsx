@@ -1,21 +1,15 @@
+import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { headers } from "next/headers"
 import { auth } from "@/lib/auth"
 import { ensureAdminUser } from "@/lib/bootstrap"
 import { LoginForm } from "./login-form"
 
-export const dynamic = "force-dynamic"
-
-export default async function LoginPage({
+export default function LoginPage({
   searchParams,
 }: {
   searchParams: Promise<{ from?: string }>
 }) {
-  await ensureAdminUser()
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (session) redirect("/")
-
-  const { from } = await searchParams
   return (
     <main className="min-h-svh grid place-items-center bg-background px-6">
       <div className="w-full max-w-sm">
@@ -27,8 +21,22 @@ export default async function LoginPage({
             Sign in to read today&apos;s briefing.
           </p>
         </div>
-        <LoginForm redirectTo={from || "/"} />
+        <Suspense fallback={<LoginForm redirectTo="/" />}>
+          <LoginGate searchParams={searchParams} />
+        </Suspense>
       </div>
     </main>
   )
+}
+
+async function LoginGate({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string }>
+}) {
+  await ensureAdminUser()
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (session) redirect("/")
+  const { from } = await searchParams
+  return <LoginForm redirectTo={from || "/"} />
 }

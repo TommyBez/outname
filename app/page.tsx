@@ -1,6 +1,5 @@
 import { Suspense } from "react"
 import Link from "next/link"
-import { requireSession } from "@/lib/auth-guard"
 import { getLatestRun, getDigestWithItems } from "@/lib/data"
 import { getGmailConnection } from "@/lib/google-oauth"
 import { AppShell } from "@/components/app-shell"
@@ -9,7 +8,8 @@ import { RunStatus } from "@/components/run-status"
 import { TriggerButton } from "@/components/trigger-button"
 import { CATEGORY_META, CATEGORY_ORDER } from "@/lib/categories"
 import type { Category, DigestItem } from "@/lib/db/schema"
-import { formatLongDate, formatRelative } from "@/lib/format"
+import { formatRelative } from "@/lib/format"
+import { TodayDate } from "@/components/today-date"
 import {
   ConnectionNoticeSkeleton,
   DigestSkeleton,
@@ -17,14 +17,12 @@ import {
   SummarySkeleton,
 } from "@/components/skeletons"
 
-export default async function DashboardPage() {
-  await requireSession()
-
+export default function DashboardPage() {
   return (
     <AppShell>
       <header className="mb-12 flex flex-col gap-2 md:mb-16">
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {formatLongDate(new Date())}
+          <TodayDate />
         </p>
         <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <h1 className="font-serif text-4xl font-medium leading-[1.05] tracking-tight text-balance md:text-6xl">

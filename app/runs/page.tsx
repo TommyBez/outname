@@ -1,6 +1,5 @@
 import { Suspense } from "react"
 import Link from "next/link"
-import { requireSession } from "@/lib/auth-guard"
 import { getAllRuns } from "@/lib/data"
 import { AppShell } from "@/components/app-shell"
 import { RunStatus } from "@/components/run-status"
@@ -8,9 +7,7 @@ import { TriggerButton } from "@/components/trigger-button"
 import { formatDateTime } from "@/lib/format"
 import { RunListSkeleton } from "@/components/skeletons"
 
-export default async function RunsPage() {
-  await requireSession()
-
+export default function RunsPage() {
   return (
     <AppShell>
       <header className="mb-10 flex flex-col gap-2 md:mb-14">

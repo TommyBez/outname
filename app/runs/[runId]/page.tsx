@@ -1,7 +1,6 @@
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { requireSession } from "@/lib/auth-guard"
 import { getRunById, getDigestWithItems } from "@/lib/data"
 import { AppShell } from "@/components/app-shell"
 import { DigestView } from "@/components/digest-view"
@@ -10,14 +9,11 @@ import { formatDateTime } from "@/lib/format"
 import { DigestSkeleton } from "@/components/skeletons"
 import { Skeleton } from "@/components/ui/skeleton"
 
-export default async function RunDetailPage({
+export default function RunDetailPage({
   params,
 }: {
   params: Promise<{ runId: string }>
 }) {
-  await requireSession()
-  const { runId } = await params
-
   return (
     <AppShell>
       <Link
@@ -28,7 +24,7 @@ export default async function RunDetailPage({
       </Link>
 
       <Suspense fallback={<DetailFallback />}>
-        <RunDetail runId={runId} />
+        <RunDetail params={params} />
       </Suspense>
     </AppShell>
   )
@@ -50,7 +46,8 @@ function DetailFallback() {
   )
 }
 
-async function RunDetail({ runId }: { runId: string }) {
+async function RunDetail({ params }: { params: Promise<{ runId: string }> }) {
+  const { runId } = await params
   const run = await getRunById(runId)
   if (!run) notFound()
 

@@ -1,19 +1,16 @@
 import { Suspense } from "react"
-import { requireSession, getSession } from "@/lib/auth-guard"
+import { getSession } from "@/lib/auth-guard"
 import { AppShell } from "@/components/app-shell"
 import { TriggerButton } from "@/components/trigger-button"
 import { GmailConnect } from "@/components/gmail-connect"
 import { getGmailConnection } from "@/lib/google-oauth"
 import { AccountSkeleton, GmailSectionSkeleton } from "@/components/skeletons"
 
-export default async function SettingsPage({
+export default function SettingsPage({
   searchParams,
 }: {
   searchParams: Promise<{ gmail?: string; reason?: string }>
 }) {
-  await requireSession()
-  const sp = await searchParams
-
   return (
     <AppShell>
       <header className="mb-12 flex flex-col gap-2 md:mb-16">
@@ -25,19 +22,9 @@ export default async function SettingsPage({
         </h1>
       </header>
 
-      {sp.gmail === "error" ? (
-        <div className="mb-10 border-l-2 border-destructive pl-4">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-destructive">
-            Connection failed
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">{sp.reason ?? "unknown error"}</p>
-        </div>
-      ) : null}
-      {sp.gmail === "connected" ? (
-        <div className="mb-10 border-l-2 border-foreground pl-4">
-          <p className="font-serif text-lg font-medium">Gmail connected.</p>
-        </div>
-      ) : null}
+      <Suspense fallback={null}>
+        <FlashNotice searchParams={searchParams} />
+      </Suspense>
 
       <div className="flex flex-col divide-y divide-border">
         <Section title="Gmail">
@@ -66,6 +53,32 @@ export default async function SettingsPage({
       </div>
     </AppShell>
   )
+}
+
+async function FlashNotice({
+  searchParams,
+}: {
+  searchParams: Promise<{ gmail?: string; reason?: string }>
+}) {
+  const sp = await searchParams
+  if (sp.gmail === "error") {
+    return (
+      <div className="mb-10 border-l-2 border-destructive pl-4">
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-destructive">
+          Connection failed
+        </p>
+        <p className="mt-1 text-sm text-muted-foreground">{sp.reason ?? "unknown error"}</p>
+      </div>
+    )
+  }
+  if (sp.gmail === "connected") {
+    return (
+      <div className="mb-10 border-l-2 border-foreground pl-4">
+        <p className="font-serif text-lg font-medium">Gmail connected.</p>
+      </div>
+    )
+  }
+  return null
 }
 
 async function GmailSection() {
