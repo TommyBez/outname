@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import Link from "next/link"
 import { SignOutButton } from "./sign-out-button"
 import { NavLink } from "./nav-link"
@@ -20,9 +21,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             Inbox Assistant
           </Link>
           <nav className="flex items-center gap-6 text-sm" aria-label="Primary">
-            <NavLink href="/">Today</NavLink>
-            <NavLink href="/runs">History</NavLink>
-            <NavLink href="/settings">Settings</NavLink>
+            <Suspense
+              fallback={
+                <>
+                  <NavLinkFallback href="/">Today</NavLinkFallback>
+                  <NavLinkFallback href="/runs">History</NavLinkFallback>
+                  <NavLinkFallback href="/settings">Settings</NavLinkFallback>
+                </>
+              }
+            >
+              <NavLink href="/">Today</NavLink>
+              <NavLink href="/runs">History</NavLink>
+              <NavLink href="/settings">Settings</NavLink>
+            </Suspense>
             <SignOutButton />
           </nav>
         </div>
@@ -34,5 +45,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
     </div>
+  )
+}
+
+function NavLinkFallback({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="relative py-1 text-muted-foreground transition-colors hover:text-foreground"
+    >
+      {children}
+    </Link>
   )
 }
