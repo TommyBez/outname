@@ -49,10 +49,10 @@ async function RunList() {
         <li key={run.id}>
           <Link
             href={`/runs/${run.id}`}
-            className="grid grid-cols-[1fr_auto] items-baseline gap-6 py-5 transition-opacity hover:opacity-70 md:grid-cols-[1fr_auto_auto] md:gap-10"
+            className="group grid grid-cols-[1fr_auto] items-baseline gap-6 py-5 md:grid-cols-[1fr_auto_auto] md:gap-10"
           >
             <div className="flex flex-col gap-1.5 min-w-0">
-              <span className="font-serif text-lg font-medium leading-tight">
+              <span className="font-serif text-lg font-medium leading-tight transition-colors group-hover:text-foreground/70">
                 {formatDateTime(run.startedAt)}
               </span>
               <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
@@ -62,7 +62,7 @@ async function RunList() {
             <RunStatus runId={run.id} initialStatus={run.status as any} showTime={false} />
             <span
               aria-hidden
-              className="hidden text-muted-foreground transition-transform md:inline-block"
+              className="hidden text-muted-foreground transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1 group-hover:text-foreground md:inline-block"
             >
               →
             </span>

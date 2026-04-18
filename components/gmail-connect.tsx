@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 
@@ -18,16 +19,18 @@ interface Props {
 export function GmailConnect({ connection }: Props) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
+  const [confirming, setConfirming] = useState(false)
 
   async function disconnect() {
-    if (!confirm("Disconnect Gmail? Daily runs will stop until you reconnect.")) return
     setBusy(true)
     try {
       const res = await fetch("/api/google/disconnect", { method: "POST" })
-      if (!res.ok) throw new Error("Failed to disconnect")
+      if (!res.ok) throw new Error("Could not disconnect. Please try again.")
+      toast.success("Gmail disconnected")
+      setConfirming(false)
       router.refresh()
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to disconnect")
+      toast.error(e instanceof Error ? e.message : "Could not disconnect.")
     } finally {
       setBusy(false)
     }
@@ -63,7 +66,11 @@ export function GmailConnect({ connection }: Props) {
             aria-hidden
             className={`inline-block size-1.5 rounded-full ${expired ? "bg-destructive" : "bg-foreground/60"}`}
           />
-          <p className={`font-mono text-xs uppercase tracking-[0.2em] ${expired ? "text-destructive" : "text-muted-foreground"}`}>
+          <p
+            className={`font-mono text-xs uppercase tracking-[0.2em] ${
+              expired ? "text-destructive" : "text-muted-foreground"
+            }`}
+          >
             {expired ? "Needs attention" : "Connected"}
           </p>
         </div>
@@ -77,27 +84,47 @@ export function GmailConnect({ connection }: Props) {
           </pre>
         ) : null}
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-4">
         {expired ? (
           <Button asChild size="sm">
             <a href="/api/google/connect">Reconnect</a>
           </Button>
         ) : null}
-        <button
-          type="button"
-          onClick={disconnect}
-          disabled={busy}
-          className="text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline disabled:opacity-50"
-        >
-          {busy ? (
-            <span className="inline-flex items-center gap-2">
-              <Spinner className="size-3.5" />
-              Disconnecting…
-            </span>
-          ) : (
-            "Disconnect"
-          )}
-        </button>
+        {confirming ? (
+          <div className="flex items-center gap-4" role="group" aria-label="Confirm disconnect">
+            <button
+              type="button"
+              onClick={disconnect}
+              disabled={busy}
+              className="text-sm text-destructive underline underline-offset-4 transition-colors hover:text-destructive/80 disabled:opacity-50"
+            >
+              {busy ? (
+                <span className="inline-flex items-center gap-2">
+                  <Spinner className="size-3.5" />
+                  Disconnecting…
+                </span>
+              ) : (
+                "Confirm disconnect"
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirming(false)}
+              disabled={busy}
+              className="text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirming(true)}
+            className="text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+          >
+            Disconnect
+          </button>
+        )}
       </div>
     </div>
   )
