@@ -10,6 +10,7 @@ import { CATEGORY_META, CATEGORY_ORDER } from "@/lib/categories"
 import type { Category, DigestItem } from "@/lib/db/schema"
 import { formatRelative } from "@/lib/format"
 import { TodayDate } from "@/components/today-date"
+import { RunProgress } from "@/components/run-progress"
 import {
   ConnectionNoticeSkeleton,
   DigestSkeleton,
@@ -102,7 +103,7 @@ async function DashboardBody() {
   const latest = await getLatestRun()
   if (!latest) return <EmptyState />
 
-  if (latest.status === "running") return <RunningState />
+  if (latest.status === "running") return <RunProgress runId={latest.id} />
   if (latest.status === "failed") return <FailedState error={latest.error} />
 
   const { digest, items } = await getDigestWithItems(latest.id)
@@ -169,27 +170,6 @@ function EmptyState() {
       </p>
       <div className="mt-6">
         <TriggerButton label="Run first review" />
-      </div>
-    </div>
-  )
-}
-
-function RunningState() {
-  return (
-    <div className="border-t border-border pt-10">
-      <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-        In progress
-      </p>
-      <p className="mt-3 font-serif text-2xl leading-snug">Reading your inbox.</p>
-      <p className="mt-3 text-sm text-muted-foreground">
-        The briefing will appear here when the run completes.
-      </p>
-      <div
-        className="mt-6 h-px w-full overflow-hidden bg-border"
-        role="progressbar"
-        aria-label="Run in progress"
-      >
-        <div className="h-full w-1/3 bg-foreground animate-indeterminate" />
       </div>
     </div>
   )

@@ -8,6 +8,7 @@ import { RunStatus } from "@/components/run-status"
 import { formatDateTime } from "@/lib/format"
 import { DigestSkeleton } from "@/components/skeletons"
 import { Skeleton } from "@/components/ui/skeleton"
+import { RunProgress } from "@/components/run-progress"
 
 export default function RunDetailPage({
   params,
@@ -83,12 +84,7 @@ async function RunDetail({ params }: { params: Promise<{ runId: string }> }) {
           )}
         </div>
       ) : run.status === "running" ? (
-        <div className="border-t border-border pt-8">
-          <p className="font-serif text-xl">This run is still in progress.</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            The page will refresh automatically when it completes.
-          </p>
-        </div>
+        <RunProgress runId={run.id} />
       ) : (
         <DigestView items={items} summary={digest?.summary ?? null} />
       )}

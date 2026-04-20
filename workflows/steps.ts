@@ -12,6 +12,7 @@ import {
   gmailConnection,
   type Category,
 } from "@/lib/db/schema"
+import { emitRun, emitStep } from "@/lib/run-events"
 
 function getDb() {
   const sql = neon(process.env.DATABASE_URL!)
@@ -44,6 +45,7 @@ export async function initRun(runId: string, workflowRunId: string) {
     .update(runs)
     .set({ workflowRunId, status: "running" })
     .where(eq(runs.id, runId))
+  await emitRun("started", "Run started", { runId, workflowRunId })
   return { runId, workflowRunId }
 }
 
@@ -62,6 +64,13 @@ export async function finalizeRun(
       error: error ?? null,
     })
     .where(eq(runs.id, runId))
+  if (status === "completed") {
+    await emitStep("finalize", "done", "Briefing ready")
+    await emitRun("completed", "Run complete")
+  } else {
+    await emitStep("finalize", "error", "Run failed", { error })
+    await emitRun("failed", error ?? "Run failed")
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -89,6 +98,8 @@ interface GmailApiMessage {
 
 export async function readEmails(runId: string): Promise<GmailMessage[]> {
   "use step"
+
+  await emitStep("read", "start", "Connecting to Gmail")
 
   const db = getDb()
 
@@ -144,6 +155,7 @@ export async function readEmails(runId: string): Promise<GmailMessage[]> {
 
   let sandbox: Sandbox | undefined
   try {
+    await emitStep("read", "progress", "Spinning up sandbox")
     sandbox = await Sandbox.create({
       runtime: "node22",
       timeout: 180_000,
@@ -199,6 +211,7 @@ chmod +x /tmp/gws
     }
 
     // 7) List messages via the Discovery-generated Gmail method.
+    await emitStep("read", "progress", "Listing new messages")
     const listParams = JSON.stringify({
       userId: "me",
       q: `after:${afterEpoch}`,
@@ -226,9 +239,13 @@ chmod +x /tmp/gws
       )
     }
     const ids = parsed.messages ?? []
+    await emitStep("read", "progress", `Found ${ids.length} new email${ids.length === 1 ? "" : "s"}`, {
+      total: ids.length,
+    })
 
     // 8) Fetch message metadata (serial — gws manages its own auth token internally).
     const messages: GmailMessage[] = []
+    let fetched = 0
     for (const { id } of ids) {
       const getParams = JSON.stringify({
         userId: "me",
@@ -249,6 +266,17 @@ chmod +x /tmp/gws
       const msg = extractJson<GmailApiMessage>(raw)
       if (!msg) continue
       messages.push(normalizeGmail(msg))
+      fetched += 1
+      // Keep the stream flowing for large batches without drowning it: every
+      // 5 messages, or the last one.
+      if (fetched % 5 === 0 || fetched === ids.length) {
+        await emitStep(
+          "read",
+          "progress",
+          `Fetched ${fetched} of ${ids.length}`,
+          { current: fetched, total: ids.length },
+        )
+      }
     }
 
     await db
@@ -256,10 +284,18 @@ chmod +x /tmp/gws
       .set({ emailsScanned: messages.length })
       .where(eq(runs.id, runId))
 
+    await emitStep("read", "done", `Read ${messages.length} email${messages.length === 1 ? "" : "s"}`, {
+      count: messages.length,
+    })
+
     return messages
   } catch (err: unknown) {
-    if (err instanceof FatalError || err instanceof RetryableError) throw err
+    if (err instanceof FatalError || err instanceof RetryableError) {
+      await emitStep("read", "error", err.message)
+      throw err
+    }
     const message = err instanceof Error ? err.message : String(err)
+    await emitStep("read", "error", message)
     throw new RetryableError(`readEmails failed: ${message}`, {
       retryAfter: "30s",
     })
@@ -379,8 +415,13 @@ export async function classifyAndSummarize(
   "use step"
 
   if (messages.length === 0) {
+    await emitStep("classify", "done", "No new emails to classify")
     return { items: [], overallSummary: "No new emails since the last run." }
   }
+
+  await emitStep("classify", "start", `Classifying ${messages.length} emails`, {
+    count: messages.length,
+  })
 
   const input = messages.map((m) => ({
     messageId: m.id,
@@ -407,6 +448,20 @@ export async function classifyAndSummarize(
     experimental_output: Output.object({ schema: CategorizedSchema }),
   })
 
+  const counts = experimental_output.items.reduce<Record<string, number>>(
+    (acc, item) => {
+      acc[item.category] = (acc[item.category] ?? 0) + 1
+      return acc
+    },
+    {},
+  )
+  await emitStep(
+    "classify",
+    "done",
+    `Categorized ${experimental_output.items.length} emails`,
+    counts,
+  )
+
   return experimental_output
 }
 
@@ -420,6 +475,8 @@ export async function persistDigest(
   classified: z.infer<typeof CategorizedSchema>,
 ): Promise<{ digestId: string; itemCount: number }> {
   "use step"
+
+  await emitStep("persist", "start", "Saving briefing")
 
   const db = getDb()
   const digestId = nanoid()
@@ -449,6 +506,10 @@ export async function persistDigest(
     })
     await db.insert(digestItems).values(rows)
   }
+
+  await emitStep("persist", "done", "Briefing saved", {
+    itemCount: classified.items.length,
+  })
 
   return { digestId, itemCount: classified.items.length }
 }
