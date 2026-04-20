@@ -1,7 +1,6 @@
 import { neon } from "@neondatabase/serverless"
 import { drizzle } from "drizzle-orm/neon-http"
 import { eq, desc, and } from "drizzle-orm"
-import { Sandbox } from "@vercel/sandbox"
 import { generateText, Output } from "ai"
 import { z } from "zod"
 import { FatalError, RetryableError } from "workflow"
@@ -54,7 +53,7 @@ export async function finalizeRun(
 }
 
 /* -------------------------------------------------------------------------- */
-/* readEmails — spawn gws inside a Vercel Sandbox using a credentials file     */
+/* Gmail REST API helpers                                                      */
 /* -------------------------------------------------------------------------- */
 
 interface GmailMessage {
@@ -66,12 +65,25 @@ interface GmailMessage {
   receivedAt: string // ISO
 }
 
-export async function readEmails(runId: string): Promise<GmailMessage[]> {
-  "use step"
+interface GmailApiMessage {
+  id: string
+  threadId: string
+  snippet?: string
+  internalDate?: string
+  payload?: {
+    headers?: { name: string; value: string }[]
+  }
+}
 
+/**
+ * Exchange the stored refresh token for a fresh access token, or return the
+ * cached one if it's still valid. Persists the new access token back to DB.
+ *
+ * Throws FatalError if the refresh token itself is invalid (user must reconnect).
+ * Throws RetryableError for transient network/5xx failures.
+ */
+async function getValidAccessToken(): Promise<string> {
   const db = getDb()
-
-  // 1) Load the stored Gmail connection (OAuth refresh token + client creds).
   const [conn] = await db.select().from(gmailConnection).limit(1)
   if (!conn) {
     throw new FatalError(
@@ -84,13 +96,137 @@ export async function readEmails(runId: string): Promise<GmailMessage[]> {
     )
   }
 
+  // Re-use cached access token if it expires in > 60s.
+  const now = Date.now()
+  if (
+    conn.accessToken &&
+    conn.accessTokenExpiresAt &&
+    conn.accessTokenExpiresAt.getTime() - now > 60_000
+  ) {
+    return conn.accessToken
+  }
+
   const clientId = process.env.GOOGLE_CLIENT_ID
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET
   if (!clientId || !clientSecret) {
     throw new FatalError("GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is not set")
   }
 
-  // 2) Compute the "since" cursor from the last completed run.
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: conn.refreshToken,
+      grant_type: "refresh_token",
+    }),
+  })
+
+  const bodyText = await res.text()
+
+  if (!res.ok) {
+    // Google returns 400 + { error: "invalid_grant" } when the refresh token
+    // has been revoked. That's fatal — the user must reconnect.
+    const isInvalidGrant =
+      res.status === 400 && /invalid_grant|invalid_client/i.test(bodyText)
+    const isUnauthorized = res.status === 401 || res.status === 403
+
+    if (isInvalidGrant || isUnauthorized) {
+      await db
+        .update(gmailConnection)
+        .set({
+          status: "expired",
+          lastError: bodyText.slice(0, 500),
+          updatedAt: new Date(),
+        })
+        .where(eq(gmailConnection.id, conn.id))
+      throw new FatalError(
+        `Gmail authorization revoked. Reconnect in /settings. (${bodyText.slice(0, 200)})`,
+      )
+    }
+
+    // 5xx or network-ish → retryable
+    throw new RetryableError(
+      `Token refresh failed ${res.status}: ${bodyText.slice(0, 200)}`,
+      { retryAfter: "30s" },
+    )
+  }
+
+  const parsed = JSON.parse(bodyText) as {
+    access_token: string
+    expires_in: number
+  }
+  const expiresAt = new Date(Date.now() + (parsed.expires_in - 30) * 1000)
+
+  await db
+    .update(gmailConnection)
+    .set({
+      accessToken: parsed.access_token,
+      accessTokenExpiresAt: expiresAt,
+      updatedAt: new Date(),
+    })
+    .where(eq(gmailConnection.id, conn.id))
+
+  return parsed.access_token
+}
+
+/**
+ * Fetch wrapper for Gmail API that maps HTTP errors to Workflow error types.
+ */
+async function gmailFetch<T>(url: string, accessToken: string): Promise<T> {
+  const res = await fetch(url, {
+    headers: { authorization: `Bearer ${accessToken}` },
+  })
+
+  if (res.ok) {
+    return (await res.json()) as T
+  }
+
+  const body = await res.text()
+
+  // Auth failures → mark connection expired, fail fatally
+  if (res.status === 401 || res.status === 403) {
+    try {
+      const db = getDb()
+      await db
+        .update(gmailConnection)
+        .set({
+          status: "expired",
+          lastError: body.slice(0, 500),
+          updatedAt: new Date(),
+        })
+    } catch {
+      /* best effort */
+    }
+    throw new FatalError(
+      `Gmail API auth failed (${res.status}): ${body.slice(0, 200)}`,
+    )
+  }
+
+  // Rate limit / server errors → retryable
+  if (res.status === 429 || res.status >= 500) {
+    throw new RetryableError(`Gmail API ${res.status}: ${body.slice(0, 200)}`, {
+      retryAfter: "30s",
+    })
+  }
+
+  // Other 4xx → treat as fatal so we don't burn retries
+  throw new FatalError(`Gmail API ${res.status}: ${body.slice(0, 200)}`)
+}
+
+/* -------------------------------------------------------------------------- */
+/* readEmails — call Gmail REST API directly                                   */
+/* -------------------------------------------------------------------------- */
+
+export async function readEmails(runId: string): Promise<GmailMessage[]> {
+  "use step"
+
+  const db = getDb()
+  const accessToken = await getValidAccessToken()
+
+  // "since" cursor = completedAt of the most recent successful run,
+  // falling back to the last 24h on the very first run.
   const [prev] = await db
     .select()
     .from(runs)
@@ -98,181 +234,47 @@ export async function readEmails(runId: string): Promise<GmailMessage[]> {
     .orderBy(desc(runs.completedAt))
     .limit(1)
 
-  const since = prev?.completedAt ?? new Date(Date.now() - 24 * 60 * 60 * 1000)
+  const since =
+    prev?.completedAt ?? new Date(Date.now() - 24 * 60 * 60 * 1000)
   const afterEpoch = Math.floor(since.getTime() / 1000)
 
-  // 3) Build the credentials file that gws expects.
-  //    Schema matches google.oauth2.credentials.Credentials (authorized_user).
-  const credentials = JSON.stringify({
-    type: "authorized_user",
-    client_id: clientId,
-    client_secret: clientSecret,
-    refresh_token: conn.refreshToken,
-  })
+  // List message ids matching the query
+  const listUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(
+    `after:${afterEpoch}`,
+  )}&maxResults=50`
+  const list = await gmailFetch<{
+    messages?: { id: string; threadId: string }[]
+    resultSizeEstimate?: number
+  }>(listUrl, accessToken)
 
-  let sandbox: Sandbox | undefined
-  try {
-    sandbox = await Sandbox.create({
-      runtime: "node22",
-      timeout: 180_000,
-    })
+  const ids = list.messages ?? []
 
-    // Write credentials into the sandbox filesystem.
-    await sandbox.writeFiles([
-      {
-        path: "/tmp/gws-creds.json",
-        content: Buffer.from(credentials, "utf8"),
-      },
-    ])
-
-    const gwsEnv = {
-      GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE: "/tmp/gws-creds.json",
-      HOME: "/tmp",
-    }
-
-    // Install gws.
-    const install = await sandbox.runCommand({
-      cmd: "npm",
-      args: ["install", "-g", "@googleworkspace/cli"],
-    })
-    if (install.exitCode !== 0) {
-      const stderr = await install.stderr()
-      throw new FatalError(`gws install failed (exit ${install.exitCode}): ${stderr}`)
-    }
-
-    // 4) List messages.
-    const list = await sandbox.runCommand({
-      cmd: "gws",
-      args: [
-        "gmail",
-        "messages",
-        "list",
-        "--query",
-        `after:${afterEpoch}`,
-        "--max-results",
-        "50",
-        "--format",
-        "json",
-      ],
-      env: gwsEnv,
-    })
-
-    if (list.exitCode !== 0) {
-      const stderr = await list.stderr()
-      await handleGwsFailure(list.exitCode, stderr)
-    }
-
-    const listStdout = await list.stdout()
-    const parsed = extractJson<{ messages?: { id: string; threadId: string }[] }>(
-      listStdout,
+  // Fetch metadata for each (batched, limited concurrency)
+  const messages: GmailMessage[] = []
+  const CONCURRENCY = 5
+  for (let i = 0; i < ids.length; i += CONCURRENCY) {
+    const batch = ids.slice(i, i + CONCURRENCY)
+    const results = await Promise.all(
+      batch.map(({ id }) =>
+        gmailFetch<GmailApiMessage>(
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`,
+          accessToken,
+        ),
+      ),
     )
-    if (!parsed) {
-      const stderr = await list.stderr()
-      throw new FatalError(`Unable to parse gws list output. stderr: ${stderr}`)
-    }
-    const ids = parsed.messages ?? []
-
-    // 5) Fetch each message.
-    const messages: GmailMessage[] = []
-    for (const { id } of ids) {
-      const get = await sandbox.runCommand({
-        cmd: "gws",
-        args: ["gmail", "messages", "get", id, "--format", "json"],
-        env: gwsEnv,
-      })
-      if (get.exitCode !== 0) {
-        const stderr = await get.stderr()
-        await handleGwsFailure(get.exitCode, stderr)
-      }
-      const raw = await get.stdout()
-      const msg = extractJson<any>(raw)
-      if (!msg) continue
-      messages.push(normalizeGmail(msg))
-    }
-
-    await db
-      .update(runs)
-      .set({ emailsScanned: messages.length })
-      .where(eq(runs.id, runId))
-
-    return messages
-  } catch (err: any) {
-    if (err instanceof FatalError || err instanceof RetryableError) throw err
-    throw new RetryableError(`readEmails failed: ${err?.message ?? err}`, {
-      retryAfter: "30s",
-    })
-  } finally {
-    if (sandbox) {
-      try {
-        await sandbox.stop()
-      } catch {
-        /* ignore */
-      }
-    }
-  }
-}
-
-async function handleGwsFailure(exitCode: number | null, stderr: string): Promise<never> {
-  const lower = (stderr ?? "").toLowerCase()
-  const isAuth =
-    lower.includes("invalid_grant") ||
-    lower.includes("invalid_client") ||
-    lower.includes("unauthorized") ||
-    lower.includes("401") ||
-    lower.includes("403") ||
-    lower.includes("credentials") ||
-    lower.includes("token has been expired or revoked")
-
-  if (isAuth) {
-    // Mark the connection as expired so the UI can prompt reconnect.
-    try {
-      const db = getDb()
-      await db
-        .update(gmailConnection)
-        .set({ status: "expired", lastError: stderr.slice(0, 500) })
-    } catch {
-      /* ignore */
-    }
-    throw new FatalError(
-      `Gmail auth failed (exit ${exitCode}). Reconnect in /settings. Details: ${stderr.slice(0, 500)}`,
-    )
+    for (const msg of results) messages.push(normalizeGmail(msg))
   }
 
-  // Transient API failures → let the step retry.
-  throw new RetryableError(
-    `gws failed (exit ${exitCode}): ${stderr.slice(0, 500)}`,
-    { retryAfter: "30s" },
-  )
+  await db
+    .update(runs)
+    .set({ emailsScanned: messages.length })
+    .where(eq(runs.id, runId))
+
+  return messages
 }
 
-function extractJson<T>(s: string): T | null {
-  try {
-    return JSON.parse(s)
-  } catch {
-    const first = s.indexOf("{")
-    const last = s.lastIndexOf("}")
-    if (first >= 0 && last > first) {
-      try {
-        return JSON.parse(s.slice(first, last + 1))
-      } catch {
-        return null
-      }
-    }
-    const fa = s.indexOf("[")
-    const la = s.lastIndexOf("]")
-    if (fa >= 0 && la > fa) {
-      try {
-        return JSON.parse(s.slice(fa, la + 1))
-      } catch {
-        return null
-      }
-    }
-    return null
-  }
-}
-
-function normalizeGmail(msg: any): GmailMessage {
-  const headers: { name: string; value: string }[] = msg.payload?.headers ?? []
+function normalizeGmail(msg: GmailApiMessage): GmailMessage {
+  const headers = msg.payload?.headers ?? []
   const header = (n: string) =>
     headers.find((h) => h.name?.toLowerCase() === n.toLowerCase())?.value ?? ""
   const dateStr = header("Date")
@@ -285,7 +287,9 @@ function normalizeGmail(msg: any): GmailMessage {
     subject: header("Subject") || "(no subject)",
     from: header("From") || "unknown",
     snippet: msg.snippet ?? "",
-    receivedAt: receivedAt.toISOString(),
+    receivedAt: isNaN(receivedAt.getTime())
+      ? new Date().toISOString()
+      : receivedAt.toISOString(),
   }
 }
 
