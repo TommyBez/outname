@@ -158,12 +158,28 @@ export async function readEmails(runId: string): Promise<GmailMessage[]> {
       },
     ])
 
-    // 6) Extract and make executable. The tarball contains a single `gws` binary.
+    // 6) Extract into a fresh subdirectory. We skip permission/timestamp
+    //    restoration (--no-same-permissions -m) because the tarball contains
+    //    a "." entry and tar would otherwise try to chmod/utime the target
+    //    directory itself, which the sandbox user does not own.
+    //    Then locate the gws binary (different release layouts) and copy it
+    //    to /tmp/gws for a stable path.
     const extract = await sandbox.runCommand({
       cmd: "sh",
       args: [
         "-c",
-        "tar -xzf /tmp/gws.tar.gz -C /tmp && chmod +x /tmp/gws && /tmp/gws --version",
+        [
+          "set -e",
+          "mkdir -p /tmp/gws-extract",
+          "tar -xzf /tmp/gws.tar.gz -C /tmp/gws-extract --no-same-owner --no-same-permissions -m",
+          // Binary may be at the root or nested under a versioned directory.
+          "GWS_BIN=$(find /tmp/gws-extract -maxdepth 3 -type f -name gws -perm -u+x 2>/dev/null | head -n1)",
+          '[ -z "$GWS_BIN" ] && GWS_BIN=$(find /tmp/gws-extract -maxdepth 3 -type f -name gws 2>/dev/null | head -n1)',
+          '[ -z "$GWS_BIN" ] && echo "gws binary not found in tarball" >&2 && exit 3',
+          'cp "$GWS_BIN" /tmp/gws',
+          "chmod +x /tmp/gws",
+          "/tmp/gws --version",
+        ].join(" && "),
       ],
     })
     if (extract.exitCode !== 0) {
