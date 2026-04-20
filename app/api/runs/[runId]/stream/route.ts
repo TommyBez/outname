@@ -40,9 +40,12 @@ async function waitForWorkflowRunId(
 function sseHeaders(): HeadersInit {
   return {
     "Content-Type": "text/event-stream; charset=utf-8",
-    "Cache-Control": "no-cache, no-transform",
+    // `no-store` guarantees no edge/browser cache touches the SSE response.
+    "Cache-Control": "no-store, no-cache, no-transform, must-revalidate",
     Connection: "keep-alive",
+    // Disables proxy-level response buffering on Vercel edge.
     "X-Accel-Buffering": "no",
+    Pragma: "no-cache",
   }
 }
 
@@ -53,16 +56,16 @@ export async function GET(
   await requireSession()
   const { runId } = await params
 
-  console.log("[v0] sse: open", { runId })
+  console.log("[v0] sse open", { runId })
 
   const [row] = await db.select().from(runs).where(eq(runs.id, runId)).limit(1)
   if (!row) {
-    console.log("[v0] sse: run row not found", { runId })
+    console.log("[v0] sse no row", { runId })
     return new Response("not found", { status: 404 })
   }
 
   const workflowRunId = row.workflowRunId ?? (await waitForWorkflowRunId(runId))
-  console.log("[v0] sse: resolved workflowRunId", {
+  console.log("[v0] sse resolved wf", {
     runId,
     status: row.status,
     workflowRunId,
@@ -70,91 +73,14 @@ export async function GET(
 
   const lastEventIdHeader = request.headers.get("last-event-id")
   const parsedStart = lastEventIdHeader ? parseInt(lastEventIdHeader, 10) : NaN
-  // First connect (no Last-Event-ID): replay the ENTIRE stream from chunk 0.
-  // Reconnect: resume from chunk index N+1.
+  // First connect (no Last-Event-ID): replay entire stream from index 0.
+  // Reconnect: resume from index N+1.
   const startIndex = Number.isFinite(parsedStart) ? parsedStart + 1 : 0
 
-  // Terminal: send a final frame + done and close.
-  if (!workflowRunId) {
-    console.log("[v0] sse: no workflowRunId — terminal meta", { runId })
-    return new Response(
-      new ReadableStream<Uint8Array>({
-        start(controller) {
-          controller.enqueue(
-            sseFrame(null, {
-              type: "meta",
-              message: "Workflow not yet started",
-            }),
-          )
-          controller.enqueue(sseDone())
-          controller.close()
-        },
-      }),
-      { headers: sseHeaders() },
-    )
-  }
-
-  // Open the live workflow event stream. On Vercel these chunks are backed by
-  // a Redis-based durable store, so `startIndex: 0` replays everything that
-  // was written before we connected.
-  let source: ReadableStream<RunEvent>
-  try {
-    source = getRun(workflowRunId).getReadable<RunEvent>({
-      namespace: "events",
-      startIndex,
-    })
-  } catch (err) {
-    console.error("[v0] sse: getReadable failed", err)
-    return new Response(
-      new ReadableStream<Uint8Array>({
-        start(controller) {
-          controller.enqueue(
-            sseFrame(null, {
-              type: "meta",
-              message:
-                err instanceof Error
-                  ? `stream error: ${err.message}`
-                  : "stream error",
-            }),
-          )
-          controller.enqueue(sseDone())
-          controller.close()
-        },
-      }),
-      { headers: sseHeaders() },
-    )
-  }
-
-  // Convert the workflow's typed event stream into SSE bytes. `start()` sends
-  // a meta frame immediately so the client can confirm the connection even if
-  // the first real chunk is delayed. `transform()` writes one SSE frame per
-  // event with an incrementing `id:` line so the browser's built-in
-  // Last-Event-ID reconnection semantics work out of the box. `flush()` sends
-  // a terminal `done` event when the workflow closes its stream.
-  let idx = startIndex - 1
-  const transformer = new TransformStream<RunEvent, Uint8Array>({
-    start(controller) {
-      controller.enqueue(
-        sseFrame(null, { type: "meta", message: "stream connected" }),
-      )
-      console.log("[v0] sse: sent meta frame", { runId, startIndex })
-    },
-    transform(event, controller) {
-      idx += 1
-      controller.enqueue(sseFrame(idx, event))
-    },
-    flush(controller) {
-      console.log("[v0] sse: source closed, sending done", { runId, idx })
-      controller.enqueue(sseDone())
-    },
-  })
-
-  // Heartbeat — keeps the connection alive through edge proxies and signals
-  // liveness to the browser during long gaps between real events.
   const body = new ReadableStream<Uint8Array>({
     async start(controller) {
       let closed = false
-      const safeEnqueue = (chunk: Uint8Array) => {
+      const enqueue = (chunk: Uint8Array) => {
         if (closed) return
         try {
           controller.enqueue(chunk)
@@ -163,13 +89,22 @@ export async function GET(
         }
       }
 
-      const heartbeat = setInterval(
-        () => safeEnqueue(sseComment(`hb ${Date.now()}`)),
-        15_000,
-      )
+      // 1) Flush meta frame IMMEDIATELY so the client observes a live
+      //    connection without waiting on the workflow store.
+      enqueue(sseFrame(null, { type: "meta", message: "stream connected" }))
+      // Padding forces the first TCP flush through the edge proxy on some
+      // runtimes that coalesce small initial chunks.
+      enqueue(sseComment("open"))
+      console.log("[v0] sse meta sent", { runId, startIndex })
 
+      // 2) Heartbeat to keep long-lived connection through edge idle timeouts.
+      const heartbeat = setInterval(() => {
+        enqueue(sseComment(`hb ${Date.now()}`))
+      }, 15_000)
+
+      // 3) Client abort (page nav, browser close) cleans up everything.
       const onAbort = () => {
-        console.log("[v0] sse: client aborted", { runId })
+        console.log("[v0] sse client abort", { runId })
         closed = true
         clearInterval(heartbeat)
         try {
@@ -178,28 +113,89 @@ export async function GET(
       }
       request.signal.addEventListener("abort", onAbort)
 
-      const reader = source.pipeThrough(transformer).getReader()
+      // 4) Terminal case: workflow never started. Send done immediately.
+      if (!workflowRunId) {
+        console.log("[v0] sse no workflow — terminal", { runId })
+        enqueue(
+          sseFrame(null, {
+            type: "meta",
+            message: "Workflow not yet started",
+          }),
+        )
+        enqueue(sseDone())
+        clearInterval(heartbeat)
+        request.signal.removeEventListener("abort", onAbort)
+        try {
+          controller.close()
+        } catch {}
+        return
+      }
+
+      // 5) Read the workflow's durable event stream directly. On Vercel this
+      //    is backed by a Redis-based resumable stream so startIndex:0 yields
+      //    all chunks written before we connected AND every subsequent one.
+      let source: ReadableStream<RunEvent>
+      try {
+        source = getRun(workflowRunId).getReadable<RunEvent>({
+          namespace: "events",
+          startIndex,
+        })
+      } catch (err) {
+        console.error("[v0] sse getReadable threw", err)
+        enqueue(
+          sseFrame(null, {
+            type: "meta",
+            message: err instanceof Error ? err.message : "stream error",
+          }),
+        )
+        enqueue(sseDone())
+        clearInterval(heartbeat)
+        request.signal.removeEventListener("abort", onAbort)
+        try {
+          controller.close()
+        } catch {}
+        return
+      }
+
+      const reader = source.getReader()
+      let idx = startIndex - 1
+      let chunkCount = 0
       try {
         while (!closed) {
           const { value, done } = await reader.read()
-          if (done) break
-          if (value) safeEnqueue(value)
+          if (done) {
+            console.log("[v0] sse source done", { runId, chunkCount })
+            break
+          }
+          idx += 1
+          chunkCount += 1
+          if (chunkCount === 1) {
+            console.log("[v0] sse first chunk", {
+              runId,
+              preview:
+                value && typeof value === "object"
+                  ? (value as any).type
+                  : typeof value,
+            })
+          }
+          enqueue(sseFrame(idx, value))
         }
+        enqueue(sseDone())
       } catch (err) {
-        console.error("[v0] sse: reader loop error", err)
-        safeEnqueue(
+        console.error("[v0] sse reader loop error", err)
+        enqueue(
           sseFrame(null, {
             type: "meta",
-            message:
-              err instanceof Error
-                ? `stream error: ${err.message}`
-                : "stream error",
+            message: err instanceof Error ? err.message : "read error",
           }),
         )
-        safeEnqueue(sseDone())
+        enqueue(sseDone())
       } finally {
         clearInterval(heartbeat)
         request.signal.removeEventListener("abort", onAbort)
+        try {
+          reader.releaseLock()
+        } catch {}
         try {
           controller.close()
         } catch {}
