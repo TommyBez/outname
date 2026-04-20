@@ -1,11 +1,7 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import type { RunEvent, RunStepName } from "@/lib/run-events"
-
-type ClientEvent =
-  | RunEvent
-  | { type: "meta"; message: string }
 
 export type StreamStatus = "connecting" | "open" | "done" | "error" | "failed"
 
@@ -37,73 +33,101 @@ function initialSteps(): StepState[] {
   }))
 }
 
+/**
+ * Read the /api/runs/[runId]/stream newline-delimited JSON response and
+ * derive per-step UI state. Uses plain fetch + ReadableStream - no
+ * EventSource, no SSE reconnect gymnastics. On unmount (or runId change)
+ * we abort the in-flight request.
+ */
 export function useRunStream(runId: string) {
   const [steps, setSteps] = useState<StepState[]>(initialSteps)
-  const [events, setEvents] = useState<ClientEvent[]>([])
   const [status, setStatus] = useState<StreamStatus>("connecting")
-  const esRef = useRef<EventSource | null>(null)
+  const [connected, setConnected] = useState(false)
 
   useEffect(() => {
-    // Reset per-run state when the runId changes.
+    const controller = new AbortController()
+
+    // Reset per-run state whenever the runId changes.
     setSteps(initialSteps())
-    setEvents([])
     setStatus("connecting")
+    setConnected(false)
 
-    const es = new EventSource(`/api/runs/${runId}/stream`)
-    esRef.current = es
-
-    es.onopen = () => setStatus("open")
-
-    es.onmessage = (e) => {
+    async function run() {
       try {
-        const evt = JSON.parse(e.data) as ClientEvent
-        setEvents((prev) => [...prev, evt])
-
-        if (evt.type === "step") {
-          setSteps((prev) =>
-            prev.map((s) => {
-              if (s.name !== evt.step) return s
-              const nextStatus: StepState["status"] =
-                evt.status === "done"
-                  ? "done"
-                  : evt.status === "error"
-                    ? "error"
-                    : "active"
-              return {
-                ...s,
-                status: nextStatus,
-                message: evt.message,
-                meta: evt.meta,
-                updatedAt: evt.ts,
-              }
-            }),
-          )
-        } else if (evt.type === "run") {
-          if (evt.status === "failed") setStatus("failed")
+        const res = await fetch(`/api/runs/${runId}/stream`, {
+          signal: controller.signal,
+          headers: { Accept: "application/x-ndjson" },
+          cache: "no-store",
+        })
+        if (!res.ok || !res.body) {
+          setStatus("error")
+          return
         }
-      } catch {
-        /* ignore malformed frames */
+        setStatus("open")
+        setConnected(true)
+
+        // Yield to let React flush the "connected" state before we block on
+        // reader.read(). Without this, React batches the state updates and
+        // never re-renders until the stream yields a chunk.
+        await new Promise((r) => setTimeout(r, 0))
+
+        const reader = res.body
+          .pipeThrough(new TextDecoderStream())
+          .getReader()
+
+        let buffer = ""
+        for (;;) {
+          const { value, done } = await reader.read()
+          if (done) break
+          buffer += value
+          const lines = buffer.split("\n")
+          buffer = lines.pop() ?? ""
+          for (const line of lines) {
+            if (!line.trim()) continue
+            let evt: RunEvent
+            try {
+              evt = JSON.parse(line) as RunEvent
+            } catch {
+              continue
+            }
+            apply(evt)
+          }
+        }
+        setStatus((prev) => (prev === "failed" ? prev : "done"))
+      } catch (err) {
+        if ((err as Error)?.name === "AbortError") return
+        setStatus("error")
       }
     }
 
-    es.addEventListener("done", () => {
-      setStatus("done")
-      es.close()
-    })
-
-    es.onerror = () => {
-      // EventSource auto-reconnects on transient network errors using
-      // Last-Event-ID. We only force "error" when it's permanently closed.
-      if (es.readyState === EventSource.CLOSED) {
-        setStatus((prev) => (prev === "done" ? prev : "error"))
+    function apply(evt: RunEvent) {
+      if (evt.type === "step") {
+        setSteps((prev) =>
+          prev.map((s) => {
+            if (s.name !== evt.step) return s
+            const nextStatus: StepState["status"] =
+              evt.status === "done"
+                ? "done"
+                : evt.status === "error"
+                  ? "error"
+                  : "active"
+            return {
+              ...s,
+              status: nextStatus,
+              message: evt.message,
+              meta: evt.meta,
+              updatedAt: evt.ts,
+            }
+          }),
+        )
+      } else if (evt.type === "run") {
+        if (evt.status === "failed") setStatus("failed")
       }
     }
 
-    return () => {
-      es.close()
-      esRef.current = null
-    }
+    run()
+    return () => controller.abort()
   }, [runId])
 
-  return { steps, events, status }
+  return { steps, status, connected }
 }

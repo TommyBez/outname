@@ -54,8 +54,8 @@ async function writeOne(event: RunEvent): Promise<void> {
       writer.releaseLock()
     }
   } catch {
-    // Streaming is best-effort progress UI — never fail a step because
-    // we couldn't write a breadcrumb.
+    // Streaming is best-effort progress UI - never fail a step because we
+    // couldn't write a breadcrumb.
   }
 }
 

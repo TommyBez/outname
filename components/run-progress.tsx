@@ -3,11 +3,12 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useRunStream, type StepState } from "@/hooks/use-run-stream"
+import { MorphingText } from "@/components/morphing-text"
 import { cn } from "@/lib/utils"
 
 export function RunProgress({ runId }: { runId: string }) {
   const router = useRouter()
-  const { steps, status } = useRunStream(runId)
+  const { steps, status, connected } = useRunStream(runId)
 
   // When the stream signals completion, refresh the server data so the
   // dashboard re-renders with the new digest instead of the progress view.
@@ -19,19 +20,22 @@ export function RunProgress({ runId }: { runId: string }) {
   }, [status, router])
 
   const activeStep = steps.find((s) => s.status === "active")
+  const lastDone = [...steps].reverse().find((s) => s.status === "done")
   const latestMessage =
     activeStep?.message ||
-    [...steps].reverse().find((s) => s.status === "done")?.message ||
-    "Starting..."
+    lastDone?.message ||
+    (!connected ? "Connecting…" : "Waiting for the first step…")
 
   return (
     <div className="border-t border-border pt-10">
       <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
         In progress
       </p>
-      <p className="mt-3 font-serif text-2xl leading-snug">
-        {latestMessage}
-      </p>
+      <MorphingText
+        as="p"
+        text={latestMessage}
+        className="mt-3 font-serif text-2xl leading-snug"
+      />
 
       <ol className="mt-8 flex flex-col gap-4" aria-live="polite" aria-busy={status === "open"}>
         {steps.map((step, i) => (
@@ -85,7 +89,10 @@ function StepRow({ step, index }: { step: StepState; index: number }) {
           {step.label}
         </span>
         {step.message && step.status !== "pending" && (
-          <span className="text-xs text-muted-foreground">{step.message}</span>
+          <MorphingText
+            text={step.message}
+            className="text-xs text-muted-foreground"
+          />
         )}
       </div>
     </li>

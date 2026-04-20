@@ -84,7 +84,7 @@ async function RunDetail({ params }: { params: Promise<{ runId: string }> }) {
           )}
         </div>
       ) : run.status === "running" ? (
-        <RunProgress runId={run.id} />
+        <RunProgress key={run.id} runId={run.id} />
       ) : (
         <DigestView items={items} summary={digest?.summary ?? null} />
       )}

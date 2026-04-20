@@ -103,7 +103,8 @@ async function DashboardBody() {
   const latest = await getLatestRun()
   if (!latest) return <EmptyState />
 
-  if (latest.status === "running") return <RunProgress runId={latest.id} />
+  if (latest.status === "running")
+    return <RunProgress key={latest.id} runId={latest.id} />
   if (latest.status === "failed") return <FailedState error={latest.error} />
 
   const { digest, items } = await getDigestWithItems(latest.id)

@@ -25,9 +25,9 @@ export async function dailyInboxReview(runId: string) {
   // getWritable() is used so the Observability dashboard shows agent output.
   const writable = getWritable<UIMessageChunk>()
 
-  // runtime-provided workflow run id (the runId passed to start() is our DB id)
-  // DurableAgent tools reference `runId` in closure.
-  await initRun(runId, runId)
+  // The trigger route sets workflowRunId on the DB row after start() returns;
+  // initRun just emits the "started" event for streaming clients.
+  await initRun(runId)
 
   try {
     const agent = new DurableAgent({
