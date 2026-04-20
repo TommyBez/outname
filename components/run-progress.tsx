@@ -7,6 +7,7 @@ import { MorphingText } from "@/components/morphing-text"
 import { cn } from "@/lib/utils"
 
 export function RunProgress({ runId }: { runId: string }) {
+  console.log("[v0] RunProgress mounting with runId:", runId)
   const router = useRouter()
   const { steps, status, connected } = useRunStream(runId)
 
