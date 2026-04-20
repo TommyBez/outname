@@ -2,25 +2,38 @@ import { DurableAgent } from "@workflow/ai/agent"
 import { getWritable } from "workflow"
 import { z } from "zod"
 import type { UIMessageChunk } from "ai"
+import { sleep } from "workflow"
 import {
   initRun,
   finalizeRun,
   readEmails,
   classifyAndSummarize,
   persistDigest,
-} from "./steps"
+} from "../steps"
 
 /**
- * Daily inbox review workflow.
+ * Daily email brief agent workflow.
  *
  * Flow:
- *   1. initRun (step) — confirms the run row in Neon
+ *   0. (optional) sleep until `scheduledForMs` — set by the cron runner so
+ *      the workflow fires at the user's local scheduled time
+ *   1. initRun (step) — emits the "started" event
  *   2. DurableAgent orchestrator runs three tools in order:
  *        readEmails → classifyAndSummarize → persistDigest
  *   3. finalizeRun (step) — marks run completed/failed
  */
-export async function dailyInboxReview(runId: string) {
+export async function dailyEmailBrief(input: {
+  runId: string
+  scheduledForMs?: number
+}) {
   "use workflow"
+
+  const { runId, scheduledForMs } = input
+
+  // Cron triggers pass a future `scheduledForMs`; manual triggers do not.
+  if (scheduledForMs && scheduledForMs > Date.now()) {
+    await sleep(new Date(scheduledForMs))
+  }
 
   // getWritable() is used so the Observability dashboard shows agent output.
   const writable = getWritable<UIMessageChunk>()

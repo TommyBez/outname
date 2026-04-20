@@ -3,7 +3,6 @@ import Link from "next/link"
 import { getAllRuns } from "@/lib/data"
 import { AppShell } from "@/components/app-shell"
 import { RunStatus } from "@/components/run-status"
-import { TriggerButton } from "@/components/trigger-button"
 import { formatDateTime } from "@/lib/format"
 import { RunListSkeleton } from "@/components/skeletons"
 
@@ -18,7 +17,12 @@ export default function RunsPage() {
           <h1 className="font-serif text-4xl font-medium leading-tight tracking-tight md:text-5xl">
             All runs
           </h1>
-          <TriggerButton variant="outline" />
+          <Link
+            href="/agents"
+            className="inline-flex shrink-0 items-center justify-center self-start rounded-md border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted md:self-auto"
+          >
+            Manage agents →
+          </Link>
         </div>
       </header>
 

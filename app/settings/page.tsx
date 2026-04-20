@@ -1,9 +1,11 @@
 import { Suspense } from "react"
-import { getSession } from "@/lib/auth-guard"
+import Link from "next/link"
+import { getSession, requireSession } from "@/lib/auth-guard"
 import { AppShell } from "@/components/app-shell"
-import { TriggerButton } from "@/components/trigger-button"
 import { GmailConnect } from "@/components/gmail-connect"
+import { TimezonePicker } from "@/components/timezone-picker"
 import { getGmailConnection } from "@/lib/google-oauth"
+import { getUserSettings, getAgentsForUser } from "@/lib/data"
 import { AccountSkeleton, GmailSectionSkeleton } from "@/components/skeletons"
 
 export default function SettingsPage({
@@ -33,16 +35,16 @@ export default function SettingsPage({
           </Suspense>
         </Section>
 
-        <Section title="Schedule">
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
-            <Row label="Daily run">
-              <p className="font-serif text-xl font-medium tabular-nums">08:00</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">Europe/Rome · weekdays included</p>
-            </Row>
-            <Row label="Manual">
-              <TriggerButton variant="outline" />
-            </Row>
-          </div>
+        <Section title="Timezone">
+          <Suspense fallback={<div className="h-10" />}>
+            <TimezoneSection />
+          </Suspense>
+        </Section>
+
+        <Section title="Agents">
+          <Suspense fallback={<div className="h-10" />}>
+            <AgentsSummarySection />
+          </Suspense>
         </Section>
 
         <Section title="Account">
@@ -67,7 +69,9 @@ async function FlashNotice({
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-destructive">
           Connection failed
         </p>
-        <p className="mt-1 text-sm text-muted-foreground">{sp.reason ?? "unknown error"}</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {sp.reason ?? "unknown error"}
+        </p>
       </div>
     )
   }
@@ -95,6 +99,38 @@ async function GmailSection() {
   return <GmailConnect connection={connection} />
 }
 
+async function TimezoneSection() {
+  const session = await requireSession()
+  const settings = await getUserSettings(session.user.id)
+  return <TimezonePicker current={settings?.timezone ?? "UTC"} />
+}
+
+async function AgentsSummarySection() {
+  const session = await requireSession()
+  const agents = await getAgentsForUser(session.user.id)
+  const enabled = agents.filter((a) => a.enabled).length
+  return (
+    <div className="flex items-center justify-between gap-6">
+      <div>
+        <p className="font-serif text-xl font-medium">
+          {agents.length} agent{agents.length === 1 ? "" : "s"} · {enabled}{" "}
+          enabled
+        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Scheduling and per-agent configuration live on each agent&apos;s
+          page.
+        </p>
+      </div>
+      <Link
+        href="/agents"
+        className="inline-flex shrink-0 items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
+      >
+        Manage agents →
+      </Link>
+    </div>
+  )
+}
+
 async function AccountSection() {
   const session = await getSession()
   return (
@@ -106,7 +142,13 @@ async function AccountSection() {
   )
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  children,
+}: {
+  title: string
+  children: React.ReactNode
+}) {
   return (
     <section className="grid grid-cols-1 gap-6 py-10 first:pt-0 last:pb-0 md:grid-cols-[180px_1fr] md:gap-12">
       <h2 className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
@@ -120,7 +162,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-2">
-      <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+        {label}
+      </p>
       <div>{children}</div>
     </div>
   )

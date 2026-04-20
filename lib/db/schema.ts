@@ -59,20 +59,66 @@ export const verification = pgTable("verification", {
 })
 
 // App tables
+export const userSettings = pgTable("user_settings", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  timezone: text("timezone").notNull().default("UTC"),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+})
+
+export const agent = pgTable(
+  "agent",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(), // e.g. "daily-email-brief"
+    name: text("name").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    scheduleTime: text("schedule_time").notNull().default("08:00"), // HH:MM in user's TZ
+    scheduleDays: integer("schedule_days")
+      .array()
+      .notNull()
+      .default([1, 2, 3, 4, 5]), // ISO weekdays, 1=Mon..7=Sun
+    config: text("config"), // JSON blob for kind-specific options
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    userIdx: index("agent_user_idx").on(t.userId),
+    kindIdx: index("agent_kind_idx").on(t.kind),
+  }),
+)
+
 export const runs = pgTable(
   "runs",
   {
     id: text("id").primaryKey(),
+    agentId: text("agent_id").references(() => agent.id, {
+      onDelete: "cascade",
+    }),
     workflowRunId: text("workflow_run_id"),
-    status: text("status").notNull().default("running"), // running | completed | failed
+    status: text("status").notNull().default("running"), // running | scheduled | completed | failed
     trigger: text("trigger").notNull().default("manual"), // manual | cron
-    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    scheduledFor: timestamp("scheduled_for", { withTimezone: true }),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     emailsScanned: integer("emails_scanned").notNull().default(0),
     error: text("error"),
   },
   (t) => ({
     startedAtIdx: index("runs_started_at_idx").on(t.startedAt),
+    agentIdx: index("runs_agent_idx").on(t.agentId),
   }),
 )
 
@@ -133,4 +179,9 @@ export type Run = typeof runs.$inferSelect
 export type Digest = typeof digests.$inferSelect
 export type DigestItem = typeof digestItems.$inferSelect
 export type GmailConnection = typeof gmailConnection.$inferSelect
+export type Agent = typeof agent.$inferSelect
+export type UserSettings = typeof userSettings.$inferSelect
 export type Category = "urgent" | "reply" | "fyi" | "noise"
+export type AgentKind = "daily-email-brief"
+export type RunTrigger = "manual" | "cron"
+export type RunStatus = "running" | "scheduled" | "completed" | "failed"

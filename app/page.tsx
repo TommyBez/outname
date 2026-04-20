@@ -1,22 +1,20 @@
 import { Suspense } from "react"
 import Link from "next/link"
-import { getLatestRun, getDigestWithItems } from "@/lib/data"
+import { requireSession } from "@/lib/auth-guard"
+import {
+  getAgentsForUser,
+  getLatestRunForAgent,
+  getDigestWithItems,
+} from "@/lib/data"
 import { getGmailConnection } from "@/lib/google-oauth"
 import { AppShell } from "@/components/app-shell"
-import { DigestView } from "@/components/digest-view"
-import { RunStatus } from "@/components/run-status"
-import { TriggerButton } from "@/components/trigger-button"
-import { CATEGORY_META, CATEGORY_ORDER } from "@/lib/categories"
-import type { Category, DigestItem } from "@/lib/db/schema"
-import { formatRelative } from "@/lib/format"
 import { TodayDate } from "@/components/today-date"
-import { RunProgress } from "@/components/run-progress"
+import { AgentRunCard } from "@/components/agent-run-card"
 import {
   ConnectionNoticeSkeleton,
   DigestSkeleton,
-  HeaderStatusSkeleton,
-  SummarySkeleton,
 } from "@/components/skeletons"
+import { AGENT_KINDS } from "@/workflows/agents/registry"
 
 export default function DashboardPage() {
   return (
@@ -27,11 +25,14 @@ export default function DashboardPage() {
         </p>
         <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <h1 className="font-serif text-4xl font-medium leading-[1.05] tracking-tight text-balance md:text-6xl">
-            Morning briefing.
+            Today.
           </h1>
-          <Suspense fallback={<HeaderStatusSkeleton />}>
-            <HeaderStatus />
-          </Suspense>
+          <Link
+            href="/agents/new"
+            className="inline-flex shrink-0 items-center justify-center self-start rounded-md border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted md:self-auto"
+          >
+            + New agent
+          </Link>
         </div>
       </header>
 
@@ -39,20 +40,10 @@ export default function DashboardPage() {
         <ConnectionNotice />
       </Suspense>
 
-      <Suspense fallback={<DashboardBodyFallback />}>
-        <DashboardBody />
+      <Suspense fallback={<DigestSkeleton />}>
+        <AgentsList />
       </Suspense>
     </AppShell>
-  )
-}
-
-async function HeaderStatus() {
-  const latest = await getLatestRun()
-  return (
-    <div className="flex items-center gap-4 text-sm">
-      {latest && <RunStatus runId={latest.id} initialStatus={latest.status as any} />}
-      <TriggerButton variant="outline" />
-    </div>
   )
 }
 
@@ -90,109 +81,58 @@ async function ConnectionNotice() {
   )
 }
 
-function DashboardBodyFallback() {
-  return (
-    <>
-      <SummarySkeleton />
-      <DigestSkeleton />
-    </>
-  )
-}
+async function AgentsList() {
+  const session = await requireSession()
+  const agents = await getAgentsForUser(session.user.id)
 
-async function DashboardBody() {
-  const latest = await getLatestRun()
-  if (!latest) return <EmptyState />
-
-  if (latest.status === "running")
-    return <RunProgress key={latest.id} runId={latest.id} />
-  if (latest.status === "failed") return <FailedState error={latest.error} />
-
-  const { digest, items } = await getDigestWithItems(latest.id)
-
-  return (
-    <>
-      <Summary items={items} latestRunAt={latest.startedAt} />
-      <DigestView items={items} summary={digest?.summary ?? null} />
-      <footer className="mt-16 border-t border-border pt-6">
+  if (agents.length === 0) {
+    return (
+      <div className="border-t border-border pt-10">
+        <p className="font-serif text-2xl leading-snug">No agents yet.</p>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Create your first agent to start automating recurring work.
+        </p>
         <Link
-          href="/runs"
-          className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+          href="/agents/new"
+          className="mt-6 inline-flex items-center justify-center rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background transition-opacity hover:opacity-90"
         >
-          View full history →
+          Create agent
         </Link>
-      </footer>
-    </>
+      </div>
+    )
+  }
+
+  return (
+    <ul className="flex flex-col divide-y divide-border">
+      {agents.map((a) => (
+        <li key={a.id}>
+          <AgentCardContainer agentId={a.id} />
+        </li>
+      ))}
+    </ul>
   )
 }
 
-function Summary({ items, latestRunAt }: { items: DigestItem[]; latestRunAt: Date }) {
-  const counts = CATEGORY_ORDER.map((c) => ({
-    c,
-    n: items.filter((i) => i.category === (c as Category)).length,
-  }))
-  const total = items.length
+async function AgentCardContainer({ agentId }: { agentId: string }) {
+  const session = await requireSession()
+  const agents = await getAgentsForUser(session.user.id)
+  const a = agents.find((x) => x.id === agentId)
+  if (!a) return null
 
-  return (
-    <section className="mb-14 grid grid-cols-1 gap-10 border-y border-border py-8 md:grid-cols-[auto_1fr] md:gap-16 md:py-10">
-      <div>
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          New since last run
-        </p>
-        <p className="mt-3 font-serif text-6xl font-medium leading-none tabular-nums md:text-7xl">
-          {total}
-        </p>
-        <p className="mt-3 text-xs text-muted-foreground">{formatRelative(latestRunAt)}</p>
-      </div>
-      <dl className="grid grid-cols-2 gap-x-10 gap-y-6 self-end sm:grid-cols-4">
-        {counts.map(({ c, n }) => {
-          const meta = CATEGORY_META[c as Category]
-          return (
-            <div key={c} className="flex flex-col gap-1.5">
-              <dt className={`font-mono text-xs uppercase tracking-wider ${meta.tone}`}>
-                {meta.shortLabel}
-              </dt>
-              <dd className="font-serif text-3xl font-medium tabular-nums">
-                {n.toString().padStart(2, "0")}
-              </dd>
-            </div>
-          )
-        })}
-      </dl>
-    </section>
-  )
-}
+  const latest = await getLatestRunForAgent(a.id)
+  const digest =
+    latest && latest.status === "completed"
+      ? await getDigestWithItems(latest.id)
+      : null
 
-function EmptyState() {
+  const kindMeta = AGENT_KINDS[a.kind as keyof typeof AGENT_KINDS]
   return (
-    <div className="border-t border-border pt-10">
-      <p className="font-serif text-2xl leading-snug">No briefings yet.</p>
-      <p className="mt-3 text-sm text-muted-foreground">
-        Trigger your first run to read today&apos;s digest here.
-      </p>
-      <div className="mt-6">
-        <TriggerButton label="Run first review" />
-      </div>
-    </div>
-  )
-}
-
-function FailedState({ error }: { error: string | null }) {
-  return (
-    <div className="border-t border-destructive/30 pt-10">
-      <p className="font-mono text-xs uppercase tracking-[0.2em] text-destructive">
-        Last run failed
-      </p>
-      <p className="mt-3 font-serif text-2xl leading-snug">
-        The briefing could not be generated.
-      </p>
-      {error && (
-        <pre className="mt-4 max-h-48 overflow-auto rounded-md border border-border bg-muted/40 p-3 font-mono text-xs text-muted-foreground">
-          {error}
-        </pre>
-      )}
-      <div className="mt-6">
-        <TriggerButton label="Retry" />
-      </div>
-    </div>
+    <AgentRunCard
+      agent={a}
+      kindLabel={kindMeta?.label ?? a.kind}
+      latestRun={latest}
+      digestItems={digest?.items ?? null}
+      digestSummary={digest?.digest?.summary ?? null}
+    />
   )
 }
