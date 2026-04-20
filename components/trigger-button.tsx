@@ -7,11 +7,17 @@ import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { cn } from "@/lib/utils"
 
+/**
+ * Triggers a manual run for a specific agent. `agentId` is required; there
+ * is no implicit "default agent" since this is a multi-agent platform.
+ */
 export function TriggerButton({
+  agentId,
   variant = "default",
   label = "Run now",
   className,
 }: {
+  agentId: string
   variant?: "default" | "outline" | "link"
   label?: string
   className?: string
@@ -23,7 +29,9 @@ export function TriggerButton({
   async function trigger() {
     setIsLoading(true)
     try {
-      const res = await fetch("/api/workflow/trigger", { method: "POST" })
+      const res = await fetch(`/api/agents/${agentId}/trigger`, {
+        method: "POST",
+      })
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: res.statusText }))
         throw new Error(body.error ?? `HTTP ${res.status}`)

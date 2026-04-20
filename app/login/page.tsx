@@ -14,11 +14,14 @@ export default function LoginPage({
     <main className="min-h-svh grid place-items-center bg-background px-6">
       <div className="w-full max-w-sm">
         <div className="mb-10">
-          <h1 className="font-serif text-3xl font-medium leading-tight tracking-tight">
-            Inbox Assistant
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">
+            ▪ agents
+          </p>
+          <h1 className="mt-3 font-mono text-2xl font-medium leading-tight tracking-tight">
+            Sign in.
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Sign in to read today&apos;s briefing.
+            Access your scheduled agents and today&apos;s run.
           </p>
         </div>
         <Suspense fallback={<LoginForm redirectTo="/" />}>

@@ -16,21 +16,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-6 px-6 py-5 md:px-8">
           <Link
             href="/"
-            className="font-serif text-lg font-medium tracking-tight transition-colors hover:text-foreground/80"
+            className="inline-flex items-baseline gap-1.5 font-mono text-sm font-medium uppercase tracking-[0.18em] transition-colors hover:text-foreground/80"
           >
-            Inbox Assistant
+            <span
+              aria-hidden
+              className="text-accent"
+            >
+              ▪
+            </span>
+            agents
           </Link>
           <nav className="flex items-center gap-6 text-sm" aria-label="Primary">
             <Suspense
               fallback={
                 <>
                   <NavLinkFallback href="/">Today</NavLinkFallback>
+                  <NavLinkFallback href="/agents">Agents</NavLinkFallback>
                   <NavLinkFallback href="/runs">History</NavLinkFallback>
                   <NavLinkFallback href="/settings">Settings</NavLinkFallback>
                 </>
               }
             >
               <NavLink href="/">Today</NavLink>
+              <NavLink href="/agents">Agents</NavLink>
               <NavLink href="/runs">History</NavLink>
               <NavLink href="/settings">Settings</NavLink>
             </Suspense>
