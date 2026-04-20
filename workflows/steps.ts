@@ -23,6 +23,17 @@ function nanoid() {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Constants                                                                   */
+/* -------------------------------------------------------------------------- */
+
+// Pinned version of gws. Bump deliberately after testing.
+const GWS_VERSION = "0.22.5"
+// x86_64 musl-linked build — statically linked, does NOT depend on host glibc.
+// Vercel Sandbox runs on x86_64; the glibc-linked GNU build from the npm
+// package requires GLIBC_2.39 which the sandbox image does not provide.
+const GWS_TARBALL_URL = `https://github.com/googleworkspace/cli/releases/download/v${GWS_VERSION}/google-workspace-cli-x86_64-unknown-linux-musl.tar.gz`
+
+/* -------------------------------------------------------------------------- */
 /* initRun / finalizeRun                                                       */
 /* -------------------------------------------------------------------------- */
 
@@ -54,7 +65,7 @@ export async function finalizeRun(
 }
 
 /* -------------------------------------------------------------------------- */
-/* readEmails — spawn gws inside a Vercel Sandbox using a credentials file     */
+/* readEmails — spawn gws (musl binary) inside a Vercel Sandbox                */
 /* -------------------------------------------------------------------------- */
 
 interface GmailMessage {
@@ -64,6 +75,16 @@ interface GmailMessage {
   from: string
   snippet: string
   receivedAt: string // ISO
+}
+
+interface GmailApiMessage {
+  id: string
+  threadId: string
+  snippet?: string
+  internalDate?: string
+  payload?: {
+    headers?: { name: string; value: string }[]
+  }
 }
 
 export async function readEmails(runId: string): Promise<GmailMessage[]> {
@@ -101,14 +122,25 @@ export async function readEmails(runId: string): Promise<GmailMessage[]> {
   const since = prev?.completedAt ?? new Date(Date.now() - 24 * 60 * 60 * 1000)
   const afterEpoch = Math.floor(since.getTime() / 1000)
 
-  // 3) Build the credentials file that gws expects.
-  //    Schema matches google.oauth2.credentials.Credentials (authorized_user).
+  // 3) Credentials JSON for gws (authorized_user schema = OAuth refresh-token flow).
   const credentials = JSON.stringify({
     type: "authorized_user",
     client_id: clientId,
     client_secret: clientSecret,
     refresh_token: conn.refreshToken,
   })
+
+  // 4) Download the musl tarball OUTSIDE the sandbox, then upload it in.
+  //    This avoids requiring curl/wget inside the sandbox and makes the
+  //    download easier to reason about.
+  const tarballRes = await fetch(GWS_TARBALL_URL, { redirect: "follow" })
+  if (!tarballRes.ok) {
+    throw new RetryableError(
+      `Failed to download gws ${GWS_VERSION}: ${tarballRes.status}`,
+      { retryAfter: "30s" },
+    )
+  }
+  const tarballBytes = Buffer.from(await tarballRes.arrayBuffer())
 
   let sandbox: Sandbox | undefined
   try {
@@ -117,43 +149,45 @@ export async function readEmails(runId: string): Promise<GmailMessage[]> {
       timeout: 180_000,
     })
 
-    // Write credentials into the sandbox filesystem.
+    // 5) Stage tarball + credentials inside the sandbox.
     await sandbox.writeFiles([
+      { path: "/tmp/gws.tar.gz", content: tarballBytes },
       {
         path: "/tmp/gws-creds.json",
         content: Buffer.from(credentials, "utf8"),
       },
     ])
 
+    // 6) Extract and make executable. The tarball contains a single `gws` binary.
+    const extract = await sandbox.runCommand({
+      cmd: "sh",
+      args: [
+        "-c",
+        "tar -xzf /tmp/gws.tar.gz -C /tmp && chmod +x /tmp/gws && /tmp/gws --version",
+      ],
+    })
+    if (extract.exitCode !== 0) {
+      const stderr = await extract.stderr()
+      throw new FatalError(
+        `gws extract failed (exit ${extract.exitCode}): ${stderr.slice(0, 500)}`,
+      )
+    }
+
     const gwsEnv = {
       GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE: "/tmp/gws-creds.json",
       HOME: "/tmp",
+      PATH: "/tmp:/usr/local/bin:/usr/bin:/bin",
     }
 
-    // Install gws.
-    const install = await sandbox.runCommand({
-      cmd: "npm",
-      args: ["install", "-g", "@googleworkspace/cli"],
+    // 7) List messages via the Discovery-generated Gmail method.
+    const listParams = JSON.stringify({
+      userId: "me",
+      q: `after:${afterEpoch}`,
+      maxResults: 50,
     })
-    if (install.exitCode !== 0) {
-      const stderr = await install.stderr()
-      throw new FatalError(`gws install failed (exit ${install.exitCode}): ${stderr}`)
-    }
-
-    // 4) List messages.
     const list = await sandbox.runCommand({
-      cmd: "gws",
-      args: [
-        "gmail",
-        "messages",
-        "list",
-        "--query",
-        `after:${afterEpoch}`,
-        "--max-results",
-        "50",
-        "--format",
-        "json",
-      ],
+      cmd: "/tmp/gws",
+      args: ["gmail", "users", "messages", "list", "--params", listParams],
       env: gwsEnv,
     })
 
@@ -163,21 +197,29 @@ export async function readEmails(runId: string): Promise<GmailMessage[]> {
     }
 
     const listStdout = await list.stdout()
-    const parsed = extractJson<{ messages?: { id: string; threadId: string }[] }>(
-      listStdout,
-    )
+    const parsed = extractJson<{
+      messages?: { id: string; threadId: string }[]
+    }>(listStdout)
     if (!parsed) {
       const stderr = await list.stderr()
-      throw new FatalError(`Unable to parse gws list output. stderr: ${stderr}`)
+      throw new FatalError(
+        `Unable to parse gws list output. stderr: ${stderr.slice(0, 500)}`,
+      )
     }
     const ids = parsed.messages ?? []
 
-    // 5) Fetch each message.
+    // 8) Fetch message metadata (serial — gws manages its own auth token internally).
     const messages: GmailMessage[] = []
     for (const { id } of ids) {
+      const getParams = JSON.stringify({
+        userId: "me",
+        id,
+        format: "metadata",
+        metadataHeaders: ["From", "Subject", "Date"],
+      })
       const get = await sandbox.runCommand({
-        cmd: "gws",
-        args: ["gmail", "messages", "get", id, "--format", "json"],
+        cmd: "/tmp/gws",
+        args: ["gmail", "users", "messages", "get", "--params", getParams],
         env: gwsEnv,
       })
       if (get.exitCode !== 0) {
@@ -185,7 +227,7 @@ export async function readEmails(runId: string): Promise<GmailMessage[]> {
         await handleGwsFailure(get.exitCode, stderr)
       }
       const raw = await get.stdout()
-      const msg = extractJson<any>(raw)
+      const msg = extractJson<GmailApiMessage>(raw)
       if (!msg) continue
       messages.push(normalizeGmail(msg))
     }
@@ -196,9 +238,10 @@ export async function readEmails(runId: string): Promise<GmailMessage[]> {
       .where(eq(runs.id, runId))
 
     return messages
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err instanceof FatalError || err instanceof RetryableError) throw err
-    throw new RetryableError(`readEmails failed: ${err?.message ?? err}`, {
+    const message = err instanceof Error ? err.message : String(err)
+    throw new RetryableError(`readEmails failed: ${message}`, {
       retryAfter: "30s",
     })
   } finally {
@@ -212,7 +255,10 @@ export async function readEmails(runId: string): Promise<GmailMessage[]> {
   }
 }
 
-async function handleGwsFailure(exitCode: number | null, stderr: string): Promise<never> {
+async function handleGwsFailure(
+  exitCode: number | null,
+  stderr: string,
+): Promise<never> {
   const lower = (stderr ?? "").toLowerCase()
   const isAuth =
     lower.includes("invalid_grant") ||
@@ -221,24 +267,30 @@ async function handleGwsFailure(exitCode: number | null, stderr: string): Promis
     lower.includes("401") ||
     lower.includes("403") ||
     lower.includes("credentials") ||
-    lower.includes("token has been expired or revoked")
+    lower.includes("token has been expired or revoked") ||
+    // gws structured exit code: 2 = auth error
+    exitCode === 2
 
   if (isAuth) {
-    // Mark the connection as expired so the UI can prompt reconnect.
+    // Mark the connection expired so the UI can prompt reconnect.
     try {
       const db = getDb()
       await db
         .update(gmailConnection)
-        .set({ status: "expired", lastError: stderr.slice(0, 500) })
+        .set({
+          status: "expired",
+          lastError: stderr.slice(0, 500),
+          updatedAt: new Date(),
+        })
     } catch {
-      /* ignore */
+      /* best effort */
     }
     throw new FatalError(
       `Gmail auth failed (exit ${exitCode}). Reconnect in /settings. Details: ${stderr.slice(0, 500)}`,
     )
   }
 
-  // Transient API failures → let the step retry.
+  // Transient API failures → let the workflow retry.
   throw new RetryableError(
     `gws failed (exit ${exitCode}): ${stderr.slice(0, 500)}`,
     { retryAfter: "30s" },
@@ -246,33 +298,29 @@ async function handleGwsFailure(exitCode: number | null, stderr: string): Promis
 }
 
 function extractJson<T>(s: string): T | null {
+  // gws emits clean structured JSON on stdout. Fall back to finding the first
+  // balanced `{...}` or `[...]` in case any banner text slips through.
+  const trimmed = s.trim()
+  if (!trimmed) return null
   try {
-    return JSON.parse(s)
+    return JSON.parse(trimmed) as T
   } catch {
-    const first = s.indexOf("{")
-    const last = s.lastIndexOf("}")
-    if (first >= 0 && last > first) {
-      try {
-        return JSON.parse(s.slice(first, last + 1))
-      } catch {
-        return null
-      }
-    }
-    const fa = s.indexOf("[")
-    const la = s.lastIndexOf("]")
-    if (fa >= 0 && la > fa) {
-      try {
-        return JSON.parse(s.slice(fa, la + 1))
-      } catch {
-        return null
-      }
-    }
+    /* fall through */
+  }
+  const firstBrace = Math.min(
+    ...[trimmed.indexOf("{"), trimmed.indexOf("[")].filter((i) => i >= 0),
+  )
+  if (!Number.isFinite(firstBrace)) return null
+  const candidate = trimmed.slice(firstBrace)
+  try {
+    return JSON.parse(candidate) as T
+  } catch {
     return null
   }
 }
 
-function normalizeGmail(msg: any): GmailMessage {
-  const headers: { name: string; value: string }[] = msg.payload?.headers ?? []
+function normalizeGmail(msg: GmailApiMessage): GmailMessage {
+  const headers = msg.payload?.headers ?? []
   const header = (n: string) =>
     headers.find((h) => h.name?.toLowerCase() === n.toLowerCase())?.value ?? ""
   const dateStr = header("Date")
@@ -285,7 +333,9 @@ function normalizeGmail(msg: any): GmailMessage {
     subject: header("Subject") || "(no subject)",
     from: header("From") || "unknown",
     snippet: msg.snippet ?? "",
-    receivedAt: receivedAt.toISOString(),
+    receivedAt: isNaN(receivedAt.getTime())
+      ? new Date().toISOString()
+      : receivedAt.toISOString(),
   }
 }
 
