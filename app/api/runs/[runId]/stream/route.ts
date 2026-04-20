@@ -7,12 +7,20 @@ import type { RunEvent } from "@/lib/run-events"
 
 const encoder = new TextEncoder()
 
-function sseLine(id: number, event: RunEvent | { type: "meta"; message: string }): Uint8Array {
-  return encoder.encode(`id: ${id}\nevent: message\ndata: ${JSON.stringify(event)}\n\n`)
+type ClientFrame = RunEvent | { type: "meta"; message: string }
+
+function sseLine(id: number | null, event: ClientFrame): Uint8Array {
+  const idLine = id === null ? "" : `id: ${id}\n`
+  return encoder.encode(`${idLine}event: message\ndata: ${JSON.stringify(event)}\n\n`)
 }
 
 function sseDone(): Uint8Array {
   return encoder.encode(`event: done\ndata: {}\n\n`)
+}
+
+function sseHeartbeat(): Uint8Array {
+  // SSE comment — keeps proxies from buffering and the connection alive.
+  return encoder.encode(`: heartbeat ${Date.now()}\n\n`)
 }
 
 async function waitForWorkflowRunId(
@@ -30,6 +38,16 @@ async function waitForWorkflowRunId(
   return null
 }
 
+function sseHeaders(): HeadersInit {
+  return {
+    "Content-Type": "text/event-stream; charset=utf-8",
+    "Cache-Control": "no-cache, no-transform",
+    Connection: "keep-alive",
+    // Disable any proxy buffering so events arrive promptly.
+    "X-Accel-Buffering": "no",
+  }
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ runId: string }> },
@@ -43,41 +61,32 @@ export async function GET(
   const workflowRunId = row.workflowRunId ?? (await waitForWorkflowRunId(runId))
   const lastEventIdHeader = request.headers.get("last-event-id")
   const parsedStart = lastEventIdHeader ? parseInt(lastEventIdHeader, 10) : NaN
-  // On first connect (no Last-Event-ID), replay the ENTIRE stream from 0 so
-  // the client sees every step that happened before it opened the socket.
-  // On reconnect, resume just after the last event the client received.
+  // On first connect (no Last-Event-ID) we replay the ENTIRE stream from 0.
+  // On reconnect, resume just after the last event the client acknowledged.
   const startIndex = Number.isFinite(parsedStart) ? parsedStart + 1 : 0
 
-  // If the run already finished and we have no workflow id, close immediately.
-  if (!workflowRunId) {
-    const stream = new ReadableStream({
-      start(controller) {
-        if (row.status === "failed") {
-          controller.enqueue(
-            sseLine(0, {
-              type: "run",
-              status: "failed",
-              message: row.error ?? "Run failed before workflow started",
-              ts: Date.now(),
-            }),
-          )
-        } else if (row.status === "completed") {
-          controller.enqueue(
-            sseLine(0, {
+  // Terminal state — the run already finished or never acquired a workflow id.
+  if (!workflowRunId || row.status === "completed" || row.status === "failed") {
+    const terminal: ClientFrame =
+      row.status === "failed"
+        ? {
+            type: "run",
+            status: "failed",
+            message: row.error ?? "Run failed before workflow started",
+            ts: Date.now(),
+          }
+        : row.status === "completed"
+          ? {
               type: "run",
               status: "completed",
               message: "Run complete",
               ts: Date.now(),
-            }),
-          )
-        } else {
-          controller.enqueue(
-            sseLine(0, {
-              type: "meta",
-              message: "Workflow starting...",
-            }),
-          )
-        }
+            }
+          : { type: "meta", message: "Workflow starting..." }
+
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(sseLine(0, terminal))
         controller.enqueue(sseDone())
         controller.close()
       },
@@ -85,41 +94,78 @@ export async function GET(
     return new Response(stream, { headers: sseHeaders() })
   }
 
-  let idx = startIndex
-  const source = getRun(workflowRunId).getReadable<RunEvent>({
-    namespace: "events",
-    startIndex,
+  // Live run — pipe the workflow's namespaced stream to the client as SSE.
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      let closed = false
+      const safeEnqueue = (chunk: Uint8Array) => {
+        if (closed) return
+        try {
+          controller.enqueue(chunk)
+        } catch {
+          closed = true
+        }
+      }
+
+      // 1) Immediate connected frame so the client can stop showing "Starting…"
+      safeEnqueue(
+        sseLine(null, {
+          type: "meta",
+          message: "Stream connected",
+        }),
+      )
+
+      // 2) Keep-alive heartbeat — prevents proxy timeouts and edge buffering.
+      const heartbeat = setInterval(() => safeEnqueue(sseHeartbeat()), 15_000)
+
+      // 3) Abort cleanly if the client disconnects.
+      const abort = () => {
+        closed = true
+        clearInterval(heartbeat)
+        try {
+          controller.close()
+        } catch {
+          // already closed
+        }
+      }
+      request.signal.addEventListener("abort", abort)
+
+      // 4) Pipe the workflow event stream.
+      let idx = startIndex
+      try {
+        const source = getRun(workflowRunId).getReadable<RunEvent>({
+          namespace: "events",
+          startIndex,
+        })
+        const reader = source.getReader()
+        while (!closed) {
+          const { value, done } = await reader.read()
+          if (done) break
+          if (value) {
+            safeEnqueue(sseLine(idx, value))
+            idx += 1
+          }
+        }
+      } catch (err) {
+        console.error("[v0] sse stream error", err)
+        safeEnqueue(
+          sseLine(null, {
+            type: "meta",
+            message:
+              err instanceof Error ? `stream error: ${err.message}` : "stream error",
+          }),
+        )
+      } finally {
+        clearInterval(heartbeat)
+        safeEnqueue(sseDone())
+        try {
+          controller.close()
+        } catch {
+          // already closed
+        }
+      }
+    },
   })
 
-  const sse = source.pipeThrough(
-    new TransformStream<RunEvent, Uint8Array>({
-      transform(chunk, controller) {
-        try {
-          controller.enqueue(sseLine(idx, chunk))
-          idx += 1
-        } catch {
-          // Client disconnected; swallow the write and let the stream close.
-        }
-      },
-      flush(controller) {
-        try {
-          controller.enqueue(sseDone())
-        } catch {
-          // No-op on closed controller.
-        }
-      },
-    }),
-  )
-
-  return new Response(sse, { headers: sseHeaders() })
-}
-
-function sseHeaders(): HeadersInit {
-  return {
-    "Content-Type": "text/event-stream",
-    "Cache-Control": "no-cache, no-transform",
-    Connection: "keep-alive",
-    // Disable any proxy buffering so events arrive promptly.
-    "X-Accel-Buffering": "no",
-  }
+  return new Response(stream, { headers: sseHeaders() })
 }

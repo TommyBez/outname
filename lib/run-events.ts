@@ -53,9 +53,20 @@ async function writeOne(event: RunEvent): Promise<void> {
     } finally {
       writer.releaseLock()
     }
-  } catch {
-    // Streaming is best-effort progress UI — never fail a step because
-    // we couldn't write a breadcrumb.
+  } catch (err) {
+    // Streaming is best-effort progress UI — never fail a step because we
+    // couldn't write a breadcrumb. Surface the error in logs so silent
+    // streaming bugs are diagnosable.
+    console.error("[v0] emit event failed", err)
+  }
+}
+
+/** Close the per-run event stream so clients receive a clean EOF. */
+export async function closeRunEvents(): Promise<void> {
+  try {
+    await getWritable<RunEvent>({ namespace: "events" }).close()
+  } catch (err) {
+    console.error("[v0] close events stream failed", err)
   }
 }
 

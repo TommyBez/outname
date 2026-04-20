@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 
 export function RunProgress({ runId }: { runId: string }) {
   const router = useRouter()
-  const { steps, status } = useRunStream(runId)
+  const { steps, status, connected } = useRunStream(runId)
 
   // When the stream signals completion, refresh the server data so the
   // dashboard re-renders with the new digest instead of the progress view.
@@ -20,10 +20,11 @@ export function RunProgress({ runId }: { runId: string }) {
   }, [status, router])
 
   const activeStep = steps.find((s) => s.status === "active")
+  const lastDone = [...steps].reverse().find((s) => s.status === "done")
   const latestMessage =
     activeStep?.message ||
-    [...steps].reverse().find((s) => s.status === "done")?.message ||
-    "Starting..."
+    lastDone?.message ||
+    (!connected ? "Connecting…" : "Waiting for the first step…")
 
   return (
     <div className="border-t border-border pt-10">

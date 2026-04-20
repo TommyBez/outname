@@ -41,6 +41,7 @@ export function useRunStream(runId: string) {
   const [steps, setSteps] = useState<StepState[]>(initialSteps)
   const [events, setEvents] = useState<ClientEvent[]>([])
   const [status, setStatus] = useState<StreamStatus>("connecting")
+  const [connected, setConnected] = useState(false)
   const esRef = useRef<EventSource | null>(null)
 
   useEffect(() => {
@@ -48,6 +49,7 @@ export function useRunStream(runId: string) {
     setSteps(initialSteps())
     setEvents([])
     setStatus("connecting")
+    setConnected(false)
 
     const es = new EventSource(`/api/runs/${runId}/stream`)
     esRef.current = es
@@ -59,7 +61,9 @@ export function useRunStream(runId: string) {
         const evt = JSON.parse(e.data) as ClientEvent
         setEvents((prev) => [...prev, evt])
 
-        if (evt.type === "step") {
+        if (evt.type === "meta") {
+          setConnected(true)
+        } else if (evt.type === "step") {
           setSteps((prev) =>
             prev.map((s) => {
               if (s.name !== evt.step) return s
@@ -105,5 +109,5 @@ export function useRunStream(runId: string) {
     }
   }, [runId])
 
-  return { steps, events, status }
+  return { steps, events, status, connected }
 }
