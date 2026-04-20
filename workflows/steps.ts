@@ -158,34 +158,37 @@ export async function readEmails(runId: string): Promise<GmailMessage[]> {
       },
     ])
 
-    // 6) Extract into a fresh subdirectory. We skip permission/timestamp
-    //    restoration (--no-same-permissions -m) because the tarball contains
-    //    a "." entry and tar would otherwise try to chmod/utime the target
-    //    directory itself, which the sandbox user does not own.
-    //    Then locate the gws binary (different release layouts) and copy it
-    //    to /tmp/gws for a stable path.
+    // 6) Extract into a fresh subdirectory. The release tarball is FLAT:
+    //    it contains `gws` + docs directly at the root, and the binary is
+    //    already marked executable. We skip owner/permission/timestamp
+    //    restoration (--no-same-owner --no-same-permissions -m) because the
+    //    archive has a "." entry and tar would otherwise try to chmod/utime
+    //    the target directory itself, which the sandbox user does not own.
     const extract = await sandbox.runCommand({
       cmd: "sh",
       args: [
-        "-c",
-        [
-          "set -e",
-          "mkdir -p /tmp/gws-extract",
-          "tar -xzf /tmp/gws.tar.gz -C /tmp/gws-extract --no-same-owner --no-same-permissions -m",
-          // Binary may be at the root or nested under a versioned directory.
-          "GWS_BIN=$(find /tmp/gws-extract -maxdepth 3 -type f -name gws -perm -u+x 2>/dev/null | head -n1)",
-          '[ -z "$GWS_BIN" ] && GWS_BIN=$(find /tmp/gws-extract -maxdepth 3 -type f -name gws 2>/dev/null | head -n1)',
-          '[ -z "$GWS_BIN" ] && echo "gws binary not found in tarball" >&2 && exit 3',
-          'cp "$GWS_BIN" /tmp/gws',
-          "chmod +x /tmp/gws",
-          "/tmp/gws --version",
-        ].join(" && "),
+        "-ec",
+        `
+mkdir -p /tmp/gws-extract
+tar -xzf /tmp/gws.tar.gz -C /tmp/gws-extract --no-same-owner --no-same-permissions -m
+if [ -f /tmp/gws-extract/gws ]; then
+  cp /tmp/gws-extract/gws /tmp/gws
+else
+  echo "gws binary not found at /tmp/gws-extract/gws" >&2
+  ls -la /tmp/gws-extract >&2 || true
+  exit 3
+fi
+chmod +x /tmp/gws
+/tmp/gws --version
+`,
       ],
     })
     if (extract.exitCode !== 0) {
-      const stderr = await extract.stderr()
+      const [stderr, stdout] = await Promise.all([extract.stderr(), extract.stdout()])
       throw new FatalError(
-        `gws extract failed (exit ${extract.exitCode}): ${stderr.slice(0, 500)}`,
+        `gws extract failed (exit ${extract.exitCode}). stderr: ${
+          stderr.slice(0, 400) || "(empty)"
+        } | stdout: ${stdout.slice(0, 400) || "(empty)"}`,
       )
     }
 
