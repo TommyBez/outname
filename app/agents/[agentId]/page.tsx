@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { requireSession } from "@/lib/auth-guard"
@@ -13,11 +14,25 @@ import { updateAgentAction, deleteAgentAction } from "@/lib/agent-actions"
 import { AGENT_KINDS } from "@/workflows/agents/registry"
 import { formatRelative } from "@/lib/format"
 
-export default async function AgentDetailPage({
-  params,
-}: {
-  params: Promise<{ agentId: string }>
-}) {
+type Params = Promise<{ agentId: string }>
+
+export default function AgentDetailPage({ params }: { params: Params }) {
+  return (
+    <AppShell>
+      <Link
+        href="/agents"
+        className="mb-6 inline-block font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground"
+      >
+        ← Agents
+      </Link>
+      <Suspense fallback={<DetailSkeleton />}>
+        <AgentDetail params={params} />
+      </Suspense>
+    </AppShell>
+  )
+}
+
+async function AgentDetail({ params }: { params: Params }) {
   const { agentId } = await params
   const session = await requireSession()
   const agent = await getAgentByIdForUser(agentId, session.user.id)
@@ -37,25 +52,17 @@ export default async function AgentDetailPage({
   }
 
   return (
-    <AppShell>
-      <header className="mb-10 flex flex-col gap-3">
-        <Link
-          href="/agents"
-          className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground"
-        >
-          ← Agents
-        </Link>
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className="flex flex-col gap-1">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              {meta?.label ?? agent.kind}
-            </p>
-            <h1 className="font-serif text-4xl font-medium leading-tight tracking-tight md:text-5xl">
-              {agent.name}
-            </h1>
-          </div>
-          <TriggerButton agentId={agent.id} />
+    <>
+      <header className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-col gap-1">
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            {meta?.label ?? agent.kind}
+          </p>
+          <h1 className="font-serif text-4xl font-medium leading-tight tracking-tight md:text-5xl">
+            {agent.name}
+          </h1>
         </div>
+        <TriggerButton agentId={agent.id} />
       </header>
 
       <section className="border-y border-border py-10">
@@ -112,6 +119,24 @@ export default async function AgentDetailPage({
           </button>
         </form>
       </section>
-    </AppShell>
+    </>
+  )
+}
+
+function DetailSkeleton() {
+  return (
+    <>
+      <header className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-col gap-2">
+          <div className="h-3 w-24 animate-pulse rounded-sm bg-muted" />
+          <div className="h-10 w-64 animate-pulse rounded-sm bg-muted" />
+        </div>
+        <div className="h-10 w-28 animate-pulse rounded-md bg-muted" />
+      </header>
+      <div className="space-y-6 border-y border-border py-10">
+        <div className="h-6 w-32 animate-pulse rounded-sm bg-muted" />
+        <div className="h-32 w-full animate-pulse rounded-sm bg-muted" />
+      </div>
+    </>
   )
 }

@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import Link from "next/link"
 import { requireSession } from "@/lib/auth-guard"
 import { getAgentsForUser, getLatestRunForAgent } from "@/lib/data"
@@ -6,18 +7,7 @@ import { AGENT_KINDS } from "@/workflows/agents/registry"
 import { formatRelative } from "@/lib/format"
 import type { Agent, Run } from "@/lib/db/schema"
 
-export default async function AgentsListPage() {
-  const session = await requireSession()
-  const agents = await getAgentsForUser(session.user.id)
-
-  // Parallelize latest-run lookups
-  const withLatest = await Promise.all(
-    agents.map(async (a) => ({
-      agent: a,
-      latest: await getLatestRunForAgent(a.id),
-    })),
-  )
-
+export default function AgentsListPage() {
   return (
     <AppShell>
       <header className="mb-10 flex flex-col gap-2 md:mb-12">
@@ -37,24 +27,45 @@ export default async function AgentsListPage() {
         </div>
       </header>
 
-      {withLatest.length === 0 ? (
-        <div className="border-t border-border pt-10">
-          <p className="font-serif text-2xl leading-snug">Nothing scheduled.</p>
-          <p className="mt-3 text-sm text-muted-foreground">
-            Add an agent to automate recurring work like your morning email
-            brief.
-          </p>
-        </div>
-      ) : (
-        <ul className="flex flex-col divide-y divide-border border-y border-border">
-          {withLatest.map(({ agent, latest }) => (
-            <li key={agent.id}>
-              <AgentListRow agent={agent} latest={latest} />
-            </li>
-          ))}
-        </ul>
-      )}
+      <Suspense fallback={<AgentsListSkeleton />}>
+        <AgentsListBody />
+      </Suspense>
     </AppShell>
+  )
+}
+
+async function AgentsListBody() {
+  const session = await requireSession()
+  const agents = await getAgentsForUser(session.user.id)
+
+  // Parallelize latest-run lookups
+  const withLatest = await Promise.all(
+    agents.map(async (a) => ({
+      agent: a,
+      latest: await getLatestRunForAgent(a.id),
+    })),
+  )
+
+  if (withLatest.length === 0) {
+    return (
+      <div className="border-t border-border pt-10">
+        <p className="font-serif text-2xl leading-snug">Nothing scheduled.</p>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Add an agent to automate recurring work like your morning email
+          brief.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <ul className="flex flex-col divide-y divide-border border-y border-border">
+      {withLatest.map(({ agent, latest }) => (
+        <li key={agent.id}>
+          <AgentListRow agent={agent} latest={latest} />
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -85,5 +96,25 @@ function AgentListRow({ agent, latest }: { agent: Agent; latest: Run | null }) {
         {latest ? formatRelative(latest.startedAt) : "Never run"}
       </div>
     </Link>
+  )
+}
+
+function AgentsListSkeleton() {
+  return (
+    <ul className="flex flex-col divide-y divide-border border-y border-border">
+      {[0, 1].map((i) => (
+        <li
+          key={i}
+          className="grid grid-cols-1 gap-4 py-6 md:grid-cols-[1fr_auto_auto] md:items-center md:gap-8 md:px-2"
+        >
+          <div className="flex flex-col gap-2">
+            <div className="h-3 w-32 animate-pulse rounded-sm bg-muted" />
+            <div className="h-6 w-56 animate-pulse rounded-sm bg-muted" />
+          </div>
+          <div className="h-3 w-20 animate-pulse rounded-sm bg-muted" />
+          <div className="h-3 w-24 animate-pulse rounded-sm bg-muted" />
+        </li>
+      ))}
+    </ul>
   )
 }
