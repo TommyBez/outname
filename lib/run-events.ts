@@ -50,6 +50,12 @@ async function writeOne(event: RunEvent): Promise<void> {
     const writer = writable.getWriter()
     try {
       await writer.write(event)
+      console.log(
+        "[v0] emit event ok",
+        event.type === "step"
+          ? { type: event.type, step: event.step, status: event.status }
+          : { type: event.type, status: event.status },
+      )
     } finally {
       writer.releaseLock()
     }
