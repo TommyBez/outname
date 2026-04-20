@@ -50,20 +50,12 @@ async function writeOne(event: RunEvent): Promise<void> {
     const writer = writable.getWriter()
     try {
       await writer.write(event)
-      console.log(
-        "[v0] emit event ok",
-        event.type === "step"
-          ? { type: event.type, step: event.step, status: event.status }
-          : { type: event.type, status: event.status },
-      )
     } finally {
       writer.releaseLock()
     }
-  } catch (err) {
-    // Streaming is best-effort progress UI — never fail a step because we
-    // couldn't write a breadcrumb. Surface the error in logs so silent
-    // streaming bugs are diagnosable.
-    console.error("[v0] emit event failed", err)
+  } catch {
+    // Streaming is best-effort progress UI - never fail a step because we
+    // couldn't write a breadcrumb.
   }
 }
 
