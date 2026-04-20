@@ -43,7 +43,10 @@ export async function GET(
   const workflowRunId = row.workflowRunId ?? (await waitForWorkflowRunId(runId))
   const lastEventIdHeader = request.headers.get("last-event-id")
   const parsedStart = lastEventIdHeader ? parseInt(lastEventIdHeader, 10) : NaN
-  const startIndex = Number.isFinite(parsedStart) ? parsedStart + 1 : undefined
+  // On first connect (no Last-Event-ID), replay the ENTIRE stream from 0 so
+  // the client sees every step that happened before it opened the socket.
+  // On reconnect, resume just after the last event the client received.
+  const startIndex = Number.isFinite(parsedStart) ? parsedStart + 1 : 0
 
   // If the run already finished and we have no workflow id, close immediately.
   if (!workflowRunId) {
@@ -82,7 +85,7 @@ export async function GET(
     return new Response(stream, { headers: sseHeaders() })
   }
 
-  let idx = startIndex ?? 0
+  let idx = startIndex
   const source = getRun(workflowRunId).getReadable<RunEvent>({
     namespace: "events",
     startIndex,

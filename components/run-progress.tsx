@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useRunStream, type StepState } from "@/hooks/use-run-stream"
+import { MorphingText } from "@/components/morphing-text"
 import { cn } from "@/lib/utils"
 
 export function RunProgress({ runId }: { runId: string }) {
@@ -29,9 +30,11 @@ export function RunProgress({ runId }: { runId: string }) {
       <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
         In progress
       </p>
-      <p className="mt-3 font-serif text-2xl leading-snug">
-        {latestMessage}
-      </p>
+      <MorphingText
+        as="p"
+        text={latestMessage}
+        className="mt-3 font-serif text-2xl leading-snug"
+      />
 
       <ol className="mt-8 flex flex-col gap-4" aria-live="polite" aria-busy={status === "open"}>
         {steps.map((step, i) => (
@@ -85,7 +88,10 @@ function StepRow({ step, index }: { step: StepState; index: number }) {
           {step.label}
         </span>
         {step.message && step.status !== "pending" && (
-          <span className="text-xs text-muted-foreground">{step.message}</span>
+          <MorphingText
+            text={step.message}
+            className="text-xs text-muted-foreground"
+          />
         )}
       </div>
     </li>
