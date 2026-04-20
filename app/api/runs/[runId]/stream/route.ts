@@ -5,9 +5,6 @@ import { db } from "@/lib/db"
 import { runs } from "@/lib/db/schema"
 import type { RunEvent } from "@/lib/run-events"
 
-export const runtime = "nodejs"
-export const dynamic = "force-dynamic"
-
 const encoder = new TextEncoder()
 
 function sseLine(id: number, event: RunEvent | { type: "meta"; message: string }): Uint8Array {
