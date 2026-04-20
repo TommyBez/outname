@@ -47,28 +47,22 @@ export function useRunStream(runId: string) {
   useEffect(() => {
     const controller = new AbortController()
 
-    console.log("[v0] useRunStream effect starting for runId:", runId)
-
     // Reset per-run state whenever the runId changes.
     setSteps(initialSteps())
     setStatus("connecting")
     setConnected(false)
 
     async function run() {
-      console.log("[v0] useRunStream: starting fetch")
       try {
         const res = await fetch(`/api/runs/${runId}/stream`, {
           signal: controller.signal,
           headers: { Accept: "application/x-ndjson" },
           cache: "no-store",
         })
-        console.log("[v0] useRunStream: fetch returned", res.status, res.ok)
         if (!res.ok || !res.body) {
-          console.log("[v0] useRunStream: bad response, setting error")
           setStatus("error")
           return
         }
-        console.log("[v0] useRunStream: setting connected=true")
         setStatus("open")
         setConnected(true)
 
@@ -82,10 +76,8 @@ export function useRunStream(runId: string) {
           .getReader()
 
         let buffer = ""
-        console.log("[v0] useRunStream: entering read loop")
         for (;;) {
           const { value, done } = await reader.read()
-          console.log("[v0] useRunStream: read() returned", { done, len: value?.length })
           if (done) break
           buffer += value
           const lines = buffer.split("\n")

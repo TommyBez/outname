@@ -59,14 +59,5 @@ async function writeOne(event: RunEvent): Promise<void> {
   }
 }
 
-/** Close the per-run event stream so clients receive a clean EOF. */
-export async function closeRunEvents(): Promise<void> {
-  try {
-    await getWritable<RunEvent>({ namespace: "events" }).close()
-  } catch (err) {
-    console.error("[v0] close events stream failed", err)
-  }
-}
-
 // Avoid unused import lint if emitInput type isn't referenced downstream.
 export type { EmitInput }

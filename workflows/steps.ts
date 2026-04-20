@@ -12,7 +12,7 @@ import {
   gmailConnection,
   type Category,
 } from "@/lib/db/schema"
-import { emitRun, emitStep, closeRunEvents } from "@/lib/run-events"
+import { emitRun, emitStep } from "@/lib/run-events"
 
 function getDb() {
   const sql = neon(process.env.DATABASE_URL!)
@@ -71,9 +71,9 @@ export async function finalizeRun(
     await emitStep("finalize", "error", "Run failed", { error })
     await emitRun("failed", error ?? "Run failed")
   }
-  // Signal EOF to any connected SSE clients so they resolve to a terminal
-  // state immediately instead of waiting on a silent live stream.
-  await closeRunEvents()
+  // Note: Do NOT call closeRunEvents() here - the Workflow SDK automatically
+  // closes the stream when the run completes, and calling it early causes
+  // 409 "stream already completed" conflicts if steps retry or emit late.
 }
 
 /* -------------------------------------------------------------------------- */
