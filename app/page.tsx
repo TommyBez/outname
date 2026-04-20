@@ -177,10 +177,20 @@ function EmptyState() {
 function RunningState() {
   return (
     <div className="border-t border-border pt-10">
-      <p className="font-serif text-2xl leading-snug">Reading your inbox.</p>
-      <p className="mt-3 text-sm text-muted-foreground">
-        The briefing will appear here when the run completes. The page will refresh automatically.
+      <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
+        In progress
       </p>
+      <p className="mt-3 font-serif text-2xl leading-snug">Reading your inbox.</p>
+      <p className="mt-3 text-sm text-muted-foreground">
+        The briefing will appear here when the run completes.
+      </p>
+      <div
+        className="mt-6 h-px w-full overflow-hidden bg-border"
+        role="progressbar"
+        aria-label="Run in progress"
+      >
+        <div className="h-full w-1/3 bg-foreground animate-indeterminate" />
+      </div>
     </div>
   )
 }
