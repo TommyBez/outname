@@ -69,6 +69,14 @@ export function AgentChat({
   const router = useRouter()
   const [input, setInput] = useState("")
   const didPromoteDraftRef = useRef(false)
+  console.log("[v0] AgentChat render", {
+    conversationId,
+    isDraft,
+    initialMessagesCount: initialMessages.length,
+    initialRoles: initialMessages.map((m) => m.role),
+    initialIds: initialMessages.map((m) => m.id),
+    initialPartsCounts: initialMessages.map((m) => m.parts?.length ?? 0),
+  })
   const { messages, sendMessage, status, error, stop } = useChat({
     messages: initialMessages,
     transport: new DefaultChatTransport({
@@ -80,6 +88,13 @@ export function AgentChat({
       // once the assistant turn finishes. Cheap no-op for non-first turns.
       router.refresh()
     },
+  })
+  console.log("[v0] AgentChat useChat messages", {
+    conversationId,
+    status,
+    count: messages.length,
+    roles: messages.map((m) => m.role),
+    ids: messages.map((m) => m.id),
   })
 
   // Draft → persisted URL swap. We do this in `history.replaceState`
