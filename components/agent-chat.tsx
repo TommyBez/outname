@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, type UIMessage } from "ai"
 import {
@@ -37,7 +38,17 @@ import {
 
 interface AgentChatProps {
   agentId: string
+  /** Stable id for the conversation this chat targets. For draft chats
+   * this is a server-generated candidate id that will only be persisted
+   * on the first user message; for existing conversations it's the real
+   * row id. */
+  conversationId: string
   initialMessages: UIMessage[]
+  /** When true, the chat was mounted at `/chat/new` with a candidate id
+   * that the DB does not yet know about. On the first successful send
+   * we swap the URL to the canonical `/chat/:id` route so a refresh
+   * lands on the persisted conversation. */
+  isDraft?: boolean
 }
 
 /**
@@ -46,15 +57,49 @@ interface AgentChatProps {
  *
  * The transport targets a per-agent endpoint (`/api/agents/:id/chat`) so
  * server-side identity is derived from the session, not the request body.
+ * `conversationId` is forwarded in the POST body so the API route can
+ * lazily create the row on first message.
  */
-export function AgentChat({ agentId, initialMessages }: AgentChatProps) {
+export function AgentChat({
+  agentId,
+  conversationId,
+  initialMessages,
+  isDraft,
+}: AgentChatProps) {
+  const router = useRouter()
   const [input, setInput] = useState("")
+  const didPromoteDraftRef = useRef(false)
   const { messages, sendMessage, status, error, stop } = useChat({
     messages: initialMessages,
     transport: new DefaultChatTransport({
       api: `/api/agents/${agentId}/chat`,
+      body: { conversationId },
     }),
+    onFinish: () => {
+      // Surface the freshly generated title (and any sidebar reordering)
+      // once the assistant turn finishes. Cheap no-op for non-first turns.
+      router.refresh()
+    },
   })
+
+  // Draft → persisted URL swap. We do this in `history.replaceState`
+  // instead of `router.replace` because the latter would unmount the
+  // streaming `useChat` instance and strand the in-flight turn. Running
+  // this effect the moment a message exists (before the assistant even
+  // finishes) keeps the address bar honest during the first turn.
+  useEffect(() => {
+    if (!isDraft) return
+    if (didPromoteDraftRef.current) return
+    if (messages.length === 0) return
+    didPromoteDraftRef.current = true
+    if (typeof window !== "undefined") {
+      window.history.replaceState(
+        null,
+        "",
+        `/agents/${agentId}/chat/${conversationId}`,
+      )
+    }
+  }, [agentId, conversationId, isDraft, messages.length])
 
   const isBusy = status === "submitted" || status === "streaming"
 
