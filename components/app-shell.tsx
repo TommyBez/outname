@@ -1,68 +1,50 @@
 import { Suspense } from "react"
 import Link from "next/link"
-import { SignOutButton } from "./sign-out-button"
-import { NavLink } from "./nav-link"
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar"
+import { AppSidebar, AppSidebarFallback } from "@/components/app-sidebar"
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  // Keep the shell fully static so it prerenders cleanly alongside the
+  // page-level <Suspense> boundaries. The sidebar's toggle state lives on
+  // the client and is persisted via a cookie written by SidebarProvider —
+  // for a hard reload we default to open, which is the right call for this
+  // app's 4-item nav.
   return (
-    <div className="min-h-svh flex flex-col bg-background">
+    <SidebarProvider defaultOpen>
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-foreground focus:px-3 focus:py-2 focus:text-sm focus:text-background focus:shadow-md"
       >
         Skip to content
       </a>
-      <header className="border-b border-border">
-        <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-6 px-6 py-5 md:px-8">
+      <Suspense fallback={<AppSidebarFallback />}>
+        <AppSidebar />
+      </Suspense>
+      <SidebarInset className="min-w-0">
+        {/* Compact top bar: visible on all breakpoints for sidebar toggle,
+            but the brand mark only shows on mobile where the sidebar is a
+            drawer and the user needs a visible anchor. */}
+        <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-border bg-background/80 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:h-12 md:px-4">
+          <SidebarTrigger className="-ml-1 size-9 md:size-8" />
           <Link
             href="/"
-            className="inline-flex items-baseline gap-1.5 font-mono text-sm font-medium uppercase tracking-[0.18em] transition-colors hover:text-foreground/80"
+            className="inline-flex items-center gap-2 font-mono text-sm font-medium uppercase tracking-[0.18em] transition-colors hover:text-foreground/80 md:hidden"
           >
-            <span
-              aria-hidden
-              className="text-accent"
-            >
-              ▪
-            </span>
-            agents
+            <span aria-hidden className="inline-block size-2 bg-accent" />
+            <span>agents</span>
           </Link>
-          <nav className="flex items-center gap-6 text-sm" aria-label="Primary">
-            <Suspense
-              fallback={
-                <>
-                  <NavLinkFallback href="/">Today</NavLinkFallback>
-                  <NavLinkFallback href="/agents">Agents</NavLinkFallback>
-                  <NavLinkFallback href="/runs">History</NavLinkFallback>
-                  <NavLinkFallback href="/settings">Settings</NavLinkFallback>
-                </>
-              }
-            >
-              <NavLink href="/">Today</NavLink>
-              <NavLink href="/agents">Agents</NavLink>
-              <NavLink href="/runs">History</NavLink>
-              <NavLink href="/settings">Settings</NavLink>
-            </Suspense>
-            <SignOutButton />
-          </nav>
-        </div>
-      </header>
-      <main
-        id="main-content"
-        className="mx-auto w-full max-w-4xl flex-1 px-6 py-12 md:px-8 md:py-16"
-      >
-        {children}
-      </main>
-    </div>
-  )
-}
-
-function NavLinkFallback({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className="relative py-1 text-muted-foreground transition-colors hover:text-foreground"
-    >
-      {children}
-    </Link>
+        </header>
+        <main
+          id="main-content"
+          className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6 sm:py-10 md:px-8 md:py-14 lg:py-16"
+        >
+          {children}
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
   )
 }

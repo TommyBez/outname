@@ -85,19 +85,20 @@ async function AgentDetail({ params }: { params: Params }) {
             {runs.map((r) => (
               <li
                 key={r.id}
-                className="grid grid-cols-[auto_1fr_auto] items-center gap-4 py-3 md:gap-8"
+                className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-1 py-3 sm:grid-cols-[auto_1fr_auto] sm:gap-8"
               >
                 <RunStatus
                   runId={r.id}
                   initialStatus={r.status as "running" | "completed" | "failed"}
+                  showTime={false}
                 />
                 <Link
                   href={`/runs/${r.id}`}
-                  className="truncate font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
+                  className="min-w-0 truncate font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
                 >
                   {r.id}
                 </Link>
-                <span className="font-mono text-xs text-muted-foreground">
+                <span className="col-start-2 font-mono text-xs text-muted-foreground sm:col-auto sm:text-right">
                   {formatRelative(r.startedAt)}
                 </span>
               </li>
@@ -106,11 +107,11 @@ async function AgentDetail({ params }: { params: Params }) {
         )}
       </section>
 
-      <section className="flex items-center justify-between border-t border-destructive/30 pt-6">
+      <section className="flex flex-col gap-3 border-t border-destructive/30 pt-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-destructive">
           Danger zone
         </p>
-        <form action={remove}>
+        <form action={remove} className="self-start sm:self-auto">
           <button
             type="submit"
             className="rounded-md border border-destructive/50 px-3 py-1.5 text-sm text-destructive transition-colors hover:bg-destructive hover:text-background"

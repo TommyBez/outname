@@ -74,27 +74,34 @@ function AgentListRow({ agent, latest }: { agent: Agent; latest: Run | null }) {
   return (
     <Link
       href={`/agents/${agent.id}`}
-      className="grid grid-cols-1 gap-4 py-6 transition-colors hover:bg-muted/40 md:grid-cols-[1fr_auto_auto] md:items-center md:gap-8 md:px-2"
+      className="grid grid-cols-1 gap-3 py-6 transition-colors hover:bg-muted/40 md:grid-cols-[1fr_auto_auto] md:items-center md:gap-8 md:px-2"
     >
-      <div className="flex flex-col gap-1">
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {meta?.label ?? agent.kind}
+      <div className="flex min-w-0 flex-col gap-1">
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
+          <span>{meta?.label ?? agent.kind}</span>
           {!agent.enabled && (
-            <span className="ml-3 rounded-sm border border-border px-1.5 py-0.5 text-[10px] tracking-wider">
+            <span className="rounded-sm border border-border px-1.5 py-0.5 text-[10px] tracking-wider">
               PAUSED
             </span>
           )}
         </p>
-        <p className="font-serif text-xl font-medium leading-tight">
+        <p className="font-serif text-xl font-medium leading-tight text-pretty">
           {agent.name}
         </p>
       </div>
-      <div className="font-mono text-xs text-muted-foreground">
-        {agent.scheduleTime} · {agent.scheduleDays.length}d/wk
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs text-muted-foreground md:flex-col md:items-end md:gap-y-1">
+        <span>
+          {agent.scheduleTime} · {agent.scheduleDays.length}d/wk
+        </span>
+        <span className="md:hidden">·</span>
+        <span>{latest ? formatRelative(latest.startedAt) : "Never run"}</span>
       </div>
-      <div className="font-mono text-xs text-muted-foreground">
-        {latest ? formatRelative(latest.startedAt) : "Never run"}
-      </div>
+      <span
+        aria-hidden
+        className="hidden text-muted-foreground md:inline-block"
+      >
+        →
+      </span>
     </Link>
   )
 }

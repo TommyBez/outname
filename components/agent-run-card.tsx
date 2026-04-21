@@ -56,7 +56,7 @@ export function AgentRunCard({
             {formatDays(agent.scheduleDays)} · {agent.scheduleTime}
           </p>
         </div>
-        <div className="flex items-center gap-3 text-sm">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm md:shrink-0 md:flex-nowrap md:justify-end">
           {latestRun && (
             <RunStatus
               runId={latestRun.id}
