@@ -102,8 +102,8 @@ importers:
         specifier: 1.6.1
         version: 1.6.1(next@16.2.0(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
       '@vercel/sandbox':
-        specifier: ^1.10.0
-        version: 1.10.0
+        specifier: 2.0.0-beta.14
+        version: 2.0.0-beta.14
       '@workflow/ai':
         specifier: ^4.1.2
         version: 4.1.2(@opentelemetry/api@1.9.0)(ai@6.0.168(zod@3.25.76))(workflow@4.2.4(@nestjs/common@11.1.19(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.19(@nestjs/common@11.1.19(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(@opentelemetry/api@1.9.0)(@swc/cli@0.8.1(@swc/core@1.15.3)(chokidar@5.0.0))(@swc/core@1.15.3)(next@16.2.0(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(typescript@5.7.3))
@@ -2491,8 +2491,8 @@ packages:
     resolution: {integrity: sha512-wo+jCycmCX078vQSbkX+RcLvySONDCK0f9aQp5UMKQD1+B+xKt3YVbIYbZukvoHQpbm5nnk6If+ADSeK/PmCgQ==}
     engines: {node: '>=20.0.0'}
 
-  '@vercel/sandbox@1.10.0':
-    resolution: {integrity: sha512-rGA8KJB5ZwQeygzsndgrbHsys3HGWKHQaRQlmyIEHce2BFuTfQUgivHDj5DCZhWiyjjSEodLHpoJkZBd95K0/Q==}
+  '@vercel/sandbox@2.0.0-beta.14':
+    resolution: {integrity: sha512-rXz0UYzDXC7nPe3BfRWe7WJMqZvvMCkDMcCWUaGnDNpfJ+AEIlCO5WIDJ4dIW5TD5d2bTPHzktUenn8wXYLsKA==}
 
   '@workflow/ai@4.1.2':
     resolution: {integrity: sha512-6gxc/FEseaJukjZ/1J1wELg5an+Vu2d8MftbLmPAD9lXq1Z4mGImu3We+Anqkv0dBHRbu+qlvl7mtqb1YtbqkA==}
@@ -6822,7 +6822,7 @@ snapshots:
       mixpart: 0.0.5
       picocolors: 1.1.1
 
-  '@vercel/sandbox@1.10.0':
+  '@vercel/sandbox@2.0.0-beta.14':
     dependencies:
       '@vercel/oidc': 3.2.0
       '@workflow/serde': 4.1.0-beta.2
