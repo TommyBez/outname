@@ -26,7 +26,7 @@ DROP INDEX "agent_user_idx";--> statement-breakpoint
 ALTER TABLE "agent" ALTER COLUMN "schedule_time" SET DEFAULT '08:00';--> statement-breakpoint
 ALTER TABLE "agent" ALTER COLUMN "schedule_time" SET NOT NULL;--> statement-breakpoint
 ALTER TABLE "agent" ALTER COLUMN "schedule_days" SET DEFAULT '{1,2,3,4,5}';--> statement-breakpoint
-ALTER TABLE "agent" ALTER COLUMN "config" SET DATA TYPE text;--> statement-breakpoint
+ALTER TABLE "agent" ALTER COLUMN "config" SET DATA TYPE text USING "config"::text;--> statement-breakpoint
 ALTER TABLE "agent" ALTER COLUMN "config" DROP DEFAULT;--> statement-breakpoint
 ALTER TABLE "agent" ALTER COLUMN "config" DROP NOT NULL;--> statement-breakpoint
 ALTER TABLE "agent" ADD COLUMN "sandbox_name" text;--> statement-breakpoint
