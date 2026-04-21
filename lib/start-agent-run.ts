@@ -2,7 +2,7 @@ import { start } from "workflow/api"
 import { eq } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { agent, runs, type Agent, type RunTrigger } from "@/lib/db/schema"
-import { dailyEmailBrief } from "@/workflows/agents/daily-email-brief"
+import { dailyEmailBrief } from "@/workflows/agents/daily-email-brief/workflow"
 import { isAgentKind } from "@/workflows/agents/registry"
 
 function nanoid() {

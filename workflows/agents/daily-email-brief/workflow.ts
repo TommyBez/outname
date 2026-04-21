@@ -1,15 +1,12 @@
 import { DurableAgent } from "@workflow/ai/agent"
-import { getWritable } from "workflow"
+import { getWritable, sleep } from "workflow"
 import { z } from "zod"
 import type { UIMessageChunk } from "ai"
-import { sleep } from "workflow"
-import {
-  initRun,
-  finalizeRun,
-  readEmails,
-  classifyAndSummarize,
-  persistDigest,
-} from "../steps"
+import { initRun } from "./steps/init-run"
+import { finalizeRun } from "./steps/finalize-run"
+import { readEmails } from "./steps/read-emails"
+import { classifyAndSummarize } from "./steps/classify-and-summarize"
+import { persistDigest } from "./steps/persist-digest"
 
 /**
  * Daily email brief agent workflow.
@@ -56,7 +53,8 @@ export async function dailyEmailBrief(input: {
       ].join("\n"),
       tools: {
         readEmails: {
-          description: "Fetch new Gmail messages since the previous completed run.",
+          description:
+            "Fetch new Gmail messages since the previous completed run.",
           inputSchema: z.object({}),
           execute: async () => {
             const messages = await readEmails(runId)
