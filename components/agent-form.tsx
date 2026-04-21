@@ -156,8 +156,8 @@ export function AgentForm(props: CreateProps | EditProps) {
         </Section>
       )}
 
-      <div className="flex items-center justify-end gap-3">
-        <Button type="submit" size="sm">
+      <div className="flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center sm:justify-end">
+        <Button type="submit" size="sm" className="w-full sm:w-auto">
           {props.mode === "create" ? "Create agent" : "Save changes"}
         </Button>
       </div>
@@ -167,11 +167,11 @@ export function AgentForm(props: CreateProps | EditProps) {
 
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <section className="grid grid-cols-1 gap-4 md:grid-cols-[180px_1fr] md:gap-12">
+    <section className="grid grid-cols-1 gap-4 lg:grid-cols-[160px_1fr] lg:gap-10">
       <h2 className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
         {label}
       </h2>
-      <div>{children}</div>
+      <div className="min-w-0">{children}</div>
     </section>
   )
 }

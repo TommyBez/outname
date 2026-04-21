@@ -150,11 +150,11 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <section className="grid grid-cols-1 gap-6 py-10 first:pt-0 last:pb-0 md:grid-cols-[180px_1fr] md:gap-12">
+    <section className="grid grid-cols-1 gap-6 py-10 first:pt-0 last:pb-0 lg:grid-cols-[160px_1fr] lg:gap-10">
       <h2 className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
         {title}
       </h2>
-      <div>{children}</div>
+      <div className="min-w-0">{children}</div>
     </section>
   )
 }
