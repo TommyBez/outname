@@ -8,6 +8,12 @@ interface AgentTab {
   key: string
   label: string
   href: string
+  /**
+   * When true, the tab lights up on any pathname that starts with `href + "/"`
+   * (e.g. nested child routes). The "home" tab for an agent should leave this
+   * false so it doesn't steal the highlight from child tabs.
+   */
+  matchNested?: boolean
   disabled?: boolean
   disabledReason?: string
 }
@@ -31,12 +37,10 @@ export function AgentTabs({ tabs }: AgentTabsProps) {
       className="mb-10 flex flex-wrap items-center gap-6 border-b border-border"
     >
       {tabs.map((tab) => {
-        // Active if pathname matches the tab href exactly. The root "/agents/[id]"
-        // must not light up the "Chat" tab just because of the shared prefix.
         const isActive =
           pathname === tab.href ||
-          (tab.href !== `/agents/${tab.href.split("/")[2]}` &&
-            pathname.startsWith(tab.href))
+          (tab.matchNested === true &&
+            pathname.startsWith(`${tab.href}/`))
 
         if (tab.disabled) {
           return (

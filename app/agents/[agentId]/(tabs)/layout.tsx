@@ -74,6 +74,7 @@ async function AgentHeader({ params }: { params: Params }) {
       key: "chat",
       label: "Chat",
       href: `/agents/${agent.id}/chat`,
+      matchNested: true,
       disabled: !hasChat,
       disabledReason: hasChat
         ? undefined
