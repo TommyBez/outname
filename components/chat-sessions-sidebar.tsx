@@ -9,7 +9,8 @@ import {
   type KeyboardEvent,
 } from "react"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
+import useSWR, { mutate as swrMutate } from "swr"
 import { toast } from "sonner"
 import {
   Check,
@@ -47,16 +48,44 @@ export interface ConversationSummary {
   updatedAt: string // ISO string — serialisable across the server/client boundary
 }
 
+/**
+ * Shared SWR key for the sidebar's conversation list. Exported so other
+ * client components (notably `AgentChat`) can `mutate` it after a new
+ * turn completes, without needing to know the URL shape.
+ */
+export function conversationsSwrKey(agentId: string) {
+  return `/api/agents/${agentId}/conversations`
+}
+
+/** Revalidate the sidebar list for a given agent from anywhere in the tree. */
+export function revalidateConversations(agentId: string) {
+  return swrMutate(conversationsSwrKey(agentId))
+}
+
+async function fetchConversations(url: string): Promise<ConversationSummary[]> {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`Failed to load conversations (${res.status})`)
+  const data = (await res.json()) as { conversations: ConversationSummary[] }
+  return data.conversations
+}
+
 interface ChatSessionsSidebarProps {
   agentId: string
+  /** Server-rendered initial list. Used as `fallbackData` so the sidebar
+   * paints instantly on first load and never flashes empty. SWR then
+   * keeps it in sync client-side. */
   conversations: ConversationSummary[]
 }
 
 /**
- * Left-column conversation list for the agent chat surface. Rendered
- * once per layout render; stays in sync via `router.refresh()` calls
- * from the chat pane after new turns + the `revalidatePath` calls
- * inside the rename/delete server actions.
+ * Left-column conversation list for the agent chat surface. The list is
+ * hydrated from a server-rendered snapshot (`conversations` prop) and
+ * then driven entirely by SWR. `AgentChat` calls
+ * `revalidateConversations(agentId)` from `onFinish` after each turn,
+ * so the sidebar picks up freshly generated titles (and re-ordered
+ * threads) without ever re-rendering the active chat pane — this
+ * replaces the old `router.refresh()` approach that was racing with
+ * Next 16's cache-components + the streaming `useChat` state.
  *
  * Responsive behaviour: on `md` and up the sidebar sits in its own grid
  * column and scrolls independently. Below `md` the chat layout stacks
@@ -65,9 +94,17 @@ interface ChatSessionsSidebarProps {
  */
 export function ChatSessionsSidebar({
   agentId,
-  conversations,
+  conversations: initialConversations,
 }: ChatSessionsSidebarProps) {
   const pathname = usePathname()
+  const { data: conversations = initialConversations } = useSWR<
+    ConversationSummary[]
+  >(conversationsSwrKey(agentId), fetchConversations, {
+    fallbackData: initialConversations,
+    // Cheap catch-up for tabs that have been backgrounded while a turn
+    // completed — the only cost is one tiny GET per focus event.
+    revalidateOnFocus: true,
+  })
 
   return (
     <aside className="flex flex-col gap-3 md:sticky md:top-6 md:max-h-[calc(100vh-4rem)]">
@@ -131,7 +168,6 @@ function ConversationRow({
   conversation,
   isActive,
 }: ConversationRowProps) {
-  const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
   const [isRenaming, startRenameTransition] = useTransition()
   const [isDeleting, startDeleteTransition] = useTransition()
@@ -178,7 +214,7 @@ function ConversationRow({
         return
       }
       setIsEditing(false)
-      router.refresh()
+      void revalidateConversations(agentId)
     })
   }
 
@@ -203,7 +239,7 @@ function ConversationRow({
       }
       toast.success("Conversation deleted.")
       setShowDelete(false)
-      router.refresh()
+      void revalidateConversations(agentId)
     })
   }
 

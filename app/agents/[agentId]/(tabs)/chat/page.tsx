@@ -35,4 +35,8 @@ async function ResolveChatIndex({ params }: { params: Params }) {
     redirect(`/agents/${agent.id}/chat/${mostRecent.id}`)
   }
   redirect(`/agents/${agent.id}/chat/new`)
+  // Unreachable: `redirect()` throws. Present only to satisfy the
+  // async-component return-type checker, which otherwise sees
+  // `Promise<void>` and rejects the component as a JSX element.
+  return null
 }

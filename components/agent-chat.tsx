@@ -1,9 +1,9 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, type UIMessage } from "ai"
+import { revalidateConversations } from "@/components/chat-sessions-sidebar"
 import {
   Conversation,
   ConversationContent,
@@ -66,17 +66,8 @@ export function AgentChat({
   initialMessages,
   isDraft,
 }: AgentChatProps) {
-  const router = useRouter()
   const [input, setInput] = useState("")
   const didPromoteDraftRef = useRef(false)
-  console.log("[v0] AgentChat render", {
-    conversationId,
-    isDraft,
-    initialMessagesCount: initialMessages.length,
-    initialRoles: initialMessages.map((m) => m.role),
-    initialIds: initialMessages.map((m) => m.id),
-    initialPartsCounts: initialMessages.map((m) => m.parts?.length ?? 0),
-  })
   const { messages, sendMessage, status, error, stop } = useChat({
     messages: initialMessages,
     transport: new DefaultChatTransport({
@@ -84,17 +75,13 @@ export function AgentChat({
       body: { conversationId },
     }),
     onFinish: () => {
-      // Surface the freshly generated title (and any sidebar reordering)
-      // once the assistant turn finishes. Cheap no-op for non-first turns.
-      router.refresh()
+      // Ask the sidebar to refetch its own list so the new row + title
+      // appear. This replaces the previous `router.refresh()` call,
+      // which re-rendered the whole RSC tree under Next 16's cache
+      // components and could strand the freshly streamed assistant
+      // message out of view on soft navigation.
+      void revalidateConversations(agentId)
     },
-  })
-  console.log("[v0] AgentChat useChat messages", {
-    conversationId,
-    status,
-    count: messages.length,
-    roles: messages.map((m) => m.role),
-    ids: messages.map((m) => m.id),
   })
 
   // Draft → persisted URL swap. We do this in `history.replaceState`

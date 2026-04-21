@@ -44,14 +44,6 @@ async function ConversationShell({ params }: { params: Params }) {
   if (!conversation) notFound()
 
   const initialMessages = await loadChatHistory(conversation.id)
-  console.log("[v0] chat load", {
-    conversationId: conversation.id,
-    title: conversation.title,
-    count: initialMessages.length,
-    roles: initialMessages.map((m) => m.role),
-    ids: initialMessages.map((m) => m.id),
-    partsCounts: initialMessages.map((m) => m.parts?.length ?? 0),
-  })
 
   return (
     <AgentChat
