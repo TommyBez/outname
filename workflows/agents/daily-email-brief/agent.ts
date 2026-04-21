@@ -1,13 +1,14 @@
 import { DurableAgent } from "@workflow/ai/agent"
 import { z } from "zod"
-import { readEmails } from "./steps/read-emails"
 import { classifyAndSummarize } from "./steps/classify-and-summarize"
 import { persistDigest } from "./steps/persist-digest"
+import { runGws } from "./sandbox/gws"
 
 /**
- * Shape of a Gmail message once normalized by `readEmails`. Declared here so
- * the agent's tool input schemas can re-use it and so any workflow that
- * embeds this agent as a sub-agent tool can share the same contract.
+ * Shape of a Gmail message once normalized by the agent from the raw
+ * gws output. Declared here so the classify / persist tool input schemas
+ * can re-use it and so any workflow that embeds this agent as a sub-agent
+ * tool can share the same contract.
  */
 const gmailMessageSchema = z.object({
   id: z.string(),
@@ -37,42 +38,71 @@ const classifiedSchema = z.object({
 export interface DailyEmailBriefAgentContext {
   /** Run id this agent invocation belongs to — used for event streaming. */
   runId: string
-  /** Owning agent row id — used to pick the right persistent sandbox. */
+  /**
+   * Owning agent row id. The `gws` tool uses this to pick the right
+   * persistent sandbox on every call (one sandbox per agent row).
+   */
   agentId: string
+  /** Unix epoch seconds of the last completed run — the `after:` cursor. */
+  afterEpoch: number
+  /** ISO timestamp of the last completed run — human-readable for the LLM. */
+  sinceIso: string
 }
 
 /**
  * Build a Daily Email Brief agent bound to a specific run.
  *
- * Kept as a factory (rather than a module-level singleton) so each
- * invocation gets its own tool closures over `runId` / `agentId`. The
- * returned `DurableAgent` can be:
- *   - `.stream()`-ed directly by the workflow (current use case), or
- *   - embedded as a sub-agent inside another agent's `tools` map by
- *     wrapping `agent.stream(...)` in a `tool({ execute })`.
+ * The agent drives gws commands fully agentically via a single generic
+ * `gws` tool — it decides what Gmail API calls to make, how to query, and
+ * how to shape the results. The orchestrator only provides:
+ *   - a live sandbox session (binary staged, OAuth creds written)
+ *   - the `after:` cursor for "new since last run"
+ *   - deterministic tools for the non-Gmail parts (classify, persist)
  */
 export function createDailyEmailBriefAgent(ctx: DailyEmailBriefAgentContext) {
-  const { runId, agentId } = ctx
+  const { runId, agentId, afterEpoch } = ctx
 
   return new DurableAgent({
     model: "openai/gpt-5-mini",
     system: [
-      "You are a personal inbox assistant.",
-      "Your job is to produce a daily digest for the user.",
-      "You MUST call the tools in this exact order, once each:",
-      "  1. readEmails — fetches new emails since the last run",
-      "  2. classifyAndSummarize — categorizes and summarizes them",
-      "  3. persistDigest — saves the digest to the database",
-      "After calling persistDigest, reply with a one-sentence confirmation and stop.",
+      "You are a personal inbox assistant producing a daily Gmail digest.",
+      "",
+      "You have three tools:",
+      "- gws: execute a google-workspace-cli command inside the agent's sandbox. Returns { exitCode, stdout, stderr }. Exit 0 = success; stdout is JSON for Gmail commands.",
+      "- classifyAndSummarize: categorize a batch of emails (urgent/reply/fyi/noise) and produce summaries.",
+      "- persistDigest: save the final digest to the database.",
+      "",
+      "Expected flow:",
+      `1. List new Gmail messages. Call gws with args: ["gmail","users","messages","list","--params","{\\"userId\\":\\"me\\",\\"q\\":\\"after:${afterEpoch}\\",\\"maxResults\\":20}"]. Parse stdout as JSON; use the resulting \`messages\` array of { id, threadId } (may be empty).`,
+      "2. For each message id, fetch metadata. Call gws with args: [\"gmail\",\"users\",\"messages\",\"get\",\"--params\", JSON.stringify({userId:\"me\", id, format:\"metadata\", metadataHeaders:[\"From\",\"Subject\",\"Date\"]})]. Parse stdout as JSON and assemble a GmailMessage:",
+      "   - id, threadId (copy from the response)",
+      "   - subject: payload.headers[] where name=Subject (case-insensitive)",
+      "   - from: payload.headers[] where name=From",
+      "   - snippet: top-level `snippet`",
+      "   - receivedAt: ISO 8601 string parsed from the Date header, falling back to `new Date(Number(internalDate)).toISOString()`",
+      "3. Call classifyAndSummarize with { messages: GmailMessage[] }.",
+      "4. Call persistDigest with { messages, classified }.",
+      "5. Reply with a one-sentence confirmation that includes the counts, then stop.",
+      "",
+      "Rules:",
+      "- Prefer parallel gws tool calls when fetching many message metadata.",
+      "- If the list call returns zero messages, still call classifyAndSummarize and persistDigest with empty arrays so the run completes cleanly.",
+      "- If a gws call returns a non-zero exitCode, surface the stderr in your final reply and stop.",
+      "- Never invent email content. If a header is missing, fall back to sensible defaults (e.g. \"(no subject)\", \"unknown\").",
     ].join("\n"),
     tools: {
-      readEmails: {
+      gws: {
         description:
-          "Fetch new Gmail messages since the previous completed run.",
-        inputSchema: z.object({}),
-        execute: async () => {
-          const messages = await readEmails(runId, agentId)
-          return { count: messages.length, messages }
+          "Run a google-workspace-cli command inside the agent's persistent sandbox. Authentication is already configured on the filesystem. Returns the command's exit code plus raw stdout/stderr strings.",
+        inputSchema: z.object({
+          args: z
+            .array(z.string())
+            .describe(
+              'Argv for gws. Example: ["gmail","users","messages","list","--params","{\\"userId\\":\\"me\\",\\"q\\":\\"after:1700000000\\"}"]',
+            ),
+        }),
+        execute: async ({ args }) => {
+          return await runGws({ agentId, args })
         },
       },
       classifyAndSummarize: {
@@ -101,8 +131,10 @@ export function createDailyEmailBriefAgent(ctx: DailyEmailBriefAgentContext) {
 }
 
 /**
- * The seed user message for a standalone run. Exposed so callers
- * embedding this agent can reuse / override it.
+ * Seed user message for a standalone run. Exposed as a factory so callers
+ * embedding this agent can reuse / override it. The concrete timestamp
+ * context is baked in so the LLM doesn't have to compute it.
  */
-export const DAILY_EMAIL_BRIEF_KICKOFF =
-  "Run the daily inbox review now. Fetch new emails, classify them, and persist the digest."
+export function dailyEmailBriefKickoff(sinceIso: string, afterEpoch: number) {
+  return `Run the daily inbox review now. The previous completed run was at ${sinceIso} (Unix epoch seconds: ${afterEpoch}). List new Gmail messages after that cursor, classify them, and persist the digest.`
+}

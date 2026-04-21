@@ -3,10 +3,11 @@ import { FatalError, RetryableError } from "workflow"
 import { db } from "@/lib/db"
 import { gmailConnection } from "@/lib/db/schema"
 import {
-  ensureAgentSandbox,
-  releaseAgentSandbox,
+  readAgentSandboxName,
+  readMarker,
+  writeMarker,
+  type SandboxSetup,
 } from "@/lib/agent-sandbox"
-import type { GmailApiMessage, GmailMessage } from "../types"
 
 /* -------------------------------------------------------------------------- */
 /* Constants                                                                   */
@@ -14,9 +15,10 @@ import type { GmailApiMessage, GmailMessage } from "../types"
 
 // Pinned version of gws. Bump deliberately after testing.
 const GWS_VERSION = "0.22.5"
-// x86_64 musl-linked build — statically linked, does NOT depend on host glibc.
-// Vercel Sandbox runs on x86_64; the glibc-linked GNU build from the npm
-// package requires GLIBC_2.39 which the sandbox image does not provide.
+// x86_64 musl-linked build — statically linked, does NOT depend on host
+// glibc. Vercel Sandbox runs on x86_64; the glibc-linked GNU build from
+// the npm package requires GLIBC_2.39 which the sandbox image does not
+// provide.
 const GWS_TARBALL_URL = `https://github.com/googleworkspace/cli/releases/download/v${GWS_VERSION}/google-workspace-cli-x86_64-unknown-linux-musl.tar.gz`
 
 // Everything below /vercel/sandbox is persisted across sandbox resumes.
@@ -24,122 +26,69 @@ const GWS_BIN_PATH = "/vercel/sandbox/gws"
 const GWS_VERSION_MARKER = "/vercel/sandbox/.gws-version"
 const GWS_CREDS_PATH = "/vercel/sandbox/gws-creds.json"
 
-/* -------------------------------------------------------------------------- */
-/* JSON helpers                                                                */
-/* -------------------------------------------------------------------------- */
-
-export function extractJson<T>(s: string): T | null {
-  // gws emits clean structured JSON on stdout. Fall back to finding the first
-  // balanced `{...}` or `[...]` in case any banner text slips through.
-  const trimmed = s.trim()
-  if (!trimmed) return null
-  try {
-    return JSON.parse(trimmed) as T
-  } catch {
-    /* fall through */
-  }
-  const firstBrace = Math.min(
-    ...[trimmed.indexOf("{"), trimmed.indexOf("[")].filter((i) => i >= 0),
-  )
-  if (!Number.isFinite(firstBrace)) return null
-  const candidate = trimmed.slice(firstBrace)
-  try {
-    return JSON.parse(candidate) as T
-  } catch {
-    return null
-  }
-}
-
-export function normalizeGmail(msg: GmailApiMessage): GmailMessage {
-  const headers = msg.payload?.headers ?? []
-  const header = (n: string) =>
-    headers.find((h) => h.name?.toLowerCase() === n.toLowerCase())?.value ?? ""
-  const dateStr = header("Date")
-  const receivedAt = dateStr
-    ? new Date(dateStr)
-    : new Date(Number(msg.internalDate ?? Date.now()))
-  return {
-    id: msg.id,
-    threadId: msg.threadId ?? msg.id,
-    subject: header("Subject") || "(no subject)",
-    from: header("From") || "unknown",
-    snippet: msg.snippet ?? "",
-    receivedAt: isNaN(receivedAt.getTime())
-      ? new Date().toISOString()
-      : receivedAt.toISOString(),
-  }
+const GWS_ENV: Record<string, string> = {
+  GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE: GWS_CREDS_PATH,
+  HOME: "/vercel/sandbox",
+  PATH: "/vercel/sandbox:/usr/local/bin:/usr/bin:/bin",
 }
 
 /* -------------------------------------------------------------------------- */
-/* Failure classification                                                      */
+/* Types                                                                       */
 /* -------------------------------------------------------------------------- */
 
 /**
- * Translate a non-zero gws exit into either a FatalError (auth / unrecoverable)
- * or a RetryableError (transient API glitch). Also marks the stored Gmail
- * connection as `expired` so the UI can prompt the user to reconnect.
+ * Result of running a gws command. Mirrors `{ exitCode, stdout, stderr }`
+ * — raw and unopinionated so the agent can inspect / parse it however
+ * it likes. Non-zero exit codes are returned verbatim, not thrown: the
+ * agent decides how to react.
  */
-export async function handleGwsFailure(
+export interface GwsResult {
+  exitCode: number | null
+  stdout: string
+  stderr: string
+}
+
+/* -------------------------------------------------------------------------- */
+/* Internal helpers                                                            */
+/* -------------------------------------------------------------------------- */
+
+function looksLikeAuthError(
   exitCode: number | null,
   stderr: string,
-): Promise<never> {
+): boolean {
   const lower = (stderr ?? "").toLowerCase()
-  const isAuth =
+  return (
     lower.includes("invalid_grant") ||
     lower.includes("invalid_client") ||
     lower.includes("unauthorized") ||
     lower.includes("401") ||
     lower.includes("403") ||
-    lower.includes("credentials") ||
     lower.includes("token has been expired or revoked") ||
     // gws structured exit code: 2 = auth error
     exitCode === 2
-
-  if (isAuth) {
-    // Best-effort: flip the stored connection so the UI prompts reconnect.
-    try {
-      await db
-        .update(gmailConnection)
-        .set({
-          status: "expired",
-          lastError: stderr.slice(0, 500),
-          updatedAt: new Date(),
-        })
-    } catch {
-      /* ignore */
-    }
-    throw new FatalError(
-      `Gmail auth failed (exit ${exitCode}). Reconnect in /settings. Details: ${stderr.slice(
-        0,
-        500,
-      )}`,
-    )
-  }
-
-  throw new RetryableError(
-    `gws failed (exit ${exitCode}): ${stderr.slice(0, 500)}`,
-    { retryAfter: "30s" },
   )
 }
 
-/* -------------------------------------------------------------------------- */
-/* Binary install helpers                                                      */
-/* -------------------------------------------------------------------------- */
-
-async function readVersionMarker(sandbox: Sandbox): Promise<string | null> {
-  const buf = await sandbox
-    .readFileToBuffer({ path: GWS_VERSION_MARKER })
-    .catch(() => null)
-  return buf ? buf.toString("utf8").trim() : null
+/**
+ * Best-effort: flip the stored Gmail connection to `expired` so the UI
+ * can prompt reconnect. Swallows any DB error — the agent still sees
+ * the raw gws result and can decide what to do.
+ */
+async function markConnectionExpired(stderr: string): Promise<void> {
+  try {
+    await db.update(gmailConnection).set({
+      status: "expired",
+      lastError: stderr.slice(0, 500),
+      updatedAt: new Date(),
+    })
+  } catch {
+    /* ignore */
+  }
 }
 
-async function installGwsBinary(
-  sandbox: Sandbox,
-  onProgress: ProgressFn,
-): Promise<void> {
-  await onProgress(`Installing gws ${GWS_VERSION}`)
-
-  // Download the tarball OUTSIDE the sandbox so we don't need curl/wget in it.
+async function installGwsBinary(sandbox: Sandbox): Promise<void> {
+  // Download the tarball OUTSIDE the sandbox so we don't need curl/wget
+  // inside it.
   const tarballRes = await fetch(GWS_TARBALL_URL, { redirect: "follow" })
   if (!tarballRes.ok) {
     throw new RetryableError(
@@ -153,11 +102,10 @@ async function installGwsBinary(
     { path: "/vercel/sandbox/gws.tar.gz", content: tarballBytes },
   ])
 
-  // Extract into a fresh subdirectory. The release tarball is FLAT (gws
-  // + docs at root, binary already executable). We pass
-  // --no-same-owner --no-same-permissions -m so tar doesn't try to
-  // chmod/utime the extraction dir itself (which the sandbox user does
-  // not own).
+  // Extract into a fresh subdirectory. --no-same-owner/-permissions so
+  // tar doesn't try to chmod/utime the extraction dir (the sandbox user
+  // doesn't own it). The version marker is written separately by the
+  // setup hook via `writeMarker`, so there's a single source of truth.
   const extract = await sandbox.runCommand({
     cmd: "sh",
     args: [
@@ -175,7 +123,6 @@ else
 fi
 chmod +x ${GWS_BIN_PATH}
 rm -rf /vercel/sandbox/gws-extract /vercel/sandbox/gws.tar.gz
-printf '%s' "${GWS_VERSION}" > ${GWS_VERSION_MARKER}
 ${GWS_BIN_PATH} --version
 `,
     ],
@@ -194,155 +141,108 @@ ${GWS_BIN_PATH} --version
   }
 }
 
-async function writeCredentials(
-  sandbox: Sandbox,
-  credentials: string,
-): Promise<void> {
-  // Rewritten per run — the refresh token may have been rotated.
-  await sandbox.writeFiles([
-    {
-      path: GWS_CREDS_PATH,
-      content: Buffer.from(credentials, "utf8"),
-      mode: 0o600,
-    },
-  ])
-}
-
-/* -------------------------------------------------------------------------- */
-/* GwsSession                                                                   */
-/* -------------------------------------------------------------------------- */
-
-type ProgressFn = (message: string) => Promise<void> | void
-
-interface ListParams {
-  userId: string
-  q: string
-  maxResults: number
-}
-
 /**
- * A thin wrapper around a running Vercel Sandbox with the gws binary staged
- * and authenticated. Steps use this so they don't need to know anything about
- * tarballs, file staging, or shell commands.
+ * Build the gws-compatible credentials JSON blob from the stored Gmail
+ * OAuth connection. Runs once per setup call — refresh tokens may have
+ * rotated since the previous run.
  */
-export class GwsSession {
-  constructor(
-    private readonly sandbox: Sandbox,
-    private readonly env: Record<string, string>,
-  ) {}
-
-  async listMessages(
-    params: Omit<ListParams, "userId"> & Partial<Pick<ListParams, "userId">>,
-  ): Promise<{ messages: { id: string; threadId: string }[] }> {
-    const listParams = JSON.stringify({
-      userId: params.userId ?? "me",
-      q: params.q,
-      maxResults: params.maxResults,
-    })
-    const list = await this.sandbox.runCommand({
-      cmd: GWS_BIN_PATH,
-      args: ["gmail", "users", "messages", "list", "--params", listParams],
-      env: this.env,
-    })
-
-    if (list.exitCode !== 0) {
-      const stderr = await list.stderr()
-      await handleGwsFailure(list.exitCode, stderr)
-    }
-
-    const stdout = await list.stdout()
-    const parsed = extractJson<{
-      messages?: { id: string; threadId: string }[]
-    }>(stdout)
-    if (!parsed) {
-      const stderr = await list.stderr()
-      throw new FatalError(
-        `Unable to parse gws list output. stderr: ${stderr.slice(0, 500)}`,
-      )
-    }
-    return { messages: parsed.messages ?? [] }
+async function loadGwsCredentials(): Promise<string> {
+  const [conn] = await db.select().from(gmailConnection).limit(1)
+  if (!conn) {
+    throw new FatalError(
+      "Gmail is not connected. Go to /settings and click Connect Gmail.",
+    )
   }
-
-  async getMessageMetadata(
-    id: string,
-    headers: string[] = ["From", "Subject", "Date"],
-  ): Promise<GmailApiMessage | null> {
-    const getParams = JSON.stringify({
-      userId: "me",
-      id,
-      format: "metadata",
-      metadataHeaders: headers,
-    })
-    const get = await this.sandbox.runCommand({
-      cmd: GWS_BIN_PATH,
-      args: ["gmail", "users", "messages", "get", "--params", getParams],
-      env: this.env,
-    })
-    if (get.exitCode !== 0) {
-      const stderr = await get.stderr()
-      await handleGwsFailure(get.exitCode, stderr)
-    }
-    const raw = await get.stdout()
-    return extractJson<GmailApiMessage>(raw)
+  if (conn.status !== "active") {
+    throw new FatalError(
+      `Gmail connection is ${conn.status}. Reconnect it in /settings.`,
+    )
   }
-
-  async close() {
-    await releaseAgentSandbox(this.sandbox)
+  const clientId = process.env.GOOGLE_CLIENT_ID
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET
+  if (!clientId || !clientSecret) {
+    throw new FatalError(
+      "GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is not set",
+    )
   }
-}
-
-/* -------------------------------------------------------------------------- */
-/* createGwsSession                                                             */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Return a ready-to-use `GwsSession` for this agent. The underlying Vercel
- * Sandbox is persistent: on first use the gws binary is downloaded and
- * installed at `/vercel/sandbox/gws`; on subsequent runs the sandbox is
- * resumed from its snapshot and the binary is already in place (a version
- * marker file guards against stale installs after a gws upgrade).
- *
- * The Gmail OAuth credentials are always rewritten per-run — the refresh
- * token rotates.
- *
- * Callers are responsible for `await session.close()` (typically in a finally).
- */
-export async function createGwsSession(opts: {
-  agentId: string
-  credentials: string
-  onProgress?: ProgressFn
-}): Promise<GwsSession> {
-  const onProgress = opts.onProgress ?? (() => {})
-
-  await onProgress("Opening agent sandbox")
-
-  const { sandbox, created } = await ensureAgentSandbox({
-    agentId: opts.agentId,
-    createOptions: {
-      runtime: "node22",
-      timeout: 180_000,
-    },
-    verify: async (sb) => (await readVersionMarker(sb)) === GWS_VERSION,
-    provision: (sb) => installGwsBinary(sb, onProgress),
+  return JSON.stringify({
+    type: "authorized_user",
+    client_id: clientId,
+    client_secret: clientSecret,
+    refresh_token: conn.refreshToken,
   })
+}
 
-  try {
-    if (created) {
-      await onProgress("Provisioned new sandbox for this agent")
+/* -------------------------------------------------------------------------- */
+/* Exported sandbox setup — consumed by lib/agent-sandbox-registry.ts         */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Sandbox configuration for the daily-email-brief agent.
+ *
+ * `setup` is called on every startup (fresh create OR resume) and owns
+ * its own idempotence: it re-installs the gws binary only when the
+ * on-disk version marker is missing or stale, and always rewrites the
+ * credentials blob so rotated refresh tokens take effect.
+ */
+export const gwsSandboxSetup: SandboxSetup = {
+  createOptions: { runtime: "node22", timeout: 180_000 },
+  async setup(sandbox) {
+    // Idempotent binary install — marker check → install-if-stale.
+    if ((await readMarker(sandbox, GWS_VERSION_MARKER)) !== GWS_VERSION) {
+      await installGwsBinary(sandbox)
+      await writeMarker(sandbox, GWS_VERSION_MARKER, GWS_VERSION)
     }
+    // Rotate credentials every run. Cheap (one DB read + one file
+    // write) and ensures the refresh token on disk is always current.
+    const credentials = await loadGwsCredentials()
+    await sandbox.writeFiles([
+      {
+        path: GWS_CREDS_PATH,
+        content: Buffer.from(credentials, "utf8"),
+        mode: 0o600,
+      },
+    ])
+  },
+}
 
-    await writeCredentials(sandbox, opts.credentials)
+/* -------------------------------------------------------------------------- */
+/* Step primitive — consumed by the agent's `gws` tool                         */
+/* -------------------------------------------------------------------------- */
 
-    const env = {
-      GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE: GWS_CREDS_PATH,
-      HOME: "/vercel/sandbox",
-      PATH: "/vercel/sandbox:/usr/local/bin:/usr/bin:/bin",
-    }
-
-    return new GwsSession(sandbox, env)
-  } catch (err) {
-    // Boot failed — release so the sandbox can snapshot, then propagate.
-    await releaseAgentSandbox(sandbox)
-    throw err
+/**
+ * Run a single gws command inside the agent's persistent sandbox. The
+ * sandbox is resumed by name on every call — cheap once startup has
+ * booted it. Returns `{ exitCode, stdout, stderr }` raw so the DurableAgent
+ * tool can parse stdout however it wants.
+ */
+export async function runGws(opts: {
+  agentId: string
+  args: string[]
+}): Promise<GwsResult> {
+  "use step"
+  const name = await readAgentSandboxName(opts.agentId)
+  if (!name) {
+    throw new FatalError(
+      `Agent ${opts.agentId} has no sandbox yet — startup must run first.`,
+    )
   }
+  const sandbox = await Sandbox.get({ name, resume: true })
+  const cmd = await sandbox.runCommand({
+    cmd: GWS_BIN_PATH,
+    args: opts.args,
+    env: GWS_ENV,
+  })
+  const [stdout, stderr] = await Promise.all([cmd.stdout(), cmd.stderr()])
+  const result: GwsResult = { exitCode: cmd.exitCode, stdout, stderr }
+
+  // Side effect: if the failure smells like OAuth, flip the stored
+  // connection status so the UI can prompt for reconnect. The agent
+  // still receives the raw result and can surface the error in its
+  // final reply.
+  if (cmd.exitCode !== 0 && looksLikeAuthError(cmd.exitCode, stderr)) {
+    await markConnectionExpired(stderr)
+  }
+
+  return result
 }

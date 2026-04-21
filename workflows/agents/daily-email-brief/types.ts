@@ -1,5 +1,9 @@
 /**
  * Shared types for the daily-email-brief agent.
+ *
+ * The agent now consumes raw Gmail API JSON directly via the generic `gws`
+ * tool and shapes it into `GmailMessage` itself — no structural wrapper type
+ * is needed here for the Gmail API response.
  */
 
 export interface GmailMessage {
@@ -9,14 +13,4 @@ export interface GmailMessage {
   from: string
   snippet: string
   receivedAt: string // ISO
-}
-
-export interface GmailApiMessage {
-  id: string
-  threadId: string
-  snippet?: string
-  internalDate?: string
-  payload?: {
-    headers?: { name: string; value: string }[]
-  }
 }

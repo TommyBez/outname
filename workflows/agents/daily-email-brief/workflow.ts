@@ -1,28 +1,45 @@
 import { getWritable, sleep } from "workflow"
 import type { UIMessageChunk } from "ai"
 import {
+  shutdownAgentSandbox,
+  startupAgentSandbox,
+} from "@/lib/agent-sandbox"
+import {
   createDailyEmailBriefAgent,
-  DAILY_EMAIL_BRIEF_KICKOFF,
+  dailyEmailBriefKickoff,
 } from "./agent"
 import { initRun } from "./steps/init-run"
 import { finalizeRun } from "./steps/finalize-run"
+import { prepareBrief } from "./steps/prepare-brief"
 
 /**
  * Daily email brief workflow.
  *
- * The workflow is a thin orchestrator: it owns run lifecycle (sleep until
- * scheduled time, emit started / completed / failed events) and delegates
- * the actual work to the Daily Email Brief agent primitive defined in
- * `./agent.ts`. Keeping the agent in its own module means it can be reused
- * by other workflows or embedded as a sub-agent tool by another agent.
+ * Orchestrates the lifecycle around the Daily Email Brief agent:
  *
- * Flow:
- *   0. (optional) sleep until `scheduledForMs` — set by the cron runner so
- *      the workflow fires at the user's local scheduled time
- *   1. initRun (step) — emits the "started" event
- *   2. Stream the Daily Email Brief agent to run:
- *        readEmails → classifyAndSummarize → persistDigest
- *   3. finalizeRun (step) — marks run completed/failed
+ *   0. (optional) sleep until the user's local scheduled time
+ *   1. initRun — emits the "started" event
+ *   2. prepareBrief — validates the Gmail OAuth connection and computes
+ *      the since-cursor from the last completed run
+ *   3. startupAgentSandbox — generic primitive that resumes (or boots)
+ *      this agent's persistent sandbox and runs the kind-specific setup
+ *      hook registered in `lib/agent-sandbox-registry.ts`
+ *   4. stream the agent — it drives gws commands directly via its `gws`
+ *      tool (each call is its own step that resumes the sandbox), then
+ *      calls classifyAndSummarize and persistDigest
+ *   5. finalizeRun — marks run completed/failed
+ *   6. shutdownAgentSandbox — generic primitive that stops the sandbox
+ *      so Vercel snapshots it for the next run (always called via
+ *      finally)
+ *
+ * The workflow body is intentionally tool-agnostic: nothing here names
+ * gws, Gmail, or any binary. All tool-specific setup lives in the
+ * agent-kind's `SandboxSetup`, looked up by `agent.kind` at startup.
+ *
+ * Note: the sandbox handle is *never* stored in the workflow body.
+ * Every touch of `@vercel/sandbox` or drizzle/Neon happens inside
+ * `"use step"` functions, because the workflow sandbox VM does not
+ * expose `fetch`.
  */
 export async function dailyEmailBrief(input: {
   runId: string
@@ -41,21 +58,39 @@ export async function dailyEmailBrief(input: {
   // getWritable() is used so the Observability dashboard shows agent output.
   const writable = getWritable<UIMessageChunk>()
 
-  // The trigger route sets workflowRunId on the DB row after start() returns;
-  // initRun just emits the "started" event for streaming clients.
   await initRun(runId)
 
   try {
-    const agent = createDailyEmailBriefAgent({ runId, agentId })
+    const { afterEpoch, sinceIso } = await prepareBrief(runId)
 
-    await agent.stream({
-      messages: [{ role: "user", content: DAILY_EMAIL_BRIEF_KICKOFF }],
-      writable,
-      maxSteps: 8,
-    })
+    await startupAgentSandbox({ agentId })
 
-    await finalizeRun(runId, "completed")
-    return { runId, status: "completed" as const }
+    try {
+      const agent = createDailyEmailBriefAgent({
+        runId,
+        agentId,
+        afterEpoch,
+        sinceIso,
+      })
+
+      await agent.stream({
+        messages: [
+          {
+            role: "user",
+            content: dailyEmailBriefKickoff(sinceIso, afterEpoch),
+          },
+        ],
+        writable,
+        // Budget: 1 list call + up to ~20 metadata fetches + classify +
+        // persist + a handful of reasoning steps.
+        maxSteps: 60,
+      })
+
+      await finalizeRun(runId, "completed")
+      return { runId, status: "completed" as const }
+    } finally {
+      await shutdownAgentSandbox({ agentId })
+    }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     await finalizeRun(runId, "failed", msg)
