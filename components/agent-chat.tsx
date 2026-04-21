@@ -182,10 +182,13 @@ function ChatMessage({ message }: { message: UIMessage }) {
 
           if (part.type === "reasoning") {
             return (
+              // No negative horizontal margin here: on narrow viewports
+              // it was shifting the Reasoning trigger (brain icon + label)
+              // past `MessageContent`'s `overflow-hidden` clip and cutting
+              // off the icon on the left edge.
               <Reasoning
                 key={key}
                 isStreaming={part.state === "streaming"}
-                className="-mx-2"
               >
                 <ReasoningTrigger />
                 <ReasoningContent>{part.text}</ReasoningContent>
@@ -198,7 +201,7 @@ function ChatMessage({ message }: { message: UIMessage }) {
           if (part.type === "dynamic-tool") {
             const toolPart = part as ToolPart
             return (
-              <Tool key={key} className="-mx-2">
+              <Tool key={key}>
                 <ToolHeader
                   type="dynamic-tool"
                   state={toolPart.state}
@@ -215,7 +218,7 @@ function ChatMessage({ message }: { message: UIMessage }) {
           if (typeof part.type === "string" && part.type.startsWith("tool-")) {
             const toolPart = part as ToolPart
             return (
-              <Tool key={key} className="-mx-2">
+              <Tool key={key}>
                 <ToolHeader
                   type={toolPart.type as Exclude<ToolPart["type"], "dynamic-tool">}
                   state={toolPart.state}
