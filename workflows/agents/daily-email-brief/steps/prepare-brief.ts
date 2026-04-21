@@ -5,16 +5,17 @@ import { gmailConnection, runs } from "@/lib/db/schema"
 import { emitStep } from "@/lib/run-events"
 
 /**
- * Pre-flight for the daily brief: load the Gmail OAuth connection, compute
- * the "since" cursor from the last completed run, and assemble the
- * credentials JSON blob gws expects. Everything here is deterministic DB
- * work — no Gmail network calls, no sandbox. Splitting it out means the
- * agent's tools can stay thin and focused on driving gws commands.
+ * Pre-flight for the daily brief: validate the Gmail OAuth connection
+ * and compute the "since" cursor from the last completed run. Everything
+ * here is deterministic DB work — no Gmail network calls, no sandbox.
+ *
+ * Credentials are NOT returned anymore: the sandbox setup hook (see
+ * `gwsSandboxSetup` in `sandbox/gws.ts`) loads them itself inside the
+ * sandbox step, keeping the workflow body tool-agnostic.
  */
 export async function prepareBrief(_runId: string): Promise<{
   afterEpoch: number
   sinceIso: string
-  credentials: string
 }> {
   "use step"
 
@@ -32,12 +33,6 @@ export async function prepareBrief(_runId: string): Promise<{
     )
   }
 
-  const clientId = process.env.GOOGLE_CLIENT_ID
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET
-  if (!clientId || !clientSecret) {
-    throw new FatalError("GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is not set")
-  }
-
   const [prev] = await db
     .select()
     .from(runs)
@@ -49,15 +44,7 @@ export async function prepareBrief(_runId: string): Promise<{
   const afterEpoch = Math.floor(since.getTime() / 1000)
   const sinceIso = since.toISOString()
 
-  // Credentials in the "authorized_user" schema gws understands natively.
-  const credentials = JSON.stringify({
-    type: "authorized_user",
-    client_id: clientId,
-    client_secret: clientSecret,
-    refresh_token: conn.refreshToken,
-  })
-
   await emitStep("read", "progress", `Since ${sinceIso}`, { afterEpoch })
 
-  return { afterEpoch, sinceIso, credentials }
+  return { afterEpoch, sinceIso }
 }

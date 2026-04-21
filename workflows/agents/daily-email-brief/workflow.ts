@@ -1,10 +1,13 @@
 import { getWritable, sleep } from "workflow"
 import type { UIMessageChunk } from "ai"
 import {
+  shutdownAgentSandbox,
+  startupAgentSandbox,
+} from "@/lib/agent-sandbox"
+import {
   createDailyEmailBriefAgent,
   dailyEmailBriefKickoff,
 } from "./agent"
-import { closeGws, installGws } from "./sandbox/gws"
 import { initRun } from "./steps/init-run"
 import { finalizeRun } from "./steps/finalize-run"
 import { prepareBrief } from "./steps/prepare-brief"
@@ -15,22 +18,28 @@ import { prepareBrief } from "./steps/prepare-brief"
  * Orchestrates the lifecycle around the Daily Email Brief agent:
  *
  *   0. (optional) sleep until the user's local scheduled time
- *   1. initRun (step) — emits the "started" event
- *   2. prepareBrief (step) — loads the Gmail OAuth connection, computes
- *      the since-cursor from the last completed run, and assembles the
- *      credentials blob for gws
- *   3. installGws (step) — ensures the persistent sandbox exists, stages
- *      the gws binary, and writes per-run credentials
- *   4. stream the agent — it drives gws commands directly via the `gws`
+ *   1. initRun — emits the "started" event
+ *   2. prepareBrief — validates the Gmail OAuth connection and computes
+ *      the since-cursor from the last completed run
+ *   3. startupAgentSandbox — generic primitive that resumes (or boots)
+ *      this agent's persistent sandbox and runs the kind-specific setup
+ *      hook registered in `lib/agent-sandbox-registry.ts`
+ *   4. stream the agent — it drives gws commands directly via its `gws`
  *      tool (each call is its own step that resumes the sandbox), then
  *      calls classifyAndSummarize and persistDigest
- *   5. finalizeRun (step) — marks run completed/failed
- *   6. closeGws (step) — always called, stops the sandbox so Vercel
- *      snapshots it for the next run
+ *   5. finalizeRun — marks run completed/failed
+ *   6. shutdownAgentSandbox — generic primitive that stops the sandbox
+ *      so Vercel snapshots it for the next run (always called via
+ *      finally)
  *
- * Note: the sandbox handle is *never* stored in the workflow body. Every
- * touch of `@vercel/sandbox` or drizzle/Neon happens inside `"use step"`
- * functions, because the workflow sandbox VM does not expose `fetch`.
+ * The workflow body is intentionally tool-agnostic: nothing here names
+ * gws, Gmail, or any binary. All tool-specific setup lives in the
+ * agent-kind's `SandboxSetup`, looked up by `agent.kind` at startup.
+ *
+ * Note: the sandbox handle is *never* stored in the workflow body.
+ * Every touch of `@vercel/sandbox` or drizzle/Neon happens inside
+ * `"use step"` functions, because the workflow sandbox VM does not
+ * expose `fetch`.
  */
 export async function dailyEmailBrief(input: {
   runId: string
@@ -52,9 +61,9 @@ export async function dailyEmailBrief(input: {
   await initRun(runId)
 
   try {
-    const { afterEpoch, sinceIso, credentials } = await prepareBrief(runId)
+    const { afterEpoch, sinceIso } = await prepareBrief(runId)
 
-    await installGws({ agentId, credentials })
+    await startupAgentSandbox({ agentId })
 
     try {
       const agent = createDailyEmailBriefAgent({
@@ -80,7 +89,7 @@ export async function dailyEmailBrief(input: {
       await finalizeRun(runId, "completed")
       return { runId, status: "completed" as const }
     } finally {
-      await closeGws(agentId)
+      await shutdownAgentSandbox({ agentId })
     }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
