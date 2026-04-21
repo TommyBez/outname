@@ -6,7 +6,6 @@ import {
   ensureAgentSandbox,
   releaseAgentSandbox,
 } from "@/lib/agent-sandbox"
-import type { GmailApiMessage, GmailMessage } from "../types"
 
 /* -------------------------------------------------------------------------- */
 /* Constants                                                                   */
@@ -25,101 +24,41 @@ const GWS_VERSION_MARKER = "/vercel/sandbox/.gws-version"
 const GWS_CREDS_PATH = "/vercel/sandbox/gws-creds.json"
 
 /* -------------------------------------------------------------------------- */
-/* JSON helpers                                                                */
+/* Auth-failure side effect                                                    */
 /* -------------------------------------------------------------------------- */
 
-export function extractJson<T>(s: string): T | null {
-  // gws emits clean structured JSON on stdout. Fall back to finding the first
-  // balanced `{...}` or `[...]` in case any banner text slips through.
-  const trimmed = s.trim()
-  if (!trimmed) return null
-  try {
-    return JSON.parse(trimmed) as T
-  } catch {
-    /* fall through */
-  }
-  const firstBrace = Math.min(
-    ...[trimmed.indexOf("{"), trimmed.indexOf("[")].filter((i) => i >= 0),
-  )
-  if (!Number.isFinite(firstBrace)) return null
-  const candidate = trimmed.slice(firstBrace)
-  try {
-    return JSON.parse(candidate) as T
-  } catch {
-    return null
-  }
-}
-
-export function normalizeGmail(msg: GmailApiMessage): GmailMessage {
-  const headers = msg.payload?.headers ?? []
-  const header = (n: string) =>
-    headers.find((h) => h.name?.toLowerCase() === n.toLowerCase())?.value ?? ""
-  const dateStr = header("Date")
-  const receivedAt = dateStr
-    ? new Date(dateStr)
-    : new Date(Number(msg.internalDate ?? Date.now()))
-  return {
-    id: msg.id,
-    threadId: msg.threadId ?? msg.id,
-    subject: header("Subject") || "(no subject)",
-    from: header("From") || "unknown",
-    snippet: msg.snippet ?? "",
-    receivedAt: isNaN(receivedAt.getTime())
-      ? new Date().toISOString()
-      : receivedAt.toISOString(),
-  }
-}
-
-/* -------------------------------------------------------------------------- */
-/* Failure classification                                                      */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Translate a non-zero gws exit into either a FatalError (auth / unrecoverable)
- * or a RetryableError (transient API glitch). Also marks the stored Gmail
- * connection as `expired` so the UI can prompt the user to reconnect.
- */
-export async function handleGwsFailure(
+function looksLikeAuthError(
   exitCode: number | null,
   stderr: string,
-): Promise<never> {
+): boolean {
   const lower = (stderr ?? "").toLowerCase()
-  const isAuth =
+  return (
     lower.includes("invalid_grant") ||
     lower.includes("invalid_client") ||
     lower.includes("unauthorized") ||
     lower.includes("401") ||
     lower.includes("403") ||
-    lower.includes("credentials") ||
     lower.includes("token has been expired or revoked") ||
     // gws structured exit code: 2 = auth error
     exitCode === 2
-
-  if (isAuth) {
-    // Best-effort: flip the stored connection so the UI prompts reconnect.
-    try {
-      await db
-        .update(gmailConnection)
-        .set({
-          status: "expired",
-          lastError: stderr.slice(0, 500),
-          updatedAt: new Date(),
-        })
-    } catch {
-      /* ignore */
-    }
-    throw new FatalError(
-      `Gmail auth failed (exit ${exitCode}). Reconnect in /settings. Details: ${stderr.slice(
-        0,
-        500,
-      )}`,
-    )
-  }
-
-  throw new RetryableError(
-    `gws failed (exit ${exitCode}): ${stderr.slice(0, 500)}`,
-    { retryAfter: "30s" },
   )
+}
+
+/**
+ * Best-effort: flip the stored Gmail connection to `expired` so the UI can
+ * prompt reconnect. Swallows any DB error — the agent still sees the raw
+ * gws result and can decide what to do.
+ */
+async function markConnectionExpired(stderr: string): Promise<void> {
+  try {
+    await db.update(gmailConnection).set({
+      status: "expired",
+      lastError: stderr.slice(0, 500),
+      updatedAt: new Date(),
+    })
+  } catch {
+    /* ignore */
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -214,16 +153,22 @@ async function writeCredentials(
 
 type ProgressFn = (message: string) => Promise<void> | void
 
-interface ListParams {
-  userId: string
-  q: string
-  maxResults: number
+/**
+ * Result of running a gws command. Mirrors `{ exitCode, stdout, stderr }`
+ * — raw and unopinionated so the agent can inspect / parse it however it
+ * likes. Non-zero exit codes are returned verbatim, not thrown: the agent
+ * decides how to react.
+ */
+export interface GwsResult {
+  exitCode: number | null
+  stdout: string
+  stderr: string
 }
 
 /**
- * A thin wrapper around a running Vercel Sandbox with the gws binary staged
- * and authenticated. Steps use this so they don't need to know anything about
- * tarballs, file staging, or shell commands.
+ * A thin wrapper around a running Vercel Sandbox with gws staged and
+ * authenticated. Exposes a single generic `run({ args })` — the agent is
+ * in charge of which commands to invoke and how to parse the output.
  */
 export class GwsSession {
   constructor(
@@ -231,59 +176,24 @@ export class GwsSession {
     private readonly env: Record<string, string>,
   ) {}
 
-  async listMessages(
-    params: Omit<ListParams, "userId"> & Partial<Pick<ListParams, "userId">>,
-  ): Promise<{ messages: { id: string; threadId: string }[] }> {
-    const listParams = JSON.stringify({
-      userId: params.userId ?? "me",
-      q: params.q,
-      maxResults: params.maxResults,
-    })
-    const list = await this.sandbox.runCommand({
+  async run(opts: { args: string[] }): Promise<GwsResult> {
+    const cmd = await this.sandbox.runCommand({
       cmd: GWS_BIN_PATH,
-      args: ["gmail", "users", "messages", "list", "--params", listParams],
+      args: opts.args,
       env: this.env,
     })
+    const [stdout, stderr] = await Promise.all([cmd.stdout(), cmd.stderr()])
+    const result: GwsResult = { exitCode: cmd.exitCode, stdout, stderr }
 
-    if (list.exitCode !== 0) {
-      const stderr = await list.stderr()
-      await handleGwsFailure(list.exitCode, stderr)
+    // Side effect: if the failure smells like OAuth, flip the stored
+    // connection status so the UI can prompt for reconnect. The agent
+    // still receives the raw result and can surface the error in its
+    // final reply.
+    if (cmd.exitCode !== 0 && looksLikeAuthError(cmd.exitCode, stderr)) {
+      await markConnectionExpired(stderr)
     }
 
-    const stdout = await list.stdout()
-    const parsed = extractJson<{
-      messages?: { id: string; threadId: string }[]
-    }>(stdout)
-    if (!parsed) {
-      const stderr = await list.stderr()
-      throw new FatalError(
-        `Unable to parse gws list output. stderr: ${stderr.slice(0, 500)}`,
-      )
-    }
-    return { messages: parsed.messages ?? [] }
-  }
-
-  async getMessageMetadata(
-    id: string,
-    headers: string[] = ["From", "Subject", "Date"],
-  ): Promise<GmailApiMessage | null> {
-    const getParams = JSON.stringify({
-      userId: "me",
-      id,
-      format: "metadata",
-      metadataHeaders: headers,
-    })
-    const get = await this.sandbox.runCommand({
-      cmd: GWS_BIN_PATH,
-      args: ["gmail", "users", "messages", "get", "--params", getParams],
-      env: this.env,
-    })
-    if (get.exitCode !== 0) {
-      const stderr = await get.stderr()
-      await handleGwsFailure(get.exitCode, stderr)
-    }
-    const raw = await get.stdout()
-    return extractJson<GmailApiMessage>(raw)
+    return result
   }
 
   async close() {

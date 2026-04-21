@@ -1,5 +1,11 @@
+import { eq } from "drizzle-orm"
 import { db } from "@/lib/db"
-import { digestItems, digests, type Category } from "@/lib/db/schema"
+import {
+  digestItems,
+  digests,
+  runs,
+  type Category,
+} from "@/lib/db/schema"
 import { emitStep } from "@/lib/run-events"
 import type { GmailMessage } from "../types"
 import type { Categorized } from "./classify-and-summarize"
@@ -16,6 +22,13 @@ export async function persistDigest(
   "use step"
 
   await emitStep("persist", "start", "Saving briefing")
+
+  // Record how many emails were fed into this digest so the run row
+  // matches what the reading loop produced (used to live in readEmails).
+  await db
+    .update(runs)
+    .set({ emailsScanned: messages.length })
+    .where(eq(runs.id, runId))
 
   const digestId = nanoid()
 
