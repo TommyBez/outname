@@ -1,3 +1,4 @@
+import { cache } from "react"
 import { desc, eq, and } from "drizzle-orm"
 import { db } from "@/lib/db"
 import {
@@ -51,7 +52,12 @@ export async function getAgentsForUser(userId: string): Promise<Agent[]> {
     .orderBy(desc(agent.createdAt))
 }
 
-export async function getAgentByIdForUser(
+/**
+ * Wrapped in `React.cache` so the agent row is fetched exactly once per
+ * request even when multiple Server Components in the `/agents/[agentId]`
+ * subtree (layout + page) read it.
+ */
+export const getAgentByIdForUser = cache(async function getAgentByIdForUser(
   agentId: string,
   userId: string,
 ): Promise<Agent | null> {
@@ -61,7 +67,7 @@ export async function getAgentByIdForUser(
     .where(and(eq(agent.id, agentId), eq(agent.userId, userId)))
     .limit(1)
   return row ?? null
-}
+})
 
 export async function getLatestRunForAgent(
   agentId: string,

@@ -1,9 +1,10 @@
+import "server-only"
 import { start } from "workflow/api"
 import { eq } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { agent, runs, type Agent, type RunTrigger } from "@/lib/db/schema"
-import { dailyEmailBrief } from "@/workflows/agents/daily-email-brief/workflow"
 import { isAgentKind } from "@/workflows/agents/registry"
+import { getAgentRuntime } from "@/lib/agent-runtime-registry"
 
 function nanoid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
@@ -13,6 +14,9 @@ function nanoid() {
  * Dispatch an agent run by kind. Keeps the wiring (DB row + workflow start +
  * workflowRunId backfill) in one place so both the manual trigger route and
  * the daily cron use the same code path.
+ *
+ * The per-kind workflow function is looked up in `AGENT_RUNTIMES` so adding
+ * a new kind does not require touching this file.
  *
  * Returns the internal runId (not the Workflow SDK's runtime id).
  */
@@ -24,6 +28,11 @@ export async function startAgentRun(opts: {
   const { agent: a, trigger, scheduledFor } = opts
   if (!isAgentKind(a.kind)) {
     throw new Error(`Unknown agent kind: ${a.kind}`)
+  }
+
+  const runtime = getAgentRuntime(a.kind)
+  if (!runtime?.cronWorkflow) {
+    throw new Error(`Agent kind "${a.kind}" has no cron workflow registered.`)
   }
 
   const runId = nanoid()
@@ -38,7 +47,7 @@ export async function startAgentRun(opts: {
   })
 
   try {
-    const run = await start(dailyEmailBrief, [
+    const run = await start(runtime.cronWorkflow, [
       {
         runId,
         agentId: a.id,

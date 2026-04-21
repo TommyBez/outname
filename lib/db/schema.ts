@@ -7,6 +7,7 @@ import {
   integer,
   index,
   uniqueIndex,
+  jsonb,
 } from "drizzle-orm/pg-core"
 
 // Better Auth tables
@@ -168,6 +169,54 @@ export const digestItems = pgTable(
   }),
 )
 
+// Chat conversations: one active thread per agent (unique index enforces
+// the 1:1 invariant so dropping the constraint later gives us free N:M).
+export const chatConversation = pgTable(
+  "chat_conversation",
+  {
+    id: text("id").primaryKey(),
+    agentId: text("agent_id")
+      .notNull()
+      .references(() => agent.id, { onDelete: "cascade" }),
+    title: text("title"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    agentUniqueIdx: uniqueIndex("chat_conversation_agent_unique_idx").on(
+      t.agentId,
+    ),
+  }),
+)
+
+// Chat messages: store full UIMessage parts array as JSONB so we keep tool
+// calls, reasoning blocks, and custom data parts intact for replay.
+export const chatMessage = pgTable(
+  "chat_message",
+  {
+    id: text("id").primaryKey(),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => chatConversation.id, { onDelete: "cascade" }),
+    role: text("role").notNull(), // user | assistant | system
+    parts: jsonb("parts").notNull(),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    conversationIdx: index("chat_message_conversation_idx").on(
+      t.conversationId,
+      t.createdAt,
+    ),
+  }),
+)
+
 export const gmailConnection = pgTable("gmail_connection", {
   id: text("id").primaryKey().default("singleton"),
   userId: text("user_id")
@@ -190,6 +239,9 @@ export type DigestItem = typeof digestItems.$inferSelect
 export type GmailConnection = typeof gmailConnection.$inferSelect
 export type Agent = typeof agent.$inferSelect
 export type UserSettings = typeof userSettings.$inferSelect
+export type ChatConversation = typeof chatConversation.$inferSelect
+export type ChatMessage = typeof chatMessage.$inferSelect
+export type ChatRole = "user" | "assistant" | "system"
 export type Category = "urgent" | "reply" | "fyi" | "noise"
 export type AgentKind = "daily-email-brief"
 export type RunTrigger = "manual" | "cron"
