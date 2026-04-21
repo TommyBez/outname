@@ -8,7 +8,7 @@ import { getAgentById } from "@/lib/start-agent-run"
 import { getAgentRuntime } from "@/lib/agent-runtime-registry"
 import { isAgentKind } from "@/workflows/agents/registry"
 import {
-  ensureConversationForAgent,
+  getOrCreateConversationForAgent,
   insertChatMessage,
 } from "@/lib/agent-chat"
 import { agentChat } from "@/workflows/chat/workflow"
@@ -80,7 +80,7 @@ export async function POST(
     }
   }
 
-  let body: { messages?: UIMessage[] }
+  let body: { messages?: UIMessage[]; conversationId?: string }
   try {
     body = await req.json()
   } catch {
@@ -91,7 +91,33 @@ export async function POST(
     return NextResponse.json({ error: "messages required" }, { status: 400 })
   }
 
-  const conversationId = await ensureConversationForAgent(agentId)
+  const requestedConversationId = body.conversationId
+  if (
+    typeof requestedConversationId !== "string" ||
+    requestedConversationId.length < 3 ||
+    requestedConversationId.length > 64
+  ) {
+    return NextResponse.json(
+      { error: "conversationId required" },
+      { status: 400 },
+    )
+  }
+
+  // Lazily create the row on first message. If a malicious client supplies
+  // an id that already belongs to a different agent, the owner-scoped
+  // lookup inside `getOrCreateConversationForAgent` returns null and we
+  // 404 — the row is never hijacked.
+  const conversation = await getOrCreateConversationForAgent(
+    requestedConversationId,
+    agentId,
+  )
+  if (!conversation) {
+    return NextResponse.json(
+      { error: "conversation not found" },
+      { status: 404 },
+    )
+  }
+  const conversationId = conversation.id
 
   // Persist the newest user message up-front. Doing this before the
   // workflow starts means a mid-stream failure still leaves the user's

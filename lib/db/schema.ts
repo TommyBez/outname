@@ -169,8 +169,9 @@ export const digestItems = pgTable(
   }),
 )
 
-// Chat conversations: one active thread per agent (unique index enforces
-// the 1:1 invariant so dropping the constraint later gives us free N:M).
+// Chat conversations: an agent can own many independent threads. Listing
+// in the sidebar is always "newest first for this agent", so we index on
+// (agent_id, updated_at DESC) to serve that exact query without a sort.
 export const chatConversation = pgTable(
   "chat_conversation",
   {
@@ -187,8 +188,9 @@ export const chatConversation = pgTable(
       .defaultNow(),
   },
   (t) => ({
-    agentUniqueIdx: uniqueIndex("chat_conversation_agent_unique_idx").on(
+    agentUpdatedIdx: index("chat_conversation_agent_updated_idx").on(
       t.agentId,
+      t.updatedAt.desc(),
     ),
   }),
 )

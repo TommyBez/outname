@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, type UIMessage } from "ai"
+import { revalidateConversations } from "@/components/chat-sessions-sidebar"
 import {
   Conversation,
   ConversationContent,
@@ -37,7 +38,17 @@ import {
 
 interface AgentChatProps {
   agentId: string
+  /** Stable id for the conversation this chat targets. For draft chats
+   * this is a server-generated candidate id that will only be persisted
+   * on the first user message; for existing conversations it's the real
+   * row id. */
+  conversationId: string
   initialMessages: UIMessage[]
+  /** When true, the chat was mounted at `/chat/new` with a candidate id
+   * that the DB does not yet know about. On the first successful send
+   * we swap the URL to the canonical `/chat/:id` route so a refresh
+   * lands on the persisted conversation. */
+  isDraft?: boolean
 }
 
 /**
@@ -46,15 +57,51 @@ interface AgentChatProps {
  *
  * The transport targets a per-agent endpoint (`/api/agents/:id/chat`) so
  * server-side identity is derived from the session, not the request body.
+ * `conversationId` is forwarded in the POST body so the API route can
+ * lazily create the row on first message.
  */
-export function AgentChat({ agentId, initialMessages }: AgentChatProps) {
+export function AgentChat({
+  agentId,
+  conversationId,
+  initialMessages,
+  isDraft,
+}: AgentChatProps) {
   const [input, setInput] = useState("")
+  const didPromoteDraftRef = useRef(false)
   const { messages, sendMessage, status, error, stop } = useChat({
     messages: initialMessages,
     transport: new DefaultChatTransport({
       api: `/api/agents/${agentId}/chat`,
+      body: { conversationId },
     }),
+    onFinish: () => {
+      // Ask the sidebar to refetch its own list so the new row + title
+      // appear. This replaces the previous `router.refresh()` call,
+      // which re-rendered the whole RSC tree under Next 16's cache
+      // components and could strand the freshly streamed assistant
+      // message out of view on soft navigation.
+      void revalidateConversations(agentId)
+    },
   })
+
+  // Draft → persisted URL swap. We do this in `history.replaceState`
+  // instead of `router.replace` because the latter would unmount the
+  // streaming `useChat` instance and strand the in-flight turn. Running
+  // this effect the moment a message exists (before the assistant even
+  // finishes) keeps the address bar honest during the first turn.
+  useEffect(() => {
+    if (!isDraft) return
+    if (didPromoteDraftRef.current) return
+    if (messages.length === 0) return
+    didPromoteDraftRef.current = true
+    if (typeof window !== "undefined") {
+      window.history.replaceState(
+        null,
+        "",
+        `/agents/${agentId}/chat/${conversationId}`,
+      )
+    }
+  }, [agentId, conversationId, isDraft, messages.length])
 
   const isBusy = status === "submitted" || status === "streaming"
 
@@ -70,7 +117,13 @@ export function AgentChat({ agentId, initialMessages }: AgentChatProps) {
   }
 
   return (
-    <div className="flex h-[min(70vh,720px)] flex-col">
+    // `min-w-0` lets this flex column honour its grid cell's width on
+    // mobile (where the chat layout becomes a single column of
+    // `minmax(0, 1fr)`); without it, wide children such as tool output
+    // tables with `overflow-x-auto` can stretch this container past
+    // the viewport. `overflow-hidden` is the belt-and-braces safety net
+    // that keeps any remaining stray width from leaking out.
+    <div className="flex h-[min(70vh,720px)] min-w-0 flex-col overflow-hidden">
       <Conversation className="flex-1 min-h-0">
         <ConversationContent>
           {messages.length === 0 ? (
@@ -129,10 +182,13 @@ function ChatMessage({ message }: { message: UIMessage }) {
 
           if (part.type === "reasoning") {
             return (
+              // No negative horizontal margin here: on narrow viewports
+              // it was shifting the Reasoning trigger (brain icon + label)
+              // past `MessageContent`'s `overflow-hidden` clip and cutting
+              // off the icon on the left edge.
               <Reasoning
                 key={key}
                 isStreaming={part.state === "streaming"}
-                className="-mx-2"
               >
                 <ReasoningTrigger />
                 <ReasoningContent>{part.text}</ReasoningContent>
@@ -145,7 +201,7 @@ function ChatMessage({ message }: { message: UIMessage }) {
           if (part.type === "dynamic-tool") {
             const toolPart = part as ToolPart
             return (
-              <Tool key={key} className="-mx-2">
+              <Tool key={key}>
                 <ToolHeader
                   type="dynamic-tool"
                   state={toolPart.state}
@@ -162,7 +218,7 @@ function ChatMessage({ message }: { message: UIMessage }) {
           if (typeof part.type === "string" && part.type.startsWith("tool-")) {
             const toolPart = part as ToolPart
             return (
-              <Tool key={key} className="-mx-2">
+              <Tool key={key}>
                 <ToolHeader
                   type={toolPart.type as Exclude<ToolPart["type"], "dynamic-tool">}
                   state={toolPart.state}

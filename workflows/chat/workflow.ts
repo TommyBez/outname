@@ -11,6 +11,7 @@ import {
 } from "@/lib/agent-sandbox"
 import { getAgentRuntime } from "@/lib/agent-runtime-registry"
 import type { AgentKind } from "@/lib/db/schema"
+import { maybeGenerateConversationTitle } from "./steps/generate-conversation-title"
 import { persistAssistantTurn } from "./steps/persist-assistant-turn"
 
 /**
@@ -60,12 +61,24 @@ export async function agentChat(input: {
 
     const modelMessages = await convertToModelMessages(uiMessages)
 
-    const result = await agent.stream({
-      messages: modelMessages,
-      writable,
-      maxSteps: 40,
-      collectUIMessages: true,
-    })
+    // Kick off title generation in parallel with the stream. On a
+    // brand-new conversation the title step runs the nano model against
+    // the first user message; on later turns it's a no-op guarded by
+    // `WHERE title IS NULL`. Running in parallel means titling latency
+    // never gates the user-visible stream.
+    const [, result] = await Promise.all([
+      maybeGenerateConversationTitle({
+        agentId,
+        conversationId,
+        uiMessages,
+      }),
+      agent.stream({
+        messages: modelMessages,
+        writable,
+        maxSteps: 40,
+        collectUIMessages: true,
+      }),
+    ])
 
     await persistAssistantTurn({
       conversationId,
