@@ -433,7 +433,7 @@ export async function classifyAndSummarize(
     receivedAt: m.receivedAt,
   }))
 
-  const { experimental_output } = await generateText({
+  const { output } = await generateText({
     model: "openai/gpt-5-mini",
     system: [
       "You are an email triage specialist.",
@@ -447,24 +447,21 @@ export async function classifyAndSummarize(
       "Return data matching the provided schema exactly.",
     ].join("\n"),
     prompt: `Emails to triage:\n${JSON.stringify(input, null, 2)}`,
-    experimental_output: Output.object({ schema: CategorizedSchema }),
+    output: Output.object({ schema: CategorizedSchema }),
   })
 
-  const counts = experimental_output.items.reduce<Record<string, number>>(
-    (acc, item) => {
-      acc[item.category] = (acc[item.category] ?? 0) + 1
-      return acc
-    },
-    {},
-  )
+  const counts = output.items.reduce<Record<string, number>>((acc, item) => {
+    acc[item.category] = (acc[item.category] ?? 0) + 1
+    return acc
+  }, {})
   await emitStep(
     "classify",
     "done",
-    `Categorized ${experimental_output.items.length} emails`,
+    `Categorized ${output.items.length} emails`,
     counts,
   )
 
-  return experimental_output
+  return output
 }
 
 /* -------------------------------------------------------------------------- */
