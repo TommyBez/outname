@@ -63,7 +63,7 @@ export interface DailyEmailBriefAgentContext {
  *   - deterministic tools for the non-Gmail parts (classify, persist)
  */
 export function createDailyEmailBriefAgent(ctx: DailyEmailBriefAgentContext) {
-  const { runId, session, afterEpoch, sinceIso } = ctx
+  const { runId, session, afterEpoch } = ctx
 
   return new DurableAgent({
     model: "openai/gpt-5-mini",
