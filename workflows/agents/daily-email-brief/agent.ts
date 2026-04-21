@@ -2,7 +2,7 @@ import { DurableAgent } from "@workflow/ai/agent"
 import { z } from "zod"
 import { classifyAndSummarize } from "./steps/classify-and-summarize"
 import { persistDigest } from "./steps/persist-digest"
-import type { GwsSession } from "./sandbox/gws"
+import { runGws } from "./sandbox/gws"
 
 /**
  * Shape of a Gmail message once normalized by the agent from the raw
@@ -38,14 +38,11 @@ const classifiedSchema = z.object({
 export interface DailyEmailBriefAgentContext {
   /** Run id this agent invocation belongs to — used for event streaming. */
   runId: string
-  /** Owning agent row id — used to pick the right persistent sandbox. */
-  agentId: string
   /**
-   * A live GwsSession. The workflow opens this before streaming the agent
-   * and closes it in a finally block afterwards. Every `gws` tool call is
-   * executed inside this sandbox.
+   * Owning agent row id. The `gws` tool uses this to pick the right
+   * persistent sandbox on every call (one sandbox per agent row).
    */
-  session: GwsSession
+  agentId: string
   /** Unix epoch seconds of the last completed run — the `after:` cursor. */
   afterEpoch: number
   /** ISO timestamp of the last completed run — human-readable for the LLM. */
@@ -63,7 +60,7 @@ export interface DailyEmailBriefAgentContext {
  *   - deterministic tools for the non-Gmail parts (classify, persist)
  */
 export function createDailyEmailBriefAgent(ctx: DailyEmailBriefAgentContext) {
-  const { runId, session, afterEpoch } = ctx
+  const { runId, agentId, afterEpoch } = ctx
 
   return new DurableAgent({
     model: "openai/gpt-5-mini",
@@ -105,8 +102,7 @@ export function createDailyEmailBriefAgent(ctx: DailyEmailBriefAgentContext) {
             ),
         }),
         execute: async ({ args }) => {
-          "use step"
-          return await session.run({ args })
+          return await runGws({ agentId, args })
         },
       },
       classifyAndSummarize: {

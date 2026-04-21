@@ -4,8 +4,7 @@ import {
   createDailyEmailBriefAgent,
   dailyEmailBriefKickoff,
 } from "./agent"
-import { emitStep } from "@/lib/run-events"
-import { createGwsSession } from "./sandbox/gws"
+import { closeGws, installGws } from "./sandbox/gws"
 import { initRun } from "./steps/init-run"
 import { finalizeRun } from "./steps/finalize-run"
 import { prepareBrief } from "./steps/prepare-brief"
@@ -20,12 +19,18 @@ import { prepareBrief } from "./steps/prepare-brief"
  *   2. prepareBrief (step) — loads the Gmail OAuth connection, computes
  *      the since-cursor from the last completed run, and assembles the
  *      credentials blob for gws
- *   3. open a persistent sandbox with gws staged + credentials written
- *      (idempotent: first call provisions, subsequent calls resume by name)
- *   4. stream the agent — it drives gws commands directly, then calls
- *      classifyAndSummarize and persistDigest
+ *   3. installGws (step) — ensures the persistent sandbox exists, stages
+ *      the gws binary, and writes per-run credentials
+ *   4. stream the agent — it drives gws commands directly via the `gws`
+ *      tool (each call is its own step that resumes the sandbox), then
+ *      calls classifyAndSummarize and persistDigest
  *   5. finalizeRun (step) — marks run completed/failed
- *   6. always close the session (snapshots the sandbox)
+ *   6. closeGws (step) — always called, stops the sandbox so Vercel
+ *      snapshots it for the next run
+ *
+ * Note: the sandbox handle is *never* stored in the workflow body. Every
+ * touch of `@vercel/sandbox` or drizzle/Neon happens inside `"use step"`
+ * functions, because the workflow sandbox VM does not expose `fetch`.
  */
 export async function dailyEmailBrief(input: {
   runId: string
@@ -49,22 +54,12 @@ export async function dailyEmailBrief(input: {
   try {
     const { afterEpoch, sinceIso, credentials } = await prepareBrief(runId)
 
-    // Session lifecycle lives in the workflow body (not a step) because
-    // the Sandbox handle is not serializable across step boundaries. The
-    // underlying sandbox IS persistent-by-name via ensureAgentSandbox, so
-    // if the workflow is resumed after a crash we simply reconnect to the
-    // existing sandbox rather than rebuilding it.
-    const session = await createGwsSession({
-      agentId,
-      credentials,
-      onProgress: (msg) => emitStep("read", "progress", msg),
-    })
+    await installGws({ agentId, credentials })
 
     try {
       const agent = createDailyEmailBriefAgent({
         runId,
         agentId,
-        session,
         afterEpoch,
         sinceIso,
       })
@@ -85,7 +80,7 @@ export async function dailyEmailBrief(input: {
       await finalizeRun(runId, "completed")
       return { runId, status: "completed" as const }
     } finally {
-      await session.close()
+      await closeGws(agentId)
     }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
