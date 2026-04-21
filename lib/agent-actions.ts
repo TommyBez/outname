@@ -6,6 +6,7 @@ import { redirect } from "next/navigation"
 import { requireSession } from "@/lib/auth-guard"
 import { db } from "@/lib/db"
 import { agent, userSettings } from "@/lib/db/schema"
+import { destroyAgentSandbox } from "@/lib/agent-sandbox"
 import { AGENT_KINDS, isAgentKind } from "@/workflows/agents/registry"
 
 function nanoid() {
@@ -103,6 +104,19 @@ export async function toggleAgentAction(agentId: string, enabled: boolean) {
 
 export async function deleteAgentAction(agentId: string) {
   const session = await requireSession()
+  const [existing] = await db
+    .select()
+    .from(agent)
+    .where(and(eq(agent.id, agentId), eq(agent.userId, session.user.id)))
+    .limit(1)
+  if (!existing) {
+    redirect("/agents")
+  }
+
+  // Best-effort: tear down the persistent sandbox before removing the row
+  // so we don't leak it. Any failure is swallowed inside the helper.
+  await destroyAgentSandbox(agentId)
+
   await db
     .delete(agent)
     .where(and(eq(agent.id, agentId), eq(agent.userId, session.user.id)))

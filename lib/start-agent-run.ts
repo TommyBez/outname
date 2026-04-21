@@ -41,6 +41,7 @@ export async function startAgentRun(opts: {
     const run = await start(dailyEmailBrief, [
       {
         runId,
+        agentId: a.id,
         scheduledForMs: scheduledFor ? scheduledFor.getTime() : undefined,
       },
     ])

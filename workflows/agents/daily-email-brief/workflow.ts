@@ -21,11 +21,12 @@ import { persistDigest } from "./steps/persist-digest"
  */
 export async function dailyEmailBrief(input: {
   runId: string
+  agentId: string
   scheduledForMs?: number
 }) {
   "use workflow"
 
-  const { runId, scheduledForMs } = input
+  const { runId, agentId, scheduledForMs } = input
 
   // Cron triggers pass a future `scheduledForMs`; manual triggers do not.
   if (scheduledForMs && scheduledForMs > Date.now()) {
@@ -57,7 +58,7 @@ export async function dailyEmailBrief(input: {
             "Fetch new Gmail messages since the previous completed run.",
           inputSchema: z.object({}),
           execute: async () => {
-            const messages = await readEmails(runId)
+            const messages = await readEmails(runId, agentId)
             return {
               count: messages.length,
               messages,
