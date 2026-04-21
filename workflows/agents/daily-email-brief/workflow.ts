@@ -69,8 +69,6 @@ export async function dailyEmailBrief(input: {
       const agent = createDailyEmailBriefAgent({
         runId,
         agentId,
-        afterEpoch,
-        sinceIso,
       })
 
       await agent.stream({
