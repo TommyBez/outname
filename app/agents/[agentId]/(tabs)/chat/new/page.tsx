@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import { requireSession } from "@/lib/auth-guard"
 import { getAgentByIdForUser } from "@/lib/data"
@@ -21,11 +22,19 @@ type Params = Promise<{ agentId: string }>
  * keeps the streaming `useChat` instance mounted while matching the
  * canonical route shape.
  */
-export default async function NewAgentChatPage({
+export default function NewAgentChatPage({
   params,
 }: {
   params: Params
 }) {
+  return (
+    <Suspense fallback={<ChatSkeleton />}>
+      <DraftChat params={params} />
+    </Suspense>
+  )
+}
+
+async function DraftChat({ params }: { params: Params }) {
   const { agentId } = await params
   const session = await requireSession()
   const agent = await getAgentByIdForUser(agentId, session.user.id)
@@ -43,5 +52,15 @@ export default async function NewAgentChatPage({
       initialMessages={[]}
       isDraft
     />
+  )
+}
+
+function ChatSkeleton() {
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="h-3 w-24 animate-pulse rounded-sm bg-muted" />
+      <div className="h-64 w-full animate-pulse rounded-sm bg-muted" />
+      <div className="h-12 w-full animate-pulse rounded-sm bg-muted" />
+    </div>
   )
 }
