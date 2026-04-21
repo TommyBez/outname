@@ -54,7 +54,13 @@ export const MessageContent = ({
 }: MessageContentProps) => (
   <div
     className={cn(
-      "is-user:dark flex w-fit min-w-0 max-w-full flex-col gap-2 overflow-hidden text-sm",
+      // `overflow-hidden` was clipping long unbreakable tokens (URLs,
+      // email addresses, timestamps in Streamdown output). Adding
+      // `break-words` (+ the more aggressive `[overflow-wrap:anywhere]`
+      // for long unbroken strings like `a@b.com` on narrow mobile
+      // viewports) forces those tokens to wrap instead of being cut
+      // off by the right edge.
+      "is-user:dark flex w-fit min-w-0 max-w-full flex-col gap-2 overflow-hidden break-words [overflow-wrap:anywhere] text-sm",
       "group-[.is-user]:ml-auto group-[.is-user]:rounded-lg group-[.is-user]:bg-secondary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-foreground",
       "group-[.is-assistant]:text-foreground",
       className

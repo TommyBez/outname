@@ -117,7 +117,13 @@ export function AgentChat({
   }
 
   return (
-    <div className="flex h-[min(70vh,720px)] flex-col">
+    // `min-w-0` lets this flex column honour its grid cell's width on
+    // mobile (where the chat layout becomes a single column of
+    // `minmax(0, 1fr)`); without it, wide children such as tool output
+    // tables with `overflow-x-auto` can stretch this container past
+    // the viewport. `overflow-hidden` is the belt-and-braces safety net
+    // that keeps any remaining stray width from leaking out.
+    <div className="flex h-[min(70vh,720px)] min-w-0 flex-col overflow-hidden">
       <Conversation className="flex-1 min-h-0">
         <ConversationContent>
           {messages.length === 0 ? (
