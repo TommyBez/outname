@@ -2,6 +2,7 @@ import { Suspense } from "react"
 import Link from "next/link"
 import { SignOutButton } from "./sign-out-button"
 import { NavLink } from "./nav-link"
+import { MobileNav } from "./mobile-nav"
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
@@ -13,20 +14,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         Skip to content
       </a>
       <header className="border-b border-border">
-        <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-6 px-6 py-5 md:px-8">
+        <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-4 px-4 py-4 sm:px-6 sm:py-5 md:px-8">
           <Link
             href="/"
-            className="inline-flex items-baseline gap-1.5 font-mono text-sm font-medium uppercase tracking-[0.18em] transition-colors hover:text-foreground/80"
+            className="inline-flex shrink-0 items-baseline gap-1.5 font-mono text-sm font-medium uppercase tracking-[0.18em] transition-colors hover:text-foreground/80"
           >
-            <span
-              aria-hidden
-              className="text-accent"
-            >
+            <span aria-hidden className="text-accent">
               ▪
             </span>
             agents
           </Link>
-          <nav className="flex items-center gap-6 text-sm" aria-label="Primary">
+          <nav
+            className="hidden items-center gap-6 text-sm md:flex"
+            aria-label="Primary"
+          >
             <Suspense
               fallback={
                 <>
@@ -44,11 +45,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Suspense>
             <SignOutButton />
           </nav>
+          <MobileNav />
         </div>
       </header>
       <main
         id="main-content"
-        className="mx-auto w-full max-w-4xl flex-1 px-6 py-12 md:px-8 md:py-16"
+        className="mx-auto w-full max-w-4xl flex-1 px-4 py-10 sm:px-6 sm:py-12 md:px-8 md:py-16"
       >
         {children}
       </main>

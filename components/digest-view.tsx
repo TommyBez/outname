@@ -44,7 +44,7 @@ function CategorySection({ category, items }: { category: Category; items: Diges
   const meta = CATEGORY_META[category]
   return (
     <section>
-      <div className="mb-6 flex items-baseline justify-between gap-4">
+      <div className="mb-6 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <div className="flex items-baseline gap-3">
           <h2 className={`font-mono text-xs uppercase tracking-[0.2em] ${meta.tone}`}>
             {meta.label}
@@ -69,10 +69,10 @@ function DigestItemRow({ item }: { item: DigestItem }) {
   return (
     <li className="py-6 first:pt-6 last:pb-0">
       <div className="mb-2 flex items-baseline justify-between gap-4">
-        <span className="truncate font-mono text-xs uppercase tracking-wider text-muted-foreground">
+        <span className="min-w-0 truncate font-mono text-xs uppercase tracking-wider text-muted-foreground">
           {sender.name}
         </span>
-        <time className="whitespace-nowrap font-mono text-xs tabular-nums text-muted-foreground">
+        <time className="shrink-0 whitespace-nowrap font-mono text-xs tabular-nums text-muted-foreground">
           {formatTime(item.receivedAt)}
         </time>
       </div>

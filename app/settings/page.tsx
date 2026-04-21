@@ -110,7 +110,7 @@ async function AgentsSummarySection() {
   const agents = await getAgentsForUser(session.user.id)
   const enabled = agents.filter((a) => a.enabled).length
   return (
-    <div className="flex items-center justify-between gap-6">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
       <div>
         <p className="font-serif text-xl font-medium">
           {agents.length} agent{agents.length === 1 ? "" : "s"} · {enabled}{" "}
@@ -123,7 +123,7 @@ async function AgentsSummarySection() {
       </div>
       <Link
         href="/agents"
-        className="inline-flex shrink-0 items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
+        className="inline-flex shrink-0 items-center justify-center self-start rounded-md border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted sm:self-auto"
       >
         Manage agents →
       </Link>
