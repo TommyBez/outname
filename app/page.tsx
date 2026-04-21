@@ -9,7 +9,7 @@ import {
 import { getGmailConnection } from "@/lib/google-oauth"
 import { AppShell } from "@/components/app-shell"
 import { TodayDate } from "@/components/today-date"
-import { AgentRunCard } from "@/components/agent-run-card"
+import { AgentTodayCard } from "@/components/agent-today-card"
 import {
   ConnectionNoticeSkeleton,
   DigestSkeleton,
@@ -127,12 +127,11 @@ async function AgentCardContainer({ agentId }: { agentId: string }) {
 
   const kindMeta = AGENT_KINDS[a.kind as keyof typeof AGENT_KINDS]
   return (
-    <AgentRunCard
+    <AgentTodayCard
       agent={a}
       kindLabel={kindMeta?.label ?? a.kind}
       latestRun={latest}
       digestItems={digest?.items ?? null}
-      digestSummary={digest?.digest?.summary ?? null}
     />
   )
 }
