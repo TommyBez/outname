@@ -1,6 +1,6 @@
+import { db } from "@/lib/db"
 import { digestItems, digests, type Category } from "@/lib/db/schema"
 import { emitStep } from "@/lib/run-events"
-import { getDb } from "../db"
 import type { GmailMessage } from "../types"
 import type { Categorized } from "./classify-and-summarize"
 
@@ -17,7 +17,6 @@ export async function persistDigest(
 
   await emitStep("persist", "start", "Saving briefing")
 
-  const db = getDb()
   const digestId = nanoid()
 
   await db.insert(digests).values({

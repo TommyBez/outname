@@ -1,8 +1,8 @@
 import { and, desc, eq } from "drizzle-orm"
 import { FatalError, RetryableError } from "workflow"
+import { db } from "@/lib/db"
 import { gmailConnection, runs } from "@/lib/db/schema"
 import { emitStep } from "@/lib/run-events"
-import { getDb } from "../db"
 import { createGwsSession, normalizeGmail } from "../sandbox/gws"
 import type { GmailMessage } from "../types"
 
@@ -10,8 +10,6 @@ export async function readEmails(runId: string): Promise<GmailMessage[]> {
   "use step"
 
   await emitStep("read", "start", "Connecting to Gmail")
-
-  const db = getDb()
 
   // 1) Load the stored Gmail connection (OAuth refresh token + client creds).
   const [conn] = await db.select().from(gmailConnection).limit(1)

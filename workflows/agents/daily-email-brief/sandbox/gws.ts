@@ -1,7 +1,7 @@
 import { Sandbox } from "@vercel/sandbox"
 import { FatalError, RetryableError } from "workflow"
+import { db } from "@/lib/db"
 import { gmailConnection } from "@/lib/db/schema"
-import { getDb } from "../db"
 import type { GmailApiMessage, GmailMessage } from "../types"
 
 /* -------------------------------------------------------------------------- */
@@ -89,7 +89,6 @@ export async function handleGwsFailure(
   if (isAuth) {
     // Best-effort: flip the stored connection so the UI prompts reconnect.
     try {
-      const db = getDb()
       await db
         .update(gmailConnection)
         .set({

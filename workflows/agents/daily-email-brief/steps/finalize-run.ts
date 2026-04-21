@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm"
+import { db } from "@/lib/db"
 import { runs } from "@/lib/db/schema"
 import { emitRun, emitStep } from "@/lib/run-events"
-import { getDb } from "../db"
 
 export async function finalizeRun(
   runId: string,
@@ -9,7 +9,6 @@ export async function finalizeRun(
   error?: string,
 ) {
   "use step"
-  const db = getDb()
   await db
     .update(runs)
     .set({
