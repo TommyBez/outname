@@ -6,7 +6,10 @@ import { emitStep } from "@/lib/run-events"
 import { createGwsSession, normalizeGmail } from "../sandbox/gws"
 import type { GmailMessage } from "../types"
 
-export async function readEmails(runId: string): Promise<GmailMessage[]> {
+export async function readEmails(
+  runId: string,
+  agentId: string,
+): Promise<GmailMessage[]> {
   "use step"
 
   await emitStep("read", "start", "Connecting to Gmail")
@@ -52,6 +55,7 @@ export async function readEmails(runId: string): Promise<GmailMessage[]> {
   let session: Awaited<ReturnType<typeof createGwsSession>> | undefined
   try {
     session = await createGwsSession({
+      agentId,
       credentials,
       onProgress: (msg) => emitStep("read", "progress", msg),
     })

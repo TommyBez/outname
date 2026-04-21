@@ -1,31 +1,37 @@
-import { DurableAgent } from "@workflow/ai/agent"
 import { getWritable, sleep } from "workflow"
-import { z } from "zod"
 import type { UIMessageChunk } from "ai"
+import {
+  createDailyEmailBriefAgent,
+  DAILY_EMAIL_BRIEF_KICKOFF,
+} from "./agent"
 import { initRun } from "./steps/init-run"
 import { finalizeRun } from "./steps/finalize-run"
-import { readEmails } from "./steps/read-emails"
-import { classifyAndSummarize } from "./steps/classify-and-summarize"
-import { persistDigest } from "./steps/persist-digest"
 
 /**
- * Daily email brief agent workflow.
+ * Daily email brief workflow.
+ *
+ * The workflow is a thin orchestrator: it owns run lifecycle (sleep until
+ * scheduled time, emit started / completed / failed events) and delegates
+ * the actual work to the Daily Email Brief agent primitive defined in
+ * `./agent.ts`. Keeping the agent in its own module means it can be reused
+ * by other workflows or embedded as a sub-agent tool by another agent.
  *
  * Flow:
  *   0. (optional) sleep until `scheduledForMs` — set by the cron runner so
  *      the workflow fires at the user's local scheduled time
  *   1. initRun (step) — emits the "started" event
- *   2. DurableAgent orchestrator runs three tools in order:
+ *   2. Stream the Daily Email Brief agent to run:
  *        readEmails → classifyAndSummarize → persistDigest
  *   3. finalizeRun (step) — marks run completed/failed
  */
 export async function dailyEmailBrief(input: {
   runId: string
+  agentId: string
   scheduledForMs?: number
 }) {
   "use workflow"
 
-  const { runId, scheduledForMs } = input
+  const { runId, agentId, scheduledForMs } = input
 
   // Cron triggers pass a future `scheduledForMs`; manual triggers do not.
   if (scheduledForMs && scheduledForMs > Date.now()) {
@@ -40,90 +46,10 @@ export async function dailyEmailBrief(input: {
   await initRun(runId)
 
   try {
-    const agent = new DurableAgent({
-      model: "openai/gpt-5-mini",
-      system: [
-        "You are a personal inbox assistant.",
-        "Your job is to produce a daily digest for the user.",
-        "You MUST call the tools in this exact order, once each:",
-        "  1. readEmails — fetches new emails since the last run",
-        "  2. classifyAndSummarize — categorizes and summarizes them",
-        "  3. persistDigest — saves the digest to the database",
-        "After calling persistDigest, reply with a one-sentence confirmation and stop.",
-      ].join("\n"),
-      tools: {
-        readEmails: {
-          description:
-            "Fetch new Gmail messages since the previous completed run.",
-          inputSchema: z.object({}),
-          execute: async () => {
-            const messages = await readEmails(runId)
-            return {
-              count: messages.length,
-              messages,
-            }
-          },
-        },
-        classifyAndSummarize: {
-          description:
-            "Classify each email into urgent/reply/fyi/noise and produce a short summary for each plus an overall digest summary.",
-          inputSchema: z.object({
-            messages: z.array(
-              z.object({
-                id: z.string(),
-                threadId: z.string(),
-                subject: z.string(),
-                from: z.string(),
-                snippet: z.string(),
-                receivedAt: z.string(),
-              }),
-            ),
-          }),
-          execute: async ({ messages }) => {
-            const out = await classifyAndSummarize(messages)
-            return out
-          },
-        },
-        persistDigest: {
-          description:
-            "Persist the classified digest to the database. Pass the original messages plus the classified items and overall summary.",
-          inputSchema: z.object({
-            messages: z.array(
-              z.object({
-                id: z.string(),
-                threadId: z.string(),
-                subject: z.string(),
-                from: z.string(),
-                snippet: z.string(),
-                receivedAt: z.string(),
-              }),
-            ),
-            classified: z.object({
-              items: z.array(
-                z.object({
-                  messageId: z.string(),
-                  category: z.enum(["urgent", "reply", "fyi", "noise"]),
-                  summary: z.string(),
-                }),
-              ),
-              overallSummary: z.string(),
-            }),
-          }),
-          execute: async ({ messages, classified }) => {
-            return await persistDigest(runId, messages, classified)
-          },
-        },
-      },
-    })
+    const agent = createDailyEmailBriefAgent({ runId, agentId })
 
     await agent.stream({
-      messages: [
-        {
-          role: "user",
-          content:
-            "Run the daily inbox review now. Fetch new emails, classify them, and persist the digest.",
-        },
-      ],
+      messages: [{ role: "user", content: DAILY_EMAIL_BRIEF_KICKOFF }],
       writable,
       maxSteps: 8,
     })
