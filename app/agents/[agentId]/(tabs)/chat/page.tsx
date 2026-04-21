@@ -2,8 +2,8 @@ import { notFound } from "next/navigation"
 import { requireSession } from "@/lib/auth-guard"
 import { getAgentByIdForUser } from "@/lib/data"
 import {
-  getConversationForAgent,
-  loadConversationMessages,
+  ensureConversationForAgent,
+  loadChatHistory,
 } from "@/lib/agent-chat"
 import { getAgentRuntime } from "@/lib/agent-runtime-registry"
 import { AgentChat } from "@/components/agent-chat"
@@ -27,10 +27,11 @@ export default async function AgentChatPage({ params }: { params: Params }) {
   const runtime = getAgentRuntime(agent.kind as AgentKind)
   if (!runtime?.buildAgent) notFound()
 
-  const conversation = await getConversationForAgent(agent.id)
-  const initialMessages = conversation
-    ? await loadConversationMessages(conversation.id)
-    : []
+  // Creating the conversation eagerly on first visit (rather than on first
+  // user message) lets us render a stable, empty history view and keeps the
+  // API route's job purely "append messages" without race-y first-insert.
+  const conversationId = await ensureConversationForAgent(agent.id)
+  const initialMessages = await loadChatHistory(conversationId)
 
   return (
     <div className="flex flex-col">

@@ -17,8 +17,9 @@ import {
 import {
   PromptInput,
   PromptInputTextarea,
-  PromptInputToolbar,
+  PromptInputFooter,
   PromptInputSubmit,
+  type PromptInputMessage,
 } from "@/components/ai-elements/prompt-input"
 import {
   Tool,
@@ -57,9 +58,12 @@ export function AgentChat({ agentId, initialMessages }: AgentChatProps) {
 
   const isBusy = status === "submitted" || status === "streaming"
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const text = input.trim()
+  // PromptInput's onSubmit contract: AI Elements gathers files + the
+  // textarea text and hands us a structured `PromptInputMessage`.
+  // The raw FormEvent is the second argument and we do NOT need to call
+  // preventDefault on it — the component already does.
+  function handleSubmit(message: PromptInputMessage) {
+    const text = (message.text ?? "").trim()
     if (!text || isBusy) return
     sendMessage({ text })
     setInput("")
@@ -99,19 +103,14 @@ export function AgentChat({ agentId, initialMessages }: AgentChatProps) {
           placeholder="Ask about your inbox…"
           disabled={isBusy}
         />
-        <PromptInputToolbar>
+        <PromptInputFooter>
           <div />
           <PromptInputSubmit
-            status={isBusy ? "streaming" : undefined}
-            onClick={(event) => {
-              if (isBusy) {
-                event.preventDefault()
-                stop()
-              }
-            }}
+            status={status}
+            onStop={stop}
             disabled={!isBusy && input.trim().length === 0}
           />
-        </PromptInputToolbar>
+        </PromptInputFooter>
       </PromptInput>
     </div>
   )
@@ -142,32 +141,33 @@ function ChatMessage({ message }: { message: UIMessage }) {
           }
 
           // Tool parts: `tool-*` (static) and `dynamic-tool` both satisfy ToolPart.
-          if (
-            part.type === "dynamic-tool" ||
-            (typeof part.type === "string" && part.type.startsWith("tool-"))
-          ) {
+          // ToolHeader takes a discriminated union on `type` so we branch.
+          if (part.type === "dynamic-tool") {
             const toolPart = part as ToolPart
             return (
               <Tool key={key} className="-mx-2">
                 <ToolHeader
-                  type={toolPart.type}
+                  type="dynamic-tool"
+                  state={toolPart.state}
+                  toolName={
+                    // `DynamicToolUIPart` exposes the runtime tool name.
+                    (toolPart as { toolName: string }).toolName
+                  }
+                />
+                <ToolBody part={toolPart} />
+              </Tool>
+            )
+          }
+
+          if (typeof part.type === "string" && part.type.startsWith("tool-")) {
+            const toolPart = part as ToolPart
+            return (
+              <Tool key={key} className="-mx-2">
+                <ToolHeader
+                  type={toolPart.type as Exclude<ToolPart["type"], "dynamic-tool">}
                   state={toolPart.state}
                 />
-                <ToolContent>
-                  <ToolInput input={toolPart.input} />
-                  {toolPart.state === "output-available" && (
-                    <ToolOutput
-                      output={toolPart.output}
-                      errorText={undefined}
-                    />
-                  )}
-                  {toolPart.state === "output-error" && (
-                    <ToolOutput
-                      output={undefined}
-                      errorText={toolPart.errorText}
-                    />
-                  )}
-                </ToolContent>
+                <ToolBody part={toolPart} />
               </Tool>
             )
           }
@@ -176,5 +176,24 @@ function ChatMessage({ message }: { message: UIMessage }) {
         })}
       </MessageContent>
     </Message>
+  )
+}
+
+/**
+ * Shared body for tool parts: renders the input and, once available, either
+ * the output or the error. Pulled out so both branches of the header union
+ * share the exact same markup.
+ */
+function ToolBody({ part }: { part: ToolPart }) {
+  return (
+    <ToolContent>
+      <ToolInput input={part.input} />
+      {part.state === "output-available" && (
+        <ToolOutput output={part.output} errorText={undefined} />
+      )}
+      {part.state === "output-error" && (
+        <ToolOutput output={undefined} errorText={part.errorText} />
+      )}
+    </ToolContent>
   )
 }
