@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm"
 import {
   pgTable,
   text,
@@ -5,6 +6,7 @@ import {
   boolean,
   integer,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core"
 
 // Better Auth tables
@@ -85,6 +87,10 @@ export const agent = pgTable(
       .notNull()
       .default([1, 2, 3, 4, 5]), // ISO weekdays, 1=Mon..7=Sun
     config: text("config"), // JSON blob for kind-specific options
+    // Name of the persistent Vercel Sandbox this agent uses for durable
+    // work. NULL until the first run provisions it; once set, subsequent
+    // runs resume the same sandbox by name.
+    sandboxName: text("sandbox_name"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -95,6 +101,9 @@ export const agent = pgTable(
   (t) => ({
     userIdx: index("agent_user_idx").on(t.userId),
     kindIdx: index("agent_kind_idx").on(t.kind),
+    sandboxNameIdx: uniqueIndex("agent_sandbox_name_idx")
+      .on(t.sandboxName)
+      .where(sql`${t.sandboxName} IS NOT NULL`),
   }),
 )
 

@@ -10,7 +10,8 @@ CREATE TABLE "runs" (
 	"completed_at" timestamp with time zone,
 	"emails_scanned" integer DEFAULT 0 NOT NULL,
 	"error" text,
-	"agent_id" text
+	"agent_id" text,
+	"scheduled_for" timestamp with time zone
 );
 --> statement-breakpoint
 CREATE TABLE "user" (
