@@ -49,8 +49,11 @@ export const auth = betterAuth({
       ...staticTrustedOrigins,
     ]
 
-    if (!isProduction) {
-      const originHeader = request.headers.get("origin") || request.headers.get("referer")
+    // `request` can be undefined when Better Auth calls this from
+    // non-HTTP contexts (e.g. during initialization), so guard it.
+    if (!isProduction && request && typeof request.headers?.get === "function") {
+      const originHeader =
+        request.headers.get("origin") || request.headers.get("referer")
       if (originHeader) {
         try {
           origins.push(new URL(originHeader).origin)
