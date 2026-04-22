@@ -1,30 +1,42 @@
 import { Suspense } from "react"
-import { notFound } from "next/navigation"
 import Link from "next/link"
+import { notFound } from "next/navigation"
 import { requireSession } from "@/lib/auth-guard"
 import {
   getAgentByIdForUser,
-  getRunsForAgent,
-  getLatestRunForAgent,
   getDigestWithItems,
+  getLatestRunForAgent,
+  getRunsForAgent,
 } from "@/lib/data"
-import { RunStatus } from "@/components/run-status"
 import { RunProgress } from "@/components/run-progress"
+import { RunStatus } from "@/components/run-status"
 import { DigestView } from "@/components/digest-view"
-import { formatRelative, formatDateTime } from "@/lib/format"
-import type { Run } from "@/lib/db/schema"
+import { TriggerButton } from "@/components/trigger-button"
+import { formatDateTime, formatRelative } from "@/lib/format"
+import { AGENT_KINDS } from "@/workflows/agents/registry"
+import type { AgentKind, Run } from "@/lib/db/schema"
 
 type Params = Promise<{ agentId: string }>
 
-export default function AgentOverviewPage({ params }: { params: Params }) {
+/**
+ * Full agent overview surface: kind badge, name, schedule, primary
+ * actions, last-run state, and run history. Rendered by both
+ * `/agents/:id` (for non-chat kinds) and `/agents/:id/about` so the
+ * content stays in one place.
+ *
+ * Owns its own `<Suspense>` boundary so the chat-capable redirect path
+ * on `/agents/:id` doesn't pay for its data fetches when it's only going
+ * to navigate away.
+ */
+export function AgentOverview({ params }: { params: Params }) {
   return (
     <Suspense fallback={<OverviewSkeleton />}>
-      <AgentOverview params={params} />
+      <AgentOverviewBody params={params} />
     </Suspense>
   )
 }
 
-async function AgentOverview({ params }: { params: Params }) {
+async function AgentOverviewBody({ params }: { params: Params }) {
   const { agentId } = await params
   const session = await requireSession()
   const agent = await getAgentByIdForUser(agentId, session.user.id)
@@ -35,8 +47,38 @@ async function AgentOverview({ params }: { params: Params }) {
     getRunsForAgent(agent.id, 20),
   ])
 
+  const meta = AGENT_KINDS[agent.kind as AgentKind]
+
   return (
     <>
+      <header className="mb-10 flex flex-col gap-6">
+        <div className="flex flex-col gap-1.5">
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            <span>{meta?.label ?? agent.kind}</span>
+            {!agent.enabled && (
+              <span className="rounded-sm border border-border px-1.5 py-0.5 text-[10px] tracking-wider">
+                PAUSED
+              </span>
+            )}
+          </p>
+          <h1 className="font-serif text-4xl font-medium leading-tight tracking-tight md:text-5xl">
+            {agent.name}
+          </h1>
+          <p className="font-mono text-xs text-muted-foreground">
+            {formatDays(agent.scheduleDays)} · {agent.scheduleTime}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <TriggerButton agentId={agent.id} />
+          <Link
+            href={`/agents/${agent.id}/edit`}
+            className="inline-flex items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
+          >
+            Configure
+          </Link>
+        </div>
+      </header>
+
       <section>
         <div className="mb-8 flex items-baseline justify-between gap-4">
           <h2 className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
@@ -136,11 +178,37 @@ async function LastRunBody({ latest }: { latest: Run | null }) {
   )
 }
 
+function formatDays(days: number[]): string {
+  if (days.length === 7) return "Every day"
+  const weekdays = [1, 2, 3, 4, 5]
+  if (weekdays.every((d) => days.includes(d)) && days.length === 5) {
+    return "Weekdays"
+  }
+  const names = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+  return days
+    .slice()
+    .sort((a, b) => a - b)
+    .map((d) => names[d] ?? "")
+    .filter(Boolean)
+    .join(" · ")
+}
+
 function OverviewSkeleton() {
   return (
-    <div className="border-t border-border pt-10">
+    <>
+      <header className="mb-10 flex flex-col gap-6">
+        <div className="flex flex-col gap-2">
+          <div className="h-3 w-24 animate-pulse rounded-sm bg-muted" />
+          <div className="h-10 w-64 animate-pulse rounded-sm bg-muted" />
+          <div className="h-3 w-40 animate-pulse rounded-sm bg-muted" />
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-24 animate-pulse rounded-md bg-muted" />
+          <div className="h-9 w-24 animate-pulse rounded-md bg-muted" />
+        </div>
+      </header>
       <div className="mb-6 h-3 w-20 animate-pulse rounded-sm bg-muted" />
       <div className="h-48 w-full animate-pulse rounded-sm bg-muted" />
-    </div>
+    </>
   )
 }

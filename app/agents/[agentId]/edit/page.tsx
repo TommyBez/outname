@@ -3,20 +3,22 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { requireSession } from "@/lib/auth-guard"
 import { getAgentByIdForUser } from "@/lib/data"
-import { AppShell } from "@/components/app-shell"
 import { AgentForm } from "@/components/agent-form"
 import { updateAgentAction, deleteAgentAction } from "@/lib/agent-actions"
 import { AGENT_KINDS } from "@/workflows/agents/registry"
 
 type Params = Promise<{ agentId: string }>
 
+/**
+ * Agent configuration form. The outer shell (sidebar + top bar) now
+ * comes from `app/agents/[agentId]/layout.tsx`, so this page only owns
+ * its own content tree + Suspense boundary.
+ */
 export default function AgentEditPage({ params }: { params: Params }) {
   return (
-    <AppShell>
-      <Suspense fallback={<EditSkeleton />}>
-        <AgentEdit params={params} />
-      </Suspense>
-    </AppShell>
+    <Suspense fallback={<EditSkeleton />}>
+      <AgentEdit params={params} />
+    </Suspense>
   )
 }
 
