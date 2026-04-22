@@ -9,7 +9,7 @@ import {
   Info,
   MoreHorizontal,
   Settings as SettingsIcon,
-  Sparkles,
+  Play,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -141,7 +141,7 @@ export function ChatHeader({
               void handleTriggerNow()
             }}
           >
-            <Sparkles className="mr-2 size-3.5" />
+            <Play className="mr-2 size-3.5" />
             {isTriggering ? "Starting…" : "Trigger now"}
           </DropdownMenuItem>
         </DropdownMenuContent>
