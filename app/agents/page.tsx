@@ -52,10 +52,10 @@ async function AgentsListBody() {
   if (withLatest.length === 0) {
     return (
       <div className="border-t border-border pt-10">
-        <p className="font-serif text-2xl leading-snug">Nothing scheduled.</p>
+        <p className="font-serif text-2xl leading-snug">No agents yet.</p>
         <p className="mt-3 text-sm text-muted-foreground">
           Add an agent to automate recurring work like your morning email
-          brief.
+          brief, then trigger it manually whenever you want a fresh run.
         </p>
       </div>
     )
@@ -93,10 +93,6 @@ function AgentListRow({ agent, latest }: { agent: Agent; latest: Run | null }) {
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs text-muted-foreground md:flex-col md:items-end md:gap-y-1">
-        <span>
-          {agent.scheduleTime} · {agent.scheduleDays.length}d/wk
-        </span>
-        <span className="md:hidden">·</span>
         <span>{latest ? formatRelative(latest.startedAt) : "Never run"}</span>
       </div>
       <span

@@ -90,9 +90,6 @@ function AgentOverviewHeader({
         <h1 className="font-serif text-4xl font-medium leading-tight tracking-tight md:text-5xl">
           {agent.name}
         </h1>
-        <p className="font-mono text-xs text-muted-foreground">
-          {formatDays(agent.scheduleDays)} · {agent.scheduleTime}
-        </p>
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <TriggerButton agentId={agent.id} />
@@ -133,12 +130,12 @@ async function LastRunBody({ latest }: { latest: Run | null }) {
   if (!latest) {
     return (
       <p className="text-sm text-muted-foreground">
-        No runs yet. Trigger one manually or wait for the next scheduled slot.
+        No runs yet. Trigger one manually to see results here.
       </p>
     )
   }
 
-  if (latest.status === "running" || latest.status === "scheduled") {
+  if (latest.status === "running") {
     return <RunProgress key={latest.id} runId={latest.id} />
   }
 
@@ -208,21 +205,6 @@ async function AgentHistorySection({ agentId }: { agentId: string }) {
   )
 }
 
-function formatDays(days: number[]): string {
-  if (days.length === 7) return "Every day"
-  const weekdays = [1, 2, 3, 4, 5]
-  if (weekdays.every((d) => days.includes(d)) && days.length === 5) {
-    return "Weekdays"
-  }
-  const names = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-  return days
-    .slice()
-    .sort((a, b) => a - b)
-    .map((d) => names[d] ?? "")
-    .filter(Boolean)
-    .join(" · ")
-}
-
 function OverviewSkeleton() {
   return (
     <>
@@ -230,7 +212,6 @@ function OverviewSkeleton() {
         <div className="flex flex-col gap-2">
           <div className="h-3 w-24 animate-pulse rounded-sm bg-muted" />
           <div className="h-10 w-64 animate-pulse rounded-sm bg-muted" />
-          <div className="h-3 w-40 animate-pulse rounded-sm bg-muted" />
         </div>
         <div className="flex items-center gap-3">
           <div className="h-9 w-24 animate-pulse rounded-md bg-muted" />

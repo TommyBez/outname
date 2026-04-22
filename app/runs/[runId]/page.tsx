@@ -61,7 +61,7 @@ async function RunDetail({ params }: { params: Promise<{ runId: string }> }) {
     <>
       <header className="mb-12 flex flex-col gap-4 md:mb-16">
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {run.trigger} run
+          Run
         </p>
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <h1 className="font-serif text-3xl font-medium leading-tight tracking-tight text-balance md:text-4xl">
