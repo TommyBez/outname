@@ -62,7 +62,7 @@ export function AppSidebar({ sidebarExtras }: AppSidebarProps = {}) {
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      <SidebarHeader className="border-b border-sidebar-border px-3 py-4">
+      <SidebarHeader className="px-3 py-4">
         <Link
           href="/"
           className="flex items-center gap-2 font-mono text-sm font-medium uppercase tracking-[0.18em] text-foreground transition-colors hover:text-foreground/80"
@@ -126,7 +126,7 @@ export function AppSidebar({ sidebarExtras }: AppSidebarProps = {}) {
 export function AppSidebarFallback() {
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      <SidebarHeader className="border-b border-sidebar-border px-3 py-4">
+      <SidebarHeader className="px-3 py-4">
         <div className="flex items-center gap-2 font-mono text-sm font-medium uppercase tracking-[0.18em] text-foreground">
           <span
             aria-hidden
