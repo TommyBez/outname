@@ -18,10 +18,6 @@ export function runsIndexTag() {
   return "runs-index"
 }
 
-export function userSettingsTag(userId: string) {
-  return `user-settings-${userId}`
-}
-
 export function gmailConnectionTag(userId: string) {
   return `gmail-connection-${userId}`
 }

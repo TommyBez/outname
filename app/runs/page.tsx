@@ -62,7 +62,7 @@ async function RunList() {
                 {formatDateTime(run.startedAt)}
               </span>
               <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-                {run.trigger}
+                {run.id}
               </span>
             </div>
             <RunStatus runId={run.id} initialStatus={run.status as any} showTime={false} />

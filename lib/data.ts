@@ -6,11 +6,9 @@ import {
   runs,
   runResult,
   agent,
-  userSettings,
   type Run,
   type RunResult,
   type Agent,
-  type UserSettings,
 } from "@/lib/db/schema"
 import {
   agentRunsTag,
@@ -18,7 +16,6 @@ import {
   runTag,
   runsIndexTag,
   userAgentsTag,
-  userSettingsTag,
 } from "@/lib/cache-tags"
 
 export async function getLatestRun(): Promise<Run | null> {
@@ -159,39 +156,3 @@ export async function getCachedRunsForAgent(
   return getRunsForAgent(agentId, limit)
 }
 
-export async function getUserSettings(
-  userId: string,
-): Promise<UserSettings | null> {
-  const [row] = await db
-    .select()
-    .from(userSettings)
-    .where(eq(userSettings.userId, userId))
-    .limit(1)
-  return row ?? null
-}
-
-export async function getCachedUserSettings(
-  userId: string,
-): Promise<UserSettings | null> {
-  "use cache"
-
-  cacheLife("minutes")
-  cacheTag(userSettingsTag(userId))
-  return getUserSettings(userId)
-}
-
-/**
- * Return the tz we should interpret schedules in. Defaults to UTC.
- */
-export async function getUserTimezone(userId: string): Promise<string> {
-  const row = await getUserSettings(userId)
-  return row?.timezone ?? "UTC"
-}
-
-export async function getCachedUserTimezone(userId: string): Promise<string> {
-  "use cache"
-
-  cacheLife("minutes")
-  cacheTag(userSettingsTag(userId))
-  return getUserTimezone(userId)
-}

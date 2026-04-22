@@ -1,4 +1,4 @@
-import { getWritable, sleep } from "workflow"
+import { getWritable } from "workflow"
 import type { UIMessageChunk } from "ai"
 import {
   shutdownAgentSandbox,
@@ -17,7 +17,6 @@ import { prepareBrief } from "./steps/prepare-brief"
  *
  * Orchestrates the lifecycle around the Daily Email Brief agent:
  *
- *   0. (optional) sleep until the user's local scheduled time
  *   1. initRun — emits the "started" event
  *   2. prepareBrief — validates the Gmail OAuth connection and computes
  *      the since-cursor from the last completed run
@@ -45,16 +44,10 @@ import { prepareBrief } from "./steps/prepare-brief"
 export async function dailyEmailBrief(input: {
   runId: string
   agentId: string
-  scheduledForMs?: number
 }) {
   "use workflow"
 
-  const { runId, agentId, scheduledForMs } = input
-
-  // Cron triggers pass a future `scheduledForMs`; manual triggers do not.
-  if (scheduledForMs && scheduledForMs > Date.now()) {
-    await sleep(new Date(scheduledForMs))
-  }
+  const { runId, agentId } = input
 
   // getWritable() is used so the Observability dashboard shows agent output.
   const writable = getWritable<UIMessageChunk>()

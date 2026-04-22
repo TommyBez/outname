@@ -3,21 +3,6 @@ import type { Agent, Run } from "@/lib/db/schema"
 import { AgentLiveStatus } from "@/components/agent-live-status"
 import { formatRelative } from "@/lib/format"
 
-function formatDays(days: number[]): string {
-  if (days.length === 7) return "Every day"
-  const weekdays = [1, 2, 3, 4, 5]
-  if (weekdays.every((d) => days.includes(d)) && days.length === 5) {
-    return "Weekdays"
-  }
-  const names = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-  return days
-    .slice()
-    .sort((a, b) => a - b)
-    .map((d) => names[d] ?? "")
-    .filter(Boolean)
-    .join(" · ")
-}
-
 /**
  * Compact, clickable card shown on the Today screen.
  *
@@ -54,9 +39,6 @@ export function AgentTodayCard({
         <h2 className="font-serif text-3xl font-medium leading-tight tracking-tight text-pretty">
           {agent.name}
         </h2>
-        <p className="font-mono text-xs text-muted-foreground">
-          {formatDays(agent.scheduleDays)} · {agent.scheduleTime}
-        </p>
       </div>
 
       <div className="flex items-center justify-between gap-6 border-t border-border pt-5">
@@ -83,7 +65,7 @@ function CardStatus({ latestRun }: { latestRun: Run | null }) {
     )
   }
 
-  if (latestRun.status === "running" || latestRun.status === "scheduled") {
+  if (latestRun.status === "running") {
     return <AgentLiveStatus runId={latestRun.id} />
   }
 

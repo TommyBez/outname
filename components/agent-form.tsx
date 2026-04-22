@@ -1,19 +1,8 @@
 "use client"
 
-import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import type { AgentKindDefinition } from "@/workflows/agents/registry"
 import type { Agent } from "@/lib/db/schema"
-
-const DAY_OPTIONS = [
-  { value: 1, short: "Mon" },
-  { value: 2, short: "Tue" },
-  { value: 3, short: "Wed" },
-  { value: 4, short: "Thu" },
-  { value: 5, short: "Fri" },
-  { value: 6, short: "Sat" },
-  { value: 7, short: "Sun" },
-]
 
 interface CreateProps {
   mode: "create"
@@ -35,23 +24,7 @@ export function AgentForm(props: CreateProps | EditProps) {
     props.mode === "create"
       ? props.kinds[0]?.defaultName ?? ""
       : props.agent.name
-  const initialTime =
-    props.mode === "create"
-      ? props.kinds[0]?.defaultScheduleTime ?? "08:00"
-      : props.agent.scheduleTime
-  const initialDays =
-    props.mode === "create"
-      ? props.kinds[0]?.defaultScheduleDays ?? [1, 2, 3, 4, 5]
-      : props.agent.scheduleDays
   const initialEnabled = props.mode === "create" ? true : props.agent.enabled
-
-  const [days, setDays] = useState<number[]>(initialDays)
-
-  function toggleDay(d: number) {
-    setDays((prev) =>
-      prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort((a, b) => a - b),
-    )
-  }
 
   return (
     <form action={props.action} className="flex flex-col gap-10">
@@ -97,47 +70,6 @@ export function AgentForm(props: CreateProps | EditProps) {
         />
       </Section>
 
-      <Section label="Time">
-        <input
-          type="time"
-          name="scheduleTime"
-          required
-          defaultValue={initialTime}
-          className="rounded-md border border-border bg-background px-3 py-2 font-mono text-base outline-none transition-colors focus:border-foreground"
-        />
-        <p className="mt-2 text-xs text-muted-foreground">
-          Interpreted in your timezone (change it in Settings).
-        </p>
-      </Section>
-
-      <Section label="Days">
-        <div className="flex flex-wrap gap-2">
-          {DAY_OPTIONS.map((d) => {
-            const checked = days.includes(d.value)
-            return (
-              <label
-                key={d.value}
-                className={`cursor-pointer select-none rounded-md border px-3 py-2 font-mono text-sm uppercase tracking-wider transition-colors ${
-                  checked
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-border text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  name="scheduleDays"
-                  value={d.value}
-                  checked={checked}
-                  onChange={() => toggleDay(d.value)}
-                  className="sr-only"
-                />
-                {d.short}
-              </label>
-            )
-          })}
-        </div>
-      </Section>
-
       {props.mode === "edit" && (
         <Section label="Status">
           <label className="flex items-center gap-3">
@@ -150,8 +82,8 @@ export function AgentForm(props: CreateProps | EditProps) {
             <span className="font-serif text-lg">Enabled</span>
           </label>
           <p className="mt-1 text-xs text-muted-foreground">
-            Disabled agents are skipped by the daily scheduler but can still be
-            triggered manually.
+            Disabled agents can still be triggered manually, but will not
+            appear in day-to-day summaries.
           </p>
         </Section>
       )}

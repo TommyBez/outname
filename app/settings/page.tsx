@@ -3,12 +3,8 @@ import Link from "next/link"
 import { getSession, requireSession } from "@/lib/auth-guard"
 import { AppShell } from "@/components/app-shell"
 import { GmailConnect } from "@/components/gmail-connect"
-import { TimezonePicker } from "@/components/timezone-picker"
 import { getCachedGmailConnectionForUser } from "@/lib/google-oauth"
-import {
-  getCachedAgentsForUser,
-  getCachedUserSettings,
-} from "@/lib/data"
+import { getCachedAgentsForUser } from "@/lib/data"
 import { AccountSkeleton, GmailSectionSkeleton } from "@/components/skeletons"
 
 export default function SettingsPage({
@@ -35,12 +31,6 @@ export default function SettingsPage({
         <Section title="Gmail">
           <Suspense fallback={<GmailSectionSkeleton />}>
             <GmailSection />
-          </Suspense>
-        </Section>
-
-        <Section title="Timezone">
-          <Suspense fallback={<div className="h-10" />}>
-            <TimezoneSection />
           </Suspense>
         </Section>
 
@@ -103,12 +93,6 @@ async function GmailSection() {
   return <GmailConnect connection={connection} />
 }
 
-async function TimezoneSection() {
-  const session = await requireSession()
-  const settings = await getCachedUserSettings(session.user.id)
-  return <TimezonePicker current={settings?.timezone ?? "UTC"} />
-}
-
 async function AgentsSummarySection() {
   const session = await requireSession()
   const agents = await getCachedAgentsForUser(session.user.id)
@@ -121,8 +105,7 @@ async function AgentsSummarySection() {
           enabled
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Scheduling and per-agent configuration live on each agent&apos;s
-          page.
+          Per-agent configuration lives on each agent&apos;s page.
         </p>
       </div>
       <Link

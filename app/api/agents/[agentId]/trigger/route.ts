@@ -7,8 +7,7 @@ import { getGmailConnectionForUser } from "@/lib/google-oauth"
 import { getAgentById, startAgentRun } from "@/lib/start-agent-run"
 
 /**
- * Manually trigger a run for a single agent. Cron scheduling goes through
- * `/api/cron/schedule` which uses the same startAgentRun helper.
+ * Manually trigger a run for a single agent.
  */
 export async function POST(
   _req: NextRequest,
@@ -48,11 +47,7 @@ export async function POST(
   }
 
   try {
-    const { runId, workflowRunId } = await startAgentRun({
-      agent,
-      trigger: "manual",
-      scheduledFor: null, // manual = run immediately
-    })
+    const { runId, workflowRunId } = await startAgentRun({ agent })
 
     revalidateTag(agentRunsTag(agent.id), "max")
     revalidateTag(runTag(runId), "max")
