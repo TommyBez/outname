@@ -73,7 +73,7 @@ async function AgentEdit({ params }: { params: Params }) {
             Danger zone
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Deleting this agent removes all of its run history and digests.
+            Deleting this agent removes all of its run history and results.
           </p>
         </div>
         <form action={remove} className="self-start sm:self-auto">

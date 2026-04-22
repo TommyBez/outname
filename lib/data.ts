@@ -4,13 +4,11 @@ import { cacheLife, cacheTag } from "next/cache"
 import { db } from "@/lib/db"
 import {
   runs,
-  digests,
-  digestItems,
+  runResult,
   agent,
   userSettings,
   type Run,
-  type Digest,
-  type DigestItem,
+  type RunResult,
   type Agent,
   type UserSettings,
 } from "@/lib/db/schema"
@@ -53,28 +51,27 @@ export async function getCachedRunById(runId: string): Promise<Run | null> {
   return getRunById(runId)
 }
 
-export async function getDigestForRun(runId: string): Promise<Digest | null> {
-  const [row] = await db.select().from(digests).where(eq(digests.runId, runId)).limit(1)
+/**
+ * Fetch the single agent-agnostic text result attached to a run, if any.
+ * The row is keyed by `run_id` (PK), so there is at most one per run.
+ */
+export async function getRunResult(runId: string): Promise<RunResult | null> {
+  const [row] = await db
+    .select()
+    .from(runResult)
+    .where(eq(runResult.runId, runId))
+    .limit(1)
   return row ?? null
 }
 
-export async function getDigestItems(digestId: string): Promise<DigestItem[]> {
-  return db.select().from(digestItems).where(eq(digestItems.digestId, digestId))
-}
-
-export async function getDigestWithItems(runId: string) {
-  const digest = await getDigestForRun(runId)
-  if (!digest) return { digest: null, items: [] }
-  const items = await getDigestItems(digest.id)
-  return { digest, items }
-}
-
-export async function getCachedDigestWithItems(runId: string) {
+export async function getCachedRunResult(
+  runId: string,
+): Promise<RunResult | null> {
   "use cache"
 
   cacheLife("hours")
   cacheTag(runTag(runId))
-  return getDigestWithItems(runId)
+  return getRunResult(runId)
 }
 
 export async function getAgentsForUser(userId: string): Promise<Agent[]> {

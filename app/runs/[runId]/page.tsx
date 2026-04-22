@@ -2,12 +2,12 @@ import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { requireSession } from "@/lib/auth-guard"
-import { getCachedDigestWithItems, getCachedRunById } from "@/lib/data"
+import { getCachedRunById, getCachedRunResult } from "@/lib/data"
 import { AppShell } from "@/components/app-shell"
-import { DigestView } from "@/components/digest-view"
+import { RunResultView } from "@/components/run-result-view"
 import { RunStatus } from "@/components/run-status"
 import { formatDateTime } from "@/lib/format"
-import { DigestSkeleton } from "@/components/skeletons"
+import { RunResultSkeleton } from "@/components/skeletons"
 import { Skeleton } from "@/components/ui/skeleton"
 import { RunProgress } from "@/components/run-progress"
 
@@ -43,7 +43,7 @@ function DetailFallback() {
         </div>
         <Skeleton className="h-3 w-40" />
       </header>
-      <DigestSkeleton />
+      <RunResultSkeleton />
     </>
   )
 }
@@ -54,10 +54,8 @@ async function RunDetail({ params }: { params: Promise<{ runId: string }> }) {
   const run = await getCachedRunById(runId)
   if (!run) notFound()
 
-  const { digest, items } =
-    run.status === "completed"
-      ? await getCachedDigestWithItems(runId)
-      : { digest: null, items: [] }
+  const result =
+    run.status === "completed" ? await getCachedRunResult(runId) : null
 
   return (
     <>
@@ -71,9 +69,6 @@ async function RunDetail({ params }: { params: Promise<{ runId: string }> }) {
           </h1>
           <RunStatus runId={run.id} initialStatus={run.status as any} />
         </div>
-        <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-          {run.emailsScanned} email{run.emailsScanned === 1 ? "" : "s"} scanned
-        </p>
       </header>
 
       {run.status === "failed" ? (
@@ -90,7 +85,7 @@ async function RunDetail({ params }: { params: Promise<{ runId: string }> }) {
       ) : run.status === "running" ? (
         <RunProgress key={run.id} runId={run.id} />
       ) : (
-        <DigestView items={items} summary={digest?.summary ?? null} />
+        <RunResultView content={result?.content ?? null} />
       )}
     </>
   )

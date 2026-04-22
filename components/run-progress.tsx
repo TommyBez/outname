@@ -11,7 +11,8 @@ export function RunProgress({ runId }: { runId: string }) {
   const { steps, status, connected } = useRunStream(runId)
 
   // When the stream signals completion, refresh the server data so the
-  // dashboard re-renders with the new digest instead of the progress view.
+  // dashboard re-renders with the run's saved result instead of the
+  // progress view.
   useEffect(() => {
     if (status === "done" || status === "failed") {
       const t = setTimeout(() => router.refresh(), 400)

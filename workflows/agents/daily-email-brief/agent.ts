@@ -1,14 +1,14 @@
 import { DurableAgent } from "@workflow/ai/agent"
 import { z } from "zod"
 import { classifyAndSummarize } from "./steps/classify-and-summarize"
-import { persistDigest } from "./steps/persist-digest"
+import { persistRunResult } from "@/workflows/steps/persist-result"
 import { runGws } from "./sandbox/gws"
 
 /**
  * Shape of a Gmail message once normalized by the agent from the raw
- * gws output. Declared here so the classify / persist tool input schemas
- * can re-use it and so any workflow that embeds this agent as a sub-agent
- * tool can share the same contract.
+ * gws output. Declared here so the classify tool input schema can re-use
+ * it and so any workflow that embeds this agent as a sub-agent tool can
+ * share the same contract.
  */
 const gmailMessageSchema = z.object({
   id: z.string(),
@@ -17,17 +17,6 @@ const gmailMessageSchema = z.object({
   from: z.string(),
   snippet: z.string(),
   receivedAt: z.string(),
-})
-
-const classifiedSchema = z.object({
-  items: z.array(
-    z.object({
-      messageId: z.string(),
-      category: z.enum(["urgent", "reply", "fyi", "noise"]),
-      summary: z.string(),
-    }),
-  ),
-  overallSummary: z.string(),
 })
 
 /**
@@ -59,10 +48,16 @@ export interface DailyEmailBriefAgentContext {
  * Build a Daily Email Brief agent bound to a specific run or chat turn.
  *
  * The agent drives gws commands fully agentically via a single generic
- * `gws` tool — it decides what Gmail API calls to make, how to query, and
- * how to shape the results. The orchestrator only provides:
+ * `gws` tool — it decides what Gmail API calls to make, how to query,
+ * and how to shape the results. It also authors its own markdown digest
+ * and persists it via the agent-agnostic `persistResult` tool.
+ *
+ * The orchestrator only provides:
  *   - a live sandbox (binary staged, OAuth creds written)
- *   - deterministic tools for the non-Gmail parts (classify, persist)
+ *   - a deterministic `classifyAndSummarize` helper used purely for
+ *     triage reasoning
+ *   - a generic `persistResult` tool that writes a single markdown
+ *     document + optional metrics to `run_result`
  *
  * System prompt is capability-style (what the agent *can* do) rather
  * than script-style (a fixed sequence of steps), so the same instance
@@ -81,7 +76,7 @@ export function createDailyEmailBriefAgent(ctx: DailyEmailBriefAgentContext) {
       "- gws: execute a google-workspace-cli command in the agent's sandbox.",
       "  Returns { exitCode, stdout, stderr }. Gmail subcommands return JSON on stdout.",
       "- classifyAndSummarize: categorize a batch of emails (urgent/reply/fyi/noise) and produce summaries.",
-      "- persistDigest: save a structured daily digest to the database.",
+      "- persistResult: save the run's final output as a single markdown document (+ optional metrics).",
       "",
       "When the user asks you to produce the daily brief (or is a cron kickoff),",
       "follow this flow:",
@@ -96,14 +91,22 @@ export function createDailyEmailBriefAgent(ctx: DailyEmailBriefAgentContext) {
       "       - snippet: top-level `snippet`",
       "       - receivedAt: ISO 8601 parsed from the Date header, falling back to",
       "         `new Date(Number(internalDate)).toISOString()`.",
-      "  3. Call classifyAndSummarize with { messages }.",
-      "  4. Call persistDigest with { messages, classified }.",
-      "  5. Reply in one sentence with the counts, then stop.",
-      "  - If the list returns zero messages, still call classify + persist with empty arrays.",
+      "  3. Call classifyAndSummarize with { messages } to get per-message categories and summaries.",
+      "  4. Compose a markdown digest yourself using the classification result. Structure:",
+      "     - Start with a short overall summary paragraph (1–3 sentences).",
+      "     - Then one `## <Section>` per non-empty category in this order:",
+      "       Urgent, Needs a reply, FYI, Noise.",
+      "     - Under each section, one `-` list item per email formatted as:",
+      "       `**<Subject>** — <Sender> — <one-sentence summary>`",
+      "       Use `(no subject)` or `unknown` when a field is missing.",
+      "     - If there are zero new emails, the markdown should be a single line:",
+      "       `No new emails since the last run.`",
+      "  5. Call `persistResult` exactly once with `{ content: <markdown>, metrics: { emailsScanned: <count> } }`.",
+      "  6. Reply in one sentence confirming the brief was saved, then stop.",
       "",
       "When the user asks an ad-hoc question (chat):",
       "  - Use gws to fetch whatever Gmail data is needed.",
-      "  - Do NOT call persistDigest unless explicitly asked to save a digest.",
+      "  - Do NOT call persistResult unless explicitly asked to save a digest.",
       "  - Answer concisely in natural language with the information retrieved.",
       "",
       "Rules (always):",
@@ -128,7 +131,7 @@ export function createDailyEmailBriefAgent(ctx: DailyEmailBriefAgentContext) {
       },
       classifyAndSummarize: {
         description:
-          "Classify each email into urgent/reply/fyi/noise and produce a short summary for each plus an overall digest summary.",
+          "Classify each email into urgent/reply/fyi/noise and produce a short summary for each plus an overall digest summary. Use the result to author the final markdown digest.",
         inputSchema: z.object({
           messages: z.array(gmailMessageSchema),
         }),
@@ -136,15 +139,23 @@ export function createDailyEmailBriefAgent(ctx: DailyEmailBriefAgentContext) {
           return await classifyAndSummarize(messages)
         },
       },
-      persistDigest: {
+      persistResult: {
         description:
-          "Persist the classified digest to the database. Pass the original messages plus the classified items and overall summary. Only call this when explicitly producing a daily brief; do not call it for ad-hoc chat questions.",
+          "Persist the final run result as a single markdown document. Call this exactly once per run, only when explicitly producing a brief; do not call it for ad-hoc chat questions.",
         inputSchema: z.object({
-          messages: z.array(gmailMessageSchema),
-          classified: classifiedSchema,
+          content: z
+            .string()
+            .min(1)
+            .describe("Markdown body for this run's final result."),
+          metrics: z
+            .record(z.unknown())
+            .optional()
+            .describe(
+              'Optional per-run counts, e.g. { "emailsScanned": 12 }.',
+            ),
         }),
-        execute: async ({ messages, classified }) => {
-          return await persistDigest(runId, messages, classified)
+        execute: async ({ content, metrics }) => {
+          return await persistRunResult(runId, content, metrics)
         },
       },
     },
@@ -156,5 +167,5 @@ export function createDailyEmailBriefAgent(ctx: DailyEmailBriefAgentContext) {
  * timestamp context is baked in so the LLM doesn't have to compute it.
  */
 export function dailyEmailBriefKickoff(sinceIso: string, afterEpoch: number) {
-  return `Run the daily inbox review now. The previous completed run was at ${sinceIso} (Unix epoch seconds: ${afterEpoch}). List new Gmail messages after that cursor, classify them, and persist the digest.`
+  return `Run the daily inbox review now. The previous completed run was at ${sinceIso} (Unix epoch seconds: ${afterEpoch}). List new Gmail messages after that cursor, classify them, compose a markdown digest, and call persistResult to save it.`
 }
