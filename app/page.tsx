@@ -12,7 +12,7 @@ import { AgentTodayCard } from "@/components/agent-today-card"
 import {
   AgentCardSkeleton,
   ConnectionNoticeSkeleton,
-  DigestSkeleton,
+  RunResultSkeleton,
 } from "@/components/skeletons"
 import type { Agent } from "@/lib/db/schema"
 import { AGENT_KINDS } from "@/workflows/agents/registry"
@@ -53,7 +53,7 @@ async function DashboardContent() {
         <ConnectionNotice userId={session.user.id} />
       </Suspense>
 
-      <Suspense fallback={<DigestSkeleton />}>
+      <Suspense fallback={<RunResultSkeleton />}>
         <AgentsList userId={session.user.id} />
       </Suspense>
     </>
@@ -143,7 +143,7 @@ function DashboardContentFallback() {
   return (
     <>
       <ConnectionNoticeSkeleton />
-      <DigestSkeleton />
+      <RunResultSkeleton />
     </>
   )
 }

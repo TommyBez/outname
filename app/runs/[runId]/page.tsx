@@ -7,7 +7,7 @@ import { AppShell } from "@/components/app-shell"
 import { RunResultView } from "@/components/run-result-view"
 import { RunStatus } from "@/components/run-status"
 import { formatDateTime } from "@/lib/format"
-import { DigestSkeleton } from "@/components/skeletons"
+import { RunResultSkeleton } from "@/components/skeletons"
 import { Skeleton } from "@/components/ui/skeleton"
 import { RunProgress } from "@/components/run-progress"
 
@@ -43,7 +43,7 @@ function DetailFallback() {
         </div>
         <Skeleton className="h-3 w-40" />
       </header>
-      <DigestSkeleton />
+      <RunResultSkeleton />
     </>
   )
 }
