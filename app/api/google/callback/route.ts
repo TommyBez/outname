@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { requireSession } from "@/lib/auth-guard"
+import { gmailConnectionTag } from "@/lib/cache-tags"
 import {
   exchangeCodeForTokens,
   fetchUserEmail,
@@ -52,6 +54,9 @@ export async function GET(req: Request) {
       accessTokenExpiresAt: new Date(Date.now() + tokens.expires_in * 1000),
       scopes: tokens.scope,
     })
+    revalidateTag(gmailConnectionTag(session.user.id), "max")
+    revalidatePath("/settings")
+    revalidatePath("/")
     settingsUrl.searchParams.set("gmail", "connected")
     return NextResponse.redirect(settingsUrl)
   } catch (err: any) {

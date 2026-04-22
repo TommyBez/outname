@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
-import { and, eq } from "drizzle-orm"
+import { eq } from "drizzle-orm"
+import { revalidatePath, revalidateTag } from "next/cache"
+import { agentRunsTag, runTag, runsIndexTag } from "@/lib/cache-tags"
 import { db } from "@/lib/db"
 import { agent, userSettings } from "@/lib/db/schema"
 import { nextScheduledRun, schedulesFireToday } from "@/lib/scheduling"
@@ -58,6 +60,9 @@ export async function GET(req: NextRequest) {
         trigger: "cron",
         scheduledFor: next,
       })
+      revalidateTag(agentRunsTag(a.id), "max")
+      revalidateTag(runTag(runId), "max")
+      revalidateTag(runsIndexTag(), "max")
       scheduled.push({
         agentId: a.id,
         runId,
@@ -69,6 +74,12 @@ export async function GET(req: NextRequest) {
         reason: err instanceof Error ? err.message : String(err),
       })
     }
+  }
+
+  if (scheduled.length > 0) {
+    revalidatePath("/runs")
+    revalidatePath("/agents")
+    revalidatePath("/")
   }
 
   return NextResponse.json({ scheduled, skipped, now: now.toISOString() })

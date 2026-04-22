@@ -112,3 +112,19 @@ export function AccountSkeleton() {
     </div>
   )
 }
+
+export function AgentCardSkeleton() {
+  return (
+    <div className="flex flex-col gap-5 py-10 first:pt-0 last:pb-0 md:px-2">
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-3 w-28 rounded-sm" />
+        <Skeleton className="h-10 w-56 rounded-sm" />
+        <Skeleton className="h-3 w-32 rounded-sm" />
+      </div>
+      <div className="flex items-center justify-between gap-6 border-t border-border pt-5">
+        <Skeleton className="h-4 w-48 rounded-sm" />
+        <Skeleton className="h-4 w-16 rounded-sm" />
+      </div>
+    </div>
+  )
+}

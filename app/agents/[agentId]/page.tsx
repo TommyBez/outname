@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import { notFound, redirect } from "next/navigation"
 import { requireSession } from "@/lib/auth-guard"
-import { getAgentByIdForUser } from "@/lib/data"
+import { getCachedAgentByIdForUser } from "@/lib/data"
 import { getAgentRuntime } from "@/lib/agent-runtime-registry"
 import { AgentOverview } from "@/components/agent-overview"
 import type { AgentKind } from "@/lib/db/schema"
@@ -27,7 +27,7 @@ export default function AgentRootPage({ params }: { params: Params }) {
 async function ResolveAgentRoot({ params }: { params: Params }) {
   const { agentId } = await params
   const session = await requireSession()
-  const agent = await getAgentByIdForUser(agentId, session.user.id)
+  const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
   if (!agent) notFound()
 
   const runtime = getAgentRuntime(agent.kind as AgentKind)

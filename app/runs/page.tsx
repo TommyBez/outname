@@ -1,6 +1,7 @@
 import { Suspense } from "react"
 import Link from "next/link"
-import { getAllRuns } from "@/lib/data"
+import { requireSession } from "@/lib/auth-guard"
+import { getCachedAllRuns } from "@/lib/data"
 import { AppShell } from "@/components/app-shell"
 import { RunStatus } from "@/components/run-status"
 import { formatDateTime } from "@/lib/format"
@@ -34,7 +35,8 @@ export default function RunsPage() {
 }
 
 async function RunList() {
-  const runs = await getAllRuns()
+  await requireSession()
+  const runs = await getCachedAllRuns()
 
   if (runs.length === 0) {
     return (

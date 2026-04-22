@@ -1,6 +1,7 @@
 import "server-only"
 import { and, asc, desc, eq, isNull } from "drizzle-orm"
 import type { UIMessage } from "ai"
+import { cacheLife, cacheTag } from "next/cache"
 import { db } from "@/lib/db"
 import {
   chatConversation,
@@ -9,6 +10,7 @@ import {
   type ChatMessage,
   type ChatRole,
 } from "@/lib/db/schema"
+import { conversationListTag } from "@/lib/cache-tags"
 
 /**
  * Stable id generator for chat conversations. Matches the existing
@@ -120,6 +122,16 @@ export async function listConversationsForAgent(
     .from(chatConversation)
     .where(eq(chatConversation.agentId, agentId))
     .orderBy(desc(chatConversation.updatedAt))
+}
+
+export async function getCachedConversationListForAgent(
+  agentId: string,
+): Promise<ChatConversation[]> {
+  "use cache"
+
+  cacheLife("minutes")
+  cacheTag(conversationListTag(agentId))
+  return listConversationsForAgent(agentId)
 }
 
 /**

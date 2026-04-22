@@ -1,9 +1,11 @@
 import { headers } from "next/headers"
 import { NextResponse, type NextRequest } from "next/server"
+import { revalidateTag } from "next/cache"
 import { createUIMessageStreamResponse, type UIMessage } from "ai"
 import { start } from "workflow/api"
 import { auth } from "@/lib/auth"
-import { getGmailConnection } from "@/lib/google-oauth"
+import { conversationListTag } from "@/lib/cache-tags"
+import { getGmailConnectionForUser } from "@/lib/google-oauth"
 import { getAgentById } from "@/lib/start-agent-run"
 import { getAgentRuntime } from "@/lib/agent-runtime-registry"
 import { isAgentKind } from "@/workflows/agents/registry"
@@ -62,7 +64,7 @@ export async function POST(
   // Kind-specific pre-flight. For now the only kind that needs any is
   // daily-email-brief → Gmail OAuth. Mirrors the gate in the trigger route.
   if (agent.kind === "daily-email-brief") {
-    const conn = await getGmailConnection()
+    const conn = await getGmailConnectionForUser(agent.userId)
     if (!conn) {
       return NextResponse.json(
         {
@@ -131,6 +133,8 @@ export async function POST(
       parts: last.parts,
       metadata: last.metadata,
     })
+
+    revalidateTag(conversationListTag(agent.id), "max")
   }
 
   const run = await start(agentChat, [

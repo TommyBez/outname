@@ -81,6 +81,7 @@ export async function agentChat(input: {
     ])
 
     await persistAssistantTurn({
+      agentId,
       conversationId,
       uiMessages: result.uiMessages ?? [],
     })

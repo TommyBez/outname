@@ -1,7 +1,10 @@
 import { Suspense } from "react"
 import Link from "next/link"
 import { requireSession } from "@/lib/auth-guard"
-import { getAgentsForUser, getLatestRunForAgent } from "@/lib/data"
+import {
+  getCachedAgentsForUser,
+  getCachedLatestRunForAgent,
+} from "@/lib/data"
 import { AppShell } from "@/components/app-shell"
 import { AGENT_KINDS } from "@/workflows/agents/registry"
 import { formatRelative } from "@/lib/format"
@@ -36,13 +39,13 @@ export default function AgentsListPage() {
 
 async function AgentsListBody() {
   const session = await requireSession()
-  const agents = await getAgentsForUser(session.user.id)
+  const agents = await getCachedAgentsForUser(session.user.id)
 
   // Parallelize latest-run lookups
   const withLatest = await Promise.all(
     agents.map(async (a) => ({
       agent: a,
-      latest: await getLatestRunForAgent(a.id),
+      latest: await getCachedLatestRunForAgent(a.id),
     })),
   )
 

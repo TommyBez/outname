@@ -2,18 +2,20 @@ import { Suspense } from "react"
 import Link from "next/link"
 import { requireSession } from "@/lib/auth-guard"
 import {
-  getAgentsForUser,
-  getLatestRunForAgent,
-  getDigestWithItems,
+  getCachedAgentsForUser,
+  getCachedDigestWithItems,
+  getCachedLatestRunForAgent,
 } from "@/lib/data"
-import { getGmailConnection } from "@/lib/google-oauth"
+import { getCachedGmailConnectionForUser } from "@/lib/google-oauth"
 import { AppShell } from "@/components/app-shell"
 import { TodayDate } from "@/components/today-date"
 import { AgentTodayCard } from "@/components/agent-today-card"
 import {
+  AgentCardSkeleton,
   ConnectionNoticeSkeleton,
   DigestSkeleton,
 } from "@/components/skeletons"
+import type { Agent } from "@/lib/db/schema"
 import { AGENT_KINDS } from "@/workflows/agents/registry"
 
 export default function DashboardPage() {
@@ -36,19 +38,31 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <Suspense fallback={<ConnectionNoticeSkeleton />}>
-        <ConnectionNotice />
-      </Suspense>
-
-      <Suspense fallback={<DigestSkeleton />}>
-        <AgentsList />
+      <Suspense fallback={<DashboardContentFallback />}>
+        <DashboardContent />
       </Suspense>
     </AppShell>
   )
 }
 
-async function ConnectionNotice() {
-  const connection = await getGmailConnection()
+async function DashboardContent() {
+  const session = await requireSession()
+
+  return (
+    <>
+      <Suspense fallback={<ConnectionNoticeSkeleton />}>
+        <ConnectionNotice userId={session.user.id} />
+      </Suspense>
+
+      <Suspense fallback={<DigestSkeleton />}>
+        <AgentsList userId={session.user.id} />
+      </Suspense>
+    </>
+  )
+}
+
+async function ConnectionNotice({ userId }: { userId: string }) {
+  const connection = await getCachedGmailConnectionForUser(userId)
   const notConnected = !connection
   const expired = !!connection && connection.status !== "active"
   if (!notConnected && !expired) return null
@@ -81,9 +95,8 @@ async function ConnectionNotice() {
   )
 }
 
-async function AgentsList() {
-  const session = await requireSession()
-  const agents = await getAgentsForUser(session.user.id)
+async function AgentsList({ userId }: { userId: string }) {
+  const agents = await getCachedAgentsForUser(userId)
 
   if (agents.length === 0) {
     return (
@@ -106,32 +119,38 @@ async function AgentsList() {
     <ul className="flex flex-col divide-y divide-border">
       {agents.map((a) => (
         <li key={a.id}>
-          <AgentCardContainer agentId={a.id} />
+          <Suspense fallback={<AgentCardSkeleton />}>
+            <AgentCardContainer agent={a} />
+          </Suspense>
         </li>
       ))}
     </ul>
   )
 }
 
-async function AgentCardContainer({ agentId }: { agentId: string }) {
-  const session = await requireSession()
-  const agents = await getAgentsForUser(session.user.id)
-  const a = agents.find((x) => x.id === agentId)
-  if (!a) return null
-
-  const latest = await getLatestRunForAgent(a.id)
+async function AgentCardContainer({ agent }: { agent: Agent }) {
+  const latest = await getCachedLatestRunForAgent(agent.id)
   const digest =
     latest && latest.status === "completed"
-      ? await getDigestWithItems(latest.id)
+      ? await getCachedDigestWithItems(latest.id)
       : null
 
-  const kindMeta = AGENT_KINDS[a.kind as keyof typeof AGENT_KINDS]
+  const kindMeta = AGENT_KINDS[agent.kind as keyof typeof AGENT_KINDS]
   return (
     <AgentTodayCard
-      agent={a}
-      kindLabel={kindMeta?.label ?? a.kind}
+      agent={agent}
+      kindLabel={kindMeta?.label ?? agent.kind}
       latestRun={latest}
       digestItems={digest?.items ?? null}
     />
+  )
+}
+
+function DashboardContentFallback() {
+  return (
+    <>
+      <ConnectionNoticeSkeleton />
+      <DigestSkeleton />
+    </>
   )
 }

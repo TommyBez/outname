@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { headers } from "next/headers"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { auth } from "@/lib/auth"
-import { getGmailConnection } from "@/lib/google-oauth"
+import { agentRunsTag, runTag, runsIndexTag } from "@/lib/cache-tags"
+import { getGmailConnectionForUser } from "@/lib/google-oauth"
 import { getAgentById, startAgentRun } from "@/lib/start-agent-run"
 
 /**
@@ -25,7 +27,7 @@ export async function POST(
 
   // daily-email-brief is the only kind today and it requires Gmail.
   if (agent.kind === "daily-email-brief") {
-    const conn = await getGmailConnection()
+    const conn = await getGmailConnectionForUser(agent.userId)
     if (!conn) {
       return NextResponse.json(
         {
@@ -51,6 +53,15 @@ export async function POST(
       trigger: "manual",
       scheduledFor: null, // manual = run immediately
     })
+
+    revalidateTag(agentRunsTag(agent.id), "max")
+    revalidateTag(runTag(runId), "max")
+    revalidateTag(runsIndexTag(), "max")
+    revalidatePath(`/agents/${agent.id}`)
+    revalidatePath("/agents")
+    revalidatePath("/runs")
+    revalidatePath("/")
+
     return NextResponse.json({ runId, workflowRunId })
   } catch {
     return NextResponse.json(
