@@ -26,7 +26,8 @@ import { prepareBrief } from "./steps/prepare-brief"
  *      hook registered in `lib/agent-sandbox-registry.ts`
  *   4. stream the agent — it drives gws commands directly via its `gws`
  *      tool (each call is its own step that resumes the sandbox), then
- *      calls classifyAndSummarize and persistDigest
+ *      calls classifyAndSummarize, authors the markdown digest, and
+ *      calls the generic `persistResult` tool to save it
  *   5. finalizeRun — marks run completed/failed
  *   6. shutdownAgentSandbox — generic primitive that stops the sandbox
  *      so Vercel snapshots it for the next run (always called via

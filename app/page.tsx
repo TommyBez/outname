@@ -3,7 +3,6 @@ import Link from "next/link"
 import { requireSession } from "@/lib/auth-guard"
 import {
   getCachedAgentsForUser,
-  getCachedDigestWithItems,
   getCachedLatestRunForAgent,
 } from "@/lib/data"
 import { getCachedGmailConnectionForUser } from "@/lib/google-oauth"
@@ -130,18 +129,12 @@ async function AgentsList({ userId }: { userId: string }) {
 
 async function AgentCardContainer({ agent }: { agent: Agent }) {
   const latest = await getCachedLatestRunForAgent(agent.id)
-  const digest =
-    latest && latest.status === "completed"
-      ? await getCachedDigestWithItems(latest.id)
-      : null
-
   const kindMeta = AGENT_KINDS[agent.kind as keyof typeof AGENT_KINDS]
   return (
     <AgentTodayCard
       agent={agent}
       kindLabel={kindMeta?.label ?? agent.kind}
       latestRun={latest}
-      digestItems={digest?.items ?? null}
     />
   )
 }

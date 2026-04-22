@@ -4,13 +4,13 @@ import { notFound } from "next/navigation"
 import { requireSession } from "@/lib/auth-guard"
 import {
   getCachedAgentByIdForUser,
-  getCachedDigestWithItems,
   getCachedLatestRunForAgent,
+  getCachedRunResult,
   getCachedRunsForAgent,
 } from "@/lib/data"
 import { RunProgress } from "@/components/run-progress"
 import { RunStatus } from "@/components/run-status"
-import { DigestView } from "@/components/digest-view"
+import { RunResultView } from "@/components/run-result-view"
 import { TriggerButton } from "@/components/trigger-button"
 import { formatDateTime, formatRelative } from "@/lib/format"
 import { AGENT_KINDS } from "@/workflows/agents/registry"
@@ -164,14 +164,13 @@ async function LastRunBody({ latest }: { latest: Run | null }) {
     )
   }
 
-  const { digest, items } = await getCachedDigestWithItems(latest.id)
+  const result = await getCachedRunResult(latest.id)
   return (
     <div className="flex flex-col gap-6">
       <p className="font-mono text-xs text-muted-foreground">
-        {formatDateTime(latest.startedAt)} · {latest.emailsScanned} email
-        {latest.emailsScanned === 1 ? "" : "s"} scanned
+        {formatDateTime(latest.startedAt)}
       </p>
-      <DigestView items={items} summary={digest?.summary ?? null} />
+      <RunResultView content={result?.content ?? null} />
     </div>
   )
 }

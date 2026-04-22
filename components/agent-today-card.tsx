@@ -1,7 +1,6 @@
 import Link from "next/link"
-import type { Agent, Run, DigestItem, Category } from "@/lib/db/schema"
+import type { Agent, Run } from "@/lib/db/schema"
 import { AgentLiveStatus } from "@/components/agent-live-status"
-import { CATEGORY_META } from "@/lib/categories"
 import { formatRelative } from "@/lib/format"
 
 function formatDays(days: number[]): string {
@@ -23,22 +22,20 @@ function formatDays(days: number[]): string {
  * Compact, clickable card shown on the Today screen.
  *
  * The entire card is a Link to `/agents/[id]`. The body shows a live
- * streaming message when a run is in progress, a tiny count breakdown on
- * completion, a failure banner on error, or an empty state.
- *
- * Full digest rendering lives on the agent detail page — this card is
- * deliberately small so the user can scan all agents at a glance.
+ * streaming message when a run is in progress, a simple agent-agnostic
+ * status line on completion, a failure banner on error, or an empty
+ * state. Per-agent result content lives on the agent detail page — this
+ * card is deliberately small and uniform across agent kinds so the user
+ * can scan all agents at a glance.
  */
 export function AgentTodayCard({
   agent,
   kindLabel,
   latestRun,
-  digestItems,
 }: {
   agent: Agent
   kindLabel: string
   latestRun: Run | null
-  digestItems: DigestItem[] | null
 }) {
   return (
     <Link
@@ -64,10 +61,7 @@ export function AgentTodayCard({
 
       <div className="flex items-center justify-between gap-6 border-t border-border pt-5">
         <div className="min-w-0 flex-1">
-          <CardStatus
-            latestRun={latestRun}
-            digestItems={digestItems}
-          />
+          <CardStatus latestRun={latestRun} />
         </div>
         <span
           aria-hidden
@@ -80,13 +74,7 @@ export function AgentTodayCard({
   )
 }
 
-function CardStatus({
-  latestRun,
-  digestItems,
-}: {
-  latestRun: Run | null
-  digestItems: DigestItem[] | null
-}) {
+function CardStatus({ latestRun }: { latestRun: Run | null }) {
   if (!latestRun) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -121,38 +109,17 @@ function CardStatus({
     )
   }
 
-  // completed
-  const items = digestItems ?? []
-  const counts = (["urgent", "reply", "fyi", "noise"] as Category[]).map((c) => ({
-    c,
-    n: items.filter((i) => i.category === c).length,
-  }))
-
+  // completed — agent-agnostic status line
   return (
-    <div className="flex flex-col gap-2">
-      <span className="inline-flex items-center gap-2 text-sm">
-        <span
-          aria-hidden
-          className="inline-block size-1.5 rounded-full bg-foreground/50"
-        />
-        <span className="text-foreground">Last run complete</span>
-        <span className="text-muted-foreground">
-          · {formatRelative(latestRun.startedAt)}
-        </span>
+    <span className="inline-flex items-center gap-2 text-sm">
+      <span
+        aria-hidden
+        className="inline-block size-1.5 rounded-full bg-foreground/50"
+      />
+      <span className="text-foreground">Last run complete</span>
+      <span className="text-muted-foreground">
+        · {formatRelative(latestRun.startedAt)}
       </span>
-      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 font-mono text-xs text-muted-foreground">
-        <span className="text-foreground">
-          {items.length.toString().padStart(2, "0")} item
-          {items.length === 1 ? "" : "s"}
-        </span>
-        {counts
-          .filter((x) => x.n > 0)
-          .map(({ c, n }) => (
-            <span key={c} className={CATEGORY_META[c].tone}>
-              {n} {CATEGORY_META[c].shortLabel}
-            </span>
-          ))}
-      </div>
-    </div>
+    </span>
   )
 }
