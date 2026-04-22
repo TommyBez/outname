@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import { requireSession } from "@/lib/auth-guard"
-import { getAgentByIdForUser } from "@/lib/data"
+import { getCachedAgentByIdForUser } from "@/lib/data"
 import { newChatConversationId } from "@/lib/agent-chat"
 import { getAgentRuntime } from "@/lib/agent-runtime-registry"
 import { AgentChat } from "@/components/agent-chat"
@@ -33,7 +33,7 @@ export default function NewAgentChatPage({ params }: { params: Params }) {
 async function DraftChat({ params }: { params: Params }) {
   const { agentId } = await params
   const session = await requireSession()
-  const agent = await getAgentByIdForUser(agentId, session.user.id)
+  const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
   if (!agent) notFound()
 
   const runtime = getAgentRuntime(agent.kind as AgentKind)

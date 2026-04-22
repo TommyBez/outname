@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { eq } from "drizzle-orm"
+import { revalidateTag } from "next/cache"
 import { getRun } from "workflow/api"
+import { agentRunsTag, runTag, runsIndexTag } from "@/lib/cache-tags"
 import { db } from "@/lib/db"
 import { runs } from "@/lib/db/schema"
 import { requireSession } from "@/lib/auth-guard"
@@ -40,6 +42,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ runId: 
           .update(runs)
           .set({ status: reconciled, completedAt, error: errorMsg })
           .where(eq(runs.id, row.id))
+
+        if (row.agentId) {
+          revalidateTag(agentRunsTag(row.agentId), "max")
+        }
+        revalidateTag(runTag(row.id), "max")
+        revalidateTag(runsIndexTag(), "max")
 
         finalStatus = reconciled
         finalError = errorMsg

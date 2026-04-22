@@ -1,6 +1,6 @@
 import { requireSession } from "@/lib/auth-guard"
-import { getAgentByIdForUser } from "@/lib/data"
-import { listConversationsForAgent } from "@/lib/agent-chat"
+import { getCachedAgentByIdForUser } from "@/lib/data"
+import { getCachedConversationListForAgent } from "@/lib/agent-chat"
 import { getAgentRuntime } from "@/lib/agent-runtime-registry"
 import {
   AgentSidebarWorkspace,
@@ -29,14 +29,14 @@ interface Props {
 export async function AgentSidebarSection({ params }: Props) {
   const { agentId } = await params
   const session = await requireSession()
-  const agent = await getAgentByIdForUser(agentId, session.user.id)
+  const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
   if (!agent) return null
 
   const runtime = getAgentRuntime(agent.kind as AgentKind)
   const isChatCapable = Boolean(runtime?.buildAgent)
 
   const conversations: ConversationSummary[] = isChatCapable
-    ? (await listConversationsForAgent(agent.id)).map((c) => ({
+    ? (await getCachedConversationListForAgent(agent.id)).map((c) => ({
         id: c.id,
         title: c.title,
         // Serialise to ISO so the value is plain across the server/client

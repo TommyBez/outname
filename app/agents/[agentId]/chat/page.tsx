@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import { notFound, redirect } from "next/navigation"
 import { requireSession } from "@/lib/auth-guard"
-import { getAgentByIdForUser } from "@/lib/data"
+import { getCachedAgentByIdForUser } from "@/lib/data"
 import { getMostRecentConversationForAgent } from "@/lib/agent-chat"
 
 type Params = Promise<{ agentId: string }>
@@ -27,7 +27,7 @@ export default function AgentChatIndex({ params }: { params: Params }) {
 async function ResolveChatIndex({ params }: { params: Params }) {
   const { agentId } = await params
   const session = await requireSession()
-  const agent = await getAgentByIdForUser(agentId, session.user.id)
+  const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
   if (!agent) notFound()
 
   const mostRecent = await getMostRecentConversationForAgent(agent.id)

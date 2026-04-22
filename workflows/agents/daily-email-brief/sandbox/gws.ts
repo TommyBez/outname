@@ -1,5 +1,8 @@
 import { Sandbox } from "@vercel/sandbox"
 import { FatalError, RetryableError } from "workflow"
+import { eq } from "drizzle-orm"
+import { revalidateTag } from "next/cache"
+import { gmailConnectionTag } from "@/lib/cache-tags"
 import { db } from "@/lib/db"
 import { gmailConnection } from "@/lib/db/schema"
 import {
@@ -76,11 +79,22 @@ function looksLikeAuthError(
  */
 async function markConnectionExpired(stderr: string): Promise<void> {
   try {
-    await db.update(gmailConnection).set({
-      status: "expired",
-      lastError: stderr.slice(0, 500),
-      updatedAt: new Date(),
-    })
+    const [conn] = await db
+      .select({ id: gmailConnection.id, userId: gmailConnection.userId })
+      .from(gmailConnection)
+      .limit(1)
+    if (!conn) return
+
+    await db
+      .update(gmailConnection)
+      .set({
+        status: "expired",
+        lastError: stderr.slice(0, 500),
+        updatedAt: new Date(),
+      })
+      .where(eq(gmailConnection.id, conn.id))
+
+    revalidateTag(gmailConnectionTag(conn.userId), "max")
   } catch {
     /* ignore */
   }

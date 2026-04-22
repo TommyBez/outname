@@ -1,8 +1,9 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { updateTag } from "next/cache"
 import { redirect } from "next/navigation"
 import { requireSession } from "@/lib/auth-guard"
+import { conversationListTag } from "@/lib/cache-tags"
 import { getAgentByIdForUser } from "@/lib/data"
 import {
   deleteConversation,
@@ -42,7 +43,7 @@ export async function renameConversationAction(input: {
   )
   if (!row) return { ok: false, error: "Conversation not found." }
 
-  revalidatePath(`/agents/${agent.id}/chat`)
+  updateTag(conversationListTag(agent.id))
   return { ok: true }
 }
 
@@ -68,7 +69,7 @@ export async function deleteConversationAction(input: {
   if (!existing) return { ok: false, error: "Conversation not found." }
 
   await deleteConversation(input.conversationId, agent.id)
-  revalidatePath(`/agents/${agent.id}/chat`)
+  updateTag(conversationListTag(agent.id))
 
   if (input.wasActive) {
     redirect(`/agents/${agent.id}/chat`)

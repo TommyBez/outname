@@ -1,14 +1,8 @@
 import { withWorkflow } from "workflow/next"
+import type { NextConfig } from "next"
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+const nextConfig: NextConfig = {
   cacheComponents: true,
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  images: {
-    unoptimized: true,
-  },
   serverExternalPackages: ["better-auth"],
 }
 

@@ -4,8 +4,11 @@ import { getSession, requireSession } from "@/lib/auth-guard"
 import { AppShell } from "@/components/app-shell"
 import { GmailConnect } from "@/components/gmail-connect"
 import { TimezonePicker } from "@/components/timezone-picker"
-import { getGmailConnection } from "@/lib/google-oauth"
-import { getUserSettings, getAgentsForUser } from "@/lib/data"
+import { getCachedGmailConnectionForUser } from "@/lib/google-oauth"
+import {
+  getCachedAgentsForUser,
+  getCachedUserSettings,
+} from "@/lib/data"
 import { AccountSkeleton, GmailSectionSkeleton } from "@/components/skeletons"
 
 export default function SettingsPage({
@@ -86,7 +89,8 @@ async function FlashNotice({
 }
 
 async function GmailSection() {
-  const connectionRow = await getGmailConnection()
+  const session = await requireSession()
+  const connectionRow = await getCachedGmailConnectionForUser(session.user.id)
   const connection = connectionRow
     ? {
         email: connectionRow.email,
@@ -101,13 +105,13 @@ async function GmailSection() {
 
 async function TimezoneSection() {
   const session = await requireSession()
-  const settings = await getUserSettings(session.user.id)
+  const settings = await getCachedUserSettings(session.user.id)
   return <TimezonePicker current={settings?.timezone ?? "UTC"} />
 }
 
 async function AgentsSummarySection() {
   const session = await requireSession()
-  const agents = await getAgentsForUser(session.user.id)
+  const agents = await getCachedAgentsForUser(session.user.id)
   const enabled = agents.filter((a) => a.enabled).length
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">

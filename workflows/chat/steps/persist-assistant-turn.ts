@@ -1,4 +1,6 @@
 import type { UIMessage } from "ai"
+import { revalidateTag } from "next/cache"
+import { conversationListTag } from "@/lib/cache-tags"
 import { persistNewChatMessages } from "@/lib/agent-chat"
 
 /**
@@ -14,9 +16,11 @@ import { persistNewChatMessages } from "@/lib/agent-chat"
  * independently retried and do not silently corrupt the transcript.
  */
 export async function persistAssistantTurn(input: {
+  agentId: string
   conversationId: string
   uiMessages: UIMessage[]
 }): Promise<void> {
   "use step"
   await persistNewChatMessages(input)
+  revalidateTag(conversationListTag(input.agentId), "max")
 }

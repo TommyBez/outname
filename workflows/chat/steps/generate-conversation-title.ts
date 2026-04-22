@@ -1,5 +1,7 @@
 import { generateText } from "ai"
 import type { UIMessage } from "ai"
+import { revalidateTag } from "next/cache"
+import { conversationListTag } from "@/lib/cache-tags"
 import {
   getConversationForAgent,
   setConversationTitleIfUnset,
@@ -86,4 +88,6 @@ export async function maybeGenerateConversationTitle(input: {
   } catch {
     await setConversationTitleIfUnset(input.conversationId, fallback)
   }
+
+  revalidateTag(conversationListTag(input.agentId), "max")
 }

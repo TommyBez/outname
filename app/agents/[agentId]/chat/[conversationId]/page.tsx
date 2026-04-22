@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import { requireSession } from "@/lib/auth-guard"
-import { getAgentByIdForUser } from "@/lib/data"
+import { getCachedAgentByIdForUser } from "@/lib/data"
 import {
   getConversationForAgent,
   loadChatHistory,
@@ -29,7 +29,7 @@ export default function AgentConversationPage({ params }: { params: Params }) {
 async function ConversationShell({ params }: { params: Params }) {
   const { agentId, conversationId } = await params
   const session = await requireSession()
-  const agent = await getAgentByIdForUser(agentId, session.user.id)
+  const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
   if (!agent) notFound()
 
   const runtime = getAgentRuntime(agent.kind as AgentKind)

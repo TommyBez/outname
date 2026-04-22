@@ -1,9 +1,16 @@
 "use server"
 
 import { and, eq } from "drizzle-orm"
-import { revalidatePath } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { redirect } from "next/navigation"
 import { requireSession } from "@/lib/auth-guard"
+import {
+  agentRunsTag,
+  agentTag,
+  conversationListTag,
+  userAgentsTag,
+  userSettingsTag,
+} from "@/lib/cache-tags"
 import { db } from "@/lib/db"
 import { agent, userSettings } from "@/lib/db/schema"
 import { destroyAgentSandbox } from "@/lib/agent-sandbox"
@@ -54,6 +61,8 @@ export async function createAgentAction(formData: FormData) {
     config: null,
   })
 
+  updateTag(userAgentsTag(session.user.id))
+  updateTag(agentTag(id))
   revalidatePath("/agents")
   revalidatePath("/")
   redirect(`/agents/${id}`)
@@ -85,8 +94,11 @@ export async function updateAgentAction(agentId: string, formData: FormData) {
     })
     .where(eq(agent.id, agentId))
 
+  updateTag(userAgentsTag(session.user.id))
+  updateTag(agentTag(agentId))
   revalidatePath("/agents")
   revalidatePath(`/agents/${agentId}`)
+  revalidatePath(`/agents/${agentId}/edit`)
   revalidatePath("/")
 }
 
@@ -97,6 +109,8 @@ export async function toggleAgentAction(agentId: string, enabled: boolean) {
     .set({ enabled, updatedAt: new Date() })
     .where(and(eq(agent.id, agentId), eq(agent.userId, session.user.id)))
 
+  updateTag(userAgentsTag(session.user.id))
+  updateTag(agentTag(agentId))
   revalidatePath("/agents")
   revalidatePath(`/agents/${agentId}`)
   revalidatePath("/")
@@ -121,6 +135,10 @@ export async function deleteAgentAction(agentId: string) {
     .delete(agent)
     .where(and(eq(agent.id, agentId), eq(agent.userId, session.user.id)))
 
+  updateTag(userAgentsTag(session.user.id))
+  updateTag(agentTag(agentId))
+  updateTag(agentRunsTag(agentId))
+  updateTag(conversationListTag(agentId))
   revalidatePath("/agents")
   revalidatePath("/")
   redirect("/agents")
@@ -145,6 +163,7 @@ export async function updateUserTimezoneAction(formData: FormData) {
       set: { timezone, updatedAt: new Date() },
     })
 
+  updateTag(userSettingsTag(session.user.id))
   revalidatePath("/settings")
   revalidatePath("/agents")
 }

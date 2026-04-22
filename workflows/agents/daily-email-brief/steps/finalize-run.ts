@@ -1,4 +1,6 @@
 import { eq } from "drizzle-orm"
+import { revalidateTag } from "next/cache"
+import { agentRunsTag, runTag, runsIndexTag } from "@/lib/cache-tags"
 import { db } from "@/lib/db"
 import { runs } from "@/lib/db/schema"
 import { emitRun, emitStep } from "@/lib/run-events"
@@ -9,7 +11,7 @@ export async function finalizeRun(
   error?: string,
 ) {
   "use step"
-  await db
+  const [run] = await db
     .update(runs)
     .set({
       status,
@@ -17,6 +19,13 @@ export async function finalizeRun(
       error: error ?? null,
     })
     .where(eq(runs.id, runId))
+    .returning({ agentId: runs.agentId })
+
+  if (run?.agentId) {
+    revalidateTag(agentRunsTag(run.agentId), "max")
+  }
+  revalidateTag(runTag(runId), "max")
+  revalidateTag(runsIndexTag(), "max")
 
   if (status === "completed") {
     await emitStep("finalize", "done", "Briefing ready")

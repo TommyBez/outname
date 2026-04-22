@@ -1,7 +1,8 @@
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { getRunById, getDigestWithItems } from "@/lib/data"
+import { requireSession } from "@/lib/auth-guard"
+import { getCachedDigestWithItems, getCachedRunById } from "@/lib/data"
 import { AppShell } from "@/components/app-shell"
 import { DigestView } from "@/components/digest-view"
 import { RunStatus } from "@/components/run-status"
@@ -48,12 +49,15 @@ function DetailFallback() {
 }
 
 async function RunDetail({ params }: { params: Promise<{ runId: string }> }) {
+  await requireSession()
   const { runId } = await params
-  const run = await getRunById(runId)
+  const run = await getCachedRunById(runId)
   if (!run) notFound()
 
   const { digest, items } =
-    run.status === "completed" ? await getDigestWithItems(runId) : { digest: null, items: [] }
+    run.status === "completed"
+      ? await getCachedDigestWithItems(runId)
+      : { digest: null, items: [] }
 
   return (
     <>

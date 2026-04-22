@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import { requireSession } from "@/lib/auth-guard"
-import { getAgentByIdForUser } from "@/lib/data"
+import { getCachedAgentByIdForUser } from "@/lib/data"
 import { getAgentRuntime } from "@/lib/agent-runtime-registry"
 import { ChatFrame } from "@/components/chat-frame"
 import type { AgentKind } from "@/lib/db/schema"
@@ -41,7 +41,7 @@ async function ResolvedChatFrame({
 }) {
   const { agentId } = await params
   const session = await requireSession()
-  const agent = await getAgentByIdForUser(agentId, session.user.id)
+  const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
   if (!agent) notFound()
 
   const runtime = getAgentRuntime(agent.kind as AgentKind)

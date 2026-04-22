@@ -1,7 +1,10 @@
+import "server-only"
 import { neon } from "@neondatabase/serverless"
 import { drizzle } from "drizzle-orm/neon-http"
 import { eq } from "drizzle-orm"
+import { cacheLife, cacheTag } from "next/cache"
 import { gmailConnection } from "@/lib/db/schema"
+import { gmailConnectionTag } from "@/lib/cache-tags"
 
 export const GMAIL_SCOPES = [
   "https://www.googleapis.com/auth/gmail.readonly",
@@ -93,6 +96,24 @@ export async function getGmailConnection() {
   return row ?? null
 }
 
+export async function getGmailConnectionForUser(userId: string) {
+  const db = getDb()
+  const [row] = await db
+    .select()
+    .from(gmailConnection)
+    .where(eq(gmailConnection.userId, userId))
+    .limit(1)
+  return row ?? null
+}
+
+export async function getCachedGmailConnectionForUser(userId: string) {
+  "use cache"
+
+  cacheLife("minutes")
+  cacheTag(gmailConnectionTag(userId))
+  return getGmailConnectionForUser(userId)
+}
+
 export async function upsertGmailConnection(values: {
   userId: string
   email: string
@@ -102,7 +123,7 @@ export async function upsertGmailConnection(values: {
   scopes: string
 }) {
   const db = getDb()
-  const existing = await getGmailConnection()
+  const existing = await getGmailConnectionForUser(values.userId)
   if (existing) {
     await db
       .update(gmailConnection)
@@ -138,11 +159,15 @@ export async function markConnectionExpired(err: string) {
     .set({ status: "expired", lastError: err, updatedAt: new Date() })
 }
 
-export async function deleteGmailConnection() {
+export async function deleteGmailConnection(userId?: string) {
   const db = getDb()
-  const existing = await getGmailConnection()
+  const existing = userId
+    ? await getGmailConnectionForUser(userId)
+    : await getGmailConnection()
   if (existing?.refreshToken) {
     await revokeToken(existing.refreshToken)
   }
-  await db.delete(gmailConnection)
+  if (existing) {
+    await db.delete(gmailConnection).where(eq(gmailConnection.id, existing.id))
+  }
 }
