@@ -55,7 +55,7 @@ export function AppShell({
         {/* Compact top bar: visible on all breakpoints for sidebar toggle,
             but the brand mark only shows on mobile where the sidebar is a
             drawer and the user needs a visible anchor. */}
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-2 bg-background px-3 md:h-12 md:px-4">
+        <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-border bg-background/80 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:h-12 md:px-4">
           <SidebarTrigger className="-ml-1 size-9 md:size-8" />
           <Link
             href="/"

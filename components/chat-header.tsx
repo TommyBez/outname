@@ -78,7 +78,7 @@ export function ChatHeader({
   }
 
   return (
-    <header className="flex items-center justify-between gap-3 pb-4">
+    <header className="flex items-center justify-between gap-3 border-b border-border pb-4">
       <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2">
         <Link
           href="/agents"
