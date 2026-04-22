@@ -61,7 +61,7 @@ async function ResolvedChatFrame({
 function ChatFrameSkeleton({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-full min-w-0 flex-col gap-4">
-      <div className="flex items-center justify-between gap-3 border-b border-border pb-4">
+      <div className="flex items-center justify-between gap-3 pb-4">
         <div className="h-4 w-40 animate-pulse rounded-sm bg-muted" />
         <div className="size-8 animate-pulse rounded-md bg-muted" />
       </div>
