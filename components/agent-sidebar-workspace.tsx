@@ -17,6 +17,7 @@ import {
   MessageSquarePlus,
   MoreHorizontal,
   Pencil,
+  Settings as SettingsIcon,
   Trash2,
   X,
 } from "lucide-react"
@@ -36,6 +37,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuAction,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar"
 import {
   deleteConversationAction,
   renameConversationAction,
@@ -69,73 +79,117 @@ async function fetchConversations(url: string): Promise<ConversationSummary[]> {
   return data.conversations
 }
 
-interface ChatSessionsSidebarProps {
+interface AgentSidebarWorkspaceProps {
   agentId: string
-  /** Server-rendered initial list. Used as `fallbackData` so the sidebar
-   * paints instantly on first load and never flashes empty. SWR then
-   * keeps it in sync client-side. */
+  /** Display name of the agent — used as the group label at the top of
+   * the workspace section. */
+  agentName: string
+  /** Whether the agent is currently enabled. Drives the live status dot
+   * rendered next to the name. */
+  enabled: boolean
+  /** Whether the agent's runtime exposes chat. Non-chat kinds get a
+   * slimmer workspace section (name + Configure shortcut, no list). */
+  isChatCapable: boolean
+  /** Server-rendered initial list. Used as `fallbackData` so the list
+   * paints instantly and never flashes empty. SWR keeps it in sync
+   * client-side. Only supplied for chat-capable kinds. */
   conversations: ConversationSummary[]
 }
 
 /**
- * Left-column conversation list for the agent chat surface. The list is
- * hydrated from a server-rendered snapshot (`conversations` prop) and
- * then driven entirely by SWR. `AgentChat` calls
- * `revalidateConversations(agentId)` from `onFinish` after each turn,
- * so the sidebar picks up freshly generated titles (and re-ordered
- * threads) without ever re-rendering the active chat pane — this
- * replaces the old `router.refresh()` approach that was racing with
- * Next 16's cache-components + the streaming `useChat` state.
+ * Contextual sidebar section shown while the user is inside an agent
+ * workspace. Lives as a `<SidebarGroup>` beneath the global nav so the
+ * app keeps a single sidebar on every surface.
  *
- * Responsive behaviour: on `md` and up the sidebar sits in its own grid
- * column and scrolls independently. Below `md` the chat layout stacks
- * so the sidebar appears above the pane with a capped height — scroll
- * to browse, tap to switch.
+ * For chat-capable agents this is the primary way to switch
+ * conversations; for other kinds it surfaces the agent name, live
+ * status, and a shortcut to Configure.
  */
-export function ChatSessionsSidebar({
+export function AgentSidebarWorkspace({
   agentId,
+  agentName,
+  enabled,
+  isChatCapable,
   conversations: initialConversations,
-}: ChatSessionsSidebarProps) {
+}: AgentSidebarWorkspaceProps) {
   const pathname = usePathname()
+
+  // Only register SWR for chat-capable agents. For non-chat kinds the
+  // endpoint would 404, and we don't need the list anyway.
   const { data: conversations = initialConversations } = useSWR<
     ConversationSummary[]
-  >(conversationsSwrKey(agentId), fetchConversations, {
-    fallbackData: initialConversations,
-    // Cheap catch-up for tabs that have been backgrounded while a turn
-    // completed — the only cost is one tiny GET per focus event.
-    revalidateOnFocus: true,
-  })
+  >(
+    isChatCapable ? conversationsSwrKey(agentId) : null,
+    fetchConversations,
+    {
+      fallbackData: initialConversations,
+      // Cheap catch-up for tabs that have been backgrounded while a
+      // turn completed — the only cost is one tiny GET per focus event.
+      revalidateOnFocus: true,
+    },
+  )
 
   return (
-    <aside className="flex flex-col gap-3 md:sticky md:top-6 md:max-h-[calc(100vh-4rem)]">
-      <Link
-        href={`/agents/${agentId}/chat/new`}
-        className="inline-flex items-center justify-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
-      >
-        <MessageSquarePlus className="size-4" aria-hidden />
-        New chat
-      </Link>
+    // Hide the whole contextual section when the sidebar collapses to
+    // icons — the rest of the sidebar (global nav) still renders, and
+    // the agent workspace reappears the moment the user expands it.
+    <SidebarGroup className="border-t border-sidebar-border pt-3 group-data-[collapsible=icon]:hidden">
+      <SidebarGroupLabel className="flex items-center gap-2">
+        <span
+          aria-hidden
+          className={cn(
+            "inline-block size-1.5 shrink-0 rounded-full",
+            enabled ? "bg-accent" : "bg-muted-foreground",
+          )}
+        />
+        <span className="truncate">{agentName}</span>
+      </SidebarGroupLabel>
 
-      {conversations.length === 0 ? (
-        <p className="rounded-md border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">
-          No conversations yet. Start one with the button above.
-        </p>
-      ) : (
-        <nav
-          aria-label="Conversations"
-          className="flex max-h-64 flex-col gap-0.5 overflow-y-auto md:max-h-none"
-        >
-          {conversations.map((conversation) => (
-            <ConversationRow
-              key={conversation.id}
-              agentId={agentId}
-              conversation={conversation}
-              isActive={isActive(pathname, agentId, conversation.id)}
-            />
-          ))}
-        </nav>
-      )}
-    </aside>
+      <SidebarGroupContent>
+        {isChatCapable ? (
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                tooltip="New chat"
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <Link href={`/agents/${agentId}/chat/new`}>
+                  <MessageSquarePlus aria-hidden />
+                  <span>New chat</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            {conversations.length === 0 ? (
+              <li className="px-2 py-3 text-center font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground/70">
+                No conversations yet
+              </li>
+            ) : (
+              conversations.map((conversation) => (
+                <ConversationRow
+                  key={conversation.id}
+                  agentId={agentId}
+                  conversation={conversation}
+                  isActive={isActive(pathname, agentId, conversation.id)}
+                />
+              ))
+            )}
+          </SidebarMenu>
+        ) : (
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip="Configure">
+                <Link href={`/agents/${agentId}/edit`}>
+                  <SettingsIcon aria-hidden />
+                  <span>Configure</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        )}
+      </SidebarGroupContent>
+    </SidebarGroup>
   )
 }
 
@@ -245,83 +299,73 @@ function ConversationRow({
 
   if (isEditing) {
     return (
-      <form
-        onSubmit={submitRename}
-        className={cn(
-          "flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1.5",
-          isActive && "border-foreground",
-        )}
-      >
-        <input
-          ref={inputRef}
-          value={draftTitle}
-          onChange={(event) => setDraftTitle(event.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={isRenaming}
-          maxLength={80}
-          className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:opacity-60"
-          placeholder="Conversation title"
-          aria-label="Conversation title"
-        />
-        <button
-          type="submit"
-          disabled={isRenaming}
-          className="rounded-sm p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
-          aria-label="Save title"
+      <SidebarMenuItem>
+        <form
+          onSubmit={submitRename}
+          className={cn(
+            "flex items-center gap-1 rounded-md border border-sidebar-border bg-sidebar-accent/40 px-2 py-1.5",
+            isActive && "border-foreground",
+          )}
         >
-          <Check className="size-3.5" />
-        </button>
-        <button
-          type="button"
-          disabled={isRenaming}
-          onClick={() => {
-            setIsEditing(false)
-            setDraftTitle(conversation.title ?? "")
-          }}
-          className="rounded-sm p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
-          aria-label="Cancel rename"
-        >
-          <X className="size-3.5" />
-        </button>
-      </form>
+          <input
+            ref={inputRef}
+            value={draftTitle}
+            onChange={(event) => setDraftTitle(event.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={isRenaming}
+            maxLength={80}
+            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:opacity-60"
+            placeholder="Conversation title"
+            aria-label="Conversation title"
+          />
+          <button
+            type="submit"
+            disabled={isRenaming}
+            className="rounded-sm p-1 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground disabled:opacity-50"
+            aria-label="Save title"
+          >
+            <Check className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            disabled={isRenaming}
+            onClick={() => {
+              setIsEditing(false)
+              setDraftTitle(conversation.title ?? "")
+            }}
+            className="rounded-sm p-1 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground disabled:opacity-50"
+            aria-label="Cancel rename"
+          >
+            <X className="size-3.5" />
+          </button>
+        </form>
+      </SidebarMenuItem>
     )
   }
 
   return (
     <>
-      <div
-        className={cn(
-          "group relative flex items-center rounded-md",
-          isActive ? "bg-muted" : "hover:bg-muted/60",
-          isDeleting && "opacity-50",
-        )}
-      >
-        <Link
-          href={`/agents/${agentId}/chat/${conversation.id}`}
-          className={cn(
-            "min-w-0 flex-1 truncate rounded-md px-3 py-2 text-sm transition-colors",
-            isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
-          )}
-          aria-current={isActive ? "page" : undefined}
+      <SidebarMenuItem className={cn(isDeleting && "opacity-50")}>
+        <SidebarMenuButton
+          asChild
+          isActive={isActive}
+          tooltip={displayTitle}
         >
-          <span className="block truncate">{displayTitle}</span>
-          <span className="mt-0.5 block font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground/70">
-            {formatRelative(conversation.updatedAt)}
-          </span>
-        </Link>
-
+          <Link
+            href={`/agents/${agentId}/chat/${conversation.id}`}
+            aria-current={isActive ? "page" : undefined}
+          >
+            <span className="min-w-0 flex-1 truncate">{displayTitle}</span>
+          </Link>
+        </SidebarMenuButton>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button
-              type="button"
+            <SidebarMenuAction
               aria-label={`More options for ${displayTitle}`}
-              className={cn(
-                "mr-1 rounded-sm p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-background hover:text-foreground focus:opacity-100 group-hover:opacity-100",
-                isActive && "opacity-100",
-              )}
+              showOnHover
             >
-              <MoreHorizontal className="size-4" />
-            </button>
+              <MoreHorizontal />
+            </SidebarMenuAction>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-36">
             <DropdownMenuItem
@@ -334,7 +378,7 @@ function ConversationRow({
               Rename
             </DropdownMenuItem>
             <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
+              variant="destructive"
               onSelect={(event) => {
                 event.preventDefault()
                 setShowDelete(true)
@@ -345,7 +389,7 @@ function ConversationRow({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
+      </SidebarMenuItem>
 
       <AlertDialog open={showDelete} onOpenChange={setShowDelete}>
         <AlertDialogContent>
@@ -373,26 +417,4 @@ function ConversationRow({
       </AlertDialog>
     </>
   )
-}
-
-/**
- * Tiny relative-time formatter. Keeps the sidebar feeling live without
- * pulling in a date-fns dependency for a single helper.
- */
-function formatRelative(iso: string): string {
-  const then = new Date(iso).getTime()
-  if (Number.isNaN(then)) return ""
-  const now = Date.now()
-  const diff = Math.max(0, now - then)
-  const minute = 60_000
-  const hour = 60 * minute
-  const day = 24 * hour
-  if (diff < minute) return "just now"
-  if (diff < hour) return `${Math.floor(diff / minute)}m ago`
-  if (diff < day) return `${Math.floor(diff / hour)}h ago`
-  if (diff < 7 * day) return `${Math.floor(diff / day)}d ago`
-  return new Date(iso).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  })
 }

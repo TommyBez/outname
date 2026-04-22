@@ -33,7 +33,17 @@ const NAV_ITEMS = [
   { href: "/settings", label: "Settings", icon: SettingsIcon },
 ] as const
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  /**
+   * Contextual section streamed in from the route layout. Rendered
+   * beneath the global nav group so contextual workspaces (e.g. the
+   * agent's conversation list) slot into the same sidebar rather than
+   * spawning a second one.
+   */
+  sidebarExtras?: React.ReactNode
+}
+
+export function AppSidebar({ sidebarExtras }: AppSidebarProps = {}) {
   const pathname = usePathname()
   const { setOpenMobile, isMobile } = useSidebar()
 
@@ -92,6 +102,8 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {sidebarExtras}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border">

@@ -14,16 +14,11 @@ type Params = Promise<{ agentId: string; conversationId: string }>
 
 /**
  * Active chat pane for a persisted conversation. Mounted inside the
- * chat layout's `<main>`, which is siblings with the sessions sidebar.
- * Ownership is double-checked here (agent belongs to user, conversation
- * belongs to agent) so a guessed URL returns 404 rather than leaking
- * somebody else's transcript.
+ * chat layout's `<ChatFrame>`. Ownership is double-checked here (agent
+ * belongs to user, conversation belongs to agent) so a guessed URL
+ * returns 404 rather than leaking somebody else's transcript.
  */
-export default function AgentConversationPage({
-  params,
-}: {
-  params: Params
-}) {
+export default function AgentConversationPage({ params }: { params: Params }) {
   return (
     <Suspense fallback={<ChatSkeleton />}>
       <ConversationShell params={params} />
@@ -56,9 +51,8 @@ async function ConversationShell({ params }: { params: Params }) {
 
 function ChatSkeleton() {
   return (
-    <div className="flex flex-col gap-3">
-      <div className="h-3 w-24 animate-pulse rounded-sm bg-muted" />
-      <div className="h-64 w-full animate-pulse rounded-sm bg-muted" />
+    <div className="flex h-full min-w-0 flex-col gap-3">
+      <div className="h-64 w-full flex-1 animate-pulse rounded-sm bg-muted" />
       <div className="h-12 w-full animate-pulse rounded-sm bg-muted" />
     </div>
   )

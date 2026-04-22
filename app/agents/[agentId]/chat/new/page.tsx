@@ -22,11 +22,7 @@ type Params = Promise<{ agentId: string }>
  * keeps the streaming `useChat` instance mounted while matching the
  * canonical route shape.
  */
-export default function NewAgentChatPage({
-  params,
-}: {
-  params: Params
-}) {
+export default function NewAgentChatPage({ params }: { params: Params }) {
   return (
     <Suspense fallback={<ChatSkeleton />}>
       <DraftChat params={params} />
@@ -57,9 +53,8 @@ async function DraftChat({ params }: { params: Params }) {
 
 function ChatSkeleton() {
   return (
-    <div className="flex flex-col gap-3">
-      <div className="h-3 w-24 animate-pulse rounded-sm bg-muted" />
-      <div className="h-64 w-full animate-pulse rounded-sm bg-muted" />
+    <div className="flex h-full min-w-0 flex-col gap-3">
+      <div className="h-64 w-full flex-1 animate-pulse rounded-sm bg-muted" />
       <div className="h-12 w-full animate-pulse rounded-sm bg-muted" />
     </div>
   )

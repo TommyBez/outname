@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, type UIMessage } from "ai"
-import { revalidateConversations } from "@/components/chat-sessions-sidebar"
+import { revalidateConversations } from "@/components/agent-sidebar-workspace"
 import {
   Conversation,
   ConversationContent,
@@ -117,13 +117,12 @@ export function AgentChat({
   }
 
   return (
-    // `min-w-0` lets this flex column honour its grid cell's width on
-    // mobile (where the chat layout becomes a single column of
-    // `minmax(0, 1fr)`); without it, wide children such as tool output
-    // tables with `overflow-x-auto` can stretch this container past
-    // the viewport. `overflow-hidden` is the belt-and-braces safety net
-    // that keeps any remaining stray width from leaking out.
-    <div className="flex h-[min(70vh,720px)] min-w-0 flex-col overflow-hidden">
+    // Full-height flex column so the composer pins to the bottom of
+    // whatever container mounts us (today: `<ChatFrame>`, which is
+    // inside AppShell's padded main column). `min-w-0` + `overflow-hidden`
+    // keep wide tool output (tables, code blocks) contained without
+    // stretching the chat column past the viewport edge.
+    <div className="flex h-full min-w-0 flex-col overflow-hidden">
       <Conversation className="flex-1 min-h-0">
         <ConversationContent>
           {messages.length === 0 ? (
