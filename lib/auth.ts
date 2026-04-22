@@ -2,16 +2,19 @@ import { betterAuth } from "better-auth"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
 import { db } from "@/lib/db"
 
-// Origins we always want to trust in addition to BETTER_AUTH_URL.
+// Static origins we always want to trust in addition to BETTER_AUTH_URL.
 // - localhost: local dev
 // - *.vercel.app: Vercel preview/production deployments
-// - *.vercel.run / *.v0.app / *.v0.dev: v0 integrated preview sandbox URLs
-const defaultTrustedOrigins = [
+// - *.vercel.run: Vercel sandbox URLs (used by the v0 integrated preview)
+// - *.v0.app / *.v0.dev: v0 preview URLs
+// - *.vusercontent.net: v0 iframe sandbox hosts
+const staticTrustedOrigins = [
   "http://localhost:3000",
   "https://*.vercel.app",
   "https://*.vercel.run",
   "https://*.v0.app",
   "https://*.v0.dev",
+  "https://*.vusercontent.net",
 ]
 
 // The v0 integrated preview embeds the app in a cross-site iframe, which
@@ -36,10 +39,29 @@ export const auth = betterAuth({
   },
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL,
-  trustedOrigins: [
-    ...(process.env.BETTER_AUTH_URL ? [process.env.BETTER_AUTH_URL] : []),
-    ...defaultTrustedOrigins,
-  ],
+  // Use the function form so we can trust the incoming origin in
+  // non-production environments (e.g. the v0 integrated preview sandbox,
+  // whose host is dynamic and not known ahead of time). In production we
+  // fall back to the static list + BETTER_AUTH_URL only.
+  trustedOrigins: async (request) => {
+    const origins = [
+      ...(process.env.BETTER_AUTH_URL ? [process.env.BETTER_AUTH_URL] : []),
+      ...staticTrustedOrigins,
+    ]
+
+    if (!isProduction) {
+      const originHeader = request.headers.get("origin") || request.headers.get("referer")
+      if (originHeader) {
+        try {
+          origins.push(new URL(originHeader).origin)
+        } catch {
+          // ignore invalid URLs
+        }
+      }
+    }
+
+    return origins
+  },
   advanced: {
     defaultCookieAttributes: {
       sameSite: "none",
