@@ -134,7 +134,6 @@ Every file lives in the home sandbox under `/home/agent/`. They are the sole per
 |---|---|---|---|
 | `SOUL.md` | Identity, ethics, style (the effective system prompt) | User (via pending-writes queue); agent may self-rewrite (discouraged by default base prompt) | Agent, every event |
 | `AGENTS.md` | Other agents the user owns + brief descriptions | System (regenerated on agent-set changes) | Agent when considering delegation |
-| `SKILLS.md` | Attached tools with descriptions | System (regenerated on tool-attach changes) | Agent when reasoning about capability |
 | `MEMORY.md` | Durable facts, preferences, commitments | Agent, via a dedicated memory-write tool | Agent, every event |
 | `GOALS.md` | Long-horizon objectives | User + agent (synthesized from DREAMS) | Agent on heartbeat |
 | `CALENDAR.md` | Known time-bound events & deadlines | Agent (from tool results); user (manual) | Agent on heartbeat |
@@ -147,7 +146,7 @@ Every event the agent processes starts with the same prologue (assembled by a st
 ```
 base system prompt + SOUL.md + MEMORY.md + GOALS.md + TASKS.md
 + CALENDAR.md + today's log
-(+ AGENTS.md / SKILLS.md if the event requires delegation/tool reasoning)
+(+ AGENTS.md if the event requires delegation reasoning)
 ```
 
 #### UI read path — the flat file cache
@@ -186,7 +185,7 @@ export interface MaintainerTool {
 
 **Catalog.** Maintainer tools live in a static registry (`tools/registry.ts`). Attaching a tool that requires an OAuth provider the user has not connected triggers the generalised connection flow (§5).
 
-**Agent-as-tool synthesiser.** Takes an agent row and returns an AI SDK tool whose `execute` sends an `invocation` event to the target agent's session hook and awaits a `reply` event (§4.5). Both populations are listed in `SKILLS.md`; the LLM cannot tell them apart.
+**Agent-as-tool synthesiser.** Takes an agent row and returns an AI SDK tool whose `execute` sends an `invocation` event to the target agent's session hook and awaits a `reply` event (§4.5). Both populations are merged into a single `ToolSet` passed to `DurableAgent`; the LLM sees them as ordinary function tools and cannot tell them apart. Tool discovery is native to the AI SDK — there is no markdown index of tools.
 
 ### 4.5 Sub-agent invocation
 
@@ -221,7 +220,7 @@ Guardrails:
 | Concern | Where it lives | Edited by |
 |---|---|---|
 | Model ID | `agents.model` column | UI form (instant effect on next event) |
-| Attached tool IDs | `agent_tools` table | UI (attach/detach; `SKILLS.md` regenerated) |
+| Attached tool IDs | `agent_tools` table | UI (attach/detach; session rebuilds `ToolSet` on next event) |
 | Heartbeat enabled & interval | columns on `agents` | UI (instant; next tick picks it up) |
 | Display name, icon | columns on `agents` | UI |
 | Prose identity | `SOUL.md` in the sandbox | Primarily UI via pending-writes queue; agent may self-rewrite but the default base system prompt discourages it |
@@ -347,7 +346,7 @@ These aren't architectural beams but are canonical enough to codify here.
 
 - **Timezones.** Daily-log filenames and heartbeat-clock semantics use the owning user's timezone (stored on `user`, default UTC).
 - **Log retention.** Daily logs are never auto-deleted. `DREAMS.md` digests and summarises old logs. Users may prune manually.
-- **Base system prompt.** Prepended to `SOUL.md` on every event. Contains the "treat SOUL.md as given" clause, the list of available files, the expected markdown conventions for checklists / dates, and a pointer to `SKILLS.md`.
+- **Base system prompt.** Prepended to `SOUL.md` on every event. Contains the "treat SOUL.md as given" clause, the list of available files, and the expected markdown conventions for checklists / dates. Tools are exposed through the AI SDK `ToolSet`, not through a markdown index.
 - **Tool failure handling.** `FatalError` for bad inputs / revoked auth; `RetryableError` for rate limits / 5xx. Fatal tool errors become an agent-visible message, not a workflow crash.
 - **Streaming namespaces.** Each chat turn uses a per-turn namespace keyed by `replyStreamToken`. Heartbeat and sub-agent work emit to a `logs` namespace the UI may optionally subscribe to for a live activity feed.
 - **Model selection** goes through AI Gateway; the supported model list is a small allow-list curated by the maintainer.
@@ -386,7 +385,7 @@ Every phase ends in a state where the app runs, passes tests, and can be demoed.
 - Ship `MaintainerTool` + `ToolBuildContext` from §4.4; build `tools/registry.ts`.
 - Generalise `gmailConnection` → `user_connections`. Tool-attach flow triggers OAuth when the requirement isn't met.
 - First real tool set: `gmail.search`, `gmail.send`, `google-calendar.read`, `google-calendar.create`, `web.fetch`, `memory.write` (wraps `MEMORY.md` edits), `tasks.write` (wraps `TASKS.md` edits).
-- Tool-catalog UI and attach/detach flow; `SKILLS.md` regeneration on attach/detach.
+- Tool-catalog UI and attach/detach flow. Attachment updates `agent_tools`; the session rebuilds its `ToolSet` at the start of the next event.
 
 **Testable end state.** A user can rebuild an equivalent of the original "daily email brief" agent entirely through the UI — create an agent, attach `gmail.search` + `memory.write`, author a `SOUL.md` — with no code deploy required.
 
@@ -413,6 +412,7 @@ Every phase ends in a state where the app runs, passes tests, and can be demoed.
 
 ## 8. Explicit follow-ups (not in this refactor)
 
+- **Agent-authored skills** — distinct from the maintainer tool catalog. Users (or agents themselves) author markdown "skill" files the agent invokes via a bash-style harness. Inspiration: [vercel-labs/bash-tool — `skills-tool`](https://github.com/vercel-labs/bash-tool/tree/main/examples/skills-tool). Out of scope for this refactor; the tool catalog is the only extension surface in v1.
 - **Persistent per-agent tool-sandboxes** (option B from the Q6 design discussion). The `requirements` field in the tool interface is already forward-compatible (add a `persistence: "ephemeral" | "agent-owned"` key). Introduce a `sandbox_instances(agent_id, tool_id, snapshot_id)` table when this lands.
 - **Agent sharing.** Relax "owner-only invocation" to ACLs. Makes the "credentials are the callee's owner's" rule load-bearing.
 - **Structured UI widgets over MD.** Parse `TASKS.md` / `CALENDAR.md` into shadow tables for filterable / interactive UI. The flat file cache is a stepping stone.
@@ -426,5 +426,6 @@ Every phase ends in a state where the app runs, passes tests, and can be demoed.
 
 - [vercel-labs/open-agents](https://github.com/vercel-labs/open-agents) — technical reference for agent + workflow patterns on the Vercel stack.
 - [paperclip.ing](https://paperclip.ing/) — product-shape reference for the markdown-as-mind, proactivity-via-files model.
+- [vercel-labs/bash-tool — `skills-tool`](https://github.com/vercel-labs/bash-tool/tree/main/examples/skills-tool) — inspiration for future agent-authored skill support (see §8).
 - Workflow DevKit docs (bundled in `node_modules/workflow/docs/`, `node_modules/@workflow/ai/docs/`).
 - Vercel Sandbox docs (bundled in the `vercel-sandbox` skill).
