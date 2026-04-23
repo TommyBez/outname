@@ -95,7 +95,23 @@ A single long-lived Vercel Workflow run per agent. It parks on an iterable `crea
 
 **Why this shape.**
 - **Single-threaded by construction.** The hook's iterable guarantees events are processed one at a time. No locks; no race between chat and heartbeat; snapshot-after-every-event is safe.
-- **Heartbeat as a sibling ticker workflow.** A single workflow can't trivially race `sleep()` against `createHook()`. The heartbeat is fired by a small child workflow: `while (running) { await sleep(interval); await resumeHook(parentToken, { type: 'heartbeat' }); interval = await readInterval(agentId) }`. Per-agent cadence is re-read each tick so UI changes take effect on next tick.
+- **Heartbeat as a sibling ticker workflow, with ack-handshake to prevent pile-up.** A single workflow can't trivially race `sleep()` against `createHook()`. The heartbeat is fired by a small child workflow that waits for session-side completion before starting the next sleep:
+  ```ts
+  // ticker
+  while (running) {
+    const ack = `heartbeat-ack:${agentId}:${tickN++}`;
+    const completion = createHook({ token: ack });
+    await resumeHook(sessionToken, { type: "heartbeat", ack });
+    await completion;                          // wait until session finishes this tick
+    await sleep(readInterval(agentId));        // only THEN sleep for the configured interval
+  }
+
+  // session, end of "heartbeat" case
+  await resumeHook(event.ack, { done: true });
+  ```
+  Net cadence = `max(interval, runtime_of_previous_heartbeat)`. Without this handshake, a heartbeat run that exceeds the interval causes wall-clock ticks to pile up behind it: the agent runs heartbeats back-to-back forever, never idles, starves chat, and wastes tokens. The handshake gives "at least `interval` of rest between completions" semantics, which is what "every 30 min" should actually mean.
+- **Chat latency under long events — accepted tradeoff.** The single-threaded mind means a chat message arriving mid-heartbeat is queued and only processed when the heartbeat completes. A 45-min heartbeat = 45-min chat delay. UI surfaces an "agent busy" state with the in-flight event type. Preserving the invariant is worth this cost; fixes (preempting heartbeats, forking the sandbox, non-durable fast-path chat) each compromise the single-source-of-truth guarantee and are deferred past v1.
+- **Safety valve: per-agent `max_event_duration_mins`.** Bounds worst-case chat-starvation. If a single event exceeds it, the session aborts that event (logs to today's `logs/…md`, snapshots, moves on). Default generous (e.g. 30); tunable per agent.
 - **Graceful restart.** No single workflow run lives forever. After N events or T hours, the session hands off: it snapshots, ends the run, and its very last step kicks off a fresh session run. State continuity is provided by the sandbox snapshot + `agents.last_session_run_id`.
 - **Crash recovery.** Workflows resume from their own snapshot automatically. A low-frequency liveness sweeper (Vercel Cron every ~15 min) scans for `enabled = true` agents with no live session run and restarts them.
 - **Observability.** `agents.last_session_run_id` + `npx workflow inspect run` give a 1:1 view of "what this agent is doing right now."
@@ -309,6 +325,7 @@ agents (
   enabled                    boolean,
   heartbeat_enabled          boolean,
   heartbeat_interval_mins    int,
+  max_event_duration_mins    int,              -- safety valve; aborts runaway events
   home_sandbox_snapshot_id   text null,        -- null until first snapshot
   last_session_run_id        text null,
   created_at                 timestamptz
