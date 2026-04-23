@@ -53,11 +53,12 @@ A user-created entity with:
 - **A home sandbox** (§4.2) — a persistent filesystem for its markdown "mind."
 
 ### Tool
-An invocable capability. Two populations, one interface:
-- **Maintainer tools** — global, code-defined, versioned with the app (`gmail.search`, `bash`, `browser.open`, …).
-- **Synthesized agent-tools** — one per user-owned agent, generated at runtime so agents can call each other (§4.5).
+An invocable capability the agent can call via the AI SDK tool protocol. Three sources at runtime, one interface:
+- **Built-in `bash`** — always present on every agent. The agent's primary way to interact with its own home sandbox (read/write its MD files, run scripts). Not a catalog entry; not attached or detached; a consequence of having a home sandbox.
+- **Maintainer catalog tools** — global, code-defined, versioned with the app (`gmail.search`, `web.fetch`, `browser.open`, …). Attached per-agent via the catalog UI.
+- **Synthesized agent-tools** — one per user-owned agent, generated at runtime so agents can call each other (§4.5). Attached via the catalog UI as if they were maintainer tools.
 
-To the LLM they are indistinguishable.
+To the LLM all three are indistinguishable — they're just functions in the `ToolSet`.
 
 ### Sandbox
 A Vercel Sandbox microVM. Every agent has **one home sandbox** for its markdown files and a bash workspace. Tools with heavy runtime needs (Chromium, Python, ffmpeg) get **on-demand tool sandboxes**, spun up per invocation from pre-built base snapshots.
@@ -186,11 +187,21 @@ export interface MaintainerTool {
 }
 ```
 
-`ToolBuildContext` carries `{ agentId, userId, credentials, homeSandbox }`. `build()` is called at session start for every tool attached to the agent, producing a `ToolSet` passed to `DurableAgent`.
+`ToolBuildContext` carries `{ agentId, userId, credentials, homeSandbox }`. `build()` is called at session start for every attached tool, producing a `ToolSet` merged with the built-in set (below) and passed to `DurableAgent`.
+
+**`ToolSet` composition at session start.**
+```ts
+toolSet = {
+  bash: builtInBashTool(homeSandbox),           // always present; not a catalog entry
+  ...buildAttachedTools(agent_tools, ctx),      // maintainer tools
+  ...buildAgentTools(agent_tools, ctx),         // synthesised sub-agents (rows with "agent:<uuid>")
+}
+```
+`bash` runs a command inside the agent's home sandbox and returns stdout/stderr/exit code. It is an implementation detail of "every agent owns a sandbox" — users cannot detach it and it does not appear in the catalog UI.
 
 **Catalog.** Maintainer tools live in a static registry (`tools/registry.ts`). Attaching a tool that requires an OAuth provider the user has not connected triggers the generalised connection flow (§5).
 
-**Agent-as-tool synthesiser.** Takes an agent row and returns an AI SDK tool whose `execute` sends an `invocation` event to the target agent's session hook and awaits a `reply` event (§4.5). Both populations are merged into a single `ToolSet` passed to `DurableAgent`; the LLM sees them as ordinary function tools and cannot tell them apart. Tool discovery is native to the AI SDK — there is no markdown index of tools.
+**Agent-as-tool synthesiser.** Takes an agent row and returns an AI SDK tool whose `execute` sends an `invocation` event to the target agent's session hook and awaits a `reply` event (§4.5). The LLM sees maintainer tools, built-in `bash`, and sub-agents as ordinary function tools and cannot tell them apart. Tool discovery is native to the AI SDK — there is no markdown index of tools.
 
 ### 4.5 Sub-agent invocation
 
@@ -381,9 +392,9 @@ Every phase ends in a state where the app runs, passes tests, and can be demoed.
 - Replace the hard-coded `kind` with the full `agents` table from §5. Delete `lib/agent-runtime-registry.ts` and the `agents/daily-email-brief` directory.
 - Ship a "create agent" UI: name, model, system prompt, heartbeat toggle + interval. System prompt is written via the pending-writes queue into a seed `SOUL.md`.
 - Implement the pending-writes queue (drained on sandbox boot) and the flat file cache read path in the UI.
-- Only one maintainer tool in this phase: `bash` (runs a command in the home sandbox) — validates the generalised flow without pulling in full catalog plumbing.
+- Ship the built-in `bash` tool (§4.4) as the only tool in an agent's `ToolSet` in this phase. No maintainer catalog yet — agents only have `bash` over their home sandbox, which is enough to edit their own MD files, run scripts, and demonstrate the generalised flow.
 
-**Testable end state.** A user can create a blank agent from the UI, chat with it (equipped only with `bash`), and see its MEMORY / TASKS / logs in an admin MD viewer. The old `daily-email-brief` is entirely gone.
+**Testable end state.** A user can create a blank agent from the UI, chat with it (equipped only with the built-in `bash`), watch it edit its own MEMORY / TASKS via shell commands, and see the results in an admin MD viewer. The old `daily-email-brief` is entirely gone.
 
 ### Phase 3 — Tool catalog + connections
 *Users can compose an agent from a tool catalog.*
