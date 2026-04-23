@@ -147,29 +147,37 @@ Rules:
 
 Every file lives in the home sandbox under `/home/agent/`. They are the sole persistent memory of the agent between events.
 
-| File | Role | Written by | Read by |
-|---|---|---|---|
-| `SOUL.md` | Identity, ethics, style (the effective system prompt) | User (via pending-writes queue); agent may self-rewrite (discouraged by default base prompt) | Agent, every event |
-| `AGENTS.md` | Operational manual for the sandbox per the [agents.md](https://agents.md/) spec — filesystem layout, roles and conventions of the other MD files, date/checklist formats, bash environment, "do not rewrite `SOUL.md`," etc. | System (seeded at sandbox bootstrap from a template; re-seeded on app deploys that change the template) | Agent, every event |
-| `MEMORY.md` | Durable facts, preferences, commitments | Agent, via a dedicated memory-write tool | Agent, every event |
-| `GOALS.md` | Long-horizon objectives | User + agent (synthesized from DREAMS) | Agent on heartbeat |
-| `CALENDAR.md` | Known time-bound events & deadlines | Agent (from tool results); user (manual) | Agent on heartbeat |
-| `TASKS.md` | Active tactical items, status, dependencies | Agent | Agent on heartbeat; UI displays |
-| `DREAMS.md` | Reflection, pattern anticipation, self-evaluation | Agent during dedicated heartbeat runs | Agent for future planning |
-| `logs/YYYY-MM-DD.md` | Raw event trace for the day | Agent (auto-appended each event) | Agent (DREAMS pass); UI timeline |
+Two tiers:
+- **Eager** — `AGENTS.md` (HOW) and `SOUL.md` (WHO) are read by a setup step and injected into the system message on every event. Small, stable, always relevant.
+- **Lazy** — every other file is read by the agent on demand via `bash` (`cat MEMORY.md`, `ls logs/`, etc.). Keeps prompts compact as files grow; matches how a coding agent navigates a codebase.
 
-> **Note — `AGENTS.md` follows the [agents.md](https://agents.md/) public standard.** The spec defines a markdown file that tells AI agents how to operate within a given codebase: directory layout, conventions, commands, what to do, what to avoid. In our system, each agent's "codebase" is its own home sandbox, so the spec applies naturally. `AGENTS.md` is **system-authored** from a template, effectively constant per app version; users do not edit it in v1 and the default base system prompt instructs agents not to rewrite it. This is distinct from `SOUL.md` (identity / persona) — `AGENTS.md` is operational, `SOUL.md` is personal.
+| File | Tier | Role | Written by | Read by |
+|---|---|---|---|---|
+| `SOUL.md` | **eager** | **WHO** — identity, persona, values, voice, scope of interest | User (via pending-writes queue); agent may self-rewrite (discouraged by default base prompt) | Setup step, every event |
+| `AGENTS.md` | **eager** | **HOW** — operational manual for this sandbox per the [agents.md](https://agents.md/) spec: filesystem layout, roles and conventions of the other MD files, date/checklist formats, bash environment — **plus per-agent workflow instructions** (escalation rules, preferred tools, "read MEMORY.md before chat," domain checklists) | System (template seed at agent creation) **+ user** (via pending-writes queue for per-agent instructions); agent should not self-rewrite | Setup step, every event |
+| `MEMORY.md` | lazy | Durable facts, preferences, commitments | Agent (via bash or optional memory-write tool) | Agent on demand |
+| `GOALS.md` | lazy | Long-horizon objectives | User + agent (synthesized from DREAMS) | Agent on demand (typically on heartbeat) |
+| `CALENDAR.md` | lazy | Known time-bound events & deadlines | Agent (from tool results); user (manual) | Agent on demand (typically on heartbeat) |
+| `TASKS.md` | lazy | Active tactical items, status, dependencies | Agent | Agent on demand; UI displays |
+| `DREAMS.md` | lazy | Reflection, pattern anticipation, self-evaluation | Agent during dedicated heartbeat runs | Agent on demand (DREAMS runs) |
+| `logs/YYYY-MM-DD.md` | lazy | Raw event trace for the day | Agent (auto-appended each event) | Agent on demand; UI timeline |
+
+> **Note — `AGENTS.md` follows the [agents.md](https://agents.md/) public standard, with per-agent customization.** The spec defines a markdown file that tells AI agents how to operate within a given codebase, and explicitly supports hierarchical / context-specific variants. Each agent's "codebase" is its own sandbox, so a per-agent `AGENTS.md` is spec-aligned. It has two layers: a **template baseline** seeded by the system at agent creation (standard filesystem layout, conventions, bash notes), and **per-agent instructions** appended or edited by the user via the pending-writes queue (escalation rules, preferred tools, "always read MEMORY.md before replying to chat," domain-specific checklists). Agents should not self-rewrite `AGENTS.md`.
 >
-> **No "other agents" file.** Agents are not automatically aware of other agents the user owns. A sub-agent is made available to an agent only by explicit attachment via the tool catalog (§4.4–4.5, stored in `agent_tools` as `"agent:<uuid>"`). An agent knows exactly what has been given to it — nothing more.
+> **`SOUL.md` vs `AGENTS.md` — WHO vs HOW.** `SOUL.md` is identity and persona; `AGENTS.md` is operational instructions. The UI surfaces them on separate tabs (*Identity* / *Instructions*) to avoid user confusion.
+>
+> **No "other agents" file.** Agents are not automatically aware of other agents the user owns. Sub-agents are made available only by explicit attachment via the tool catalog (§4.4–4.5, stored in `agent_tools` as `"agent:<uuid>"`). An agent knows exactly what has been given to it — nothing more.
+>
+> **Deploy-time updates to the template baseline** are not auto-merged into existing agents' `AGENTS.md` files. If a new standard instruction must apply to all agents, ship it in the code-side base system prompt instead.
 >
 > The repo itself may separately adopt a **root** `AGENTS.md` per the same spec, describing *this codebase* to AI coding agents working on it — that is a tooling concern, not part of this refactor.
 
 #### Event-loop reading pattern
-Every event the agent processes starts with the same prologue (assembled by a step before the `DurableAgent` call):
+Every event the agent processes starts with the same minimal prologue (assembled by a step before the `DurableAgent` call):
 ```
-base system prompt + AGENTS.md + SOUL.md + MEMORY.md + GOALS.md
-+ TASKS.md + CALENDAR.md + today's log
+base system prompt + AGENTS.md + SOUL.md
 ```
+All other MD files (`MEMORY.md`, `TASKS.md`, `CALENDAR.md`, `GOALS.md`, `DREAMS.md`, `logs/*.md`) are **read lazily** by the agent via bash when it decides they are relevant. `AGENTS.md` tells the agent what exists and when to consult each file; per-agent instructions in `AGENTS.md` (e.g. *"always read MEMORY.md before replying to chat"*) can force eager-style behavior for files the agent's owner deems load-bearing. Keeps prompts compact as memory files grow; matches how a coding agent navigates a codebase.
 
 #### UI read path — the flat file cache
 The UI cannot read the sandbox directly (it is stopped most of the time). At the end of every event (after snapshotting), a step pulls every `.md` under `/home/agent/` and upserts rows into:
@@ -255,13 +263,14 @@ Guardrails:
 | Attached tool IDs | `agent_tools` table | UI (attach/detach; session rebuilds `ToolSet` on next event) |
 | Heartbeat enabled & interval | columns on `agents` | UI (instant; next tick picks it up) |
 | Display name, icon | columns on `agents` | UI |
-| Prose identity | `SOUL.md` in the sandbox | Primarily UI via pending-writes queue; agent may self-rewrite but the default base system prompt discourages it |
+| Prose identity (WHO) | `SOUL.md` in the sandbox | UI *Identity* tab via pending-writes queue; agent may self-rewrite, discouraged by default |
+| Operational instructions (HOW) | `AGENTS.md` in the sandbox | UI *Instructions* tab via pending-writes queue (layered on the system baseline template); agent should not self-rewrite |
 
-The default base system prompt, prepended to `SOUL.md` at every event, includes a clause along the lines of:
+The default base system prompt, prepended at every event, includes clauses along the lines of:
 
-> *Treat `SOUL.md` as given. Do not rewrite it unless the user has explicitly asked you to revise your identity.*
+> *Treat `AGENTS.md` and `SOUL.md` as given. Do not rewrite `AGENTS.md`. Do not rewrite `SOUL.md` unless the user has explicitly asked you to revise your identity.*
 
-Opt-in self-rewrite (e.g. an agent whose whole purpose is meta-reflection) is a per-agent flag we can add later.
+Opt-in self-rewrite of `SOUL.md` (e.g. for meta-reflection agents) is a per-agent flag we can add later.
 
 ### 4.7 Event flows
 
@@ -379,7 +388,7 @@ These aren't architectural beams but are canonical enough to codify here.
 
 - **Timezones.** Daily-log filenames and heartbeat-clock semantics use the owning user's timezone (stored on `user`, default UTC).
 - **Log retention.** Daily logs are never auto-deleted. `DREAMS.md` digests and summarises old logs. Users may prune manually.
-- **Base system prompt.** A short code-side preamble prepended on every event that tells the agent *how to read the rest of the prompt*: always consult `AGENTS.md` and `SOUL.md` first, treat both as given, use the memory files as described in `AGENTS.md`. Operational conventions (file layout, checkbox / date formats, bash notes) live in `AGENTS.md` in the sandbox, not in the base prompt, so they are auditable and version-controlled alongside the agent's other files. Tools are exposed through the AI SDK `ToolSet`, not through a markdown index.
+- **Base system prompt.** Short code-side preamble prepended on every event. Tells the agent: you have two files pre-loaded (`AGENTS.md` = how, `SOUL.md` = who); treat both as given; read other files (`MEMORY.md`, `TASKS.md`, etc.) lazily via bash when relevant per the guidance in `AGENTS.md`. Operational conventions (file layout, checkbox / date formats, bash notes, per-agent workflow rules) live in `AGENTS.md` in the sandbox, not in the base prompt — auditable and version-controlled alongside the agent's other files. Tools are exposed through the AI SDK `ToolSet`, not through a markdown index.
 - **Tool failure handling.** `FatalError` for bad inputs / revoked auth; `RetryableError` for rate limits / 5xx. Fatal tool errors become an agent-visible message, not a workflow crash.
 - **Streaming namespaces.** Each chat turn uses a per-turn namespace keyed by `replyStreamToken`. Heartbeat and sub-agent work emit to a `logs` namespace the UI may optionally subscribe to for a live activity feed.
 - **Model selection** goes through AI Gateway; the supported model list is a small allow-list curated by the maintainer.
@@ -398,7 +407,7 @@ Every phase ends in a state where the app runs, passes tests, and can be demoed.
 - Move the existing `daily-email-brief` chat + trigger logic onto this loop. Keep its tools inline, its sandbox pattern, its UI.
 - Add `agents.last_session_run_id`, start-on-enable / shutdown-on-disable plumbing.
 - Add the `agent_files` cache + end-of-event flush step.
-- Author the initial `AGENTS.md` template and seed it into the sandbox at bootstrap (re-seeded on deploys that change the template).
+- Author the initial `AGENTS.md` baseline template (standard filesystem layout, MD file conventions, bash notes) and seed it into the sandbox on first bootstrap. Deploy-time template changes do **not** overwrite existing agents' `AGENTS.md`. Per-agent instruction editing via UI + pending-writes queue arrives in Phase 2 alongside the "create agent" flow.
 - Add the low-frequency liveness sweeper cron.
 
 **Testable end state.** The existing agent still works via chat; it now also runs itself on heartbeat (replacing the manual trigger); an admin page reads `agent_files` and shows the sandbox MD tree.
@@ -407,7 +416,7 @@ Every phase ends in a state where the app runs, passes tests, and can be demoed.
 *The agent becomes a user-editable row.*
 
 - Replace the hard-coded `kind` with the full `agents` table from §5. Delete `lib/agent-runtime-registry.ts` and the `agents/daily-email-brief` directory.
-- Ship a "create agent" UI: name, model, system prompt, heartbeat toggle + interval. System prompt is written via the pending-writes queue into a seed `SOUL.md`.
+- Ship a "create agent" UI with two editable prose tabs — *Identity* (`SOUL.md`) and *Instructions* (`AGENTS.md` per-agent section, layered on the baseline template) — plus structured fields: name, model, heartbeat toggle + interval. Prose edits flow through the pending-writes queue.
 - Implement the pending-writes queue (drained on sandbox boot) and the flat file cache read path in the UI.
 - Ship the built-in `bash` tool (§4.4) as the only tool in an agent's `ToolSet` in this phase. No maintainer catalog yet — agents only have `bash` over their home sandbox, which is enough to edit their own MD files, run scripts, and demonstrate the generalised flow.
 
@@ -421,7 +430,7 @@ Every phase ends in a state where the app runs, passes tests, and can be demoed.
 - First real tool set: `gmail.search`, `gmail.send`, `google-calendar.read`, `google-calendar.create`, `web.fetch`, `memory.write` (wraps `MEMORY.md` edits), `tasks.write` (wraps `TASKS.md` edits).
 - Tool-catalog UI and attach/detach flow. Attachment updates `agent_tools`; the session rebuilds its `ToolSet` at the start of the next event.
 
-**Testable end state.** A user can rebuild an equivalent of the original "daily email brief" agent entirely through the UI — create an agent, attach `gmail.search` + `memory.write`, author a `SOUL.md` — with no code deploy required.
+**Testable end state.** A user can rebuild an equivalent of the original "daily email brief" agent entirely through the UI — create an agent, attach `gmail.search` + `memory.write`, write `SOUL.md` (identity) and per-agent `AGENTS.md` instructions (e.g. "every heartbeat: fetch today's email, summarise, append brief to MEMORY.md") — with no code deploy required.
 
 ### Phase 4 — Sub-agents + tool sandboxes
 *Agents can call each other; tools can have heavy runtimes.*
