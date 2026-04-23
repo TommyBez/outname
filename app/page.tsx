@@ -3,7 +3,6 @@ import Link from "next/link"
 import { requireSession } from "@/lib/auth-guard"
 import {
   getCachedAgentsForUser,
-  getCachedDigestWithItems,
   getCachedLatestRunForAgent,
 } from "@/lib/data"
 import { getCachedGmailConnectionForUser } from "@/lib/google-oauth"
@@ -13,7 +12,7 @@ import { AgentTodayCard } from "@/components/agent-today-card"
 import {
   AgentCardSkeleton,
   ConnectionNoticeSkeleton,
-  DigestSkeleton,
+  RunResultSkeleton,
 } from "@/components/skeletons"
 import type { Agent } from "@/lib/db/schema"
 import { AGENT_KINDS } from "@/workflows/agents/registry"
@@ -54,7 +53,7 @@ async function DashboardContent() {
         <ConnectionNotice userId={session.user.id} />
       </Suspense>
 
-      <Suspense fallback={<DigestSkeleton />}>
+      <Suspense fallback={<RunResultSkeleton />}>
         <AgentsList userId={session.user.id} />
       </Suspense>
     </>
@@ -130,18 +129,12 @@ async function AgentsList({ userId }: { userId: string }) {
 
 async function AgentCardContainer({ agent }: { agent: Agent }) {
   const latest = await getCachedLatestRunForAgent(agent.id)
-  const digest =
-    latest && latest.status === "completed"
-      ? await getCachedDigestWithItems(latest.id)
-      : null
-
   const kindMeta = AGENT_KINDS[agent.kind as keyof typeof AGENT_KINDS]
   return (
     <AgentTodayCard
       agent={agent}
       kindLabel={kindMeta?.label ?? agent.kind}
       latestRun={latest}
-      digestItems={digest?.items ?? null}
     />
   )
 }
@@ -150,7 +143,7 @@ function DashboardContentFallback() {
   return (
     <>
       <ConnectionNoticeSkeleton />
-      <DigestSkeleton />
+      <RunResultSkeleton />
     </>
   )
 }

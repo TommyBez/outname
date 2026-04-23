@@ -4,7 +4,6 @@ import {
   text,
   timestamp,
   boolean,
-  integer,
   index,
   uniqueIndex,
   jsonb,
@@ -62,16 +61,6 @@ export const verification = pgTable("verification", {
 })
 
 // App tables
-export const userSettings = pgTable("user_settings", {
-  userId: text("user_id")
-    .primaryKey()
-    .references(() => user.id, { onDelete: "cascade" }),
-  timezone: text("timezone").notNull().default("UTC"),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-})
-
 export const agent = pgTable(
   "agent",
   {
@@ -82,11 +71,6 @@ export const agent = pgTable(
     kind: text("kind").notNull(), // e.g. "daily-email-brief"
     name: text("name").notNull(),
     enabled: boolean("enabled").notNull().default(true),
-    scheduleTime: text("schedule_time").notNull().default("08:00"), // HH:MM in user's TZ
-    scheduleDays: integer("schedule_days")
-      .array()
-      .notNull()
-      .default([1, 2, 3, 4, 5]), // ISO weekdays, 1=Mon..7=Sun
     config: text("config"), // JSON blob for kind-specific options
     // Name of the persistent Vercel Sandbox this agent uses for durable
     // work. NULL until the first run provisions it; once set, subsequent
@@ -116,14 +100,11 @@ export const runs = pgTable(
       onDelete: "cascade",
     }),
     workflowRunId: text("workflow_run_id"),
-    status: text("status").notNull().default("running"), // running | scheduled | completed | failed
-    trigger: text("trigger").notNull().default("manual"), // manual | cron
-    scheduledFor: timestamp("scheduled_for", { withTimezone: true }),
+    status: text("status").notNull().default("running"), // running | completed | failed
     startedAt: timestamp("started_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
     completedAt: timestamp("completed_at", { withTimezone: true }),
-    emailsScanned: integer("emails_scanned").notNull().default(0),
     error: text("error"),
   },
   (t) => ({
@@ -132,42 +113,29 @@ export const runs = pgTable(
   }),
 )
 
-export const digests = pgTable(
-  "digests",
-  {
-    id: text("id").primaryKey(),
-    runId: text("run_id")
-      .notNull()
-      .references(() => runs.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    summary: text("summary"),
-  },
-  (t) => ({
-    runIdIdx: index("digests_run_id_idx").on(t.runId),
-  }),
-)
-
-export const digestItems = pgTable(
-  "digest_items",
-  {
-    id: text("id").primaryKey(),
-    digestId: text("digest_id")
-      .notNull()
-      .references(() => digests.id, { onDelete: "cascade" }),
-    messageId: text("message_id"),
-    threadId: text("thread_id"),
-    category: text("category").notNull(), // urgent | reply | fyi | noise
-    subject: text("subject"),
-    sender: text("sender"),
-    snippet: text("snippet"),
-    summary: text("summary"),
-    receivedAt: timestamp("received_at", { withTimezone: true }),
-  },
-  (t) => ({
-    digestIdIdx: index("digest_items_digest_id_idx").on(t.digestId),
-    categoryIdx: index("digest_items_category_idx").on(t.category),
-  }),
-)
+/**
+ * Agent-agnostic run output.
+ *
+ * Every completed run may attach one `run_result` row keyed by `run_id`.
+ * `content` is a markdown (or plain text) document produced by the agent
+ * itself — the platform does not impose any schema on what the agent
+ * renders. `metrics` holds optional agent-defined per-run counts (e.g.
+ * `{ emailsScanned: 12 }`) and lives on the same row so publishing a
+ * result is one atomic insert.
+ *
+ * The PK on `run_id` gives us the "one result per run" invariant for
+ * free and is the only index required — lookups are always by run id.
+ */
+export const runResult = pgTable("run_result", {
+  runId: text("run_id")
+    .primaryKey()
+    .references(() => runs.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  metrics: jsonb("metrics"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+})
 
 // Chat conversations: an agent can own many independent threads. Listing
 // in the sidebar is always "newest first for this agent", so we index on
@@ -236,15 +204,11 @@ export const gmailConnection = pgTable("gmail_connection", {
 })
 
 export type Run = typeof runs.$inferSelect
-export type Digest = typeof digests.$inferSelect
-export type DigestItem = typeof digestItems.$inferSelect
+export type RunResult = typeof runResult.$inferSelect
 export type GmailConnection = typeof gmailConnection.$inferSelect
 export type Agent = typeof agent.$inferSelect
-export type UserSettings = typeof userSettings.$inferSelect
 export type ChatConversation = typeof chatConversation.$inferSelect
 export type ChatMessage = typeof chatMessage.$inferSelect
 export type ChatRole = "user" | "assistant" | "system"
-export type Category = "urgent" | "reply" | "fyi" | "noise"
 export type AgentKind = "daily-email-brief"
-export type RunTrigger = "manual" | "cron"
-export type RunStatus = "running" | "scheduled" | "completed" | "failed"
+export type RunStatus = "running" | "completed" | "failed"

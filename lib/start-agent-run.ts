@@ -2,7 +2,7 @@ import "server-only"
 import { start } from "workflow/api"
 import { eq } from "drizzle-orm"
 import { db } from "@/lib/db"
-import { agent, runs, type Agent, type RunTrigger } from "@/lib/db/schema"
+import { agent, runs, type Agent } from "@/lib/db/schema"
 import { isAgentKind } from "@/workflows/agents/registry"
 import { getAgentRuntime } from "@/lib/agent-runtime-registry"
 
@@ -12,8 +12,8 @@ function nanoid() {
 
 /**
  * Dispatch an agent run by kind. Keeps the wiring (DB row + workflow start +
- * workflowRunId backfill) in one place so both the manual trigger route and
- * the daily cron use the same code path.
+ * workflowRunId backfill) in one place so the manual trigger route has a
+ * single entry point.
  *
  * The per-kind workflow function is looked up in `AGENT_RUNTIMES` so adding
  * a new kind does not require touching this file.
@@ -22,17 +22,15 @@ function nanoid() {
  */
 export async function startAgentRun(opts: {
   agent: Agent
-  trigger: RunTrigger
-  scheduledFor?: Date | null
 }): Promise<{ runId: string; workflowRunId: string }> {
-  const { agent: a, trigger, scheduledFor } = opts
+  const { agent: a } = opts
   if (!isAgentKind(a.kind)) {
     throw new Error(`Unknown agent kind: ${a.kind}`)
   }
 
   const runtime = getAgentRuntime(a.kind)
   if (!runtime?.cronWorkflow) {
-    throw new Error(`Agent kind "${a.kind}" has no cron workflow registered.`)
+    throw new Error(`Agent kind "${a.kind}" has no workflow registered.`)
   }
 
   const runId = nanoid()
@@ -40,9 +38,7 @@ export async function startAgentRun(opts: {
   await db.insert(runs).values({
     id: runId,
     agentId: a.id,
-    status: scheduledFor && scheduledFor.getTime() > Date.now() ? "scheduled" : "running",
-    trigger,
-    scheduledFor: scheduledFor ?? null,
+    status: "running",
     startedAt: new Date(),
   })
 
@@ -51,7 +47,6 @@ export async function startAgentRun(opts: {
       {
         runId,
         agentId: a.id,
-        scheduledForMs: scheduledFor ? scheduledFor.getTime() : undefined,
       },
     ])
     await db

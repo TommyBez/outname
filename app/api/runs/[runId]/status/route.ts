@@ -65,7 +65,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ runId: 
     liveStatus,
     startedAt: row.startedAt,
     completedAt: finalCompletedAt,
-    emailsScanned: row.emailsScanned,
     error: finalError,
   })
 }

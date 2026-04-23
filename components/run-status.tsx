@@ -12,7 +12,6 @@ interface StatusResp {
   liveStatus: string | null
   startedAt: string
   completedAt: string | null
-  emailsScanned: number
   error: string | null
 }
 

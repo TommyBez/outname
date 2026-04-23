@@ -10,8 +10,6 @@ export interface AgentKindDefinition {
   label: string
   description: string
   defaultName: string
-  defaultScheduleTime: string // HH:MM
-  defaultScheduleDays: number[] // ISO 1..7 (1=Mon)
 }
 
 export const AGENT_KINDS: Record<AgentKind, AgentKindDefinition> = {
@@ -19,10 +17,8 @@ export const AGENT_KINDS: Record<AgentKind, AgentKindDefinition> = {
     kind: "daily-email-brief",
     label: "Daily email brief",
     description:
-      "Scans your inbox, classifies new messages, and produces a morning briefing.",
+      "Scans your inbox, classifies new messages, and produces a markdown digest on demand.",
     defaultName: "Daily email brief",
-    defaultScheduleTime: "08:00",
-    defaultScheduleDays: [1, 2, 3, 4, 5],
   },
 }
 

@@ -20,7 +20,7 @@ export function SummarySkeleton() {
   )
 }
 
-export function DigestSkeleton() {
+export function RunResultSkeleton() {
   return (
     <div className="flex flex-col gap-14">
       <div className="flex flex-col gap-3">
