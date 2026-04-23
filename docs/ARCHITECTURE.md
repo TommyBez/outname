@@ -133,7 +133,7 @@ Every file lives in the home sandbox under `/home/agent/`. They are the sole per
 | File | Role | Written by | Read by |
 |---|---|---|---|
 | `SOUL.md` | Identity, ethics, style (the effective system prompt) | User (via pending-writes queue); agent may self-rewrite (discouraged by default base prompt) | Agent, every event |
-| `AGENTS.md` | Other agents the user owns + brief descriptions | System (regenerated on agent-set changes) | Agent when considering delegation |
+| `PEERS.md` | Other agents the user owns + brief descriptions | System (regenerated on agent-set changes) | Agent when considering delegation |
 | `MEMORY.md` | Durable facts, preferences, commitments | Agent, via a dedicated memory-write tool | Agent, every event |
 | `GOALS.md` | Long-horizon objectives | User + agent (synthesized from DREAMS) | Agent on heartbeat |
 | `CALENDAR.md` | Known time-bound events & deadlines | Agent (from tool results); user (manual) | Agent on heartbeat |
@@ -141,12 +141,14 @@ Every file lives in the home sandbox under `/home/agent/`. They are the sole per
 | `DREAMS.md` | Reflection, pattern anticipation, self-evaluation | Agent during dedicated heartbeat runs | Agent for future planning |
 | `logs/YYYY-MM-DD.md` | Raw event trace for the day | Agent (auto-appended each event) | Agent (DREAMS pass); UI timeline |
 
+> **Note — why `PEERS.md` and not `AGENTS.md`.** [`agents.md`](https://agents.md/) is the emerging public standard for a project-level markdown file describing a codebase to AI coding agents (build commands, conventions, architecture) — analogous to `README.md` but for AI. Reusing that filename inside our agents' sandboxes would overload a name that already has public meaning and confuse any AI coding agent that eventually operates on this repo. We use `PEERS.md` for the per-agent "siblings I can delegate to" file. The repo itself may separately adopt a root `AGENTS.md` per the standard — that's a tooling concern, not part of this refactor.
+
 #### Event-loop reading pattern
 Every event the agent processes starts with the same prologue (assembled by a step before the `DurableAgent` call):
 ```
 base system prompt + SOUL.md + MEMORY.md + GOALS.md + TASKS.md
 + CALENDAR.md + today's log
-(+ AGENTS.md if the event requires delegation reasoning)
+(+ PEERS.md if the event requires delegation reasoning)
 ```
 
 #### UI read path — the flat file cache
@@ -394,7 +396,7 @@ Every phase ends in a state where the app runs, passes tests, and can be demoed.
 
 - Agent-as-tool synthesiser and the cross-workflow invocation protocol from §4.5, with depth and cycle guards.
 - First tool that requires a tool sandbox: a browser tool using the `@vercel/sandbox` snapshot pattern. This validates the "no cross-sandbox FS" data-flow rule end-to-end.
-- `AGENTS.md` regeneration on the user's agent-set changes.
+- `PEERS.md` regeneration on the user's agent-set changes.
 - Depth/cycle guard tests.
 
 **Testable end state.** A user can create an "orchestrator" agent whose toolset includes other agents they own plus the browser tool. Sub-agent calls show up as linked workflow runs in observability.
