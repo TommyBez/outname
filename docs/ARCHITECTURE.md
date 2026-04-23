@@ -133,6 +133,7 @@ Every file lives in the home sandbox under `/home/agent/`. They are the sole per
 | File | Role | Written by | Read by |
 |---|---|---|---|
 | `SOUL.md` | Identity, ethics, style (the effective system prompt) | User (via pending-writes queue); agent may self-rewrite (discouraged by default base prompt) | Agent, every event |
+| `AGENTS.md` | Operational manual for the sandbox per the [agents.md](https://agents.md/) spec — filesystem layout, roles and conventions of the other MD files, date/checklist formats, bash environment, "do not rewrite `SOUL.md`," etc. | System (seeded at sandbox bootstrap from a template; re-seeded on app deploys that change the template) | Agent, every event |
 | `MEMORY.md` | Durable facts, preferences, commitments | Agent, via a dedicated memory-write tool | Agent, every event |
 | `GOALS.md` | Long-horizon objectives | User + agent (synthesized from DREAMS) | Agent on heartbeat |
 | `CALENDAR.md` | Known time-bound events & deadlines | Agent (from tool results); user (manual) | Agent on heartbeat |
@@ -140,13 +141,17 @@ Every file lives in the home sandbox under `/home/agent/`. They are the sole per
 | `DREAMS.md` | Reflection, pattern anticipation, self-evaluation | Agent during dedicated heartbeat runs | Agent for future planning |
 | `logs/YYYY-MM-DD.md` | Raw event trace for the day | Agent (auto-appended each event) | Agent (DREAMS pass); UI timeline |
 
-> **Note — no per-agent "other agents" file; `AGENTS.md` is reserved for the public standard.** Agents are not automatically aware of other agents the user owns. A sub-agent is made available to an agent the same way any other tool is: explicit attachment via the tool catalog (§4.4–4.5, stored in `agent_tools` as `"agent:<uuid>"`). This preserves the principle that *an agent only knows what has been explicitly given to it* and avoids reimplementing [`agents.md`](https://agents.md/), which is the public standard for a **repo-level** file describing a codebase to AI coding agents. The repo itself may separately adopt a root `AGENTS.md` per that standard — a tooling concern, not part of this refactor.
+> **Note — `AGENTS.md` follows the [agents.md](https://agents.md/) public standard.** The spec defines a markdown file that tells AI agents how to operate within a given codebase: directory layout, conventions, commands, what to do, what to avoid. In our system, each agent's "codebase" is its own home sandbox, so the spec applies naturally. `AGENTS.md` is **system-authored** from a template, effectively constant per app version; users do not edit it in v1 and the default base system prompt instructs agents not to rewrite it. This is distinct from `SOUL.md` (identity / persona) — `AGENTS.md` is operational, `SOUL.md` is personal.
+>
+> **No "other agents" file.** Agents are not automatically aware of other agents the user owns. A sub-agent is made available to an agent only by explicit attachment via the tool catalog (§4.4–4.5, stored in `agent_tools` as `"agent:<uuid>"`). An agent knows exactly what has been given to it — nothing more.
+>
+> The repo itself may separately adopt a **root** `AGENTS.md` per the same spec, describing *this codebase* to AI coding agents working on it — that is a tooling concern, not part of this refactor.
 
 #### Event-loop reading pattern
 Every event the agent processes starts with the same prologue (assembled by a step before the `DurableAgent` call):
 ```
-base system prompt + SOUL.md + MEMORY.md + GOALS.md + TASKS.md
-+ CALENDAR.md + today's log
+base system prompt + AGENTS.md + SOUL.md + MEMORY.md + GOALS.md
++ TASKS.md + CALENDAR.md + today's log
 ```
 
 #### UI read path — the flat file cache
@@ -346,7 +351,7 @@ These aren't architectural beams but are canonical enough to codify here.
 
 - **Timezones.** Daily-log filenames and heartbeat-clock semantics use the owning user's timezone (stored on `user`, default UTC).
 - **Log retention.** Daily logs are never auto-deleted. `DREAMS.md` digests and summarises old logs. Users may prune manually.
-- **Base system prompt.** Prepended to `SOUL.md` on every event. Contains the "treat SOUL.md as given" clause, the list of available files, and the expected markdown conventions for checklists / dates. Tools are exposed through the AI SDK `ToolSet`, not through a markdown index.
+- **Base system prompt.** A short code-side preamble prepended on every event that tells the agent *how to read the rest of the prompt*: always consult `AGENTS.md` and `SOUL.md` first, treat both as given, use the memory files as described in `AGENTS.md`. Operational conventions (file layout, checkbox / date formats, bash notes) live in `AGENTS.md` in the sandbox, not in the base prompt, so they are auditable and version-controlled alongside the agent's other files. Tools are exposed through the AI SDK `ToolSet`, not through a markdown index.
 - **Tool failure handling.** `FatalError` for bad inputs / revoked auth; `RetryableError` for rate limits / 5xx. Fatal tool errors become an agent-visible message, not a workflow crash.
 - **Streaming namespaces.** Each chat turn uses a per-turn namespace keyed by `replyStreamToken`. Heartbeat and sub-agent work emit to a `logs` namespace the UI may optionally subscribe to for a live activity feed.
 - **Model selection** goes through AI Gateway; the supported model list is a small allow-list curated by the maintainer.
@@ -365,6 +370,7 @@ Every phase ends in a state where the app runs, passes tests, and can be demoed.
 - Move the existing `daily-email-brief` chat + trigger logic onto this loop. Keep its tools inline, its sandbox pattern, its UI.
 - Add `agents.last_session_run_id`, start-on-enable / shutdown-on-disable plumbing.
 - Add the `agent_files` cache + end-of-event flush step.
+- Author the initial `AGENTS.md` template and seed it into the sandbox at bootstrap (re-seeded on deploys that change the template).
 - Add the low-frequency liveness sweeper cron.
 
 **Testable end state.** The existing agent still works via chat; it now also runs itself on heartbeat (replacing the manual trigger); an admin page reads `agent_files` and shows the sandbox MD tree.
