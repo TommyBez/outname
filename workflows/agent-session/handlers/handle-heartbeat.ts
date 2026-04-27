@@ -80,10 +80,10 @@ export async function handleHeartbeat(input: {
 
     // Build the agent against this heartbeat's runId so persistResult
     // and emitStep land on the right `events:${runId}` namespace.
-    const agent =
-      kind === "daily-email-brief"
-        ? createDailyEmailBriefAgent({ runId, agentId })
-        : runtime.buildAgent({ runId, agentId })
+    // The kind === "daily-email-brief" guard above narrows this branch,
+    // but we go through the same factory the registry references so a
+    // single source of truth governs the agent's tool surface.
+    const agent = createDailyEmailBriefAgent({ runId, agentId })
 
     await agent.stream({
       messages: [
