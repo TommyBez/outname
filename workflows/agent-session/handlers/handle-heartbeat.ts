@@ -2,7 +2,6 @@ import { getWritable } from "workflow"
 import { FatalError } from "workflow"
 import type { UIMessageChunk } from "ai"
 import { startupAgentSandbox } from "@/lib/agent-sandbox"
-import { getAgentRuntime } from "@/lib/agent-runtime-registry"
 import type { AgentKind } from "@/lib/db/schema"
 import {
   createDailyEmailBriefAgent,
@@ -71,18 +70,11 @@ export async function handleHeartbeat(input: {
 
     await startupAgentSandbox({ agentId })
 
-    const runtime = getAgentRuntime(kind)
-    if (!runtime?.buildAgent) {
-      throw new FatalError(
-        `Agent kind "${kind}" has no buildAgent registered.`,
-      )
-    }
-
     // Build the agent against this heartbeat's runId so persistResult
-    // and emitStep land on the right `events:${runId}` namespace.
-    // The kind === "daily-email-brief" guard above narrows this branch,
-    // but we go through the same factory the registry references so a
-    // single source of truth governs the agent's tool surface.
+    // and emitStep land on the right `events:${runId}` namespace. The
+    // `kind !== "daily-email-brief"` guard above narrows this branch,
+    // so we can call the factory directly. Phase 2 routes through the
+    // runtime registry once additional kinds exist.
     const agent = createDailyEmailBriefAgent({ runId, agentId })
 
     await agent.stream({

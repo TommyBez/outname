@@ -13,8 +13,8 @@ import { pokeHeartbeat } from "@/lib/agent-session"
  * In the agent-session model the agent is *always* running while it is
  * enabled — the workflow is suspended on a `for await (event of hook)`
  * loop and the cron ticker delivers a `{type:"heartbeat"}` event every
- * 30 minutes. This route simply pokes that same hook with `force:true`
- * so the user can force a run without waiting for the next tick.
+ * 30 minutes. This route simply pokes that same hook so the user can
+ * force a run without waiting for the next tick.
  */
 export async function POST(
   _req: NextRequest,
@@ -61,7 +61,7 @@ export async function POST(
   }
 
   try {
-    const { sessionRunId } = await pokeHeartbeat({ agent, force: true })
+    const { sessionRunId } = await pokeHeartbeat({ agent })
 
     revalidateTag(agentRunsTag(agent.id), "max")
     revalidateTag(runsIndexTag(), "max")

@@ -90,35 +90,68 @@ async function doStart(
  * Push a `shutdown` event into the session hook so the for-await loop
  * exits cleanly. Best-effort — a missing or already-stopped session
  * is not an error.
+ *
+ * After resuming the hook we poll the run's terminal state for a
+ * bounded amount of time (default ~5s, 250ms intervals). This closes
+ * a UX-visible race: a rapid disable→enable in the UI used to call
+ * `startAgentSession` against an agent whose previous run was still
+ * winding down, which made `getRunningSessionRunId` return the dying
+ * id and the new "start" became a no-op. Bounded waiting keeps the
+ * worst case acceptable for a UI handler; if we time out, the cron
+ * liveness sweeper picks the agent up within 15 minutes anyway.
  */
 export async function stopAgentSession(agentId: string): Promise<void> {
+  let prevRunId: string | null = null
+  try {
+    const rows = await db
+      .select({ id: agent.lastSessionRunId })
+      .from(agent)
+      .where(eq(agent.id, agentId))
+      .limit(1)
+    prevRunId = rows[0]?.id ?? null
+  } catch {
+    // best-effort: if we can't read the row we still attempt the
+    // shutdown push below.
+  }
+
   try {
     await resumeHook(sessionToken(agentId), { type: "shutdown" })
   } catch (err) {
     console.error("[v0] stopAgentSession: resume failed", err)
+    return
   }
+
+  if (!prevRunId) return
+
+  const deadlineMs = Date.now() + 5_000
+  const intervalMs = 250
+  while (Date.now() < deadlineMs) {
+    if (!(await isWorkflowRunAlive(prevRunId))) return
+    await sleep(intervalMs)
+  }
+
+  console.warn(
+    "[v0] stopAgentSession: run did not terminate within bound; " +
+      "liveness sweeper will recover.",
+    { agentId, prevRunId },
+  )
+}
+
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms))
 }
 
 /**
  * Ensure the session is running and push a single heartbeat event.
- * Returns the session run id and the per-event replyToken (unused for
- * heartbeats today, but symmetric with `dispatchChatTurn` for
- * forward-compat).
+ * Returns the session run id. The push has no `ack` field so the
+ * heartbeat handler runs but does not interfere with the periodic
+ * ticker's own ack handshake.
  */
 export async function pokeHeartbeat(opts: {
   agent: Agent
-  /**
-   * When true, sends `force: true` so the heartbeat handler runs even
-   * if the kind has rate-limit / time-of-day gates. Always true for
-   * the manual trigger button.
-   */
-  force?: boolean
 }): Promise<{ sessionRunId: string }> {
   const { sessionRunId } = await startAgentSession(opts.agent)
-  await resumeHook(sessionToken(opts.agent.id), {
-    type: "heartbeat",
-    force: opts.force ?? false,
-  })
+  await resumeHook(sessionToken(opts.agent.id), { type: "heartbeat" })
   return { sessionRunId }
 }
 

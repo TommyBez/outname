@@ -6,6 +6,7 @@ import { sessionToken, type SessionEvent } from "./events"
 import { endOfEvent } from "./steps/end-of-event"
 import {
   ackHeartbeat,
+  reapOrphanTicker,
   startTicker,
   stopTicker,
 } from "./steps/ticker-control"
@@ -41,6 +42,11 @@ export async function agentSessionWorkflow(input: {
 }): Promise<void> {
   "use workflow"
   const { agentId, kind } = input
+
+  // Defend against the "previous session crashed mid-handler and left
+  // its ticker hanging on its ackHook" failure mode before we start a
+  // fresh ticker on top of it.
+  await reapOrphanTicker({ agentId })
 
   const { tickerRunId } = await startTicker({ agentId })
 
@@ -84,6 +90,6 @@ export async function agentSessionWorkflow(input: {
       await endOfEvent({ agentId })
     }
   } finally {
-    await stopTicker({ tickerRunId })
+    await stopTicker({ agentId, tickerRunId })
   }
 }

@@ -249,13 +249,14 @@ export async function startupAgentSandbox(input: {
 
   // Kind-agnostic baseline seed of /vercel/sandbox/AGENTS.md. The
   // step is sentinel-guarded so it only writes the template on the
-  // very first boot; subsequent calls become a cheap marker read.
-  // Imported lazily so this module doesn't pull workflow primitives
-  // when the file is loaded outside a workflow.
+  // very first boot; the `created` flag lets it short-circuit before
+  // even opening the sandbox handle on subsequent events. Imported
+  // lazily so this module doesn't pull workflow primitives when the
+  // file is loaded outside a workflow.
   const { seedAgentsMd } = await import(
     "@/workflows/agent-session/steps/seed-agents-md"
   )
-  await seedAgentsMd({ agentId })
+  await seedAgentsMd({ agentId, created })
 }
 
 /**

@@ -13,8 +13,9 @@ import type { UIMessage } from "ai"
  *   or a one-shot push from `POST /api/agents/:id/trigger`. When `ack`
  *   is set the session resumes that hook after the handler returns so
  *   the ticker knows the heartbeat is done; ad-hoc trigger pokes leave
- *   it unset. `force: true` from the trigger button bypasses any
- *   future per-kind heartbeat rate limits.
+ *   it unset. (A `force` field will land in Phase 2 when per-kind
+ *   rate-limit / time-of-day gates are introduced; not modeled today
+ *   because no handler reads it.)
  * - `shutdown` — pushed by `stopAgentSession` when the agent is
  *   disabled or deleted. The for-await loop breaks and the workflow's
  *   finally block tears the ticker down.
@@ -29,7 +30,6 @@ export type SessionEvent =
   | {
       type: "heartbeat"
       ack?: string
-      force?: boolean
     }
   | { type: "shutdown" }
 
