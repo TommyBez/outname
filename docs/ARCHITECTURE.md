@@ -55,7 +55,7 @@ A user-created entity with:
 ### Tool
 An invocable capability the agent can call via the AI SDK tool protocol. Four sources at runtime, one interface:
 - **Built-in memory tools** — always present. `read_memory`, `write_memory`, `append_memory`, `list_memory`, `search_memory`, `delete_memory`, `move_memory`. The only path to read/write memory files. Tool-layer write block on `SOUL.md` and `AGENTS.md`. A consequence of having a system sandbox.
-- **Built-in exec tools** — always present. `bash` (runs in the exec sandbox, cannot reach memory) and `reset_exec` (drops the exec snapshot, boots fresh next event). A consequence of having an exec sandbox.
+- **Built-in exec tools** — always present. `bash`, `readFile`, `writeFile` (all run against the **exec sandbox**, supplied by [vercel-labs/bash-tool](https://github.com/vercel-labs/bash-tool)), plus our own `reset_exec` (drops the exec snapshot, boots fresh next event). None of these can reach memory files (different VM). A consequence of having an exec sandbox.
 - **Maintainer catalog tools** — global, code-defined, versioned with the app (`gmail.search`, `web.fetch`, `browser.open`, …). Attached per-agent via the catalog UI.
 - **Synthesized agent-tools** — one per user-owned agent, generated at runtime so agents can call each other (§4.5). Attached via the catalog UI as if they were maintainer tools.
 
@@ -263,16 +263,24 @@ toolSet = {
 
 `SOUL.md` and `AGENTS.md` are write-blocked at the tool layer. The only way they change is the user via the pending-writes queue, drained at boot before the agent is handed control.
 
-**Exec-sandbox tools.** Always present. Not catalog entries.
+**Exec-sandbox tools.** Always present. Not catalog entries. Implemented on top of [vercel-labs/bash-tool](https://github.com/vercel-labs/bash-tool) — a thin AI-SDK wrapper around `@vercel/sandbox` that exactly matches our snapshot/rehydrate persistence model (`Sandbox.get({ sandboxId })`).
 
-| Tool | Behaviour |
-|---|---|
-| `bash` | Runs a command inside the **exec sandbox** and returns stdout/stderr/exit code. Free shell — agent can edit anything in the exec sandbox, install packages, run scripts. **Cannot reach memory files** (different VM) |
-| `reset_exec` | Drops the exec snapshot and boots fresh on the next event. Idempotent. Never affects the system sandbox |
+| Tool | Source | Behaviour |
+|---|---|---|
+| `bash` | bash-tool | Runs a command inside the **exec sandbox** and returns stdout/stderr/exit code. Free shell — agent can edit anything in the exec sandbox, install packages, run scripts |
+| `readFile(path)` | bash-tool | Reads a file from the exec sandbox |
+| `writeFile(path, content)` | bash-tool | Writes a file to the exec sandbox; creates parent directories as needed |
+| `reset_exec` | ours | Drops the exec snapshot and boots fresh on the next event. Idempotent. Never affects the system sandbox |
+
+All four are bound to the exec sandbox only and **cannot reach memory files** — memory lives in a different VM (system sandbox), reachable only through the memory tools above.
+
+bash-tool's `onBeforeBashCall` / `onAfterBashCall` hooks are wired to (a) append every command + exit code to today's log via `append_memory`, and (b) optionally enforce a per-agent command policy in the future. The agent has full read/write inside the exec sandbox; the audit trail is on the system side, where it cannot be edited from inside the exec sandbox.
+
+> **On bash-tool's experimental Skills support.** [vercel-labs/bash-tool](https://github.com/vercel-labs/bash-tool) ships an `experimental_createSkillTool` that loads markdown skill files from a directory. We do **not** wire it in this refactor (skills are a §8 follow-up), but adopting bash-tool now lines us up to enable its skill tool later without swapping libraries.
 
 **Catalog.** Maintainer tools live in a static registry (`tools/registry.ts`). Attaching a tool that requires an OAuth provider the user has not connected triggers the generalised connection flow (§5).
 
-**Agent-as-tool synthesiser.** Takes an agent row and returns an AI SDK tool whose `execute` sends an `invocation` event to the target agent's session hook and awaits a `reply` event (§4.5). The LLM sees built-in memory tools, `bash`, `reset_exec`, maintainer tools, and sub-agents as ordinary function tools and cannot tell them apart. Tool discovery is native to the AI SDK — there is no markdown index of tools.
+**Agent-as-tool synthesiser.** Takes an agent row and returns an AI SDK tool whose `execute` sends an `invocation` event to the target agent's session hook and awaits a `reply` event (§4.5). The LLM sees built-in memory tools, exec tools (`bash`, `readFile`, `writeFile`, `reset_exec`), maintainer tools, and sub-agents as ordinary function tools and cannot tell them apart. Tool discovery is native to the AI SDK — there is no markdown index of tools.
 
 ### 4.5 Sub-agent invocation
 
@@ -468,15 +476,15 @@ Every phase ends in a state where the app runs, passes tests, and can be demoed.
 - Replace the hard-coded `kind` with the full `agents` table from §5 (with `system_sandbox_snapshot_id` + `exec_sandbox_snapshot_id`). Delete `lib/agent-runtime-registry.ts` and the `agents/daily-email-brief` directory.
 - **Split the home sandbox into system + exec.** Build base images for each. The system base image hosts memory files + memory-tool implementations; the exec base image carries bash + Node + common CLI utilities. Snapshot both at end of every event (system sacred, exec best-effort).
 - **Ship the built-in memory tools** (`read_memory`, `write_memory`, `append_memory`, `list_memory`, `search_memory`, `delete_memory`, `move_memory`) bound to the system sandbox. Tool-layer write block on `SOUL.md` and `AGENTS.md`.
-- **Ship the built-in exec tools** (`bash`, `reset_exec`) bound to the exec sandbox.
+- **Ship the built-in exec tools** (`bash`, `readFile`, `writeFile` via [vercel-labs/bash-tool](https://github.com/vercel-labs/bash-tool); `reset_exec` ours) bound to the exec sandbox. Wire bash-tool's `onBeforeBashCall` / `onAfterBashCall` hooks to append each command + exit code to today's log via `append_memory`.
 - Update `agent_files` cache flush to read from the system sandbox; exec sandbox is **not** surfaced to the UI.
 - Implement the pending-writes queue, drained into the system sandbox at boot **before** the agent is handed control (queue carries user authority, bypasses the tool-layer write block on SOUL/AGENTS).
 - Ship a "create agent" UI with two editable prose tabs — *Identity* (`SOUL.md`) and *Instructions* (`AGENTS.md` per-agent section, layered on the baseline template) — plus structured fields: name, model, heartbeat toggle + interval. Prose edits flow through the pending-writes queue.
 - Update `AGENTS.md` baseline template to teach the dual-sandbox model + memory-tool conventions.
 
-In this phase the agent's `ToolSet` is just memory tools + `bash` + `reset_exec`. No maintainer catalog yet — that's enough to edit memory files via tools, run scripts in the exec sandbox, and demonstrate the generalised flow.
+In this phase the agent's `ToolSet` is just memory tools + exec tools (`bash` + `readFile` + `writeFile` + `reset_exec`). No maintainer catalog yet — that's enough to edit memory files via tools, run scripts in the exec sandbox, and demonstrate the generalised flow.
 
-**Testable end state.** A user can create a blank agent from the UI, chat with it (equipped only with built-in memory tools + `bash` + `reset_exec`), watch it edit its own MEMORY / TASKS via memory tools, run experiments in the exec sandbox without risk to memory, and see memory results in the admin MD viewer. Attempts by the agent to overwrite `SOUL.md` / `AGENTS.md` are rejected. The old `daily-email-brief` is entirely gone.
+**Testable end state.** A user can create a blank agent from the UI, chat with it (equipped only with built-in memory tools + exec tools), watch it edit its own MEMORY / TASKS via memory tools, run experiments in the exec sandbox without risk to memory, and see memory results in the admin MD viewer. Attempts by the agent to overwrite `SOUL.md` / `AGENTS.md` are rejected. Bash audit log lands in `logs/YYYY-MM-DD.md`. The old `daily-email-brief` is entirely gone.
 
 ### Phase 3 — Tool catalog + connections
 *Users can compose an agent from a tool catalog.*
@@ -524,6 +532,6 @@ In this phase the agent's `ToolSet` is just memory tools + `bash` + `reset_exec`
 
 - [vercel-labs/open-agents](https://github.com/vercel-labs/open-agents) — technical reference for agent + workflow patterns on the Vercel stack.
 - [paperclip.ing](https://paperclip.ing/) — product-shape reference for the markdown-as-mind, proactivity-via-files model.
-- [vercel-labs/bash-tool — `skills-tool`](https://github.com/vercel-labs/bash-tool/tree/main/examples/skills-tool) — inspiration for future agent-authored skill support (see §8).
+- [vercel-labs/bash-tool](https://github.com/vercel-labs/bash-tool) — implementation backing the exec-sandbox tools (`bash`, `readFile`, `writeFile`); ships AI-SDK-native wrappers around `@vercel/sandbox` with persistent-sandbox support via `Sandbox.get({ sandboxId })` and `onBeforeBashCall` / `onAfterBashCall` hooks. Its experimental `experimental_createSkillTool` is the inspiration for future agent-authored skill support (see §8).
 - Workflow DevKit docs (bundled in `node_modules/workflow/docs/`, `node_modules/@workflow/ai/docs/`).
 - Vercel Sandbox docs (bundled in the `vercel-sandbox` skill).
