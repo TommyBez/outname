@@ -22,7 +22,7 @@ Section 8 names the known follow-ups that are explicitly **out of scope** for th
 - A **tool catalog** of maintainer-built tools users can attach to their agents.
 - **Proactive agents** via a heartbeat loop, driven by structured markdown files.
 - **Agents-as-tools** (sub-agents) with recursion and cycle guards.
-- **Persistent-identity home sandboxes** per agent, with a markdown-based "mind" (SOUL, MEMORY, TASKS, CALENDAR, GOALS, DREAMS, daily logs).
+- **Per-agent persistent sandboxes** — a **system sandbox** for the markdown-based "mind" (SOUL, AGENTS, MEMORY, TASKS, CALENDAR, GOALS, DREAMS, daily logs) accessed via a dedicated memory-tool surface, plus an **exec sandbox** for free bash work without risk to memory.
 - **On-demand tool sandboxes** for tools with heavy runtime needs.
 
 ### Non-goals (this refactor)
@@ -48,23 +48,28 @@ The system has exactly four primitives. Everything else is composition.
 ### Agent
 A user-created entity with:
 - **Structured config** (DB columns): name, model, heartbeat enabled + interval, attached tool IDs, owner user ID.
-- **Prose identity** (`SOUL.md` in its sandbox): personality, ethics, communication style.
+- **Prose identity** (`SOUL.md` in its system sandbox): personality, ethics, communication style.
 - **A lifelong session workflow** (§4.1) — one per agent, always running while the agent is enabled.
-- **A home sandbox** (§4.2) — a persistent filesystem for its markdown "mind."
+- **Two home sandboxes** (§4.2) — a **system sandbox** holding the markdown "mind," and an **exec sandbox** as a free-bash playground. Both persistent.
 
 ### Tool
-An invocable capability the agent can call via the AI SDK tool protocol. Three sources at runtime, one interface:
-- **Built-in `bash`** — always present on every agent. The agent's primary way to interact with its own home sandbox (read/write its MD files, run scripts). Not a catalog entry; not attached or detached; a consequence of having a home sandbox.
+An invocable capability the agent can call via the AI SDK tool protocol. Four sources at runtime, one interface:
+- **Built-in memory tools** — always present. `read_memory`, `write_memory`, `append_memory`, `list_memory`, `search_memory`, `delete_memory`, `move_memory`. The only path to read/write memory files. Tool-layer write block on `SOUL.md` and `AGENTS.md`. A consequence of having a system sandbox.
+- **Built-in exec tools** — always present. `bash` (runs in the exec sandbox, cannot reach memory) and `reset_exec` (drops the exec snapshot, boots fresh next event). A consequence of having an exec sandbox.
 - **Maintainer catalog tools** — global, code-defined, versioned with the app (`gmail.search`, `web.fetch`, `browser.open`, …). Attached per-agent via the catalog UI.
 - **Synthesized agent-tools** — one per user-owned agent, generated at runtime so agents can call each other (§4.5). Attached via the catalog UI as if they were maintainer tools.
 
 To the LLM all three are indistinguishable — they're just functions in the `ToolSet`.
 
 ### Sandbox
-A Vercel Sandbox microVM. Every agent has **one home sandbox** for its markdown files and a bash workspace. Tools with heavy runtime needs (Chromium, Python, ffmpeg) get **on-demand tool sandboxes**, spun up per invocation from pre-built base snapshots.
+Vercel Sandbox microVMs. Every agent has **two persistent sandboxes**:
+- **System sandbox** — sole home of the agent's markdown memory (`SOUL.md`, `AGENTS.md`, `MEMORY.md`, …). Accessed only via a dedicated **memory tool** surface (`read_memory`, `write_memory`, `search_memory`, …). No raw bash here. `SOUL.md` and `AGENTS.md` are write-blocked at the tool layer (writable only by the user via the pending-writes queue).
+- **Exec sandbox** — full bash playground. Disposable by intent; the agent can `rm -rf`, install packages, clone repos, run scripts. Persisted across events but resettable on demand via a `reset_exec` tool.
+
+Tools with heavy runtime needs (Chromium, Python, ffmpeg) still get **on-demand tool sandboxes**, spun up per invocation from pre-built base snapshots — separate from both persistent sandboxes.
 
 ### Session workflow
-A single long-lived Vercel Workflow run per agent. It parks on an iterable `createHook()` and is fed by a sibling "ticker" workflow that drives the heartbeat. All events in the agent's life — chat messages, heartbeat ticks, sub-agent invocations, sub-agent replies — arrive on this hook and are processed sequentially. The sandbox is snapshotted at the end of every event.
+A single long-lived Vercel Workflow run per agent. It parks on an iterable `createHook()` and is fed by a sibling "ticker" workflow that drives the heartbeat. All events in the agent's life — chat messages, heartbeat ticks, sub-agent invocations, sub-agent replies — arrive on this hook and are processed sequentially. Both sandboxes are snapshotted at the end of every event.
 
 ---
 
@@ -122,47 +127,65 @@ A single long-lived Vercel Workflow run per agent. It parks on an iterable `crea
 
 ### 4.2 Sandbox model
 
-Every agent has a **home sandbox**. It is persistent in identity only; physically, it is snapshotted and rehydrated.
+Every agent owns **two persistent sandboxes** — `system` and `exec` — and may transiently use **tool sandboxes** during a tool call.
+
+#### Why two
+- **System sandbox** = the agent's mind. Memory files only. Strict access surface (memory tools). `SOUL.md` and `AGENTS.md` are write-blocked at the tool layer (only the user, via the pending-writes queue, can edit them). Sacred — corruption here is corruption of identity.
+- **Exec sandbox** = the agent's hands. Free bash. Destructive operations are by-design safe: a `rm -rf`, a runaway install, a misbehaving script all hit the exec sandbox only. Memory files are not reachable from here.
+
+The split satisfies two drivers at once:
+1. Hard guarantee that agent action cannot corrupt `SOUL.md` / `AGENTS.md` (or, by tool-layer policy, any other memory file the user has marked read-only).
+2. A blast-radius-bounded environment in which the agent can run arbitrary bash without us — or it — worrying.
+
+#### Lifecycle
+
+Both sandboxes follow the same snapshot/rehydrate pattern; they are persistent in identity, ephemeral in physical instance.
 
 ```
-agents.home_sandbox_snapshot_id ─┐
-                                 │
-          Sandbox.create ◀───────┤  on session event
-                                 ▼
-               [ running sandbox with /home/agent/*.md ]
-                                 │
-          sandbox.snapshot() ────┤  at end of event
-                                 ▼
-                agents.home_sandbox_snapshot_id  (updated)
+agents.system_sandbox_snapshot_id ─┐                  agents.exec_sandbox_snapshot_id ─┐
+                                   │                                                   │
+            Sandbox.create ◀───────┤  on session event       Sandbox.create ◀──────────┤  on session event
+                                   ▼                                                   ▼
+        [ running system sandbox ]                                  [ running exec sandbox ]
+                                   │                                                   │
+            sandbox.snapshot() ────┤  at end of event       sandbox.snapshot() ────────┤  at end of event
+                                   ▼                                                   ▼
+   agents.system_sandbox_snapshot_id  (updated)        agents.exec_sandbox_snapshot_id  (updated)
 ```
 
 Rules:
-- The snapshot is taken **at the end of every event**, not just on idle. A lost snapshot = lost work since the previous snapshot.
-- The snapshot ID on the agent row is authoritative. Any cached copy elsewhere is advisory.
-- The home base image has bash, Node, and anything tools can run in-process. No Chromium, no Python ML — those live in tool sandboxes.
+- Both sandboxes snapshot at the **end of every event** (same cadence). One mental model.
+- The system snapshot is sacred. If the system snapshot fails, the event fails.
+- The exec snapshot is best-effort. If the exec snapshot fails, the event still succeeds; the next event rehydrates from the last good exec snapshot. Logged as a warning.
+- The snapshot IDs on the agent row are authoritative. Any cached copy elsewhere is advisory.
+- The system base image is minimal: just enough to host markdown files and the memory-tool implementations.
+- The exec base image has bash, Node, common CLI utilities. No Chromium, no Python ML — those still live in tool sandboxes.
+- A `reset_exec` built-in tool drops the exec snapshot and boots fresh on the next event. The agent owns it; the user can also trigger it from the UI. Never affects the system sandbox.
 
-**Tool sandboxes** are ephemeral per invocation, created from a tool-specific base snapshot, and **never read or write the home sandbox's filesystem directly**. All data crosses the boundary via the tool's `execute` arguments and return value. This keeps the home sandbox the single source of truth for agent state.
+#### Tool sandboxes (third tier)
+
+**Tool sandboxes** are ephemeral per invocation, created from a tool-specific base snapshot, and **never read or write either persistent sandbox's filesystem directly**. All data crosses the boundary via the tool's `execute` arguments and return value. This keeps the system sandbox the single source of truth for agent state, and the exec sandbox the agent's private playground.
 
 ### 4.3 The agent's mind — markdown files
 
-Every file lives in the home sandbox under `/home/agent/`. They are the sole persistent memory of the agent between events.
+Every file lives in the **system sandbox** under `/home/agent/`. They are the sole persistent memory of the agent between events. **The agent never accesses these files via bash** — bash runs in the exec sandbox, which is a different VM. Memory access is mediated entirely through the **memory tool** surface (§4.4).
 
 Two tiers:
-- **Eager** — `AGENTS.md` (HOW) and `SOUL.md` (WHO) are read by a setup step and injected into the system message on every event. Small, stable, always relevant.
-- **Lazy** — every other file is read by the agent on demand via `bash` (`cat MEMORY.md`, `ls logs/`, etc.). Keeps prompts compact as files grow; matches how a coding agent navigates a codebase.
+- **Eager** — `AGENTS.md` (HOW) and `SOUL.md` (WHO) are read by a setup step (via `read_memory`) and injected into the system message on every event. Small, stable, always relevant.
+- **Lazy** — every other file is read by the agent on demand via memory tools (`read_memory`, `search_memory`, `list_memory`). Keeps prompts compact as files grow; matches how a coding agent navigates a codebase, but through a strict tool surface rather than free bash.
 
 | File | Tier | Role | Written by | Read by |
 |---|---|---|---|---|
-| `SOUL.md` | **eager** | **WHO** — identity, persona, values, voice, scope of interest | User (via pending-writes queue); agent may self-rewrite (discouraged by default base prompt) | Setup step, every event |
-| `AGENTS.md` | **eager** | **HOW** — operational manual for this sandbox per the [agents.md](https://agents.md/) spec: filesystem layout, roles and conventions of the other MD files, date/checklist formats, bash environment — **plus per-agent workflow instructions** (escalation rules, preferred tools, "read MEMORY.md before chat," domain checklists) | System (template seed at agent creation) **+ user** (via pending-writes queue for per-agent instructions); agent should not self-rewrite | Setup step, every event |
-| `MEMORY.md` | lazy | Durable facts, preferences, commitments | Agent (via bash or optional memory-write tool) | Agent on demand |
+| `SOUL.md` | **eager** | **WHO** — identity, persona, values, voice, scope of interest | User only (via pending-writes queue). **Tool-layer write block.** Agent self-rewrite rejected by `write_memory` | Setup step, every event |
+| `AGENTS.md` | **eager** | **HOW** — operational manual for this sandbox per the [agents.md](https://agents.md/) spec: filesystem layout, roles and conventions of the other MD files, date/checklist formats, memory-tool conventions — **plus per-agent workflow instructions** (escalation rules, preferred tools, "read MEMORY.md before chat," domain checklists) | System (template seed at agent creation) **+ user** (via pending-writes queue for per-agent instructions). **Tool-layer write block.** Agent self-rewrite rejected by `write_memory` | Setup step, every event |
+| `MEMORY.md` | lazy | Durable facts, preferences, commitments | Agent (via `write_memory` / `append_memory`); user (via pending-writes queue) | Agent on demand (`read_memory`) |
 | `GOALS.md` | lazy | Long-horizon objectives | User + agent (synthesized from DREAMS) | Agent on demand (typically on heartbeat) |
 | `CALENDAR.md` | lazy | Known time-bound events & deadlines | Agent (from tool results); user (manual) | Agent on demand (typically on heartbeat) |
 | `TASKS.md` | lazy | Active tactical items, status, dependencies | Agent | Agent on demand; UI displays |
 | `DREAMS.md` | lazy | Reflection, pattern anticipation, self-evaluation | Agent during dedicated heartbeat runs | Agent on demand (DREAMS runs) |
-| `logs/YYYY-MM-DD.md` | lazy | Raw event trace for the day | Agent (auto-appended each event) | Agent on demand; UI timeline |
+| `logs/YYYY-MM-DD.md` | lazy | Raw event trace for the day | Agent (auto-appended each event via `append_memory`) | Agent on demand; UI timeline |
 
-> **Note — `AGENTS.md` follows the [agents.md](https://agents.md/) public standard, with per-agent customization.** The spec defines a markdown file that tells AI agents how to operate within a given codebase, and explicitly supports hierarchical / context-specific variants. Each agent's "codebase" is its own sandbox, so a per-agent `AGENTS.md` is spec-aligned. It has two layers: a **template baseline** seeded by the system at agent creation (standard filesystem layout, conventions, bash notes), and **per-agent instructions** appended or edited by the user via the pending-writes queue (escalation rules, preferred tools, "always read MEMORY.md before replying to chat," domain-specific checklists). Agents should not self-rewrite `AGENTS.md`.
+> **Note — `AGENTS.md` follows the [agents.md](https://agents.md/) public standard, with per-agent customization.** The spec defines a markdown file that tells AI agents how to operate within a given codebase, and explicitly supports hierarchical / context-specific variants. Each agent's "codebase" is its own system sandbox, so a per-agent `AGENTS.md` is spec-aligned. It has two layers: a **template baseline** seeded by the system at agent creation (memory-file layout, conventions, memory-tool usage notes, exec-sandbox guidance), and **per-agent instructions** appended or edited by the user via the pending-writes queue (escalation rules, preferred tools, "always read MEMORY.md before replying to chat," domain-specific checklists). Agents should not self-rewrite `AGENTS.md`; the `write_memory` tool rejects writes to it regardless.
 >
 > **`SOUL.md` vs `AGENTS.md` — WHO vs HOW.** `SOUL.md` is identity and persona; `AGENTS.md` is operational instructions. The UI surfaces them on separate tabs (*Identity* / *Instructions*) to avoid user confusion.
 >
@@ -177,21 +200,21 @@ Every event the agent processes starts with the same minimal prologue (assembled
 ```
 base system prompt + AGENTS.md + SOUL.md
 ```
-All other MD files (`MEMORY.md`, `TASKS.md`, `CALENDAR.md`, `GOALS.md`, `DREAMS.md`, `logs/*.md`) are **read lazily** by the agent via bash when it decides they are relevant. `AGENTS.md` tells the agent what exists and when to consult each file; per-agent instructions in `AGENTS.md` (e.g. *"always read MEMORY.md before replying to chat"*) can force eager-style behavior for files the agent's owner deems load-bearing. Keeps prompts compact as memory files grow; matches how a coding agent navigates a codebase.
+The setup step reads both files via `read_memory` from the system sandbox. All other MD files (`MEMORY.md`, `TASKS.md`, `CALENDAR.md`, `GOALS.md`, `DREAMS.md`, `logs/*.md`) are **read lazily** by the agent via memory tools when it decides they are relevant. `AGENTS.md` tells the agent what exists, when to consult each file, and which memory tool to use; per-agent instructions in `AGENTS.md` (e.g. *"always read MEMORY.md before replying to chat"*) can force eager-style behavior for files the agent's owner deems load-bearing. Keeps prompts compact as memory files grow; matches how a coding agent navigates a codebase, but routed through a strict tool surface rather than free bash.
 
 #### UI read path — the flat file cache
-The UI cannot read the sandbox directly (it is stopped most of the time). At the end of every event (after snapshotting), a step pulls every `.md` under `/home/agent/` and upserts rows into:
+The UI cannot read the system sandbox directly (it is stopped most of the time). At the end of every event (after snapshotting), a step pulls every `.md` under `/home/agent/` and upserts rows into:
 ```
 agent_files(agent_id, path, content, sha256, updated_at)
 ```
-The UI renders from this table. Staleness bound = one event. No structured extraction in v1; MD is rendered verbatim.
+The UI renders from this table. Staleness bound = one event. No structured extraction in v1; MD is rendered verbatim. The exec sandbox's filesystem is **not** surfaced to the UI — it is the agent's private playground, not part of its persisted state.
 
 #### UI write path — the pending-writes queue
-When the user edits a file via the UI (correct a task, add a fact to MEMORY, rewrite SOUL):
+When the user edits a file via the UI (correct a task, add a fact to MEMORY, rewrite SOUL or AGENTS):
 ```
 pending_file_writes(id, agent_id, path, content, enqueued_at, applied_at)
 ```
-On the next sandbox boot, a setup step drains this queue into the home sandbox *before* the agent is handed control. This guarantees no write conflicts with the running agent and supports manual MD editing without boot-on-edit latency.
+On the next system sandbox boot, a setup step drains this queue **before** the agent is handed control, bypassing the tool layer's write-block on `SOUL.md` / `AGENTS.md` (the queue carries user authority). This guarantees no write conflicts with the running agent and supports manual MD editing without boot-on-edit latency.
 
 ### 4.4 Tools
 
@@ -211,21 +234,45 @@ export interface MaintainerTool {
 }
 ```
 
-`ToolBuildContext` carries `{ agentId, userId, credentials, homeSandbox }`. `build()` is called at session start for every attached tool, producing a `ToolSet` merged with the built-in set (below) and passed to `DurableAgent`.
+`ToolBuildContext` carries `{ agentId, userId, credentials, systemSandbox, execSandbox }`. `build()` is called at session start for every attached tool, producing a `ToolSet` merged with the built-in set (below) and passed to `DurableAgent`.
 
 **`ToolSet` composition at session start.**
 ```ts
 toolSet = {
-  bash: builtInBashTool(homeSandbox),           // always present; not a catalog entry
+  // Memory tools — bound to the system sandbox. Always present; not catalog entries.
+  ...builtInMemoryTools(systemSandbox),
+
+  // Exec-sandbox tools — bound to the exec sandbox. Always present; not catalog entries.
+  ...builtInExecTools(execSandbox),
+
   ...buildAttachedTools(agent_tools, ctx),      // maintainer tools
   ...buildAgentTools(agent_tools, ctx),         // synthesised sub-agents (rows with "agent:<uuid>")
 }
 ```
-`bash` runs a command inside the agent's home sandbox and returns stdout/stderr/exit code. It is an implementation detail of "every agent owns a sandbox" — users cannot detach it and it does not appear in the catalog UI.
+
+**Memory tools (system sandbox surface).** Always present. Not catalog entries — users cannot detach them.
+
+| Tool | Behaviour |
+|---|---|
+| `read_memory(path)` | Read a single file from the system sandbox |
+| `write_memory(path, content)` | Overwrite a file. **Rejects** writes to `SOUL.md` and `AGENTS.md` (and any other path the per-agent policy marks read-only) |
+| `append_memory(path, content)` | Append. Same path-allowlist rules as `write_memory` |
+| `list_memory(dir?)` | List files under a directory in the system sandbox |
+| `search_memory(query, paths?, regex?)` | grep across the system sandbox; returns line-context matches across multiple files. The agent's substitute for "grep -r" |
+| `delete_memory(path)` / `move_memory(src, dst)` | Same path-allowlist rules as `write_memory` |
+
+`SOUL.md` and `AGENTS.md` are write-blocked at the tool layer. The only way they change is the user via the pending-writes queue, drained at boot before the agent is handed control.
+
+**Exec-sandbox tools.** Always present. Not catalog entries.
+
+| Tool | Behaviour |
+|---|---|
+| `bash` | Runs a command inside the **exec sandbox** and returns stdout/stderr/exit code. Free shell — agent can edit anything in the exec sandbox, install packages, run scripts. **Cannot reach memory files** (different VM) |
+| `reset_exec` | Drops the exec snapshot and boots fresh on the next event. Idempotent. Never affects the system sandbox |
 
 **Catalog.** Maintainer tools live in a static registry (`tools/registry.ts`). Attaching a tool that requires an OAuth provider the user has not connected triggers the generalised connection flow (§5).
 
-**Agent-as-tool synthesiser.** Takes an agent row and returns an AI SDK tool whose `execute` sends an `invocation` event to the target agent's session hook and awaits a `reply` event (§4.5). The LLM sees maintainer tools, built-in `bash`, and sub-agents as ordinary function tools and cannot tell them apart. Tool discovery is native to the AI SDK — there is no markdown index of tools.
+**Agent-as-tool synthesiser.** Takes an agent row and returns an AI SDK tool whose `execute` sends an `invocation` event to the target agent's session hook and awaits a `reply` event (§4.5). The LLM sees built-in memory tools, `bash`, `reset_exec`, maintainer tools, and sub-agents as ordinary function tools and cannot tell them apart. Tool discovery is native to the AI SDK — there is no markdown index of tools.
 
 ### 4.5 Sub-agent invocation
 
@@ -263,14 +310,14 @@ Guardrails:
 | Attached tool IDs | `agent_tools` table | UI (attach/detach; session rebuilds `ToolSet` on next event) |
 | Heartbeat enabled & interval | columns on `agents` | UI (instant; next tick picks it up) |
 | Display name, icon | columns on `agents` | UI |
-| Prose identity (WHO) | `SOUL.md` in the sandbox | UI *Identity* tab via pending-writes queue; agent may self-rewrite, discouraged by default |
-| Operational instructions (HOW) | `AGENTS.md` in the sandbox | UI *Instructions* tab via pending-writes queue (layered on the system baseline template); agent should not self-rewrite |
+| Prose identity (WHO) | `SOUL.md` in the system sandbox | UI *Identity* tab via pending-writes queue. **Tool-layer write block** — agent self-rewrite rejected by `write_memory` |
+| Operational instructions (HOW) | `AGENTS.md` in the system sandbox | UI *Instructions* tab via pending-writes queue (layered on the system baseline template). **Tool-layer write block** — agent self-rewrite rejected by `write_memory` |
 
-The default base system prompt, prepended at every event, includes clauses along the lines of:
+The default base system prompt, prepended at every event, makes the policy explicit:
 
-> *Treat `AGENTS.md` and `SOUL.md` as given. Do not rewrite `AGENTS.md`. Do not rewrite `SOUL.md` unless the user has explicitly asked you to revise your identity.*
+> *`AGENTS.md` and `SOUL.md` are read-only for you. Treat them as given. Write attempts via memory tools will be rejected. The user owns these files via the UI.*
 
-Opt-in self-rewrite of `SOUL.md` (e.g. for meta-reflection agents) is a per-agent flag we can add later.
+Opt-in self-rewrite of `SOUL.md` or `AGENTS.md` (e.g. for meta-reflection agents) would be a per-agent flag relaxing the tool-layer write block; not in scope for this refactor.
 
 ### 4.7 Event flows
 
@@ -285,7 +332,8 @@ resumeHook(agent.sessionToken, { type: "chat", message, replyStreamToken })
 session workflow consumes event → DurableAgent streams UIMessageChunks
   to getWritable({ namespace: replyStreamToken }) → HTTP handler pipes
   run.getReadable({ namespace: replyStreamToken }) to the client.
-End of event: persist assistant message(s), snapshot sandbox, flush file cache.
+End of event: persist assistant message(s), snapshot system sandbox (sacred),
+  snapshot exec sandbox (best-effort), flush file cache from system sandbox.
 ```
 
 **Heartbeat tick.**
@@ -295,8 +343,9 @@ ticker workflow (sleep → resume) ──► session hook { type: "heartbeat" }
   ▼
 session workflow runs DurableAgent with a heartbeat prompt
   ("consult GOALS, TASKS, CALENDAR, DREAMS — decide and act").
-MD writes and tool calls are the work product; a summary is appended
-to today's log. End of event: snapshot + cache flush.
+Memory writes (via memory tools) and tool calls are the work product; a summary
+is appended to today's log via append_memory. End of event: snapshot both
+sandboxes + cache flush from system sandbox.
 ```
 
 **Sub-agent call.** See §4.5.
@@ -306,7 +355,7 @@ to today's log. End of event: snapshot + cache flush.
 | Concern | Primitive |
 |---|---|
 | Session durability, hook-driven event loop, heartbeat sleep | Vercel Workflow (`workflow`, `@workflow/ai`, `@workflow/next`) |
-| Per-agent durable VM + snapshot | Vercel Sandbox (`@vercel/sandbox`) |
+| Per-agent durable VMs + snapshots (system sandbox + exec sandbox) | Vercel Sandbox (`@vercel/sandbox`) — two persistent instances per agent, plus ephemeral tool sandboxes on demand |
 | Model calls | AI Gateway via AI SDK |
 | Agent config, file cache, pending writes, connections, chat persistence | Neon Postgres via Drizzle |
 | User auth | Better Auth (unchanged) |
@@ -335,7 +384,8 @@ agents (
   heartbeat_enabled          boolean,
   heartbeat_interval_mins    int,
   max_event_duration_mins    int,              -- safety valve; aborts runaway events
-  home_sandbox_snapshot_id   text null,        -- null until first snapshot
+  system_sandbox_snapshot_id text null,        -- memory files; null until first snapshot
+  exec_sandbox_snapshot_id   text null,        -- bash playground; null until first snapshot or after reset_exec
   last_session_run_id        text null,
   created_at                 timestamptz
 )
@@ -388,7 +438,7 @@ These aren't architectural beams but are canonical enough to codify here.
 
 - **Timezones.** Daily-log filenames and heartbeat-clock semantics use the owning user's timezone (stored on `user`, default UTC).
 - **Log retention.** Daily logs are never auto-deleted. `DREAMS.md` digests and summarises old logs. Users may prune manually.
-- **Base system prompt.** Short code-side preamble prepended on every event. Tells the agent: you have two files pre-loaded (`AGENTS.md` = how, `SOUL.md` = who); treat both as given; read other files (`MEMORY.md`, `TASKS.md`, etc.) lazily via bash when relevant per the guidance in `AGENTS.md`. Operational conventions (file layout, checkbox / date formats, bash notes, per-agent workflow rules) live in `AGENTS.md` in the sandbox, not in the base prompt — auditable and version-controlled alongside the agent's other files. Tools are exposed through the AI SDK `ToolSet`, not through a markdown index.
+- **Base system prompt.** Short code-side preamble prepended on every event. Tells the agent: (1) you have two files pre-loaded (`AGENTS.md` = how, `SOUL.md` = who); treat both as given; (2) memory files live in the **system sandbox** and are accessed only via the memory tools (`read_memory`, `write_memory`, `append_memory`, `list_memory`, `search_memory`, …) — read other files (`MEMORY.md`, `TASKS.md`, etc.) lazily when relevant, per the guidance in `AGENTS.md`; (3) `bash` runs in a separate **exec sandbox** — a private, persistent playground — and **cannot reach memory files**; use it freely for risky or destructive work; (4) `SOUL.md` and `AGENTS.md` are read-only for you (write attempts will be rejected); the user owns those. Operational conventions (file layout, checkbox / date formats, memory-tool notes, exec-sandbox guidance, per-agent workflow rules) live in `AGENTS.md` in the system sandbox, not in the base prompt — auditable and version-controlled alongside the agent's other files. Tools are exposed through the AI SDK `ToolSet`, not through a markdown index.
 - **Tool failure handling.** `FatalError` for bad inputs / revoked auth; `RetryableError` for rate limits / 5xx. Fatal tool errors become an agent-visible message, not a workflow crash.
 - **Streaming namespaces.** Each chat turn uses a per-turn namespace keyed by `replyStreamToken`. Heartbeat and sub-agent work emit to a `logs` namespace the UI may optionally subscribe to for a live activity feed.
 - **Model selection** goes through AI Gateway; the supported model list is a small allow-list curated by the maintainer.
@@ -404,33 +454,39 @@ Every phase ends in a state where the app runs, passes tests, and can be demoed.
 
 - Introduce `agentSessionWorkflow(agentId)` with the iterable-hook event loop (`chat`, `heartbeat`, `shutdown`).
 - Introduce the ticker child workflow; wire it to a fixed 30-min cadence for the one existing agent kind.
-- Move the existing `daily-email-brief` chat + trigger logic onto this loop. Keep its tools inline, its sandbox pattern, its UI.
+- Move the existing `daily-email-brief` chat + trigger logic onto this loop. Keep its tools inline, its sandbox pattern (single sandbox in this phase — dual sandbox lands in Phase 2), its UI.
 - Add `agents.last_session_run_id`, start-on-enable / shutdown-on-disable plumbing.
 - Add the `agent_files` cache + end-of-event flush step.
-- Author the initial `AGENTS.md` baseline template (standard filesystem layout, MD file conventions, bash notes) and seed it into the sandbox on first bootstrap. Deploy-time template changes do **not** overwrite existing agents' `AGENTS.md`. Per-agent instruction editing via UI + pending-writes queue arrives in Phase 2 alongside the "create agent" flow.
+- Author the initial `AGENTS.md` baseline template (standard memory-file layout, MD file conventions, memory-tool usage notes — stub for now since memory tools land Phase 2; refined when Phase 2 ships) and seed it into the sandbox on first bootstrap. Deploy-time template changes do **not** overwrite existing agents' `AGENTS.md`.
 - Add the low-frequency liveness sweeper cron.
 
 **Testable end state.** The existing agent still works via chat; it now also runs itself on heartbeat (replacing the manual trigger); an admin page reads `agent_files` and shows the sandbox MD tree.
 
-### Phase 2 — Generalise the agent model
-*The agent becomes a user-editable row.*
+### Phase 2 — Generalise the agent model + dual sandbox + memory tools
+*The agent becomes a user-editable row, and the system/exec split lands.*
 
-- Replace the hard-coded `kind` with the full `agents` table from §5. Delete `lib/agent-runtime-registry.ts` and the `agents/daily-email-brief` directory.
+- Replace the hard-coded `kind` with the full `agents` table from §5 (with `system_sandbox_snapshot_id` + `exec_sandbox_snapshot_id`). Delete `lib/agent-runtime-registry.ts` and the `agents/daily-email-brief` directory.
+- **Split the home sandbox into system + exec.** Build base images for each. The system base image hosts memory files + memory-tool implementations; the exec base image carries bash + Node + common CLI utilities. Snapshot both at end of every event (system sacred, exec best-effort).
+- **Ship the built-in memory tools** (`read_memory`, `write_memory`, `append_memory`, `list_memory`, `search_memory`, `delete_memory`, `move_memory`) bound to the system sandbox. Tool-layer write block on `SOUL.md` and `AGENTS.md`.
+- **Ship the built-in exec tools** (`bash`, `reset_exec`) bound to the exec sandbox.
+- Update `agent_files` cache flush to read from the system sandbox; exec sandbox is **not** surfaced to the UI.
+- Implement the pending-writes queue, drained into the system sandbox at boot **before** the agent is handed control (queue carries user authority, bypasses the tool-layer write block on SOUL/AGENTS).
 - Ship a "create agent" UI with two editable prose tabs — *Identity* (`SOUL.md`) and *Instructions* (`AGENTS.md` per-agent section, layered on the baseline template) — plus structured fields: name, model, heartbeat toggle + interval. Prose edits flow through the pending-writes queue.
-- Implement the pending-writes queue (drained on sandbox boot) and the flat file cache read path in the UI.
-- Ship the built-in `bash` tool (§4.4) as the only tool in an agent's `ToolSet` in this phase. No maintainer catalog yet — agents only have `bash` over their home sandbox, which is enough to edit their own MD files, run scripts, and demonstrate the generalised flow.
+- Update `AGENTS.md` baseline template to teach the dual-sandbox model + memory-tool conventions.
 
-**Testable end state.** A user can create a blank agent from the UI, chat with it (equipped only with the built-in `bash`), watch it edit its own MEMORY / TASKS via shell commands, and see the results in an admin MD viewer. The old `daily-email-brief` is entirely gone.
+In this phase the agent's `ToolSet` is just memory tools + `bash` + `reset_exec`. No maintainer catalog yet — that's enough to edit memory files via tools, run scripts in the exec sandbox, and demonstrate the generalised flow.
+
+**Testable end state.** A user can create a blank agent from the UI, chat with it (equipped only with built-in memory tools + `bash` + `reset_exec`), watch it edit its own MEMORY / TASKS via memory tools, run experiments in the exec sandbox without risk to memory, and see memory results in the admin MD viewer. Attempts by the agent to overwrite `SOUL.md` / `AGENTS.md` are rejected. The old `daily-email-brief` is entirely gone.
 
 ### Phase 3 — Tool catalog + connections
 *Users can compose an agent from a tool catalog.*
 
 - Ship `MaintainerTool` + `ToolBuildContext` from §4.4; build `tools/registry.ts`.
 - Generalise `gmailConnection` → `user_connections`. Tool-attach flow triggers OAuth when the requirement isn't met.
-- First real tool set: `gmail.search`, `gmail.send`, `google-calendar.read`, `google-calendar.create`, `web.fetch`, `memory.write` (wraps `MEMORY.md` edits), `tasks.write` (wraps `TASKS.md` edits).
+- First real tool set: `gmail.search`, `gmail.send`, `google-calendar.read`, `google-calendar.create`, `web.fetch`. (No `memory.write` / `tasks.write` catalog tools — those are subsumed by the built-in memory tools shipped in Phase 2.)
 - Tool-catalog UI and attach/detach flow. Attachment updates `agent_tools`; the session rebuilds its `ToolSet` at the start of the next event.
 
-**Testable end state.** A user can rebuild an equivalent of the original "daily email brief" agent entirely through the UI — create an agent, attach `gmail.search` + `memory.write`, write `SOUL.md` (identity) and per-agent `AGENTS.md` instructions (e.g. "every heartbeat: fetch today's email, summarise, append brief to MEMORY.md") — with no code deploy required.
+**Testable end state.** A user can rebuild an equivalent of the original "daily email brief" agent entirely through the UI — create an agent, attach `gmail.search`, write `SOUL.md` (identity) and per-agent `AGENTS.md` instructions (e.g. "every heartbeat: fetch today's email with `gmail.search`, summarise, `append_memory('MEMORY.md', …)`") — with no code deploy required.
 
 ### Phase 4 — Sub-agents + tool sandboxes
 *Agents can call each other; tools can have heavy runtimes.*
