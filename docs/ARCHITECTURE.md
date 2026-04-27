@@ -221,20 +221,37 @@ On the next system sandbox boot, a setup step drains this queue **before** the a
 A tool is the minimal wrapper around an AI SDK `tool()`:
 
 ```ts
-export interface MaintainerTool {
+export type ToolRequirement =
+  | { kind: "user_connection"; provider: string; scopes?: string[] }   // OAuth or API key — provider drives flow
+  | { kind: "tool_sandbox"; manifest: string };                        // logical manifest id; resolved to current snapshot at session start
+
+export interface MaintainerTool<TConfig = unknown> {
   id: string;                            // stable catalog key, e.g. "gmail.search"
   displayName: string;
   displayDescription: string;            // shown in the catalog UI
   category: "communication" | "compute" | "browser" | "memory" | ...;
-  requirements: {
-    oauthProvider?: "gmail" | "google-calendar" | "github" | ...;
-    sandboxBaseSnapshotId?: string;      // only for tools needing a tool sandbox
-  };
-  build: (ctx: ToolBuildContext) => ToolSet;  // closed over credentials + sandbox spec
+  requirements: ToolRequirement[];       // empty array = no creds, no sandbox
+  configSchema?: ZodSchema<TConfig>;     // per-attachment user config; rendered as a form on attach
+  build: (ctx: ToolBuildContext<TConfig>) => ToolSet;
 }
 ```
 
-`ToolBuildContext` carries `{ agentId, userId, credentials, systemSandbox, execSandbox }`. `build()` is called at session start for every attached tool, producing a `ToolSet` merged with the built-in set (below) and passed to `DurableAgent`.
+`ToolBuildContext` is the runtime closure handed to `build()`:
+```ts
+interface ToolBuildContext<TConfig = unknown> {
+  agentId: string;
+  userId: string;
+  config: TConfig;                                                          // validated against tool.configSchema at attach time
+  credentials: Record<string /* provider */, Credential>;                    // resolved from user_connections; only providers in requirements
+  systemSandbox: Sandbox;                                                    // for memory-adjacent tools (rare)
+  execSandbox: Sandbox;                                                      // exposed but rarely used by maintainer tools
+  spawnToolSandbox: (manifestId: string) => Promise<EphemeralSandbox>;       // ephemeral; auto-disposed when execute() resolves
+}
+```
+
+`build()` is called at session start for every attached tool, producing a `ToolSet` merged with the built-in set (below) and passed to `DurableAgent`. If a required `user_connection` is missing or expired, the session refuses to build the tool and surfaces a "reconnect" prompt to the user via the next-event UI state — it does not crash.
+
+**Credential abstraction.** All user-provided credentials — whether OAuth tokens or API keys — flow through a single `user_connections` table (§5) discriminated by a `kind` column. Tool authors only declare `provider:"gmail"`; they never write OAuth code. Per-provider flow logic (redirect dance, token refresh, key-form schema) lives in a separate **connector registry** (§4.4a).
 
 **`ToolSet` composition at session start.**
 ```ts
@@ -278,9 +295,82 @@ bash-tool's `onBeforeBashCall` / `onAfterBashCall` hooks are wired to (a) append
 
 > **On bash-tool's experimental Skills support.** [vercel-labs/bash-tool](https://github.com/vercel-labs/bash-tool) ships an `experimental_createSkillTool` that loads markdown skill files from a directory. We do **not** wire it in this refactor (skills are a §8 follow-up), but adopting bash-tool now lines us up to enable its skill tool later without swapping libraries.
 
-**Catalog.** Maintainer tools live in a static registry (`tools/registry.ts`). Attaching a tool that requires an OAuth provider the user has not connected triggers the generalised connection flow (§5).
+**Catalog.** Maintainer tools live in a static registry (`tools/registry.ts`). Attaching a tool that has unmet `user_connection` requirements triggers the connection flow for that provider (§4.4a). Attaching a tool with a `tool_sandbox` requirement may trigger a one-time snapshot build (§4.4b).
 
 **Agent-as-tool synthesiser.** Takes an agent row and returns an AI SDK tool whose `execute` sends an `invocation` event to the target agent's session hook and awaits a `reply` event (§4.5). The LLM sees built-in memory tools, exec tools (`bash`, `readFile`, `writeFile`, `reset_exec`), maintainer tools, and sub-agents as ordinary function tools and cannot tell them apart. Tool discovery is native to the AI SDK — there is no markdown index of tools.
+
+### 4.4a Connector registry — credential flows
+
+Per-provider flow logic lives in a separate registry (`connectors/registry.ts`), keyed by provider id. Each connector declares:
+
+```ts
+export interface Connector {
+  provider: string;                                  // "gmail" | "google-calendar" | "stripe" | "openai" | ...
+  kind: "oauth" | "api_key";
+  displayName: string;
+
+  // OAuth path
+  oauth?: {
+    scopes: string[];                                // default scopes; tool requirements may extend
+    authorizeUrl: string;
+    tokenUrl: string;
+    refresh: (creds: Credential) => Promise<Credential>;
+  };
+
+  // API key path
+  apiKey?: {
+    formSchema: ZodSchema;                           // form fields rendered to user (e.g. { apiKey: string, region?: string })
+    validate?: (value: unknown) => Promise<{ ok: boolean; error?: string }>;   // optional ping the provider
+  };
+}
+```
+
+Tool authors only declare `provider:"gmail"` in their requirements. The connector handles redirects, token storage, refresh, and key-form rendering. The connection flow returns a row in `user_connections`; subsequent attaches by the same user reuse it.
+
+When a tool requirement asks for OAuth scopes the existing connection lacks, the connector triggers a re-auth dance with the union of scopes (Gmail read + Gmail send across two tools = single connection with both scopes after re-auth).
+
+### 4.4b Tool sandboxes — definition, build, lifecycle
+
+Tools that need a heavy runtime (Chromium, Python ML, ffmpeg) declare a `tool_sandbox` requirement referencing a **manifest id**. Manifests live alongside the tool registry:
+
+```
+tools/
+├── registry.ts
+├── sandboxes/
+│   ├── chromium/
+│   │   ├── setup.sh                # commands run once during snapshot build
+│   │   └── manifest.ts             # { id, baseImage, setup, resources }
+│   └── python-data/
+│       ├── setup.sh
+│       └── manifest.ts
+└── browser/
+    └── tool.ts                     # references "chromium" via { kind: "tool_sandbox", manifest: "chromium" }
+```
+
+`manifest.ts`:
+```ts
+export const chromium: ToolSandboxManifest = {
+  id: "chromium",                    // logical name, stable across deploys
+  baseImage: "node:24",              // Vercel Sandbox base image
+  setup: "./setup.sh",               // installs chromium, fonts, deps; runs at snapshot-build time only
+  resources: { memoryMb: 2048, timeoutSec: 60 },
+};
+```
+
+**Build pipeline (v1 — lazy first-attach).**
+1. The first time a user attaches a tool whose `tool_sandbox` manifest has no current snapshot, the attach handler kicks off a one-time build: `Sandbox.create({ image: baseImage })` → run `setup.sh` → `sandbox.snapshot()` → persist `(manifest_id, snapshot_id, manifest_hash, built_at)` into `tool_sandbox_snapshots`.
+2. Subsequent attaches by any user reuse the snapshot — the table is global, not per-user.
+3. `manifest_hash` (content hash of `setup.sh` + `manifest.ts`) drives rebuilds. On deploy with a changed manifest, the next attach triggering that manifest does a fresh build and updates the row.
+4. UI shows a "preparing tool environment" state on first attach to keep the latency visible.
+
+**Deploy-time pre-build** (CI step that snapshots all manifests before traffic) is a §8 follow-up — cleaner ops, faster first-attach UX, but more deploy machinery than v1 needs.
+
+**Invocation lifecycle.**
+- Ephemeral per call. `spawnToolSandbox(manifestId)` resolves to the current snapshot id from `tool_sandbox_snapshots`, calls `Sandbox.create({ snapshotId })`, hands back an `EphemeralSandbox` handle.
+- Auto-disposed when the tool's `execute()` resolves or throws. No snapshot taken at the end — these sandboxes carry no agent state.
+- **No FS access to system / exec sandboxes.** Inputs cross via `execute()` arguments; outputs cross via the return value. Re-stated from §4.2 because it is the load-bearing rule.
+
+**Persistent per-agent tool sandboxes** (logged-in browser sessions, long-lived dev environments) are a §8 follow-up. The `requirements` field is forward-compatible — a future `persistence: "ephemeral" | "agent-owned"` key on the `tool_sandbox` requirement, plus a `sandbox_instances(agent_id, manifest_id, snapshot_id)` table.
 
 ### 4.5 Sub-agent invocation
 
@@ -401,7 +491,7 @@ agents (
 agent_tools (
   agent_id   uuid fk → agents.id,
   tool_id    text,                             -- maintainer tool key OR "agent:<uuid>"
-  config     jsonb,                            -- per-attachment config, if any
+  config     jsonb,                            -- per-attachment config; validated against tool.configSchema at attach time
   primary key (agent_id, tool_id)
 )
 
@@ -425,10 +515,19 @@ pending_file_writes (                          -- UI → sandbox write queue
 
 user_connections (                             -- generalises gmailConnection
   user_id      uuid fk → user.id,
-  provider     text,                           -- "gmail" | "google-calendar" | ...
-  credentials  bytea,                          -- encrypted
-  expires_at   timestamptz null,
+  provider     text,                           -- "gmail" | "google-calendar" | "stripe" | "openai" | ...
+  kind         text,                           -- "oauth" | "api_key"
+  credentials  bytea,                          -- encrypted: token bundle (oauth) or key (api_key)
+  expires_at   timestamptz null,               -- null for api_key
+  metadata     jsonb,                          -- e.g. granted oauth scopes, key label, region
   primary key (user_id, provider)
+)
+
+tool_sandbox_snapshots (                       -- one row per tool-sandbox manifest
+  manifest_id    text primary key,             -- logical id from the manifest, e.g. "chromium"
+  snapshot_id    text,                         -- current Vercel Sandbox snapshot id
+  manifest_hash  text,                         -- hash of manifest + setup script; drives rebuilds
+  built_at       timestamptz
 )
 
 -- Unchanged in shape (possibly renamed):
@@ -486,24 +585,29 @@ In this phase the agent's `ToolSet` is just memory tools + exec tools (`bash` + 
 
 **Testable end state.** A user can create a blank agent from the UI, chat with it (equipped only with built-in memory tools + exec tools), watch it edit its own MEMORY / TASKS via memory tools, run experiments in the exec sandbox without risk to memory, and see memory results in the admin MD viewer. Attempts by the agent to overwrite `SOUL.md` / `AGENTS.md` are rejected. Bash audit log lands in `logs/YYYY-MM-DD.md`. The old `daily-email-brief` is entirely gone.
 
-### Phase 3 — Tool catalog + connections
-*Users can compose an agent from a tool catalog.*
+### Phase 3 — Tool catalog + connector registry
+*Users can compose an agent from a tool catalog; OAuth and API-key tools both work.*
 
-- Ship `MaintainerTool` + `ToolBuildContext` from §4.4; build `tools/registry.ts`.
-- Generalise `gmailConnection` → `user_connections`. Tool-attach flow triggers OAuth when the requirement isn't met.
-- First real tool set: `gmail.search`, `gmail.send`, `google-calendar.read`, `google-calendar.create`, `web.fetch`. (No `memory.write` / `tasks.write` catalog tools — those are subsumed by the built-in memory tools shipped in Phase 2.)
-- Tool-catalog UI and attach/detach flow. Attachment updates `agent_tools`; the session rebuilds its `ToolSet` at the start of the next event.
+- Ship `MaintainerTool` + `ToolRequirement` + `ToolBuildContext` from §4.4; build `tools/registry.ts`.
+- Ship the **connector registry** (§4.4a) with both flows wired:
+  - OAuth connector for `gmail` and `google-calendar` (replaces the existing `gmailConnection` code).
+  - Generic `api_key` connector with a Zod-driven form modal for any provider tagged `kind:"api_key"`.
+- Generalise `gmailConnection` → `user_connections` with `kind` and `metadata` columns. Tool-attach flow triggers the appropriate connector when a `user_connection` requirement is unmet.
+- Per-attachment config: render `tool.configSchema` as a form alongside the "Attach" button; persist into `agent_tools.config`; surface in `ToolBuildContext.config` (Zod-validated) at session start.
+- First real tool set: `gmail.search`, `gmail.send`, `google-calendar.read`, `google-calendar.create`, `web.fetch`. (No `memory.write` / `tasks.write` catalog tools — those are subsumed by the built-in memory tools shipped in Phase 2.) At least one api_key tool exercised in tests (e.g. a `resend.send` or similar) to prove the api_key connector path.
+- Tool-catalog UI and attach/detach flow. Attachment updates `agent_tools`; the session rebuilds its `ToolSet` at the start of the next event. Missing / expired credentials surface as a "reconnect" prompt instead of crashing the session.
 
-**Testable end state.** A user can rebuild an equivalent of the original "daily email brief" agent entirely through the UI — create an agent, attach `gmail.search`, write `SOUL.md` (identity) and per-agent `AGENTS.md` instructions (e.g. "every heartbeat: fetch today's email with `gmail.search`, summarise, `append_memory('MEMORY.md', …)`") — with no code deploy required.
+**Testable end state.** A user can rebuild an equivalent of the original "daily email brief" agent entirely through the UI — create an agent, attach `gmail.search` (OAuth flow runs once), write `SOUL.md` (identity) and per-agent `AGENTS.md` instructions (e.g. "every heartbeat: fetch today's email with `gmail.search`, summarise, `append_memory('MEMORY.md', …)`") — with no code deploy required. An api_key tool (e.g. `resend.send`) can also be attached via the form-driven flow.
 
 ### Phase 4 — Sub-agents + tool sandboxes
 *Agents can call each other; tools can have heavy runtimes.*
 
 - Agent-as-tool synthesiser and the cross-workflow invocation protocol from §4.5, with depth and cycle guards.
-- First tool that requires a tool sandbox: a browser tool using the `@vercel/sandbox` snapshot pattern. This validates the "no cross-sandbox FS" data-flow rule end-to-end.
+- Ship the **tool-sandbox build pipeline** (§4.4b, lazy first-attach variant) with `tools/sandboxes/<id>/{manifest.ts, setup.sh}` convention and the `tool_sandbox_snapshots` table.
+- First manifest: `chromium`. First tool that uses it: a browser-open tool. UI shows a "preparing tool environment" state during the one-time snapshot build. Validates the `spawnToolSandbox` path and the "no cross-sandbox FS" data-flow rule end-to-end.
 - Depth/cycle guard tests.
 
-**Testable end state.** A user can create an "orchestrator" agent whose toolset includes other agents they own plus the browser tool. Sub-agent calls show up as linked workflow runs in observability.
+**Testable end state.** A user can create an "orchestrator" agent whose toolset includes other agents they own plus the browser tool. First attach of the browser tool builds the chromium snapshot once (cached for everyone after); subsequent invocations are fast. Sub-agent calls show up as linked workflow runs in observability.
 
 ### Phase 5 — DREAMS / reflection
 *Proactivity becomes self-improving.*
@@ -519,7 +623,8 @@ In this phase the agent's `ToolSet` is just memory tools + exec tools (`bash` + 
 ## 8. Explicit follow-ups (not in this refactor)
 
 - **Agent-authored skills** — distinct from the maintainer tool catalog. Users (or agents themselves) author markdown "skill" files the agent invokes via a bash-style harness. Inspiration: [vercel-labs/bash-tool — `skills-tool`](https://github.com/vercel-labs/bash-tool/tree/main/examples/skills-tool). Out of scope for this refactor; the tool catalog is the only extension surface in v1.
-- **Persistent per-agent tool-sandboxes** (option B from the Q6 design discussion). The `requirements` field in the tool interface is already forward-compatible (add a `persistence: "ephemeral" | "agent-owned"` key). Introduce a `sandbox_instances(agent_id, tool_id, snapshot_id)` table when this lands.
+- **Deploy-time tool-sandbox pre-build.** A CI step that walks `tools/sandboxes/*/manifest.ts`, builds and snapshots each, and updates `tool_sandbox_snapshots` before traffic. v1 builds lazily on first attach (§4.4b). Pre-build trades deploy time for a friction-free first-attach UX.
+- **Persistent per-agent tool-sandboxes.** The `tool_sandbox` requirement is forward-compatible — add a `persistence: "ephemeral" | "agent-owned"` key. Introduce a `sandbox_instances(agent_id, manifest_id, snapshot_id)` table when this lands. Use cases: logged-in browser sessions, long-lived dev environments.
 - **Agent sharing.** Relax "owner-only invocation" to ACLs. Makes the "credentials are the callee's owner's" rule load-bearing.
 - **Structured UI widgets over MD.** Parse `TASKS.md` / `CALENDAR.md` into shadow tables for filterable / interactive UI. The flat file cache is a stepping stone.
 - **User-defined tools.** No-code tool builder (e.g. "call this HTTPS endpoint with these params"). For now, sub-agents are the only user-authored "tools."
