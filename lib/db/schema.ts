@@ -83,6 +83,13 @@ export const agent = pgTable(
     // NULL before the very first session start; afterwards always points
     // at the latest run, even if it has since terminated.
     lastSessionRunId: text("last_session_run_id"),
+    // Workflow runtime id for the sibling ticker workflow that drives
+    // this agent's heartbeat loop. Persisted alongside `lastSessionRunId`
+    // so a session that crashes mid-handler (skipping its `finally`
+    // block) leaves a forensic record we can reap on the next session
+    // start and via the liveness sweeper. Cleared back to NULL when the
+    // session shuts down cleanly.
+    lastTickerRunId: text("last_ticker_run_id"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
