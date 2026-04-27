@@ -243,11 +243,11 @@ interface ToolBuildContext<TConfig = unknown> {
   userId: string;
   config: TConfig;                                                          // validated against tool.configSchema at attach time
   credentials: Record<string /* provider */, Credential>;                    // resolved from user_connections; only providers in requirements
-  systemSandbox: Sandbox;                                                    // for memory-adjacent tools (rare)
-  execSandbox: Sandbox;                                                      // exposed but rarely used by maintainer tools
   spawnToolSandbox: (manifestId: string) => Promise<EphemeralSandbox>;       // ephemeral; auto-disposed when execute() resolves
 }
 ```
+
+**Maintainer tools never receive handles to the agent's system or exec sandboxes.** Memory access is reserved to the built-in memory tools, and the exec sandbox is the agent's private playground; exposing those handles to third-party tool code would be a backdoor around the tool-layer write block on `SOUL.md` / `AGENTS.md` and would let any tool stomp on the agent's exec workspace. Maintainer tools' only sandbox surface is `spawnToolSandbox(manifestId)`, which returns an ephemeral, isolated VM.
 
 `build()` is called at session start for every attached tool, producing a `ToolSet` merged with the built-in set (below) and passed to `DurableAgent`. If a required `user_connection` is missing or expired, the session refuses to build the tool and surfaces a "reconnect" prompt to the user via the next-event UI state — it does not crash.
 
