@@ -1,6 +1,7 @@
 import "server-only"
 import { eq } from "drizzle-orm"
 import { getRun, resumeHook, start } from "workflow/api"
+import type { UIMessage } from "ai"
 import { db } from "@/lib/db"
 import { agent, type Agent, type AgentKind } from "@/lib/db/schema"
 import { agentSessionWorkflow } from "@/workflows/agent-session/workflow"
@@ -9,35 +10,37 @@ import { isAgentKind } from "@/workflows/agents/registry"
 
 /**
  * Server-side helpers for managing an agent's long-lived session
- * workflow. Used by:
+ * workflow. All of the lifecycle is funneled through this module so
+ * the API routes and `lib/agent-actions.ts` don't have to know about
+ * `start()` / `resumeHook()` / hook tokens.
  *
- * - `lib/agent-actions.ts` (create / toggle / update / delete) to
- *   start and stop the workflow on enabled-state transitions.
- * - `app/api/agents/[agentId]/chat/route.ts` to lazy-start the session
- *   if it's not running and to push chat events.
- * - `app/api/agents/[agentId]/trigger/route.ts` to push a one-shot
- *   heartbeat.
- * - `app/api/cron/liveness/route.ts` to restart sessions that have
- *   ended unexpectedly.
+ * Public API summary:
+ *   - `startAgentSession(a)`     — idempotent lazy start
+ *   - `restartAgentSession(a)`   — force a brand-new workflow run
+ *   - `stopAgentSession(id)`     — push a `shutdown` event
+ *   - `pokeHeartbeat({agent})`   — ensure running + push heartbeat
+ *   - `dispatchChatTurn({...})`  — ensure running + push chat event,
+ *                                   returns the per-turn reply
+ *                                   namespace + sessionRunId
+ *   - `isWorkflowRunAlive(id)`   — used by the liveness sweeper
  */
 
-/**
- * Status values returned by the workflow runtime that mean "the
- * session is no longer running and needs to be (re)started".
- */
-const TERMINAL_STATUSES = new Set([
-  "completed",
-  "failed",
-  "cancelled",
-])
+const TERMINAL_STATUSES = new Set(["completed", "failed", "cancelled"])
+
+function newReplyToken() {
+  return (
+    "rep_" +
+    Math.random().toString(36).slice(2, 10) +
+    Date.now().toString(36).slice(-4)
+  )
+}
 
 /**
  * Lazily start a fresh `agentSessionWorkflow` for this agent and
  * persist its workflow runtime id on the agent row.
  *
- * Idempotent: if the existing `last_session_run_id` points at a still
- * running workflow, this returns that id unchanged. Use
- * `restartAgentSession` to force a brand-new run.
+ * Idempotent: if `last_session_run_id` already points at a running
+ * workflow, this returns that id unchanged.
  */
 export async function startAgentSession(
   a: Agent,
@@ -51,6 +54,26 @@ export async function startAgentSession(
     return { sessionRunId: existing, started: false }
   }
 
+  return doStart(a)
+}
+
+/**
+ * Force a new session workflow regardless of the current state. Used
+ * by the cron liveness sweeper when it detects a dead run.
+ */
+export async function restartAgentSession(
+  a: Agent,
+): Promise<{ sessionRunId: string }> {
+  if (!isAgentKind(a.kind)) {
+    throw new Error(`Unknown agent kind: ${a.kind}`)
+  }
+  const { sessionRunId } = await doStart(a)
+  return { sessionRunId }
+}
+
+async function doStart(
+  a: Agent,
+): Promise<{ sessionRunId: string; started: true }> {
   const run = await start(agentSessionWorkflow, [
     { agentId: a.id, kind: a.kind as AgentKind },
   ])
@@ -64,34 +87,9 @@ export async function startAgentSession(
 }
 
 /**
- * Force a new session workflow regardless of the current state. Used
- * by the cron liveness sweeper when it suspects the existing run is
- * dead.
- */
-export async function restartAgentSession(
-  a: Agent,
-): Promise<{ sessionRunId: string }> {
-  if (!isAgentKind(a.kind)) {
-    throw new Error(`Unknown agent kind: ${a.kind}`)
-  }
-
-  const run = await start(agentSessionWorkflow, [
-    { agentId: a.id, kind: a.kind as AgentKind },
-  ])
-
-  await db
-    .update(agent)
-    .set({ lastSessionRunId: run.runId, updatedAt: new Date() })
-    .where(eq(agent.id, a.id))
-
-  return { sessionRunId: run.runId }
-}
-
-/**
  * Push a `shutdown` event into the session hook so the for-await loop
- * exits cleanly and the workflow's finally block tears the ticker
- * down. Best-effort — a missing or already-stopped session is not an
- * error.
+ * exits cleanly. Best-effort — a missing or already-stopped session
+ * is not an error.
  */
 export async function stopAgentSession(agentId: string): Promise<void> {
   try {
@@ -102,19 +100,53 @@ export async function stopAgentSession(agentId: string): Promise<void> {
 }
 
 /**
- * Push a one-shot heartbeat event into the session. No `ack` field —
- * this is a user-forced poke from the trigger button, not a scheduled
- * tick from the ticker workflow, so the session must not block on an
- * ack hook the caller never created.
+ * Ensure the session is running and push a single heartbeat event.
+ * Returns the session run id and the per-event replyToken (unused for
+ * heartbeats today, but symmetric with `dispatchChatTurn` for
+ * forward-compat).
  */
-export async function pokeHeartbeat(agentId: string): Promise<void> {
-  await resumeHook(sessionToken(agentId), { type: "heartbeat" })
+export async function pokeHeartbeat(opts: {
+  agent: Agent
+  /**
+   * When true, sends `force: true` so the heartbeat handler runs even
+   * if the kind has rate-limit / time-of-day gates. Always true for
+   * the manual trigger button.
+   */
+  force?: boolean
+}): Promise<{ sessionRunId: string }> {
+  const { sessionRunId } = await startAgentSession(opts.agent)
+  await resumeHook(sessionToken(opts.agent.id), {
+    type: "heartbeat",
+    force: opts.force ?? false,
+  })
+  return { sessionRunId }
+}
+
+/**
+ * Ensure the session is running and push a chat event. Returns the
+ * `sessionRunId` (so the API route can call `getRun(...).getReadable`)
+ * and the unique `replyToken` used as the workflow stream namespace
+ * for this turn.
+ */
+export async function dispatchChatTurn(opts: {
+  agent: Agent
+  conversationId: string
+  uiMessages: UIMessage[]
+}): Promise<{ sessionRunId: string; replyToken: string }> {
+  const { sessionRunId } = await startAgentSession(opts.agent)
+  const replyToken = newReplyToken()
+  await resumeHook(sessionToken(opts.agent.id), {
+    type: "chat",
+    conversationId: opts.conversationId,
+    uiMessages: opts.uiMessages,
+    replyToken,
+  })
+  return { sessionRunId, replyToken }
 }
 
 /**
  * Return the workflow runtime id of the running session, or null if
- * the agent's `last_session_run_id` is unset or points at a workflow
- * that has terminated.
+ * `last_session_run_id` is unset or points at a terminated workflow.
  */
 export async function getRunningSessionRunId(
   a: Agent,
@@ -126,9 +158,9 @@ export async function getRunningSessionRunId(
 }
 
 /**
- * Used by the cron liveness sweeper to decide whether to restart a
- * session. Treats unreachable / not-found runs as dead so a previous
- * deploy's runs don't hold the session in a permanently-stale state.
+ * Used by the cron liveness sweeper. Treats unreachable / not-found
+ * runs as dead so leftover runs from a previous deploy don't hold the
+ * session in a permanently-stale state.
  */
 export async function isWorkflowRunAlive(
   workflowRunId: string,
@@ -143,14 +175,4 @@ export async function isWorkflowRunAlive(
   }
 }
 
-/**
- * Same idempotent guarantee as `startAgentSession`, but without
- * actually pushing any event. Used by the chat route to lazy-start a
- * session before it resumes the hook with a chat event.
- */
-export async function ensureAgentSession(
-  a: Agent,
-): Promise<{ sessionRunId: string }> {
-  const { sessionRunId } = await startAgentSession(a)
-  return { sessionRunId }
-}
+

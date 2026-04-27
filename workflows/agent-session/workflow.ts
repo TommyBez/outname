@@ -58,7 +58,7 @@ export async function agentSessionWorkflow(input: {
             agentId,
             kind,
             conversationId: event.conversationId,
-            replyStreamToken: event.replyStreamToken,
+            replyToken: event.replyToken,
             uiMessages: event.uiMessages,
           })
         } else if (event.type === "heartbeat") {

@@ -1,8 +1,12 @@
 import { headers } from "next/headers"
 import { NextResponse, type NextRequest } from "next/server"
 import { revalidateTag } from "next/cache"
-import { createUIMessageStreamResponse, type UIMessage } from "ai"
-import { start } from "workflow/api"
+import {
+  createUIMessageStreamResponse,
+  type UIMessage,
+  type UIMessageChunk,
+} from "ai"
+import { getRun } from "workflow/api"
 import { auth } from "@/lib/auth"
 import { conversationListTag } from "@/lib/cache-tags"
 import { getGmailConnectionForUser } from "@/lib/google-oauth"
@@ -13,7 +17,7 @@ import {
   getOrCreateConversationForAgent,
   insertChatMessage,
 } from "@/lib/agent-chat"
-import { agentChat } from "@/workflows/chat/workflow"
+import { dispatchChatTurn } from "@/lib/agent-session"
 import type { ChatRole } from "@/lib/db/schema"
 
 /**
@@ -23,14 +27,16 @@ import type { ChatRole } from "@/lib/db/schema"
  * (see `workflow-chat-transport`'s default shape). We:
  *
  *   1. Authenticate and authorize against the agent's owner.
- *   2. Verify the kind has a chat agent registered (future-proofing for
- *      chat-only or cron-only kinds).
+ *   2. Verify the kind has a chat agent registered.
  *   3. Resolve or create the single conversation for this agent.
  *   4. Persist the just-sent user message so the history row survives
  *      even if the workflow fails mid-stream.
- *   5. Start `agentChat` and pipe its readable through the AI SDK's
- *      `createUIMessageStreamResponse` so `useChat` can consume the
- *      stream end-to-end.
+ *   5. Dispatch the turn into the agent's long-lived session workflow.
+ *      The session writes its `UIMessageChunk` reply into a
+ *      per-turn namespaced sub-stream of its run, keyed by
+ *      `replyToken`. We pipe that sub-stream straight into
+ *      `createUIMessageStreamResponse` so `useChat` sees the same
+ *      shape it always has.
  *
  * The workflow itself persists the assistant turn after streaming
  * completes — see `workflows/chat/steps/persist-assistant-turn.ts`.
@@ -51,6 +57,12 @@ export async function POST(
   }
   if (!isAgentKind(agent.kind)) {
     return NextResponse.json({ error: "unknown agent kind" }, { status: 400 })
+  }
+  if (!agent.enabled) {
+    return NextResponse.json(
+      { error: "Agent is paused. Enable it before chatting." },
+      { status: 412 },
+    )
   }
 
   const runtime = getAgentRuntime(agent.kind)
@@ -76,7 +88,9 @@ export async function POST(
     }
     if (conn.status !== "active") {
       return NextResponse.json(
-        { error: `Gmail connection is ${conn.status}. Reconnect it in /settings.` },
+        {
+          error: `Gmail connection is ${conn.status}. Reconnect it in /settings.`,
+        },
         { status: 412 },
       )
     }
@@ -105,10 +119,6 @@ export async function POST(
     )
   }
 
-  // Lazily create the row on first message. If a malicious client supplies
-  // an id that already belongs to a different agent, the owner-scoped
-  // lookup inside `getOrCreateConversationForAgent` returns null and we
-  // 404 — the row is never hijacked.
   const conversation = await getOrCreateConversationForAgent(
     requestedConversationId,
     agentId,
@@ -121,9 +131,6 @@ export async function POST(
   }
   const conversationId = conversation.id
 
-  // Persist the newest user message up-front. Doing this before the
-  // workflow starts means a mid-stream failure still leaves the user's
-  // question in the transcript so they can see it and retry.
   const last = uiMessages[uiMessages.length - 1]
   if (last && last.role === "user") {
     await insertChatMessage({
@@ -133,23 +140,27 @@ export async function POST(
       parts: last.parts,
       metadata: last.metadata,
     })
-
     revalidateTag(conversationListTag(agent.id), "max")
   }
 
-  const run = await start(agentChat, [
-    {
-      kind: agent.kind,
-      agentId,
-      conversationId,
-      uiMessages,
-    },
-  ])
+  const { sessionRunId, replyToken } = await dispatchChatTurn({
+    agent,
+    conversationId,
+    uiMessages,
+  })
+
+  // Subscribe to the per-turn namespaced sub-stream of the session run.
+  // The session's `handleChat` writes `UIMessageChunk`s into this same
+  // namespace; the AI SDK helper repacks them into `useChat`'s
+  // expected shape.
+  const readable = getRun(sessionRunId).getReadable<UIMessageChunk>({
+    namespace: replyToken,
+  })
 
   return createUIMessageStreamResponse({
-    stream: run.readable,
+    stream: readable,
     headers: {
-      "x-workflow-run-id": run.runId,
+      "x-workflow-run-id": sessionRunId,
     },
   })
 }

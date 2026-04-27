@@ -1,8 +1,5 @@
 import { resumeHook, start } from "workflow/api"
 import { getWorld } from "workflow/runtime"
-import { eq } from "drizzle-orm"
-import { db } from "@/lib/db"
-import { agent } from "@/lib/db/schema"
 import { agentTickerWorkflow } from "../ticker"
 import { heartbeatAckToken, sessionToken } from "../events"
 
@@ -79,19 +76,4 @@ export async function ackHeartbeat(input: {
   }
 }
 
-/**
- * Persist the workflow runtime id of the freshly started session run
- * onto the agent row. The chat route reads this column to subscribe to
- * the per-turn reply stream, and the liveness sweeper reads it to
- * decide whether the session needs restarting.
- */
-export async function recordSessionRunId(input: {
-  agentId: string
-  sessionRunId: string
-}): Promise<void> {
-  "use step"
-  await db
-    .update(agent)
-    .set({ lastSessionRunId: input.sessionRunId, updatedAt: new Date() })
-    .where(eq(agent.id, input.agentId))
-}
+

@@ -5,15 +5,16 @@ import type { UIMessage } from "ai"
  * for-await loop pulls one of these from the agent's session hook.
  *
  * - `chat` — a user turn from `POST /api/agents/:id/chat`. The route
- *   generates a fresh `replyStreamToken` for the turn and the chat
- *   handler streams `UIMessageChunk`s into a namespaced sub-stream of
- *   the session run keyed by that token, which the route then pipes
- *   into the HTTP response.
+ *   generates a fresh `replyToken` for the turn and the chat handler
+ *   streams `UIMessageChunk`s into a namespaced sub-stream of the
+ *   session run keyed by that token, which the route then pipes into
+ *   the HTTP response.
  * - `heartbeat` — the periodic tick driven by `agentTickerWorkflow`,
  *   or a one-shot push from `POST /api/agents/:id/trigger`. When `ack`
  *   is set the session resumes that hook after the handler returns so
  *   the ticker knows the heartbeat is done; ad-hoc trigger pokes leave
- *   it unset.
+ *   it unset. `force: true` from the trigger button bypasses any
+ *   future per-kind heartbeat rate limits.
  * - `shutdown` — pushed by `stopAgentSession` when the agent is
  *   disabled or deleted. The for-await loop breaks and the workflow's
  *   finally block tears the ticker down.
@@ -22,12 +23,13 @@ export type SessionEvent =
   | {
       type: "chat"
       conversationId: string
-      replyStreamToken: string
+      replyToken: string
       uiMessages: UIMessage[]
     }
   | {
       type: "heartbeat"
       ack?: string
+      force?: boolean
     }
   | { type: "shutdown" }
 

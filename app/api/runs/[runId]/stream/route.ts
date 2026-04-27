@@ -3,10 +3,16 @@ import { getRun } from "workflow/api"
 import { getSession } from "@/lib/auth-guard"
 import { db } from "@/lib/db"
 import { runs } from "@/lib/db/schema"
-import type { RunEvent } from "@/lib/run-events"
+import { runEventsNamespace, type RunEvent } from "@/lib/run-events"
 
 /**
  * Stream workflow progress events as newline-delimited JSON.
+ *
+ * In Phase 1 every run is hosted by the agent's long-lived session
+ * workflow, so `workflowRunId` is the session run id (the same one
+ * shared by chat turns and other heartbeats). To prevent breadcrumb
+ * interleaving we route per-run events into a per-run namespace —
+ * `events:<runId>` — and read from there here.
  */
 export async function GET(
   _request: Request,
@@ -35,12 +41,12 @@ export async function GET(
     })
   }
 
-  const encoder = new TextEncoder()
   const source = getRun(workflowRunId).getReadable<RunEvent>({
-    namespace: "events",
+    namespace: runEventsNamespace(runId),
     startIndex: 0,
   })
 
+  const encoder = new TextEncoder()
   const body = source.pipeThrough(
     new TransformStream<RunEvent, Uint8Array>({
       transform(chunk, controller) {

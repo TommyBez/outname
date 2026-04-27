@@ -36,13 +36,13 @@ export async function handleChat(input: {
   agentId: string
   kind: AgentKind
   conversationId: string
-  replyStreamToken: string
+  replyToken: string
   uiMessages: UIMessage[]
 }): Promise<void> {
-  const { agentId, kind, conversationId, replyStreamToken, uiMessages } = input
+  const { agentId, kind, conversationId, replyToken, uiMessages } = input
 
   const writable = getWritable<UIMessageChunk>({
-    namespace: replyStreamToken,
+    namespace: replyToken,
   })
 
   await startupAgentSandbox({ agentId })
