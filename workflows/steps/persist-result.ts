@@ -21,11 +21,11 @@ export async function persistRunResult(
 ): Promise<{ runId: string; bytes: number }> {
   "use step"
 
-  await emitStep("persist", "start", "Saving result")
+  await emitStep(runId, "persist", "start", "Saving result")
 
   await db.insert(runResult).values({ runId, content, metrics })
 
-  await emitStep("persist", "done", "Result saved", {
+  await emitStep(runId, "persist", "done", "Result saved", {
     bytes: content.length,
     ...(metrics ?? {}),
   })

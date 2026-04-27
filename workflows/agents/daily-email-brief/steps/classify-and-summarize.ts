@@ -17,18 +17,23 @@ export const CategorizedSchema = z.object({
 export type Categorized = z.infer<typeof CategorizedSchema>
 
 export async function classifyAndSummarize(
+  runId: string,
   messages: GmailMessage[],
 ): Promise<Categorized> {
   "use step"
 
   if (messages.length === 0) {
-    await emitStep("classify", "done", "No new emails to classify")
+    await emitStep(runId, "classify", "done", "No new emails to classify")
     return { items: [], overallSummary: "No new emails since the last run." }
   }
 
-  await emitStep("classify", "start", `Classifying ${messages.length} emails`, {
-    count: messages.length,
-  })
+  await emitStep(
+    runId,
+    "classify",
+    "start",
+    `Classifying ${messages.length} emails`,
+    { count: messages.length },
+  )
 
   const input = messages.map((m) => ({
     messageId: m.id,
@@ -60,6 +65,7 @@ export async function classifyAndSummarize(
     return acc
   }, {})
   await emitStep(
+    runId,
     "classify",
     "done",
     `Categorized ${output.items.length} emails`,

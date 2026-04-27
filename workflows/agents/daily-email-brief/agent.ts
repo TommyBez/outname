@@ -136,7 +136,7 @@ export function createDailyEmailBriefAgent(ctx: DailyEmailBriefAgentContext) {
           messages: z.array(gmailMessageSchema),
         }),
         execute: async ({ messages }) => {
-          return await classifyAndSummarize(messages)
+          return await classifyAndSummarize(runId, messages)
         },
       },
       persistResult: {
