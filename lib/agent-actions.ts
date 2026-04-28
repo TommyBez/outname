@@ -22,6 +22,10 @@ import {
   DEFAULT_MODEL_ID,
   isModelIdValid,
 } from "@/lib/ai-gateway-models"
+import {
+  enqueuePendingFileWrite,
+  PENDING_PERSONA_PATHS,
+} from "@/lib/agent-pending-writes"
 
 function nanoid() {
   return (
@@ -44,7 +48,19 @@ function clampInterval(n: number): number {
 
 interface CreateInput {
   name: string
-  systemPrompt: string
+  /**
+   * SOUL.md content authored via the "Identity" tab. Empty string
+   * means "don't seed an identity yet" — the persona file is left
+   * absent until the user fills it in later.
+   */
+  identity: string
+  /**
+   * AGENTS.md content authored via the "Instructions" tab. Empty
+   * string means "use the default seed template" — the
+   * `seedAgentsMd` step writes the platform default on first
+   * sandbox boot.
+   */
+  instructions: string
   model: string
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
@@ -56,7 +72,6 @@ export async function createAgentAction(
   const session = await requireSession()
 
   const name = input.name.trim() || "New agent"
-  const systemPrompt = input.systemPrompt
   const model = (await isModelIdValid(input.model))
     ? input.model
     : DEFAULT_MODEL_ID
@@ -69,13 +84,35 @@ export async function createAgentAction(
       id,
       userId: session.user.id,
       name,
-      systemPrompt,
       model,
       enabled: true,
       heartbeatEnabled: input.heartbeatEnabled,
       heartbeatIntervalMinutes,
     })
     .returning()
+
+  // Queue the persona-file content authored in the form, if any. The
+  // first session event will run `drainPendingWrites` which applies
+  // them to the system sandbox after `seedAgentsMd` writes the
+  // default AGENTS.md template. Empty strings are intentionally
+  // skipped so a brand-new agent that hits Save without filling
+  // either tab gets the default template untouched.
+  const identity = input.identity.trim()
+  if (identity.length > 0) {
+    await enqueuePendingFileWrite({
+      agentId: id,
+      path: "SOUL.md",
+      content: identity,
+    })
+  }
+  const instructions = input.instructions.trim()
+  if (instructions.length > 0) {
+    await enqueuePendingFileWrite({
+      agentId: id,
+      path: "AGENTS.md",
+      content: instructions,
+    })
+  }
 
   // Boot the long-lived session immediately so a (possibly enabled)
   // heartbeat ticker starts producing runs without forcing the user
@@ -96,7 +133,19 @@ export async function createAgentAction(
 interface UpdateInput {
   id: string
   name: string
-  systemPrompt: string
+  /**
+   * SOUL.md content from the "Identity" tab. Empty string is a
+   * legal value — it means "leave whatever is on disk alone". The
+   * action only enqueues a pending write if the operator wrote
+   * something AND it differs from the prefill that was rendered.
+   */
+  identity: string
+  /** Original SOUL.md content the form was rendered with. */
+  identityOriginal: string
+  /** AGENTS.md content from the "Instructions" tab. */
+  instructions: string
+  /** Original AGENTS.md content the form was rendered with. */
+  instructionsOriginal: string
   model: string
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
@@ -112,9 +161,6 @@ export async function updateAgentAction(input: UpdateInput): Promise<void> {
   if (!existing) throw new Error("Not found")
 
   const name = input.name.trim() || existing.name
-  // System prompt: an explicit empty string is allowed (the model
-  // falls back to AGENTS.md / SOUL.md only).
-  const systemPrompt = input.systemPrompt
   // Skip the gateway round-trip if the model didn't change, since the
   // catalog fetch is the slowest part of this action.
   const model =
@@ -127,7 +173,6 @@ export async function updateAgentAction(input: UpdateInput): Promise<void> {
     .update(agent)
     .set({
       name,
-      systemPrompt,
       model,
       heartbeatEnabled: input.heartbeatEnabled,
       heartbeatIntervalMinutes,
@@ -135,6 +180,25 @@ export async function updateAgentAction(input: UpdateInput): Promise<void> {
     })
     .where(eq(agent.id, input.id))
     .returning()
+
+  // Persona files: only enqueue a pending write when the operator
+  // actually edited the textarea. This keeps the queue from
+  // ballooning with no-op rows when the user just changes the model
+  // or the heartbeat interval.
+  if (input.identity !== input.identityOriginal) {
+    await enqueuePendingFileWrite({
+      agentId: input.id,
+      path: "SOUL.md",
+      content: input.identity,
+    })
+  }
+  if (input.instructions !== input.instructionsOriginal) {
+    await enqueuePendingFileWrite({
+      agentId: input.id,
+      path: "AGENTS.md",
+      content: input.instructions,
+    })
+  }
 
   // The ticker reads its interval / opt-in once on session boot, so
   // mid-session schedule changes only take effect on the next restart.

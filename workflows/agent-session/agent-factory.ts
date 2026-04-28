@@ -17,8 +17,11 @@ import {
  * Phase 2 collapses the per-kind agent factory to a single generic
  * builder. Every agent shares the same tool surface — five memory_*
  * tools (closed over the per-event `pending` queue) and four exec_*
- * tools — and receives a freshly-composed system prompt that layers
- * the user's `system_prompt` over live `AGENTS.md` + `SOUL.md`.
+ * tools — and receives a freshly-composed system prompt that inlines
+ * the live `AGENTS.md` + `SOUL.md` from the system sandbox. There is
+ * no longer a free-form `system_prompt` column on `agent`; the
+ * persona files are the single source of agent personality, edited
+ * via the Identity / Instructions tabs in the agent settings UI.
  *
  * Side-effect-free apart from one DB read and a `getSystemSandbox`
  * call inside `composeSystemPrompt`. Both must already be cheap
@@ -51,12 +54,11 @@ export interface BuildAgentResult {
   pending: PendingWrites
   /**
    * Snapshot of the agent row used to build the agent. Convenient for
-   * the caller to log model id / heartbeat config without re-reading.
+   * the caller to log model id without re-reading.
    */
   meta: {
     name: string
     model: string
-    systemPrompt: string
   }
 }
 
@@ -75,7 +77,6 @@ export async function buildAgent(
     .select({
       name: agent.name,
       model: agent.model,
-      systemPrompt: agent.systemPrompt,
     })
     .from(agent)
     .where(eq(agent.id, agentId))
@@ -86,11 +87,10 @@ export async function buildAgent(
 
   // composeSystemPrompt resumes the system sandbox and reads the
   // persona files. Cheap in the steady state — the sandbox is already
-  // hot from `startupSystemSandbox`.
+  // hot from `startupSystemSandbox` + `drainPendingWrites`.
   const systemSandbox = await getSystemSandbox(agentId)
   const systemPrompt = await composeSystemPrompt({
     agentName: row.name,
-    userSystemPrompt: row.systemPrompt,
     systemSandbox,
     nowIso: args.nowIso ?? new Date().toISOString(),
   })
@@ -115,7 +115,6 @@ export async function buildAgent(
     meta: {
       name: row.name,
       model: row.model,
-      systemPrompt: row.systemPrompt,
     },
   }
 }

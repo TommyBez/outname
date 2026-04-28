@@ -9,6 +9,7 @@ import {
   startupExecSandbox,
 } from "@/lib/agent-sandbox"
 import { buildAgent } from "../agent-factory"
+import { drainPendingWrites } from "../steps/drain-pending-writes"
 import type { PendingWrites } from "../tools/pending-writes"
 import { maybeGenerateConversationTitle } from "@/workflows/chat/steps/generate-conversation-title"
 import { persistAssistantTurn } from "@/workflows/chat/steps/persist-assistant-turn"
@@ -62,6 +63,12 @@ export async function handleChat(input: {
     // surface clearer errors per-call when they try to use it.
     console.error("[v0] handleChat: startupExecSandbox failed", err)
   })
+
+  // Apply any UI-authored persona-file edits before composing the
+  // system prompt. composeSystemPrompt inlines AGENTS.md / SOUL.md
+  // verbatim, so this guarantees the operator's latest save is what
+  // the model sees this turn.
+  await drainPendingWrites({ agentId })
 
   const { agent, pending } = await buildAgent({
     agentId,

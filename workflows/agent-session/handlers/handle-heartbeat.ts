@@ -10,6 +10,7 @@ import {
 import { buildAgent, buildHeartbeatKickoff } from "../agent-factory"
 import type { PendingWrites } from "../tools/pending-writes"
 import { beginHeartbeatRun } from "../steps/begin-heartbeat-run"
+import { drainPendingWrites } from "../steps/drain-pending-writes"
 import { initRun } from "../steps/init-run"
 import { finalizeRun } from "../steps/finalize-run"
 
@@ -29,8 +30,8 @@ import { finalizeRun } from "../steps/finalize-run"
  *      exec is best-effort.
  *   5. Build the agent via `buildAgent` and stream it against the
  *      generic `buildHeartbeatKickoff` user message. The agent
- *      decides what to do based on its `system_prompt`, AGENTS.md,
- *      SOUL.md, and current memory inventory.
+ *      decides what to do based on its inlined AGENTS.md / SOUL.md
+ *      and current memory inventory.
  *   6. `finalizeRun` — flip the runs row to `completed` (or
  *      `failed`).
  *
@@ -67,6 +68,10 @@ export async function handleHeartbeat(input: {
       // own errors per call.
       console.error("[v0] handleHeartbeat: startupExecSandbox failed", err)
     })
+
+    // Drain UI-authored persona-file edits before composeSystemPrompt
+    // reads them inside buildAgent.
+    await drainPendingWrites({ agentId })
 
     const { agent, pending } = await buildAgent({ agentId, runId })
 

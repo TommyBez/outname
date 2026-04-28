@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   createAgentAction,
   updateAgentAction,
@@ -40,14 +41,23 @@ const INTERVAL_OPTIONS = [
 interface AgentFormProps {
   models: ModelOption[]
   defaultModel: string
-  // Empty = create form, populated = edit form. `enabled` mirrors
-  // `agent.enabled` (the soft delete / reachability flag from the
-  // sidebar) and stays unchanged by this form — toggle it from the
-  // overview page.
+  /**
+   * Empty = create form, populated = edit form. `enabled` mirrors
+   * `agent.enabled` and stays unchanged by this form — toggle it
+   * from the overview page.
+   *
+   * `identity` and `instructions` are pre-filled from the most
+   * recent `pending_file_writes` row for SOUL.md / AGENTS.md (the
+   * UI's source of truth for what's effectively on disk). The
+   * caller should pass empty strings on a brand-new agent — the
+   * form treats those as "show the placeholders" and doesn't
+   * enqueue a write unless the operator actually types something.
+   */
   initial?: {
     id: string
     name: string
-    systemPrompt: string
+    identity: string
+    instructions: string
     model: string
     heartbeatEnabled: boolean
     heartbeatIntervalMinutes: number
@@ -59,7 +69,10 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
   const [pending, startTransition] = useTransition()
 
   const [name, setName] = useState(initial?.name ?? "")
-  const [systemPrompt, setSystemPrompt] = useState(initial?.systemPrompt ?? "")
+  const [identity, setIdentity] = useState(initial?.identity ?? "")
+  const [instructions, setInstructions] = useState(
+    initial?.instructions ?? "",
+  )
   // Default model falls back to the gateway's first id if our preferred
   // default isn't in the filtered list. Empty list (fallback mode) is
   // handled by rendering a single passthrough option.
@@ -96,7 +109,10 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
           await updateAgentAction({
             id: initial.id,
             name: trimmed,
-            systemPrompt,
+            identity,
+            identityOriginal: initial.identity,
+            instructions,
+            instructionsOriginal: initial.instructions,
             model,
             heartbeatEnabled,
             heartbeatIntervalMinutes: intervalMinutes,
@@ -106,7 +122,8 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
         } else {
           const result = await createAgentAction({
             name: trimmed,
-            systemPrompt,
+            identity,
+            instructions,
             model,
             heartbeatEnabled,
             heartbeatIntervalMinutes: intervalMinutes,
@@ -138,21 +155,52 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="agent-system-prompt">System prompt</Label>
-        <Textarea
-          id="agent-system-prompt"
-          value={systemPrompt}
-          onChange={(e) => setSystemPrompt(e.target.value)}
-          placeholder="You are a thoughtful research assistant. Keep notes in your memory volume."
-          rows={8}
-          className="font-mono text-sm"
-        />
+        <Label>Persona files</Label>
         <p className="text-xs text-muted-foreground">
-          Threaded into the prompt under{" "}
-          <span className="font-mono">## Operator instructions</span> on every
-          turn. AGENTS.md and SOUL.md are inlined separately and stay
-          user-managed.
+          {
+            "These two files are inlined verbatim into the agent's system prompt on every event. They live in the agent's memory volume — the agent can read them via memory_read but its tools refuse to write or delete them. Save here flushes to disk on the next event."
+          }
         </p>
+        <Tabs defaultValue="identity" className="mt-1">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="identity">Identity (SOUL.md)</TabsTrigger>
+            <TabsTrigger value="instructions">
+              Instructions (AGENTS.md)
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="identity" className="mt-3">
+            <Textarea
+              id="agent-identity"
+              value={identity}
+              onChange={(e) => setIdentity(e.target.value)}
+              placeholder={
+                "Voice, tone, name preferences, hobbies, anything that makes this agent feel like a specific person. Empty is fine — the agent will just present a generic helper persona."
+              }
+              rows={12}
+              className="font-mono text-sm"
+            />
+            <p className="mt-2 text-xs text-muted-foreground">
+              Saved to <span className="font-mono">SOUL.md</span> in the
+              agent&apos;s memory volume.
+            </p>
+          </TabsContent>
+          <TabsContent value="instructions" className="mt-3">
+            <Textarea
+              id="agent-instructions"
+              value={instructions}
+              onChange={(e) => setInstructions(e.target.value)}
+              placeholder={
+                "Operating manual. What does this agent do during heartbeats? Which memory files matter? When should it ping the user? Empty falls back to the platform default template."
+              }
+              rows={12}
+              className="font-mono text-sm"
+            />
+            <p className="mt-2 text-xs text-muted-foreground">
+              Saved to <span className="font-mono">AGENTS.md</span> in the
+              agent&apos;s memory volume.
+            </p>
+          </TabsContent>
+        </Tabs>
       </div>
 
       <div className="flex flex-col gap-2">

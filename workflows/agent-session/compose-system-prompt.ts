@@ -9,31 +9,29 @@ import {
 } from "@/workflows/agent-session/tools/persona-paths"
 
 /**
- * Stitch together the model's effective system prompt from four
+ * Stitch together the model's effective system prompt from three
  * layered sources, in order:
  *
- *   1. **User system prompt** (`agent.system_prompt`) — the
- *      product-level definition of what this agent is for. Authored
- *      by the human via the agent form.
- *
- *   2. **Persona files** read live from the system sandbox:
- *        - `AGENTS.md` — operational manual seeded on first sandbox
- *          boot. Editable only by the user (Phase 3 UI editor); the
- *          agent's memory_* tools refuse to mutate it (see
- *          `persona-paths.ts` for the policy).
+ *   1. **Persona files** read live from the system sandbox:
+ *        - `AGENTS.md` — operational manual / instructions. Seeded
+ *          on first sandbox boot with a default template, then
+ *          edited via the agent settings "Instructions" tab. The
+ *          agent's memory_* tools refuse to mutate it.
  *        - `SOUL.md`   — the agent's identity / voice. Purely
- *          user-authored; missing on a fresh agent until an operator
- *          writes one.
+ *          user-authored via the agent settings "Identity" tab;
+ *          missing on a fresh agent until an operator writes one.
  *      Both files are inlined verbatim so the model sees the same
- *      content the user sees in the agent files UI.
+ *      content the user sees in the agent files UI. Phase 2 dropped
+ *      the legacy `agent.system_prompt` column — these two files
+ *      are the single source of agent personality.
  *
- *   3. **Memory inventory footer** — the relative paths of every
+ *   2. **Memory inventory footer** — the relative paths of every
  *      other `*.md` file the system sandbox holds, so the model can
  *      plan `memory_read` calls without having to probe the listing
  *      itself. Persona files are filtered out (their content is
  *      already inlined above).
  *
- *   4. **Platform invariants** — non-negotiable platform contracts:
+ *   3. **Platform invariants** — non-negotiable platform contracts:
  *      memory durability, persona files being read-only at the tool
  *      layer, prefer-tools-over-guesses, heartbeat budgeting.
  *
@@ -45,8 +43,6 @@ import {
 
 export interface ComposeSystemPromptArgs {
   agentName: string
-  /** Verbatim from `agent.system_prompt`. */
-  userSystemPrompt: string
   /** Live system sandbox. The compose step reads from here. */
   systemSandbox: Sandbox
   /** UTC ISO timestamp embedded so the model knows what "now" is. */
@@ -77,7 +73,7 @@ const FOOTER = `## Platform invariants
 export async function composeSystemPrompt(
   args: ComposeSystemPromptArgs,
 ): Promise<string> {
-  const { agentName, userSystemPrompt, systemSandbox, nowIso } = args
+  const { agentName, systemSandbox, nowIso } = args
 
   const [agentsMd, soulMd, livePaths] = await Promise.all([
     readLiveMemory(systemSandbox, "AGENTS.md"),
@@ -90,13 +86,7 @@ export async function composeSystemPrompt(
   sections.push(`# Agent: ${agentName}`)
   if (nowIso) sections.push(`Current UTC time: ${nowIso}`)
 
-  // 1. User-defined purpose.
-  const trimmedPrompt = userSystemPrompt.trim()
-  if (trimmedPrompt.length > 0) {
-    sections.push(`## Purpose\n\n${trimmedPrompt}`)
-  }
-
-  // 2. Persona files (inlined, content verbatim). Heading copy notes
+  // 1. Persona files (inlined, content verbatim). Heading copy notes
   // they are user-managed so the model has explicit context for the
   // read_only error if it ever tries to write them.
   if (agentsMd && agentsMd.trim().length > 0) {
@@ -110,7 +100,7 @@ export async function composeSystemPrompt(
     )
   }
 
-  // 3. Memory inventory footer — list every non-persona *.md path.
+  // 2. Memory inventory footer — list every non-persona *.md path.
   // The model can pull any of them with memory_read.
   const otherPaths = livePaths
     .filter((p) => !READ_ONLY_FOR_AGENT.has(p))
@@ -124,7 +114,7 @@ export async function composeSystemPrompt(
     )
   }
 
-  // 4. Footer.
+  // 3. Footer.
   sections.push(FOOTER)
 
   return sections.join("\n\n")

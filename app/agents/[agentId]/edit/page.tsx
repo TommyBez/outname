@@ -6,6 +6,7 @@ import { getCachedAgentByIdForUser } from "@/lib/data"
 import { AgentForm } from "@/components/agent-form"
 import { deleteAgentAction } from "@/lib/agent-actions"
 import { DEFAULT_MODEL_ID, getAvailableModels } from "@/lib/ai-gateway-models"
+import { readLatestPendingFileWrite } from "@/lib/agent-pending-writes"
 
 type Params = Promise<{ agentId: string }>
 
@@ -26,12 +27,19 @@ async function AgentEdit({ params }: { params: Params }) {
   const { agentId } = await params
   const session = await requireSession()
 
-  // Fetch the agent + the AI Gateway model catalog in parallel. The
-  // catalog is internally `revalidate: 3600`, so the gateway hit is
-  // shared across all visitors.
-  const [agentRow, models] = await Promise.all([
+  // Fetch the agent + the AI Gateway model catalog + the most recent
+  // user-authored persona content in parallel. The catalog is
+  // internally `revalidate: 3600`, so the gateway hit is shared
+  // across all visitors. The persona prefills come from
+  // `pending_file_writes` — that table is the UI's source of truth
+  // for "what is effectively on disk" because the seed step writes
+  // platform defaults and only the UI mutates these files
+  // afterwards (the agent's memory_* tools refuse persona paths).
+  const [agentRow, models, soulRow, agentsMdRow] = await Promise.all([
     getCachedAgentByIdForUser(agentId, session.user.id),
     getAvailableModels(),
+    readLatestPendingFileWrite({ agentId, path: "SOUL.md" }),
+    readLatestPendingFileWrite({ agentId, path: "AGENTS.md" }),
   ])
   if (!agentRow) notFound()
 
@@ -65,7 +73,8 @@ async function AgentEdit({ params }: { params: Params }) {
           initial={{
             id: agentRow.id,
             name: agentRow.name,
-            systemPrompt: agentRow.systemPrompt,
+            identity: soulRow?.content ?? "",
+            instructions: agentsMdRow?.content ?? "",
             model: agentRow.model,
             heartbeatEnabled: agentRow.heartbeatEnabled,
             heartbeatIntervalMinutes: agentRow.heartbeatIntervalMinutes,
