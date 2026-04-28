@@ -119,6 +119,47 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
         return { ok: true as const, path: safe }
       },
     }),
+
+    memory_search: tool({
+      description:
+        "Search every memory file for matches of a regular expression. Returns up to 50 matches grouped by file with their line numbers and the matching line content. Overlay-aware: pending writes/edits/deletes from this turn are reflected in the search. Use this before memory_read when you don't know which file holds a fact.",
+      inputSchema: z.object({
+        pattern: z
+          .string()
+          .min(1)
+          .max(500)
+          .describe(
+            "JavaScript regular expression source. Compiled with the 'm' flag plus any flags you provide. Anchored matches like '^- ' work line-by-line.",
+          ),
+        flags: z
+          .string()
+          .regex(/^[gimsuy]*$/)
+          .optional()
+          .describe(
+            "Extra regex flags (subset of 'gimsuy'). 'i' is the most useful — case-insensitive. 'g' is implied; you don't need to pass it.",
+          ),
+        pathPrefix: z
+          .string()
+          .optional()
+          .describe(
+            "Restrict the search to files whose relative path starts with this prefix, e.g. 'logs/' or 'projects/'.",
+          ),
+        maxResults: z
+          .number()
+          .int()
+          .min(1)
+          .max(200)
+          .optional()
+          .describe("Cap on total matches returned. Defaults to 50."),
+      }),
+      execute: async ({ pattern, flags, pathPrefix, maxResults }) =>
+        searchMemoryStep(agentId, pending, {
+          pattern,
+          flags: flags ?? "",
+          pathPrefix: pathPrefix ?? "",
+          maxResults: maxResults ?? 50,
+        }),
+    }),
   }
 }
 
@@ -190,6 +231,104 @@ async function editMemoryStep(
     path,
     replacements: args.replaceAll ? occurrences : 1,
   }
+}
+
+interface SearchMemoryArgs {
+  pattern: string
+  flags: string
+  pathPrefix: string
+  maxResults: number
+}
+
+interface SearchMatch {
+  path: string
+  line: number
+  text: string
+}
+
+interface SearchResult {
+  truncated: boolean
+  matches: SearchMatch[]
+}
+
+async function searchMemoryStep(
+  agentId: string,
+  pending: PendingWrites,
+  args: SearchMemoryArgs,
+): Promise<SearchResult> {
+  "use step"
+  // Compile the regex up front so an invalid pattern fails before we
+  // pull any sandbox content. The model sees the constructor's
+  // SyntaxError verbatim, which is good enough — JS regex error
+  // messages are usually self-explanatory.
+  let re: RegExp
+  try {
+    // Always include 'g' for matchAll. Always include 'm' so '^' / '$'
+    // anchors are line-scoped — the search is line-oriented anyway,
+    // and the model expects per-line matching.
+    const finalFlags = mergeFlags(args.flags, "gm")
+    re = new RegExp(args.pattern, finalFlags)
+  } catch (err) {
+    throw new Error(
+      `memory_search: invalid regex (${(err as Error).message}). Pass a JS-compatible pattern.`,
+    )
+  }
+
+  const sandbox = await getSystemSandbox(agentId)
+  const livePaths = await listLiveMemory(sandbox)
+  const allPaths = resolveEffectiveListing(livePaths, pending)
+  const candidates = args.pathPrefix
+    ? allPaths.filter((p) => p.startsWith(args.pathPrefix))
+    : allPaths
+
+  // Read all candidate files in parallel — `listLiveMemory` returned
+  // all *.md paths and we need the content of each. The sandbox SDK
+  // serialises these internally, but issuing them at once still
+  // beats one-at-a-time awaits.
+  const fileContents = await Promise.all(
+    candidates.map(async (path) => {
+      const live = await readLiveMemory(sandbox, path)
+      const effective = resolveEffectiveContent(path, live, pending)
+      return [path, effective] as const
+    }),
+  )
+
+  const matches: SearchMatch[] = []
+  let truncated = false
+
+  outer: for (const [path, content] of fileContents) {
+    if (content === null) continue
+    // Walk line-by-line so each match has a stable line number. We
+    // could match against the whole file, but per-line is cheaper to
+    // explain to the model and keeps the snippets tight.
+    const lines = content.split("\n")
+    for (let i = 0; i < lines.length; i += 1) {
+      const line = lines[i] ?? ""
+      // Reset lastIndex when reusing the regex with /g across many
+      // strings — without this, matchAll-style usage would silently
+      // skip later lines.
+      re.lastIndex = 0
+      if (!re.test(line)) continue
+      if (matches.length >= args.maxResults) {
+        truncated = true
+        break outer
+      }
+      matches.push({
+        path,
+        line: i + 1,
+        // Trim absurdly long lines so a stray minified blob doesn't
+        // blow the response payload.
+        text: line.length > 240 ? `${line.slice(0, 240)}…` : line,
+      })
+    }
+  }
+
+  return { truncated, matches }
+}
+
+function mergeFlags(provided: string, required: string): string {
+  const set = new Set([...provided, ...required])
+  return Array.from(set).join("")
 }
 
 function countOccurrences(haystack: string, needle: string): number {
