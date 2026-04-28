@@ -1,29 +1,35 @@
-import { Sandbox } from "@vercel/sandbox"
-import { readAgentSandboxName, readMarker, writeMarker } from "@/lib/agent-sandbox"
+import {
+  getSystemSandbox,
+  readMarker,
+  writeMarker,
+} from "@/lib/agent-sandbox"
+import { SYSTEM_SANDBOX_ROOT } from "@/lib/agent-sandbox-registry"
 import { AGENTS_MD_TEMPLATE } from "@/lib/agents-md-template"
 
-const AGENTS_MD_PATH = "/vercel/sandbox/AGENTS.md"
-const SEED_MARKER_PATH = "/vercel/sandbox/.agents-md-seeded"
-// Bumped to "v2" alongside the AGENTS.md template rewrite that adds
-// the Phase 2 memory-file layout and conventions. Existing dev agents
-// pick up the new template on their next event after deploy. Future
-// breaking template changes should bump this constant the same way.
-const SEED_MARKER_VALUE = "v2"
+const AGENTS_MD_PATH = `${SYSTEM_SANDBOX_ROOT}/AGENTS.md`
+const SEED_MARKER_PATH = `${SYSTEM_SANDBOX_ROOT}/.agents-md-seeded`
+// Bumped to "v3" alongside the Phase 2 template rewrite that
+// documents the memory + exec tool surfaces and adds SOUL.md to the
+// memory volume layout. Existing dev agents pick up the new template
+// on their next event after deploy. Future breaking template changes
+// should bump this constant the same way.
+const SEED_MARKER_VALUE = "v3"
 
 /**
  * Process-local cache of agent ids whose `.agents-md-seeded` marker we
  * have already verified equals the current `SEED_MARKER_VALUE` in this
- * process. Subsequent calls in the same long-lived session can skip the
- * `Sandbox.get` round-trip entirely. Cleared naturally on cold-start /
- * deploy, which is when a `SEED_MARKER_VALUE` bump would trigger a
- * re-seed anyway.
+ * process. Subsequent calls in the same long-lived session can skip
+ * the `Sandbox.get` round-trip entirely. Cleared naturally on
+ * cold-start / deploy, which is when a `SEED_MARKER_VALUE` bump would
+ * trigger a re-seed anyway.
  */
 const verifiedThisProcess = new Set<string>()
 
 /**
  * Idempotent step that writes the baseline `AGENTS.md` template into
- * the agent's sandbox on its very first boot — and re-seeds whenever
- * `SEED_MARKER_VALUE` is bumped to roll out a template upgrade.
+ * the agent's **system** sandbox on its very first boot — and re-seeds
+ * whenever `SEED_MARKER_VALUE` is bumped to roll out a template
+ * upgrade.
  *
  * Sentinel-guarded by `.agents-md-seeded`. Once the marker matches the
  * current value, the step never overwrites the agent's evolved notes.
@@ -34,9 +40,10 @@ const verifiedThisProcess = new Set<string>()
  *     process → skip the sandbox handle entirely (cheap path for the
  *     long-lived session loop).
  *   - `created === false` and not yet verified → open the sandbox,
- *     read the marker, re-seed if stale, populate the in-process cache.
+ *     read the marker, re-seed if stale, populate the in-process
+ *     cache.
  *
- * Called from `startupAgentSandbox` (see `lib/agent-sandbox.ts`).
+ * Called from `startupSystemSandbox` (see `lib/agent-sandbox.ts`).
  */
 export async function seedAgentsMd(input: {
   agentId: string
@@ -49,14 +56,7 @@ export async function seedAgentsMd(input: {
     return
   }
 
-  const name = await readAgentSandboxName(agentId)
-  if (!name) {
-    // Sandbox hasn't been created yet — startupAgentSandbox provisions
-    // it before we get here, so this should not happen in practice.
-    return
-  }
-
-  const sandbox = await Sandbox.get({ name, resume: true })
+  const sandbox = await getSystemSandbox(agentId)
 
   if (!created) {
     // We're piggy-backing on an existing snapshot. Honor any marker
