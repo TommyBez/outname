@@ -7,6 +7,7 @@ import {
   index,
   uniqueIndex,
   jsonb,
+  primaryKey,
 } from "drizzle-orm/pg-core"
 
 // Better Auth tables
@@ -76,6 +77,19 @@ export const agent = pgTable(
     // work. NULL until the first run provisions it; once set, subsequent
     // runs resume the same sandbox by name.
     sandboxName: text("sandbox_name"),
+    // Workflow runtime id for the most recently started session workflow.
+    // Used by the chat route (to subscribe to per-turn reply streams) and
+    // by the liveness sweeper (to detect dead sessions and restart them).
+    // NULL before the very first session start; afterwards always points
+    // at the latest run, even if it has since terminated.
+    lastSessionRunId: text("last_session_run_id"),
+    // Workflow runtime id for the sibling ticker workflow that drives
+    // this agent's heartbeat loop. Persisted alongside `lastSessionRunId`
+    // so a session that crashes mid-handler (skipping its `finally`
+    // block) leaves a forensic record we can reap on the next session
+    // start and via the liveness sweeper. Cleared back to NULL when the
+    // session shuts down cleanly.
+    lastTickerRunId: text("last_ticker_run_id"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -187,6 +201,35 @@ export const chatMessage = pgTable(
   }),
 )
 
+/**
+ * Cache of every markdown document the agent maintains inside its
+ * sandbox. Flushed at the end of each session event (chat turn /
+ * heartbeat) so the UI can render the agent's evolving notes without
+ * having to resume the sandbox.
+ *
+ * Keyed by `(agent_id, path)` so writes are idempotent upserts and the
+ * full set of files for one agent is a single index range scan.
+ * `sha256` lets the flush step skip rewriting unchanged files.
+ */
+export const agentFiles = pgTable(
+  "agent_files",
+  {
+    agentId: text("agent_id")
+      .notNull()
+      .references(() => agent.id, { onDelete: "cascade" }),
+    path: text("path").notNull(),
+    content: text("content").notNull(),
+    sha256: text("sha256").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.agentId, t.path] }),
+    agentIdx: index("agent_files_agent_idx").on(t.agentId),
+  }),
+)
+
 export const gmailConnection = pgTable("gmail_connection", {
   id: text("id").primaryKey().default("singleton"),
   userId: text("user_id")
@@ -207,6 +250,7 @@ export type Run = typeof runs.$inferSelect
 export type RunResult = typeof runResult.$inferSelect
 export type GmailConnection = typeof gmailConnection.$inferSelect
 export type Agent = typeof agent.$inferSelect
+export type AgentFile = typeof agentFiles.$inferSelect
 export type ChatConversation = typeof chatConversation.$inferSelect
 export type ChatMessage = typeof chatMessage.$inferSelect
 export type ChatRole = "user" | "assistant" | "system"

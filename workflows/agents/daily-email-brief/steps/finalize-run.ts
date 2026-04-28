@@ -28,13 +28,10 @@ export async function finalizeRun(
   revalidateTag(runsIndexTag(), "max")
 
   if (status === "completed") {
-    await emitStep("finalize", "done", "Briefing ready")
-    await emitRun("completed", "Run complete")
+    await emitStep(runId, "finalize", "done", "Briefing ready")
+    await emitRun(runId, "completed", "Run complete")
   } else {
-    await emitStep("finalize", "error", "Run failed", { error })
-    await emitRun("failed", error ?? "Run failed")
+    await emitStep(runId, "finalize", "error", "Run failed", { error })
+    await emitRun(runId, "failed", error ?? "Run failed")
   }
-  // Note: Do NOT call closeRunEvents() here - the Workflow SDK automatically
-  // closes the stream when the run completes, and calling it early causes
-  // 409 "stream already completed" conflicts if steps retry or emit late.
 }

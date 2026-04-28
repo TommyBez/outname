@@ -13,10 +13,15 @@ import {
 import { db } from "@/lib/db"
 import { agent } from "@/lib/db/schema"
 import { destroyAgentSandbox } from "@/lib/agent-sandbox"
+import { startAgentSession, stopAgentSession } from "@/lib/agent-session"
 import { AGENT_KINDS, isAgentKind } from "@/workflows/agents/registry"
 
 function nanoid() {
-  return "ag_" + Math.random().toString(36).slice(2) + Date.now().toString(36).slice(-4)
+  return (
+    "ag_" +
+    Math.random().toString(36).slice(2) +
+    Date.now().toString(36).slice(-4)
+  )
 }
 
 export async function createAgentAction(formData: FormData) {
@@ -24,17 +29,32 @@ export async function createAgentAction(formData: FormData) {
   const kind = String(formData.get("kind") ?? "")
   if (!isAgentKind(kind)) throw new Error("Unknown agent kind")
 
-  const name = String(formData.get("name") ?? "").trim() || AGENT_KINDS[kind].defaultName
+  const name =
+    String(formData.get("name") ?? "").trim() || AGENT_KINDS[kind].defaultName
 
   const id = nanoid()
-  await db.insert(agent).values({
-    id,
-    userId: session.user.id,
-    kind,
-    name,
-    enabled: true,
-    config: null,
-  })
+  const [created] = await db
+    .insert(agent)
+    .values({
+      id,
+      userId: session.user.id,
+      kind,
+      name,
+      enabled: true,
+      config: null,
+    })
+    .returning()
+
+  // Newly-enabled agent → boot its long-lived session immediately so
+  // the heartbeat ticker starts producing runs without the user having
+  // to chat first or wait for the cron sweeper.
+  if (created.enabled) {
+    try {
+      await startAgentSession(created)
+    } catch (err) {
+      console.error("[v0] createAgentAction: startAgentSession failed", err)
+    }
+  }
 
   updateTag(userAgentsTag(session.user.id))
   updateTag(agentTag(id))
@@ -52,10 +72,11 @@ export async function updateAgentAction(agentId: string, formData: FormData) {
     .limit(1)
   if (!existing) throw new Error("Not found")
 
-  const name = String(formData.get("name") ?? existing.name).trim() || existing.name
+  const name =
+    String(formData.get("name") ?? existing.name).trim() || existing.name
   const enabled = formData.get("enabled") != null
 
-  await db
+  const [updated] = await db
     .update(agent)
     .set({
       name,
@@ -63,6 +84,18 @@ export async function updateAgentAction(agentId: string, formData: FormData) {
       updatedAt: new Date(),
     })
     .where(eq(agent.id, agentId))
+    .returning()
+
+  // React to enabled-state transitions on the agent's session.
+  if (!existing.enabled && updated.enabled) {
+    try {
+      await startAgentSession(updated)
+    } catch (err) {
+      console.error("[v0] updateAgentAction: startAgentSession failed", err)
+    }
+  } else if (existing.enabled && !updated.enabled) {
+    await stopAgentSession(agentId)
+  }
 
   updateTag(userAgentsTag(session.user.id))
   updateTag(agentTag(agentId))
@@ -74,10 +107,28 @@ export async function updateAgentAction(agentId: string, formData: FormData) {
 
 export async function toggleAgentAction(agentId: string, enabled: boolean) {
   const session = await requireSession()
-  await db
+  const [existing] = await db
+    .select()
+    .from(agent)
+    .where(and(eq(agent.id, agentId), eq(agent.userId, session.user.id)))
+    .limit(1)
+  if (!existing) return
+
+  const [updated] = await db
     .update(agent)
     .set({ enabled, updatedAt: new Date() })
-    .where(and(eq(agent.id, agentId), eq(agent.userId, session.user.id)))
+    .where(eq(agent.id, agentId))
+    .returning()
+
+  if (!existing.enabled && updated.enabled) {
+    try {
+      await startAgentSession(updated)
+    } catch (err) {
+      console.error("[v0] toggleAgentAction: startAgentSession failed", err)
+    }
+  } else if (existing.enabled && !updated.enabled) {
+    await stopAgentSession(agentId)
+  }
 
   updateTag(userAgentsTag(session.user.id))
   updateTag(agentTag(agentId))
@@ -97,8 +148,12 @@ export async function deleteAgentAction(agentId: string) {
     redirect("/agents")
   }
 
-  // Best-effort: tear down the persistent sandbox before removing the row
-  // so we don't leak it. Any failure is swallowed inside the helper.
+  // Stop the session first so it doesn't try to write into a torn-down
+  // sandbox or a deleted agent row mid-event.
+  await stopAgentSession(agentId)
+
+  // Best-effort: tear down the persistent sandbox before removing the
+  // row so we don't leak it. Any failure is swallowed inside the helper.
   await destroyAgentSandbox(agentId)
 
   await db

@@ -29,6 +29,20 @@
       "when": 1777670400000,
       "tag": "0003_agent_agnostic_result",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1779667200000,
+      "tag": "0004_session_and_files",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1779840000000,
+      "tag": "0005_last_ticker_run_id",
+      "breakpoints": true
     }
   ]
 }

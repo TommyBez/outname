@@ -13,13 +13,13 @@ import { emitStep } from "@/lib/run-events"
  * `gwsSandboxSetup` in `sandbox/gws.ts`) loads them itself inside the
  * sandbox step, keeping the workflow body tool-agnostic.
  */
-export async function prepareBrief(_runId: string): Promise<{
+export async function prepareBrief(runId: string): Promise<{
   afterEpoch: number
   sinceIso: string
 }> {
   "use step"
 
-  await emitStep("read", "start", "Preparing inbox context")
+  await emitStep(runId, "read", "start", "Preparing inbox context")
 
   const [conn] = await db.select().from(gmailConnection).limit(1)
   if (!conn) {
@@ -44,7 +44,9 @@ export async function prepareBrief(_runId: string): Promise<{
   const afterEpoch = Math.floor(since.getTime() / 1000)
   const sinceIso = since.toISOString()
 
-  await emitStep("read", "progress", `Since ${sinceIso}`, { afterEpoch })
+  await emitStep(runId, "read", "progress", `Since ${sinceIso}`, {
+    afterEpoch,
+  })
 
   return { afterEpoch, sinceIso }
 }
