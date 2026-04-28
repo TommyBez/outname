@@ -28,7 +28,7 @@ export async function finalizeRun(
   revalidateTag(runsIndexTag(), "max")
 
   if (status === "completed") {
-    await emitStep(runId, "finalize", "done", "Briefing ready")
+    await emitStep(runId, "finalize", "done", "Heartbeat complete")
     await emitRun(runId, "completed", "Run complete")
   } else {
     await emitStep(runId, "finalize", "error", "Run failed", { error })

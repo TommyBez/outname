@@ -13,8 +13,15 @@ import {
 import { db } from "@/lib/db"
 import { agent } from "@/lib/db/schema"
 import { destroyAgentSandbox } from "@/lib/agent-sandbox"
-import { startAgentSession, stopAgentSession } from "@/lib/agent-session"
-import { AGENT_KINDS, isAgentKind } from "@/workflows/agents/registry"
+import {
+  pokeHeartbeat,
+  startAgentSession,
+  stopAgentSession,
+} from "@/lib/agent-session"
+import {
+  DEFAULT_MODEL_ID,
+  isModelIdValid,
+} from "@/lib/ai-gateway-models"
 
 function nanoid() {
   return (
@@ -24,13 +31,40 @@ function nanoid() {
   )
 }
 
+const HEARTBEAT_MIN = 5
+const HEARTBEAT_MAX = 1440 // 24h
+const DEFAULT_HEARTBEAT_INTERVAL = 30
+
+/**
+ * Best-effort coerce a `FormData` heartbeat-interval input into the
+ * accepted [5, 1440] range. Returns the default on a missing/invalid
+ * value rather than throwing — operators get a server-action error
+ * for malformed input via `parseHeartbeatInterval` higher up.
+ */
+function parseHeartbeatInterval(raw: FormDataEntryValue | null): number {
+  const n = Number.parseInt(String(raw ?? ""), 10)
+  if (!Number.isFinite(n)) return DEFAULT_HEARTBEAT_INTERVAL
+  if (n < HEARTBEAT_MIN) return HEARTBEAT_MIN
+  if (n > HEARTBEAT_MAX) return HEARTBEAT_MAX
+  return n
+}
+
 export async function createAgentAction(formData: FormData) {
   const session = await requireSession()
-  const kind = String(formData.get("kind") ?? "")
-  if (!isAgentKind(kind)) throw new Error("Unknown agent kind")
 
-  const name =
-    String(formData.get("name") ?? "").trim() || AGENT_KINDS[kind].defaultName
+  const name = String(formData.get("name") ?? "").trim() || "New agent"
+  const systemPrompt = String(formData.get("systemPrompt") ?? "").trim()
+
+  const requestedModel =
+    String(formData.get("model") ?? "").trim() || DEFAULT_MODEL_ID
+  const model = (await isModelIdValid(requestedModel))
+    ? requestedModel
+    : DEFAULT_MODEL_ID
+
+  const heartbeatEnabled = formData.get("heartbeatEnabled") != null
+  const heartbeatIntervalMinutes = parseHeartbeatInterval(
+    formData.get("heartbeatIntervalMinutes"),
+  )
 
   const id = nanoid()
   const [created] = await db
@@ -38,16 +72,18 @@ export async function createAgentAction(formData: FormData) {
     .values({
       id,
       userId: session.user.id,
-      kind,
       name,
+      systemPrompt,
+      model,
       enabled: true,
-      config: null,
+      heartbeatEnabled,
+      heartbeatIntervalMinutes,
     })
     .returning()
 
   // Newly-enabled agent → boot its long-lived session immediately so
-  // the heartbeat ticker starts producing runs without the user having
-  // to chat first or wait for the cron sweeper.
+  // the (possibly enabled) heartbeat ticker starts producing runs
+  // without the user having to chat first or wait for the cron sweeper.
   if (created.enabled) {
     try {
       await startAgentSession(created)
@@ -74,13 +110,36 @@ export async function updateAgentAction(agentId: string, formData: FormData) {
 
   const name =
     String(formData.get("name") ?? existing.name).trim() || existing.name
+
+  // System prompt: an explicit empty string is allowed (the model
+  // falls back to AGENTS.md / SOUL.md only). We only treat a missing
+  // form field (`null`) as "leave unchanged".
+  const rawSystemPrompt = formData.get("systemPrompt")
+  const systemPrompt =
+    rawSystemPrompt == null ? existing.systemPrompt : String(rawSystemPrompt)
+
+  const requestedModel =
+    String(formData.get("model") ?? existing.model).trim() || existing.model
+  const model =
+    requestedModel === existing.model || (await isModelIdValid(requestedModel))
+      ? requestedModel
+      : existing.model
+
   const enabled = formData.get("enabled") != null
+  const heartbeatEnabled = formData.get("heartbeatEnabled") != null
+  const heartbeatIntervalMinutes = parseHeartbeatInterval(
+    formData.get("heartbeatIntervalMinutes"),
+  )
 
   const [updated] = await db
     .update(agent)
     .set({
       name,
+      systemPrompt,
+      model,
       enabled,
+      heartbeatEnabled,
+      heartbeatIntervalMinutes,
       updatedAt: new Date(),
     })
     .where(eq(agent.id, agentId))
@@ -95,6 +154,24 @@ export async function updateAgentAction(agentId: string, formData: FormData) {
     }
   } else if (existing.enabled && !updated.enabled) {
     await stopAgentSession(agentId)
+  } else if (
+    updated.enabled &&
+    (existing.heartbeatEnabled !== updated.heartbeatEnabled ||
+      existing.heartbeatIntervalMinutes !== updated.heartbeatIntervalMinutes)
+  ) {
+    // The ticker reads its interval / opt-in once on session boot, so
+    // mid-session changes don't take effect until the next session
+    // restart. Poke a heartbeat so the user sees something happen
+    // immediately when they flip the switch — and the next cron sweep
+    // (or manual disable→enable) will re-cycle the ticker.
+    try {
+      await pokeHeartbeat({ agent: updated })
+    } catch (err) {
+      console.error(
+        "[v0] updateAgentAction: pokeHeartbeat after schedule change failed",
+        err,
+      )
+    }
   }
 
   updateTag(userAgentsTag(session.user.id))

@@ -11,6 +11,10 @@ import {
   validateMemoryPath,
   type PendingWrites,
 } from "./pending-writes"
+import {
+  isReadOnlyForAgent,
+  READ_ONLY_TOOL_ERROR,
+} from "./persona-paths"
 
 /**
  * Build the memory toolset for an agent. The agent can:
@@ -73,6 +77,7 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
       }),
       execute: async ({ path, content }) => {
         const safe = validateMemoryPath(path)
+        if (isReadOnlyForAgent(safe)) return READ_ONLY_TOOL_ERROR
         enqueueWrite(pending, safe, content)
         return { ok: true as const, path: safe, bytes: content.length }
       },
@@ -93,8 +98,12 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
         replaceAll: z.boolean().optional(),
       }),
       execute: async ({ path, oldString, newString, replaceAll }) => {
+        // Validate path eagerly so the read-only check fires before
+        // we round-trip into a step.
+        const safe = validateMemoryPath(path)
+        if (isReadOnlyForAgent(safe)) return READ_ONLY_TOOL_ERROR
         return await editMemoryStep(agentId, pending, {
-          path,
+          path: safe,
           oldString,
           newString,
           replaceAll: replaceAll ?? false,
@@ -108,6 +117,7 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
       inputSchema: z.object({ path: z.string() }),
       execute: async ({ path }) => {
         const safe = validateMemoryPath(path)
+        if (isReadOnlyForAgent(safe)) return READ_ONLY_TOOL_ERROR
         enqueueDelete(pending, safe)
         return { ok: true as const, path: safe }
       },

@@ -1,45 +1,55 @@
 import type { Sandbox } from "@vercel/sandbox"
-import { readLiveMemory } from "@/workflows/agent-session/tools/pending-writes"
+import {
+  listLiveMemory,
+  readLiveMemory,
+} from "@/workflows/agent-session/tools/pending-writes"
+import {
+  PERSONA_PATHS,
+  READ_ONLY_FOR_AGENT,
+} from "@/workflows/agent-session/tools/persona-paths"
 
 /**
- * Stitch together the model's effective system prompt from three
- * layered sources:
+ * Stitch together the model's effective system prompt from four
+ * layered sources, in order:
  *
- *   1. **User system prompt** (from `agent.system_prompt`) — the
+ *   1. **User system prompt** (`agent.system_prompt`) — the
  *      product-level definition of what this agent is for. Authored
  *      by the human via the agent form.
  *
  *   2. **Persona files** read live from the system sandbox:
- *        - `AGENTS.md` — the operational manual the agent itself
- *          maintains. Conventions, tool inventory, file layout.
- *        - `SOUL.md` — the agent's self-model: voice, identity, values.
- *      Both files are agent-managed (the model can rewrite them via
- *      the memory tools), so the prompt re-reads them every event;
- *      a Phase 2 agent that overwrites SOUL.md mid-turn picks up the
- *      new persona on its next event.
+ *        - `AGENTS.md` — operational manual seeded on first sandbox
+ *          boot. Editable only by the user (Phase 3 UI editor); the
+ *          agent's memory_* tools refuse to mutate it (see
+ *          `persona-paths.ts` for the policy).
+ *        - `SOUL.md`   — the agent's identity / voice. Purely
+ *          user-authored; missing on a fresh agent until an operator
+ *          writes one.
+ *      Both files are inlined verbatim so the model sees the same
+ *      content the user sees in the agent files UI.
  *
- *   3. **Operational footer** — non-negotiable platform invariants:
- *      memory is durable across events, the assistant should prefer
- *      using its tools over guessing, sandboxes have caveats, etc.
+ *   3. **Memory inventory footer** — the relative paths of every
+ *      other `*.md` file the system sandbox holds, so the model can
+ *      plan `memory_read` calls without having to probe the listing
+ *      itself. Persona files are filtered out (their content is
+ *      already inlined above).
  *
- * The order matters. The user prompt comes first because it's the
- * highest-leverage instruction; the persona files come next so they
- * can colour the user prompt without overriding it; the footer is
- * last so platform contracts are the freshest thing in context.
+ *   4. **Platform invariants** — non-negotiable platform contracts:
+ *      memory durability, persona files being read-only at the tool
+ *      layer, prefer-tools-over-guesses, heartbeat budgeting.
  *
- * Files that don't exist (e.g. a brand-new agent that hasn't authored
- * SOUL.md yet) are simply omitted from the composed prompt — no
- * placeholder text, so the model isn't tempted to copy literal `(none
- * yet)` strings into its output.
+ * The composed prompt is computed once per event, before
+ * `agent.stream`, and never recomposed mid-turn — pending writes from
+ * the same event are reflected on the next event after `endOfEvent`
+ * flushes them.
  */
 
 export interface ComposeSystemPromptArgs {
   agentName: string
   /** Verbatim from `agent.system_prompt`. */
   userSystemPrompt: string
-  /** Live system sandbox. The compose step reads AGENTS.md + SOUL.md from here. */
+  /** Live system sandbox. The compose step reads from here. */
   systemSandbox: Sandbox
-  /** UTC ISO timestamp embedded in the footer so the model knows what "now" is. */
+  /** UTC ISO timestamp embedded so the model knows what "now" is. */
   nowIso?: string
 }
 
@@ -48,13 +58,18 @@ const FOOTER = `## Platform invariants
 - Your memory volume persists across every event. Use the memory_*
   tools to take notes; anything you write outside the memory volume
   (e.g. via bash/file_write in the exec sandbox) does NOT show up in
-  your AGENTS.md context next time.
+  your context next time.
+- AGENTS.md and SOUL.md are user-owned identity files. Your memory_*
+  tools will refuse to write or delete them and return a structured
+  read_only error. If a change is needed, ask the user to make it
+  through the agent settings UI.
 - Reads in the same turn see your queued memory writes. Writes are
-  flushed to disk at end-of-event, then mirrored into the UI.
+  flushed to disk at end-of-event, then mirrored into the agent files
+  UI.
 - Prefer doing the smallest correct thing and stopping. Long tool
   loops cost the user money and latency.
-- When unsure of a fact about the user, check MEMORY.md first; only
-  ask if it's truly missing.
+- When unsure of a fact about the user, check your memory files
+  first; only ask if it's truly missing.
 - Heartbeats are short check-ins, not full work sessions. Skim, log,
   finish quick wins, stop.
 `
@@ -64,9 +79,10 @@ export async function composeSystemPrompt(
 ): Promise<string> {
   const { agentName, userSystemPrompt, systemSandbox, nowIso } = args
 
-  const [agentsMd, soulMd] = await Promise.all([
+  const [agentsMd, soulMd, livePaths] = await Promise.all([
     readLiveMemory(systemSandbox, "AGENTS.md"),
     readLiveMemory(systemSandbox, "SOUL.md"),
+    listLiveMemory(systemSandbox),
   ])
 
   const sections: string[] = []
@@ -80,16 +96,35 @@ export async function composeSystemPrompt(
     sections.push(`## Purpose\n\n${trimmedPrompt}`)
   }
 
-  // 2. Persona files. Headings labelled so the model knows what it's
-  // looking at; bodies are the file content verbatim.
+  // 2. Persona files (inlined, content verbatim). Heading copy notes
+  // they are user-managed so the model has explicit context for the
+  // read_only error if it ever tries to write them.
   if (agentsMd && agentsMd.trim().length > 0) {
-    sections.push(`## AGENTS.md (your operational manual)\n\n${agentsMd.trim()}`)
+    sections.push(
+      `## AGENTS.md (operational manual — read-only, managed by user)\n\n${agentsMd.trim()}`,
+    )
   }
   if (soulMd && soulMd.trim().length > 0) {
-    sections.push(`## SOUL.md (your persona)\n\n${soulMd.trim()}`)
+    sections.push(
+      `## SOUL.md (persona — read-only, managed by user)\n\n${soulMd.trim()}`,
+    )
   }
 
-  // 3. Footer.
+  // 3. Memory inventory footer — list every non-persona *.md path.
+  // The model can pull any of them with memory_read.
+  const otherPaths = livePaths
+    .filter((p) => !READ_ONLY_FOR_AGENT.has(p))
+    .sort()
+  if (otherPaths.length > 0) {
+    const lines = otherPaths.map((p) => `- ${p}`).join("\n")
+    sections.push(`## Memory files available\n\n${lines}`)
+  } else {
+    sections.push(
+      `## Memory files available\n\n_(none yet — author files with memory_write as you accumulate notes; persona files ${PERSONA_PATHS.join(", ")} are inlined above and cannot be modified by the agent.)_`,
+    )
+  }
+
+  // 4. Footer.
   sections.push(FOOTER)
 
   return sections.join("\n\n")

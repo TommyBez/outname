@@ -9,10 +9,7 @@ import {
 import { getRun } from "workflow/api"
 import { auth } from "@/lib/auth"
 import { conversationListTag } from "@/lib/cache-tags"
-import { getGmailConnectionForUser } from "@/lib/google-oauth"
 import { getAgentById } from "@/lib/start-agent-run"
-import { getAgentRuntime } from "@/lib/agent-runtime-registry"
-import { isAgentKind } from "@/workflows/agents/registry"
 import {
   getOrCreateConversationForAgent,
   insertChatMessage,
@@ -27,19 +24,24 @@ import type { ChatRole } from "@/lib/db/schema"
  * (see `workflow-chat-transport`'s default shape). We:
  *
  *   1. Authenticate and authorize against the agent's owner.
- *   2. Verify the kind has a chat agent registered.
+ *   2. Verify the agent is enabled.
  *   3. Resolve or create the single conversation for this agent.
  *   4. Persist the just-sent user message so the history row survives
  *      even if the workflow fails mid-stream.
  *   5. Dispatch the turn into the agent's long-lived session workflow.
- *      The session writes its `UIMessageChunk` reply into a
- *      per-turn namespaced sub-stream of its run, keyed by
- *      `replyToken`. We pipe that sub-stream straight into
+ *      The session writes its `UIMessageChunk` reply into a per-turn
+ *      namespaced sub-stream of its run, keyed by `replyToken`. We
+ *      pipe that sub-stream straight into
  *      `createUIMessageStreamResponse` so `useChat` sees the same
  *      shape it always has.
  *
  * The workflow itself persists the assistant turn after streaming
  * completes — see `workflows/chat/steps/persist-assistant-turn.ts`.
+ *
+ * Phase 2 dropped the per-kind chat gate (every agent is generic).
+ * Connector-specific pre-flight (e.g. Gmail) returns in Phase 3 once
+ * `user_connections` lands; until then chat works against whatever
+ * memory + exec the agent has on disk.
  */
 export async function POST(
   req: NextRequest,
@@ -55,45 +57,11 @@ export async function POST(
   if (!agent || agent.userId !== session.user.id) {
     return NextResponse.json({ error: "not found" }, { status: 404 })
   }
-  if (!isAgentKind(agent.kind)) {
-    return NextResponse.json({ error: "unknown agent kind" }, { status: 400 })
-  }
   if (!agent.enabled) {
     return NextResponse.json(
       { error: "Agent is paused. Enable it before chatting." },
       { status: 412 },
     )
-  }
-
-  const runtime = getAgentRuntime(agent.kind)
-  if (!runtime?.buildAgent) {
-    return NextResponse.json(
-      { error: `Agent kind "${agent.kind}" does not support chat.` },
-      { status: 400 },
-    )
-  }
-
-  // Kind-specific pre-flight. For now the only kind that needs any is
-  // daily-email-brief → Gmail OAuth. Mirrors the gate in the trigger route.
-  if (agent.kind === "daily-email-brief") {
-    const conn = await getGmailConnectionForUser(agent.userId)
-    if (!conn) {
-      return NextResponse.json(
-        {
-          error:
-            "Gmail is not connected. Go to /settings and click Connect Gmail.",
-        },
-        { status: 412 },
-      )
-    }
-    if (conn.status !== "active") {
-      return NextResponse.json(
-        {
-          error: `Gmail connection is ${conn.status}. Reconnect it in /settings.`,
-        },
-        { status: 412 },
-      )
-    }
   }
 
   let body: { messages?: UIMessage[]; conversationId?: string }

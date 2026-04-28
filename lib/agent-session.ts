@@ -3,10 +3,9 @@ import { eq } from "drizzle-orm"
 import { getRun, resumeHook, start } from "workflow/api"
 import type { UIMessage } from "ai"
 import { db } from "@/lib/db"
-import { agent, type Agent, type AgentKind } from "@/lib/db/schema"
+import { agent, type Agent } from "@/lib/db/schema"
 import { agentSessionWorkflow } from "@/workflows/agent-session/workflow"
 import { sessionToken } from "@/workflows/agent-session/events"
-import { isAgentKind } from "@/workflows/agents/registry"
 
 /**
  * Server-side helpers for managing an agent's long-lived session
@@ -45,10 +44,6 @@ function newReplyToken() {
 export async function startAgentSession(
   a: Agent,
 ): Promise<{ sessionRunId: string; started: boolean }> {
-  if (!isAgentKind(a.kind)) {
-    throw new Error(`Unknown agent kind: ${a.kind}`)
-  }
-
   const existing = await getRunningSessionRunId(a)
   if (existing) {
     return { sessionRunId: existing, started: false }
@@ -64,9 +59,6 @@ export async function startAgentSession(
 export async function restartAgentSession(
   a: Agent,
 ): Promise<{ sessionRunId: string }> {
-  if (!isAgentKind(a.kind)) {
-    throw new Error(`Unknown agent kind: ${a.kind}`)
-  }
   const { sessionRunId } = await doStart(a)
   return { sessionRunId }
 }
@@ -74,9 +66,7 @@ export async function restartAgentSession(
 async function doStart(
   a: Agent,
 ): Promise<{ sessionRunId: string; started: true }> {
-  const run = await start(agentSessionWorkflow, [
-    { agentId: a.id, kind: a.kind as AgentKind },
-  ])
+  const run = await start(agentSessionWorkflow, [{ agentId: a.id }])
 
   await db
     .update(agent)
