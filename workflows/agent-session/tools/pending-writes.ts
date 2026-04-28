@@ -27,6 +27,7 @@ import { SYSTEM_SANDBOX_ROOT } from "@/lib/agent-sandbox-registry"
 
 export type PendingOp =
   | { kind: "write"; path: string; content: string }
+  | { kind: "append"; path: string; content: string }
   | {
       kind: "edit"
       path: string
