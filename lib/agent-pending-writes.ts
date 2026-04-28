@@ -29,16 +29,32 @@ import { pendingFileWrites, type PendingFileWrite } from "@/lib/db/schema"
 export const PENDING_PERSONA_PATHS = ["AGENTS.md", "SOUL.md"] as const
 export type PendingPersonaPath = (typeof PENDING_PERSONA_PATHS)[number]
 
+function isPendingPersonaPath(path: string): path is PendingPersonaPath {
+  return (PENDING_PERSONA_PATHS as readonly string[]).includes(path)
+}
+
 /**
  * Insert a new pending-write row for `path`. The drain step picks it
  * up on the next session event. Returns the row id so callers can
  * thread it into telemetry if they want.
+ *
+ * Defense-in-depth: this is the *only* code path that bypasses the
+ * memory_* tool layer's persona-file write block, so the queue MUST
+ * be locked to the persona surface. Any future caller that tries to
+ * enqueue an arbitrary path (e.g. "journal.md") would otherwise sneak
+ * a write past `isReadOnlyForAgent`. We refuse non-persona paths
+ * here instead of trusting every call site to hardcode the constant.
  */
 export async function enqueuePendingFileWrite(input: {
   agentId: string
   path: string
   content: string
 }): Promise<string> {
+  if (!isPendingPersonaPath(input.path)) {
+    throw new Error(
+      `enqueuePendingFileWrite: path ${JSON.stringify(input.path)} is not a persona file. Only ${PENDING_PERSONA_PATHS.join(" / ")} may be queued.`,
+    )
+  }
   const id = randomUUID()
   await db.insert(pendingFileWrites).values({
     id,

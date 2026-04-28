@@ -22,10 +22,7 @@ import {
   DEFAULT_MODEL_ID,
   isModelIdValid,
 } from "@/lib/ai-gateway-models"
-import {
-  enqueuePendingFileWrite,
-  PENDING_PERSONA_PATHS,
-} from "@/lib/agent-pending-writes"
+import { enqueuePendingFileWrite } from "@/lib/agent-pending-writes"
 
 function nanoid() {
   return (
@@ -37,6 +34,19 @@ function nanoid() {
 
 const HEARTBEAT_MIN = 5
 const HEARTBEAT_MAX = 1440 // 24h
+
+/**
+ * Normalize CRLF / CR line endings to LF. The Windows clipboard, OS
+ * file-drag, and certain browsers will hand `<Textarea>` content
+ * back with `\r\n` separators, while files we ourselves write to
+ * disk via `Buffer.from(..., 'utf8')` keep whatever was passed in.
+ * Without this normalization, the update action's exact-string
+ * change check thinks every save is a real edit and the queue
+ * fills with no-op rows.
+ */
+function normalizeNewlines(s: string): string {
+  return s.replace(/\r\n?/g, "\n")
+}
 
 /** Clamp a heartbeat-interval choice into the accepted [5, 1440] range. */
 function clampInterval(n: number): number {
@@ -97,7 +107,10 @@ export async function createAgentAction(
   // default AGENTS.md template. Empty strings are intentionally
   // skipped so a brand-new agent that hits Save without filling
   // either tab gets the default template untouched.
-  const identity = input.identity.trim()
+  //
+  // Normalize newlines on the way in so the first thing on disk
+  // matches the convention used by the update path's no-op diff.
+  const identity = normalizeNewlines(input.identity).trim()
   if (identity.length > 0) {
     await enqueuePendingFileWrite({
       agentId: id,
@@ -105,7 +118,7 @@ export async function createAgentAction(
       content: identity,
     })
   }
-  const instructions = input.instructions.trim()
+  const instructions = normalizeNewlines(input.instructions).trim()
   if (instructions.length > 0) {
     await enqueuePendingFileWrite({
       agentId: id,
@@ -185,18 +198,28 @@ export async function updateAgentAction(input: UpdateInput): Promise<void> {
   // actually edited the textarea. This keeps the queue from
   // ballooning with no-op rows when the user just changes the model
   // or the heartbeat interval.
-  if (input.identity !== input.identityOriginal) {
+  //
+  // Both sides of the diff are normalized to LF so a `<Textarea>`
+  // round-trip — which on Windows hosts can introduce or strip CRLF
+  // pairs — doesn't manufacture a phantom edit. We persist the
+  // normalized content so disk and queue agree on a single line-ending
+  // convention forever.
+  const identityNorm = normalizeNewlines(input.identity)
+  const identityOrigNorm = normalizeNewlines(input.identityOriginal)
+  if (identityNorm !== identityOrigNorm) {
     await enqueuePendingFileWrite({
       agentId: input.id,
       path: "SOUL.md",
-      content: input.identity,
+      content: identityNorm,
     })
   }
-  if (input.instructions !== input.instructionsOriginal) {
+  const instructionsNorm = normalizeNewlines(input.instructions)
+  const instructionsOrigNorm = normalizeNewlines(input.instructionsOriginal)
+  if (instructionsNorm !== instructionsOrigNorm) {
     await enqueuePendingFileWrite({
       agentId: input.id,
       path: "AGENTS.md",
-      content: input.instructions,
+      content: instructionsNorm,
     })
   }
 
