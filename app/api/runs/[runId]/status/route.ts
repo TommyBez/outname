@@ -53,8 +53,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ runId: 
         finalError = errorMsg
         finalCompletedAt = completedAt
       }
-    } catch {
-      /* runtime unreachable — keep DB state */
+    } catch (err) {
+      // The DB can be shared by local, preview, and production. A workflow
+      // run that is not visible from this runtime may still be alive in
+      // another environment, so this endpoint must not reconcile it.
+      liveStatus =
+        err instanceof Error && err.name === "WorkflowRunNotFoundError"
+          ? "unavailable"
+          : null
     }
   }
 

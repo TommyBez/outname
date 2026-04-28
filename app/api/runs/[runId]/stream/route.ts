@@ -41,7 +41,27 @@ export async function GET(
     })
   }
 
-  const source = getRun(workflowRunId).getReadable<RunEvent>({
+  const run = getRun(workflowRunId)
+  try {
+    await run.status
+  } catch (err) {
+    if (!(err instanceof Error && err.name === "WorkflowRunNotFoundError")) {
+      throw err
+    }
+
+    return new Response(
+      JSON.stringify({
+        error: "workflow unavailable in this environment",
+        workflowRunId,
+      }),
+      {
+        status: 409,
+        headers: { "Content-Type": "application/json" },
+      },
+    )
+  }
+
+  const source = run.getReadable<RunEvent>({
     namespace: runEventsNamespace(runId),
     startIndex: 0,
   })
@@ -55,6 +75,10 @@ export async function GET(
     }),
   )
 
+  return ndjsonResponse(body)
+}
+
+function ndjsonResponse(body: BodyInit): Response {
   return new Response(body, {
     headers: {
       "Content-Type": "application/x-ndjson; charset=utf-8",
