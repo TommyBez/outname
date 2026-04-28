@@ -1,6 +1,6 @@
 import { tool } from "ai"
 import { z } from "zod"
-import { getExecSandbox } from "@/lib/agent-sandbox"
+import { getExecSandbox, resetExecSandbox } from "@/lib/agent-sandbox"
 import { EXEC_SANDBOX_WORKSPACE } from "@/lib/agent-sandbox-registry"
 import { enqueueAppend, type PendingWrites } from "./pending-writes"
 
@@ -124,6 +124,39 @@ export function createExecTools(ctx: ExecToolsContext) {
           ),
       }),
       execute: async ({ path }) => fileListStep(agentId, path ?? ""),
+    }),
+
+    reset_exec: tool({
+      description:
+        "Destroy the exec sandbox (workspace AND snapshot) and re-provision a clean one. Use as a last resort when the workspace is wedged — broken installs, leftover daemons, half-cloned repos, etc. Memory files in your system sandbox are NOT affected. Returns once the new sandbox is ready.",
+      inputSchema: z.object({
+        reason: z
+          .string()
+          .min(1)
+          .max(500)
+          .describe(
+            "One-sentence justification for the reset. Logged for the user; helps you avoid re-resetting on the next turn for the same root cause.",
+          ),
+      }),
+      execute: async ({ reason }) => {
+        const result = await resetExecSandbox({ agentId })
+        // Audit the reset into the same daily log the bash tool
+        // writes to, so the model can grep its own reset history
+        // alongside the commands it ran. We tag the line with
+        // 'reset_exec' instead of 'exit=N' so a quick grep
+        // separates the two surfaces.
+        const day = new Date().toISOString().slice(0, 10)
+        const auditReason = reason.length > 240
+          ? `${reason.slice(0, 240)}…`
+          : reason
+        const line = [
+          new Date().toISOString(),
+          `reset_exec destroyed=${result.destroyed}`,
+          auditReason.replace(/\r?\n/g, " "),
+        ].join(" ")
+        enqueueAppend(pending, `logs/${day}.md`, `${line}\n`)
+        return result
+      },
     }),
   }
 }

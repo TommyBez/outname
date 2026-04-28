@@ -248,6 +248,57 @@ export async function releaseSandbox(sandbox: Sandbox): Promise<void> {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Reset                                                                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Throw away the agent's *exec* sandbox and its persisted snapshot,
+ * then re-provision a fresh one. Used by the `reset_exec` tool when
+ * the model decides its workspace is wedged (broken \`node_modules\`,
+ * leftover daemons, half-cloned repos, etc.).
+ *
+ * The system sandbox is intentionally left alone — memory files
+ * survive a reset. After this returns, the next call to
+ * `getExecSandbox(agentId)` boots a clean sandbox with an empty
+ * `/vercel/sandbox/workspace`.
+ */
+export async function resetExecSandbox(input: {
+  agentId: string
+}): Promise<{ destroyed: boolean }> {
+  "use step"
+  const { agentId } = input
+  const previousName = await readSandboxId(agentId, "exec")
+
+  let destroyed = false
+  if (previousName) {
+    try {
+      const sb = await Sandbox.get({ name: previousName, resume: false })
+      await sb.delete()
+      destroyed = true
+    } catch {
+      // Already gone or unreachable. We still proceed — the goal is a
+      // clean slate, not a guaranteed prior-state assertion.
+    }
+  }
+
+  // Re-provision immediately so the next tool call doesn't pay a
+  // cold-boot tax in the middle of the agent's reasoning loop. The
+  // shared `ensureRoleSandbox` path also persists the (unchanged)
+  // sandbox name back, which is a no-op when it already matches.
+  const { sandbox } = await ensureRoleSandbox(
+    agentId,
+    "exec",
+    SANDBOX_CONFIGS.exec.createOptions,
+  )
+  await sandbox.runCommand({
+    cmd: "sh",
+    args: ["-ec", `mkdir -p ${EXEC_SANDBOX_WORKSPACE}`],
+  })
+
+  return { destroyed }
+}
+
+/* -------------------------------------------------------------------------- */
 /* Teardown                                                                    */
 /* -------------------------------------------------------------------------- */
 
