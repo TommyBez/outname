@@ -50,6 +50,13 @@
       "when": 1782345600000,
       "tag": "0006_generalize_agent",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1782518400000,
+      "tag": "0007_pending_file_writes",
+      "breakpoints": true
     }
   ]
 }

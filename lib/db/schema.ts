@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm"
 import {
   pgTable,
   text,
@@ -74,12 +75,6 @@ export const agent = pgTable(
     // own `heartbeatEnabled` column so this can return to its
     // original meaning ("agent exists and is reachable from the UI").
     enabled: boolean("enabled").notNull().default(true),
-    // Phase 2: free-form system prompt the operator authors via the
-    // create / edit form. Stored verbatim and threaded through
-    // `composeSystemPrompt` at session-event time, after the
-    // persona-file headers (AGENTS.md / SOUL.md) and before the
-    // memory-file inventory footer.
-    systemPrompt: text("system_prompt").notNull().default(""),
     // AI Gateway model id, e.g. "openai/gpt-5-mini". Validated at
     // agent-action time against `getAvailableModels()` so we never
     // persist an id the gateway can't route.
@@ -249,6 +244,43 @@ export const agentFiles = pgTable(
   }),
 )
 
+/**
+ * Queue of UI-driven file writes that the next session event drains
+ * into the agent's system sandbox before any handler runs.
+ *
+ * The memory tools refuse to write to `AGENTS.md` / `SOUL.md` — those
+ * persona files are user-owned. Edits made via the agent settings UI
+ * (Identity / Instructions tabs) land here as a row, and the
+ * `drainPendingWrites` step at the top of `agentSessionWorkflow`
+ * applies them via `sandbox.writeFiles`, bypassing the tool-layer
+ * block. This is the one entry point that is allowed to mutate
+ * persona files.
+ *
+ * Rows are not deleted after application — `applied_at` is set so the
+ * UI can show audit history later. The partial index narrows the
+ * common "anything still queued?" lookup to a tiny tail.
+ */
+export const pendingFileWrites = pgTable(
+  "pending_file_writes",
+  {
+    id: text("id").primaryKey(),
+    agentId: text("agent_id")
+      .notNull()
+      .references(() => agent.id, { onDelete: "cascade" }),
+    path: text("path").notNull(),
+    content: text("content").notNull(),
+    enqueuedAt: timestamp("enqueued_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    appliedAt: timestamp("applied_at", { withTimezone: true }),
+  },
+  (t) => ({
+    unappliedIdx: index("pending_file_writes_agent_unapplied_idx")
+      .on(t.agentId)
+      .where(sql`${t.appliedAt} IS NULL`),
+  }),
+)
+
 export const gmailConnection = pgTable("gmail_connection", {
   id: text("id").primaryKey().default("singleton"),
   userId: text("user_id")
@@ -270,6 +302,7 @@ export type RunResult = typeof runResult.$inferSelect
 export type GmailConnection = typeof gmailConnection.$inferSelect
 export type Agent = typeof agent.$inferSelect
 export type AgentFile = typeof agentFiles.$inferSelect
+export type PendingFileWrite = typeof pendingFileWrites.$inferSelect
 export type ChatConversation = typeof chatConversation.$inferSelect
 export type ChatMessage = typeof chatMessage.$inferSelect
 export type ChatRole = "user" | "assistant" | "system"
