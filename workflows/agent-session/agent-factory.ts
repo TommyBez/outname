@@ -101,7 +101,10 @@ export async function buildAgent(
   // The exec tools also receive `pending` so the bash audit log can
   // enqueue an append op into the shared per-event buffer instead of
   // doing a synchronous round-trip to the system sandbox per call.
-  const execTools = createExecTools({ agentId, pending })
+  // `createExecTools` is async because the bash-tool package needs
+  // a resumed exec sandbox handle at construction time to wire up
+  // its bash / file_read / file_write delegates.
+  const execTools = await createExecTools({ agentId, pending })
 
   const durableAgent = new DurableAgent({
     model: row.model,
