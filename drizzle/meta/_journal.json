@@ -43,6 +43,13 @@
       "when": 1779840000000,
       "tag": "0005_last_ticker_run_id",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1782345600000,
+      "tag": "0006_generalize_agent",
+      "breakpoints": true
     }
   ]
 }
