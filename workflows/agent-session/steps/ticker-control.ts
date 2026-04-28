@@ -132,6 +132,39 @@ export async function reapOrphanTicker(input: {
 }
 
 /**
+ * Read the agent's current heartbeat schedule (`heartbeat_enabled` +
+ * `heartbeat_interval_minutes`). Called at the top of every ticker
+ * iteration so a UI toggle / interval change is picked up without
+ * restarting the session.
+ *
+ * Returns a fallback `{ enabled: false, intervalMs: 0 }` if the agent
+ * row has been deleted underneath us — the ticker treats that as a
+ * paused agent and will keep idling at the disabled-poll cadence
+ * until the cron sweeper notices the row is gone.
+ */
+export async function readHeartbeatSchedule(input: {
+  agentId: string
+}): Promise<{ enabled: boolean; intervalMs: number }> {
+  "use step"
+  const rows = await db
+    .select({
+      enabled: agent.heartbeatEnabled,
+      intervalMinutes: agent.heartbeatIntervalMinutes,
+    })
+    .from(agent)
+    .where(eq(agent.id, input.agentId))
+    .limit(1)
+
+  const row = rows[0]
+  if (!row) return { enabled: false, intervalMs: 0 }
+
+  return {
+    enabled: row.enabled,
+    intervalMs: Math.max(60_000, row.intervalMinutes * 60_000),
+  }
+}
+
+/**
  * Push a heartbeat event into the session's hook. Called by
  * `agentTickerWorkflow` once per tick; the `ack` token is used by the
  * session to release the ticker after the handler completes.
