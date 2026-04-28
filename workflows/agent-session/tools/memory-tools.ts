@@ -1,3 +1,4 @@
+import { tool } from "ai"
 import { z } from "zod"
 import { getSystemSandbox } from "@/lib/agent-sandbox"
 import {
@@ -44,16 +45,14 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
   const { agentId, pending } = ctx
 
   return {
-    memory_list: {
+    memory_list: tool({
       description:
         "List every memory file (relative paths, all ending in .md) the agent currently has. Reflects pending writes/deletes from this turn.",
       inputSchema: z.object({}),
-      execute: async () => {
-        return await listMemoryStep(agentId, pending)
-      },
-    },
+      execute: async () => listMemoryStep(agentId, pending),
+    }),
 
-    memory_read: {
+    memory_read: tool({
       description:
         "Read the effective content of a memory file. Returns the live on-disk content with this turn's queued writes/edits/deletes applied. Errors if the file does not exist.",
       inputSchema: z.object({
@@ -61,12 +60,10 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
           .string()
           .describe("Relative path under the memory volume, e.g. 'journal.md'"),
       }),
-      execute: async ({ path }) => {
-        return await readMemoryStep(agentId, pending, path)
-      },
-    },
+      execute: async ({ path }) => readMemoryStep(agentId, pending, path),
+    }),
 
-    memory_write: {
+    memory_write: tool({
       description:
         "Create or overwrite a memory file. The write is queued and applied at end of event; subsequent memory_read calls in the same turn see the new content.",
       inputSchema: z.object({
@@ -81,9 +78,9 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
         enqueueWrite(pending, safe, content)
         return { ok: true as const, path: safe, bytes: content.length }
       },
-    },
+    }),
 
-    memory_edit: {
+    memory_edit: tool({
       description:
         "Edit a memory file by replacing oldString with newString. Errors if oldString is not present in the effective content. Use replaceAll=true for global replacement; default replaces only the first occurrence.",
       inputSchema: z.object({
@@ -102,16 +99,16 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
         // we round-trip into a step.
         const safe = validateMemoryPath(path)
         if (isReadOnlyForAgent(safe)) return READ_ONLY_TOOL_ERROR
-        return await editMemoryStep(agentId, pending, {
+        return editMemoryStep(agentId, pending, {
           path: safe,
           oldString,
           newString,
           replaceAll: replaceAll ?? false,
         })
       },
-    },
+    }),
 
-    memory_delete: {
+    memory_delete: tool({
       description:
         "Delete a memory file. The deletion is queued and applied at end of event.",
       inputSchema: z.object({ path: z.string() }),
@@ -121,7 +118,7 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
         enqueueDelete(pending, safe)
         return { ok: true as const, path: safe }
       },
-    },
+    }),
   }
 }
 

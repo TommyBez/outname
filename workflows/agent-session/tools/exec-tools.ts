@@ -1,3 +1,4 @@
+import { tool } from "ai"
 import { z } from "zod"
 import { getExecSandbox } from "@/lib/agent-sandbox"
 import { EXEC_SANDBOX_WORKSPACE } from "@/lib/agent-sandbox-registry"
@@ -39,7 +40,7 @@ export function createExecTools(ctx: ExecToolsContext) {
   const { agentId } = ctx
 
   return {
-    bash: {
+    bash: tool({
       description:
         "Run a shell command inside the agent's persistent exec sandbox, rooted at /vercel/sandbox/workspace. Returns { exitCode, stdout, stderr } truncated to 64 KiB each. Use for builds, scripts, API calls, anything that needs a shell.",
       inputSchema: z.object({
@@ -54,35 +55,31 @@ export function createExecTools(ctx: ExecToolsContext) {
             `Per-command timeout in ms. Defaults to ${DEFAULT_TIMEOUT_MS}, max ${MAX_TIMEOUT_MS}.`,
           ),
       }),
-      execute: async ({ command, timeoutMs }) => {
-        return await bashStep(agentId, command, timeoutMs ?? DEFAULT_TIMEOUT_MS)
-      },
-    },
+      execute: async ({ command, timeoutMs }) =>
+        bashStep(agentId, command, timeoutMs ?? DEFAULT_TIMEOUT_MS),
+    }),
 
-    file_read: {
+    file_read: tool({
       description:
         "Read a UTF-8 text file from the exec sandbox workspace. Returns content truncated to 256 KiB.",
       inputSchema: z.object({
         path: z.string().describe("Workspace-relative or absolute path."),
       }),
-      execute: async ({ path }) => {
-        return await fileReadStep(agentId, path)
-      },
-    },
+      execute: async ({ path }) => fileReadStep(agentId, path),
+    }),
 
-    file_write: {
+    file_write: tool({
       description:
         "Create or overwrite a UTF-8 text file in the exec sandbox workspace. Parent directories are created automatically. The write is immediate (not buffered).",
       inputSchema: z.object({
         path: z.string(),
         content: z.string().describe("Full UTF-8 content of the file."),
       }),
-      execute: async ({ path, content }) => {
-        return await fileWriteStep(agentId, path, content)
-      },
-    },
+      execute: async ({ path, content }) =>
+        fileWriteStep(agentId, path, content),
+    }),
 
-    file_list: {
+    file_list: tool({
       description:
         "List files under a directory in the exec sandbox workspace. Returns paths relative to the workspace root.",
       inputSchema: z.object({
@@ -93,10 +90,8 @@ export function createExecTools(ctx: ExecToolsContext) {
             "Workspace-relative directory. Defaults to the workspace root.",
           ),
       }),
-      execute: async ({ path }) => {
-        return await fileListStep(agentId, path ?? "")
-      },
-    },
+      execute: async ({ path }) => fileListStep(agentId, path ?? ""),
+    }),
   }
 }
 
