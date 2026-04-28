@@ -4,15 +4,15 @@ import Link from "next/link"
 import { requireSession } from "@/lib/auth-guard"
 import { getCachedAgentByIdForUser } from "@/lib/data"
 import { AgentForm } from "@/components/agent-form"
-import { updateAgentAction, deleteAgentAction } from "@/lib/agent-actions"
-import { AGENT_KINDS } from "@/workflows/agents/registry"
+import { deleteAgentAction } from "@/lib/agent-actions"
+import { DEFAULT_MODEL_ID, getAvailableModels } from "@/lib/ai-gateway-models"
 
 type Params = Promise<{ agentId: string }>
 
 /**
- * Agent configuration form. The outer shell (sidebar + top bar) now
- * comes from `app/agents/[agentId]/layout.tsx`, so this page only owns
- * its own content tree + Suspense boundary.
+ * Agent configuration form. The outer shell (sidebar + top bar) comes
+ * from `app/agents/[agentId]/layout.tsx`, so this page only owns its
+ * own content tree + Suspense boundary.
  */
 export default function AgentEditPage({ params }: { params: Params }) {
   return (
@@ -25,15 +25,15 @@ export default function AgentEditPage({ params }: { params: Params }) {
 async function AgentEdit({ params }: { params: Params }) {
   const { agentId } = await params
   const session = await requireSession()
-  const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
-  if (!agent) notFound()
 
-  const meta = AGENT_KINDS[agent.kind as keyof typeof AGENT_KINDS]
-
-  async function update(formData: FormData) {
-    "use server"
-    await updateAgentAction(agentId, formData)
-  }
+  // Fetch the agent + the AI Gateway model catalog in parallel. The
+  // catalog is internally `revalidate: 3600`, so the gateway hit is
+  // shared across all visitors.
+  const [agentRow, models] = await Promise.all([
+    getCachedAgentByIdForUser(agentId, session.user.id),
+    getAvailableModels(),
+  ])
+  if (!agentRow) notFound()
 
   async function remove() {
     "use server"
@@ -43,10 +43,10 @@ async function AgentEdit({ params }: { params: Params }) {
   return (
     <>
       <Link
-        href={`/agents/${agent.id}`}
+        href={`/agents/${agentRow.id}`}
         className="mb-6 inline-block font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground"
       >
-        ← {agent.name}
+        ← {agentRow.name}
       </Link>
 
       <header className="mb-10 flex flex-col gap-2">
@@ -54,16 +54,22 @@ async function AgentEdit({ params }: { params: Params }) {
           Configure
         </p>
         <h1 className="font-serif text-4xl font-medium leading-tight tracking-tight md:text-5xl">
-          {agent.name}
+          {agentRow.name}
         </h1>
       </header>
 
       <section className="border-t border-border py-10">
         <AgentForm
-          mode="edit"
-          agent={agent}
-          kindLabel={meta?.label ?? agent.kind}
-          action={update}
+          models={models}
+          defaultModel={DEFAULT_MODEL_ID}
+          initial={{
+            id: agentRow.id,
+            name: agentRow.name,
+            systemPrompt: agentRow.systemPrompt,
+            model: agentRow.model,
+            heartbeatEnabled: agentRow.heartbeatEnabled,
+            heartbeatIntervalMinutes: agentRow.heartbeatIntervalMinutes,
+          }}
         />
       </section>
 

@@ -60,8 +60,8 @@ export async function handleHeartbeat(input: {
 
     const previousIso = await readPreviousHeartbeatCompletion(agentId)
 
-    await startupSystemSandbox(agentId)
-    await startupExecSandbox(agentId).catch((err) => {
+    await startupSystemSandbox({ agentId })
+    await startupExecSandbox({ agentId }).catch((err) => {
       // Don't fail the heartbeat just because exec didn't boot — the
       // agent can still touch memory files. exec_* tools surface their
       // own errors per call.

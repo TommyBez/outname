@@ -6,9 +6,7 @@ import {
   getConversationForAgent,
   loadChatHistory,
 } from "@/lib/agent-chat"
-import { getAgentRuntime } from "@/lib/agent-runtime-registry"
 import { AgentChat } from "@/components/agent-chat"
-import type { AgentKind } from "@/lib/db/schema"
 
 type Params = Promise<{ agentId: string; conversationId: string }>
 
@@ -31,9 +29,6 @@ async function ConversationShell({ params }: { params: Params }) {
   const session = await requireSession()
   const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
   if (!agent) notFound()
-
-  const runtime = getAgentRuntime(agent.kind as AgentKind)
-  if (!runtime?.buildAgent) notFound()
 
   const conversation = await getConversationForAgent(conversationId, agent.id)
   if (!conversation) notFound()

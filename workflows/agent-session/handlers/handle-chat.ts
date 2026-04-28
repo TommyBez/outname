@@ -55,8 +55,8 @@ export async function handleChat(input: {
     namespace: replyToken,
   })
 
-  await startupSystemSandbox(agentId)
-  await startupExecSandbox(agentId).catch((err) => {
+  await startupSystemSandbox({ agentId })
+  await startupExecSandbox({ agentId }).catch((err) => {
     // Don't kill the chat turn if the exec sandbox can't boot — the
     // agent can still answer text-only turns. The exec_* tools will
     // surface clearer errors per-call when they try to use it.

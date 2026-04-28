@@ -1,7 +1,6 @@
 import { requireSession } from "@/lib/auth-guard"
 import { getCachedAgentByIdForUser } from "@/lib/data"
 import { getCachedConversationListForAgent } from "@/lib/agent-chat"
-import { getAgentRuntime } from "@/lib/agent-runtime-registry"
 import {
   AgentSidebarWorkspace,
   type ConversationSummary,
@@ -13,7 +12,6 @@ import {
   SidebarMenu,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import type { AgentKind } from "@/lib/db/schema"
 
 interface Props {
   params: Promise<{ agentId: string }>
@@ -32,26 +30,26 @@ export async function AgentSidebarSection({ params }: Props) {
   const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
   if (!agent) return null
 
-  const runtime = getAgentRuntime(agent.kind as AgentKind)
-  const isChatCapable = Boolean(runtime?.buildAgent)
-
-  const conversations: ConversationSummary[] = isChatCapable
-    ? (await getCachedConversationListForAgent(agent.id)).map((c) => ({
-        id: c.id,
-        title: c.title,
-        // Serialise to ISO so the value is plain across the server/client
-        // boundary. The client just passes it back to `new Date()` for
-        // relative-time display.
-        updatedAt: c.updatedAt.toISOString(),
-      }))
-    : []
+  // Phase 2: every agent is chat-capable. The "isChatCapable" prop is
+  // retained on the workspace component for now so future kinds (e.g.
+  // headless schedulers) can opt out without another schema change.
+  const conversations: ConversationSummary[] = (
+    await getCachedConversationListForAgent(agent.id)
+  ).map((c) => ({
+    id: c.id,
+    title: c.title,
+    // Serialise to ISO so the value is plain across the server/client
+    // boundary. The client just passes it back to `new Date()` for
+    // relative-time display.
+    updatedAt: c.updatedAt.toISOString(),
+  }))
 
   return (
     <AgentSidebarWorkspace
       agentId={agent.id}
       agentName={agent.name}
       enabled={agent.enabled}
-      isChatCapable={isChatCapable}
+      isChatCapable
       conversations={conversations}
     />
   )

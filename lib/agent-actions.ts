@@ -12,7 +12,7 @@ import {
 } from "@/lib/cache-tags"
 import { db } from "@/lib/db"
 import { agent } from "@/lib/db/schema"
-import { destroyAgentSandbox } from "@/lib/agent-sandbox"
+import { destroyAgentSandboxes } from "@/lib/agent-sandbox"
 import {
   pokeHeartbeat,
   startAgentSession,
@@ -33,38 +33,34 @@ function nanoid() {
 
 const HEARTBEAT_MIN = 5
 const HEARTBEAT_MAX = 1440 // 24h
-const DEFAULT_HEARTBEAT_INTERVAL = 30
 
-/**
- * Best-effort coerce a `FormData` heartbeat-interval input into the
- * accepted [5, 1440] range. Returns the default on a missing/invalid
- * value rather than throwing — operators get a server-action error
- * for malformed input via `parseHeartbeatInterval` higher up.
- */
-function parseHeartbeatInterval(raw: FormDataEntryValue | null): number {
-  const n = Number.parseInt(String(raw ?? ""), 10)
-  if (!Number.isFinite(n)) return DEFAULT_HEARTBEAT_INTERVAL
+/** Clamp a heartbeat-interval choice into the accepted [5, 1440] range. */
+function clampInterval(n: number): number {
+  if (!Number.isFinite(n)) return 30
   if (n < HEARTBEAT_MIN) return HEARTBEAT_MIN
   if (n > HEARTBEAT_MAX) return HEARTBEAT_MAX
-  return n
+  return Math.floor(n)
 }
 
-export async function createAgentAction(formData: FormData) {
+interface CreateInput {
+  name: string
+  systemPrompt: string
+  model: string
+  heartbeatEnabled: boolean
+  heartbeatIntervalMinutes: number
+}
+
+export async function createAgentAction(
+  input: CreateInput,
+): Promise<{ id: string }> {
   const session = await requireSession()
 
-  const name = String(formData.get("name") ?? "").trim() || "New agent"
-  const systemPrompt = String(formData.get("systemPrompt") ?? "").trim()
-
-  const requestedModel =
-    String(formData.get("model") ?? "").trim() || DEFAULT_MODEL_ID
-  const model = (await isModelIdValid(requestedModel))
-    ? requestedModel
+  const name = input.name.trim() || "New agent"
+  const systemPrompt = input.systemPrompt
+  const model = (await isModelIdValid(input.model))
+    ? input.model
     : DEFAULT_MODEL_ID
-
-  const heartbeatEnabled = formData.get("heartbeatEnabled") != null
-  const heartbeatIntervalMinutes = parseHeartbeatInterval(
-    formData.get("heartbeatIntervalMinutes"),
-  )
+  const heartbeatIntervalMinutes = clampInterval(input.heartbeatIntervalMinutes)
 
   const id = nanoid()
   const [created] = await db
@@ -76,60 +72,56 @@ export async function createAgentAction(formData: FormData) {
       systemPrompt,
       model,
       enabled: true,
-      heartbeatEnabled,
+      heartbeatEnabled: input.heartbeatEnabled,
       heartbeatIntervalMinutes,
     })
     .returning()
 
-  // Newly-enabled agent → boot its long-lived session immediately so
-  // the (possibly enabled) heartbeat ticker starts producing runs
-  // without the user having to chat first or wait for the cron sweeper.
-  if (created.enabled) {
-    try {
-      await startAgentSession(created)
-    } catch (err) {
-      console.error("[v0] createAgentAction: startAgentSession failed", err)
-    }
+  // Boot the long-lived session immediately so a (possibly enabled)
+  // heartbeat ticker starts producing runs without forcing the user
+  // to chat or wait for the cron sweeper.
+  try {
+    await startAgentSession(created)
+  } catch (err) {
+    console.error("[v0] createAgentAction: startAgentSession failed", err)
   }
 
   updateTag(userAgentsTag(session.user.id))
   updateTag(agentTag(id))
   revalidatePath("/agents")
   revalidatePath("/")
-  redirect(`/agents/${id}`)
+  return { id }
 }
 
-export async function updateAgentAction(agentId: string, formData: FormData) {
+interface UpdateInput {
+  id: string
+  name: string
+  systemPrompt: string
+  model: string
+  heartbeatEnabled: boolean
+  heartbeatIntervalMinutes: number
+}
+
+export async function updateAgentAction(input: UpdateInput): Promise<void> {
   const session = await requireSession()
   const [existing] = await db
     .select()
     .from(agent)
-    .where(and(eq(agent.id, agentId), eq(agent.userId, session.user.id)))
+    .where(and(eq(agent.id, input.id), eq(agent.userId, session.user.id)))
     .limit(1)
   if (!existing) throw new Error("Not found")
 
-  const name =
-    String(formData.get("name") ?? existing.name).trim() || existing.name
-
+  const name = input.name.trim() || existing.name
   // System prompt: an explicit empty string is allowed (the model
-  // falls back to AGENTS.md / SOUL.md only). We only treat a missing
-  // form field (`null`) as "leave unchanged".
-  const rawSystemPrompt = formData.get("systemPrompt")
-  const systemPrompt =
-    rawSystemPrompt == null ? existing.systemPrompt : String(rawSystemPrompt)
-
-  const requestedModel =
-    String(formData.get("model") ?? existing.model).trim() || existing.model
+  // falls back to AGENTS.md / SOUL.md only).
+  const systemPrompt = input.systemPrompt
+  // Skip the gateway round-trip if the model didn't change, since the
+  // catalog fetch is the slowest part of this action.
   const model =
-    requestedModel === existing.model || (await isModelIdValid(requestedModel))
-      ? requestedModel
+    input.model === existing.model || (await isModelIdValid(input.model))
+      ? input.model
       : existing.model
-
-  const enabled = formData.get("enabled") != null
-  const heartbeatEnabled = formData.get("heartbeatEnabled") != null
-  const heartbeatIntervalMinutes = parseHeartbeatInterval(
-    formData.get("heartbeatIntervalMinutes"),
-  )
+  const heartbeatIntervalMinutes = clampInterval(input.heartbeatIntervalMinutes)
 
   const [updated] = await db
     .update(agent)
@@ -137,33 +129,22 @@ export async function updateAgentAction(agentId: string, formData: FormData) {
       name,
       systemPrompt,
       model,
-      enabled,
-      heartbeatEnabled,
+      heartbeatEnabled: input.heartbeatEnabled,
       heartbeatIntervalMinutes,
       updatedAt: new Date(),
     })
-    .where(eq(agent.id, agentId))
+    .where(eq(agent.id, input.id))
     .returning()
 
-  // React to enabled-state transitions on the agent's session.
-  if (!existing.enabled && updated.enabled) {
-    try {
-      await startAgentSession(updated)
-    } catch (err) {
-      console.error("[v0] updateAgentAction: startAgentSession failed", err)
-    }
-  } else if (existing.enabled && !updated.enabled) {
-    await stopAgentSession(agentId)
-  } else if (
+  // The ticker reads its interval / opt-in once on session boot, so
+  // mid-session schedule changes only take effect on the next restart.
+  // Poke a heartbeat so the user sees immediate feedback when they
+  // flip the switch.
+  if (
     updated.enabled &&
     (existing.heartbeatEnabled !== updated.heartbeatEnabled ||
       existing.heartbeatIntervalMinutes !== updated.heartbeatIntervalMinutes)
   ) {
-    // The ticker reads its interval / opt-in once on session boot, so
-    // mid-session changes don't take effect until the next session
-    // restart. Poke a heartbeat so the user sees something happen
-    // immediately when they flip the switch — and the next cron sweep
-    // (or manual disable→enable) will re-cycle the ticker.
     try {
       await pokeHeartbeat({ agent: updated })
     } catch (err) {
@@ -175,14 +156,17 @@ export async function updateAgentAction(agentId: string, formData: FormData) {
   }
 
   updateTag(userAgentsTag(session.user.id))
-  updateTag(agentTag(agentId))
+  updateTag(agentTag(input.id))
   revalidatePath("/agents")
-  revalidatePath(`/agents/${agentId}`)
-  revalidatePath(`/agents/${agentId}/edit`)
+  revalidatePath(`/agents/${input.id}`)
+  revalidatePath(`/agents/${input.id}/edit`)
   revalidatePath("/")
 }
 
-export async function toggleAgentAction(agentId: string, enabled: boolean) {
+export async function toggleAgentAction(
+  agentId: string,
+  enabled: boolean,
+): Promise<void> {
   const session = await requireSession()
   const [existing] = await db
     .select()
@@ -214,24 +198,23 @@ export async function toggleAgentAction(agentId: string, enabled: boolean) {
   revalidatePath("/")
 }
 
-export async function deleteAgentAction(agentId: string) {
+export async function deleteAgentAction(agentId: string): Promise<void> {
   const session = await requireSession()
   const [existing] = await db
     .select()
     .from(agent)
     .where(and(eq(agent.id, agentId), eq(agent.userId, session.user.id)))
     .limit(1)
-  if (!existing) {
-    redirect("/agents")
-  }
+  if (!existing) redirect("/agents")
 
   // Stop the session first so it doesn't try to write into a torn-down
   // sandbox or a deleted agent row mid-event.
   await stopAgentSession(agentId)
 
-  // Best-effort: tear down the persistent sandbox before removing the
-  // row so we don't leak it. Any failure is swallowed inside the helper.
-  await destroyAgentSandbox(agentId)
+  // Best-effort: tear down both persistent sandboxes (system + exec)
+  // before removing the row so we don't leak them. Any failure is
+  // swallowed inside the helper.
+  await destroyAgentSandboxes(agentId)
 
   await db
     .delete(agent)

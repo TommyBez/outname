@@ -3,9 +3,7 @@ import { notFound } from "next/navigation"
 import { requireSession } from "@/lib/auth-guard"
 import { getCachedAgentByIdForUser } from "@/lib/data"
 import { newChatConversationId } from "@/lib/agent-chat"
-import { getAgentRuntime } from "@/lib/agent-runtime-registry"
 import { AgentChat } from "@/components/agent-chat"
-import type { AgentKind } from "@/lib/db/schema"
 
 type Params = Promise<{ agentId: string }>
 
@@ -35,9 +33,6 @@ async function DraftChat({ params }: { params: Params }) {
   const session = await requireSession()
   const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
   if (!agent) notFound()
-
-  const runtime = getAgentRuntime(agent.kind as AgentKind)
-  if (!runtime?.buildAgent) notFound()
 
   const draftConversationId = newChatConversationId()
 

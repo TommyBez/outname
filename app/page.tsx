@@ -5,17 +5,11 @@ import {
   getCachedAgentsForUser,
   getCachedLatestRunForAgent,
 } from "@/lib/data"
-import { getCachedGmailConnectionForUser } from "@/lib/google-oauth"
 import { AppShell } from "@/components/app-shell"
 import { TodayDate } from "@/components/today-date"
 import { AgentTodayCard } from "@/components/agent-today-card"
-import {
-  AgentCardSkeleton,
-  ConnectionNoticeSkeleton,
-  RunResultSkeleton,
-} from "@/components/skeletons"
+import { AgentCardSkeleton, RunResultSkeleton } from "@/components/skeletons"
 import type { Agent } from "@/lib/db/schema"
-import { AGENT_KINDS } from "@/workflows/agents/registry"
 
 export default function DashboardPage() {
   return (
@@ -48,49 +42,9 @@ async function DashboardContent() {
   const session = await requireSession()
 
   return (
-    <>
-      <Suspense fallback={<ConnectionNoticeSkeleton />}>
-        <ConnectionNotice userId={session.user.id} />
-      </Suspense>
-
-      <Suspense fallback={<RunResultSkeleton />}>
-        <AgentsList userId={session.user.id} />
-      </Suspense>
-    </>
-  )
-}
-
-async function ConnectionNotice({ userId }: { userId: string }) {
-  const connection = await getCachedGmailConnectionForUser(userId)
-  const notConnected = !connection
-  const expired = !!connection && connection.status !== "active"
-  if (!notConnected && !expired) return null
-
-  return (
-    <div className="mb-12 border-y border-border py-5">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p
-            className={`font-mono text-xs uppercase tracking-[0.2em] ${
-              expired ? "text-destructive" : "text-muted-foreground"
-            }`}
-          >
-            {expired ? "Connection expired" : "Not connected"}
-          </p>
-          <p className="mt-1.5 font-serif text-lg font-medium">
-            {expired
-              ? "Reconnect Gmail to resume your daily briefings."
-              : "Connect Gmail so the agent can read your inbox."}
-          </p>
-        </div>
-        <Link
-          href="/api/google/connect"
-          className="inline-flex shrink-0 items-center justify-center rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background transition-opacity hover:opacity-90"
-        >
-          {expired ? "Reconnect" : "Connect Gmail"}
-        </Link>
-      </div>
-    </div>
+    <Suspense fallback={<RunResultSkeleton />}>
+      <AgentsList userId={session.user.id} />
+    </Suspense>
   )
 }
 
@@ -129,21 +83,9 @@ async function AgentsList({ userId }: { userId: string }) {
 
 async function AgentCardContainer({ agent }: { agent: Agent }) {
   const latest = await getCachedLatestRunForAgent(agent.id)
-  const kindMeta = AGENT_KINDS[agent.kind as keyof typeof AGENT_KINDS]
-  return (
-    <AgentTodayCard
-      agent={agent}
-      kindLabel={kindMeta?.label ?? agent.kind}
-      latestRun={latest}
-    />
-  )
+  return <AgentTodayCard agent={agent} latestRun={latest} />
 }
 
 function DashboardContentFallback() {
-  return (
-    <>
-      <ConnectionNoticeSkeleton />
-      <RunResultSkeleton />
-    </>
-  )
+  return <RunResultSkeleton />
 }
