@@ -30,4 +30,6 @@ async function RedirectToChat({ params }: { params: Params }) {
   const agentRow = await getCachedAgentByIdForUser(agentId, session.user.id)
   if (!agentRow) notFound()
   redirect(`/agents/${agentRow.id}/chat`)
+  // Unreachable; satisfies the JSX return contract.
+  return null
 }
