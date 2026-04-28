@@ -11,8 +11,8 @@
  *     does this via direct DB upsert; Phase 3 adds a UI editor).
  *
  * The agent itself MUST NOT modify either file at runtime. Centralising
- * the set in one module guarantees `memory_write`, `memory_edit`, and
- * `memory_delete` cannot drift.
+ * the set in one module guarantees `write_memory`, `edit_memory`, and
+ * `delete_memory` cannot drift.
  */
 export const PERSONA_PATHS = ["AGENTS.md", "SOUL.md"] as const
 

@@ -86,7 +86,7 @@ export async function createExecTools(ctx: ExecToolsContext) {
     maxOutputLength: MAX_OUTPUT_BYTES,
     promptOptions: { toolPrompt: "" },
     extraInstructions:
-      "Every bash call is automatically appended to logs/<UTC date>.md in your memory volume — you can grep your own command history with memory_search.",
+      "Every bash call is automatically appended to logs/<UTC date>.md in your memory volume — you can grep your own command history with search_memory.",
     onAfterBashCall: ({ command, result }) => {
       // Audit log: append a single line per bash call into a daily
       // log file under the memory volume. ISO timestamp + exit code

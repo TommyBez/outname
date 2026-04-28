@@ -27,7 +27,7 @@ import {
  *
  *   2. **Memory inventory footer** — the relative paths of every
  *      other `*.md` file the system sandbox holds, so the model can
- *      plan `memory_read` calls without having to probe the listing
+ *      plan `read_memory` calls without having to probe the listing
  *      itself. Persona files are filtered out (their content is
  *      already inlined above).
  *
@@ -101,7 +101,7 @@ export async function composeSystemPrompt(
   }
 
   // 2. Memory inventory footer — list every non-persona *.md path.
-  // The model can pull any of them with memory_read.
+  // The model can pull any of them with read_memory.
   const otherPaths = livePaths
     .filter((p) => !READ_ONLY_FOR_AGENT.has(p))
     .sort()
@@ -110,7 +110,7 @@ export async function composeSystemPrompt(
     sections.push(`## Memory files available\n\n${lines}`)
   } else {
     sections.push(
-      `## Memory files available\n\n_(none yet — author files with memory_write as you accumulate notes; persona files ${PERSONA_PATHS.join(", ")} are inlined above and cannot be modified by the agent.)_`,
+      `## Memory files available\n\n_(none yet — author files with write_memory as you accumulate notes; persona files ${PERSONA_PATHS.join(", ")} are inlined above and cannot be modified by the agent.)_`,
     )
   }
 

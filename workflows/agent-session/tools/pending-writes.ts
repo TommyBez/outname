@@ -108,7 +108,7 @@ export function enqueueWrite(
  * path applies on top of the queued state — `resolveEffectiveContent`
  * replays ops in insertion order, and `flushPendingWrites` does the
  * same against the live filesystem. The model sees its own appends
- * within the same turn through `memory_read`.
+ * within the same turn through `read_memory`.
  */
 export function enqueueAppend(
   pending: PendingWrites,
@@ -139,7 +139,7 @@ export function enqueueDelete(pending: PendingWrites, path: string): void {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Overlay-aware reads — used by memory_read / memory_list                     */
+/* Overlay-aware reads — used by read_memory / list_memory                     */
 /* -------------------------------------------------------------------------- */
 
 /**

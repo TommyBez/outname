@@ -51,20 +51,20 @@ relative; every file ends in \`.md\`. Writes are queued and flushed at
 end of event, but reads in the same turn see your queued changes
 immediately.
 
-- \`memory_list\` — list every memory file you currently have.
-- \`memory_read({ path })\` — read the effective content of a file.
-- \`memory_search({ pattern, flags?, pathPrefix?, maxResults? })\` —
+- \`list_memory\` — list every memory file you currently have.
+- \`read_memory({ path })\` — read the effective content of a file.
+- \`search_memory({ pattern, flags?, pathPrefix?, maxResults? })\` —
   regex grep across every memory file. Always reach for this before
-  \`memory_read\` when you don't know which file holds a fact.
+  \`read_memory\` when you don't know which file holds a fact.
   Patterns are JS regex source compiled with \`gm\`; pass \`i\` for
   case-insensitive. Returns up to \`maxResults\` matches (default 50)
   as \`{ path, line, text }\`.
-- \`memory_write({ path, content })\` — create or overwrite a file.
-- \`memory_edit({ path, oldString, newString, replaceAll? })\` —
+- \`write_memory({ path, content })\` — create or overwrite a file.
+- \`edit_memory({ path, oldString, newString, replaceAll? })\` —
   anchor-based edit. \`oldString\` must occur in the file. Default
   replaces a single occurrence; pass \`replaceAll: true\` to replace
   every match.
-- \`memory_delete({ path })\` — delete a file.
+- \`delete_memory({ path })\` — delete a file.
 
 ### Exec tools — operate on your **exec** sandbox at \`/vercel/sandbox/workspace\`
 
@@ -76,7 +76,7 @@ or to run scripts/builds/HTTP calls. Files persist across events.
   truncated to 64 KiB per stream. **Every call is auto-appended to
   \`logs/<UTC date>.md\`** with timestamp, exit code, and the command
   itself, so you can grep your own command history with
-  \`memory_search\` in later turns.
+  \`search_memory\` in later turns.
 - \`file_read({ path })\` — read a UTF-8 text file (max 256 KiB).
 - \`file_write({ path, content })\` — create/overwrite a text file.
   Parents are created automatically.

@@ -158,7 +158,7 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
         <Label>Persona files</Label>
         <p className="text-xs text-muted-foreground">
           {
-            "These two files are inlined verbatim into the agent's system prompt on every event. They live in the agent's memory volume — the agent can read them via memory_read but its tools refuse to write or delete them. Save here flushes to disk on the next event."
+            "These two files are inlined verbatim into the agent's system prompt on every event. They live in the agent's memory volume — the agent can read them via read_memory but its tools refuse to write or delete them. Save here flushes to disk on the next event."
           }
         </p>
         <Tabs defaultValue="identity" className="mt-1">
