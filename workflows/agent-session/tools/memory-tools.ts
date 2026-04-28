@@ -20,17 +20,22 @@ import {
 /**
  * Build the memory toolset for an agent. The agent can:
  *
- *   - `memory_list`  — list every `*.md` memory file the system
+ *   - `list_memory`   — list every `*.md` memory file the system
  *     sandbox holds, including the special `AGENTS.md` and `SOUL.md`
  *     persona files that the agent itself authors.
- *   - `memory_read`  — read the effective content of one file (live
+ *   - `read_memory`   — read the effective content of one file (live
  *     state with this turn's queued ops overlayed on top, so the
  *     model sees its own writes immediately).
- *   - `memory_write` — overwrite or create a file (queued; flushed at
- *     end of event).
- *   - `memory_edit`  — anchor-based edit; throws if `oldString`
+ *   - `write_memory`  — overwrite or create a file (queued; flushed
+ *     at end of event).
+ *   - `edit_memory`   — anchor-based edit; throws if `oldString`
  *     doesn't appear in the effective content.
- *   - `memory_delete`— remove a file (queued).
+ *   - `delete_memory` — remove a file (queued).
+ *   - `search_memory` — overlay-aware regex grep across all memory
+ *     files.
+ *
+ * Tool names follow the architect's `<verb>_memory` convention so the
+ * doc and code agree.
  *
  * The factory closes over the agent id and a per-event `PendingWrites`
  * so reads see a consistent overlay across all tool calls in the same
@@ -45,14 +50,14 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
   const { agentId, pending } = ctx
 
   return {
-    memory_list: tool({
+    list_memory: tool({
       description:
         "List every memory file (relative paths, all ending in .md) the agent currently has. Reflects pending writes/deletes from this turn.",
       inputSchema: z.object({}),
       execute: async () => listMemoryStep(agentId, pending),
     }),
 
-    memory_read: tool({
+    read_memory: tool({
       description:
         "Read the effective content of a memory file. Returns the live on-disk content with this turn's queued writes/edits/deletes applied. Errors if the file does not exist.",
       inputSchema: z.object({
@@ -63,9 +68,9 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
       execute: async ({ path }) => readMemoryStep(agentId, pending, path),
     }),
 
-    memory_write: tool({
+    write_memory: tool({
       description:
-        "Create or overwrite a memory file. The write is queued and applied at end of event; subsequent memory_read calls in the same turn see the new content.",
+        "Create or overwrite a memory file. The write is queued and applied at end of event; subsequent read_memory calls in the same turn see the new content.",
       inputSchema: z.object({
         path: z.string(),
         content: z
@@ -80,7 +85,7 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
       },
     }),
 
-    memory_edit: tool({
+    edit_memory: tool({
       description:
         "Edit a memory file by replacing oldString with newString. Errors if oldString is not present in the effective content. Use replaceAll=true for global replacement; default replaces only the first occurrence.",
       inputSchema: z.object({
@@ -108,7 +113,7 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
       },
     }),
 
-    memory_delete: tool({
+    delete_memory: tool({
       description:
         "Delete a memory file. The deletion is queued and applied at end of event.",
       inputSchema: z.object({ path: z.string() }),
@@ -120,9 +125,9 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
       },
     }),
 
-    memory_search: tool({
+    search_memory: tool({
       description:
-        "Search every memory file for matches of a regular expression. Returns up to 50 matches grouped by file with their line numbers and the matching line content. Overlay-aware: pending writes/edits/deletes from this turn are reflected in the search. Use this before memory_read when you don't know which file holds a fact.",
+        "Search every memory file for matches of a regular expression. Returns up to 50 matches grouped by file with their line numbers and the matching line content. Overlay-aware: pending writes/edits/deletes from this turn are reflected in the search. Use this before read_memory when you don't know which file holds a fact.",
       inputSchema: z.object({
         pattern: z
           .string()
@@ -189,7 +194,7 @@ async function readMemoryStep(
   const live = await readLiveMemory(sandbox, path)
   const effective = resolveEffectiveContent(path, live, pending)
   if (effective === null) {
-    throw new Error(`memory_read: file not found: ${path}`)
+    throw new Error(`read_memory: file not found: ${path}`)
   }
   return { path, content: effective }
 }
@@ -212,17 +217,17 @@ async function editMemoryStep(
   const live = await readLiveMemory(sandbox, path)
   const effective = resolveEffectiveContent(path, live, pending)
   if (effective === null) {
-    throw new Error(`memory_edit: file not found: ${path}`)
+    throw new Error(`edit_memory: file not found: ${path}`)
   }
   const occurrences = countOccurrences(effective, args.oldString)
   if (occurrences === 0) {
     throw new Error(
-      `memory_edit: oldString not found in ${path}. Provide a longer or more unique anchor.`,
+      `edit_memory: oldString not found in ${path}. Provide a longer or more unique anchor.`,
     )
   }
   if (occurrences > 1 && !args.replaceAll) {
     throw new Error(
-      `memory_edit: oldString matches ${occurrences} times in ${path}. Provide a unique anchor or set replaceAll=true.`,
+      `edit_memory: oldString matches ${occurrences} times in ${path}. Provide a unique anchor or set replaceAll=true.`,
     )
   }
   enqueueEdit(pending, path, args.oldString, args.newString, args.replaceAll)
@@ -270,7 +275,7 @@ async function searchMemoryStep(
     re = new RegExp(args.pattern, finalFlags)
   } catch (err) {
     throw new Error(
-      `memory_search: invalid regex (${(err as Error).message}). Pass a JS-compatible pattern.`,
+      `search_memory: invalid regex (${(err as Error).message}). Pass a JS-compatible pattern.`,
     )
   }
 
