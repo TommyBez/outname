@@ -2,6 +2,7 @@ import { tool } from "ai"
 import { z } from "zod"
 import { getExecSandbox } from "@/lib/agent-sandbox"
 import { EXEC_SANDBOX_WORKSPACE } from "@/lib/agent-sandbox-registry"
+import { enqueueAppend, type PendingWrites } from "./pending-writes"
 
 /**
  * Exec tools — surface the agent's *exec* sandbox to the LLM.
@@ -34,15 +35,24 @@ const MAX_TIMEOUT_MS = 240_000 // upper-bounded by the exec sandbox timeout
 
 export interface ExecToolsContext {
   agentId: string
+  /**
+   * Per-event mutation buffer shared with the memory tools. Bash
+   * calls enqueue a one-line append into `logs/<UTC date>.md` here;
+   * `endOfEvent` flushes the queue to the system sandbox and mirrors
+   * it into `agent_files`. The append is buffered (not write-through)
+   * so a long bash sequence inside one turn produces a single
+   * round-trip at flush time instead of one per call.
+   */
+  pending: PendingWrites
 }
 
 export function createExecTools(ctx: ExecToolsContext) {
-  const { agentId } = ctx
+  const { agentId, pending } = ctx
 
   return {
     bash: tool({
       description:
-        "Run a shell command inside the agent's persistent exec sandbox, rooted at /vercel/sandbox/workspace. Returns { exitCode, stdout, stderr } truncated to 64 KiB each. Use for builds, scripts, API calls, anything that needs a shell.",
+        "Run a shell command inside the agent's persistent exec sandbox, rooted at /vercel/sandbox/workspace. Returns { exitCode, stdout, stderr } truncated to 64 KiB each. Every call is automatically appended to logs/<UTC date>.md in your memory volume — you can grep your own command history with memory_read. Use for builds, scripts, API calls, anything that needs a shell.",
       inputSchema: z.object({
         command: z.string().min(1).describe("Single-string shell command."),
         timeoutMs: z
@@ -55,8 +65,31 @@ export function createExecTools(ctx: ExecToolsContext) {
             `Per-command timeout in ms. Defaults to ${DEFAULT_TIMEOUT_MS}, max ${MAX_TIMEOUT_MS}.`,
           ),
       }),
-      execute: async ({ command, timeoutMs }) =>
-        bashStep(agentId, command, timeoutMs ?? DEFAULT_TIMEOUT_MS),
+      execute: async ({ command, timeoutMs }) => {
+        const result = await bashStep(
+          agentId,
+          command,
+          timeoutMs ?? DEFAULT_TIMEOUT_MS,
+        )
+        // Audit log: append a single line per bash call into a daily
+        // log file under the memory volume. Includes timestamp,
+        // exit code, command (truncated for sanity), and a
+        // truncation marker so grep-by-date stays readable. The
+        // path is intentionally outside the persona surface and
+        // not on the read-only list, but the bash tool is the only
+        // caller that ever touches it in practice.
+        const day = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+        const auditCommand = command.length > 240
+          ? `${command.slice(0, 240)}…`
+          : command
+        const line = [
+          new Date().toISOString(),
+          `exit=${result.exitCode ?? "null"}`,
+          auditCommand.replace(/\r?\n/g, " "),
+        ].join(" ")
+        enqueueAppend(pending, `logs/${day}.md`, `${line}\n`)
+        return result
+      },
     }),
 
     file_read: tool({

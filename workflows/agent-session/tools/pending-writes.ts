@@ -100,6 +100,24 @@ export function enqueueWrite(
   pending.ops.push({ kind: "write", path, content })
 }
 
+/**
+ * Append `content` to the tail of `path`. Used by the bash-tool audit
+ * log and any other system-driven append surface.
+ *
+ * Sequencing: a queued append after a queued write/edit on the same
+ * path applies on top of the queued state — `resolveEffectiveContent`
+ * replays ops in insertion order, and `flushPendingWrites` does the
+ * same against the live filesystem. The model sees its own appends
+ * within the same turn through `memory_read`.
+ */
+export function enqueueAppend(
+  pending: PendingWrites,
+  path: string,
+  content: string,
+): void {
+  pending.ops.push({ kind: "append", path, content })
+}
+
 export function enqueueEdit(
   pending: PendingWrites,
   path: string,
@@ -149,6 +167,11 @@ export function resolveEffectiveContent(
       content = op.content
       continue
     }
+    if (op.kind === "append") {
+      // Append-on-missing creates the file with the appended chunk.
+      content = (content ?? "") + op.content
+      continue
+    }
     // edit
     if (content === null) {
       // Edit-on-missing — leave content null; the tool execute should
@@ -175,7 +198,7 @@ export function resolveEffectiveListing(
   for (const op of pending.ops) {
     if (op.kind === "delete") {
       present.delete(op.path)
-    } else if (op.kind === "write") {
+    } else if (op.kind === "write" || op.kind === "append") {
       present.add(op.path)
     }
   }
@@ -256,6 +279,22 @@ export async function flushPendingWrites(
       if (op.kind === "write") {
         await sandbox.writeFiles([
           { path: abs, content: Buffer.from(op.content, "utf8") },
+        ])
+        continue
+      }
+
+      if (op.kind === "append") {
+        // Read-modify-write. Two simultaneous appends to the same
+        // path within one event are queued in order, so the second
+        // one sees the first one's bytes from the just-written file
+        // (we re-read on each iteration). Append-on-missing creates
+        // the file.
+        const prev = await sandbox
+          .readFileToBuffer({ path: abs })
+          .catch(() => null)
+        const next = (prev?.toString("utf8") ?? "") + op.content
+        await sandbox.writeFiles([
+          { path: abs, content: Buffer.from(next, "utf8") },
         ])
         continue
       }
