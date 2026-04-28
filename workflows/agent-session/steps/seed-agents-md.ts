@@ -8,12 +8,17 @@ import { AGENTS_MD_TEMPLATE } from "@/lib/agents-md-template"
 
 const AGENTS_MD_PATH = `${SYSTEM_SANDBOX_ROOT}/AGENTS.md`
 const SEED_MARKER_PATH = `${SYSTEM_SANDBOX_ROOT}/.agents-md-seeded`
-// Bumped to "v3" alongside the Phase 2 template rewrite that
-// documents the memory + exec tool surfaces and adds SOUL.md to the
-// memory volume layout. Existing dev agents pick up the new template
-// on their next event after deploy. Future breaking template changes
-// should bump this constant the same way.
-const SEED_MARKER_VALUE = "v3"
+// Bumped to "v4" alongside the architect-driven template rewrite that
+// (a) documents the new \`memory_search\` and \`reset_exec\` tools,
+// (b) clarifies that AGENTS.md / SOUL.md are user-owned via the UI
+// Identity / Instructions tabs (the agent's memory_* tools refuse
+// them at the path layer; only the \`drainPendingWrites\` step is
+// allowed to mutate them, and it runs after seedAgentsMd so a fresh
+// agent with operator-authored content correctly overwrites the
+// platform default), and (c) describes the automatic bash audit log
+// at \`logs/<UTC date>.md\`. Existing dev agents pick up the new
+// template on their next event after deploy.
+const SEED_MARKER_VALUE = "v4"
 
 /**
  * Process-local cache of agent ids whose `.agents-md-seeded` marker we
