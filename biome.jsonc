@@ -12,6 +12,11 @@
     }
   },
   "files": {
-    "includes": ["**/*", "!components/ui/*", "!components/ai-elements/*"]
+    "includes": [
+      "**/*",
+      "!components/ui/*",
+      "!components/ai-elements/*",
+      "!next-env.d.ts"
+    ]
   }
 }
