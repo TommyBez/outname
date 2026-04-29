@@ -1,4 +1,6 @@
+import type { Sandbox as VercelSandbox } from '@vercel/sandbox'
 import { tool } from 'ai'
+import type { Sandbox as BashToolSandbox, CommandResult } from 'bash-tool'
 import { z } from 'zod'
 import { getExecSandbox, resetExecSandbox } from '@/lib/agent-sandbox'
 import { EXEC_SANDBOX_WORKSPACE } from '@/lib/agent-sandbox-registry'
@@ -28,6 +30,40 @@ function commandExitCode(result: unknown): number | null {
   return typeof result.exitCode === 'number' ? result.exitCode : null
 }
 
+function createBashToolSandboxAdapter(sandbox: VercelSandbox): BashToolSandbox {
+  return {
+    async executeCommand(command: string): Promise<CommandResult> {
+      const result = await sandbox.runCommand('bash', ['-c', command])
+      const [stdout, stderr] = await Promise.all([
+        result.stdout(),
+        result.stderr(),
+      ])
+      return {
+        stdout,
+        stderr,
+        exitCode: result.exitCode,
+      }
+    },
+    async readFile(path: string): Promise<string> {
+      const content = await sandbox.readFileToBuffer({ path })
+      if (!content) {
+        throw new Error(`File not found: ${path}`)
+      }
+      return content.toString('utf8')
+    },
+    async writeFiles(files): Promise<void> {
+      await sandbox.writeFiles(
+        files.map((file) => ({
+          path: file.path,
+          content: Buffer.isBuffer(file.content)
+            ? file.content
+            : Buffer.from(file.content),
+        }))
+      )
+    },
+  }
+}
+
 export async function createExecTools(ctx: ExecToolsContext) {
   'use step'
 
@@ -35,9 +71,10 @@ export async function createExecTools(ctx: ExecToolsContext) {
 
   const sandbox = await getExecSandbox(agentId)
   const { createBashTool } = await import('bash-tool')
+  const bashToolSandbox = createBashToolSandboxAdapter(sandbox)
 
   const bashTool = await createBashTool({
-    sandbox,
+    sandbox: bashToolSandbox,
     destination: EXEC_SANDBOX_WORKSPACE,
     maxOutputLength: MAX_OUTPUT_BYTES,
   })
