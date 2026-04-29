@@ -1,6 +1,5 @@
 import { tool } from "ai"
 import { z } from "zod"
-import { createBashTool } from "bash-tool"
 import { getExecSandbox, resetExecSandbox } from "@/lib/agent-sandbox"
 import { EXEC_SANDBOX_WORKSPACE } from "@/lib/agent-sandbox-registry"
 import { enqueueAppend, type PendingWrites } from "./pending-writes"
@@ -14,25 +13,16 @@ import { enqueueAppend, type PendingWrites } from "./pending-writes"
  * persist across events through snapshot-on-stop, so a heartbeat run
  * can pick up artifacts a chat turn left behind.
  *
- * Architecture: the bash / file_read / file_write tools delegate to
- * the `bash-tool` package (vercel-labs/bash-tool). Per the architect's
- * Phase 2 follow-up directive, this gives us:
- *
- *   - AI-SDK-native tool wrappers maintained upstream.
- *   - First-class `onAfterBashCall` hook for the audit log instead of
- *     hand-rolled "call enqueueAppend after bashStep returns" code.
- *   - Forward path to `experimental_createSkillTool` for Phase 3.
- *
- * Local tools that bash-tool does not provide:
- *
- *   - `file_list` — directory listing with file/dir tagging. Useful
- *     to the agent for understanding workspace shape without
- *     parsing `ls` output.
- *   - `reset_exec` — destroys + re-provisions the exec sandbox when
- *     the workspace is wedged. Memory volume is untouched.
- *
- * All paths in `file_list` / `reset_exec` are interpreted relative to
- * the persistent workspace directory (`/vercel/sandbox/workspace`).
+ * Surface: `bash`, `file_read`, `file_write`, `file_list`, `reset_exec`.
+ * Every tool's `execute` callback delegates to a `"use step"` worker
+ * (`bashStep`, `fileReadStep`, etc.) so the workflow bundle stays
+ * free of `@vercel/sandbox` value imports and Node.js built-ins.
+ * The earlier swap to the third-party `bash-tool` package was
+ * reverted because that package value-imports `node:path` etc. at
+ * the top level of its entry module, which the workflow bundler then
+ * pulls into the workflow bundle and warns about ("These will fail
+ * at runtime in the workflow sandbox"). Hand-rolling the four shells
+ * keeps the import graph clean.
  *
  * Why these tools are *not* buffered like memory tools:
  *   - Bash output is the agent's primary feedback signal; buffering
@@ -44,81 +34,90 @@ import { enqueueAppend, type PendingWrites } from "./pending-writes"
  * into the model without blowing the context window.
  */
 
-const MAX_OUTPUT_BYTES = 64 * 1024 // 64 KiB stdout/stderr per call
+/** Hard cap on stdout / stderr each, in bytes. */
+const MAX_OUTPUT_BYTES = 64 * 1024 // 64 KiB
+/** Default per-command timeout. */
+const DEFAULT_TIMEOUT_MS = 60_000
+/** Hard ceiling regardless of what the model asks for. */
+const MAX_TIMEOUT_MS = 5 * 60_000
+/** Hard cap on `file_read` and `file_write` payloads, in bytes. */
+const MAX_FILE_BYTES = 256 * 1024 // 256 KiB
 
 export interface ExecToolsContext {
   agentId: string
   /**
-   * Per-event mutation buffer shared with the memory tools. Bash
-   * calls enqueue a one-line append into `logs/<UTC date>.md` here;
-   * `endOfEvent` flushes the queue to the system sandbox and mirrors
-   * it into `agent_files`. The append is buffered (not write-through)
-   * so a long bash sequence inside one turn produces a single
-   * round-trip at flush time instead of one per call.
+   * Per-event mutation buffer shared with the memory tools. Bash and
+   * `reset_exec` calls enqueue a one-line append into
+   * `logs/<UTC date>.md` here; `endOfEvent` flushes the queue to the
+   * system sandbox in a single round-trip.
    */
   pending: PendingWrites
 }
 
-/**
- * Build the exec tool surface for one agent event. Async because
- * `createBashTool` resumes the exec sandbox and stitches together
- * `bash`, `readFile`, and `writeFile` from the bash-tool package.
- */
-export async function createExecTools(ctx: ExecToolsContext) {
+export function createExecTools(ctx: ExecToolsContext) {
   const { agentId, pending } = ctx
 
-  // Resume the persistent exec sandbox. `getExecSandbox` is idempotent
-  // and shares the resumed instance across the rest of this event,
-  // so the `file_list` / `reset_exec` tools below can re-resume
-  // cheaply when they run.
-  const execSandbox = await getExecSandbox(agentId)
-
-  // Hand the resumed sandbox to bash-tool. We rely on its default
-  // `promptOptions` so the bash tool description includes the
-  // toolkit's autodiscovered guidance (which CLIs are available in
-  // the sandbox, etc.). The probe still runs whether or not we
-  // suppress its output, so overriding `toolPrompt` is not actually
-  // a latency optimisation — it just hides useful hints from the
-  // model. Revisit if profiling ever shows the prompt assembly is a
-  // hot path.
-  const bashKit = await createBashTool({
-    sandbox: execSandbox,
-    destination: EXEC_SANDBOX_WORKSPACE,
-    maxOutputLength: MAX_OUTPUT_BYTES,
-    extraInstructions:
-      "Every bash call is automatically appended to logs/<UTC date>.md in your memory volume — you can grep your own command history with search_memory.",
-    onAfterBashCall: ({ command, result }) => {
-      // Audit log: append a single line per bash call into a daily
-      // log file under the memory volume. ISO timestamp + exit code
-      // + truncated command. Bash-tool guarantees this hook runs
-      // once per call, after stdout/stderr are populated, before the
-      // tool returns to the model — perfect spot to stamp an audit
-      // line without blocking the result on a sandbox round-trip.
-      const day = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
-      const auditCommand =
-        command.length > 240 ? `${command.slice(0, 240)}…` : command
-      const line = [
-        new Date().toISOString(),
-        `exit=${result.exitCode ?? "null"}`,
-        auditCommand.replace(/\r?\n/g, " "),
-      ].join(" ")
-      enqueueAppend(pending, `logs/${day}.md`, `${line}\n`)
-      // Returning undefined keeps the result unchanged. We don't need
-      // to mutate stdout / stderr here.
-      return undefined
-    },
-  })
-
   return {
-    // bash-tool's three tools, renamed to our existing taxonomy so
-    // AGENTS.md and call sites stay stable. The shapes are
-    // compatible:
-    //   bash      ({ command }) -> { stdout, stderr, exitCode }
-    //   readFile  ({ path })    -> { content }
-    //   writeFile ({ path, content }) -> { success: boolean }
-    bash: bashKit.tools.bash,
-    file_read: bashKit.tools.readFile,
-    file_write: bashKit.tools.writeFile,
+    bash: tool({
+      description:
+        "Run a shell command inside the agent's persistent exec sandbox, rooted at /vercel/sandbox/workspace. Returns { exitCode, stdout, stderr } truncated to 64 KiB each. Every bash call is automatically appended to logs/<UTC date>.md in your memory volume — you can grep your own command history with search_memory. Use for builds, scripts, API calls, anything that needs a shell.",
+      inputSchema: z.object({
+        command: z.string().min(1).describe("Single-string shell command."),
+        timeoutMs: z
+          .number()
+          .int()
+          .min(1_000)
+          .max(MAX_TIMEOUT_MS)
+          .optional()
+          .describe(
+            `Per-command timeout in ms. Defaults to ${DEFAULT_TIMEOUT_MS}, max ${MAX_TIMEOUT_MS}.`,
+          ),
+      }),
+      execute: async ({ command, timeoutMs }) => {
+        const result = await bashStep(
+          agentId,
+          command,
+          timeoutMs ?? DEFAULT_TIMEOUT_MS,
+        )
+        // Audit log: append a single line per bash call into a daily
+        // log file under the memory volume. ISO timestamp + exit code
+        // + truncated command. The append is buffered through the
+        // pending queue and flushes at end of event.
+        const day = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+        const auditCommand =
+          command.length > 240 ? `${command.slice(0, 240)}…` : command
+        const line = [
+          new Date().toISOString(),
+          `exit=${result.exitCode ?? "null"}`,
+          auditCommand.replace(/\r?\n/g, " "),
+        ].join(" ")
+        enqueueAppend(pending, `logs/${day}.md`, `${line}\n`)
+        return result
+      },
+    }),
+
+    file_read: tool({
+      description:
+        "Read a UTF-8 file from the exec sandbox workspace. Returns up to 256 KiB; longer files are truncated with `truncated: true`. Use for inspecting build output, generated files, etc.",
+      inputSchema: z.object({
+        path: z.string().describe("Workspace-relative path."),
+      }),
+      execute: async ({ path }) => fileReadStep(agentId, path),
+    }),
+
+    file_write: tool({
+      description:
+        "Write a UTF-8 file in the exec sandbox workspace. Overwrites existing content. Up to 256 KiB per call.",
+      inputSchema: z.object({
+        path: z.string().describe("Workspace-relative path."),
+        content: z
+          .string()
+          .max(MAX_FILE_BYTES)
+          .describe("UTF-8 content. Max 256 KiB."),
+      }),
+      execute: async ({ path, content }) =>
+        fileWriteStep(agentId, path, content),
+    }),
 
     file_list: tool({
       description:
@@ -176,17 +175,12 @@ function resolveWorkspacePath(input: string): string {
   if (typeof input !== "string" || input.length === 0) {
     throw new Error("path must be a non-empty string")
   }
-  // Reject NUL chars and obvious traversal early. We allow `..` only
-  // if the resolved path stays under the workspace prefix — checked
-  // below by string prefix.
   if (input.includes("\0")) {
     throw new Error("path may not contain NUL bytes")
   }
   const abs = input.startsWith("/")
     ? input
     : `${EXEC_SANDBOX_WORKSPACE}/${input}`
-  // Lightweight normalization: collapse repeated slashes; reject
-  // segments that walk above the workspace root.
   const normalized = normalizePath(abs)
   if (
     normalized !== EXEC_SANDBOX_WORKSPACE &&
@@ -212,20 +206,113 @@ function normalizePath(p: string): string {
   return "/" + out.join("/")
 }
 
+function truncateUtf8(s: string, maxBytes: number): { value: string; truncated: boolean } {
+  // Cheap byte estimate via Buffer.byteLength would require pulling in
+  // a Node dep. The agent only needs an upper-bound truncation
+  // signal, so we approximate: 1 char ≈ 1 byte for ASCII,
+  // up to 4 bytes for emoji. Worst-case slice on chars => ~maxBytes
+  // bytes. For our 64 KiB cap this is more than sufficient.
+  if (s.length <= maxBytes) return { value: s, truncated: false }
+  return { value: s.slice(0, maxBytes), truncated: true }
+}
+
 /* -------------------------------------------------------------------------- */
-/* Steps                                                                       */
+/* Steps — all top-level Node / @vercel/sandbox imports happen inside these   */
+/* "use step" function bodies, which the workflow bundler lifts into a        */
+/* separate worker bundle. The workflow body itself stays free of those       */
+/* imports.                                                                    */
 /* -------------------------------------------------------------------------- */
-/* Only `file_list` retains a hand-rolled step now — bash / file_read /       */
-/* file_write delegate to bash-tool. Path resolution is duplicated here       */
-/* because file_list takes an optional path that maps "" to the workspace     */
-/* root and bash-tool's path semantics don't quite fit that shape.            */
+
+interface BashResult {
+  exitCode: number | null
+  stdout: string
+  stdoutTruncated: boolean
+  stderr: string
+  stderrTruncated: boolean
+}
+
+async function bashStep(
+  agentId: string,
+  command: string,
+  timeoutMs: number,
+): Promise<BashResult> {
+  "use step"
+  const sandbox = await getExecSandbox(agentId)
+  // We wrap the user's command in `cd workspace && timeout ... bash -c ...`
+  // so the model can stay relative to the workspace root and we get
+  // a hard cap on runtime regardless of what the user typed.
+  const wrapped = `cd ${shellEscape(EXEC_SANDBOX_WORKSPACE)} && timeout --foreground ${Math.max(1, Math.floor(timeoutMs / 1000))}s bash -lc ${shellEscape(command)}`
+  const cmd = await sandbox.runCommand({ cmd: "sh", args: ["-ec", wrapped] })
+  const [stdout, stderr] = await Promise.all([cmd.stdout(), cmd.stderr()])
+  const out = truncateUtf8(stdout, MAX_OUTPUT_BYTES)
+  const err = truncateUtf8(stderr, MAX_OUTPUT_BYTES)
+  return {
+    exitCode: cmd.exitCode,
+    stdout: out.value,
+    stdoutTruncated: out.truncated,
+    stderr: err.value,
+    stderrTruncated: err.truncated,
+  }
+}
+
+interface FileReadResult {
+  path: string
+  content: string
+  truncated: boolean
+}
+
+async function fileReadStep(
+  agentId: string,
+  rawPath: string,
+): Promise<FileReadResult> {
+  "use step"
+  const path = resolveWorkspacePath(rawPath)
+  const sandbox = await getExecSandbox(agentId)
+  const buf = await sandbox.readFileToBuffer({ path })
+  if (!buf) {
+    // `readFileToBuffer` returns null when the file is missing.
+    // Surface a structured error so the model can branch on it.
+    throw new Error(`file_read: file not found: ${path}`)
+  }
+  const text = buf.toString("utf8")
+  const out = truncateUtf8(text, MAX_FILE_BYTES)
+  return { path, content: out.value, truncated: out.truncated }
+}
+
+interface FileWriteResult {
+  path: string
+  bytesWritten: number
+}
+
+async function fileWriteStep(
+  agentId: string,
+  rawPath: string,
+  content: string,
+): Promise<FileWriteResult> {
+  "use step"
+  const path = resolveWorkspacePath(rawPath)
+  const sandbox = await getExecSandbox(agentId)
+  const buf = Buffer.from(content, "utf8")
+  // Make sure the parent directory exists. Without -p, writeFiles
+  // fails if the parent isn't created yet.
+  const parent = path.slice(0, path.lastIndexOf("/"))
+  if (parent && parent !== EXEC_SANDBOX_WORKSPACE) {
+    await sandbox.runCommand({
+      cmd: "sh",
+      args: ["-ec", `mkdir -p ${shellEscape(parent)}`],
+    })
+  }
+  await sandbox.writeFiles([{ path, content: buf }])
+  return { path, bytesWritten: buf.byteLength }
+}
 
 async function fileListStep(
   agentId: string,
   rawDir: string,
 ): Promise<{ path: string; entries: { path: string; type: "file" | "dir" }[] }> {
   "use step"
-  const dir = rawDir === "" ? EXEC_SANDBOX_WORKSPACE : resolveWorkspacePath(rawDir)
+  const dir =
+    rawDir === "" ? EXEC_SANDBOX_WORKSPACE : resolveWorkspacePath(rawDir)
   const sandbox = await getExecSandbox(agentId)
   // `find` with -mindepth 1 -maxdepth 1 lists immediate children only.
   // We tag each entry with its type via printf so the model gets a
