@@ -1,5 +1,6 @@
 import { tool } from "ai"
 import { z } from "zod"
+import { createBashTool } from "bash-tool"
 import { getExecSandbox, resetExecSandbox } from "@/lib/agent-sandbox"
 import { EXEC_SANDBOX_WORKSPACE } from "@/lib/agent-sandbox-registry"
 import { enqueueAppend, type PendingWrites } from "./pending-writes"
