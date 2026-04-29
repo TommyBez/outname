@@ -1,5 +1,4 @@
 import { tool } from 'ai'
-import { createBashTool } from 'bash-tool'
 import { z } from 'zod'
 import { getExecSandbox, resetExecSandbox } from '@/lib/agent-sandbox'
 import { EXEC_SANDBOX_WORKSPACE } from '@/lib/agent-sandbox-registry'
@@ -35,6 +34,7 @@ export async function createExecTools(ctx: ExecToolsContext) {
   const { agentId, pending } = ctx
 
   const sandbox = await getExecSandbox(agentId)
+  const { createBashTool } = await import('bash-tool')
 
   const bashTool = await createBashTool({
     sandbox,
