@@ -38,6 +38,8 @@ import { type Agent, agent } from '@/lib/db/schema'
  *    `CRON_SECRET` env var so this endpoint isn't open to anyone
  *    on the internet. When `CRON_SECRET` is unset (local dev) we
  *    allow all callers — convenient for `curl` testing.
+ *  - If `LIVENESS_CRON_ENABLED` is not `true`, returns early with
+ *    `{ ok: true, skipped }` — no agent queries or restarts.
  */
 export async function GET(req: NextRequest) {
   // Cache Components is on for this project. Calling `connection()`
@@ -53,6 +55,10 @@ export async function GET(req: NextRequest) {
     if (got !== `Bearer ${expected}`) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
     }
+  }
+
+  if (process.env.LIVENESS_CRON_ENABLED !== 'true') {
+    return NextResponse.json({ ok: true, skipped: 'liveness cron disabled' })
   }
 
   const enabled = await db.select().from(agent).where(eq(agent.enabled, true))
@@ -105,7 +111,7 @@ async function reapOrphanTickerForDeadSession(a: Agent): Promise<boolean> {
     return false
   }
   try {
-    const world = await getWorld()
+    const world = getWorld()
     await world.events.create(a.lastTickerRunId, {
       eventType: 'run_cancelled',
     })
