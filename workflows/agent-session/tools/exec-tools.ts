@@ -1,5 +1,5 @@
 import type { Sandbox as VercelSandbox } from '@vercel/sandbox'
-import { tool } from 'ai'
+import { type ToolExecutionOptions, tool } from 'ai'
 import type { Sandbox as BashToolSandbox, CommandResult } from 'bash-tool'
 import { z } from 'zod'
 import { getExecSandbox, resetExecSandbox } from '@/lib/agent-sandbox'
@@ -17,6 +17,30 @@ const MAX_OUTPUT_BYTES = 64 * 1024
 export interface ExecToolsContext {
   agentId: string
   pending: PendingWrites
+}
+
+type BashToolExecutor<TInput> = (
+  input: TInput,
+  options: ToolExecutionOptions
+) => Promise<unknown>
+
+interface RunBashToolArgs {
+  agentId: string
+  command: string
+  options: ToolExecutionOptions
+}
+
+interface ReadExecFileArgs {
+  agentId: string
+  options: ToolExecutionOptions
+  path: string
+}
+
+interface WriteExecFileArgs {
+  agentId: string
+  content: string
+  options: ToolExecutionOptions
+  path: string
 }
 
 function commandExitCode(result: unknown): number | null {
@@ -64,28 +88,18 @@ function createBashToolSandboxAdapter(sandbox: VercelSandbox): BashToolSandbox {
   }
 }
 
-export async function createExecTools(ctx: ExecToolsContext) {
-  'use step'
-
+export function createExecTools(ctx: ExecToolsContext) {
   const { agentId, pending } = ctx
-
-  const sandbox = await getExecSandbox(agentId)
-  const { createBashTool } = await import('bash-tool')
-  const bashToolSandbox = createBashToolSandboxAdapter(sandbox)
-
-  const bashTool = await createBashTool({
-    sandbox: bashToolSandbox,
-    destination: EXEC_SANDBOX_WORKSPACE,
-    maxOutputLength: MAX_OUTPUT_BYTES,
-  })
 
   return {
     bash: tool({
-      description: bashTool.tools.bash.description,
-      inputSchema: bashTool.tools.bash.inputSchema,
+      description:
+        'Run a bash command in your exec sandbox workspace and return stdout, stderr, and exit code. Use this for shell commands, package installs, tests, and workspace inspection.',
+      inputSchema: z.object({
+        command: z.string().min(1).describe('The bash command to run.'),
+      }),
       execute: async ({ command }, options) => {
-        'use step'
-        const result = await bashTool.tools.bash.execute?.({ command }, options)
+        const result = await runBashTool({ agentId, command, options })
 
         const day = new Date().toISOString().slice(0, 10)
         const auditCommand =
@@ -101,24 +115,24 @@ export async function createExecTools(ctx: ExecToolsContext) {
     }),
 
     file_read: tool({
-      description: bashTool.tools.readFile.description,
-      inputSchema: bashTool.tools.readFile.inputSchema,
-      execute: async ({ path }, options) => {
-        'use step'
-        return await bashTool.tools.readFile.execute?.({ path }, options)
-      },
+      description:
+        'Read a UTF-8 file from your exec sandbox workspace. Paths are relative to the workspace unless absolute.',
+      inputSchema: z.object({
+        path: z.string().min(1).describe('The file path to read.'),
+      }),
+      execute: async ({ path }, options) =>
+        readExecFile({ agentId, options, path }),
     }),
 
     file_write: tool({
-      description: bashTool.tools.writeFile.description,
-      inputSchema: bashTool.tools.writeFile.inputSchema,
-      execute: async ({ path, content }, options) => {
-        'use step'
-        return await bashTool.tools.writeFile.execute?.(
-          { path, content },
-          options
-        )
-      },
+      description:
+        'Write a UTF-8 file in your exec sandbox workspace. Creates parent directories as needed.',
+      inputSchema: z.object({
+        path: z.string().min(1).describe('The file path to write.'),
+        content: z.string().describe('The complete file content.'),
+      }),
+      execute: async ({ path, content }, options) =>
+        writeExecFile({ agentId, content, options, path }),
     }),
     reset_exec: tool({
       description:
@@ -133,8 +147,7 @@ export async function createExecTools(ctx: ExecToolsContext) {
           ),
       }),
       execute: async ({ reason }) => {
-        'use step'
-        const result = await resetExecSandbox({ agentId })
+        const result = await resetExecSandboxForTool(agentId)
         const day = new Date().toISOString().slice(0, 10)
         const auditReason =
           reason.length > 240 ? `${reason.slice(0, 240)}…` : reason
@@ -148,4 +161,55 @@ export async function createExecTools(ctx: ExecToolsContext) {
       },
     }),
   }
+}
+
+async function createAgentBashTool(agentId: string) {
+  const sandbox = await getExecSandbox(agentId)
+  const { createBashTool } = await import('bash-tool')
+  return await createBashTool({
+    sandbox: createBashToolSandboxAdapter(sandbox),
+    destination: EXEC_SANDBOX_WORKSPACE,
+    maxOutputLength: MAX_OUTPUT_BYTES,
+  })
+}
+
+async function runBashTool(args: RunBashToolArgs): Promise<unknown> {
+  'use step'
+  const bashTool = await createAgentBashTool(args.agentId)
+  const execute = bashTool.tools.bash.execute as
+    | BashToolExecutor<{ command: string }>
+    | undefined
+  if (!execute) {
+    throw new Error('bash tool execute handler is unavailable')
+  }
+  return await execute({ command: args.command }, args.options)
+}
+
+async function readExecFile(args: ReadExecFileArgs): Promise<unknown> {
+  'use step'
+  const bashTool = await createAgentBashTool(args.agentId)
+  const execute = bashTool.tools.readFile.execute as
+    | BashToolExecutor<{ path: string }>
+    | undefined
+  if (!execute) {
+    throw new Error('file_read tool execute handler is unavailable')
+  }
+  return await execute({ path: args.path }, args.options)
+}
+
+async function writeExecFile(args: WriteExecFileArgs): Promise<unknown> {
+  'use step'
+  const bashTool = await createAgentBashTool(args.agentId)
+  const execute = bashTool.tools.writeFile.execute as
+    | BashToolExecutor<{ content: string; path: string }>
+    | undefined
+  if (!execute) {
+    throw new Error('file_write tool execute handler is unavailable')
+  }
+  return await execute({ content: args.content, path: args.path }, args.options)
+}
+
+async function resetExecSandboxForTool(agentId: string) {
+  'use step'
+  return await resetExecSandbox({ agentId })
 }
