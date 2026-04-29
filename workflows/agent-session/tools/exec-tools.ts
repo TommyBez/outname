@@ -73,18 +73,18 @@ export async function createExecTools(ctx: ExecToolsContext) {
   // cheaply when they run.
   const execSandbox = await getExecSandbox(agentId)
 
-  // Hand the resumed sandbox to bash-tool. We pass an explicit
-  // `toolPrompt: ""` so the toolkit skips its on-boot capability probe
-  // (rg / jq / etc. detection) — the probe is one extra
-  // `executeCommand` round-trip per agent build, which would add
-  // measurable latency to every chat / heartbeat event for a feature
-  // we don't yet rely on. We can re-enable it later if AGENTS.md ever
-  // wants the autodiscovered prompt.
+  // Hand the resumed sandbox to bash-tool. We rely on its default
+  // `promptOptions` so the bash tool description includes the
+  // toolkit's autodiscovered guidance (which CLIs are available in
+  // the sandbox, etc.). The probe still runs whether or not we
+  // suppress its output, so overriding `toolPrompt` is not actually
+  // a latency optimisation — it just hides useful hints from the
+  // model. Revisit if profiling ever shows the prompt assembly is a
+  // hot path.
   const bashKit = await createBashTool({
     sandbox: execSandbox,
     destination: EXEC_SANDBOX_WORKSPACE,
     maxOutputLength: MAX_OUTPUT_BYTES,
-    promptOptions: { toolPrompt: "" },
     extraInstructions:
       "Every bash call is automatically appended to logs/<UTC date>.md in your memory volume — you can grep your own command history with search_memory.",
     onAfterBashCall: ({ command, result }) => {
