@@ -139,145 +139,160 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
   }
 
   return (
-    <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
-      <div className="flex flex-col gap-2">
+    <form className="flex flex-col gap-8" onSubmit={handleSubmit}>
+      <div className="grid gap-3 border-foreground border-b-2 pb-8 md:grid-cols-[12rem_minmax(0,1fr)]">
         <Label htmlFor="agent-name">Name</Label>
-        <Input
-          id="agent-name"
-          maxLength={120}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Research Buddy"
-          required
-          value={name}
-        />
-        <p className="text-muted-foreground text-xs">
-          Shown in the sidebar and at the top of every chat.
-        </p>
+        <div className="flex flex-col gap-2">
+          <Input
+            id="agent-name"
+            maxLength={120}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Research Buddy"
+            required
+            value={name}
+          />
+          <p className="text-muted-foreground text-xs">
+            Shown in the sidebar and at the top of every chat.
+          </p>
+        </div>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <Label>Persona files</Label>
-        <p className="text-muted-foreground text-xs">
-          {
-            "These two files are inlined verbatim into the agent's system prompt on every event. They live in the agent's memory volume — the agent can read them via read_memory but its tools refuse to write or delete them. Save here flushes to disk on the next event."
-          }
-        </p>
-        <Tabs className="mt-1" defaultValue="identity">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="identity">Identity (SOUL.md)</TabsTrigger>
-            <TabsTrigger value="instructions">
-              Instructions (AGENTS.md)
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent className="mt-3" value="identity">
-            <Textarea
-              className="font-mono text-sm"
-              id="agent-identity"
-              onChange={(e) => setIdentity(e.target.value)}
-              placeholder={
-                'Voice, tone, name preferences, hobbies, anything that makes this agent feel like a specific person. Empty is fine — the agent will just present a generic helper persona.'
-              }
-              rows={12}
-              value={identity}
-            />
-            <p className="mt-2 text-muted-foreground text-xs">
-              Saved to <span className="font-mono">SOUL.md</span> in the
-              agent&apos;s memory volume.
-            </p>
-          </TabsContent>
-          <TabsContent className="mt-3" value="instructions">
-            <Textarea
-              className="font-mono text-sm"
-              id="agent-instructions"
-              onChange={(e) => setInstructions(e.target.value)}
-              placeholder={
-                'Operating manual. What does this agent do during heartbeats? Which memory files matter? When should it ping the user? Empty falls back to the platform default template.'
-              }
-              rows={12}
-              value={instructions}
-            />
-            <p className="mt-2 text-muted-foreground text-xs">
-              Saved to <span className="font-mono">AGENTS.md</span> in the
-              agent&apos;s memory volume.
-            </p>
-          </TabsContent>
-        </Tabs>
+      <div className="grid gap-3 border-foreground border-b-2 pb-8 md:grid-cols-[12rem_minmax(0,1fr)]">
+        <div>
+          <Label>Persona files</Label>
+        </div>
+        <div>
+          <p className="mb-4 max-w-2xl text-muted-foreground text-xs leading-relaxed">
+            {
+              "These two files are inlined verbatim into the agent's system prompt on every event. They live in the agent's memory volume — the agent can read them via read_memory but its tools refuse to write or delete them. Save here flushes to disk on the next event."
+            }
+          </p>
+          <Tabs className="mt-1" defaultValue="identity">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="identity">Identity (SOUL.md)</TabsTrigger>
+              <TabsTrigger value="instructions">
+                Instructions (AGENTS.md)
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent className="mt-3" value="identity">
+              <Textarea
+                className="font-mono text-sm"
+                id="agent-identity"
+                onChange={(e) => setIdentity(e.target.value)}
+                placeholder={
+                  'Voice, tone, name preferences, hobbies, anything that makes this agent feel like a specific person. Empty is fine — the agent will just present a generic helper persona.'
+                }
+                rows={12}
+                value={identity}
+              />
+              <p className="mt-2 text-muted-foreground text-xs">
+                Saved to <span className="font-mono">SOUL.md</span> in the
+                agent&apos;s memory volume.
+              </p>
+            </TabsContent>
+            <TabsContent className="mt-3" value="instructions">
+              <Textarea
+                className="font-mono text-sm"
+                id="agent-instructions"
+                onChange={(e) => setInstructions(e.target.value)}
+                placeholder={
+                  'Operating manual. What does this agent do during heartbeats? Which memory files matter? When should it ping the user? Empty falls back to the platform default template.'
+                }
+                rows={12}
+                value={instructions}
+              />
+              <p className="mt-2 text-muted-foreground text-xs">
+                Saved to <span className="font-mono">AGENTS.md</span> in the
+                agent&apos;s memory volume.
+              </p>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div className="grid gap-3 border-foreground border-b-2 pb-8 md:grid-cols-[12rem_minmax(0,1fr)]">
         <Label htmlFor="agent-model">Model</Label>
-        <Select onValueChange={setModel} value={model}>
-          <SelectTrigger id="agent-model">
-            <SelectValue placeholder="Select a model" />
-          </SelectTrigger>
-          <SelectContent>
-            {ownedByKeys.length === 0 ? (
-              <SelectItem value={defaultModel}>{defaultModel}</SelectItem>
-            ) : (
-              ownedByKeys.map((ownedBy) => (
-                <SelectGroup key={ownedBy}>
-                  <SelectLabel>{ownedBy}</SelectLabel>
-                  {grouped[ownedBy].map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      <span className="font-medium">{m.name}</span>
-                      <span className="ml-2 text-muted-foreground text-xs">
-                        {(m.contextWindow / 1000).toFixed(0)}k ctx
-                      </span>
+        <div className="flex flex-col gap-2">
+          <Select onValueChange={setModel} value={model}>
+            <SelectTrigger id="agent-model">
+              <SelectValue placeholder="Select a model" />
+            </SelectTrigger>
+            <SelectContent>
+              {ownedByKeys.length === 0 ? (
+                <SelectItem value={defaultModel}>{defaultModel}</SelectItem>
+              ) : (
+                ownedByKeys.map((ownedBy) => (
+                  <SelectGroup key={ownedBy}>
+                    <SelectLabel>{ownedBy}</SelectLabel>
+                    {grouped[ownedBy].map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        <span className="font-medium">{m.name}</span>
+                        <span className="ml-2 text-muted-foreground text-xs">
+                          {(m.contextWindow / 1000).toFixed(0)}k ctx
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+          <p className="text-muted-foreground text-xs">
+            Routed through the Vercel AI Gateway. Filtered to models that
+            support tool calling.
+          </p>
+        </div>
+      </div>
+
+      <div className="swiss-diagonal grid gap-4 border-2 border-foreground bg-muted p-5 md:grid-cols-[12rem_minmax(0,1fr)]">
+        <Label
+          className="font-bold text-sm uppercase tracking-[0.14em]"
+          htmlFor="agent-heartbeat"
+        >
+          Heartbeat
+        </Label>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-1">
+              <p className="text-muted-foreground text-xs">
+                When on, the agent wakes on a fixed cadence to do proactive
+                work. Off means it only runs when you chat or click Trigger.
+              </p>
+            </div>
+            <Switch
+              checked={heartbeatEnabled}
+              id="agent-heartbeat"
+              onCheckedChange={setHeartbeatEnabled}
+            />
+          </div>
+          {heartbeatEnabled ? (
+            <div className="flex flex-col gap-2">
+              <Label className="text-sm" htmlFor="agent-interval">
+                Interval
+              </Label>
+              <Select
+                onValueChange={(v) =>
+                  setIntervalMinutes(Number.parseInt(v, 10))
+                }
+                value={String(intervalMinutes)}
+              >
+                <SelectTrigger id="agent-interval">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {INTERVAL_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={String(opt.value)}>
+                      {opt.label}
                     </SelectItem>
                   ))}
-                </SelectGroup>
-              ))
-            )}
-          </SelectContent>
-        </Select>
-        <p className="text-muted-foreground text-xs">
-          Routed through the Vercel AI Gateway. Filtered to models that support
-          tool calling.
-        </p>
-      </div>
-
-      <div className="flex flex-col gap-3 rounded-md border bg-muted/30 p-4">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex flex-col gap-1">
-            <Label className="font-medium text-sm" htmlFor="agent-heartbeat">
-              Heartbeat
-            </Label>
-            <p className="text-muted-foreground text-xs">
-              When on, the agent wakes on a fixed cadence to do proactive work.
-              Off means it only runs when you chat or click Trigger.
-            </p>
-          </div>
-          <Switch
-            checked={heartbeatEnabled}
-            id="agent-heartbeat"
-            onCheckedChange={setHeartbeatEnabled}
-          />
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
         </div>
-        {heartbeatEnabled ? (
-          <div className="flex flex-col gap-2">
-            <Label className="text-sm" htmlFor="agent-interval">
-              Interval
-            </Label>
-            <Select
-              onValueChange={(v) => setIntervalMinutes(Number.parseInt(v, 10))}
-              value={String(intervalMinutes)}
-            >
-              <SelectTrigger id="agent-interval">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {INTERVAL_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={String(opt.value)}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        ) : null}
       </div>
 
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex items-center justify-end gap-3">
         <Button
           disabled={pending}
           onClick={() => router.back()}

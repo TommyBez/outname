@@ -20,7 +20,7 @@ export default function RunDetailPage({
   return (
     <AppShell>
       <Link
-        className="mb-10 inline-block text-muted-foreground text-sm transition-colors hover:text-foreground"
+        className="mb-10 inline-block font-bold text-muted-foreground text-xs uppercase tracking-[0.18em] transition-colors hover:text-accent"
         href="/runs"
       >
         ← History
@@ -62,12 +62,10 @@ async function RunDetail({ params }: { params: Promise<{ runId: string }> }) {
 
   return (
     <>
-      <header className="mb-12 flex flex-col gap-4 md:mb-16">
-        <p className="font-mono text-muted-foreground text-xs uppercase tracking-[0.2em]">
-          Run
-        </p>
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <h1 className="text-balance font-medium font-serif text-3xl leading-tight tracking-tight md:text-4xl">
+      <header className="mb-12 border-foreground border-t-4 pt-6 md:mb-16">
+        <p className="swiss-label mb-4 text-accent">09. Run</p>
+        <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+          <h1 className="text-balance font-black font-serif text-4xl uppercase leading-[0.95] tracking-tighter md:text-6xl">
             {formatDateTime(run.startedAt)}
           </h1>
           <RunStatus
@@ -91,12 +89,12 @@ function RunDetailMain({
 }) {
   if (run.status === 'failed') {
     return (
-      <div className="border-destructive/30 border-t pt-8">
-        <p className="font-mono text-destructive text-xs uppercase tracking-[0.2em]">
+      <div className="border-destructive border-t-2 pt-8">
+        <p className="font-bold text-destructive text-xs uppercase tracking-[0.2em]">
           Run failed
         </p>
         {run.error ? (
-          <pre className="mt-4 max-h-64 overflow-auto rounded-md border border-border bg-muted/40 p-3 font-mono text-muted-foreground text-xs">
+          <pre className="mt-4 max-h-64 overflow-auto border-2 border-border bg-muted p-4 font-mono text-muted-foreground text-xs">
             {run.error}
           </pre>
         ) : null}

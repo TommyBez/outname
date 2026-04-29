@@ -62,15 +62,15 @@ export function AppSidebar({ sidebarExtras }: AppSidebarProps = {}) {
   }, [isMobile, setOpenMobile])
 
   return (
-    <Sidebar className="border-sidebar-border border-r" collapsible="icon">
-      <SidebarHeader className="border-sidebar-border border-b px-3 py-4">
+    <Sidebar className="border-sidebar-border border-r-2" collapsible="icon">
+      <SidebarHeader className="border-sidebar-border border-b-2 px-3 py-5">
         <Link
-          className="flex items-center gap-2 font-medium font-mono text-foreground text-sm uppercase tracking-[0.18em] transition-colors hover:text-foreground/80"
+          className="flex min-h-11 items-center gap-3 font-black text-foreground text-sm uppercase tracking-[0.22em] transition-colors hover:text-accent"
           href="/"
         >
           <span
             aria-hidden
-            className="inline-block size-2 shrink-0 bg-accent"
+            className="inline-block size-3 shrink-0 bg-accent"
           />
           <span className="truncate group-data-[collapsible=icon]:hidden">
             agents
@@ -86,7 +86,7 @@ export function AppSidebar({ sidebarExtras }: AppSidebarProps = {}) {
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     asChild
-                    className="data-[active=true]:text-foreground"
+                    className="font-bold uppercase tracking-[0.12em] data-[active=true]:border-foreground data-[active=true]:bg-accent data-[active=true]:text-foreground"
                     isActive={isActive(item.href)}
                     tooltip={item.label}
                   >
@@ -107,7 +107,7 @@ export function AppSidebar({ sidebarExtras }: AppSidebarProps = {}) {
         {sidebarExtras}
       </SidebarContent>
 
-      <SidebarFooter className="border-sidebar-border border-t">
+      <SidebarFooter className="border-sidebar-border border-t-2">
         <SidebarMenu>
           <SidebarMenuItem>
             <SignOutMenuButton />
@@ -126,12 +126,12 @@ export function AppSidebar({ sidebarExtras }: AppSidebarProps = {}) {
  */
 export function AppSidebarFallback() {
   return (
-    <Sidebar className="border-sidebar-border border-r" collapsible="icon">
-      <SidebarHeader className="border-sidebar-border border-b px-3 py-4">
-        <div className="flex items-center gap-2 font-medium font-mono text-foreground text-sm uppercase tracking-[0.18em]">
+    <Sidebar className="border-sidebar-border border-r-2" collapsible="icon">
+      <SidebarHeader className="border-sidebar-border border-b-2 px-3 py-5">
+        <div className="flex min-h-11 items-center gap-3 font-black text-foreground text-sm uppercase tracking-[0.22em]">
           <span
             aria-hidden
-            className="inline-block size-2 shrink-0 bg-accent"
+            className="inline-block size-3 shrink-0 bg-accent"
           />
           <span className="truncate group-data-[collapsible=icon]:hidden">
             agents
@@ -179,7 +179,7 @@ function SignOutMenuButton() {
 
   return (
     <SidebarMenuButton
-      className="text-muted-foreground hover:text-foreground"
+      className="font-bold text-muted-foreground uppercase tracking-[0.12em] hover:bg-accent hover:text-foreground"
       disabled={isPending}
       onClick={handleSignOut}
       tooltip="Sign out"

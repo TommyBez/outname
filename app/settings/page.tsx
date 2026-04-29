@@ -14,12 +14,10 @@ export default function SettingsPage({
 }) {
   return (
     <AppShell>
-      <header className="mb-12 flex flex-col gap-2 md:mb-16">
-        <p className="font-mono text-muted-foreground text-xs uppercase tracking-[0.2em]">
-          Settings
-        </p>
-        <h1 className="font-medium font-serif text-4xl leading-tight tracking-tight md:text-5xl">
-          Your assistant.
+      <header className="mb-12 border-foreground border-t-4 pt-6 md:mb-16">
+        <p className="swiss-label mb-4 text-accent">08. Settings</p>
+        <h1 className="font-black font-serif text-6xl uppercase leading-[0.9] tracking-tighter md:text-8xl">
+          Your assistant
         </h1>
       </header>
 
@@ -27,7 +25,7 @@ export default function SettingsPage({
         <FlashNotice searchParams={searchParams} />
       </Suspense>
 
-      <div className="flex flex-col divide-y divide-border">
+      <div className="border-foreground border-y-2">
         <Section title="Gmail">
           <Suspense fallback={<GmailSectionSkeleton />}>
             <GmailSection />
@@ -58,8 +56,8 @@ async function FlashNotice({
   const sp = await searchParams
   if (sp.gmail === 'error') {
     return (
-      <div className="mb-10 border-destructive border-l-2 pl-4">
-        <p className="font-mono text-destructive text-xs uppercase tracking-[0.2em]">
+      <div className="mb-10 border-destructive border-l-4 bg-muted py-3 pl-4">
+        <p className="font-bold text-destructive text-xs uppercase tracking-[0.2em]">
           Connection failed
         </p>
         <p className="mt-1 text-muted-foreground text-sm">
@@ -70,8 +68,10 @@ async function FlashNotice({
   }
   if (sp.gmail === 'connected') {
     return (
-      <div className="mb-10 border-foreground border-l-2 pl-4">
-        <p className="font-medium font-serif text-lg">Gmail connected.</p>
+      <div className="mb-10 border-foreground border-l-4 bg-muted py-3 pl-4">
+        <p className="font-black font-serif text-lg uppercase tracking-[-0.04em]">
+          Gmail connected.
+        </p>
       </div>
     )
   }
@@ -100,7 +100,7 @@ async function AgentsSummarySection() {
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
       <div>
-        <p className="font-medium font-serif text-xl">
+        <p className="font-black font-serif text-xl uppercase tracking-[-0.04em]">
           {agents.length} agent{agents.length === 1 ? '' : 's'} · {enabled}{' '}
           enabled
         </p>
@@ -109,7 +109,7 @@ async function AgentsSummarySection() {
         </p>
       </div>
       <Link
-        className="inline-flex shrink-0 items-center justify-center self-start rounded-md border border-border px-4 py-2 font-medium text-sm transition-colors hover:bg-muted sm:self-auto"
+        className="inline-flex h-11 shrink-0 items-center justify-center self-start border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background sm:self-auto"
         href="/agents"
       >
         Manage agents →
@@ -122,7 +122,7 @@ async function AccountSection() {
   const session = await getSession()
   return (
     <Row label="Signed in as">
-      <p className="font-medium font-serif text-xl leading-tight">
+      <p className="font-black font-serif text-xl uppercase leading-tight tracking-[-0.04em]">
         {session?.user.email ?? '—'}
       </p>
     </Row>
@@ -137,10 +137,8 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <section className="grid grid-cols-1 gap-6 py-10 first:pt-0 last:pb-0 lg:grid-cols-[160px_1fr] lg:gap-10">
-      <h2 className="font-mono text-muted-foreground text-xs uppercase tracking-[0.2em]">
-        {title}
-      </h2>
+    <section className="grid grid-cols-1 gap-6 border-foreground border-b-2 py-10 last:border-b-0 lg:grid-cols-[160px_1fr] lg:gap-10">
+      <h2 className="swiss-label text-accent">{title}</h2>
       <div className="min-w-0">{children}</div>
     </section>
   )
@@ -155,7 +153,7 @@ function Row({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <p className="font-mono text-muted-foreground text-xs uppercase tracking-wider">
+      <p className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
         {label}
       </p>
       <div>{children}</div>

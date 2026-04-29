@@ -75,10 +75,8 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
         </Suspense>
       </section>
 
-      <section className="py-10">
-        <h2 className="mb-4 font-mono text-muted-foreground text-xs uppercase tracking-[0.2em]">
-          History
-        </h2>
+      <section className="py-12">
+        <h2 className="swiss-label mb-6 text-accent">06. History</h2>
         <Suspense fallback={<HistorySkeleton />}>
           <AgentHistorySection agentId={agent.id} />
         </Suspense>
@@ -89,41 +87,44 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
 
 function AgentOverviewHeader({ agent }: { agent: Agent }) {
   return (
-    <header className="mb-10 flex flex-col gap-6">
-      <div className="flex flex-col gap-1.5">
-        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-muted-foreground text-xs uppercase tracking-[0.2em]">
-          <span>{agent.model}</span>
-          {agent.heartbeatEnabled ? (
-            <span>
-              · heartbeat every {formatInterval(agent.heartbeatIntervalMinutes)}
-            </span>
-          ) : (
-            <span>· heartbeat off</span>
-          )}
-          {!agent.enabled && (
-            <span className="rounded-sm border border-border px-1.5 py-0.5 text-[10px] tracking-wider">
-              PAUSED
-            </span>
-          )}
-        </p>
-        <h1 className="font-medium font-serif text-4xl leading-tight tracking-tight md:text-5xl">
-          {agent.name}
-        </h1>
-      </div>
-      <div className="flex flex-wrap items-center gap-3">
-        <TriggerButton agentId={agent.id} />
-        <Link
-          className="inline-flex items-center justify-center rounded-md border border-border px-4 py-2 font-medium text-sm transition-colors hover:bg-muted"
-          href={`/agents/${agent.id}/edit`}
-        >
-          Configure
-        </Link>
-        <Link
-          className="inline-flex items-center justify-center rounded-md border border-border px-4 py-2 font-medium text-sm transition-colors hover:bg-muted"
-          href={`/agents/${agent.id}/files`}
-        >
-          Files
-        </Link>
+    <header className="mb-12 border-foreground border-t-4 pt-6">
+      <div className="grid gap-8 md:grid-cols-[minmax(0,7fr)_minmax(16rem,3fr)]">
+        <div className="flex flex-col gap-4">
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
+            <span>{agent.model}</span>
+            {agent.heartbeatEnabled ? (
+              <span>
+                · heartbeat every{' '}
+                {formatInterval(agent.heartbeatIntervalMinutes)}
+              </span>
+            ) : (
+              <span>· heartbeat off</span>
+            )}
+            {!agent.enabled && (
+              <span className="border border-border px-1.5 py-0.5 text-[10px] tracking-wider">
+                PAUSED
+              </span>
+            )}
+          </p>
+          <h1 className="font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter md:text-7xl">
+            {agent.name}
+          </h1>
+        </div>
+        <div className="flex flex-wrap items-start gap-3 border-foreground border-l-2 pl-4 md:justify-end">
+          <TriggerButton agentId={agent.id} />
+          <Link
+            className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+            href={`/agents/${agent.id}/edit`}
+          >
+            Configure
+          </Link>
+          <Link
+            className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+            href={`/agents/${agent.id}/files`}
+          >
+            Files
+          </Link>
+        </div>
       </div>
     </header>
   )
@@ -133,13 +134,11 @@ async function LastRunSection({ agentId }: { agentId: string }) {
   const latest = await getCachedLatestRunForAgent(agentId)
   return (
     <>
-      <div className="mb-8 flex items-baseline justify-between gap-4">
-        <h2 className="font-mono text-muted-foreground text-xs uppercase tracking-[0.2em]">
-          Last run
-        </h2>
+      <div className="mb-8 flex items-baseline justify-between gap-4 border-foreground border-t-2 pt-6">
+        <h2 className="swiss-label text-accent">05. Last run</h2>
         {latest && (
           <Link
-            className="font-mono text-muted-foreground text-xs uppercase tracking-wider transition-colors hover:text-foreground"
+            className="font-bold text-muted-foreground text-xs uppercase tracking-wider transition-colors hover:text-accent"
             href={`/runs/${latest.id}`}
           >
             Open run →
@@ -168,17 +167,14 @@ async function LastRunBody({ latest }: { latest: Run | null }) {
     return (
       <div className="flex flex-col gap-3">
         <p className="inline-flex items-center gap-3 text-sm">
-          <span
-            aria-hidden
-            className="inline-block size-1.5 rounded-full bg-destructive"
-          />
+          <span aria-hidden className="inline-block size-2 bg-destructive" />
           <span className="text-destructive">Run failed</span>
           <span className="text-muted-foreground">
             · {formatDateTime(latest.startedAt)}
           </span>
         </p>
         {latest.error && (
-          <pre className="max-h-64 overflow-auto rounded-md border border-border bg-muted/40 p-3 font-mono text-muted-foreground text-xs">
+          <pre className="max-h-64 overflow-auto border-2 border-border bg-muted p-4 font-mono text-muted-foreground text-xs">
             {latest.error}
           </pre>
         )}
@@ -205,11 +201,11 @@ async function AgentHistorySection({ agentId }: { agentId: string }) {
   }
 
   return (
-    <ul className="flex flex-col divide-y divide-border border-border border-y">
+    <ul className="border-foreground border-y-2">
       {runs.map((r) => (
         <li key={r.id}>
           <Link
-            className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-1 py-3 transition-colors hover:bg-muted/30 sm:grid-cols-[auto_1fr_auto] sm:gap-8 sm:px-2"
+            className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-1 border-foreground border-b-2 py-4 transition-colors last:border-b-0 hover:bg-accent sm:grid-cols-[auto_1fr_auto] sm:gap-8 sm:px-3"
             href={`/runs/${r.id}`}
           >
             <RunStatus

@@ -21,30 +21,30 @@ export function AgentTodayCard({
 }) {
   return (
     <Link
-      className="group flex flex-col gap-5 py-10 transition-colors first:pt-0 last:pb-0 hover:bg-muted/30 md:px-2"
+      className="group grid gap-6 border-foreground border-b-2 py-8 transition-colors last:border-b-0 hover:bg-accent md:grid-cols-[minmax(0,7fr)_minmax(14rem,3fr)] md:px-4"
       href={`/agents/${agent.id}`}
     >
       <div className="flex flex-col gap-1.5">
-        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-muted-foreground text-xs uppercase tracking-[0.2em]">
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em] group-hover:text-foreground">
           <span>{agent.model}</span>
           {!agent.enabled && (
-            <span className="rounded-sm border border-border px-1.5 py-0.5 text-[10px] tracking-wider">
+            <span className="border border-border px-1.5 py-0.5 text-[10px] tracking-wider">
               PAUSED
             </span>
           )}
         </p>
-        <h2 className="text-pretty font-medium font-serif text-3xl leading-tight tracking-tight">
+        <h2 className="text-pretty font-black font-serif text-4xl uppercase leading-[0.95] tracking-tighter md:text-5xl">
           {agent.name}
         </h2>
       </div>
 
-      <div className="flex items-center justify-between gap-6 border-border border-t pt-5">
+      <div className="flex items-end justify-between gap-6 border-foreground border-t-2 pt-5 md:border-t-0 md:border-l-2 md:pl-6">
         <div className="min-w-0 flex-1">
           <CardStatus latestRun={latestRun} />
         </div>
         <span
           aria-hidden
-          className="shrink-0 text-muted-foreground text-sm transition-colors group-hover:text-foreground"
+          className="shrink-0 font-bold text-muted-foreground text-sm transition-transform group-hover:translate-x-1 group-hover:text-foreground"
         >
           Open →
         </span>
@@ -70,10 +70,7 @@ function CardStatus({ latestRun }: { latestRun: Run | null }) {
     return (
       <div className="flex flex-col gap-1">
         <span className="inline-flex items-center gap-2 text-destructive text-sm">
-          <span
-            aria-hidden
-            className="inline-block size-1.5 rounded-full bg-destructive"
-          />
+          <span aria-hidden className="inline-block size-2 bg-destructive" />
           Last run failed
           <span className="text-muted-foreground">
             · {formatRelative(latestRun.startedAt)}
@@ -91,10 +88,7 @@ function CardStatus({ latestRun }: { latestRun: Run | null }) {
   // completed — agent-agnostic status line
   return (
     <span className="inline-flex items-center gap-2 text-sm">
-      <span
-        aria-hidden
-        className="inline-block size-1.5 rounded-full bg-foreground/50"
-      />
+      <span aria-hidden className="inline-block size-2 bg-foreground" />
       <span className="text-foreground">Last run complete</span>
       <span className="text-muted-foreground">
         · {formatRelative(latestRun.startedAt)}

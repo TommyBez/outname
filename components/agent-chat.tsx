@@ -149,7 +149,7 @@ export function AgentChat({
 
       {error && (
         <p
-          className="mb-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 font-mono text-destructive text-xs"
+          className="mb-2 border-2 border-destructive bg-destructive px-3 py-2 font-bold text-destructive-foreground text-xs uppercase tracking-[0.12em]"
           role="alert"
         >
           {error.message || 'Something went wrong. Try again.'}

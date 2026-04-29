@@ -28,13 +28,11 @@ export function RunProgress({ runId }: { runId: string }) {
     (connected ? 'Waiting for the first step…' : 'Connecting…')
 
   return (
-    <div className="border-border border-t pt-10">
-      <p className="font-mono text-muted-foreground text-xs uppercase tracking-[0.2em]">
-        In progress
-      </p>
+    <div className="border-foreground border-t-2 pt-10">
+      <p className="swiss-label text-accent">In progress</p>
       <MorphingText
         as="p"
-        className="mt-3 font-serif text-2xl leading-snug"
+        className="mt-3 font-black font-serif text-3xl uppercase leading-none tracking-tighter"
         text={latestMessage}
       />
 
@@ -95,12 +93,12 @@ function StepRow({ step, index }: { step: StepState; index: number }) {
       <span
         aria-hidden
         className={cn(
-          'mt-2 inline-block size-2 shrink-0 rounded-full transition-colors',
+          'mt-2 inline-block size-2 shrink-0 transition-colors',
           dot
         )}
       />
       <div className="flex flex-col gap-0.5">
-        <span className={cn('font-medium text-sm transition-colors', label)}>
+        <span className={cn('font-bold text-sm transition-colors', label)}>
           {step.label}
         </span>
         {step.message && step.status !== 'pending' && (

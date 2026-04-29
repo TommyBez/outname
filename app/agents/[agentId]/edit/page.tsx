@@ -53,22 +53,20 @@ async function AgentEdit({ params }: { params: Params }) {
   return (
     <>
       <Link
-        className="mb-6 inline-block font-mono text-muted-foreground text-xs uppercase tracking-[0.2em] transition-colors hover:text-foreground"
+        className="mb-8 inline-block font-bold text-muted-foreground text-xs uppercase tracking-[0.18em] transition-colors hover:text-accent"
         href={`/agents/${agentRow.id}`}
       >
         ← {agentRow.name}
       </Link>
 
-      <header className="mb-10 flex flex-col gap-2">
-        <p className="font-mono text-muted-foreground text-xs uppercase tracking-[0.2em]">
-          Configure
-        </p>
-        <h1 className="font-medium font-serif text-4xl leading-tight tracking-tight md:text-5xl">
+      <header className="mb-12 border-foreground border-t-4 pt-6">
+        <p className="swiss-label mb-4 text-accent">04. Configure</p>
+        <h1 className="max-w-4xl font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter md:text-7xl">
           {agentRow.name}
         </h1>
       </header>
 
-      <section className="border-border border-t py-10">
+      <section className="border-foreground border-t-2 py-10">
         <AgentForm
           defaultModel={DEFAULT_MODEL_ID}
           initial={{
@@ -84,9 +82,9 @@ async function AgentEdit({ params }: { params: Params }) {
         />
       </section>
 
-      <section className="flex flex-col gap-3 border-destructive/30 border-t pt-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+      <section className="flex flex-col gap-3 border-destructive border-t-2 pt-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div>
-          <p className="font-mono text-destructive text-xs uppercase tracking-[0.2em]">
+          <p className="font-bold text-destructive text-xs uppercase tracking-[0.2em]">
             Danger zone
           </p>
           <p className="mt-1 text-muted-foreground text-xs">
@@ -95,7 +93,7 @@ async function AgentEdit({ params }: { params: Params }) {
         </div>
         <form action={remove} className="self-start sm:self-auto">
           <button
-            className="rounded-md border border-destructive/50 px-3 py-1.5 text-destructive text-sm transition-colors hover:bg-destructive hover:text-background"
+            className="h-11 border-2 border-destructive px-4 font-bold text-destructive text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-destructive-foreground"
             type="submit"
           >
             Delete agent

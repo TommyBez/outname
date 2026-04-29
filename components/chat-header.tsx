@@ -72,10 +72,10 @@ export function ChatHeader({ agentId, agentName, enabled }: ChatHeaderProps) {
   }
 
   return (
-    <header className="flex items-center justify-between gap-3 border-border border-b pb-4">
+    <header className="flex items-center justify-between gap-3 border-foreground border-b-2 pb-4">
       <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2">
         <Link
-          className="font-mono text-muted-foreground text-xs uppercase tracking-[0.2em] transition-colors hover:text-foreground"
+          className="font-bold text-muted-foreground text-xs uppercase tracking-[0.2em] transition-colors hover:text-accent"
           href="/agents"
         >
           Agents
@@ -88,11 +88,11 @@ export function ChatHeader({ agentId, agentName, enabled }: ChatHeaderProps) {
           <span
             aria-hidden
             className={cn(
-              'inline-block size-1.5 shrink-0 rounded-full',
+              'inline-block size-2 shrink-0',
               enabled ? 'bg-accent' : 'bg-muted-foreground'
             )}
           />
-          <h1 className="min-w-0 truncate font-medium font-serif text-base tracking-tight sm:text-lg">
+          <h1 className="min-w-0 truncate font-black font-serif text-base uppercase tracking-[-0.04em] sm:text-lg">
             {agentName}
           </h1>
           <span
@@ -108,7 +108,7 @@ export function ChatHeader({ agentId, agentName, enabled }: ChatHeaderProps) {
         <DropdownMenuTrigger asChild>
           <button
             aria-label="Agent actions"
-            className="inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors hover:border-border hover:bg-muted hover:text-foreground"
+            className="inline-flex size-10 shrink-0 items-center justify-center border-2 border-transparent text-muted-foreground transition-colors hover:border-border hover:bg-accent hover:text-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             type="button"
           >
             <MoreHorizontal aria-hidden className="size-4" />

@@ -57,8 +57,8 @@ export const MessageContent = ({
       // for long unbroken strings like `a@b.com` on narrow mobile
       // viewports) forces those tokens to wrap instead of being cut
       // off by the right edge.
-      'is-user:dark flex w-fit min-w-0 max-w-full flex-col gap-2 overflow-hidden break-words text-sm [overflow-wrap:anywhere]',
-      'group-[.is-user]:ml-auto group-[.is-user]:rounded-lg group-[.is-user]:bg-secondary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-foreground',
+      'flex w-fit min-w-0 max-w-full flex-col gap-2 overflow-hidden text-sm wrap-anywhere',
+      'group-[.is-user]:ml-auto group-[.is-user]:border-2 group-[.is-user]:border-border group-[.is-user]:bg-secondary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-foreground',
       'group-[.is-assistant]:text-foreground',
       className
     )}

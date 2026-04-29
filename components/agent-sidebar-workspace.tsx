@@ -304,7 +304,7 @@ function ConversationRow({
       <SidebarMenuItem>
         <form
           className={cn(
-            'flex items-center gap-1 rounded-md border border-sidebar-border bg-sidebar-accent/40 px-2 py-1.5',
+            'flex items-center gap-1 border-2 border-sidebar-border bg-sidebar-accent px-2 py-1.5',
             isActive && 'border-foreground'
           )}
           onSubmit={submitRename}
@@ -322,7 +322,7 @@ function ConversationRow({
           />
           <button
             aria-label="Save title"
-            className="rounded-sm p-1 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground disabled:opacity-50"
+            className="border border-transparent p-1 text-muted-foreground transition-colors hover:border-sidebar-border hover:bg-sidebar-accent hover:text-foreground disabled:opacity-50"
             disabled={isRenaming}
             type="submit"
           >
@@ -330,7 +330,7 @@ function ConversationRow({
           </button>
           <button
             aria-label="Cancel rename"
-            className="rounded-sm p-1 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground disabled:opacity-50"
+            className="border border-transparent p-1 text-muted-foreground transition-colors hover:border-sidebar-border hover:bg-sidebar-accent hover:text-foreground disabled:opacity-50"
             disabled={isRenaming}
             onClick={() => {
               setIsEditing(false)

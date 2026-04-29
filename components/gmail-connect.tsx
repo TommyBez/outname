@@ -42,10 +42,10 @@ export function GmailConnect({ connection }: Props) {
     return (
       <div className="flex flex-col gap-5">
         <div>
-          <p className="font-mono text-muted-foreground text-xs uppercase tracking-[0.2em]">
+          <p className="font-bold text-muted-foreground text-xs uppercase tracking-[0.2em]">
             Not connected
           </p>
-          <p className="mt-2 font-serif text-lg leading-snug">
+          <p className="mt-2 font-black font-serif text-xl uppercase leading-none tracking-[-0.04em]">
             The agent needs read-only access to your inbox.
           </p>
         </div>
@@ -66,24 +66,24 @@ export function GmailConnect({ connection }: Props) {
         <div className="flex items-center gap-2">
           <span
             aria-hidden
-            className={`inline-block size-1.5 rounded-full ${expired ? 'bg-destructive' : 'bg-foreground/60'}`}
+            className={`inline-block size-2 ${expired ? 'bg-destructive' : 'bg-foreground'}`}
           />
           <p
-            className={`font-mono text-xs uppercase tracking-[0.2em] ${
+            className={`font-bold text-xs uppercase tracking-[0.2em] ${
               expired ? 'text-destructive' : 'text-muted-foreground'
             }`}
           >
             {expired ? 'Needs attention' : 'Connected'}
           </p>
         </div>
-        <p className="mt-2 font-medium font-serif text-lg leading-snug">
+        <p className="mt-2 font-black font-serif text-xl uppercase leading-none tracking-[-0.04em]">
           {connection.email}
         </p>
         <p className="mt-1 text-muted-foreground text-xs">
           Linked {new Date(connection.connectedAt).toLocaleDateString()}
         </p>
         {expired && connection.lastError ? (
-          <pre className="mt-3 max-h-32 overflow-auto rounded-md border border-border bg-muted/40 p-3 font-mono text-muted-foreground text-xs">
+          <pre className="mt-3 max-h-32 overflow-auto border-2 border-border bg-muted p-3 font-mono text-muted-foreground text-xs">
             {connection.lastError}
           </pre>
         ) : null}

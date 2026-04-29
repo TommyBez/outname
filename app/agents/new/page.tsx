@@ -12,16 +12,16 @@ export default async function NewAgentPage() {
 
   return (
     <AppShell>
-      <header className="mb-10 flex flex-col gap-2">
-        <p className="font-mono text-muted-foreground text-xs uppercase tracking-[0.2em]">
-          New agent
-        </p>
-        <h1 className="font-medium font-serif text-4xl leading-tight tracking-tight md:text-5xl">
-          Configure a new agent.
+      <header className="mb-12 border-foreground border-t-4 pt-6">
+        <p className="swiss-label mb-4 text-accent">03. New agent</p>
+        <h1 className="max-w-4xl font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter md:text-7xl">
+          Configure a new agent
         </h1>
       </header>
 
-      <AgentForm defaultModel={DEFAULT_MODEL_ID} models={models} />
+      <section className="border-foreground border-t-2 pt-8">
+        <AgentForm defaultModel={DEFAULT_MODEL_ID} models={models} />
+      </section>
     </AppShell>
   )
 }

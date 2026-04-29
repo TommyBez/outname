@@ -9,16 +9,19 @@ import { formatRelative } from '@/lib/format'
 export default function AgentsListPage() {
   return (
     <AppShell>
-      <header className="mb-10 flex flex-col gap-2 md:mb-12">
-        <p className="font-mono text-muted-foreground text-xs uppercase tracking-[0.2em]">
-          Agents
-        </p>
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <h1 className="font-medium font-serif text-4xl leading-tight tracking-tight md:text-5xl">
-            Your agents.
-          </h1>
+      <header className="mb-12 border-foreground border-t-4 pt-6">
+        <div className="grid gap-8 md:grid-cols-[minmax(0,7fr)_minmax(14rem,3fr)] md:items-end">
+          <div>
+            <p className="swiss-label mb-4 text-accent">02. Agents</p>
+            <h1 className="font-black font-serif text-6xl uppercase leading-[0.9] tracking-tighter md:text-8xl">
+              Your agents
+            </h1>
+          </div>
+          <p className="max-w-xs border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
+            Each worker has its own model, schedule, memory, and run history.
+          </p>
           <Link
-            className="inline-flex shrink-0 items-center justify-center self-start rounded-md bg-foreground px-4 py-2 font-medium text-background text-sm transition-opacity hover:opacity-90 md:self-auto"
+            className="inline-flex h-14 shrink-0 items-center justify-center self-start border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground md:self-auto"
             href="/agents/new"
           >
             + New agent
@@ -47,9 +50,11 @@ async function AgentsListBody() {
 
   if (withLatest.length === 0) {
     return (
-      <div className="border-border border-t pt-10">
-        <p className="font-serif text-2xl leading-snug">No agents yet.</p>
-        <p className="mt-3 text-muted-foreground text-sm">
+      <div className="swiss-dots border-2 border-foreground bg-muted p-8 md:p-12">
+        <p className="font-black font-serif text-3xl uppercase leading-none tracking-tighter">
+          No agents yet.
+        </p>
+        <p className="mt-4 max-w-lg text-muted-foreground text-sm leading-relaxed">
           Add an agent to automate recurring work. Each agent runs on its own
           schedule and keeps its memory in a persistent sandbox.
         </p>
@@ -58,7 +63,7 @@ async function AgentsListBody() {
   }
 
   return (
-    <ul className="flex flex-col divide-y divide-border border-border border-y">
+    <ul className="border-foreground border-y-2">
       {withLatest.map(({ agent, latest }) => (
         <li key={agent.id}>
           <AgentListRow agent={agent} latest={latest} />
@@ -71,28 +76,28 @@ async function AgentsListBody() {
 function AgentListRow({ agent, latest }: { agent: Agent; latest: Run | null }) {
   return (
     <Link
-      className="grid grid-cols-1 gap-3 py-6 transition-colors hover:bg-muted/40 md:grid-cols-[1fr_auto_auto] md:items-center md:gap-8 md:px-2"
+      className="group grid grid-cols-1 gap-4 border-foreground border-b-2 py-6 transition-colors last:border-b-0 hover:bg-accent md:grid-cols-[1fr_auto_auto] md:items-center md:gap-8 md:px-4"
       href={`/agents/${agent.id}`}
     >
       <div className="flex min-w-0 flex-col gap-1">
-        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-muted-foreground text-xs uppercase tracking-[0.2em]">
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em] group-hover:text-foreground">
           <span>{agent.model}</span>
           {!agent.enabled && (
-            <span className="rounded-sm border border-border px-1.5 py-0.5 text-[10px] tracking-wider">
+            <span className="border border-border px-1.5 py-0.5 text-[10px] tracking-wider">
               PAUSED
             </span>
           )}
         </p>
-        <p className="text-pretty font-medium font-serif text-xl leading-tight">
+        <p className="text-pretty font-black font-serif text-2xl uppercase leading-none tracking-tighter">
           {agent.name}
         </p>
       </div>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-muted-foreground text-xs md:flex-col md:items-end md:gap-y-1">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-muted-foreground text-xs group-hover:text-foreground md:flex-col md:items-end md:gap-y-1">
         <span>{latest ? formatRelative(latest.startedAt) : 'Never run'}</span>
       </div>
       <span
         aria-hidden
-        className="hidden text-muted-foreground md:inline-block"
+        className="hidden font-bold text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-foreground md:inline-block"
       >
         →
       </span>
@@ -102,18 +107,18 @@ function AgentListRow({ agent, latest }: { agent: Agent; latest: Run | null }) {
 
 function AgentsListSkeleton() {
   return (
-    <ul className="flex flex-col divide-y divide-border border-border border-y">
+    <ul className="border-foreground border-y-2">
       {[0, 1].map((i) => (
         <li
-          className="grid grid-cols-1 gap-4 py-6 md:grid-cols-[1fr_auto_auto] md:items-center md:gap-8 md:px-2"
+          className="grid grid-cols-1 gap-4 border-foreground border-b-2 py-6 last:border-b-0 md:grid-cols-[1fr_auto_auto] md:items-center md:gap-8 md:px-4"
           key={i}
         >
           <div className="flex flex-col gap-2">
-            <div className="h-3 w-32 animate-pulse rounded-sm bg-muted" />
-            <div className="h-6 w-56 animate-pulse rounded-sm bg-muted" />
+            <div className="h-3 w-32 animate-pulse bg-muted" />
+            <div className="h-6 w-56 animate-pulse bg-muted" />
           </div>
-          <div className="h-3 w-20 animate-pulse rounded-sm bg-muted" />
-          <div className="h-3 w-24 animate-pulse rounded-sm bg-muted" />
+          <div className="h-3 w-20 animate-pulse bg-muted" />
+          <div className="h-3 w-24 animate-pulse bg-muted" />
         </li>
       ))}
     </ul>

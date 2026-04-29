@@ -24,7 +24,7 @@ export function ChatFrame({
   children,
 }: ChatFrameProps) {
   return (
-    <div className="flex h-full min-w-0 flex-col gap-4">
+    <div className="flex h-full min-w-0 flex-col gap-5">
       <ChatHeader agentId={agentId} agentName={agentName} enabled={enabled} />
       <div className="flex min-h-0 flex-1 flex-col">{children}</div>
     </div>

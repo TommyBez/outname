@@ -11,16 +11,14 @@ export default function LoginPage({
   searchParams: Promise<{ from?: string }>
 }) {
   return (
-    <main className="grid min-h-svh place-items-center bg-background px-6">
-      <div className="w-full max-w-sm">
-        <div className="mb-10">
-          <p className="font-mono text-accent text-xs uppercase tracking-[0.2em]">
-            ▪ agents
-          </p>
-          <h1 className="mt-3 font-medium font-mono text-2xl leading-tight tracking-tight">
-            Sign in.
+    <main className="swiss-grid-pattern grid min-h-svh place-items-center bg-background px-6">
+      <div className="w-full max-w-md border-4 border-foreground bg-background p-8">
+        <div className="mb-10 border-foreground border-t-4 pt-5">
+          <p className="swiss-label text-accent">00. agents</p>
+          <h1 className="mt-4 font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter">
+            Sign in
           </h1>
-          <p className="mt-2 text-muted-foreground text-sm">
+          <p className="mt-4 border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
             Access your scheduled agents and today&apos;s run.
           </p>
         </div>

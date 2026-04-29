@@ -11,16 +11,22 @@ import type { Agent } from '@/lib/db/schema'
 export default function DashboardPage() {
   return (
     <AppShell>
-      <header className="mb-12 flex flex-col gap-2 md:mb-16">
-        <p className="font-mono text-muted-foreground text-xs uppercase tracking-[0.2em]">
-          <TodayDate />
-        </p>
-        <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-          <h1 className="text-balance font-medium font-serif text-4xl leading-[1.05] tracking-tight md:text-6xl">
-            Today.
-          </h1>
+      <header className="mb-12 border-foreground border-t-4 pt-6 md:mb-16">
+        <div className="grid gap-8 md:grid-cols-[minmax(0,7fr)_minmax(14rem,3fr)] md:items-end">
+          <div>
+            <p className="swiss-label mb-4 text-accent">
+              01. <TodayDate />
+            </p>
+            <h1 className="text-balance font-black font-serif text-6xl uppercase leading-[0.86] tracking-tighter md:text-8xl lg:text-[9rem]">
+              Today
+            </h1>
+          </div>
+          <p className="max-w-xs border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
+            Current agents, latest run state, and the next manual action in one
+            objective scan.
+          </p>
           <Link
-            className="inline-flex shrink-0 items-center justify-center self-start rounded-md border border-border px-4 py-2 font-medium text-sm transition-colors hover:bg-muted md:self-auto"
+            className="inline-flex h-14 shrink-0 items-center justify-center self-start border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground md:self-auto"
             href="/agents/new"
           >
             + New agent
@@ -50,13 +56,15 @@ async function AgentsList({ userId }: { userId: string }) {
 
   if (agents.length === 0) {
     return (
-      <div className="border-border border-t pt-10">
-        <p className="font-serif text-2xl leading-snug">No agents yet.</p>
-        <p className="mt-3 text-muted-foreground text-sm">
+      <div className="swiss-dots border-2 border-foreground bg-muted p-8 md:p-12">
+        <p className="font-black font-serif text-3xl uppercase leading-none tracking-tighter">
+          No agents yet.
+        </p>
+        <p className="mt-4 max-w-md text-muted-foreground text-sm leading-relaxed">
           Create your first agent to start automating recurring work.
         </p>
         <Link
-          className="mt-6 inline-flex items-center justify-center rounded-md bg-foreground px-4 py-2 font-medium text-background text-sm transition-opacity hover:opacity-90"
+          className="mt-8 inline-flex h-14 items-center justify-center border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground"
           href="/agents/new"
         >
           Create agent
@@ -66,7 +74,7 @@ async function AgentsList({ userId }: { userId: string }) {
   }
 
   return (
-    <ul className="flex flex-col divide-y divide-border">
+    <ul className="border-foreground border-y-2">
       {agents.map((a) => (
         <li key={a.id}>
           <Suspense fallback={<AgentCardSkeleton />}>

@@ -11,16 +11,16 @@ import { toRunLifecycleStatus } from '@/lib/run-lifecycle'
 export default function RunsPage() {
   return (
     <AppShell>
-      <header className="mb-10 flex flex-col gap-2 md:mb-14">
-        <p className="font-mono text-muted-foreground text-xs uppercase tracking-[0.2em]">
-          History
-        </p>
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <h1 className="font-medium font-serif text-4xl leading-tight tracking-tight md:text-5xl">
-            All runs
-          </h1>
+      <header className="mb-12 border-foreground border-t-4 pt-6">
+        <div className="grid gap-8 md:grid-cols-[minmax(0,7fr)_minmax(14rem,3fr)] md:items-end">
+          <div>
+            <p className="swiss-label mb-4 text-accent">07. History</p>
+            <h1 className="font-black font-serif text-6xl uppercase leading-[0.9] tracking-tighter md:text-8xl">
+              All runs
+            </h1>
+          </div>
           <Link
-            className="inline-flex shrink-0 items-center justify-center self-start rounded-md border border-border px-4 py-2 font-medium text-sm transition-colors hover:bg-muted md:self-auto"
+            className="inline-flex h-14 shrink-0 items-center justify-center self-start border-2 border-foreground px-6 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background md:self-auto"
             href="/agents"
           >
             Manage agents →
@@ -41,8 +41,10 @@ async function RunList() {
 
   if (runs.length === 0) {
     return (
-      <div className="border-border border-t pt-10">
-        <p className="font-serif text-2xl leading-snug">No runs yet.</p>
+      <div className="swiss-dots border-2 border-foreground bg-muted p-8 md:p-12">
+        <p className="font-black font-serif text-3xl uppercase leading-none tracking-tighter">
+          No runs yet.
+        </p>
         <p className="mt-3 text-muted-foreground text-sm">
           Trigger your first inbox review to see it here.
         </p>
@@ -51,15 +53,15 @@ async function RunList() {
   }
 
   return (
-    <ul className="flex flex-col divide-y divide-border border-border border-y">
+    <ul className="border-foreground border-y-2">
       {runs.map((run) => (
         <li key={run.id}>
           <Link
-            className="group grid grid-cols-[1fr_auto] items-baseline gap-6 py-5 md:grid-cols-[1fr_auto_auto] md:gap-10"
+            className="group grid grid-cols-[1fr_auto] items-baseline gap-6 border-foreground border-b-2 py-5 transition-colors last:border-b-0 hover:bg-accent md:grid-cols-[1fr_auto_auto] md:gap-10 md:px-4"
             href={`/runs/${run.id}`}
           >
             <div className="flex min-w-0 flex-col gap-1.5">
-              <span className="font-medium font-serif text-lg leading-tight transition-colors group-hover:text-foreground/70">
+              <span className="font-black font-serif text-lg uppercase leading-tight tracking-[-0.04em]">
                 {formatDateTime(run.startedAt)}
               </span>
               <span className="font-mono text-muted-foreground text-xs uppercase tracking-wider">
