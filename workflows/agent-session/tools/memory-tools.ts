@@ -18,28 +18,8 @@ import {
 } from "./persona-paths"
 
 /**
- * Build the memory toolset for an agent. The agent can:
- *
- *   - `list_memory`   — list every `*.md` memory file the system
- *     sandbox holds, including the special `AGENTS.md` and `SOUL.md`
- *     persona files that the agent itself authors.
- *   - `read_memory`   — read the effective content of one file (live
- *     state with this turn's queued ops overlayed on top, so the
- *     model sees its own writes immediately).
- *   - `write_memory`  — overwrite or create a file (queued; flushed
- *     at end of event).
- *   - `edit_memory`   — anchor-based edit; throws if `oldString`
- *     doesn't appear in the effective content.
- *   - `delete_memory` — remove a file (queued).
- *   - `search_memory` — overlay-aware regex grep across all memory
- *     files.
- *
- * Tool names follow the architect's `<verb>_memory` convention so the
- * doc and code agree.
- *
- * The factory closes over the agent id and a per-event `PendingWrites`
- * so reads see a consistent overlay across all tool calls in the same
- * turn.
+ * Memory tools against the system sandbox. Writes queue into `pending`;
+ * reads resolve the pending overlay for the current turn.
  */
 export interface MemoryToolsContext {
   agentId: string
@@ -168,9 +148,7 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/* Steps — every sandbox round-trip is a step boundary                         */
-/* -------------------------------------------------------------------------- */
+// Steps — each call crosses the sandbox boundary.
 
 async function listMemoryStep(
   agentId: string,

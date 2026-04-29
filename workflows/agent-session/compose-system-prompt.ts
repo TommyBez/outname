@@ -1,4 +1,4 @@
-import type { Sandbox } from "@vercel/sandbox"
+import { getSystemSandbox } from "@/lib/agent-sandbox"
 import {
   listLiveMemory,
   readLiveMemory,
@@ -9,42 +9,14 @@ import {
 } from "@/workflows/agent-session/tools/persona-paths"
 
 /**
- * Stitch together the model's effective system prompt from three
- * layered sources, in order:
- *
- *   1. **Persona files** read live from the system sandbox:
- *        - `AGENTS.md` — operational manual / instructions. Seeded
- *          on first sandbox boot with a default template, then
- *          edited via the agent settings "Instructions" tab. The
- *          agent's memory_* tools refuse to mutate it.
- *        - `SOUL.md`   — the agent's identity / voice. Purely
- *          user-authored via the agent settings "Identity" tab;
- *          missing on a fresh agent until an operator writes one.
- *      Both files are inlined verbatim so the model sees the same
- *      content the user sees in the agent files UI. Phase 2 dropped
- *      the legacy `agent.system_prompt` column — these two files
- *      are the single source of agent personality.
- *
- *   2. **Memory inventory footer** — the relative paths of every
- *      other `*.md` file the system sandbox holds, so the model can
- *      plan `read_memory` calls without having to probe the listing
- *      itself. Persona files are filtered out (their content is
- *      already inlined above).
- *
- *   3. **Platform invariants** — non-negotiable platform contracts:
- *      memory durability, persona files being read-only at the tool
- *      layer, prefer-tools-over-guesses, heartbeat budgeting.
- *
- * The composed prompt is computed once per event, before
- * `agent.stream`, and never recomposed mid-turn — pending writes from
- * the same event are reflected on the next event after `endOfEvent`
- * flushes them.
+ * Build the system prompt: inline AGENTS.md + SOUL.md from the system
+ * sandbox, list other memory paths, append platform invariants. Computed
+ * once per event; on-disk writes from this turn show up after `endOfEvent`.
  */
 
 export interface ComposeSystemPromptArgs {
+  agentId: string
   agentName: string
-  /** Live system sandbox. The compose step reads from here. */
-  systemSandbox: Sandbox
   /** UTC ISO timestamp embedded so the model knows what "now" is. */
   nowIso?: string
 }
@@ -73,7 +45,10 @@ const FOOTER = `## Platform invariants
 export async function composeSystemPrompt(
   args: ComposeSystemPromptArgs,
 ): Promise<string> {
-  const { agentName, systemSandbox, nowIso } = args
+  "use step"
+  const { agentId, agentName, nowIso } = args
+
+  const systemSandbox = await getSystemSandbox(agentId)
 
   const [agentsMd, soulMd, livePaths] = await Promise.all([
     readLiveMemory(systemSandbox, "AGENTS.md"),
@@ -86,9 +61,6 @@ export async function composeSystemPrompt(
   sections.push(`# Agent: ${agentName}`)
   if (nowIso) sections.push(`Current UTC time: ${nowIso}`)
 
-  // 1. Persona files (inlined, content verbatim). Heading copy notes
-  // they are user-managed so the model has explicit context for the
-  // read_only error if it ever tries to write them.
   if (agentsMd && agentsMd.trim().length > 0) {
     sections.push(
       `## AGENTS.md (operational manual — read-only, managed by user)\n\n${agentsMd.trim()}`,
@@ -100,8 +72,6 @@ export async function composeSystemPrompt(
     )
   }
 
-  // 2. Memory inventory footer — list every non-persona *.md path.
-  // The model can pull any of them with read_memory.
   const otherPaths = livePaths
     .filter((p) => !READ_ONLY_FOR_AGENT.has(p))
     .sort()
@@ -114,7 +84,6 @@ export async function composeSystemPrompt(
     )
   }
 
-  // 3. Footer.
   sections.push(FOOTER)
 
   return sections.join("\n\n")

@@ -16,14 +16,6 @@
  *     `pending_file_writes` queue and is applied by
  *     `drainPendingWrites`) or via the operator's manual edits.
  *     The agent's own `*_memory` tools refuse this path.
- *
- * Phase 2 / architect rev:
- *   - Documents the six memory tools using the `<verb>_memory`
- *     convention (incl. `search_memory`).
- *   - Documents the five exec tools (incl. `reset_exec`).
- *   - Calls out the automatic bash audit log at `logs/<UTC date>.md`.
- *   - Acknowledges that AGENTS.md / SOUL.md are user-owned via the
- *     settings UI tabs.
  */
 export const AGENTS_MD_TEMPLATE = `# AGENTS.md
 
@@ -71,16 +63,15 @@ immediately.
 Use these whenever you need a shell, a file outside the memory volume,
 or to run scripts/builds/HTTP calls. Files persist across events.
 
-- \`bash({ command, timeoutMs? })\` — run a single shell command.
+- \`bash({ command })\` — run a single shell command.
   Returns \`{ exitCode, stdout, stderr, *Truncated }\`. Output is
   truncated to 64 KiB per stream. **Every call is auto-appended to
   \`logs/<UTC date>.md\`** with timestamp, exit code, and the command
   itself, so you can grep your own command history with
   \`search_memory\` in later turns.
-- \`file_read({ path })\` — read a UTF-8 text file (max 256 KiB).
+- \`file_read({ path })\` — read a UTF-8 text file.
 - \`file_write({ path, content })\` — create/overwrite a text file.
   Parents are created automatically.
-- \`file_list({ path? })\` — list immediate children of a directory.
 - \`reset_exec({ reason })\` — last-resort: destroy the exec sandbox
   AND its persisted snapshot, then re-provision a clean one. Memory
   files are unaffected. Use only when the workspace is genuinely

@@ -2,7 +2,6 @@ import { DurableAgent } from "@workflow/ai/agent"
 import { eq } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { agent } from "@/lib/db/schema"
-import { getSystemSandbox } from "@/lib/agent-sandbox"
 import { composeSystemPrompt } from "./compose-system-prompt"
 import { createMemoryTools } from "./tools/memory-tools"
 import { createExecTools } from "./tools/exec-tools"
@@ -12,39 +11,15 @@ import {
 } from "./tools/pending-writes"
 
 /**
- * Build a DurableAgent for a single event (chat turn or heartbeat).
- *
- * Phase 2 collapses the per-kind agent factory to a single generic
- * builder. Every agent shares the same tool surface — five memory_*
- * tools (closed over the per-event `pending` queue) and four exec_*
- * tools — and receives a freshly-composed system prompt that inlines
- * the live `AGENTS.md` + `SOUL.md` from the system sandbox. There is
- * no longer a free-form `system_prompt` column on `agent`; the
- * persona files are the single source of agent personality, edited
- * via the Identity / Instructions tabs in the agent settings UI.
- *
- * Side-effect-free apart from one DB read and a `getSystemSandbox`
- * call inside `composeSystemPrompt`. Both must already be cheap
- * (the system sandbox is resumed by the time `startupSystemSandbox`
- * has returned in the calling handler).
- *
- * The returned `pending` is the per-event mutation buffer. The
- * caller MUST pass it to `endOfEvent` so writes get flushed; if a
- * handler bails before reaching `endOfEvent`, the queue is dropped
- * and on-disk memory is left untouched.
+ * One event's agent: DB load, composed system prompt from sandbox persona
+ * files, memory + exec tools, and a `pending` buffer the caller must flush
+ * via `endOfEvent`.
  */
 export interface BuildAgentArgs {
   agentId: string
-  /**
-   * Identifier used by per-tool sub-steps for run correlation. For
-   * heartbeats this is the `runs.id`; for chat turns it's the
-   * conversation id (there's no `runs` row).
-   */
+  /** Heartbeat: `runs.id`; chat: conversation id. */
   runId: string
-  /**
-   * UTC ISO time embedded in the system prompt so the model has a
-   * stable "now". Defaults to the current process clock.
-   */
+  /** Optional UTC "now" for the system prompt; defaults to `new Date()`. */
   nowIso?: string
 }
 
@@ -52,10 +27,7 @@ export interface BuildAgentResult {
   agent: DurableAgent
   /** Per-event memory mutation buffer. Pass to `endOfEvent`. */
   pending: PendingWrites
-  /**
-   * Snapshot of the agent row used to build the agent. Convenient for
-   * the caller to log model id without re-reading.
-   */
+  /** Name + model from the row (avoid a second read for logging). */
   meta: {
     name: string
     model: string
@@ -66,11 +38,7 @@ export async function buildAgent(
   args: BuildAgentArgs,
 ): Promise<BuildAgentResult> {
   const { agentId } = args
-  // runId is currently unused inside this function — every tool's
-  // step gets the agentId only — but keeping it on the signature
-  // means tools that later need run-scoped behaviour (e.g. emitting
-  // step events to `events:${runId}`) can adopt it without changing
-  // every call site.
+  // Reserved for future run-scoped tooling; steps still key on agentId.
   void args.runId
 
   const [row] = await db
@@ -85,25 +53,15 @@ export async function buildAgent(
     throw new Error(`buildAgent: agent ${agentId} not found`)
   }
 
-  // composeSystemPrompt resumes the system sandbox and reads the
-  // persona files. Cheap in the steady state — the sandbox is already
-  // hot from `startupSystemSandbox` + `drainPendingWrites`.
-  const systemSandbox = await getSystemSandbox(agentId)
   const systemPrompt = await composeSystemPrompt({
+    agentId,
     agentName: row.name,
-    systemSandbox,
     nowIso: args.nowIso ?? new Date().toISOString(),
   })
 
   const pending = createPendingWrites()
 
   const memoryTools = createMemoryTools({ agentId, pending })
-  // The exec tools also receive `pending` so the bash audit log can
-  // enqueue an append op into the shared per-event buffer instead of
-  // doing a synchronous round-trip to the system sandbox per call.
-  // `createExecTools` is async because the bash-tool package needs
-  // a resumed exec sandbox handle at construction time to wire up
-  // its bash / file_read / file_write delegates.
   const execTools = await createExecTools({ agentId, pending })
 
   const durableAgent = new DurableAgent({
