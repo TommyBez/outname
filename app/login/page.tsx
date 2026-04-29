@@ -2,7 +2,6 @@ import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import { auth } from '@/lib/auth'
-import { ensureAdminUser } from '@/lib/bootstrap'
 import { LoginForm } from './login-form'
 
 export default function LoginPage({
@@ -35,7 +34,6 @@ async function LoginGate({
 }: {
   searchParams: Promise<{ from?: string }>
 }) {
-  await ensureAdminUser()
   const session = await auth.api.getSession({ headers: await headers() })
   if (session) {
     redirect('/')
