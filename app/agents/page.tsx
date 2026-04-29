@@ -6,7 +6,6 @@ import {
   getCachedLatestRunForAgent,
 } from "@/lib/data"
 import { AppShell } from "@/components/app-shell"
-import { AGENT_KINDS } from "@/workflows/agents/registry"
 import { formatRelative } from "@/lib/format"
 import type { Agent, Run } from "@/lib/db/schema"
 
@@ -54,8 +53,8 @@ async function AgentsListBody() {
       <div className="border-t border-border pt-10">
         <p className="font-serif text-2xl leading-snug">No agents yet.</p>
         <p className="mt-3 text-sm text-muted-foreground">
-          Add an agent to automate recurring work like your morning email
-          brief, then trigger it manually whenever you want a fresh run.
+          Add an agent to automate recurring work. Each agent runs on its
+          own schedule and keeps its memory in a persistent sandbox.
         </p>
       </div>
     )
@@ -73,7 +72,6 @@ async function AgentsListBody() {
 }
 
 function AgentListRow({ agent, latest }: { agent: Agent; latest: Run | null }) {
-  const meta = AGENT_KINDS[agent.kind as keyof typeof AGENT_KINDS]
   return (
     <Link
       href={`/agents/${agent.id}`}
@@ -81,7 +79,7 @@ function AgentListRow({ agent, latest }: { agent: Agent; latest: Run | null }) {
     >
       <div className="flex min-w-0 flex-col gap-1">
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          <span>{meta?.label ?? agent.kind}</span>
+          <span>{agent.model}</span>
           {!agent.enabled && (
             <span className="rounded-sm border border-border px-1.5 py-0.5 text-[10px] tracking-wider">
               PAUSED

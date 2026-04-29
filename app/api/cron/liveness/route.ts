@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server"
+import { NextResponse, connection, type NextRequest } from "next/server"
 import { eq } from "drizzle-orm"
 import { getWorld } from "workflow/runtime"
 import { db } from "@/lib/db"
@@ -43,6 +43,13 @@ import {
  *    allow all callers — convenient for `curl` testing.
  */
 export async function GET(req: NextRequest) {
+  // Cache Components is on for this project. Calling `connection()`
+  // at the top of the handler tells Next that everything below
+  // requires the request, so the build pipeline does not try to
+  // prerender the route — which would otherwise fail because env
+  // vars like DATABASE_URL aren't populated at build time.
+  await connection()
+
   const expected = process.env.CRON_SECRET
   if (expected) {
     const got = req.headers.get("authorization")

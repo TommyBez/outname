@@ -1,16 +1,18 @@
 import { createHook, sleep } from "workflow"
 import { generateAckId } from "./steps/generate-ack-id"
-import { pokeSessionHeartbeat } from "./steps/ticker-control"
+import {
+  pokeSessionHeartbeat,
+  readHeartbeatSchedule,
+} from "./steps/ticker-control"
 import { heartbeatAckToken } from "./events"
 
 /**
- * Phase 1 hardcodes the heartbeat cadence to 30 minutes for the only
- * agent kind that exists today. The full `agents.heartbeat_interval_mins`
- * column lands in Phase 2 alongside the rest of the agents table
- * generalisation; adding it now would create dead-code surface that
- * Phase 2 immediately rewrites.
+ * Cadence used while the agent's heartbeat is disabled. The ticker
+ * stays alive but only re-checks the DB every 5 minutes so a UI
+ * toggle picks up cleanly without forcing a session restart. Kept
+ * deliberately coarse — a disabled agent should be near-zero cost.
  */
-const HEARTBEAT_INTERVAL = "30m" as const
+const DISABLED_POLL_MS = 5 * 60 * 1000
 
 /**
  * Sibling workflow that drives an agent's session loop. One ticker
@@ -20,13 +22,19 @@ const HEARTBEAT_INTERVAL = "30m" as const
  *
  * Each iteration:
  *
- *   1. Generate a fresh ack id (in a step so retries are stable).
- *   2. Create the per-tick ack hook on the deterministic
+ *   1. Read the live heartbeat schedule from the agent row.
+ *      - Disabled → sleep `DISABLED_POLL_MS` and re-check. This keeps
+ *        the ticker alive so a re-enable doesn't require a session
+ *        restart, while costing one DB read per 5 min.
+ *      - Enabled  → fall through to the heartbeat handshake.
+ *   2. Generate a fresh ack id (in a step so retries are stable).
+ *   3. Create the per-tick ack hook on the deterministic
  *      `agent:<id>:hb-ack:<ack>` token.
- *   3. Resume the session hook with `{ type: 'heartbeat', ack }` —
+ *   4. Resume the session hook with `{ type: 'heartbeat', ack }` —
  *      this is what actually wakes the session for-await loop.
- *   4. Await the ack hook so we never let two heartbeats overlap.
- *   5. Sleep for the interval and repeat.
+ *   5. Await the ack hook so we never let two heartbeats overlap.
+ *   6. Sleep for `intervalMs` (= `heartbeat_interval_minutes * 60_000`)
+ *      and repeat.
  *
  * Cancellation via `stopTicker` (see `steps/ticker-control.ts`) drops
  * the workflow run mid-iteration, which is fine: the session has
@@ -40,6 +48,13 @@ export async function agentTickerWorkflow(input: {
   const { agentId } = input
 
   while (true) {
+    const schedule = await readHeartbeatSchedule({ agentId })
+
+    if (!schedule.enabled) {
+      await sleep(DISABLED_POLL_MS)
+      continue
+    }
+
     const ack = await generateAckId({ agentId })
 
     const ackHook = createHook<{ done: true }>({
@@ -54,6 +69,6 @@ export async function agentTickerWorkflow(input: {
     // restart both this ticker and the session in that case.
     await ackHook
 
-    await sleep(HEARTBEAT_INTERVAL)
+    await sleep(schedule.intervalMs)
   }
 }

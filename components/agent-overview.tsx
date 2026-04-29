@@ -13,8 +13,23 @@ import { RunStatus } from "@/components/run-status"
 import { RunResultView } from "@/components/run-result-view"
 import { TriggerButton } from "@/components/trigger-button"
 import { formatDateTime, formatRelative } from "@/lib/format"
-import { AGENT_KINDS } from "@/workflows/agents/registry"
-import type { Agent, AgentKind, Run } from "@/lib/db/schema"
+import type { Agent, Run } from "@/lib/db/schema"
+
+/**
+ * Stringify a heartbeat interval into a compact, human-readable label
+ * for the overview header. Falls back to the raw minute count for
+ * non-canonical values.
+ */
+function formatInterval(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`
+  if (minutes === 60) return "1 hour"
+  if (minutes % 60 === 0) {
+    const hours = minutes / 60
+    if (hours === 24) return "1 day"
+    return `${hours} hours`
+  }
+  return `${minutes} min`
+}
 
 type Params = Promise<{ agentId: string }>
 
@@ -42,14 +57,9 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
   const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
   if (!agent) notFound()
 
-  const meta = AGENT_KINDS[agent.kind as AgentKind]
-
   return (
     <>
-      <AgentOverviewHeader
-        agent={agent}
-        kindLabel={meta?.label ?? agent.kind}
-      />
+      <AgentOverviewHeader agent={agent} />
 
       <section>
         <Suspense fallback={<LastRunSkeleton />}>
@@ -69,18 +79,19 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
   )
 }
 
-function AgentOverviewHeader({
-  agent,
-  kindLabel,
-}: {
-  agent: Agent
-  kindLabel: string
-}) {
+function AgentOverviewHeader({ agent }: { agent: Agent }) {
   return (
     <header className="mb-10 flex flex-col gap-6">
       <div className="flex flex-col gap-1.5">
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          <span>{kindLabel}</span>
+          <span>{agent.model}</span>
+          {agent.heartbeatEnabled ? (
+            <span>
+              · heartbeat every {formatInterval(agent.heartbeatIntervalMinutes)}
+            </span>
+          ) : (
+            <span>· heartbeat off</span>
+          )}
           {!agent.enabled && (
             <span className="rounded-sm border border-border px-1.5 py-0.5 text-[10px] tracking-wider">
               PAUSED

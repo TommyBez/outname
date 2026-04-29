@@ -1,66 +1,87 @@
-import { Sandbox } from "@vercel/sandbox"
+import type { Sandbox } from "@vercel/sandbox"
 import { createHash } from "node:crypto"
-import { sql } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { agentFiles } from "@/lib/db/schema"
 import {
-  readAgentSandboxName,
-  releaseAgentSandbox,
+  getSystemSandbox,
+  releaseSandbox,
+  getExecSandbox,
 } from "@/lib/agent-sandbox"
-
-/**
- * Workspace prefix that the agent owns. Everything markdown-y under
- * here (excluding hidden + sentinel files) is mirrored into
- * `agent_files` on every event so the UI can render the agent's notes
- * without having to resume the sandbox.
- *
- * Kept as a constant rather than per-kind config because Phase 1 only
- * has one agent kind; the path is the same as the persistent root.
- */
-const SANDBOX_WORKSPACE_ROOT = "/vercel/sandbox"
+import { SYSTEM_SANDBOX_ROOT } from "@/lib/agent-sandbox-registry"
+import {
+  flushPendingWrites,
+  type PendingWrites,
+} from "@/workflows/agent-session/tools/pending-writes"
 
 /**
  * End-of-event handler.
  *
- *   1. Resume the agent's persistent sandbox by name.
- *   2. Enumerate every `*.md` file under `SANDBOX_WORKSPACE_ROOT`,
- *      excluding `node_modules`, hidden directories, and gws extract
- *      scratch dirs.
+ *   1. Flush the per-event `PendingWrites` overlay into the system
+ *      sandbox so memory tool writes/edits/deletes the model performed
+ *      this turn become durable.
+ *   2. Enumerate every `*.md` file under `SYSTEM_SANDBOX_ROOT`,
+ *      excluding hidden + node_modules trees.
  *   3. Read each file, hash it, and upsert into `agent_files` keyed by
  *      `(agent_id, path)`. Unchanged files (matching sha256) are
- *      skipped to keep DB churn low.
- *   4. Stop the sandbox so Vercel snapshots the filesystem ready for
- *      the next event's resume.
+ *      skipped to keep DB churn low. Deletes the rows for files no
+ *      longer in the sandbox so `/agents/:id/files` doesn't show
+ *      ghost entries.
+ *   4. Stop BOTH the system and exec sandboxes so Vercel snapshots
+ *      their filesystems ready for the next event's resume.
  *
  * Failures inside this step never crash the session loop — they're
  * swallowed (with a log) so a transient sandbox or DB hiccup doesn't
- * prevent the agent from receiving the next event. The next event will
- * reflush the changed files anyway.
+ * prevent the agent from receiving the next event. The next event
+ * will reflush the changed files anyway.
  */
-export async function endOfEvent(input: { agentId: string }): Promise<void> {
+export async function endOfEvent(input: {
+  agentId: string
+  pending: PendingWrites
+}): Promise<void> {
   "use step"
 
-  const name = await readAgentSandboxName(input.agentId)
-  if (!name) return
+  let systemSandbox: Sandbox | null = null
+  let execSandbox: Sandbox | null = null
 
-  let sandbox: Sandbox | null = null
   try {
-    sandbox = await Sandbox.get({ name, resume: true })
+    systemSandbox = await getSystemSandbox(input.agentId)
   } catch (err) {
-    console.error("[v0] endOfEvent: sandbox.get failed", err)
+    // No system sandbox means startup never ran for this event — the
+    // session loop will boot one on the next event. Nothing to flush.
+    console.error("[v0] endOfEvent: getSystemSandbox failed", err)
     return
   }
 
   try {
-    await flushMarkdown(sandbox, input.agentId)
+    await flushPendingWrites(systemSandbox, input.pending)
   } catch (err) {
-    console.error("[v0] endOfEvent: flush failed", err)
-  } finally {
-    await releaseAgentSandbox(sandbox)
+    console.error("[v0] endOfEvent: flushPendingWrites failed", err)
   }
+
+  try {
+    await mirrorMemoryToDb(systemSandbox, input.agentId)
+  } catch (err) {
+    console.error("[v0] endOfEvent: mirrorMemoryToDb failed", err)
+  }
+
+  // Best-effort exec snapshot: not every event touches it, but if the
+  // agent shelled into it during the turn we want the filesystem
+  // checkpointed.
+  try {
+    execSandbox = await getExecSandbox(input.agentId)
+  } catch {
+    /* no exec sandbox booted — fine */
+  }
+
+  await Promise.all(
+    [systemSandbox, execSandbox]
+      .filter((s): s is Sandbox => s !== null)
+      .map((s) => releaseSandbox(s)),
+  )
 }
 
-async function flushMarkdown(
+async function mirrorMemoryToDb(
   sandbox: Sandbox,
   agentId: string,
 ): Promise<void> {
@@ -71,10 +92,9 @@ async function flushMarkdown(
     cmd: "sh",
     args: [
       "-ec",
-      `cd ${SANDBOX_WORKSPACE_ROOT} && find . -type f -name '*.md' \
+      `cd ${SYSTEM_SANDBOX_ROOT} && find . -type f -name '*.md' \
         -not -path './.*' \
         -not -path './node_modules/*' \
-        -not -path './gws-extract/*' \
         -print 2>/dev/null || true`,
     ],
   })
@@ -84,17 +104,19 @@ async function flushMarkdown(
     .map((s) => s.trim())
     .filter(Boolean)
     .map((p) => (p.startsWith("./") ? p.slice(2) : p))
-  if (relPaths.length === 0) return
 
-  // Read existing hashes so we can skip unchanged files.
+  // Read existing rows so we can (a) skip unchanged hashes and (b)
+  // delete rows whose sandbox file is gone.
   const existing = await db
     .select({ path: agentFiles.path, sha256: agentFiles.sha256 })
     .from(agentFiles)
-    .where(sql`${agentFiles.agentId} = ${agentId}`)
+    .where(eq(agentFiles.agentId, agentId))
   const existingByPath = new Map(existing.map((r) => [r.path, r.sha256]))
+  const seen = new Set<string>()
 
   for (const relPath of relPaths) {
-    const absPath = `${SANDBOX_WORKSPACE_ROOT}/${relPath}`
+    seen.add(relPath)
+    const absPath = `${SYSTEM_SANDBOX_ROOT}/${relPath}`
     const buf = await sandbox
       .readFileToBuffer({ path: absPath })
       .catch(() => null)
@@ -121,5 +143,15 @@ async function flushMarkdown(
           updatedAt: new Date(),
         },
       })
+  }
+
+  // Delete rows for memory files that no longer exist on disk. Uses
+  // a per-row delete to keep the WHERE clause small; the typical
+  // delete count is 0–1 per turn.
+  for (const path of existingByPath.keys()) {
+    if (seen.has(path)) continue
+    await db
+      .delete(agentFiles)
+      .where(and(eq(agentFiles.agentId, agentId), eq(agentFiles.path, path)))
   }
 }

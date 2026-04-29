@@ -7,19 +7,16 @@ import { formatRelative } from "@/lib/format"
  * Compact, clickable card shown on the Today screen.
  *
  * The entire card is a Link to `/agents/[id]`. The body shows a live
- * streaming message when a run is in progress, a simple agent-agnostic
- * status line on completion, a failure banner on error, or an empty
- * state. Per-agent result content lives on the agent detail page — this
- * card is deliberately small and uniform across agent kinds so the user
- * can scan all agents at a glance.
+ * streaming message when a run is in progress, a simple status line on
+ * completion, a failure banner on error, or an empty state. The card
+ * is deliberately small and uniform so the user can scan all agents at
+ * a glance.
  */
 export function AgentTodayCard({
   agent,
-  kindLabel,
   latestRun,
 }: {
   agent: Agent
-  kindLabel: string
   latestRun: Run | null
 }) {
   return (
@@ -29,7 +26,7 @@ export function AgentTodayCard({
     >
       <div className="flex flex-col gap-1.5">
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          <span>{kindLabel}</span>
+          <span>{agent.model}</span>
           {!agent.enabled && (
             <span className="rounded-sm border border-border px-1.5 py-0.5 text-[10px] tracking-wider">
               PAUSED

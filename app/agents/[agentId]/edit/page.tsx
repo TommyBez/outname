@@ -4,15 +4,16 @@ import Link from "next/link"
 import { requireSession } from "@/lib/auth-guard"
 import { getCachedAgentByIdForUser } from "@/lib/data"
 import { AgentForm } from "@/components/agent-form"
-import { updateAgentAction, deleteAgentAction } from "@/lib/agent-actions"
-import { AGENT_KINDS } from "@/workflows/agents/registry"
+import { deleteAgentAction } from "@/lib/agent-actions"
+import { DEFAULT_MODEL_ID, getAvailableModels } from "@/lib/ai-gateway-models"
+import { readLatestPendingFileWrite } from "@/lib/agent-pending-writes"
 
 type Params = Promise<{ agentId: string }>
 
 /**
- * Agent configuration form. The outer shell (sidebar + top bar) now
- * comes from `app/agents/[agentId]/layout.tsx`, so this page only owns
- * its own content tree + Suspense boundary.
+ * Agent configuration form. The outer shell (sidebar + top bar) comes
+ * from `app/agents/[agentId]/layout.tsx`, so this page only owns its
+ * own content tree + Suspense boundary.
  */
 export default function AgentEditPage({ params }: { params: Params }) {
   return (
@@ -25,15 +26,22 @@ export default function AgentEditPage({ params }: { params: Params }) {
 async function AgentEdit({ params }: { params: Params }) {
   const { agentId } = await params
   const session = await requireSession()
-  const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
-  if (!agent) notFound()
 
-  const meta = AGENT_KINDS[agent.kind as keyof typeof AGENT_KINDS]
-
-  async function update(formData: FormData) {
-    "use server"
-    await updateAgentAction(agentId, formData)
-  }
+  // Fetch the agent + the AI Gateway model catalog + the most recent
+  // user-authored persona content in parallel. The catalog is
+  // internally `revalidate: 3600`, so the gateway hit is shared
+  // across all visitors. The persona prefills come from
+  // `pending_file_writes` — that table is the UI's source of truth
+  // for "what is effectively on disk" because the seed step writes
+  // platform defaults and only the UI mutates these files
+  // afterwards (the agent's memory_* tools refuse persona paths).
+  const [agentRow, models, soulRow, agentsMdRow] = await Promise.all([
+    getCachedAgentByIdForUser(agentId, session.user.id),
+    getAvailableModels(),
+    readLatestPendingFileWrite({ agentId, path: "SOUL.md" }),
+    readLatestPendingFileWrite({ agentId, path: "AGENTS.md" }),
+  ])
+  if (!agentRow) notFound()
 
   async function remove() {
     "use server"
@@ -43,10 +51,10 @@ async function AgentEdit({ params }: { params: Params }) {
   return (
     <>
       <Link
-        href={`/agents/${agent.id}`}
+        href={`/agents/${agentRow.id}`}
         className="mb-6 inline-block font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground"
       >
-        ← {agent.name}
+        ← {agentRow.name}
       </Link>
 
       <header className="mb-10 flex flex-col gap-2">
@@ -54,16 +62,23 @@ async function AgentEdit({ params }: { params: Params }) {
           Configure
         </p>
         <h1 className="font-serif text-4xl font-medium leading-tight tracking-tight md:text-5xl">
-          {agent.name}
+          {agentRow.name}
         </h1>
       </header>
 
       <section className="border-t border-border py-10">
         <AgentForm
-          mode="edit"
-          agent={agent}
-          kindLabel={meta?.label ?? agent.kind}
-          action={update}
+          models={models}
+          defaultModel={DEFAULT_MODEL_ID}
+          initial={{
+            id: agentRow.id,
+            name: agentRow.name,
+            identity: soulRow?.content ?? "",
+            instructions: agentsMdRow?.content ?? "",
+            model: agentRow.model,
+            heartbeatEnabled: agentRow.heartbeatEnabled,
+            heartbeatIntervalMinutes: agentRow.heartbeatIntervalMinutes,
+          }}
         />
       </section>
 

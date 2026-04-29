@@ -1,181 +1,124 @@
 import { Sandbox } from "@vercel/sandbox"
 import { eq } from "drizzle-orm"
 import { db } from "@/lib/db"
-import { agent, type AgentKind } from "@/lib/db/schema"
+import { agent } from "@/lib/db/schema"
+import {
+  EXEC_SANDBOX_WORKSPACE,
+  SANDBOX_CONFIGS,
+  type SandboxRole,
+} from "@/lib/agent-sandbox-registry"
+import type { CreateOptions } from "@/lib/agent-sandbox-types"
 
 /* -------------------------------------------------------------------------- */
-/* Types                                                                       */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Options passed through to `Sandbox.create` on first boot. `name` and
- * `persistent` are managed by this module — callers should not set them.
- *
- * Defined explicitly (rather than via `Omit<CreateSandboxParams, ...>`) so
- * we don't pick up the snapshot-source variant of the SDK's union type,
- * which is not a shape callers of this helper need.
- */
-interface CreateOptions {
-  runtime?: string
-  timeout?: number
-  ports?: number[]
-  resources?: { vcpus: number }
-  env?: Record<string, string>
-  tags?: Record<string, string>
-  snapshotExpiration?: number
-  onResume?: (sandbox: Sandbox) => Promise<void>
-}
-
-/**
- * Per-agent-kind sandbox configuration, resolved by `startupAgentSandbox`
- * via the registry. The single `setup` hook owns its own idempotence —
- * typically by checking a version marker on disk before reinstalling
- * anything — and also handles per-run mutation (e.g. rotating
- * credentials). Tools that never touch the sandbox filesystem can omit
- * this entirely; kinds without a registry entry just get a plain empty
- * sandbox.
- */
-export interface SandboxSetup {
-  /** Forwarded to `Sandbox.create` when booting a new sandbox. */
-  createOptions?: CreateOptions
-  /**
-   * Runs on every `startupAgentSandbox` call, after the sandbox is ready
-   * (created or resumed). Receives the fresh `Sandbox` handle and a
-   * context object with the owning agent id plus whether the sandbox was
-   * just created (`true`) or resumed (`false`).
-   */
-  setup?: (
-    sandbox: Sandbox,
-    ctx: { agentId: string; created: boolean },
-  ) => Promise<void>
-}
-
-interface EnsureOptions {
-  agentId: string
-  /** Forwarded to `Sandbox.create` when we boot a new sandbox. */
-  createOptions?: CreateOptions
-}
-
-export interface EnsureResult {
-  sandbox: Sandbox
-  /** Whether a brand-new sandbox was created (vs. resumed by name). */
-  created: boolean
-}
-
-/* -------------------------------------------------------------------------- */
-/* DB lookup                                                                   */
+/* Role <-> column mapping                                                     */
 /* -------------------------------------------------------------------------- */
 
 /**
- * Shared read of the persistent sandbox name previously saved on the
- * agent row. Returns `null` before the first successful boot.
+ * Stable suffix added to the sandbox name. Sandbox names are scoped per
+ * Vercel project, so the `${agentId}-${role}` shape is collision-free
+ * across agents and roles within the same project.
  */
-export async function readAgentSandboxName(
+const ROLE_SUFFIX: Record<SandboxRole, string> = {
+  system: "system",
+  exec: "exec",
+}
+
+function nameFor(agentId: string, role: SandboxRole): string {
+  return `agent-${agentId}-${ROLE_SUFFIX[role]}`
+}
+
+async function readSandboxId(
   agentId: string,
+  role: SandboxRole,
 ): Promise<string | null> {
   const [row] = await db
-    .select({ sandboxName: agent.sandboxName })
+    .select({
+      systemId: agent.sandboxSystemId,
+      execId: agent.sandboxExecId,
+    })
     .from(agent)
     .where(eq(agent.id, agentId))
     .limit(1)
-  return row?.sandboxName ?? null
+  if (!row) return null
+  return role === "system" ? row.systemId : row.execId
+}
+
+async function writeSandboxId(
+  agentId: string,
+  role: SandboxRole,
+  sandboxId: string,
+): Promise<void> {
+  await db
+    .update(agent)
+    .set({
+      ...(role === "system"
+        ? { sandboxSystemId: sandboxId }
+        : { sandboxExecId: sandboxId }),
+      updatedAt: new Date(),
+    })
+    .where(eq(agent.id, agentId))
+}
+
+/* -------------------------------------------------------------------------- */
+/* Public types                                                                */
+/* -------------------------------------------------------------------------- */
+
+export interface EnsureResult {
+  sandbox: Sandbox
+  /** True iff this call created a brand-new sandbox (vs. resumed by id). */
+  created: boolean
 }
 
 /* -------------------------------------------------------------------------- */
 /* Lifecycle internals                                                         */
 /* -------------------------------------------------------------------------- */
 
-/**
- * Obtain a persistent Vercel Sandbox for a given agent.
- *
- * - On first call the helper creates a new persistent sandbox named
- *   `agent-<agentId>` and persists that name on the agent row.
- * - On subsequent calls the sandbox is resumed by name, filesystem
- *   intact.
- *
- * The helper is intentionally agent-kind-agnostic: any tool-specific
- * install/setup work happens in the `SandboxSetup.setup` hook, invoked
- * by `startupAgentSandbox` after this function returns.
- */
-export async function ensureAgentSandbox(
-  opts: EnsureOptions,
+async function ensureRoleSandbox(
+  agentId: string,
+  role: SandboxRole,
+  createOptions: CreateOptions | undefined,
 ): Promise<EnsureResult> {
-  const [row] = await db
-    .select({ sandboxName: agent.sandboxName })
-    .from(agent)
-    .where(eq(agent.id, opts.agentId))
-    .limit(1)
-  if (!row) {
-    throw new Error(`Agent ${opts.agentId} not found`)
-  }
-
+  // The persistent sandbox SDK addresses sandboxes by `name`, not by an
+  // internal id. The columns are named `sandbox_*_id` for parity with
+  // `last_session_run_id` etc.; the value stored in them is the
+  // sandbox's name (`agent-${agentId}-${role}`). On the very first boot
+  // we both compute and persist that name; after that we reuse it
+  // verbatim so an out-of-band rename would force a fresh sandbox.
+  const persistedName = await readSandboxId(agentId, role)
+  const desiredName = nameFor(agentId, role)
   let sandbox: Sandbox | null = null
-  if (row.sandboxName) {
+
+  if (persistedName) {
     try {
-      sandbox = await Sandbox.get({ name: row.sandboxName, resume: true })
+      sandbox = await Sandbox.get({ name: persistedName, resume: true })
     } catch {
-      // Sandbox was deleted or expired externally. Fall through and
-      // create a fresh one below, keeping the same name.
       sandbox = null
     }
   }
 
   let created = false
   if (!sandbox) {
-    const name = row.sandboxName ?? `agent-${opts.agentId}`
     sandbox = await Sandbox.create({
-      ...opts.createOptions,
-      name,
+      ...createOptions,
+      name: desiredName,
       persistent: true,
     })
     created = true
-    if (row.sandboxName !== name) {
-      await db
-        .update(agent)
-        .set({ sandboxName: name, updatedAt: new Date() })
-        .where(eq(agent.id, opts.agentId))
+    if (persistedName !== desiredName) {
+      await writeSandboxId(agentId, role, desiredName)
     }
   }
 
   return { sandbox, created }
 }
 
-/**
- * Graceful handoff: stop the sandbox so Vercel snapshots its filesystem
- * for the next resume. Best-effort — swallows errors because a failed
- * release should never fail an otherwise-successful agent run.
- */
-export async function releaseAgentSandbox(sandbox: Sandbox): Promise<void> {
-  try {
-    await sandbox.stop()
-  } catch {
-    /* ignore */
-  }
-}
-
-/**
- * Permanently delete the sandbox associated with an agent, if one
- * exists. Callers (e.g. `deleteAgentAction`) invoke this before removing
- * the agent row so we don't leak persistent sandboxes.
- */
-export async function destroyAgentSandbox(agentId: string): Promise<void> {
-  const name = await readAgentSandboxName(agentId)
-  if (!name) return
-  try {
-    const sb = await Sandbox.get({ name, resume: false })
-    await sb.delete()
-  } catch {
-    // Already gone or unreachable — nothing to do.
-  }
-}
-
 /* -------------------------------------------------------------------------- */
-/* Marker helpers for idempotent setup                                         */
+/* Marker helpers — shared by setup hooks                                      */
 /* -------------------------------------------------------------------------- */
 
 /**
- * Read a small UTF-8 marker file from the sandbox (e.g. a pinned tool
- * version). Returns `null` if the file does not exist.
+ * Read a small UTF-8 marker file from a sandbox (e.g. a "/workspace
+ * created" sentinel). Returns `null` if the file does not exist.
  */
 export async function readMarker(
   sandbox: Sandbox,
@@ -186,17 +129,15 @@ export async function readMarker(
 }
 
 /**
- * Write a small UTF-8 marker file to the sandbox. Use in pair with
- * `readMarker` to make `SandboxSetup.setup` functions idempotent.
+ * Write a small UTF-8 marker file to a sandbox. Pair with `readMarker`
+ * to make setup hooks idempotent.
  */
 export async function writeMarker(
   sandbox: Sandbox,
   path: string,
   value: string,
 ): Promise<void> {
-  await sandbox.writeFiles([
-    { path, content: Buffer.from(value, "utf8") },
-  ])
+  await sandbox.writeFiles([{ path, content: Buffer.from(value, "utf8") }])
 }
 
 /* -------------------------------------------------------------------------- */
@@ -207,52 +148,27 @@ export async function writeMarker(
 /* -------------------------------------------------------------------------- */
 
 /**
- * Ensure the agent's persistent sandbox exists and is ready for the run.
+ * Ensure the agent's **system** sandbox is booted. The system sandbox
+ * holds AGENTS.md, SOUL.md, and the agent's memory `*.md` files. After
+ * the sandbox is ready we delegate to `seedAgentsMd` to install (or
+ * upgrade) the AGENTS.md baseline.
  *
- * Resolves per-kind configuration by reading `agent.kind` and looking it
- * up in `SANDBOX_SETUPS` (see `lib/agent-sandbox-registry.ts`). Agents
- * without a registry entry still get a plain empty sandbox.
- *
- * The registry is imported lazily to avoid a static module cycle
- * (registry → tool module → this file).
+ * Idempotent — safe to call from every event handler.
  */
-export async function startupAgentSandbox(input: {
+export async function startupSystemSandbox(input: {
   agentId: string
 }): Promise<void> {
   "use step"
   const { agentId } = input
-
-  const [row] = await db
-    .select({ kind: agent.kind })
-    .from(agent)
-    .where(eq(agent.id, agentId))
-    .limit(1)
-  if (!row) {
-    throw new Error(`Agent ${agentId} not found`)
-  }
-
-  const { SANDBOX_SETUPS } = await import("./agent-sandbox-registry")
-  // The `kind` column is a plain text with a CHECK constraint — we cast
-  // to the union type here rather than throwing on unknown values, so a
-  // future kind without a registry entry still boots a plain sandbox.
-  const cfg: SandboxSetup =
-    SANDBOX_SETUPS[row.kind as AgentKind] ?? {}
-
-  const { sandbox, created } = await ensureAgentSandbox({
+  const { created } = await ensureRoleSandbox(
     agentId,
-    createOptions: cfg.createOptions,
-  })
+    "system",
+    SANDBOX_CONFIGS.system.createOptions,
+  )
 
-  if (cfg.setup) {
-    await cfg.setup(sandbox, { agentId, created })
-  }
-
-  // Kind-agnostic baseline seed of /vercel/sandbox/AGENTS.md. The
-  // step is sentinel-guarded so it only writes the template on the
-  // very first boot; the `created` flag lets it short-circuit before
-  // even opening the sandbox handle on subsequent events. Imported
-  // lazily so this module doesn't pull workflow primitives when the
-  // file is loaded outside a workflow.
+  // Lazily import the seed step so this module doesn't pull workflow
+  // primitives (used inside seed-agents-md.ts) when loaded outside a
+  // workflow.
   const { seedAgentsMd } = await import(
     "@/workflows/agent-session/steps/seed-agents-md"
   )
@@ -260,20 +176,152 @@ export async function startupAgentSandbox(input: {
 }
 
 /**
- * Stop the agent's sandbox so Vercel snapshots the filesystem for the
- * next resume. No-op if the agent never booted one. Best-effort — never
- * fails the run.
+ * Ensure the agent's **exec** sandbox is booted and `/workspace`
+ * exists. Exec is the sandbox the bash / file-edit tools shell into;
+ * its filesystem persists across events via snapshot-on-stop.
  */
-export async function shutdownAgentSandbox(input: {
+export async function startupExecSandbox(input: {
   agentId: string
 }): Promise<void> {
   "use step"
-  const name = await readAgentSandboxName(input.agentId)
-  if (!name) return
-  try {
-    const sandbox = await Sandbox.get({ name, resume: true })
-    await releaseAgentSandbox(sandbox)
-  } catch {
-    /* ignore — nothing to snapshot */
+  const { agentId } = input
+  const { sandbox, created } = await ensureRoleSandbox(
+    agentId,
+    "exec",
+    SANDBOX_CONFIGS.exec.createOptions,
+  )
+
+  if (created) {
+    // Provision the workspace directory once. Subsequent resumes pick
+    // it up from the snapshot.
+    await sandbox.runCommand({
+      cmd: "sh",
+      args: ["-ec", `mkdir -p ${EXEC_SANDBOX_WORKSPACE}`],
+    })
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Direct sandbox handles — used by tools / end-of-event                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Resume the agent's system sandbox by name. Throws if startup hasn't
+ * run yet (no name persisted). Callers MUST treat this as a Sandbox
+ * SDK boundary and run inside a `"use step"` body.
+ */
+export async function getSystemSandbox(agentId: string): Promise<Sandbox> {
+  const name = await readSandboxId(agentId, "system")
+  if (!name) {
+    throw new Error(
+      `Agent ${agentId} has no system sandbox yet — startupSystemSandbox must run first.`,
+    )
+  }
+  return Sandbox.get({ name, resume: true })
+}
+
+/**
+ * Resume the agent's exec sandbox by name. Same contract as
+ * `getSystemSandbox` — startup must have run.
+ */
+export async function getExecSandbox(agentId: string): Promise<Sandbox> {
+  const name = await readSandboxId(agentId, "exec")
+  if (!name) {
+    throw new Error(
+      `Agent ${agentId} has no exec sandbox yet — startupExecSandbox must run first.`,
+    )
+  }
+  return Sandbox.get({ name, resume: true })
+}
+
+/**
+ * Best-effort soft release: stop the sandbox so Vercel snapshots its
+ * filesystem for the next resume. Swallows errors — a failed release
+ * never fails an otherwise-successful event.
+ */
+export async function releaseSandbox(sandbox: Sandbox): Promise<void> {
+  try {
+    await sandbox.stop()
+  } catch {
+    /* ignore */
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Reset                                                                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Throw away the agent's *exec* sandbox and its persisted snapshot,
+ * then re-provision a fresh one. Used by the `reset_exec` tool when
+ * the model decides its workspace is wedged (broken \`node_modules\`,
+ * leftover daemons, half-cloned repos, etc.).
+ *
+ * The system sandbox is intentionally left alone — memory files
+ * survive a reset. After this returns, the next call to
+ * `getExecSandbox(agentId)` boots a clean sandbox with an empty
+ * `/vercel/sandbox/workspace`.
+ */
+export async function resetExecSandbox(input: {
+  agentId: string
+}): Promise<{ destroyed: boolean }> {
+  "use step"
+  const { agentId } = input
+  const previousName = await readSandboxId(agentId, "exec")
+
+  let destroyed = false
+  if (previousName) {
+    try {
+      const sb = await Sandbox.get({ name: previousName, resume: false })
+      await sb.delete()
+      destroyed = true
+    } catch {
+      // Already gone or unreachable. We still proceed — the goal is a
+      // clean slate, not a guaranteed prior-state assertion.
+    }
+  }
+
+  // Re-provision immediately so the next tool call doesn't pay a
+  // cold-boot tax in the middle of the agent's reasoning loop. The
+  // shared `ensureRoleSandbox` path also persists the (unchanged)
+  // sandbox name back, which is a no-op when it already matches.
+  const { sandbox } = await ensureRoleSandbox(
+    agentId,
+    "exec",
+    SANDBOX_CONFIGS.exec.createOptions,
+  )
+  await sandbox.runCommand({
+    cmd: "sh",
+    args: ["-ec", `mkdir -p ${EXEC_SANDBOX_WORKSPACE}`],
+  })
+
+  return { destroyed }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Teardown                                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Permanently delete both of an agent's sandboxes (system + exec) if
+ * they exist. Called by `deleteAgentAction` before removing the agent
+ * row so we don't leak persistent sandboxes.
+ */
+export async function destroyAgentSandboxes(agentId: string): Promise<void> {
+  const [systemName, execName] = await Promise.all([
+    readSandboxId(agentId, "system"),
+    readSandboxId(agentId, "exec"),
+  ])
+
+  await Promise.all(
+    [systemName, execName].map(async (name) => {
+      if (!name) return
+      try {
+        const sb = await Sandbox.get({ name, resume: false })
+        await sb.delete()
+      } catch {
+        /* already gone or unreachable */
+      }
+    }),
+  )
 }

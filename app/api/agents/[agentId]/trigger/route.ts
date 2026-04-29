@@ -3,7 +3,6 @@ import { headers } from "next/headers"
 import { revalidatePath, revalidateTag } from "next/cache"
 import { auth } from "@/lib/auth"
 import { agentRunsTag, runsIndexTag } from "@/lib/cache-tags"
-import { getGmailConnectionForUser } from "@/lib/google-oauth"
 import { getAgentById } from "@/lib/start-agent-run"
 import { pokeHeartbeat } from "@/lib/agent-session"
 
@@ -36,28 +35,6 @@ export async function POST(
       { error: "Agent is paused. Enable it before triggering a run." },
       { status: 412 },
     )
-  }
-
-  // daily-email-brief is the only kind today and it requires Gmail.
-  if (agent.kind === "daily-email-brief") {
-    const conn = await getGmailConnectionForUser(agent.userId)
-    if (!conn) {
-      return NextResponse.json(
-        {
-          error:
-            "Gmail is not connected. Go to /settings and click Connect Gmail.",
-        },
-        { status: 412 },
-      )
-    }
-    if (conn.status !== "active") {
-      return NextResponse.json(
-        {
-          error: `Gmail connection is ${conn.status}. Reconnect it in /settings.`,
-        },
-        { status: 412 },
-      )
-    }
   }
 
   try {

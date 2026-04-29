@@ -1,58 +1,57 @@
 import { getWritable } from "workflow"
-import { FatalError } from "workflow"
+import { and, desc, eq } from "drizzle-orm"
 import type { UIMessageChunk } from "ai"
-import { startupAgentSandbox } from "@/lib/agent-sandbox"
-import type { AgentKind } from "@/lib/db/schema"
+import { db } from "@/lib/db"
+import { runs } from "@/lib/db/schema"
 import {
-  createDailyEmailBriefAgent,
-  dailyEmailBriefKickoff,
-} from "@/workflows/agents/daily-email-brief/agent"
-import { initRun } from "@/workflows/agents/daily-email-brief/steps/init-run"
-import { prepareBrief } from "@/workflows/agents/daily-email-brief/steps/prepare-brief"
-import { finalizeRun } from "@/workflows/agents/daily-email-brief/steps/finalize-run"
+  startupSystemSandbox,
+  startupExecSandbox,
+} from "@/lib/agent-sandbox"
+import { buildAgent, buildHeartbeatKickoff } from "../agent-factory"
+import type { PendingWrites } from "../tools/pending-writes"
 import { beginHeartbeatRun } from "../steps/begin-heartbeat-run"
+import { drainPendingWrites } from "../steps/drain-pending-writes"
+import { initRun } from "../steps/init-run"
+import { finalizeRun } from "../steps/finalize-run"
 
 /**
  * Heartbeat event handler — runs inside the long-lived session
  * workflow once per ticker tick (or once per "Trigger now" press).
  *
- * Replicates the lifecycle of the deleted `dailyEmailBrief` workflow,
- * one-to-one, so `runs` rows continue to look the same to the existing
- * `/runs` UI:
+ * Phase 2 collapses the per-kind heartbeat lifecycle to a single
+ * generic flow:
  *
- *   1. `beginHeartbeatRun` — insert the runs row, return its id.
+ *   1. `beginHeartbeatRun` — insert a `runs` row, return its id.
  *   2. `initRun` — emit the canonical `started` event onto
- *      `events:${runId}`.
- *   3. `prepareBrief` — validate the Gmail OAuth and compute the
- *      since-cursor.
- *   4. `startupAgentSandbox` — resume the agent's persistent sandbox.
- *      The session loop will snapshot it via `endOfEvent` after we
- *      return.
- *   5. Stream the `DurableAgent` against the kickoff prompt. The agent
- *      drives gws calls itself, runs `classifyAndSummarize`, authors
- *      the markdown digest, and calls `persistResult`.
- *   6. `finalizeRun` — flip the runs row to `completed` (or `failed`).
+ *      `events:${runId}` so `/runs/:runId/stream` lights up.
+ *   3. Look up the previous successful heartbeat completion (best
+ *      effort, just for the kickoff prompt).
+ *   4. Boot both sandboxes — system is required (system prompt),
+ *      exec is best-effort.
+ *   5. Build the agent via `buildAgent` and stream it against the
+ *      generic `buildHeartbeatKickoff` user message. The agent
+ *      decides what to do based on its inlined AGENTS.md / SOUL.md
+ *      and current memory inventory.
+ *   6. `finalizeRun` — flip the runs row to `completed` (or
+ *      `failed`).
  *
  * Errors are caught and converted to a failed `runs` row before
  * re-throwing so the session loop can surface them via its outer
  * try/catch without losing the run-level breadcrumb.
  *
- * Phase 1 hardcodes the kind dispatch to `daily-email-brief` because
- * it is the only kind today. Phase 2 generalises this — every kind's
- * heartbeat will go through the agent factory exposed via the runtime
- * registry, with the kickoff message coming from per-kind config.
+ * Like `handleChat`, returns the per-event `pending` queue so
+ * `agentSessionWorkflow` can flush it via `endOfEvent`.
  */
 export async function handleHeartbeat(input: {
   agentId: string
-  kind: AgentKind
-}): Promise<void> {
-  const { agentId, kind } = input
+}): Promise<{ pending: PendingWrites }> {
+  const { agentId } = input
+
+  const { runId } = await beginHeartbeatRun({ agentId })
 
   // Per-run namespace — the run's progress events live here. Distinct
   // from the chat per-turn namespace so the two flows never collide on
   // the session workflow's stream graph.
-  const { runId } = await beginHeartbeatRun({ agentId })
-
   const writable = getWritable<UIMessageChunk>({
     namespace: `heartbeat:${runId}`,
   })
@@ -60,38 +59,57 @@ export async function handleHeartbeat(input: {
   try {
     await initRun(runId)
 
-    if (kind !== "daily-email-brief") {
-      throw new FatalError(
-        `Heartbeat for kind "${kind}" is not implemented yet.`,
-      )
-    }
+    const previousIso = await readPreviousHeartbeatCompletion(agentId)
 
-    const { afterEpoch, sinceIso } = await prepareBrief(runId)
+    await startupSystemSandbox({ agentId })
+    await startupExecSandbox({ agentId }).catch((err) => {
+      // Don't fail the heartbeat just because exec didn't boot — the
+      // agent can still touch memory files. exec_* tools surface their
+      // own errors per call.
+      console.error("[v0] handleHeartbeat: startupExecSandbox failed", err)
+    })
 
-    await startupAgentSandbox({ agentId })
+    // Drain UI-authored persona-file edits before composeSystemPrompt
+    // reads them inside buildAgent.
+    await drainPendingWrites({ agentId })
 
-    // Build the agent against this heartbeat's runId so persistResult
-    // and emitStep land on the right `events:${runId}` namespace. The
-    // `kind !== "daily-email-brief"` guard above narrows this branch,
-    // so we can call the factory directly. Phase 2 routes through the
-    // runtime registry once additional kinds exist.
-    const agent = createDailyEmailBriefAgent({ runId, agentId })
+    const { agent, pending } = await buildAgent({ agentId, runId })
+
+    const kickoff = buildHeartbeatKickoff({
+      nowIso: new Date().toISOString(),
+      previousIso,
+    })
 
     await agent.stream({
-      messages: [
-        {
-          role: "user",
-          content: dailyEmailBriefKickoff(sinceIso, afterEpoch),
-        },
-      ],
+      messages: [{ role: "user", content: kickoff }],
       writable,
       maxSteps: 60,
     })
 
     await finalizeRun(runId, "completed")
+
+    return { pending }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     await finalizeRun(runId, "failed", message)
     throw err
   }
+}
+
+/**
+ * Best-effort lookup of the most recent completed run for this agent.
+ * Returns `null` if there isn't one (first heartbeat, or all prior
+ * heartbeats failed). Used purely as a hint in the kickoff message.
+ */
+async function readPreviousHeartbeatCompletion(
+  agentId: string,
+): Promise<string | null> {
+  "use step"
+  const [prev] = await db
+    .select({ completedAt: runs.completedAt })
+    .from(runs)
+    .where(and(eq(runs.agentId, agentId), eq(runs.status, "completed")))
+    .orderBy(desc(runs.completedAt))
+    .limit(1)
+  return prev?.completedAt ? prev.completedAt.toISOString() : null
 }
