@@ -1,4 +1,4 @@
-import type { Sandbox } from "@vercel/sandbox"
+import { getSystemSandbox } from "@/lib/agent-sandbox"
 import {
   listLiveMemory,
   readLiveMemory,
@@ -42,9 +42,25 @@ import {
  */
 
 export interface ComposeSystemPromptArgs {
+  /**
+   * The agent whose system sandbox we should resume. We take the id
+   * (not a live `Sandbox` handle) because this function runs as a
+   * `"use step"` boundary, and step inputs MUST be JSON-serialisable
+   * — a `Sandbox` is a non-serialisable object handle. Resuming the
+   * sandbox by id inside the step body is cheap (the registry has it
+   * hot from `startupSystemSandbox`).
+   *
+   * Stuffing the resume inside the step also keeps every `Sandbox`
+   * value reference behind a step boundary, which is the contract
+   * the workflow bundler relies on to strip `@vercel/sandbox` (and
+   * its Node.js built-in transitive imports — `assert`,
+   * `async_hooks`, `crypto`, `dns`, `events`, `fs`, ...) from the
+   * workflow bundle. Without this, you get the
+   * `Workflow bundle contains Node.js built-in imports: ...` serde
+   * warning at \`pnpm dev\`.
+   */
+  agentId: string
   agentName: string
-  /** Live system sandbox. The compose step reads from here. */
-  systemSandbox: Sandbox
   /** UTC ISO timestamp embedded so the model knows what "now" is. */
   nowIso?: string
 }
@@ -73,7 +89,10 @@ const FOOTER = `## Platform invariants
 export async function composeSystemPrompt(
   args: ComposeSystemPromptArgs,
 ): Promise<string> {
-  const { agentName, systemSandbox, nowIso } = args
+  "use step"
+  const { agentId, agentName, nowIso } = args
+
+  const systemSandbox = await getSystemSandbox(agentId)
 
   const [agentsMd, soulMd, livePaths] = await Promise.all([
     readLiveMemory(systemSandbox, "AGENTS.md"),

@@ -2,7 +2,6 @@ import { DurableAgent } from "@workflow/ai/agent"
 import { eq } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { agent } from "@/lib/db/schema"
-import { getSystemSandbox } from "@/lib/agent-sandbox"
 import { composeSystemPrompt } from "./compose-system-prompt"
 import { createMemoryTools } from "./tools/memory-tools"
 import { createExecTools } from "./tools/exec-tools"
@@ -85,13 +84,19 @@ export async function buildAgent(
     throw new Error(`buildAgent: agent ${agentId} not found`)
   }
 
-  // composeSystemPrompt resumes the system sandbox and reads the
-  // persona files. Cheap in the steady state — the sandbox is already
-  // hot from `startupSystemSandbox` + `drainPendingWrites`.
-  const systemSandbox = await getSystemSandbox(agentId)
+  // composeSystemPrompt is itself a `"use step"` boundary — it
+  // takes the agent id (NOT a live `Sandbox` handle) and resumes
+  // the system sandbox internally. Doing the resume inside the step
+  // is what keeps `@vercel/sandbox` value imports out of the
+  // workflow bundle; otherwise the workflow bundler picks the SDK
+  // (and its Node built-in transitive deps: assert, async_hooks,
+  // crypto, dns, events, fs, module, os, path, stream, url, util,
+  // worker_threads, zlib) into the workflow bundle and emits the
+  // serde warning. Cheap in the steady state — the sandbox is
+  // already hot from `startupSystemSandbox` + `drainPendingWrites`.
   const systemPrompt = await composeSystemPrompt({
+    agentId,
     agentName: row.name,
-    systemSandbox,
     nowIso: args.nowIso ?? new Date().toISOString(),
   })
 
