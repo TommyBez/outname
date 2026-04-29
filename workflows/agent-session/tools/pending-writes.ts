@@ -2,27 +2,11 @@ import type { Sandbox } from "@vercel/sandbox"
 import { SYSTEM_SANDBOX_ROOT } from "@/lib/agent-sandbox-registry"
 
 /**
- * Per-event buffer of memory mutations.
- *
- * The memory tools are append-only at call time — they push an entry
- * here and return success without ever touching the sandbox. The
- * `endOfEvent` step calls `flushPendingWrites` to apply the queue in
- * insertion order to the live filesystem, then mirrors the result into
- * `agent_files` for the UI.
- *
- * Reads at call time are overlay-aware: `resolveEffectiveContent` /
- * `resolveEffectiveListing` apply the queued ops on top of whatever
- * the sandbox returns so the model sees its own writes within the
- * same turn.
- *
- * Why buffer instead of write-through?
- *   1. Writing inside a tool's execute would force every memory call
- *      to round-trip the sandbox SDK (~100ms each). Buffering keeps
- *      the agent loop hot and amortises the cost into one batched
- *      flush per turn.
- *   2. If the model crashes or is cancelled mid-turn, the queue is
- *      dropped and the on-disk memory is unchanged. Atomicity at the
- *      turn boundary, not the tool-call boundary.
+ * Queued memory mutations for one event. Tools push ops here; `endOfEvent`
+ * flushes to the sandbox and mirrors to `agent_files`. Reads use
+ * `resolveEffectiveContent` / `resolveEffectiveListing` so the model sees
+ * queued writes in the same turn. Buffering avoids a sandbox round-trip per
+ * call and drops pending work if the turn is cancelled.
  */
 
 export type PendingOp =
@@ -45,9 +29,7 @@ export function createPendingWrites(): PendingWrites {
   return { ops: [] }
 }
 
-/* -------------------------------------------------------------------------- */
-/* Path validation — applied at tool entry                                     */
-/* -------------------------------------------------------------------------- */
+// Path validation — tool entry
 
 const MEMORY_PATH_RE = /^[A-Za-z0-9._/-]+\.md$/
 
@@ -88,9 +70,7 @@ export class MemoryPathError extends Error {
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/* Mutators — called from memory tool executes                                 */
-/* -------------------------------------------------------------------------- */
+// Mutators
 
 export function enqueueWrite(
   pending: PendingWrites,
@@ -104,11 +84,8 @@ export function enqueueWrite(
  * Append `content` to the tail of `path`. Used by the bash-tool audit
  * log and any other system-driven append surface.
  *
- * Sequencing: a queued append after a queued write/edit on the same
- * path applies on top of the queued state — `resolveEffectiveContent`
- * replays ops in insertion order, and `flushPendingWrites` does the
- * same against the live filesystem. The model sees its own appends
- * within the same turn through `read_memory`.
+ * Sequencing: later ops on the same path stack on prior queued state; the
+ * overlay helpers replay in order.
  */
 export function enqueueAppend(
   pending: PendingWrites,
@@ -138,9 +115,7 @@ export function enqueueDelete(pending: PendingWrites, path: string): void {
   pending.ops.push({ kind: "delete", path })
 }
 
-/* -------------------------------------------------------------------------- */
-/* Overlay-aware reads — used by read_memory / list_memory                     */
-/* -------------------------------------------------------------------------- */
+// Overlay-aware reads
 
 /**
  * Compute the effective content of `path` by replaying queued ops on
@@ -205,9 +180,7 @@ export function resolveEffectiveListing(
   return Array.from(present).sort()
 }
 
-/* -------------------------------------------------------------------------- */
-/* Sandbox-side helpers — called by memory tool executes                       */
-/* -------------------------------------------------------------------------- */
+// Sandbox I/O from tool steps
 
 /**
  * Read the live (on-disk) content of a memory file from the system
@@ -247,9 +220,7 @@ export async function listLiveMemory(sandbox: Sandbox): Promise<string[]> {
     .sort()
 }
 
-/* -------------------------------------------------------------------------- */
-/* Flush — invoked by `endOfEvent`                                              */
-/* -------------------------------------------------------------------------- */
+// Flush (`endOfEvent`)
 
 /**
  * Apply queued ops to the live sandbox in insertion order. Edits use

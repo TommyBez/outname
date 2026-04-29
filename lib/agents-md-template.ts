@@ -16,14 +16,6 @@
  *     `pending_file_writes` queue and is applied by
  *     `drainPendingWrites`) or via the operator's manual edits.
  *     The agent's own `*_memory` tools refuse this path.
- *
- * Phase 2 / architect rev:
- *   - Documents the six memory tools using the `<verb>_memory`
- *     convention (incl. `search_memory`).
- *   - Documents the five exec tools (incl. `reset_exec`).
- *   - Calls out the automatic bash audit log at `logs/<UTC date>.md`.
- *   - Acknowledges that AGENTS.md / SOUL.md are user-owned via the
- *     settings UI tabs.
  */
 export const AGENTS_MD_TEMPLATE = `# AGENTS.md
 

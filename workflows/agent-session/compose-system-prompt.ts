@@ -9,36 +9,9 @@ import {
 } from "@/workflows/agent-session/tools/persona-paths"
 
 /**
- * Stitch together the model's effective system prompt from three
- * layered sources, in order:
- *
- *   1. **Persona files** read live from the system sandbox:
- *        - `AGENTS.md` — operational manual / instructions. Seeded
- *          on first sandbox boot with a default template, then
- *          edited via the agent settings "Instructions" tab. The
- *          agent's memory_* tools refuse to mutate it.
- *        - `SOUL.md`   — the agent's identity / voice. Purely
- *          user-authored via the agent settings "Identity" tab;
- *          missing on a fresh agent until an operator writes one.
- *      Both files are inlined verbatim so the model sees the same
- *      content the user sees in the agent files UI. Phase 2 dropped
- *      the legacy `agent.system_prompt` column — these two files
- *      are the single source of agent personality.
- *
- *   2. **Memory inventory footer** — the relative paths of every
- *      other `*.md` file the system sandbox holds, so the model can
- *      plan `read_memory` calls without having to probe the listing
- *      itself. Persona files are filtered out (their content is
- *      already inlined above).
- *
- *   3. **Platform invariants** — non-negotiable platform contracts:
- *      memory durability, persona files being read-only at the tool
- *      layer, prefer-tools-over-guesses, heartbeat budgeting.
- *
- * The composed prompt is computed once per event, before
- * `agent.stream`, and never recomposed mid-turn — pending writes from
- * the same event are reflected on the next event after `endOfEvent`
- * flushes them.
+ * Build the system prompt: inline AGENTS.md + SOUL.md from the system
+ * sandbox, list other memory paths, append platform invariants. Computed
+ * once per event; on-disk writes from this turn show up after `endOfEvent`.
  */
 
 export interface ComposeSystemPromptArgs {

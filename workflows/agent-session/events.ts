@@ -1,24 +1,11 @@
 import type { UIMessage } from "ai"
 
 /**
- * Events processed by `agentSessionWorkflow`. Each iteration of the
- * for-await loop pulls one of these from the agent's session hook.
+ * Session event union for `agentSessionWorkflow`.
  *
- * - `chat` — a user turn from `POST /api/agents/:id/chat`. The route
- *   generates a fresh `replyToken` for the turn and the chat handler
- *   streams `UIMessageChunk`s into a namespaced sub-stream of the
- *   session run keyed by that token, which the route then pipes into
- *   the HTTP response.
- * - `heartbeat` — the periodic tick driven by `agentTickerWorkflow`,
- *   or a one-shot push from `POST /api/agents/:id/trigger`. When `ack`
- *   is set the session resumes that hook after the handler returns so
- *   the ticker knows the heartbeat is done; ad-hoc trigger pokes leave
- *   it unset. (A `force` field will land in Phase 2 when per-kind
- *   rate-limit / time-of-day gates are introduced; not modeled today
- *   because no handler reads it.)
- * - `shutdown` — pushed by `stopAgentSession` when the agent is
- *   disabled or deleted. The for-await loop breaks and the workflow's
- *   finally block tears the ticker down.
+ * - `chat` — user turn; `replyToken` namespaces streamed chunks for the route.
+ * - `heartbeat` — ticker or manual trigger; optional `ack` so the ticker knows the run finished.
+ * - `shutdown` — agent disabled/deleted; loop exits and the ticker is torn down.
  */
 export type SessionEvent =
   | {
@@ -33,13 +20,7 @@ export type SessionEvent =
     }
   | { type: "shutdown" }
 
-/* -------------------------------------------------------------------------- */
-/* Token helpers                                                               */
-/*                                                                             */
-/* All tokens are derived deterministically from `agentId` so external code   */
-/* (the API routes and the cron sweeper) can always derive the right token   */
-/* without consulting any state beyond the agent id.                          */
-/* -------------------------------------------------------------------------- */
+// Hook tokens — deterministic from `agentId` only.
 
 /** Main session event hook — one per agent. */
 export function sessionToken(agentId: string): string {

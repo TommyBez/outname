@@ -9,9 +9,7 @@ import {
 } from "@/lib/agent-sandbox-registry"
 import type { CreateOptions } from "@/lib/agent-sandbox-types"
 
-/* -------------------------------------------------------------------------- */
-/* Role <-> column mapping                                                     */
-/* -------------------------------------------------------------------------- */
+// Role <-> DB column mapping
 
 /**
  * Stable suffix added to the sandbox name. Sandbox names are scoped per
@@ -59,9 +57,7 @@ async function writeSandboxId(
     .where(eq(agent.id, agentId))
 }
 
-/* -------------------------------------------------------------------------- */
-/* Public types                                                                */
-/* -------------------------------------------------------------------------- */
+// Public types
 
 export interface EnsureResult {
   sandbox: Sandbox
@@ -69,9 +65,7 @@ export interface EnsureResult {
   created: boolean
 }
 
-/* -------------------------------------------------------------------------- */
-/* Lifecycle internals                                                         */
-/* -------------------------------------------------------------------------- */
+// Lifecycle internals
 
 async function ensureRoleSandbox(
   agentId: string,
@@ -112,9 +106,7 @@ async function ensureRoleSandbox(
   return { sandbox, created }
 }
 
-/* -------------------------------------------------------------------------- */
-/* Marker helpers — shared by setup hooks                                      */
-/* -------------------------------------------------------------------------- */
+// Marker helpers (setup hooks)
 
 /**
  * Read a small UTF-8 marker file from a sandbox (e.g. a "/workspace
@@ -140,12 +132,7 @@ export async function writeMarker(
   await sandbox.writeFiles([{ path, content: Buffer.from(value, "utf8") }])
 }
 
-/* -------------------------------------------------------------------------- */
-/* Step primitives — workflow-facing API                                       */
-/*                                                                             */
-/* These MUST run as steps — they touch fetch-based APIs (Neon HTTP, Vercel    */
-/* Sandbox) which are not available inside the `"use workflow"` sandboxed VM. */
-/* -------------------------------------------------------------------------- */
+// Step primitives — workflow-facing (Neon / Sandbox; not inside `"use workflow"` VM)
 
 /**
  * Ensure the agent's **system** sandbox is booted. The system sandbox
@@ -201,9 +188,7 @@ export async function startupExecSandbox(input: {
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/* Direct sandbox handles — used by tools / end-of-event                       */
-/* -------------------------------------------------------------------------- */
+// Resume handles for tools / end-of-event
 
 /**
  * Resume the agent's system sandbox by name. Throws if startup hasn't
@@ -247,9 +232,7 @@ export async function releaseSandbox(sandbox: Sandbox): Promise<void> {
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/* Reset                                                                       */
-/* -------------------------------------------------------------------------- */
+// Reset exec sandbox
 
 /**
  * Throw away the agent's *exec* sandbox and its persisted snapshot,
@@ -298,9 +281,7 @@ export async function resetExecSandbox(input: {
   return { destroyed }
 }
 
-/* -------------------------------------------------------------------------- */
-/* Teardown                                                                    */
-/* -------------------------------------------------------------------------- */
+// Teardown
 
 /**
  * Permanently delete both of an agent's sandboxes (system + exec) if
