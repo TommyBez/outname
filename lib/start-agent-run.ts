@@ -12,6 +12,7 @@ import { type Agent, agent } from '@/lib/db/schema'
  * managed in `lib/agent-session.ts`.
  */
 export async function getAgentById(agentId: string): Promise<Agent | null> {
+  'use step'
   const [row] = await db
     .select()
     .from(agent)
