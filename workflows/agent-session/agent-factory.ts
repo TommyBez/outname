@@ -48,7 +48,7 @@ export async function buildAgent(
   const pending = createPendingWrites()
 
   const memoryTools = createMemoryTools({ agentId, pending })
-  const execTools = await createExecTools({ agentId, pending })
+  const execTools = createExecTools({ agentId, pending })
 
   const durableAgent = new DurableAgent({
     model: row.model,
@@ -90,15 +90,9 @@ export function buildHeartbeatKickoff(args: {
     `It is now ${args.nowIso}. This is your scheduled heartbeat.`,
     sinceClause,
     '',
-    'Use this time to:',
-    "  1. Read your TASKS.md and CALENDAR.md to see what's pending.",
-    '  2. Make incremental progress on anything you can finish quickly with',
-    '     your available tools.',
-    '  3. Update memory files with anything new you learned or decided.',
-    "  4. Append one bullet to today's log under logs/<YYYY-MM-DD>.md",
-    '     summarising what happened during this heartbeat.',
-    '',
-    'Be terse. Stop when there is nothing more useful to do — do not',
-    "manufacture work. A heartbeat that simply logs 'no changes' is fine.",
+    'Follow your operational directives from AGENTS.md and your persona',
+    'from SOUL.md. Perform one small, useful heartbeat-sized action,',
+    'update memory as your directives require, append a brief bullet to',
+    "today's log, then stop.",
   ].join('\n')
 }

@@ -1,9 +1,20 @@
+import { readLatestPendingFileWrite } from '@/lib/agent-pending-writes'
 import { getSystemSandbox, readMarker, writeMarker } from '@/lib/agent-sandbox'
 import { SYSTEM_SANDBOX_ROOT } from '@/lib/agent-sandbox-registry'
-import { AGENTS_MD_TEMPLATE } from '@/lib/agents-md-template'
+import { buildAgentsMdContent } from '@/lib/agents-md-template'
 
 const AGENTS_MD_PATH = `${SYSTEM_SANDBOX_ROOT}/AGENTS.md`
+const SOUL_MD_PATH = `${SYSTEM_SANDBOX_ROOT}/SOUL.md`
 const SEED_MARKER_PATH = `${SYSTEM_SANDBOX_ROOT}/.agents-md-seeded`
+// Bumped to "v8" when the base template clarified that all memory
+// files except AGENTS.md and SOUL.md are agent-maintained.
+//
+// Bumped to "v7" when heartbeat behavior moved from the generic
+// kickoff prompt into the base AGENTS.md operating contract.
+//
+// Bumped to "v6" when UI-authored AGENTS.md content changed from
+// replacement semantics to "append below the platform base template".
+//
 // Bumped to "v5" alongside the architect-driven memory-tool rename
 // from `memory_*` to `<verb>_memory`. The template body now refers
 // to `list_memory`, `read_memory`, `search_memory`, `write_memory`,
@@ -16,7 +27,7 @@ const SEED_MARKER_PATH = `${SYSTEM_SANDBOX_ROOT}/.agents-md-seeded`
 // documents the automatic bash audit log at `logs/<UTC date>.md`)
 // are still in place. Existing dev agents pick up the new template
 // on their next event after deploy.
-const SEED_MARKER_VALUE = 'v5'
+const SEED_MARKER_VALUE = 'v8'
 
 /**
  * Process-local cache of agent ids whose `.agents-md-seeded` marker we
@@ -71,11 +82,27 @@ export async function seedAgentsMd(input: {
     }
   }
 
+  const [agentsMdRow, soulMdRow] = await Promise.all([
+    readLatestPendingFileWrite({ agentId, path: 'AGENTS.md' }),
+    readLatestPendingFileWrite({ agentId, path: 'SOUL.md' }),
+  ])
+
   await sandbox.writeFiles([
     {
       path: AGENTS_MD_PATH,
-      content: Buffer.from(AGENTS_MD_TEMPLATE, 'utf8'),
+      content: Buffer.from(
+        buildAgentsMdContent({ customInstructions: agentsMdRow?.content }),
+        'utf8'
+      ),
     },
+    ...(soulMdRow
+      ? [
+          {
+            path: SOUL_MD_PATH,
+            content: Buffer.from(soulMdRow.content, 'utf8'),
+          },
+        ]
+      : []),
   ])
 
   await writeMarker(sandbox, SEED_MARKER_PATH, SEED_MARKER_VALUE)

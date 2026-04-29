@@ -4,6 +4,7 @@ import {
 } from '@/lib/agent-pending-writes'
 import { getSystemSandbox } from '@/lib/agent-sandbox'
 import { SYSTEM_SANDBOX_ROOT } from '@/lib/agent-sandbox-registry'
+import { buildAgentsMdContent } from '@/lib/agents-md-template'
 
 /**
  * Apply every unapplied row from `pending_file_writes` for `agentId`
@@ -53,11 +54,21 @@ export async function drainPendingWrites(input: {
   await sandbox.writeFiles(
     queued.map((row) => ({
       path: `${SYSTEM_SANDBOX_ROOT}/${row.path}`,
-      content: Buffer.from(row.content, 'utf8'),
+      content: Buffer.from(contentForPendingWrite(row), 'utf8'),
     }))
   )
 
   await markPendingFileWritesApplied({ ids: queued.map((r) => r.id) })
 
   return { applied: queued.length }
+}
+
+function contentForPendingWrite(row: {
+  content: string
+  path: string
+}): string {
+  if (row.path === 'AGENTS.md') {
+    return buildAgentsMdContent({ customInstructions: row.content })
+  }
+  return row.content
 }

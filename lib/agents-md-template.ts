@@ -1,21 +1,20 @@
 /**
- * Baseline `AGENTS.md` content seeded into a freshly provisioned
- * agent's **system** sandbox on its very first boot. The seed step
- * (see `workflows/agent-session/steps/seed-agents-md.ts`) writes this
- * file exactly once per agent — guarded by a `.agents-md-seeded`
- * sentinel that the seed step bumps each time the template ships a
- * breaking change so deploy-time edits never silently overwrite an
- * agent's evolved notes.
+ * Baseline `AGENTS.md` content seeded into an agent's **system**
+ * sandbox. Operator-authored instructions from the UI are appended
+ * below this baseline, rather than replacing the platform contract.
+ * The seed step (see `workflows/agent-session/steps/seed-agents-md.ts`)
+ * is guarded by a `.agents-md-seeded` sentinel that the seed step bumps
+ * each time the template ships a breaking change.
  *
  * Template authoring rules:
  *   - Do not embed information that varies per agent — names,
  *     models, persona — those live in `SOUL.md` (operator-authored)
  *     or get derived at runtime by `composeSystemPrompt`.
- *   - The agent owns this file. After the seed, every edit happens
- *     either via the UI "Instructions" tab (which lands in the
+ *   - The operator owns this file. After the seed, every edit happens
+ *     via the UI "Instructions" tab (which lands in the
  *     `pending_file_writes` queue and is applied by
  *     `drainPendingWrites`) or via the operator's manual edits.
- *     The agent's own `*_memory` tools refuse this path.
+ *     The agent's own memory tools refuse this path.
  */
 export const AGENTS_MD_TEMPLATE = `# AGENTS.md
 
@@ -31,8 +30,10 @@ SOUL.md). Your own \`memory_*\` tools will refuse to write to either
 path. If something here is wrong, surface it to the user — do not
 silently work around it.
 
-Every other file in your memory volume is yours to manage. The
-platform never rewrites those on your behalf.
+Every other file in your memory volume is agent-maintained. You are
+responsible for proactively creating, updating, pruning, and correcting
+those files as you work. The platform never rewrites them on your
+behalf, and the user should not need to babysit routine memory hygiene.
 
 ## Tools available to you
 
@@ -87,23 +88,27 @@ or to run scripts/builds/HTTP calls. Files persist across events.
   prompt). If you spot a contradiction with your behavior, raise it
   with the user.
 - \`MEMORY.md\` — durable facts, preferences, and commitments about
-  the user. Append-only by convention; rewrite only to correct
-  mistakes.
+  the user. Keep it current as you learn. Append-only by convention;
+  rewrite only to correct mistakes.
 - \`TASKS.md\` — active tactical items with status and dependencies.
-  Use the checkbox conventions below.
+  Keep it current without waiting for explicit reminders. Use the
+  checkbox conventions below.
 - \`CALENDAR.md\` — known time-bound events and deadlines, ISO-8601
-  dated.
+  dated. Add, update, and remove entries as plans change.
 - \`GOALS.md\` — long-horizon objectives. Updated rarely; consult
-  before deciding what to surface in a heartbeat.
+  before deciding what to surface in a heartbeat, and revise when a
+  durable objective changes.
 - \`DREAMS.md\` — reflections, pattern anticipation, self-evaluation.
-  Written during dedicated heartbeat passes.
+  Written during dedicated heartbeat passes when there is useful signal
+  to preserve.
 - \`logs/YYYY-MM-DD.md\` — per-day log. The \`bash\` and
   \`reset_exec\` tools auto-append one line per call. You can append
   your own bullets here too — the file is shared. One file per UTC
   day.
 
 You are free to add more files as your work demands. Use kebab-case
-names ending in \`.md\`.
+names ending in \`.md\`. Once added, those files become part of your
+memory system and should be maintained with the same care.
 
 ## Conventions
 
@@ -122,6 +127,21 @@ names ending in \`.md\`.
   a tool result, include the source link or message id in
   parentheses.
 
+## Heartbeat behavior
+
+On each scheduled heartbeat, follow your persona in \`SOUL.md\` and
+the operational directives in this file, especially the user custom
+instructions appended below. Do one small useful unit of work that
+matches those directives.
+
+If custom instructions define a heartbeat ritual, perform it. If they
+do not, inspect the relevant memory files (\`TASKS.md\`,
+\`CALENDAR.md\`, \`GOALS.md\`, or others) and either make one quick
+piece of progress or record that nothing needs action.
+
+Always update memory as your directives require and append one concise
+bullet to today's \`logs/YYYY-MM-DD.md\` describing what happened.
+
 ## What you know about the user
 
 (Empty — fill in \`MEMORY.md\` as you learn. Quick-reference facts may
@@ -132,3 +152,18 @@ be mirrored here for the eager prologue.)
 (Empty — append bullets here for short-lived context that does not
 warrant a row in \`TASKS.md\`.)
 `
+
+export function buildAgentsMdContent(input?: {
+  customInstructions?: string | null
+}): string {
+  const custom = input?.customInstructions?.trim()
+  if (!custom) {
+    return AGENTS_MD_TEMPLATE
+  }
+  return `${AGENTS_MD_TEMPLATE.trimEnd()}
+
+## User custom instructions
+
+${custom}
+`
+}
