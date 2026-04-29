@@ -84,9 +84,6 @@ export async function buildAgent(
     throw new Error(`buildAgent: agent ${agentId} not found`)
   }
 
-  // Keep the live Sandbox handle inside composeSystemPrompt's step;
-  // passing only the id avoids pulling @vercel/sandbox into the
-  // workflow bundle.
   const systemPrompt = await composeSystemPrompt({
     agentId,
     agentName: row.name,
@@ -96,10 +93,6 @@ export async function buildAgent(
   const pending = createPendingWrites()
 
   const memoryTools = createMemoryTools({ agentId, pending })
-  // The exec tools also receive `pending` so the bash audit log can
-  // enqueue an append op into the shared per-event buffer instead of
-  // doing a synchronous round-trip to the system sandbox per call.
-  // `createExecTools` prepares the bash-tool wrapper once per event.
   const execTools = await createExecTools({ agentId, pending })
 
   const durableAgent = new DurableAgent({

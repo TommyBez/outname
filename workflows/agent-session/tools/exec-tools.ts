@@ -6,37 +6,15 @@ import { EXEC_SANDBOX_WORKSPACE } from "@/lib/agent-sandbox-registry"
 import { enqueueAppend, type PendingWrites } from "./pending-writes"
 
 /**
- * Exec tools — surface the agent's *exec* sandbox to the LLM.
- *
- * The exec sandbox is a separate, longer-timeout Vercel Sandbox that
- * the agent can shell into for general-purpose work: running scripts,
- * reading/writing arbitrary files, hitting network APIs, etc. Files
- * persist across events through snapshot-on-stop, so a heartbeat run
- * can pick up artifacts a chat turn left behind.
- *
- * Surface: `bash`, `file_read`, `file_write`, `reset_exec`.
- * `bash`, `file_read`, and `file_write` delegate to the upstream
- * `bash-tool` package; `reset_exec` remains local because it manages
- * this app's sandbox lifecycle.
- *
- * Why these tools are *not* buffered like memory tools:
- *   - Bash output is the agent's primary feedback signal; buffering
- *     would hide errors until end-of-event.
- *   - The exec sandbox has no `agent_files` mirror, so there's nothing
- *     to atomicity-protect at the turn boundary.
- *
- * Bash output is capped before being returned to the model.
+ * Exec sandbox tools: bash, file_read, file_write (via bash-tool), plus
+ * reset_exec. Not buffered like memory tools — bash feedback must be
+ * immediate; exec workspace has no agent_files mirror. Output capped per call.
  */
 
-const MAX_OUTPUT_BYTES = 64 * 1024 // 64 KiB
+const MAX_OUTPUT_BYTES = 64 * 1024
 
 export interface ExecToolsContext {
   agentId: string
-  /**
-   * Per-event mutation buffer shared with the memory tools. Bash and
-   * reset calls append audit lines here; `endOfEvent` flushes them
-   * with the rest of the turn's memory writes.
-   */
   pending: PendingWrites
 }
 
@@ -68,7 +46,7 @@ export async function createExecTools(ctx: ExecToolsContext) {
         "use step"
         const result = await bashTool.tools.bash.execute!({ command }, options)
 
-        const day = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+        const day = new Date().toISOString().slice(0, 10)
         const auditCommand =
           command.length > 240 ? `${command.slice(0, 240)}…` : command
         const line = [
@@ -112,11 +90,6 @@ export async function createExecTools(ctx: ExecToolsContext) {
       }),
       execute: async ({ reason }) => {
         const result = await resetExecSandbox({ agentId })
-        // Audit the reset into the same daily log the bash tool
-        // writes to, so the model can grep its own reset history
-        // alongside the commands it ran. We tag the line with
-        // 'reset_exec' instead of 'exit=N' so a quick grep
-        // separates the two surfaces.
         const day = new Date().toISOString().slice(0, 10)
         const auditReason =
           reason.length > 240 ? `${reason.slice(0, 240)}…` : reason

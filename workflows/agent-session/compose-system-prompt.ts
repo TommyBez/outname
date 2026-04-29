@@ -42,10 +42,6 @@ import {
  */
 
 export interface ComposeSystemPromptArgs {
-  /**
-   * The agent whose system sandbox should be resumed inside this
-   * step. Keep the live Sandbox handle out of workflow-body inputs.
-   */
   agentId: string
   agentName: string
   /** UTC ISO timestamp embedded so the model knows what "now" is. */
@@ -92,9 +88,6 @@ export async function composeSystemPrompt(
   sections.push(`# Agent: ${agentName}`)
   if (nowIso) sections.push(`Current UTC time: ${nowIso}`)
 
-  // 1. Persona files (inlined, content verbatim). Heading copy notes
-  // they are user-managed so the model has explicit context for the
-  // read_only error if it ever tries to write them.
   if (agentsMd && agentsMd.trim().length > 0) {
     sections.push(
       `## AGENTS.md (operational manual — read-only, managed by user)\n\n${agentsMd.trim()}`,
@@ -106,8 +99,6 @@ export async function composeSystemPrompt(
     )
   }
 
-  // 2. Memory inventory footer — list every non-persona *.md path.
-  // The model can pull any of them with read_memory.
   const otherPaths = livePaths
     .filter((p) => !READ_ONLY_FOR_AGENT.has(p))
     .sort()
@@ -120,7 +111,6 @@ export async function composeSystemPrompt(
     )
   }
 
-  // 3. Footer.
   sections.push(FOOTER)
 
   return sections.join("\n\n")
