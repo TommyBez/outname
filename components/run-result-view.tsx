@@ -1,11 +1,11 @@
-"use client"
+'use client'
 
-import { Streamdown } from "streamdown"
-import { cjk } from "@streamdown/cjk"
-import { code } from "@streamdown/code"
-import { math } from "@streamdown/math"
-import { mermaid } from "@streamdown/mermaid"
-import { cn } from "@/lib/utils"
+import { cjk } from '@streamdown/cjk'
+import { code } from '@streamdown/code'
+import { math } from '@streamdown/math'
+import { mermaid } from '@streamdown/mermaid'
+import { Streamdown } from 'streamdown'
+import { cn } from '@/lib/utils'
 
 /**
  * Agent-agnostic run result renderer.
@@ -23,8 +23,8 @@ const plugins = { cjk, code, math, mermaid }
 export function RunResultView({ content }: { content: string | null }) {
   if (!content || content.trim().length === 0) {
     return (
-      <div className="border-t border-border pt-10">
-        <p className="font-serif text-2xl leading-snug text-pretty text-muted-foreground">
+      <div className="border-border border-t pt-10">
+        <p className="text-pretty font-serif text-2xl text-muted-foreground leading-snug">
           No content for this run.
         </p>
       </div>
@@ -34,10 +34,10 @@ export function RunResultView({ content }: { content: string | null }) {
   return (
     <article
       className={cn(
-        "prose prose-neutral max-w-none border-t border-border pt-10 dark:prose-invert",
-        "prose-headings:font-serif prose-headings:font-medium prose-headings:tracking-tight",
-        "prose-p:text-pretty prose-p:leading-relaxed",
-        "prose-code:font-mono",
+        'prose prose-neutral dark:prose-invert max-w-none border-border border-t pt-10',
+        'prose-headings:font-medium prose-headings:font-serif prose-headings:tracking-tight',
+        'prose-p:text-pretty prose-p:leading-relaxed',
+        'prose-code:font-mono'
       )}
     >
       <Streamdown plugins={plugins}>{content}</Streamdown>

@@ -1,24 +1,24 @@
-"use client"
+'use client'
 
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useState, useTransition } from "react"
-import { toast } from "sonner"
 import {
   ChevronRight,
   Info,
   MoreHorizontal,
-  Settings as SettingsIcon,
   Play,
-} from "lucide-react"
+  Settings as SettingsIcon,
+} from 'lucide-react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useState, useTransition } from 'react'
+import { toast } from 'sonner'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { cn } from "@/lib/utils"
+} from '@/components/ui/dropdown-menu'
+import { cn } from '@/lib/utils'
 
 interface ChatHeaderProps {
   agentId: string
@@ -38,11 +38,7 @@ interface ChatHeaderProps {
  * Rendered inside `<ChatFrame>`, which is itself inside the AppShell's
  * padded main column.
  */
-export function ChatHeader({
-  agentId,
-  agentName,
-  enabled,
-}: ChatHeaderProps) {
+export function ChatHeader({ agentId, agentName, enabled }: ChatHeaderProps) {
   const router = useRouter()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isTriggering, setIsTriggering] = useState(false)
@@ -55,22 +51,20 @@ export function ChatHeader({
     setIsTriggering(true)
     try {
       const res = await fetch(`/api/agents/${agentId}/trigger`, {
-        method: "POST",
+        method: 'POST',
       })
       if (!res.ok) {
-        const body = await res
-          .json()
-          .catch(() => ({ error: res.statusText }))
+        const body = await res.json().catch(() => ({ error: res.statusText }))
         throw new Error(body.error ?? `HTTP ${res.status}`)
       }
       const { runId } = (await res.json()) as { runId: string }
-      toast.success("Run started", {
+      toast.success('Run started', {
         description: `ID ${runId.slice(0, 8)}`,
       })
       startTransition(() => router.refresh())
     } catch (err) {
-      toast.error("Could not start run", {
-        description: err instanceof Error ? err.message : "Unknown error",
+      toast.error('Could not start run', {
+        description: err instanceof Error ? err.message : 'Unknown error',
       })
     } finally {
       setIsTriggering(false)
@@ -78,11 +72,11 @@ export function ChatHeader({
   }
 
   return (
-    <header className="flex items-center justify-between gap-3 border-b border-border pb-4">
+    <header className="flex items-center justify-between gap-3 border-border border-b pb-4">
       <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2">
         <Link
+          className="font-mono text-muted-foreground text-xs uppercase tracking-[0.2em] transition-colors hover:text-foreground"
           href="/agents"
-          className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground"
         >
           Agents
         </Link>
@@ -94,30 +88,30 @@ export function ChatHeader({
           <span
             aria-hidden
             className={cn(
-              "inline-block size-1.5 shrink-0 rounded-full",
-              enabled ? "bg-accent" : "bg-muted-foreground",
+              'inline-block size-1.5 shrink-0 rounded-full',
+              enabled ? 'bg-accent' : 'bg-muted-foreground'
             )}
           />
-          <h1 className="min-w-0 truncate font-serif text-base font-medium tracking-tight sm:text-lg">
+          <h1 className="min-w-0 truncate font-medium font-serif text-base tracking-tight sm:text-lg">
             {agentName}
           </h1>
           <span
-            className="hidden font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground sm:inline"
-            aria-label={enabled ? "active" : "paused"}
+            aria-label={enabled ? 'active' : 'paused'}
+            className="hidden font-mono text-[10px] text-muted-foreground uppercase tracking-[0.2em] sm:inline"
           >
-            · {enabled ? "active" : "paused"}
+            · {enabled ? 'active' : 'paused'}
           </span>
         </div>
       </nav>
 
-      <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+      <DropdownMenu onOpenChange={setIsMenuOpen} open={isMenuOpen}>
         <DropdownMenuTrigger asChild>
           <button
-            type="button"
             aria-label="Agent actions"
             className="inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors hover:border-border hover:bg-muted hover:text-foreground"
+            type="button"
           >
-            <MoreHorizontal className="size-4" aria-hidden />
+            <MoreHorizontal aria-hidden className="size-4" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
@@ -142,7 +136,7 @@ export function ChatHeader({
             }}
           >
             <Play className="mr-2 size-3.5" />
-            {isTriggering ? "Starting…" : "Trigger now"}
+            {isTriggering ? 'Starting…' : 'Trigger now'}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

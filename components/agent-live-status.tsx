@@ -1,9 +1,9 @@
-"use client"
+'use client'
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { useRunStream } from "@/hooks/use-run-stream"
-import { MorphingText } from "@/components/morphing-text"
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
+import { MorphingText } from '@/components/morphing-text'
+import { useRunStream } from '@/hooks/use-run-stream'
 
 /**
  * Compact single-line streaming status for the Today card.
@@ -17,19 +17,19 @@ export function AgentLiveStatus({ runId }: { runId: string }) {
   const { steps, status, connected } = useRunStream(runId)
 
   useEffect(() => {
-    if (status === "done" || status === "failed") {
+    if (status === 'done' || status === 'failed') {
       const t = setTimeout(() => router.refresh(), 400)
       return () => clearTimeout(t)
     }
   }, [status, router])
 
-  const activeStep = steps.find((s) => s.status === "active")
-  const lastDone = [...steps].reverse().find((s) => s.status === "done")
+  const activeStep = steps.find((s) => s.status === 'active')
+  const lastDone = [...steps].reverse().find((s) => s.status === 'done')
   const source = activeStep ?? lastDone
   const message =
     source?.message ||
     source?.label ||
-    (!connected ? "Connecting…" : "Waiting for the first step…")
+    (connected ? 'Waiting for the first step…' : 'Connecting…')
 
   return (
     <div className="flex min-w-0 items-center gap-3 text-sm">
@@ -42,8 +42,8 @@ export function AgentLiveStatus({ runId }: { runId: string }) {
         ·
       </span>
       <MorphingText
-        text={message}
         className="min-w-0 truncate text-muted-foreground"
+        text={message}
       />
     </div>
   )

@@ -1,11 +1,11 @@
-import "server-only"
-import { eq } from "drizzle-orm"
-import { getRun, resumeHook, start } from "workflow/api"
-import type { UIMessage } from "ai"
-import { db } from "@/lib/db"
-import { agent, type Agent } from "@/lib/db/schema"
-import { agentSessionWorkflow } from "@/workflows/agent-session/workflow"
-import { sessionToken } from "@/workflows/agent-session/events"
+import 'server-only'
+import type { UIMessage } from 'ai'
+import { eq } from 'drizzle-orm'
+import { getRun, resumeHook, start } from 'workflow/api'
+import { db } from '@/lib/db'
+import { type Agent, agent } from '@/lib/db/schema'
+import { sessionToken } from '@/workflows/agent-session/events'
+import { agentSessionWorkflow } from '@/workflows/agent-session/workflow'
 
 /**
  * Server-side helpers for managing an agent's long-lived session
@@ -24,11 +24,11 @@ import { sessionToken } from "@/workflows/agent-session/events"
  *   - `isWorkflowRunAlive(id)`   — used by the liveness sweeper
  */
 
-const TERMINAL_STATUSES = new Set(["completed", "failed", "cancelled"])
+const TERMINAL_STATUSES = new Set(['completed', 'failed', 'cancelled'])
 
 function newReplyToken() {
   return (
-    "rep_" +
+    'rep_' +
     Math.random().toString(36).slice(2, 10) +
     Date.now().toString(36).slice(-4)
   )
@@ -42,7 +42,7 @@ function newReplyToken() {
  * workflow, this returns that id unchanged.
  */
 export async function startAgentSession(
-  a: Agent,
+  a: Agent
 ): Promise<{ sessionRunId: string; started: boolean }> {
   const existing = await getRunningSessionRunId(a)
   if (existing) {
@@ -57,14 +57,14 @@ export async function startAgentSession(
  * by the cron liveness sweeper when it detects a dead run.
  */
 export async function restartAgentSession(
-  a: Agent,
+  a: Agent
 ): Promise<{ sessionRunId: string }> {
   const { sessionRunId } = await doStart(a)
   return { sessionRunId }
 }
 
 async function doStart(
-  a: Agent,
+  a: Agent
 ): Promise<{ sessionRunId: string; started: true }> {
   const run = await start(agentSessionWorkflow, [{ agentId: a.id }])
 
@@ -105,25 +105,29 @@ export async function stopAgentSession(agentId: string): Promise<void> {
   }
 
   try {
-    await resumeHook(sessionToken(agentId), { type: "shutdown" })
+    await resumeHook(sessionToken(agentId), { type: 'shutdown' })
   } catch (err) {
-    console.error("[v0] stopAgentSession: resume failed", err)
+    console.error('[v0] stopAgentSession: resume failed', err)
     return
   }
 
-  if (!prevRunId) return
+  if (!prevRunId) {
+    return
+  }
 
-  const deadlineMs = Date.now() + 5_000
+  const deadlineMs = Date.now() + 5000
   const intervalMs = 250
   while (Date.now() < deadlineMs) {
-    if (!(await isWorkflowRunAlive(prevRunId))) return
+    if (!(await isWorkflowRunAlive(prevRunId))) {
+      return
+    }
     await sleep(intervalMs)
   }
 
   console.warn(
-    "[v0] stopAgentSession: run did not terminate within bound; " +
-      "liveness sweeper will recover.",
-    { agentId, prevRunId },
+    '[v0] stopAgentSession: run did not terminate within bound; ' +
+      'liveness sweeper will recover.',
+    { agentId, prevRunId }
   )
 }
 
@@ -141,7 +145,7 @@ export async function pokeHeartbeat(opts: {
   agent: Agent
 }): Promise<{ sessionRunId: string }> {
   const { sessionRunId } = await startAgentSession(opts.agent)
-  await resumeHook(sessionToken(opts.agent.id), { type: "heartbeat" })
+  await resumeHook(sessionToken(opts.agent.id), { type: 'heartbeat' })
   return { sessionRunId }
 }
 
@@ -159,7 +163,7 @@ export async function dispatchChatTurn(opts: {
   const { sessionRunId } = await startAgentSession(opts.agent)
   const replyToken = newReplyToken()
   await resumeHook(sessionToken(opts.agent.id), {
-    type: "chat",
+    type: 'chat',
     conversationId: opts.conversationId,
     uiMessages: opts.uiMessages,
     replyToken,
@@ -171,10 +175,10 @@ export async function dispatchChatTurn(opts: {
  * Return the workflow runtime id of the running session, or null if
  * `last_session_run_id` is unset or points at a terminated workflow.
  */
-export async function getRunningSessionRunId(
-  a: Agent,
-): Promise<string | null> {
-  if (!a.lastSessionRunId) return null
+export async function getRunningSessionRunId(a: Agent): Promise<string | null> {
+  if (!a.lastSessionRunId) {
+    return null
+  }
   return (await isWorkflowRunAlive(a.lastSessionRunId))
     ? a.lastSessionRunId
     : null
@@ -186,16 +190,16 @@ export async function getRunningSessionRunId(
  * session in a permanently-stale state.
  */
 export async function isWorkflowRunAlive(
-  workflowRunId: string,
+  workflowRunId: string
 ): Promise<boolean> {
   try {
     const run = getRun(workflowRunId)
     const status = await run.status
-    if (typeof status !== "string") return false
+    if (typeof status !== 'string') {
+      return false
+    }
     return !TERMINAL_STATUSES.has(status)
   } catch {
     return false
   }
 }
-
-

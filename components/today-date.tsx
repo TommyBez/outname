@@ -1,10 +1,10 @@
-"use client"
+'use client'
 
-import { useEffect, useState } from "react"
-import { formatLongDate } from "@/lib/format"
+import { useEffect, useState } from 'react'
+import { formatLongDate } from '@/lib/format'
 
 export function TodayDate() {
-  const [label, setLabel] = useState("")
+  const [label, setLabel] = useState('')
   useEffect(() => {
     setLabel(formatLongDate(new Date()))
   }, [])

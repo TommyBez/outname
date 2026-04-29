@@ -1,11 +1,11 @@
-"use client"
+'use client'
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
-import { Spinner } from "@/components/ui/spinner"
-import { cn } from "@/lib/utils"
+import { useRouter } from 'next/navigation'
+import { useState, useTransition } from 'react'
+import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
+import { cn } from '@/lib/utils'
 
 /**
  * Triggers a manual run for a specific agent. `agentId` is required; there
@@ -13,12 +13,12 @@ import { cn } from "@/lib/utils"
  */
 export function TriggerButton({
   agentId,
-  variant = "default",
-  label = "Run now",
+  variant = 'default',
+  label = 'Run now',
   className,
 }: {
   agentId: string
-  variant?: "default" | "outline" | "link"
+  variant?: 'default' | 'outline' | 'link'
   label?: string
   className?: string
 }) {
@@ -30,52 +30,52 @@ export function TriggerButton({
     setIsLoading(true)
     try {
       const res = await fetch(`/api/agents/${agentId}/trigger`, {
-        method: "POST",
+        method: 'POST',
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: res.statusText }))
         throw new Error(body.error ?? `HTTP ${res.status}`)
       }
       const { sessionRunId } = (await res.json()) as { sessionRunId: string }
-      toast.success("Run started", {
+      toast.success('Run started', {
         description: `Session ${sessionRunId.slice(0, 8)}`,
       })
       startTransition(() => router.refresh())
     } catch (err) {
-      toast.error("Could not start run", {
-        description: err instanceof Error ? err.message : "Unknown error",
+      toast.error('Could not start run', {
+        description: err instanceof Error ? err.message : 'Unknown error',
       })
     } finally {
       setIsLoading(false)
     }
   }
 
-  if (variant === "link") {
+  if (variant === 'link') {
     return (
       <button
-        type="button"
-        onClick={trigger}
-        disabled={isLoading || isPending}
         className={cn(
-          "text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50",
-          className,
+          'text-muted-foreground text-sm transition-colors hover:text-foreground disabled:opacity-50',
+          className
         )}
+        disabled={isLoading || isPending}
+        onClick={trigger}
+        type="button"
       >
-        {isLoading ? "Starting…" : label}
+        {isLoading ? 'Starting…' : label}
       </button>
     )
   }
 
   return (
     <Button
-      variant={variant}
-      size="sm"
-      onClick={trigger}
+      className={cn('font-medium', className)}
       disabled={isLoading || isPending}
-      className={cn("font-medium", className)}
+      onClick={trigger}
+      size="sm"
+      variant={variant}
     >
       {isLoading ? <Spinner className="mr-1 size-3.5" /> : null}
-      {isLoading ? "Starting…" : label}
+      {isLoading ? 'Starting…' : label}
     </Button>
   )
 }

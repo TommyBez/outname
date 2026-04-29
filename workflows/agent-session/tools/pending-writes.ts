@@ -1,5 +1,5 @@
-import type { Sandbox } from "@vercel/sandbox"
-import { SYSTEM_SANDBOX_ROOT } from "@/lib/agent-sandbox-registry"
+import type { Sandbox } from '@vercel/sandbox'
+import { SYSTEM_SANDBOX_ROOT } from '@/lib/agent-sandbox-registry'
 
 /**
  * Queued memory mutations for one event. Tools push ops here; `endOfEvent`
@@ -10,16 +10,16 @@ import { SYSTEM_SANDBOX_ROOT } from "@/lib/agent-sandbox-registry"
  */
 
 export type PendingOp =
-  | { kind: "write"; path: string; content: string }
-  | { kind: "append"; path: string; content: string }
+  | { kind: 'write'; path: string; content: string }
+  | { kind: 'append'; path: string; content: string }
   | {
-      kind: "edit"
+      kind: 'edit'
       path: string
       oldString: string
       newString: string
       replaceAll: boolean
     }
-  | { kind: "delete"; path: string }
+  | { kind: 'delete'; path: string }
 
 export interface PendingWrites {
   ops: PendingOp[]
@@ -39,24 +39,24 @@ const MEMORY_PATH_RE = /^[A-Za-z0-9._/-]+\.md$/
  * thrown message verbatim as the tool error result.
  */
 export function validateMemoryPath(path: string): string {
-  if (typeof path !== "string" || path.length === 0) {
-    throw new MemoryPathError("path must be a non-empty string")
+  if (typeof path !== 'string' || path.length === 0) {
+    throw new MemoryPathError('path must be a non-empty string')
   }
   if (path.length > 256) {
-    throw new MemoryPathError("path is too long (max 256 chars)")
+    throw new MemoryPathError('path is too long (max 256 chars)')
   }
-  if (path.startsWith("/")) {
-    throw new MemoryPathError("path must be relative (no leading slash)")
+  if (path.startsWith('/')) {
+    throw new MemoryPathError('path must be relative (no leading slash)')
   }
   if (!MEMORY_PATH_RE.test(path)) {
     throw new MemoryPathError(
-      "path must match ^[A-Za-z0-9._/-]+\\.md$ (only letters, digits, dot, underscore, slash, dash; must end with .md)",
+      'path must match ^[A-Za-z0-9._/-]+\\.md$ (only letters, digits, dot, underscore, slash, dash; must end with .md)'
     )
   }
-  for (const segment of path.split("/")) {
-    if (segment === "" || segment === "." || segment === "..") {
+  for (const segment of path.split('/')) {
+    if (segment === '' || segment === '.' || segment === '..') {
       throw new MemoryPathError(
-        "path may not contain empty, '.' or '..' segments",
+        "path may not contain empty, '.' or '..' segments"
       )
     }
   }
@@ -66,7 +66,7 @@ export function validateMemoryPath(path: string): string {
 export class MemoryPathError extends Error {
   constructor(msg: string) {
     super(msg)
-    this.name = "MemoryPathError"
+    this.name = 'MemoryPathError'
   }
 }
 
@@ -75,9 +75,9 @@ export class MemoryPathError extends Error {
 export function enqueueWrite(
   pending: PendingWrites,
   path: string,
-  content: string,
+  content: string
 ): void {
-  pending.ops.push({ kind: "write", path, content })
+  pending.ops.push({ kind: 'write', path, content })
 }
 
 /**
@@ -90,9 +90,9 @@ export function enqueueWrite(
 export function enqueueAppend(
   pending: PendingWrites,
   path: string,
-  content: string,
+  content: string
 ): void {
-  pending.ops.push({ kind: "append", path, content })
+  pending.ops.push({ kind: 'append', path, content })
 }
 
 export function enqueueEdit(
@@ -100,10 +100,10 @@ export function enqueueEdit(
   path: string,
   oldString: string,
   newString: string,
-  replaceAll: boolean,
+  replaceAll: boolean
 ): void {
   pending.ops.push({
-    kind: "edit",
+    kind: 'edit',
     path,
     oldString,
     newString,
@@ -112,7 +112,7 @@ export function enqueueEdit(
 }
 
 export function enqueueDelete(pending: PendingWrites, path: string): void {
-  pending.ops.push({ kind: "delete", path })
+  pending.ops.push({ kind: 'delete', path })
 }
 
 // Overlay-aware reads
@@ -129,22 +129,24 @@ export function enqueueDelete(pending: PendingWrites, path: string): void {
 export function resolveEffectiveContent(
   path: string,
   liveContent: string | null,
-  pending: PendingWrites,
+  pending: PendingWrites
 ): string | null {
   let content: string | null = liveContent
   for (const op of pending.ops) {
-    if (op.path !== path) continue
-    if (op.kind === "delete") {
+    if (op.path !== path) {
+      continue
+    }
+    if (op.kind === 'delete') {
       content = null
       continue
     }
-    if (op.kind === "write") {
+    if (op.kind === 'write') {
       content = op.content
       continue
     }
-    if (op.kind === "append") {
+    if (op.kind === 'append') {
       // Append-on-missing creates the file with the appended chunk.
-      content = (content ?? "") + op.content
+      content = (content ?? '') + op.content
       continue
     }
     // edit
@@ -167,13 +169,13 @@ export function resolveEffectiveContent(
  */
 export function resolveEffectiveListing(
   livePaths: readonly string[],
-  pending: PendingWrites,
+  pending: PendingWrites
 ): string[] {
   const present = new Set(livePaths)
   for (const op of pending.ops) {
-    if (op.kind === "delete") {
+    if (op.kind === 'delete') {
       present.delete(op.path)
-    } else if (op.kind === "write" || op.kind === "append") {
+    } else if (op.kind === 'write' || op.kind === 'append') {
       present.add(op.path)
     }
   }
@@ -188,12 +190,12 @@ export function resolveEffectiveListing(
  */
 export async function readLiveMemory(
   sandbox: Sandbox,
-  path: string,
+  path: string
 ): Promise<string | null> {
   const buf = await sandbox
     .readFileToBuffer({ path: `${SYSTEM_SANDBOX_ROOT}/${path}` })
     .catch(() => null)
-  return buf ? buf.toString("utf8") : null
+  return buf ? buf.toString('utf8') : null
 }
 
 /**
@@ -202,9 +204,9 @@ export async function readLiveMemory(
  */
 export async function listLiveMemory(sandbox: Sandbox): Promise<string[]> {
   const list = await sandbox.runCommand({
-    cmd: "sh",
+    cmd: 'sh',
     args: [
-      "-ec",
+      '-ec',
       `cd ${SYSTEM_SANDBOX_ROOT} && find . -type f -name '*.md' \
         -not -path './.*' \
         -not -path './node_modules/*' \
@@ -213,10 +215,10 @@ export async function listLiveMemory(sandbox: Sandbox): Promise<string[]> {
   })
   const stdout = await list.stdout()
   return stdout
-    .split("\n")
+    .split('\n')
     .map((s) => s.trim())
     .filter(Boolean)
-    .map((p) => (p.startsWith("./") ? p.slice(2) : p))
+    .map((p) => (p.startsWith('./') ? p.slice(2) : p))
     .sort()
 }
 
@@ -234,27 +236,27 @@ export async function listLiveMemory(sandbox: Sandbox): Promise<string[]> {
  */
 export async function flushPendingWrites(
   sandbox: Sandbox,
-  pending: PendingWrites,
+  pending: PendingWrites
 ): Promise<void> {
   for (const op of pending.ops) {
     const abs = `${SYSTEM_SANDBOX_ROOT}/${op.path}`
     try {
-      if (op.kind === "delete") {
+      if (op.kind === 'delete') {
         await sandbox.runCommand({
-          cmd: "sh",
-          args: ["-ec", `rm -f ${shellEscape(abs)}`],
+          cmd: 'sh',
+          args: ['-ec', `rm -f ${shellEscape(abs)}`],
         })
         continue
       }
 
-      if (op.kind === "write") {
+      if (op.kind === 'write') {
         await sandbox.writeFiles([
-          { path: abs, content: Buffer.from(op.content, "utf8") },
+          { path: abs, content: Buffer.from(op.content, 'utf8') },
         ])
         continue
       }
 
-      if (op.kind === "append") {
+      if (op.kind === 'append') {
         // Read-modify-write. Two simultaneous appends to the same
         // path within one event are queued in order, so the second
         // one sees the first one's bytes from the just-written file
@@ -263,37 +265,36 @@ export async function flushPendingWrites(
         const prev = await sandbox
           .readFileToBuffer({ path: abs })
           .catch(() => null)
-        const next = (prev?.toString("utf8") ?? "") + op.content
+        const next = (prev?.toString('utf8') ?? '') + op.content
         await sandbox.writeFiles([
-          { path: abs, content: Buffer.from(next, "utf8") },
+          { path: abs, content: Buffer.from(next, 'utf8') },
         ])
         continue
       }
 
       // edit
-      const buf = await sandbox.readFileToBuffer({ path: abs }).catch(() => null)
+      const buf = await sandbox
+        .readFileToBuffer({ path: abs })
+        .catch(() => null)
       if (!buf) {
         // Edit-on-missing — skip silently. The model already received
         // an error from the tool; flushing it would create a dangling
         // empty file.
         continue
       }
-      const before = buf.toString("utf8")
+      const before = buf.toString('utf8')
       const after = op.replaceAll
         ? before.split(op.oldString).join(op.newString)
         : before.replace(op.oldString, op.newString)
       // Skip no-op edits to avoid touching mtimes for unchanged files.
-      if (after === before) continue
+      if (after === before) {
+        continue
+      }
       await sandbox.writeFiles([
-        { path: abs, content: Buffer.from(after, "utf8") },
+        { path: abs, content: Buffer.from(after, 'utf8') },
       ])
     } catch (err) {
-      console.error(
-        "[v0] flushPendingWrites: op failed",
-        op.kind,
-        op.path,
-        err,
-      )
+      console.error('[v0] flushPendingWrites: op failed', op.kind, op.path, err)
     }
   }
 }

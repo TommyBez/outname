@@ -1,9 +1,9 @@
-import { tool } from "ai"
-import { z } from "zod"
-import { createBashTool } from "bash-tool"
-import { getExecSandbox, resetExecSandbox } from "@/lib/agent-sandbox"
-import { EXEC_SANDBOX_WORKSPACE } from "@/lib/agent-sandbox-registry"
-import { enqueueAppend, type PendingWrites } from "./pending-writes"
+import { tool } from 'ai'
+import { createBashTool } from 'bash-tool'
+import { z } from 'zod'
+import { getExecSandbox, resetExecSandbox } from '@/lib/agent-sandbox'
+import { EXEC_SANDBOX_WORKSPACE } from '@/lib/agent-sandbox-registry'
+import { enqueueAppend, type PendingWrites } from './pending-writes'
 
 /**
  * Exec sandbox tools: bash, file_read, file_write (via bash-tool), plus
@@ -19,14 +19,18 @@ export interface ExecToolsContext {
 }
 
 function commandExitCode(result: unknown): number | null {
-  if (typeof result !== "object" || result === null || !("exitCode" in result)) {
+  if (
+    typeof result !== 'object' ||
+    result === null ||
+    !('exitCode' in result)
+  ) {
     return null
   }
-  return typeof result.exitCode === "number" ? result.exitCode : null
+  return typeof result.exitCode === 'number' ? result.exitCode : null
 }
 
 export async function createExecTools(ctx: ExecToolsContext) {
-  "use step"
+  'use step'
 
   const { agentId, pending } = ctx
 
@@ -43,7 +47,7 @@ export async function createExecTools(ctx: ExecToolsContext) {
       description: bashTool.tools.bash.description,
       inputSchema: bashTool.tools.bash.inputSchema,
       execute: async ({ command }, options) => {
-        "use step"
+        'use step'
         const result = await bashTool.tools.bash.execute!({ command }, options)
 
         const day = new Date().toISOString().slice(0, 10)
@@ -51,9 +55,9 @@ export async function createExecTools(ctx: ExecToolsContext) {
           command.length > 240 ? `${command.slice(0, 240)}…` : command
         const line = [
           new Date().toISOString(),
-          `exit=${commandExitCode(result) ?? "null"}`,
-          auditCommand.replace(/\r?\n/g, " "),
-        ].join(" ")
+          `exit=${commandExitCode(result) ?? 'null'}`,
+          auditCommand.replace(/\r?\n/g, ' '),
+        ].join(' ')
         enqueueAppend(pending, `logs/${day}.md`, `${line}\n`)
         return result
       },
@@ -63,7 +67,7 @@ export async function createExecTools(ctx: ExecToolsContext) {
       description: bashTool.tools.readFile.description,
       inputSchema: bashTool.tools.readFile.inputSchema,
       execute: async ({ path }, options) => {
-        "use step"
+        'use step'
         return bashTool.tools.readFile.execute!({ path }, options)
       },
     }),
@@ -72,20 +76,20 @@ export async function createExecTools(ctx: ExecToolsContext) {
       description: bashTool.tools.writeFile.description,
       inputSchema: bashTool.tools.writeFile.inputSchema,
       execute: async ({ path, content }, options) => {
-        "use step"
+        'use step'
         return bashTool.tools.writeFile.execute!({ path, content }, options)
       },
     }),
     reset_exec: tool({
       description:
-        "Destroy the exec sandbox (workspace AND snapshot) and re-provision a clean one. Use as a last resort when the workspace is wedged — broken installs, leftover daemons, half-cloned repos, etc. Memory files in your system sandbox are NOT affected. Returns once the new sandbox is ready.",
+        'Destroy the exec sandbox (workspace AND snapshot) and re-provision a clean one. Use as a last resort when the workspace is wedged — broken installs, leftover daemons, half-cloned repos, etc. Memory files in your system sandbox are NOT affected. Returns once the new sandbox is ready.',
       inputSchema: z.object({
         reason: z
           .string()
           .min(1)
           .max(500)
           .describe(
-            "One-sentence justification for the reset. Logged for the user; helps you avoid re-resetting on the next turn for the same root cause.",
+            'One-sentence justification for the reset. Logged for the user; helps you avoid re-resetting on the next turn for the same root cause.'
           ),
       }),
       execute: async ({ reason }) => {
@@ -96,8 +100,8 @@ export async function createExecTools(ctx: ExecToolsContext) {
         const line = [
           new Date().toISOString(),
           `reset_exec destroyed=${result.destroyed}`,
-          auditReason.replace(/\r?\n/g, " "),
-        ].join(" ")
+          auditReason.replace(/\r?\n/g, ' '),
+        ].join(' ')
         enqueueAppend(pending, `logs/${day}.md`, `${line}\n`)
         return result
       },

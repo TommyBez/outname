@@ -1,4 +1,4 @@
-import { emitRun } from "@/lib/run-events"
+import { emitRun } from '@/lib/run-events'
 
 /**
  * Marks a heartbeat-driven run as started by emitting the canonical
@@ -7,7 +7,7 @@ import { emitRun } from "@/lib/run-events"
  * `workflows/agent-session/steps/begin-heartbeat-run.ts`).
  */
 export async function initRun(runId: string) {
-  "use step"
-  await emitRun(runId, "started", "Run started", { runId })
+  'use step'
+  await emitRun(runId, 'started', 'Run started', { runId })
   return { runId }
 }

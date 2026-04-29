@@ -1,14 +1,11 @@
-import { DurableAgent } from "@workflow/ai/agent"
-import { eq } from "drizzle-orm"
-import { db } from "@/lib/db"
-import { agent } from "@/lib/db/schema"
-import { composeSystemPrompt } from "./compose-system-prompt"
-import { createMemoryTools } from "./tools/memory-tools"
-import { createExecTools } from "./tools/exec-tools"
-import {
-  createPendingWrites,
-  type PendingWrites,
-} from "./tools/pending-writes"
+import { DurableAgent } from '@workflow/ai/agent'
+import { eq } from 'drizzle-orm'
+import { db } from '@/lib/db'
+import { agent } from '@/lib/db/schema'
+import { composeSystemPrompt } from './compose-system-prompt'
+import { createExecTools } from './tools/exec-tools'
+import { createMemoryTools } from './tools/memory-tools'
+import { createPendingWrites, type PendingWrites } from './tools/pending-writes'
 
 /**
  * One event's agent: DB load, composed system prompt from sandbox persona
@@ -17,25 +14,25 @@ import {
  */
 export interface BuildAgentArgs {
   agentId: string
-  /** Heartbeat: `runs.id`; chat: conversation id. */
-  runId: string
   /** Optional UTC "now" for the system prompt; defaults to `new Date()`. */
   nowIso?: string
+  /** Heartbeat: `runs.id`; chat: conversation id. */
+  runId: string
 }
 
 export interface BuildAgentResult {
   agent: DurableAgent
-  /** Per-event memory mutation buffer. Pass to `endOfEvent`. */
-  pending: PendingWrites
   /** Name + model from the row (avoid a second read for logging). */
   meta: {
     name: string
     model: string
   }
+  /** Per-event memory mutation buffer. Pass to `endOfEvent`. */
+  pending: PendingWrites
 }
 
 export async function buildAgent(
-  args: BuildAgentArgs,
+  args: BuildAgentArgs
 ): Promise<BuildAgentResult> {
   const { agentId } = args
   // Reserved for future run-scoped tooling; steps still key on agentId.
@@ -99,20 +96,20 @@ export function buildHeartbeatKickoff(args: {
 }): string {
   const sinceClause = args.previousIso
     ? `Your last heartbeat completed at ${args.previousIso}.`
-    : "This is your first heartbeat — there is no prior run to compare against."
+    : 'This is your first heartbeat — there is no prior run to compare against.'
   return [
     `It is now ${args.nowIso}. This is your scheduled heartbeat.`,
     sinceClause,
-    "",
-    "Use this time to:",
+    '',
+    'Use this time to:',
     "  1. Read your TASKS.md and CALENDAR.md to see what's pending.",
-    "  2. Make incremental progress on anything you can finish quickly with",
-    "     your available tools.",
-    "  3. Update memory files with anything new you learned or decided.",
+    '  2. Make incremental progress on anything you can finish quickly with',
+    '     your available tools.',
+    '  3. Update memory files with anything new you learned or decided.',
     "  4. Append one bullet to today's log under logs/<YYYY-MM-DD>.md",
-    "     summarising what happened during this heartbeat.",
-    "",
-    "Be terse. Stop when there is nothing more useful to do — do not",
+    '     summarising what happened during this heartbeat.',
+    '',
+    'Be terse. Stop when there is nothing more useful to do — do not',
     "manufacture work. A heartbeat that simply logs 'no changes' is fine.",
-  ].join("\n")
+  ].join('\n')
 }

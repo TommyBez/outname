@@ -29,48 +29,48 @@
  */
 
 export interface ModelOption {
+  /** Surfaced as a small hint in the UI; 0 if missing. */
+  contextWindow: number
   /** Stored verbatim on `agent.model`, e.g. "openai/gpt-5-mini". */
   id: string
   /** Display label, e.g. "GPT-5 Mini". Falls back to id if missing. */
   name: string
   /** Used to group the <select>, e.g. "openai". */
   ownedBy: string
-  /** Surfaced as a small hint in the UI; 0 if missing. */
-  contextWindow: number
 }
 
-const ENDPOINT = "https://ai-gateway.vercel.sh/v1/models"
+const ENDPOINT = 'https://ai-gateway.vercel.sh/v1/models'
 
 // Permissive fallback used only when the live fetch fails. Keeps the
 // form usable in offline / sandboxed dev so a deploy never blocks on
 // network jitter.
 const FALLBACK: readonly ModelOption[] = [
   {
-    id: "openai/gpt-5-mini",
-    name: "GPT-5 Mini",
-    ownedBy: "openai",
-    contextWindow: 128000,
+    id: 'openai/gpt-5-mini',
+    name: 'GPT-5 Mini',
+    ownedBy: 'openai',
+    contextWindow: 128_000,
   },
   {
-    id: "anthropic/claude-sonnet-4-5",
-    name: "Claude Sonnet 4.5",
-    ownedBy: "anthropic",
-    contextWindow: 200000,
+    id: 'anthropic/claude-sonnet-4-5',
+    name: 'Claude Sonnet 4.5',
+    ownedBy: 'anthropic',
+    contextWindow: 200_000,
   },
 ]
 
 interface RawModel {
+  context_window?: number
   id?: string
   name?: string
   owned_by?: string
-  context_window?: number
-  type?: string
   tags?: string[]
+  type?: string
 }
 
 interface RawResponse {
-  object?: string
   data?: RawModel[]
+  object?: string
 }
 
 /**
@@ -84,13 +84,13 @@ export async function getAvailableModels(): Promise<ModelOption[]> {
       // No `Authorization` header — endpoint is open. Adding one
       // would only get us rate-limited against an account we don't
       // need to charge.
-      cache: "force-cache",
+      cache: 'force-cache',
       next: { revalidate: 3600 },
     })
     if (!res.ok) {
       console.error(
-        "[v0] getAvailableModels: non-OK response, using fallback",
-        { status: res.status },
+        '[v0] getAvailableModels: non-OK response, using fallback',
+        { status: res.status }
       )
       return [...FALLBACK]
     }
@@ -98,35 +98,43 @@ export async function getAvailableModels(): Promise<ModelOption[]> {
     const data = Array.isArray(json?.data) ? json.data : []
     const mapped: ModelOption[] = []
     for (const m of data) {
-      if (!m.id || typeof m.id !== "string") continue
-      if (m.type !== "language") continue
-      if (!Array.isArray(m.tags) || !m.tags.includes("tool-use")) continue
+      if (!m.id || typeof m.id !== 'string') {
+        continue
+      }
+      if (m.type !== 'language') {
+        continue
+      }
+      if (!(Array.isArray(m.tags) && m.tags.includes('tool-use'))) {
+        continue
+      }
       mapped.push({
         id: m.id,
-        name: typeof m.name === "string" && m.name.length > 0 ? m.name : m.id,
+        name: typeof m.name === 'string' && m.name.length > 0 ? m.name : m.id,
         ownedBy:
-          typeof m.owned_by === "string" && m.owned_by.length > 0
+          typeof m.owned_by === 'string' && m.owned_by.length > 0
             ? m.owned_by
-            : m.id.split("/")[0] ?? "unknown",
+            : (m.id.split('/')[0] ?? 'unknown'),
         contextWindow:
-          typeof m.context_window === "number" && m.context_window > 0
+          typeof m.context_window === 'number' && m.context_window > 0
             ? m.context_window
             : 0,
       })
     }
     if (mapped.length === 0) {
       console.error(
-        "[v0] getAvailableModels: zero language+tool-use models in response, using fallback",
+        '[v0] getAvailableModels: zero language+tool-use models in response, using fallback'
       )
       return [...FALLBACK]
     }
     mapped.sort((a, b) => {
-      if (a.ownedBy !== b.ownedBy) return a.ownedBy.localeCompare(b.ownedBy)
+      if (a.ownedBy !== b.ownedBy) {
+        return a.ownedBy.localeCompare(b.ownedBy)
+      }
       return a.id.localeCompare(b.id)
     })
     return mapped
   } catch (err) {
-    console.error("[v0] getAvailableModels: fetch threw, using fallback", err)
+    console.error('[v0] getAvailableModels: fetch threw, using fallback', err)
     return [...FALLBACK]
   }
 }
@@ -146,9 +154,11 @@ export async function isModelIdValid(modelId: string): Promise<boolean> {
   const isFallback =
     list.length === FALLBACK.length &&
     list.every((o, i) => o.id === FALLBACK[i]!.id)
-  if (isFallback) return true
+  if (isFallback) {
+    return true
+  }
   return list.some((o) => o.id === modelId)
 }
 
 /** Default model used when seeding fresh agents. */
-export const DEFAULT_MODEL_ID = "openai/gpt-5-mini"
+export const DEFAULT_MODEL_ID = 'openai/gpt-5-mini'

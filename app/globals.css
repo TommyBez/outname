@@ -1,5 +1,5 @@
-@import 'tailwindcss';
-@import 'tw-animate-css';
+@import "tailwindcss";
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -10,9 +10,6 @@
  * look at it.
  */
 :root {
-  color-scheme: dark;
-
-  /* Deep near-black background with the tiniest warm tint. */
   --background: oklch(0.13 0.005 260);
   --foreground: oklch(0.96 0.005 260);
 
@@ -44,10 +41,10 @@
   --ring: oklch(0.86 0.18 130);
 
   /* Category chart tokens — terminal-friendly. */
-  --chart-1: oklch(0.68 0.22 25);     /* urgent — red */
-  --chart-2: oklch(0.86 0.18 130);    /* reply  — lime (accent) */
-  --chart-3: oklch(0.7 0.08 230);     /* fyi    — muted cyan */
-  --chart-4: oklch(0.58 0.01 260);    /* noise  — gray */
+  --chart-1: oklch(0.68 0.22 25); /* urgent — red */
+  --chart-2: oklch(0.86 0.18 130); /* reply  — lime (accent) */
+  --chart-3: oklch(0.7 0.08 230); /* fyi    — muted cyan */
+  --chart-4: oklch(0.58 0.01 260); /* noise  — gray */
   --chart-5: oklch(0.4 0.01 260);
 
   /* 2px corners — precision-instrument feel. */
@@ -61,6 +58,7 @@
   --sidebar-accent-foreground: oklch(0.96 0.005 260);
   --sidebar-border: oklch(0.24 0.005 260);
   --sidebar-ring: oklch(0.86 0.18 130);
+  color-scheme: dark;
 }
 
 /* .dark kept for compatibility with shadcn primitives that toggle it. */
@@ -92,14 +90,14 @@
 }
 
 @theme inline {
-  --font-sans: 'Geist Mono', 'Geist Mono Fallback', ui-monospace, monospace;
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback', ui-monospace, monospace;
+  --font-sans: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
+  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
   /*
    * font-serif is re-targeted to a heavier mono "display" stack so every
    * existing `font-serif` headline renders in the mono voice without
    * touching component code. All display type in the app is mono now.
    */
-  --font-serif: 'Geist Mono', 'Geist Mono Fallback', ui-monospace, monospace;
+  --font-serif: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -167,14 +165,18 @@
 
   /* Selection highlight uses the accent at low chroma. */
   ::selection {
-    background: oklch(0.86 0.18 130 / 0.25);
     color: var(--foreground);
+    background: oklch(0.86 0.18 130 / 0.25);
   }
 }
 
 @keyframes indeterminate {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(400%); }
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
 }
 
 @utility animate-indeterminate {
@@ -182,9 +184,19 @@
 }
 
 @keyframes text-morph-in {
-  0% { opacity: 0; transform: translateY(8px); filter: blur(6px); }
-  60% { filter: blur(0); }
-  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(6px);
+  }
+  60% {
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
 }
 
 @utility animate-text-morph {
@@ -192,8 +204,14 @@
 }
 
 @keyframes cursor-blink {
-  0%, 49% { opacity: 1; }
-  50%, 100% { opacity: 0; }
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
 }
 
 @utility animate-cursor-blink {
@@ -201,8 +219,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
+  html {
+    scroll-behavior: auto;
+  }
   .animate-indeterminate,
   .animate-text-morph,
-  .animate-cursor-blink { animation: none; }
+  .animate-cursor-blink {
+    animation: none;
+  }
 }

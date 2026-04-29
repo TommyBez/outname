@@ -1,9 +1,9 @@
-import { getSystemSandbox } from "@/lib/agent-sandbox"
-import { SYSTEM_SANDBOX_ROOT } from "@/lib/agent-sandbox-registry"
 import {
   listUnappliedPendingFileWrites,
   markPendingFileWritesApplied,
-} from "@/lib/agent-pending-writes"
+} from '@/lib/agent-pending-writes'
+import { getSystemSandbox } from '@/lib/agent-sandbox'
+import { SYSTEM_SANDBOX_ROOT } from '@/lib/agent-sandbox-registry'
 
 /**
  * Apply every unapplied row from `pending_file_writes` for `agentId`
@@ -30,11 +30,13 @@ import {
 export async function drainPendingWrites(input: {
   agentId: string
 }): Promise<{ applied: number }> {
-  "use step"
+  'use step'
   const { agentId } = input
 
   const queued = await listUnappliedPendingFileWrites({ agentId })
-  if (queued.length === 0) return { applied: 0 }
+  if (queued.length === 0) {
+    return { applied: 0 }
+  }
 
   const sandbox = await getSystemSandbox(agentId)
 
@@ -51,8 +53,8 @@ export async function drainPendingWrites(input: {
   await sandbox.writeFiles(
     queued.map((row) => ({
       path: `${SYSTEM_SANDBOX_ROOT}/${row.path}`,
-      content: Buffer.from(row.content, "utf8"),
-    })),
+      content: Buffer.from(row.content, 'utf8'),
+    }))
   )
 
   await markPendingFileWritesApplied({ ids: queued.map((r) => r.id) })

@@ -1,13 +1,11 @@
-"use client"
+'use client'
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Textarea } from "@/components/ui/textarea"
+import { useRouter } from 'next/navigation'
+import { useState, useTransition } from 'react'
+import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -16,30 +14,28 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  createAgentAction,
-  updateAgentAction,
-} from "@/lib/agent-actions"
-import type { ModelOption } from "@/lib/ai-gateway-models"
+} from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Textarea } from '@/components/ui/textarea'
+import { createAgentAction, updateAgentAction } from '@/lib/agent-actions'
+import type { ModelOption } from '@/lib/ai-gateway-models'
 
 // Heartbeat interval is stored as minutes; a small allowlist keeps the
 // UI predictable and the ticker math obvious. Phase 3 may move this
 // onto a per-trigger row.
 const INTERVAL_OPTIONS = [
-  { value: 5, label: "Every 5 minutes" },
-  { value: 15, label: "Every 15 minutes" },
-  { value: 30, label: "Every 30 minutes" },
-  { value: 60, label: "Every hour" },
-  { value: 180, label: "Every 3 hours" },
-  { value: 360, label: "Every 6 hours" },
-  { value: 720, label: "Every 12 hours" },
-  { value: 1440, label: "Every day" },
+  { value: 5, label: 'Every 5 minutes' },
+  { value: 15, label: 'Every 15 minutes' },
+  { value: 30, label: 'Every 30 minutes' },
+  { value: 60, label: 'Every hour' },
+  { value: 180, label: 'Every 3 hours' },
+  { value: 360, label: 'Every 6 hours' },
+  { value: 720, label: 'Every 12 hours' },
+  { value: 1440, label: 'Every day' },
 ] as const
 
 interface AgentFormProps {
-  models: ModelOption[]
   defaultModel: string
   /**
    * Empty = create form, populated = edit form. `enabled` mirrors
@@ -62,30 +58,29 @@ interface AgentFormProps {
     heartbeatEnabled: boolean
     heartbeatIntervalMinutes: number
   }
+  models: ModelOption[]
 }
 
 export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
 
-  const [name, setName] = useState(initial?.name ?? "")
-  const [identity, setIdentity] = useState(initial?.identity ?? "")
-  const [instructions, setInstructions] = useState(
-    initial?.instructions ?? "",
-  )
+  const [name, setName] = useState(initial?.name ?? '')
+  const [identity, setIdentity] = useState(initial?.identity ?? '')
+  const [instructions, setInstructions] = useState(initial?.instructions ?? '')
   // Default model falls back to the gateway's first id if our preferred
   // default isn't in the filtered list. Empty list (fallback mode) is
   // handled by rendering a single passthrough option.
   const [model, setModel] = useState(initial?.model ?? defaultModel)
   const [heartbeatEnabled, setHeartbeatEnabled] = useState(
-    initial?.heartbeatEnabled ?? true,
+    initial?.heartbeatEnabled ?? true
   )
   const [intervalMinutes, setIntervalMinutes] = useState(
-    initial?.heartbeatIntervalMinutes ?? 30,
+    initial?.heartbeatIntervalMinutes ?? 30
   )
 
   const isEdit = Boolean(initial?.id)
-  const submitLabel = isEdit ? "Save changes" : "Create agent"
+  const submitLabel = isEdit ? 'Save changes' : 'Create agent'
 
   // Group models by `ownedBy` so the <select> is browseable. Order is
   // alphabetical within each group; the gateway already returned them
@@ -100,7 +95,7 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
     e.preventDefault()
     const trimmed = name.trim()
     if (!trimmed) {
-      toast.error("Name is required")
+      toast.error('Name is required')
       return
     }
     startTransition(async () => {
@@ -117,7 +112,7 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
             heartbeatEnabled,
             heartbeatIntervalMinutes: intervalMinutes,
           })
-          toast.success("Agent updated")
+          toast.success('Agent updated')
           router.refresh()
         } else {
           const result = await createAgentAction({
@@ -128,74 +123,74 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
             heartbeatEnabled,
             heartbeatIntervalMinutes: intervalMinutes,
           })
-          toast.success("Agent created")
+          toast.success('Agent created')
           router.push(`/agents/${result.id}`)
         }
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Could not save agent")
+        toast.error(err instanceof Error ? err.message : 'Could not save agent')
       }
     })
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+    <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
       <div className="flex flex-col gap-2">
         <Label htmlFor="agent-name">Name</Label>
         <Input
           id="agent-name"
-          value={name}
+          maxLength={120}
           onChange={(e) => setName(e.target.value)}
           placeholder="Research Buddy"
           required
-          maxLength={120}
+          value={name}
         />
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           Shown in the sidebar and at the top of every chat.
         </p>
       </div>
 
       <div className="flex flex-col gap-2">
         <Label>Persona files</Label>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           {
             "These two files are inlined verbatim into the agent's system prompt on every event. They live in the agent's memory volume — the agent can read them via read_memory but its tools refuse to write or delete them. Save here flushes to disk on the next event."
           }
         </p>
-        <Tabs defaultValue="identity" className="mt-1">
+        <Tabs className="mt-1" defaultValue="identity">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="identity">Identity (SOUL.md)</TabsTrigger>
             <TabsTrigger value="instructions">
               Instructions (AGENTS.md)
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="identity" className="mt-3">
+          <TabsContent className="mt-3" value="identity">
             <Textarea
+              className="font-mono text-sm"
               id="agent-identity"
-              value={identity}
               onChange={(e) => setIdentity(e.target.value)}
               placeholder={
-                "Voice, tone, name preferences, hobbies, anything that makes this agent feel like a specific person. Empty is fine — the agent will just present a generic helper persona."
+                'Voice, tone, name preferences, hobbies, anything that makes this agent feel like a specific person. Empty is fine — the agent will just present a generic helper persona.'
               }
               rows={12}
-              className="font-mono text-sm"
+              value={identity}
             />
-            <p className="mt-2 text-xs text-muted-foreground">
+            <p className="mt-2 text-muted-foreground text-xs">
               Saved to <span className="font-mono">SOUL.md</span> in the
               agent&apos;s memory volume.
             </p>
           </TabsContent>
-          <TabsContent value="instructions" className="mt-3">
+          <TabsContent className="mt-3" value="instructions">
             <Textarea
+              className="font-mono text-sm"
               id="agent-instructions"
-              value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
               placeholder={
-                "Operating manual. What does this agent do during heartbeats? Which memory files matter? When should it ping the user? Empty falls back to the platform default template."
+                'Operating manual. What does this agent do during heartbeats? Which memory files matter? When should it ping the user? Empty falls back to the platform default template.'
               }
               rows={12}
-              className="font-mono text-sm"
+              value={instructions}
             />
-            <p className="mt-2 text-xs text-muted-foreground">
+            <p className="mt-2 text-muted-foreground text-xs">
               Saved to <span className="font-mono">AGENTS.md</span> in the
               agent&apos;s memory volume.
             </p>
@@ -205,7 +200,7 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="agent-model">Model</Label>
-        <Select value={model} onValueChange={setModel}>
+        <Select onValueChange={setModel} value={model}>
           <SelectTrigger id="agent-model">
             <SelectValue placeholder="Select a model" />
           </SelectTrigger>
@@ -219,7 +214,7 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
                   {grouped[ownedBy].map((m) => (
                     <SelectItem key={m.id} value={m.id}>
                       <span className="font-medium">{m.name}</span>
-                      <span className="ml-2 text-xs text-muted-foreground">
+                      <span className="ml-2 text-muted-foreground text-xs">
                         {(m.contextWindow / 1000).toFixed(0)}k ctx
                       </span>
                     </SelectItem>
@@ -229,7 +224,7 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
             )}
           </SelectContent>
         </Select>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           Routed through the Vercel AI Gateway. Filtered to models that support
           tool calling.
         </p>
@@ -238,28 +233,28 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
       <div className="flex flex-col gap-3 rounded-md border bg-muted/30 p-4">
         <div className="flex items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
-            <Label htmlFor="agent-heartbeat" className="text-sm font-medium">
+            <Label className="font-medium text-sm" htmlFor="agent-heartbeat">
               Heartbeat
             </Label>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               When on, the agent wakes on a fixed cadence to do proactive work.
               Off means it only runs when you chat or click Trigger.
             </p>
           </div>
           <Switch
-            id="agent-heartbeat"
             checked={heartbeatEnabled}
+            id="agent-heartbeat"
             onCheckedChange={setHeartbeatEnabled}
           />
         </div>
         {heartbeatEnabled ? (
           <div className="flex flex-col gap-2">
-            <Label htmlFor="agent-interval" className="text-sm">
+            <Label className="text-sm" htmlFor="agent-interval">
               Interval
             </Label>
             <Select
-              value={String(intervalMinutes)}
               onValueChange={(v) => setIntervalMinutes(Number.parseInt(v, 10))}
+              value={String(intervalMinutes)}
             >
               <SelectTrigger id="agent-interval">
                 <SelectValue />
@@ -278,15 +273,15 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
 
       <div className="flex items-center justify-end gap-2">
         <Button
+          disabled={pending}
+          onClick={() => router.back()}
           type="button"
           variant="ghost"
-          onClick={() => router.back()}
-          disabled={pending}
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={pending}>
-          {pending ? "Saving..." : submitLabel}
+        <Button disabled={pending} type="submit">
+          {pending ? 'Saving...' : submitLabel}
         </Button>
       </div>
     </form>

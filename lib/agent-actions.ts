@@ -1,32 +1,29 @@
-"use server"
+'use server'
 
-import { and, eq } from "drizzle-orm"
-import { revalidatePath, updateTag } from "next/cache"
-import { redirect } from "next/navigation"
-import { requireSession } from "@/lib/auth-guard"
+import { and, eq } from 'drizzle-orm'
+import { revalidatePath, updateTag } from 'next/cache'
+import { redirect } from 'next/navigation'
+import { enqueuePendingFileWrite } from '@/lib/agent-pending-writes'
+import { destroyAgentSandboxes } from '@/lib/agent-sandbox'
+import {
+  pokeHeartbeat,
+  startAgentSession,
+  stopAgentSession,
+} from '@/lib/agent-session'
+import { DEFAULT_MODEL_ID, isModelIdValid } from '@/lib/ai-gateway-models'
+import { requireSession } from '@/lib/auth-guard'
 import {
   agentRunsTag,
   agentTag,
   conversationListTag,
   userAgentsTag,
-} from "@/lib/cache-tags"
-import { db } from "@/lib/db"
-import { agent } from "@/lib/db/schema"
-import { destroyAgentSandboxes } from "@/lib/agent-sandbox"
-import {
-  pokeHeartbeat,
-  startAgentSession,
-  stopAgentSession,
-} from "@/lib/agent-session"
-import {
-  DEFAULT_MODEL_ID,
-  isModelIdValid,
-} from "@/lib/ai-gateway-models"
-import { enqueuePendingFileWrite } from "@/lib/agent-pending-writes"
+} from '@/lib/cache-tags'
+import { db } from '@/lib/db'
+import { agent } from '@/lib/db/schema'
 
 function nanoid() {
   return (
-    "ag_" +
+    'ag_' +
     Math.random().toString(36).slice(2) +
     Date.now().toString(36).slice(-4)
   )
@@ -45,19 +42,26 @@ const HEARTBEAT_MAX = 1440 // 24h
  * fills with no-op rows.
  */
 function normalizeNewlines(s: string): string {
-  return s.replace(/\r\n?/g, "\n")
+  return s.replace(/\r\n?/g, '\n')
 }
 
 /** Clamp a heartbeat-interval choice into the accepted [5, 1440] range. */
 function clampInterval(n: number): number {
-  if (!Number.isFinite(n)) return 30
-  if (n < HEARTBEAT_MIN) return HEARTBEAT_MIN
-  if (n > HEARTBEAT_MAX) return HEARTBEAT_MAX
+  if (!Number.isFinite(n)) {
+    return 30
+  }
+  if (n < HEARTBEAT_MIN) {
+    return HEARTBEAT_MIN
+  }
+  if (n > HEARTBEAT_MAX) {
+    return HEARTBEAT_MAX
+  }
   return Math.floor(n)
 }
 
 interface CreateInput {
-  name: string
+  heartbeatEnabled: boolean
+  heartbeatIntervalMinutes: number
   /**
    * SOUL.md content authored via the "Identity" tab. Empty string
    * means "don't seed an identity yet" — the persona file is left
@@ -72,16 +76,15 @@ interface CreateInput {
    */
   instructions: string
   model: string
-  heartbeatEnabled: boolean
-  heartbeatIntervalMinutes: number
+  name: string
 }
 
 export async function createAgentAction(
-  input: CreateInput,
+  input: CreateInput
 ): Promise<{ id: string }> {
   const session = await requireSession()
 
-  const name = input.name.trim() || "New agent"
+  const name = input.name.trim() || 'New agent'
   const model = (await isModelIdValid(input.model))
     ? input.model
     : DEFAULT_MODEL_ID
@@ -114,7 +117,7 @@ export async function createAgentAction(
   if (identity.length > 0) {
     await enqueuePendingFileWrite({
       agentId: id,
-      path: "SOUL.md",
+      path: 'SOUL.md',
       content: identity,
     })
   }
@@ -122,7 +125,7 @@ export async function createAgentAction(
   if (instructions.length > 0) {
     await enqueuePendingFileWrite({
       agentId: id,
-      path: "AGENTS.md",
+      path: 'AGENTS.md',
       content: instructions,
     })
   }
@@ -133,19 +136,20 @@ export async function createAgentAction(
   try {
     await startAgentSession(created)
   } catch (err) {
-    console.error("[v0] createAgentAction: startAgentSession failed", err)
+    console.error('[v0] createAgentAction: startAgentSession failed', err)
   }
 
   updateTag(userAgentsTag(session.user.id))
   updateTag(agentTag(id))
-  revalidatePath("/agents")
-  revalidatePath("/")
+  revalidatePath('/agents')
+  revalidatePath('/')
   return { id }
 }
 
 interface UpdateInput {
+  heartbeatEnabled: boolean
+  heartbeatIntervalMinutes: number
   id: string
-  name: string
   /**
    * SOUL.md content from the "Identity" tab. Empty string is a
    * legal value — it means "leave whatever is on disk alone". The
@@ -160,8 +164,7 @@ interface UpdateInput {
   /** Original AGENTS.md content the form was rendered with. */
   instructionsOriginal: string
   model: string
-  heartbeatEnabled: boolean
-  heartbeatIntervalMinutes: number
+  name: string
 }
 
 export async function updateAgentAction(input: UpdateInput): Promise<void> {
@@ -171,7 +174,9 @@ export async function updateAgentAction(input: UpdateInput): Promise<void> {
     .from(agent)
     .where(and(eq(agent.id, input.id), eq(agent.userId, session.user.id)))
     .limit(1)
-  if (!existing) throw new Error("Not found")
+  if (!existing) {
+    throw new Error('Not found')
+  }
 
   const name = input.name.trim() || existing.name
   // Skip the gateway round-trip if the model didn't change, since the
@@ -209,7 +214,7 @@ export async function updateAgentAction(input: UpdateInput): Promise<void> {
   if (identityNorm !== identityOrigNorm) {
     await enqueuePendingFileWrite({
       agentId: input.id,
-      path: "SOUL.md",
+      path: 'SOUL.md',
       content: identityNorm,
     })
   }
@@ -218,7 +223,7 @@ export async function updateAgentAction(input: UpdateInput): Promise<void> {
   if (instructionsNorm !== instructionsOrigNorm) {
     await enqueuePendingFileWrite({
       agentId: input.id,
-      path: "AGENTS.md",
+      path: 'AGENTS.md',
       content: instructionsNorm,
     })
   }
@@ -236,23 +241,23 @@ export async function updateAgentAction(input: UpdateInput): Promise<void> {
       await pokeHeartbeat({ agent: updated })
     } catch (err) {
       console.error(
-        "[v0] updateAgentAction: pokeHeartbeat after schedule change failed",
-        err,
+        '[v0] updateAgentAction: pokeHeartbeat after schedule change failed',
+        err
       )
     }
   }
 
   updateTag(userAgentsTag(session.user.id))
   updateTag(agentTag(input.id))
-  revalidatePath("/agents")
+  revalidatePath('/agents')
   revalidatePath(`/agents/${input.id}`)
   revalidatePath(`/agents/${input.id}/edit`)
-  revalidatePath("/")
+  revalidatePath('/')
 }
 
 export async function toggleAgentAction(
   agentId: string,
-  enabled: boolean,
+  enabled: boolean
 ): Promise<void> {
   const session = await requireSession()
   const [existing] = await db
@@ -260,7 +265,9 @@ export async function toggleAgentAction(
     .from(agent)
     .where(and(eq(agent.id, agentId), eq(agent.userId, session.user.id)))
     .limit(1)
-  if (!existing) return
+  if (!existing) {
+    return
+  }
 
   const [updated] = await db
     .update(agent)
@@ -272,7 +279,7 @@ export async function toggleAgentAction(
     try {
       await startAgentSession(updated)
     } catch (err) {
-      console.error("[v0] toggleAgentAction: startAgentSession failed", err)
+      console.error('[v0] toggleAgentAction: startAgentSession failed', err)
     }
   } else if (existing.enabled && !updated.enabled) {
     await stopAgentSession(agentId)
@@ -280,9 +287,9 @@ export async function toggleAgentAction(
 
   updateTag(userAgentsTag(session.user.id))
   updateTag(agentTag(agentId))
-  revalidatePath("/agents")
+  revalidatePath('/agents')
   revalidatePath(`/agents/${agentId}`)
-  revalidatePath("/")
+  revalidatePath('/')
 }
 
 export async function deleteAgentAction(agentId: string): Promise<void> {
@@ -292,7 +299,9 @@ export async function deleteAgentAction(agentId: string): Promise<void> {
     .from(agent)
     .where(and(eq(agent.id, agentId), eq(agent.userId, session.user.id)))
     .limit(1)
-  if (!existing) redirect("/agents")
+  if (!existing) {
+    redirect('/agents')
+  }
 
   // Stop the session first so it doesn't try to write into a torn-down
   // sandbox or a deleted agent row mid-event.
@@ -311,7 +320,7 @@ export async function deleteAgentAction(agentId: string): Promise<void> {
   updateTag(agentTag(agentId))
   updateTag(agentRunsTag(agentId))
   updateTag(conversationListTag(agentId))
-  revalidatePath("/agents")
-  revalidatePath("/")
-  redirect("/agents")
+  revalidatePath('/agents')
+  revalidatePath('/')
+  redirect('/agents')
 }

@@ -1,10 +1,10 @@
-import { createHook, sleep } from "workflow"
-import { generateAckId } from "./steps/generate-ack-id"
+import { createHook, sleep } from 'workflow'
+import { heartbeatAckToken } from './events'
+import { generateAckId } from './steps/generate-ack-id'
 import {
   pokeSessionHeartbeat,
   readHeartbeatSchedule,
-} from "./steps/ticker-control"
-import { heartbeatAckToken } from "./events"
+} from './steps/ticker-control'
 
 /**
  * Cadence used while the agent's heartbeat is disabled. The ticker
@@ -44,7 +44,7 @@ const DISABLED_POLL_MS = 5 * 60 * 1000
 export async function agentTickerWorkflow(input: {
   agentId: string
 }): Promise<void> {
-  "use workflow"
+  'use workflow'
   const { agentId } = input
 
   while (true) {

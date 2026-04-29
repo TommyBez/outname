@@ -1,9 +1,9 @@
-import { Suspense } from "react"
-import { AppShell } from "@/components/app-shell"
+import { Suspense } from 'react'
 import {
   AgentSidebarSection,
   AgentSidebarSectionSkeleton,
-} from "@/components/agent-sidebar-section"
+} from '@/components/agent-sidebar-section'
+import { AppShell } from '@/components/app-shell'
 
 type Params = Promise<{ agentId: string }>
 

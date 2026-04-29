@@ -1,16 +1,16 @@
-import { eq } from "drizzle-orm"
-import { revalidateTag } from "next/cache"
-import { agentRunsTag, runTag, runsIndexTag } from "@/lib/cache-tags"
-import { db } from "@/lib/db"
-import { runs } from "@/lib/db/schema"
-import { emitRun, emitStep } from "@/lib/run-events"
+import { eq } from 'drizzle-orm'
+import { revalidateTag } from 'next/cache'
+import { agentRunsTag, runsIndexTag, runTag } from '@/lib/cache-tags'
+import { db } from '@/lib/db'
+import { runs } from '@/lib/db/schema'
+import { emitRun, emitStep } from '@/lib/run-events'
 
 export async function finalizeRun(
   runId: string,
-  status: "completed" | "failed",
-  error?: string,
+  status: 'completed' | 'failed',
+  error?: string
 ) {
-  "use step"
+  'use step'
   const [run] = await db
     .update(runs)
     .set({
@@ -22,16 +22,16 @@ export async function finalizeRun(
     .returning({ agentId: runs.agentId })
 
   if (run?.agentId) {
-    revalidateTag(agentRunsTag(run.agentId), "max")
+    revalidateTag(agentRunsTag(run.agentId), 'max')
   }
-  revalidateTag(runTag(runId), "max")
-  revalidateTag(runsIndexTag(), "max")
+  revalidateTag(runTag(runId), 'max')
+  revalidateTag(runsIndexTag(), 'max')
 
-  if (status === "completed") {
-    await emitStep(runId, "finalize", "done", "Heartbeat complete")
-    await emitRun(runId, "completed", "Run complete")
+  if (status === 'completed') {
+    await emitStep(runId, 'finalize', 'done', 'Heartbeat complete')
+    await emitRun(runId, 'completed', 'Run complete')
   } else {
-    await emitStep(runId, "finalize", "error", "Run failed", { error })
-    await emitRun(runId, "failed", error ?? "Run failed")
+    await emitStep(runId, 'finalize', 'error', 'Run failed', { error })
+    await emitRun(runId, 'failed', error ?? 'Run failed')
   }
 }

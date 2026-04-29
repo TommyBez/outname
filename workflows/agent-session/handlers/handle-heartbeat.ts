@@ -1,18 +1,15 @@
-import { getWritable } from "workflow"
-import { and, desc, eq } from "drizzle-orm"
-import type { UIMessageChunk } from "ai"
-import { db } from "@/lib/db"
-import { runs } from "@/lib/db/schema"
-import {
-  startupSystemSandbox,
-  startupExecSandbox,
-} from "@/lib/agent-sandbox"
-import { buildAgent, buildHeartbeatKickoff } from "../agent-factory"
-import type { PendingWrites } from "../tools/pending-writes"
-import { beginHeartbeatRun } from "../steps/begin-heartbeat-run"
-import { drainPendingWrites } from "../steps/drain-pending-writes"
-import { initRun } from "../steps/init-run"
-import { finalizeRun } from "../steps/finalize-run"
+import type { UIMessageChunk } from 'ai'
+import { and, desc, eq } from 'drizzle-orm'
+import { getWritable } from 'workflow'
+import { startupExecSandbox, startupSystemSandbox } from '@/lib/agent-sandbox'
+import { db } from '@/lib/db'
+import { runs } from '@/lib/db/schema'
+import { buildAgent, buildHeartbeatKickoff } from '../agent-factory'
+import { beginHeartbeatRun } from '../steps/begin-heartbeat-run'
+import { drainPendingWrites } from '../steps/drain-pending-writes'
+import { finalizeRun } from '../steps/finalize-run'
+import { initRun } from '../steps/init-run'
+import type { PendingWrites } from '../tools/pending-writes'
 
 /**
  * Heartbeat event handler — runs inside the long-lived session
@@ -66,7 +63,7 @@ export async function handleHeartbeat(input: {
       // Don't fail the heartbeat just because exec didn't boot — the
       // agent can still touch memory files. exec_* tools surface their
       // own errors per call.
-      console.error("[v0] handleHeartbeat: startupExecSandbox failed", err)
+      console.error('[v0] handleHeartbeat: startupExecSandbox failed', err)
     })
 
     // Drain UI-authored persona-file edits before composeSystemPrompt
@@ -81,17 +78,17 @@ export async function handleHeartbeat(input: {
     })
 
     await agent.stream({
-      messages: [{ role: "user", content: kickoff }],
+      messages: [{ role: 'user', content: kickoff }],
       writable,
       maxSteps: 60,
     })
 
-    await finalizeRun(runId, "completed")
+    await finalizeRun(runId, 'completed')
 
     return { pending }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    await finalizeRun(runId, "failed", message)
+    await finalizeRun(runId, 'failed', message)
     throw err
   }
 }
@@ -102,13 +99,13 @@ export async function handleHeartbeat(input: {
  * heartbeats failed). Used purely as a hint in the kickoff message.
  */
 async function readPreviousHeartbeatCompletion(
-  agentId: string,
+  agentId: string
 ): Promise<string | null> {
-  "use step"
+  'use step'
   const [prev] = await db
     .select({ completedAt: runs.completedAt })
     .from(runs)
-    .where(and(eq(runs.agentId, agentId), eq(runs.status, "completed")))
+    .where(and(eq(runs.agentId, agentId), eq(runs.status, 'completed')))
     .orderBy(desc(runs.completedAt))
     .limit(1)
   return prev?.completedAt ? prev.completedAt.toISOString() : null

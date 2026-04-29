@@ -10,9 +10,8 @@
 export async function generateAckId(_input: {
   agentId: string
 }): Promise<string> {
-  "use step"
+  'use step'
   return (
-    Math.random().toString(36).slice(2, 10) +
-    Date.now().toString(36).slice(-4)
+    Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4)
   )
 }

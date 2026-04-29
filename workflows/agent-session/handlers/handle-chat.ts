@@ -1,18 +1,11 @@
-import { getWritable } from "workflow"
-import {
-  convertToModelMessages,
-  type UIMessage,
-  type UIMessageChunk,
-} from "ai"
-import {
-  startupSystemSandbox,
-  startupExecSandbox,
-} from "@/lib/agent-sandbox"
-import { buildAgent } from "../agent-factory"
-import { drainPendingWrites } from "../steps/drain-pending-writes"
-import type { PendingWrites } from "../tools/pending-writes"
-import { maybeGenerateConversationTitle } from "@/workflows/chat/steps/generate-conversation-title"
-import { persistAssistantTurn } from "@/workflows/chat/steps/persist-assistant-turn"
+import { convertToModelMessages, type UIMessage, type UIMessageChunk } from 'ai'
+import { getWritable } from 'workflow'
+import { startupExecSandbox, startupSystemSandbox } from '@/lib/agent-sandbox'
+import { maybeGenerateConversationTitle } from '@/workflows/chat/steps/generate-conversation-title'
+import { persistAssistantTurn } from '@/workflows/chat/steps/persist-assistant-turn'
+import { buildAgent } from '../agent-factory'
+import { drainPendingWrites } from '../steps/drain-pending-writes'
+import type { PendingWrites } from '../tools/pending-writes'
 
 /**
  * Chat event handler — runs inside the long-lived session workflow.
@@ -61,7 +54,7 @@ export async function handleChat(input: {
     // Don't kill the chat turn if the exec sandbox can't boot — the
     // agent can still answer text-only turns. The exec_* tools will
     // surface clearer errors per-call when they try to use it.
-    console.error("[v0] handleChat: startupExecSandbox failed", err)
+    console.error('[v0] handleChat: startupExecSandbox failed', err)
   })
 
   // Apply any UI-authored persona-file edits before composing the

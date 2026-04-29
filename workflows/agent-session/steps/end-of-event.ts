@@ -1,18 +1,18 @@
-import type { Sandbox } from "@vercel/sandbox"
-import { createHash } from "node:crypto"
-import { and, eq } from "drizzle-orm"
-import { db } from "@/lib/db"
-import { agentFiles } from "@/lib/db/schema"
+import { createHash } from 'node:crypto'
+import type { Sandbox } from '@vercel/sandbox'
+import { and, eq } from 'drizzle-orm'
 import {
+  getExecSandbox,
   getSystemSandbox,
   releaseSandbox,
-  getExecSandbox,
-} from "@/lib/agent-sandbox"
-import { SYSTEM_SANDBOX_ROOT } from "@/lib/agent-sandbox-registry"
+} from '@/lib/agent-sandbox'
+import { SYSTEM_SANDBOX_ROOT } from '@/lib/agent-sandbox-registry'
+import { db } from '@/lib/db'
+import { agentFiles } from '@/lib/db/schema'
 import {
   flushPendingWrites,
   type PendingWrites,
-} from "@/workflows/agent-session/tools/pending-writes"
+} from '@/workflows/agent-session/tools/pending-writes'
 
 /**
  * End-of-event handler.
@@ -39,7 +39,7 @@ export async function endOfEvent(input: {
   agentId: string
   pending: PendingWrites
 }): Promise<void> {
-  "use step"
+  'use step'
 
   let systemSandbox: Sandbox | null = null
   let execSandbox: Sandbox | null = null
@@ -49,20 +49,20 @@ export async function endOfEvent(input: {
   } catch (err) {
     // No system sandbox means startup never ran for this event — the
     // session loop will boot one on the next event. Nothing to flush.
-    console.error("[v0] endOfEvent: getSystemSandbox failed", err)
+    console.error('[v0] endOfEvent: getSystemSandbox failed', err)
     return
   }
 
   try {
     await flushPendingWrites(systemSandbox, input.pending)
   } catch (err) {
-    console.error("[v0] endOfEvent: flushPendingWrites failed", err)
+    console.error('[v0] endOfEvent: flushPendingWrites failed', err)
   }
 
   try {
     await mirrorMemoryToDb(systemSandbox, input.agentId)
   } catch (err) {
-    console.error("[v0] endOfEvent: mirrorMemoryToDb failed", err)
+    console.error('[v0] endOfEvent: mirrorMemoryToDb failed', err)
   }
 
   // Best-effort exec snapshot: not every event touches it, but if the
@@ -77,21 +77,21 @@ export async function endOfEvent(input: {
   await Promise.all(
     [systemSandbox, execSandbox]
       .filter((s): s is Sandbox => s !== null)
-      .map((s) => releaseSandbox(s)),
+      .map((s) => releaseSandbox(s))
   )
 }
 
 async function mirrorMemoryToDb(
   sandbox: Sandbox,
-  agentId: string,
+  agentId: string
 ): Promise<void> {
   // Enumerate markdown files. `find` is GNU-compatible inside the
   // node22 sandbox image; we filter out hidden trees and node_modules
   // up front so we don't spend bytes on noise.
   const list = await sandbox.runCommand({
-    cmd: "sh",
+    cmd: 'sh',
     args: [
-      "-ec",
+      '-ec',
       `cd ${SYSTEM_SANDBOX_ROOT} && find . -type f -name '*.md' \
         -not -path './.*' \
         -not -path './node_modules/*' \
@@ -100,10 +100,10 @@ async function mirrorMemoryToDb(
   })
   const stdout = await list.stdout()
   const relPaths = stdout
-    .split("\n")
+    .split('\n')
     .map((s) => s.trim())
     .filter(Boolean)
-    .map((p) => (p.startsWith("./") ? p.slice(2) : p))
+    .map((p) => (p.startsWith('./') ? p.slice(2) : p))
 
   // Read existing rows so we can (a) skip unchanged hashes and (b)
   // delete rows whose sandbox file is gone.
@@ -120,11 +120,15 @@ async function mirrorMemoryToDb(
     const buf = await sandbox
       .readFileToBuffer({ path: absPath })
       .catch(() => null)
-    if (!buf) continue
+    if (!buf) {
+      continue
+    }
 
-    const content = buf.toString("utf8")
-    const sha = createHash("sha256").update(content).digest("hex")
-    if (existingByPath.get(relPath) === sha) continue
+    const content = buf.toString('utf8')
+    const sha = createHash('sha256').update(content).digest('hex')
+    if (existingByPath.get(relPath) === sha) {
+      continue
+    }
 
     await db
       .insert(agentFiles)
@@ -149,7 +153,9 @@ async function mirrorMemoryToDb(
   // a per-row delete to keep the WHERE clause small; the typical
   // delete count is 0–1 per turn.
   for (const path of existingByPath.keys()) {
-    if (seen.has(path)) continue
+    if (seen.has(path)) {
+      continue
+    }
     await db
       .delete(agentFiles)
       .where(and(eq(agentFiles.agentId, agentId), eq(agentFiles.path, path)))

@@ -1,25 +1,25 @@
-"use client"
+'use client'
 
-import { useEffect, useState } from "react"
-import type { RunEvent, RunStepName } from "@/lib/run-events"
+import { useEffect, useState } from 'react'
+import type { RunEvent, RunStepName } from '@/lib/run-events'
 
-export type StreamStatus = "connecting" | "open" | "done" | "error" | "failed"
+export type StreamStatus = 'connecting' | 'open' | 'done' | 'error' | 'failed'
 
 /** Derived per-step state for rendering the timeline. */
 export interface StepState {
-  name: RunStepName
   label: string
-  status: "pending" | "active" | "done" | "error"
   message: string
   meta?: Record<string, unknown>
+  name: RunStepName
+  status: 'pending' | 'active' | 'done' | 'error'
   updatedAt: number
 }
 
 const STEP_ORDER: { name: RunStepName; label: string }[] = [
-  { name: "read", label: "Reading inbox" },
-  { name: "classify", label: "Classifying" },
-  { name: "persist", label: "Saving briefing" },
-  { name: "finalize", label: "Finalizing" },
+  { name: 'read', label: 'Reading inbox' },
+  { name: 'classify', label: 'Classifying' },
+  { name: 'persist', label: 'Saving briefing' },
+  { name: 'finalize', label: 'Finalizing' },
 ]
 
 function initialSteps(): StepState[] {
@@ -27,8 +27,8 @@ function initialSteps(): StepState[] {
   return STEP_ORDER.map((s) => ({
     name: s.name,
     label: s.label,
-    status: "pending",
-    message: "",
+    status: 'pending',
+    message: '',
     updatedAt: now,
   }))
 }
@@ -41,7 +41,7 @@ function initialSteps(): StepState[] {
  */
 export function useRunStream(runId: string) {
   const [steps, setSteps] = useState<StepState[]>(initialSteps)
-  const [status, setStatus] = useState<StreamStatus>("connecting")
+  const [status, setStatus] = useState<StreamStatus>('connecting')
   const [connected, setConnected] = useState(false)
 
   useEffect(() => {
@@ -49,21 +49,21 @@ export function useRunStream(runId: string) {
 
     // Reset per-run state whenever the runId changes.
     setSteps(initialSteps())
-    setStatus("connecting")
+    setStatus('connecting')
     setConnected(false)
 
     async function run() {
       try {
         const res = await fetch(`/api/runs/${runId}/stream`, {
           signal: controller.signal,
-          headers: { Accept: "application/x-ndjson" },
-          cache: "no-store",
+          headers: { Accept: 'application/x-ndjson' },
+          cache: 'no-store',
         })
-        if (!res.ok || !res.body) {
-          setStatus("error")
+        if (!(res.ok && res.body)) {
+          setStatus('error')
           return
         }
-        setStatus("open")
+        setStatus('open')
         setConnected(true)
 
         // Yield to let React flush the "connected" state before we block on
@@ -71,19 +71,21 @@ export function useRunStream(runId: string) {
         // never re-renders until the stream yields a chunk.
         await new Promise((r) => setTimeout(r, 0))
 
-        const reader = res.body
-          .pipeThrough(new TextDecoderStream())
-          .getReader()
+        const reader = res.body.pipeThrough(new TextDecoderStream()).getReader()
 
-        let buffer = ""
+        let buffer = ''
         for (;;) {
           const { value, done } = await reader.read()
-          if (done) break
+          if (done) {
+            break
+          }
           buffer += value
-          const lines = buffer.split("\n")
-          buffer = lines.pop() ?? ""
+          const lines = buffer.split('\n')
+          buffer = lines.pop() ?? ''
           for (const line of lines) {
-            if (!line.trim()) continue
+            if (!line.trim()) {
+              continue
+            }
             let evt: RunEvent
             try {
               evt = JSON.parse(line) as RunEvent
@@ -93,24 +95,28 @@ export function useRunStream(runId: string) {
             apply(evt)
           }
         }
-        setStatus((prev) => (prev === "failed" ? prev : "done"))
+        setStatus((prev) => (prev === 'failed' ? prev : 'done'))
       } catch (err) {
-        if ((err as Error)?.name === "AbortError") return
-        setStatus("error")
+        if ((err as Error)?.name === 'AbortError') {
+          return
+        }
+        setStatus('error')
       }
     }
 
     function apply(evt: RunEvent) {
-      if (evt.type === "step") {
+      if (evt.type === 'step') {
         setSteps((prev) =>
           prev.map((s) => {
-            if (s.name !== evt.step) return s
-            const nextStatus: StepState["status"] =
-              evt.status === "done"
-                ? "done"
-                : evt.status === "error"
-                  ? "error"
-                  : "active"
+            if (s.name !== evt.step) {
+              return s
+            }
+            const nextStatus: StepState['status'] =
+              evt.status === 'done'
+                ? 'done'
+                : evt.status === 'error'
+                  ? 'error'
+                  : 'active'
             return {
               ...s,
               status: nextStatus,
@@ -118,10 +124,10 @@ export function useRunStream(runId: string) {
               meta: evt.meta,
               updatedAt: evt.ts,
             }
-          }),
+          })
         )
-      } else if (evt.type === "run") {
-        if (evt.status === "failed") setStatus("failed")
+      } else if (evt.type === 'run' && evt.status === 'failed') {
+        setStatus('failed')
       }
     }
 

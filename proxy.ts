@@ -1,5 +1,5 @@
-import { NextResponse, type NextRequest } from "next/server"
-import { getSessionCookie } from "better-auth/cookies"
+import { getSessionCookie } from 'better-auth/cookies'
+import { type NextRequest, NextResponse } from 'next/server'
 
 export async function proxy(req: NextRequest) {
   const sessionCookie = getSessionCookie(req)
@@ -7,8 +7,8 @@ export async function proxy(req: NextRequest) {
 
   if (!sessionCookie) {
     const url = req.nextUrl.clone()
-    url.pathname = "/login"
-    url.searchParams.set("from", pathname)
+    url.pathname = '/login'
+    url.searchParams.set('from', pathname)
     return NextResponse.redirect(url)
   }
 
@@ -17,11 +17,11 @@ export async function proxy(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/",
-    "/runs/:path*",
-    "/settings/:path*",
-    "/api/workflow/:path*",
-    "/api/runs/:path*",
-    "/api/google/:path*",
+    '/',
+    '/runs/:path*',
+    '/settings/:path*',
+    '/api/workflow/:path*',
+    '/api/runs/:path*',
+    '/api/google/:path*',
   ],
 }

@@ -1,9 +1,9 @@
-import { withWorkflow } from "workflow/next"
-import type { NextConfig } from "next"
+import type { NextConfig } from 'next'
+import { withWorkflow } from 'workflow/next'
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
-  serverExternalPackages: ["better-auth"],
+  serverExternalPackages: ['better-auth'],
 }
 
 export default withWorkflow(nextConfig)

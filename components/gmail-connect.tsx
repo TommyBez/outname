@@ -1,10 +1,10 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
-import { Spinner } from "@/components/ui/spinner"
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
 
 interface Props {
   connection: {
@@ -24,13 +24,15 @@ export function GmailConnect({ connection }: Props) {
   async function disconnect() {
     setBusy(true)
     try {
-      const res = await fetch("/api/google/disconnect", { method: "POST" })
-      if (!res.ok) throw new Error("Could not disconnect. Please try again.")
-      toast.success("Gmail disconnected")
+      const res = await fetch('/api/google/disconnect', { method: 'POST' })
+      if (!res.ok) {
+        throw new Error('Could not disconnect. Please try again.')
+      }
+      toast.success('Gmail disconnected')
       setConfirming(false)
       router.refresh()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not disconnect.")
+      toast.error(e instanceof Error ? e.message : 'Could not disconnect.')
     } finally {
       setBusy(false)
     }
@@ -40,7 +42,7 @@ export function GmailConnect({ connection }: Props) {
     return (
       <div className="flex flex-col gap-5">
         <div>
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
+          <p className="font-mono text-muted-foreground text-xs uppercase tracking-[0.2em]">
             Not connected
           </p>
           <p className="mt-2 font-serif text-lg leading-snug">
@@ -56,7 +58,7 @@ export function GmailConnect({ connection }: Props) {
     )
   }
 
-  const expired = connection.status !== "active"
+  const expired = connection.status !== 'active'
 
   return (
     <div className="flex flex-col gap-5">
@@ -64,22 +66,24 @@ export function GmailConnect({ connection }: Props) {
         <div className="flex items-center gap-2">
           <span
             aria-hidden
-            className={`inline-block size-1.5 rounded-full ${expired ? "bg-destructive" : "bg-foreground/60"}`}
+            className={`inline-block size-1.5 rounded-full ${expired ? 'bg-destructive' : 'bg-foreground/60'}`}
           />
           <p
             className={`font-mono text-xs uppercase tracking-[0.2em] ${
-              expired ? "text-destructive" : "text-muted-foreground"
+              expired ? 'text-destructive' : 'text-muted-foreground'
             }`}
           >
-            {expired ? "Needs attention" : "Connected"}
+            {expired ? 'Needs attention' : 'Connected'}
           </p>
         </div>
-        <p className="mt-2 font-serif text-lg font-medium leading-snug">{connection.email}</p>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-2 font-medium font-serif text-lg leading-snug">
+          {connection.email}
+        </p>
+        <p className="mt-1 text-muted-foreground text-xs">
           Linked {new Date(connection.connectedAt).toLocaleDateString()}
         </p>
         {expired && connection.lastError ? (
-          <pre className="mt-3 max-h-32 overflow-auto rounded-md border border-border bg-muted/40 p-3 font-mono text-xs text-muted-foreground">
+          <pre className="mt-3 max-h-32 overflow-auto rounded-md border border-border bg-muted/40 p-3 font-mono text-muted-foreground text-xs">
             {connection.lastError}
           </pre>
         ) : null}
@@ -91,12 +95,16 @@ export function GmailConnect({ connection }: Props) {
           </Button>
         ) : null}
         {confirming ? (
-          <div className="flex items-center gap-4" role="group" aria-label="Confirm disconnect">
+          <div
+            aria-label="Confirm disconnect"
+            className="flex items-center gap-4"
+            role="group"
+          >
             <button
-              type="button"
-              onClick={disconnect}
+              className="text-destructive text-sm underline underline-offset-4 transition-colors hover:text-destructive/80 disabled:opacity-50"
               disabled={busy}
-              className="text-sm text-destructive underline underline-offset-4 transition-colors hover:text-destructive/80 disabled:opacity-50"
+              onClick={disconnect}
+              type="button"
             >
               {busy ? (
                 <span className="inline-flex items-center gap-2">
@@ -104,23 +112,23 @@ export function GmailConnect({ connection }: Props) {
                   Disconnecting…
                 </span>
               ) : (
-                "Confirm disconnect"
+                'Confirm disconnect'
               )}
             </button>
             <button
-              type="button"
-              onClick={() => setConfirming(false)}
+              className="text-muted-foreground text-sm transition-colors hover:text-foreground disabled:opacity-50"
               disabled={busy}
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+              onClick={() => setConfirming(false)}
+              type="button"
             >
               Cancel
             </button>
           </div>
         ) : (
           <button
-            type="button"
+            className="text-muted-foreground text-sm underline-offset-4 transition-colors hover:text-foreground hover:underline"
             onClick={() => setConfirming(true)}
-            className="text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+            type="button"
           >
             Disconnect
           </button>

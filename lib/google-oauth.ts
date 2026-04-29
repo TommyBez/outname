@@ -1,35 +1,37 @@
-import "server-only"
-import { neon } from "@neondatabase/serverless"
-import { drizzle } from "drizzle-orm/neon-http"
-import { eq } from "drizzle-orm"
-import { cacheLife, cacheTag } from "next/cache"
-import { gmailConnection } from "@/lib/db/schema"
-import { gmailConnectionTag } from "@/lib/cache-tags"
+import 'server-only'
+import { neon } from '@neondatabase/serverless'
+import { eq } from 'drizzle-orm'
+import { drizzle } from 'drizzle-orm/neon-http'
+import { cacheLife, cacheTag } from 'next/cache'
+import { gmailConnectionTag } from '@/lib/cache-tags'
+import { gmailConnection } from '@/lib/db/schema'
 
 export const GMAIL_SCOPES = [
-  "https://www.googleapis.com/auth/gmail.readonly",
-  "https://www.googleapis.com/auth/userinfo.email",
-].join(" ")
+  'https://www.googleapis.com/auth/gmail.readonly',
+  'https://www.googleapis.com/auth/userinfo.email',
+].join(' ')
 
 export function getRedirectUri(requestUrl?: string): string {
   const base =
     process.env.NEXT_PUBLIC_APP_URL ??
-    (requestUrl ? new URL(requestUrl).origin : "http://localhost:3000")
+    (requestUrl ? new URL(requestUrl).origin : 'http://localhost:3000')
   return `${base}/api/google/callback`
 }
 
 export function buildAuthorizeUrl(state: string, redirectUri: string): string {
   const clientId = process.env.GOOGLE_CLIENT_ID
-  if (!clientId) throw new Error("GOOGLE_CLIENT_ID is not set")
+  if (!clientId) {
+    throw new Error('GOOGLE_CLIENT_ID is not set')
+  }
 
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
-    response_type: "code",
+    response_type: 'code',
     scope: GMAIL_SCOPES,
-    access_type: "offline",
-    prompt: "consent",
-    include_granted_scopes: "true",
+    access_type: 'offline',
+    prompt: 'consent',
+    include_granted_scopes: 'true',
     state,
   })
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
@@ -37,26 +39,26 @@ export function buildAuthorizeUrl(state: string, redirectUri: string): string {
 
 interface TokenResponse {
   access_token: string
-  refresh_token?: string
   expires_in: number
+  id_token?: string
+  refresh_token?: string
   scope: string
   token_type: string
-  id_token?: string
 }
 
 export async function exchangeCodeForTokens(
   code: string,
-  redirectUri: string,
+  redirectUri: string
 ): Promise<TokenResponse> {
-  const res = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       code,
       client_id: process.env.GOOGLE_CLIENT_ID!,
       client_secret: process.env.GOOGLE_CLIENT_SECRET!,
       redirect_uri: redirectUri,
-      grant_type: "authorization_code",
+      grant_type: 'authorization_code',
     }),
   })
   if (!res.ok) {
@@ -67,19 +69,24 @@ export async function exchangeCodeForTokens(
 }
 
 export async function fetchUserEmail(accessToken: string): Promise<string> {
-  const res = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+  const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
     headers: { authorization: `Bearer ${accessToken}` },
   })
-  if (!res.ok) throw new Error(`userinfo failed: ${res.status}`)
+  if (!res.ok) {
+    throw new Error(`userinfo failed: ${res.status}`)
+  }
   const json = (await res.json()) as { email: string }
   return json.email
 }
 
 export async function revokeToken(token: string): Promise<void> {
   try {
-    await fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(token)}`, {
-      method: "POST",
-    })
+    await fetch(
+      `https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(token)}`,
+      {
+        method: 'POST',
+      }
+    )
   } catch {
     /* best effort */
   }
@@ -107,9 +114,9 @@ export async function getGmailConnectionForUser(userId: string) {
 }
 
 export async function getCachedGmailConnectionForUser(userId: string) {
-  "use cache"
+  'use cache'
 
-  cacheLife("minutes")
+  cacheLife('minutes')
   cacheTag(gmailConnectionTag(userId))
   return getGmailConnectionForUser(userId)
 }
@@ -133,21 +140,21 @@ export async function upsertGmailConnection(values: {
         accessToken: values.accessToken,
         accessTokenExpiresAt: values.accessTokenExpiresAt,
         scopes: values.scopes,
-        status: "active",
+        status: 'active',
         lastError: null,
         updatedAt: new Date(),
       })
       .where(eq(gmailConnection.id, existing.id))
   } else {
     await db.insert(gmailConnection).values({
-      id: "singleton",
+      id: 'singleton',
       userId: values.userId,
       email: values.email,
       refreshToken: values.refreshToken,
       accessToken: values.accessToken,
       accessTokenExpiresAt: values.accessTokenExpiresAt,
       scopes: values.scopes,
-      status: "active",
+      status: 'active',
     })
   }
 }
@@ -156,7 +163,7 @@ export async function markConnectionExpired(err: string) {
   const db = getDb()
   await db
     .update(gmailConnection)
-    .set({ status: "expired", lastError: err, updatedAt: new Date() })
+    .set({ status: 'expired', lastError: err, updatedAt: new Date() })
 }
 
 export async function deleteGmailConnection(userId?: string) {

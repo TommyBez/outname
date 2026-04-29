@@ -1,6 +1,6 @@
-import { AppShell } from "@/components/app-shell"
-import { AgentForm } from "@/components/agent-form"
-import { DEFAULT_MODEL_ID, getAvailableModels } from "@/lib/ai-gateway-models"
+import { AgentForm } from '@/components/agent-form'
+import { AppShell } from '@/components/app-shell'
+import { DEFAULT_MODEL_ID, getAvailableModels } from '@/lib/ai-gateway-models'
 
 // Cache Components is enabled in next.config, so a route-level
 // `dynamic = "force-dynamic"` is forbidden. The model catalog is
@@ -13,15 +13,15 @@ export default async function NewAgentPage() {
   return (
     <AppShell>
       <header className="mb-10 flex flex-col gap-2">
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
+        <p className="font-mono text-muted-foreground text-xs uppercase tracking-[0.2em]">
           New agent
         </p>
-        <h1 className="font-serif text-4xl font-medium leading-tight tracking-tight md:text-5xl">
+        <h1 className="font-medium font-serif text-4xl leading-tight tracking-tight md:text-5xl">
           Configure a new agent.
         </h1>
       </header>
 
-      <AgentForm models={models} defaultModel={DEFAULT_MODEL_ID} />
+      <AgentForm defaultModel={DEFAULT_MODEL_ID} models={models} />
     </AppShell>
   )
 }

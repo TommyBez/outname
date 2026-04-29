@@ -1,6 +1,6 @@
-import { betterAuth } from "better-auth"
-import { drizzleAdapter } from "better-auth/adapters/drizzle"
-import { db } from "@/lib/db"
+import { betterAuth } from 'better-auth'
+import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import { db } from '@/lib/db'
 
 // In production, the app runs at its own origin (BETTER_AUTH_URL) and is
 // NOT embedded in a cross-site iframe, so we keep Better Auth's stock
@@ -11,21 +11,21 @@ import { db } from "@/lib/db"
 //   1. Trust the incoming Origin so CSRF checks don't reject sign-in.
 //   2. Issue session cookies with SameSite=None; Secure so the browser
 //      actually stores and sends them back from inside the iframe.
-const isProduction = process.env.NODE_ENV === "production"
+const isProduction = process.env.NODE_ENV === 'production'
 
 // Dev-only static allowlist. Never used in production.
 const devTrustedOrigins = [
-  "http://localhost:3000",
-  "https://*.vercel.app",
-  "https://*.vercel.run",
-  "https://*.v0.app",
-  "https://*.v0.dev",
-  "https://*.vusercontent.net",
+  'http://localhost:3000',
+  'https://*.vercel.app',
+  'https://*.vercel.run',
+  'https://*.v0.app',
+  'https://*.v0.dev',
+  'https://*.vusercontent.net',
 ]
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
-    provider: "pg",
+    provider: 'pg',
   }),
   emailAndPassword: {
     enabled: true,
@@ -54,9 +54,9 @@ export const auth = betterAuth({
         ]
         // `request` can be undefined when Better Auth invokes this from
         // non-HTTP contexts (e.g. during initialization), so guard it.
-        if (request && typeof request.headers?.get === "function") {
+        if (request && typeof request.headers?.get === 'function') {
           const originHeader =
-            request.headers.get("origin") || request.headers.get("referer")
+            request.headers.get('origin') || request.headers.get('referer')
           if (originHeader) {
             try {
               origins.push(new URL(originHeader).origin)
@@ -75,7 +75,7 @@ export const auth = betterAuth({
     : {
         advanced: {
           defaultCookieAttributes: {
-            sameSite: "none" as const,
+            sameSite: 'none' as const,
             secure: true,
             httpOnly: true,
           },

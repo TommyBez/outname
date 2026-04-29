@@ -1,9 +1,9 @@
-import { Suspense } from "react"
-import { redirect } from "next/navigation"
-import { headers } from "next/headers"
-import { auth } from "@/lib/auth"
-import { ensureAdminUser } from "@/lib/bootstrap"
-import { LoginForm } from "./login-form"
+import { headers } from 'next/headers'
+import { redirect } from 'next/navigation'
+import { Suspense } from 'react'
+import { auth } from '@/lib/auth'
+import { ensureAdminUser } from '@/lib/bootstrap'
+import { LoginForm } from './login-form'
 
 export default function LoginPage({
   searchParams,
@@ -11,16 +11,16 @@ export default function LoginPage({
   searchParams: Promise<{ from?: string }>
 }) {
   return (
-    <main className="min-h-svh grid place-items-center bg-background px-6">
+    <main className="grid min-h-svh place-items-center bg-background px-6">
       <div className="w-full max-w-sm">
         <div className="mb-10">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">
+          <p className="font-mono text-accent text-xs uppercase tracking-[0.2em]">
             ▪ agents
           </p>
-          <h1 className="mt-3 font-mono text-2xl font-medium leading-tight tracking-tight">
+          <h1 className="mt-3 font-medium font-mono text-2xl leading-tight tracking-tight">
             Sign in.
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-muted-foreground text-sm">
             Access your scheduled agents and today&apos;s run.
           </p>
         </div>
@@ -39,7 +39,9 @@ async function LoginGate({
 }) {
   await ensureAdminUser()
   const session = await auth.api.getSession({ headers: await headers() })
-  if (session) redirect("/")
+  if (session) {
+    redirect('/')
+  }
   const { from } = await searchParams
-  return <LoginForm redirectTo={from || "/"} />
+  return <LoginForm redirectTo={from || '/'} />
 }

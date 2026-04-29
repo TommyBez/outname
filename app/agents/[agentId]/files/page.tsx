@@ -1,11 +1,11 @@
-import { Suspense } from "react"
-import { notFound } from "next/navigation"
-import { asc, eq } from "drizzle-orm"
-import { requireSession } from "@/lib/auth-guard"
-import { getCachedAgentByIdForUser } from "@/lib/data"
-import { db } from "@/lib/db"
-import { agentFiles } from "@/lib/db/schema"
-import { formatRelative } from "@/lib/format"
+import { asc, eq } from 'drizzle-orm'
+import { notFound } from 'next/navigation'
+import { Suspense } from 'react'
+import { requireSession } from '@/lib/auth-guard'
+import { getCachedAgentByIdForUser } from '@/lib/data'
+import { db } from '@/lib/db'
+import { agentFiles } from '@/lib/db/schema'
+import { formatRelative } from '@/lib/format'
 
 type Params = Promise<{ agentId: string }>
 
@@ -34,7 +34,9 @@ async function ResolvedAgentFiles({ params }: { params: Params }) {
   const { agentId } = await params
   const session = await requireSession()
   const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
-  if (!agent) notFound()
+  if (!agent) {
+    notFound()
+  }
 
   const rows = await db
     .select()
@@ -45,34 +47,34 @@ async function ResolvedAgentFiles({ params }: { params: Params }) {
   return (
     <>
       <header className="mb-10 flex flex-col gap-1.5">
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
+        <p className="font-mono text-muted-foreground text-xs uppercase tracking-[0.2em]">
           {agent.name} · Files
         </p>
-        <h1 className="font-serif text-3xl font-medium leading-tight tracking-tight md:text-4xl">
+        <h1 className="font-medium font-serif text-3xl leading-tight tracking-tight md:text-4xl">
           Sandbox memory
         </h1>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Markdown notes the agent maintains inside its persistent
-          sandbox. Snapshotted to the database at the end of every
-          chat turn and heartbeat.
+        <p className="mt-2 max-w-2xl text-muted-foreground text-sm">
+          Markdown notes the agent maintains inside its persistent sandbox.
+          Snapshotted to the database at the end of every chat turn and
+          heartbeat.
         </p>
       </header>
 
       {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No files yet. The agent will create{" "}
+        <p className="text-muted-foreground text-sm">
+          No files yet. The agent will create{' '}
           <code className="rounded-sm bg-muted px-1 py-0.5 font-mono text-xs">
             AGENTS.md
-          </code>{" "}
+          </code>{' '}
           on its first run.
         </p>
       ) : (
         <ul className="flex flex-col gap-10">
           {rows.map((row) => (
-            <li key={row.path} className="flex flex-col gap-3">
-              <header className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-b border-border pb-2">
-                <h2 className="font-mono text-sm font-medium">{row.path}</h2>
-                <span className="font-mono text-xs text-muted-foreground">
+            <li className="flex flex-col gap-3" key={row.path}>
+              <header className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-border border-b pb-2">
+                <h2 className="font-medium font-mono text-sm">{row.path}</h2>
+                <span className="font-mono text-muted-foreground text-xs">
                   Updated {formatRelative(row.updatedAt)}
                 </span>
               </header>
@@ -97,8 +99,8 @@ function FilesSkeleton() {
       </header>
       <div className="flex flex-col gap-10">
         {[0, 1].map((idx) => (
-          <div key={idx} className="flex flex-col gap-3">
-            <div className="flex items-baseline justify-between border-b border-border pb-2">
+          <div className="flex flex-col gap-3" key={idx}>
+            <div className="flex items-baseline justify-between border-border border-b pb-2">
               <div className="h-4 w-40 animate-pulse rounded-sm bg-muted" />
               <div className="h-3 w-24 animate-pulse rounded-sm bg-muted" />
             </div>

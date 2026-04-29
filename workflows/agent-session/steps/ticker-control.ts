@@ -1,12 +1,12 @@
-import { getRun, resumeHook, start } from "workflow/api"
-import { getWorld } from "workflow/runtime"
-import { eq } from "drizzle-orm"
-import { db } from "@/lib/db"
-import { agent } from "@/lib/db/schema"
-import { agentTickerWorkflow } from "../ticker"
-import { heartbeatAckToken, sessionToken } from "../events"
+import { eq } from 'drizzle-orm'
+import { getRun, resumeHook, start } from 'workflow/api'
+import { getWorld } from 'workflow/runtime'
+import { db } from '@/lib/db'
+import { agent } from '@/lib/db/schema'
+import { heartbeatAckToken, sessionToken } from '../events'
+import { agentTickerWorkflow } from '../ticker'
 
-const TERMINAL_STATUSES = new Set(["completed", "failed", "cancelled"])
+const TERMINAL_STATUSES = new Set(['completed', 'failed', 'cancelled'])
 
 /**
  * Local copy of the alive check used by `lib/agent-session.ts`. Inlined
@@ -18,7 +18,9 @@ async function isWorkflowRunAlive(workflowRunId: string): Promise<boolean> {
   try {
     const run = getRun(workflowRunId)
     const status = await run.status
-    if (typeof status !== "string") return false
+    if (typeof status !== 'string') {
+      return false
+    }
     return !TERMINAL_STATUSES.has(status)
   } catch {
     return false
@@ -41,7 +43,7 @@ async function isWorkflowRunAlive(workflowRunId: string): Promise<boolean> {
 export async function startTicker(input: {
   agentId: string
 }): Promise<{ tickerRunId: string }> {
-  "use step"
+  'use step'
   const run = await start(agentTickerWorkflow, [{ agentId: input.agentId }])
   await db
     .update(agent)
@@ -61,14 +63,14 @@ export async function stopTicker(input: {
   agentId: string
   tickerRunId: string
 }): Promise<void> {
-  "use step"
+  'use step'
   try {
     const world = await getWorld()
     await world.events.create(input.tickerRunId, {
-      eventType: "run_cancelled",
+      eventType: 'run_cancelled',
     })
   } catch (err) {
-    console.error("[v0] stopTicker: failed to cancel ticker", err)
+    console.error('[v0] stopTicker: failed to cancel ticker', err)
   }
 
   // Clear the column only when this is still the row's current ticker —
@@ -80,7 +82,7 @@ export async function stopTicker(input: {
       .set({ lastTickerRunId: null, updatedAt: new Date() })
       .where(eq(agent.lastTickerRunId, input.tickerRunId))
   } catch (err) {
-    console.error("[v0] stopTicker: failed to clear column", err)
+    console.error('[v0] stopTicker: failed to clear column', err)
   }
 }
 
@@ -96,7 +98,7 @@ export async function stopTicker(input: {
 export async function reapOrphanTicker(input: {
   agentId: string
 }): Promise<{ cancelled: string | null }> {
-  "use step"
+  'use step'
   const rows = await db
     .select({ tickerRunId: agent.lastTickerRunId })
     .from(agent)
@@ -104,17 +106,19 @@ export async function reapOrphanTicker(input: {
     .limit(1)
 
   const prev = rows[0]?.tickerRunId ?? null
-  if (!prev) return { cancelled: null }
+  if (!prev) {
+    return { cancelled: null }
+  }
 
   let cancelled: string | null = null
   try {
     if (await isWorkflowRunAlive(prev)) {
       const world = await getWorld()
-      await world.events.create(prev, { eventType: "run_cancelled" })
+      await world.events.create(prev, { eventType: 'run_cancelled' })
       cancelled = prev
     }
   } catch (err) {
-    console.error("[v0] reapOrphanTicker: cancel failed", err)
+    console.error('[v0] reapOrphanTicker: cancel failed', err)
   }
 
   // Clear the slot unconditionally — `startTicker` is about to write a
@@ -125,7 +129,7 @@ export async function reapOrphanTicker(input: {
       .set({ lastTickerRunId: null, updatedAt: new Date() })
       .where(eq(agent.id, input.agentId))
   } catch (err) {
-    console.error("[v0] reapOrphanTicker: clear column failed", err)
+    console.error('[v0] reapOrphanTicker: clear column failed', err)
   }
 
   return { cancelled }
@@ -145,7 +149,7 @@ export async function reapOrphanTicker(input: {
 export async function readHeartbeatSchedule(input: {
   agentId: string
 }): Promise<{ enabled: boolean; intervalMs: number }> {
-  "use step"
+  'use step'
   const rows = await db
     .select({
       enabled: agent.heartbeatEnabled,
@@ -156,7 +160,9 @@ export async function readHeartbeatSchedule(input: {
     .limit(1)
 
   const row = rows[0]
-  if (!row) return { enabled: false, intervalMs: 0 }
+  if (!row) {
+    return { enabled: false, intervalMs: 0 }
+  }
 
   return {
     enabled: row.enabled,
@@ -173,9 +179,9 @@ export async function pokeSessionHeartbeat(input: {
   agentId: string
   ack: string
 }): Promise<void> {
-  "use step"
+  'use step'
   await resumeHook(sessionToken(input.agentId), {
-    type: "heartbeat",
+    type: 'heartbeat',
     ack: input.ack,
   })
 }
@@ -193,12 +199,12 @@ export async function ackHeartbeat(input: {
   agentId: string
   ack: string
 }): Promise<void> {
-  "use step"
+  'use step'
   try {
     await resumeHook(heartbeatAckToken(input.agentId, input.ack), {
       done: true,
     })
   } catch (err) {
-    console.error("[v0] ackHeartbeat: resume failed", err)
+    console.error('[v0] ackHeartbeat: resume failed', err)
   }
 }

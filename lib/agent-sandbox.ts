@@ -1,13 +1,13 @@
-import { Sandbox } from "@vercel/sandbox"
-import { eq } from "drizzle-orm"
-import { db } from "@/lib/db"
-import { agent } from "@/lib/db/schema"
+import { Sandbox } from '@vercel/sandbox'
+import { eq } from 'drizzle-orm'
 import {
   EXEC_SANDBOX_WORKSPACE,
   SANDBOX_CONFIGS,
   type SandboxRole,
-} from "@/lib/agent-sandbox-registry"
-import type { CreateOptions } from "@/lib/agent-sandbox-types"
+} from '@/lib/agent-sandbox-registry'
+import type { CreateOptions } from '@/lib/agent-sandbox-types'
+import { db } from '@/lib/db'
+import { agent } from '@/lib/db/schema'
 
 // Role <-> DB column mapping
 
@@ -17,8 +17,8 @@ import type { CreateOptions } from "@/lib/agent-sandbox-types"
  * across agents and roles within the same project.
  */
 const ROLE_SUFFIX: Record<SandboxRole, string> = {
-  system: "system",
-  exec: "exec",
+  system: 'system',
+  exec: 'exec',
 }
 
 function nameFor(agentId: string, role: SandboxRole): string {
@@ -27,7 +27,7 @@ function nameFor(agentId: string, role: SandboxRole): string {
 
 async function readSandboxId(
   agentId: string,
-  role: SandboxRole,
+  role: SandboxRole
 ): Promise<string | null> {
   const [row] = await db
     .select({
@@ -37,19 +37,21 @@ async function readSandboxId(
     .from(agent)
     .where(eq(agent.id, agentId))
     .limit(1)
-  if (!row) return null
-  return role === "system" ? row.systemId : row.execId
+  if (!row) {
+    return null
+  }
+  return role === 'system' ? row.systemId : row.execId
 }
 
 async function writeSandboxId(
   agentId: string,
   role: SandboxRole,
-  sandboxId: string,
+  sandboxId: string
 ): Promise<void> {
   await db
     .update(agent)
     .set({
-      ...(role === "system"
+      ...(role === 'system'
         ? { sandboxSystemId: sandboxId }
         : { sandboxExecId: sandboxId }),
       updatedAt: new Date(),
@@ -60,9 +62,9 @@ async function writeSandboxId(
 // Public types
 
 export interface EnsureResult {
-  sandbox: Sandbox
   /** True iff this call created a brand-new sandbox (vs. resumed by id). */
   created: boolean
+  sandbox: Sandbox
 }
 
 // Lifecycle internals
@@ -70,7 +72,7 @@ export interface EnsureResult {
 async function ensureRoleSandbox(
   agentId: string,
   role: SandboxRole,
-  createOptions: CreateOptions | undefined,
+  createOptions: CreateOptions | undefined
 ): Promise<EnsureResult> {
   // The persistent sandbox SDK addresses sandboxes by `name`, not by an
   // internal id. The columns are named `sandbox_*_id` for parity with
@@ -114,10 +116,10 @@ async function ensureRoleSandbox(
  */
 export async function readMarker(
   sandbox: Sandbox,
-  path: string,
+  path: string
 ): Promise<string | null> {
   const buf = await sandbox.readFileToBuffer({ path }).catch(() => null)
-  return buf ? buf.toString("utf8").trim() : null
+  return buf ? buf.toString('utf8').trim() : null
 }
 
 /**
@@ -127,9 +129,9 @@ export async function readMarker(
 export async function writeMarker(
   sandbox: Sandbox,
   path: string,
-  value: string,
+  value: string
 ): Promise<void> {
-  await sandbox.writeFiles([{ path, content: Buffer.from(value, "utf8") }])
+  await sandbox.writeFiles([{ path, content: Buffer.from(value, 'utf8') }])
 }
 
 // Step primitives — workflow-facing (Neon / Sandbox; not inside `"use workflow"` VM)
@@ -145,19 +147,19 @@ export async function writeMarker(
 export async function startupSystemSandbox(input: {
   agentId: string
 }): Promise<void> {
-  "use step"
+  'use step'
   const { agentId } = input
   const { created } = await ensureRoleSandbox(
     agentId,
-    "system",
-    SANDBOX_CONFIGS.system.createOptions,
+    'system',
+    SANDBOX_CONFIGS.system.createOptions
   )
 
   // Lazily import the seed step so this module doesn't pull workflow
   // primitives (used inside seed-agents-md.ts) when loaded outside a
   // workflow.
   const { seedAgentsMd } = await import(
-    "@/workflows/agent-session/steps/seed-agents-md"
+    '@/workflows/agent-session/steps/seed-agents-md'
   )
   await seedAgentsMd({ agentId, created })
 }
@@ -170,20 +172,20 @@ export async function startupSystemSandbox(input: {
 export async function startupExecSandbox(input: {
   agentId: string
 }): Promise<void> {
-  "use step"
+  'use step'
   const { agentId } = input
   const { sandbox, created } = await ensureRoleSandbox(
     agentId,
-    "exec",
-    SANDBOX_CONFIGS.exec.createOptions,
+    'exec',
+    SANDBOX_CONFIGS.exec.createOptions
   )
 
   if (created) {
     // Provision the workspace directory once. Subsequent resumes pick
     // it up from the snapshot.
     await sandbox.runCommand({
-      cmd: "sh",
-      args: ["-ec", `mkdir -p ${EXEC_SANDBOX_WORKSPACE}`],
+      cmd: 'sh',
+      args: ['-ec', `mkdir -p ${EXEC_SANDBOX_WORKSPACE}`],
     })
   }
 }
@@ -196,10 +198,10 @@ export async function startupExecSandbox(input: {
  * SDK boundary and run inside a `"use step"` body.
  */
 export async function getSystemSandbox(agentId: string): Promise<Sandbox> {
-  const name = await readSandboxId(agentId, "system")
+  const name = await readSandboxId(agentId, 'system')
   if (!name) {
     throw new Error(
-      `Agent ${agentId} has no system sandbox yet — startupSystemSandbox must run first.`,
+      `Agent ${agentId} has no system sandbox yet — startupSystemSandbox must run first.`
     )
   }
   return Sandbox.get({ name, resume: true })
@@ -210,10 +212,10 @@ export async function getSystemSandbox(agentId: string): Promise<Sandbox> {
  * `getSystemSandbox` — startup must have run.
  */
 export async function getExecSandbox(agentId: string): Promise<Sandbox> {
-  const name = await readSandboxId(agentId, "exec")
+  const name = await readSandboxId(agentId, 'exec')
   if (!name) {
     throw new Error(
-      `Agent ${agentId} has no exec sandbox yet — startupExecSandbox must run first.`,
+      `Agent ${agentId} has no exec sandbox yet — startupExecSandbox must run first.`
     )
   }
   return Sandbox.get({ name, resume: true })
@@ -248,9 +250,9 @@ export async function releaseSandbox(sandbox: Sandbox): Promise<void> {
 export async function resetExecSandbox(input: {
   agentId: string
 }): Promise<{ destroyed: boolean }> {
-  "use step"
+  'use step'
   const { agentId } = input
-  const previousName = await readSandboxId(agentId, "exec")
+  const previousName = await readSandboxId(agentId, 'exec')
 
   let destroyed = false
   if (previousName) {
@@ -270,12 +272,12 @@ export async function resetExecSandbox(input: {
   // sandbox name back, which is a no-op when it already matches.
   const { sandbox } = await ensureRoleSandbox(
     agentId,
-    "exec",
-    SANDBOX_CONFIGS.exec.createOptions,
+    'exec',
+    SANDBOX_CONFIGS.exec.createOptions
   )
   await sandbox.runCommand({
-    cmd: "sh",
-    args: ["-ec", `mkdir -p ${EXEC_SANDBOX_WORKSPACE}`],
+    cmd: 'sh',
+    args: ['-ec', `mkdir -p ${EXEC_SANDBOX_WORKSPACE}`],
   })
 
   return { destroyed }
@@ -290,19 +292,21 @@ export async function resetExecSandbox(input: {
  */
 export async function destroyAgentSandboxes(agentId: string): Promise<void> {
   const [systemName, execName] = await Promise.all([
-    readSandboxId(agentId, "system"),
-    readSandboxId(agentId, "exec"),
+    readSandboxId(agentId, 'system'),
+    readSandboxId(agentId, 'exec'),
   ])
 
   await Promise.all(
     [systemName, execName].map(async (name) => {
-      if (!name) return
+      if (!name) {
+        return
+      }
       try {
         const sb = await Sandbox.get({ name, resume: false })
         await sb.delete()
       } catch {
         /* already gone or unreachable */
       }
-    }),
+    })
   )
 }

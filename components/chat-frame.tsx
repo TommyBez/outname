@@ -1,10 +1,10 @@
-import { ChatHeader } from "@/components/chat-header"
+import { ChatHeader } from '@/components/chat-header'
 
 interface ChatFrameProps {
   agentId: string
   agentName: string
-  enabled: boolean
   children: React.ReactNode
+  enabled: boolean
 }
 
 /**
@@ -25,11 +25,7 @@ export function ChatFrame({
 }: ChatFrameProps) {
   return (
     <div className="flex h-full min-w-0 flex-col gap-4">
-      <ChatHeader
-        agentId={agentId}
-        agentName={agentName}
-        enabled={enabled}
-      />
+      <ChatHeader agentId={agentId} agentName={agentName} enabled={enabled} />
       <div className="flex min-h-0 flex-1 flex-col">{children}</div>
     </div>
   )

@@ -1,17 +1,16 @@
-"use client"
+'use client'
 
-import * as React from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
 import {
-  CalendarDays,
   Bot,
+  CalendarDays,
   History,
-  Settings as SettingsIcon,
   LogOut,
-} from "lucide-react"
-import { toast } from "sonner"
-import { useRouter } from "next/navigation"
+  Settings as SettingsIcon,
+} from 'lucide-react'
+import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
+import * as React from 'react'
+import { toast } from 'sonner'
 import {
   Sidebar,
   SidebarContent,
@@ -23,14 +22,14 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@/components/ui/sidebar"
-import { signOut } from "@/lib/auth-client"
+} from '@/components/ui/sidebar'
+import { signOut } from '@/lib/auth-client'
 
 const NAV_ITEMS = [
-  { href: "/", label: "Today", icon: CalendarDays },
-  { href: "/agents", label: "Agents", icon: Bot },
-  { href: "/runs", label: "History", icon: History },
-  { href: "/settings", label: "Settings", icon: SettingsIcon },
+  { href: '/', label: 'Today', icon: CalendarDays },
+  { href: '/agents', label: 'Agents', icon: Bot },
+  { href: '/runs', label: 'History', icon: History },
+  { href: '/settings', label: 'Settings', icon: SettingsIcon },
 ] as const
 
 interface AppSidebarProps {
@@ -49,23 +48,25 @@ export function AppSidebar({ sidebarExtras }: AppSidebarProps = {}) {
 
   const isActive = React.useCallback(
     (href: string) =>
-      href === "/"
-        ? pathname === "/"
-        : pathname === href || pathname.startsWith(href + "/"),
-    [pathname],
+      href === '/'
+        ? pathname === '/'
+        : pathname === href || pathname.startsWith(href + '/'),
+    [pathname]
   )
 
   // Auto-close the mobile drawer when the route changes.
   React.useEffect(() => {
-    if (isMobile) setOpenMobile(false)
+    if (isMobile) {
+      setOpenMobile(false)
+    }
   }, [pathname, isMobile, setOpenMobile])
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      <SidebarHeader className="border-b border-sidebar-border px-3 py-4">
+    <Sidebar className="border-sidebar-border border-r" collapsible="icon">
+      <SidebarHeader className="border-sidebar-border border-b px-3 py-4">
         <Link
+          className="flex items-center gap-2 font-medium font-mono text-foreground text-sm uppercase tracking-[0.18em] transition-colors hover:text-foreground/80"
           href="/"
-          className="flex items-center gap-2 font-mono text-sm font-medium uppercase tracking-[0.18em] text-foreground transition-colors hover:text-foreground/80"
         >
           <span
             aria-hidden
@@ -85,13 +86,13 @@ export function AppSidebar({ sidebarExtras }: AppSidebarProps = {}) {
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     asChild
+                    className="data-[active=true]:text-foreground"
                     isActive={isActive(item.href)}
                     tooltip={item.label}
-                    className="data-[active=true]:text-foreground"
                   >
                     <Link
+                      aria-current={isActive(item.href) ? 'page' : undefined}
                       href={item.href}
-                      aria-current={isActive(item.href) ? "page" : undefined}
                     >
                       <item.icon aria-hidden />
                       <span>{item.label}</span>
@@ -106,7 +107,7 @@ export function AppSidebar({ sidebarExtras }: AppSidebarProps = {}) {
         {sidebarExtras}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border">
+      <SidebarFooter className="border-sidebar-border border-t">
         <SidebarMenu>
           <SidebarMenuItem>
             <SignOutMenuButton />
@@ -125,9 +126,9 @@ export function AppSidebar({ sidebarExtras }: AppSidebarProps = {}) {
  */
 export function AppSidebarFallback() {
   return (
-    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      <SidebarHeader className="border-b border-sidebar-border px-3 py-4">
-        <div className="flex items-center gap-2 font-mono text-sm font-medium uppercase tracking-[0.18em] text-foreground">
+    <Sidebar className="border-sidebar-border border-r" collapsible="icon">
+      <SidebarHeader className="border-sidebar-border border-b px-3 py-4">
+        <div className="flex items-center gap-2 font-medium font-mono text-foreground text-sm uppercase tracking-[0.18em]">
           <span
             aria-hidden
             className="inline-block size-2 shrink-0 bg-accent"
@@ -143,7 +144,7 @@ export function AppSidebarFallback() {
             <SidebarMenu>
               {NAV_ITEMS.map((item) => (
                 <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton tooltip={item.label} asChild>
+                  <SidebarMenuButton asChild tooltip={item.label}>
                     <Link href={item.href}>
                       <item.icon aria-hidden />
                       <span>{item.label}</span>
@@ -166,22 +167,22 @@ function SignOutMenuButton() {
   async function handleSignOut() {
     try {
       await signOut()
-      toast.success("Signed out")
+      toast.success('Signed out')
       startTransition(() => {
-        router.push("/login")
+        router.push('/login')
         router.refresh()
       })
     } catch {
-      toast.error("Could not sign out")
+      toast.error('Could not sign out')
     }
   }
 
   return (
     <SidebarMenuButton
-      onClick={handleSignOut}
-      disabled={isPending}
-      tooltip="Sign out"
       className="text-muted-foreground hover:text-foreground"
+      disabled={isPending}
+      onClick={handleSignOut}
+      tooltip="Sign out"
     >
       <LogOut aria-hidden />
       <span>Sign out</span>

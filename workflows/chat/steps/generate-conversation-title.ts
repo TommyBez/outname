@@ -1,11 +1,11 @@
-import { generateText } from "ai"
-import type { UIMessage } from "ai"
-import { revalidateTag } from "next/cache"
-import { conversationListTag } from "@/lib/cache-tags"
+import type { UIMessage } from 'ai'
+import { generateText } from 'ai'
+import { revalidateTag } from 'next/cache'
 import {
   getConversationForAgent,
   setConversationTitleIfUnset,
-} from "@/lib/agent-chat"
+} from '@/lib/agent-chat'
+import { conversationListTag } from '@/lib/cache-tags'
 
 /**
  * Extract a plain-text preview from a UIMessage by concatenating its
@@ -14,15 +14,17 @@ import {
  * typed, not attached context.
  */
 function extractText(message: UIMessage | undefined): string {
-  if (!message) return ""
+  if (!message) {
+    return ''
+  }
   const parts = message.parts ?? []
   const chunks: string[] = []
   for (const part of parts) {
-    if (part.type === "text" && typeof part.text === "string") {
+    if (part.type === 'text' && typeof part.text === 'string') {
       chunks.push(part.text)
     }
   }
-  return chunks.join("\n").trim()
+  return chunks.join('\n').trim()
 }
 
 /**
@@ -46,48 +48,51 @@ export async function maybeGenerateConversationTitle(input: {
   conversationId: string
   uiMessages: UIMessage[]
 }): Promise<void> {
-  "use step"
+  'use step'
 
   const conversation = await getConversationForAgent(
     input.conversationId,
-    input.agentId,
+    input.agentId
   )
-  if (!conversation) return
-  if (conversation.title) return
+  if (!conversation) {
+    return
+  }
+  if (conversation.title) {
+    return
+  }
 
-  const firstUserMessage = input.uiMessages.find((m) => m.role === "user")
+  const firstUserMessage = input.uiMessages.find((m) => m.role === 'user')
   const firstUserText = extractText(firstUserMessage)
-  if (!firstUserText) return
+  if (!firstUserText) {
+    return
+  }
 
   // The prompt is intentionally tight: we want a short noun-phrase
   // title, never a sentence, and never wrapped in quotes.
-  const fallback = firstUserText.slice(0, 60).trim() || "New chat"
+  const fallback = firstUserText.slice(0, 60).trim() || 'New chat'
 
   try {
     const { text } = await generateText({
-      model: "openai/gpt-5.4-nano",
+      model: 'openai/gpt-5.4-nano',
       system: [
-        "You name chat conversations.",
-        "Return a concise 3-6 word title summarising what the user is asking.",
-        "Use title case. No quotes. No trailing punctuation.",
+        'You name chat conversations.',
+        'Return a concise 3-6 word title summarising what the user is asking.',
+        'Use title case. No quotes. No trailing punctuation.',
         "If the message is greeting-only, respond with 'New Chat'.",
-      ].join("\n"),
+      ].join('\n'),
       prompt: firstUserText.slice(0, 2000),
     })
 
     const cleaned = text
-      .replace(/^["'`]+|["'`]+$/g, "")
-      .replace(/\s+/g, " ")
+      .replace(/^["'`]+|["'`]+$/g, '')
+      .replace(/\s+/g, ' ')
       .trim()
       .slice(0, 80)
 
-    await setConversationTitleIfUnset(
-      input.conversationId,
-      cleaned || fallback,
-    )
+    await setConversationTitleIfUnset(input.conversationId, cleaned || fallback)
   } catch {
     await setConversationTitleIfUnset(input.conversationId, fallback)
   }
 
-  revalidateTag(conversationListTag(input.agentId), "max")
+  revalidateTag(conversationListTag(input.agentId), 'max')
 }

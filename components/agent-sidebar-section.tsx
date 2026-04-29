@@ -1,17 +1,17 @@
-import { requireSession } from "@/lib/auth-guard"
-import { getCachedAgentByIdForUser } from "@/lib/data"
-import { getCachedConversationListForAgent } from "@/lib/agent-chat"
 import {
   AgentSidebarWorkspace,
   type ConversationSummary,
-} from "@/components/agent-sidebar-workspace"
+} from '@/components/agent-sidebar-workspace'
 import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
+} from '@/components/ui/sidebar'
+import { getCachedConversationListForAgent } from '@/lib/agent-chat'
+import { requireSession } from '@/lib/auth-guard'
+import { getCachedAgentByIdForUser } from '@/lib/data'
 
 interface Props {
   params: Promise<{ agentId: string }>
@@ -28,7 +28,9 @@ export async function AgentSidebarSection({ params }: Props) {
   const { agentId } = await params
   const session = await requireSession()
   const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
-  if (!agent) return null
+  if (!agent) {
+    return null
+  }
 
   // Phase 2: every agent is chat-capable. The "isChatCapable" prop is
   // retained on the workspace component for now so future kinds (e.g.
@@ -48,9 +50,9 @@ export async function AgentSidebarSection({ params }: Props) {
     <AgentSidebarWorkspace
       agentId={agent.id}
       agentName={agent.name}
+      conversations={conversations}
       enabled={agent.enabled}
       isChatCapable
-      conversations={conversations}
     />
   )
 }
@@ -62,7 +64,7 @@ export async function AgentSidebarSection({ params }: Props) {
  */
 export function AgentSidebarSectionSkeleton() {
   return (
-    <SidebarGroup className="border-t border-sidebar-border pt-3 group-data-[collapsible=icon]:hidden">
+    <SidebarGroup className="border-sidebar-border border-t pt-3 group-data-[collapsible=icon]:hidden">
       <SidebarGroupLabel>
         <span className="inline-block h-3 w-28 animate-pulse rounded-sm bg-sidebar-accent/60" />
       </SidebarGroupLabel>

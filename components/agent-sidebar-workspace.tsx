@@ -1,17 +1,5 @@
-"use client"
+'use client'
 
-import {
-  useEffect,
-  useRef,
-  useState,
-  useTransition,
-  type FormEvent,
-  type KeyboardEvent,
-} from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import useSWR, { mutate as swrMutate } from "swr"
-import { toast } from "sonner"
 import {
   Check,
   MessageSquarePlus,
@@ -20,7 +8,19 @@ import {
   Settings as SettingsIcon,
   Trash2,
   X,
-} from "lucide-react"
+} from 'lucide-react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import {
+  type FormEvent,
+  type KeyboardEvent,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from 'react'
+import { toast } from 'sonner'
+import useSWR, { mutate as swrMutate } from 'swr'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,13 +30,13 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from '@/components/ui/alert-dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from '@/components/ui/dropdown-menu'
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -45,12 +45,12 @@ import {
   SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
+} from '@/components/ui/sidebar'
 import {
   deleteConversationAction,
   renameConversationAction,
-} from "@/lib/agent-chat-actions"
-import { cn } from "@/lib/utils"
+} from '@/lib/agent-chat-actions'
+import { cn } from '@/lib/utils'
 
 export interface ConversationSummary {
   id: string
@@ -74,7 +74,9 @@ export function revalidateConversations(agentId: string) {
 
 async function fetchConversations(url: string): Promise<ConversationSummary[]> {
   const res = await fetch(url)
-  if (!res.ok) throw new Error(`Failed to load conversations (${res.status})`)
+  if (!res.ok) {
+    throw new Error(`Failed to load conversations (${res.status})`)
+  }
   const data = (await res.json()) as { conversations: ConversationSummary[] }
   return data.conversations
 }
@@ -84,16 +86,16 @@ interface AgentSidebarWorkspaceProps {
   /** Display name of the agent — used as the group label at the top of
    * the workspace section. */
   agentName: string
+  /** Server-rendered initial list. Used as `fallbackData` so the list
+   * paints instantly and never flashes empty. SWR keeps it in sync
+   * client-side. Only supplied for chat-capable kinds. */
+  conversations: ConversationSummary[]
   /** Whether the agent is currently enabled. Drives the live status dot
    * rendered next to the name. */
   enabled: boolean
   /** Whether the agent's runtime exposes chat. Non-chat kinds get a
    * slimmer workspace section (name + Configure shortcut, no list). */
   isChatCapable: boolean
-  /** Server-rendered initial list. Used as `fallbackData` so the list
-   * paints instantly and never flashes empty. SWR keeps it in sync
-   * client-side. Only supplied for chat-capable kinds. */
-  conversations: ConversationSummary[]
 }
 
 /**
@@ -118,28 +120,24 @@ export function AgentSidebarWorkspace({
   // endpoint would 404, and we don't need the list anyway.
   const { data: conversations = initialConversations } = useSWR<
     ConversationSummary[]
-  >(
-    isChatCapable ? conversationsSwrKey(agentId) : null,
-    fetchConversations,
-    {
-      fallbackData: initialConversations,
-      // Cheap catch-up for tabs that have been backgrounded while a
-      // turn completed — the only cost is one tiny GET per focus event.
-      revalidateOnFocus: true,
-    },
-  )
+  >(isChatCapable ? conversationsSwrKey(agentId) : null, fetchConversations, {
+    fallbackData: initialConversations,
+    // Cheap catch-up for tabs that have been backgrounded while a
+    // turn completed — the only cost is one tiny GET per focus event.
+    revalidateOnFocus: true,
+  })
 
   return (
     // Hide the whole contextual section when the sidebar collapses to
     // icons — the rest of the sidebar (global nav) still renders, and
     // the agent workspace reappears the moment the user expands it.
-    <SidebarGroup className="border-t border-sidebar-border pt-3 group-data-[collapsible=icon]:hidden">
+    <SidebarGroup className="border-sidebar-border border-t pt-3 group-data-[collapsible=icon]:hidden">
       <SidebarGroupLabel className="flex items-center gap-2">
         <span
           aria-hidden
           className={cn(
-            "inline-block size-1.5 shrink-0 rounded-full",
-            enabled ? "bg-accent" : "bg-muted-foreground",
+            'inline-block size-1.5 shrink-0 rounded-full',
+            enabled ? 'bg-accent' : 'bg-muted-foreground'
           )}
         />
         <span className="truncate">{agentName}</span>
@@ -151,8 +149,8 @@ export function AgentSidebarWorkspace({
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                tooltip="New chat"
                 className="text-muted-foreground hover:text-foreground"
+                tooltip="New chat"
               >
                 <Link href={`/agents/${agentId}/chat/new`}>
                   <MessageSquarePlus aria-hidden />
@@ -162,16 +160,16 @@ export function AgentSidebarWorkspace({
             </SidebarMenuItem>
 
             {conversations.length === 0 ? (
-              <li className="px-2 py-3 text-center font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground/70">
+              <li className="px-2 py-3 text-center font-mono text-[10px] text-muted-foreground/70 uppercase tracking-[0.15em]">
                 No conversations yet
               </li>
             ) : (
               conversations.map((conversation) => (
                 <ConversationRow
-                  key={conversation.id}
                   agentId={agentId}
                   conversation={conversation}
                   isActive={isActive(pathname, agentId, conversation.id)}
+                  key={conversation.id}
                 />
               ))
             )}
@@ -196,9 +194,11 @@ export function AgentSidebarWorkspace({
 function isActive(
   pathname: string | null,
   agentId: string,
-  conversationId: string,
+  conversationId: string
 ) {
-  if (!pathname) return false
+  if (!pathname) {
+    return false
+  }
   return pathname === `/agents/${agentId}/chat/${conversationId}`
 }
 
@@ -226,7 +226,7 @@ function ConversationRow({
   const [isRenaming, startRenameTransition] = useTransition()
   const [isDeleting, startDeleteTransition] = useTransition()
   const [showDelete, setShowDelete] = useState(false)
-  const [draftTitle, setDraftTitle] = useState(conversation.title ?? "")
+  const [draftTitle, setDraftTitle] = useState(conversation.title ?? '')
   const inputRef = useRef<HTMLInputElement | null>(null)
 
   // Refocus the input whenever we enter edit mode so keyboard flows
@@ -241,19 +241,21 @@ function ConversationRow({
   // Keep draft in sync if the server pushes a fresh title (e.g. the LLM
   // just generated one after the first turn).
   useEffect(() => {
-    if (!isEditing) setDraftTitle(conversation.title ?? "")
+    if (!isEditing) {
+      setDraftTitle(conversation.title ?? '')
+    }
   }, [conversation.title, isEditing])
 
-  const displayTitle = conversation.title?.trim() || "New chat"
+  const displayTitle = conversation.title?.trim() || 'New chat'
 
   function submitRename(event?: FormEvent) {
     event?.preventDefault()
     const trimmed = draftTitle.trim()
     if (!trimmed) {
-      toast.error("Title cannot be empty.")
+      toast.error('Title cannot be empty.')
       return
     }
-    if (trimmed === (conversation.title ?? "")) {
+    if (trimmed === (conversation.title ?? '')) {
       setIsEditing(false)
       return
     }
@@ -264,7 +266,7 @@ function ConversationRow({
         title: trimmed,
       })
       if (!result.ok) {
-        toast.error(result.error ?? "Could not rename conversation.")
+        toast.error(result.error ?? 'Could not rename conversation.')
         return
       }
       setIsEditing(false)
@@ -273,10 +275,10 @@ function ConversationRow({
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === "Escape") {
+    if (event.key === 'Escape') {
       event.preventDefault()
       setIsEditing(false)
-      setDraftTitle(conversation.title ?? "")
+      setDraftTitle(conversation.title ?? '')
     }
   }
 
@@ -288,10 +290,10 @@ function ConversationRow({
         wasActive: isActive,
       })
       if (!result?.ok) {
-        toast.error(result?.error ?? "Could not delete conversation.")
+        toast.error(result?.error ?? 'Could not delete conversation.')
         return
       }
-      toast.success("Conversation deleted.")
+      toast.success('Conversation deleted.')
       setShowDelete(false)
       void revalidateConversations(agentId)
     })
@@ -301,40 +303,40 @@ function ConversationRow({
     return (
       <SidebarMenuItem>
         <form
-          onSubmit={submitRename}
           className={cn(
-            "flex items-center gap-1 rounded-md border border-sidebar-border bg-sidebar-accent/40 px-2 py-1.5",
-            isActive && "border-foreground",
+            'flex items-center gap-1 rounded-md border border-sidebar-border bg-sidebar-accent/40 px-2 py-1.5',
+            isActive && 'border-foreground'
           )}
+          onSubmit={submitRename}
         >
           <input
-            ref={inputRef}
-            value={draftTitle}
-            onChange={(event) => setDraftTitle(event.target.value)}
-            onKeyDown={handleKeyDown}
+            aria-label="Conversation title"
+            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:opacity-60"
             disabled={isRenaming}
             maxLength={80}
-            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:opacity-60"
+            onChange={(event) => setDraftTitle(event.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="Conversation title"
-            aria-label="Conversation title"
+            ref={inputRef}
+            value={draftTitle}
           />
           <button
-            type="submit"
-            disabled={isRenaming}
-            className="rounded-sm p-1 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground disabled:opacity-50"
             aria-label="Save title"
+            className="rounded-sm p-1 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground disabled:opacity-50"
+            disabled={isRenaming}
+            type="submit"
           >
             <Check className="size-3.5" />
           </button>
           <button
-            type="button"
+            aria-label="Cancel rename"
+            className="rounded-sm p-1 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground disabled:opacity-50"
             disabled={isRenaming}
             onClick={() => {
               setIsEditing(false)
-              setDraftTitle(conversation.title ?? "")
+              setDraftTitle(conversation.title ?? '')
             }}
-            className="rounded-sm p-1 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground disabled:opacity-50"
-            aria-label="Cancel rename"
+            type="button"
           >
             <X className="size-3.5" />
           </button>
@@ -345,15 +347,11 @@ function ConversationRow({
 
   return (
     <>
-      <SidebarMenuItem className={cn(isDeleting && "opacity-50")}>
-        <SidebarMenuButton
-          asChild
-          isActive={isActive}
-          tooltip={displayTitle}
-        >
+      <SidebarMenuItem className={cn(isDeleting && 'opacity-50')}>
+        <SidebarMenuButton asChild isActive={isActive} tooltip={displayTitle}>
           <Link
+            aria-current={isActive ? 'page' : undefined}
             href={`/agents/${agentId}/chat/${conversation.id}`}
-            aria-current={isActive ? "page" : undefined}
           >
             <span className="min-w-0 flex-1 truncate">{displayTitle}</span>
           </Link>
@@ -378,11 +376,11 @@ function ConversationRow({
               Rename
             </DropdownMenuItem>
             <DropdownMenuItem
-              variant="destructive"
               onSelect={(event) => {
                 event.preventDefault()
                 setShowDelete(true)
               }}
+              variant="destructive"
             >
               <Trash2 className="mr-2 size-3.5" />
               Delete
@@ -391,7 +389,7 @@ function ConversationRow({
         </DropdownMenu>
       </SidebarMenuItem>
 
-      <AlertDialog open={showDelete} onOpenChange={setShowDelete}>
+      <AlertDialog onOpenChange={setShowDelete} open={showDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this conversation?</AlertDialogTitle>
@@ -403,14 +401,14 @@ function ConversationRow({
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={isDeleting}
               onClick={(event) => {
                 event.preventDefault()
                 confirmDelete()
               }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isDeleting ? "Deleting…" : "Delete"}
+              {isDeleting ? 'Deleting…' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

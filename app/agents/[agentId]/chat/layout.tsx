@@ -1,8 +1,8 @@
-import { Suspense } from "react"
-import { notFound } from "next/navigation"
-import { requireSession } from "@/lib/auth-guard"
-import { getCachedAgentByIdForUser } from "@/lib/data"
-import { ChatFrame } from "@/components/chat-frame"
+import { notFound } from 'next/navigation'
+import { Suspense } from 'react'
+import { ChatFrame } from '@/components/chat-frame'
+import { requireSession } from '@/lib/auth-guard'
+import { getCachedAgentByIdForUser } from '@/lib/data'
 
 type Params = Promise<{ agentId: string }>
 
@@ -40,7 +40,9 @@ async function ResolvedChatFrame({
   const { agentId } = await params
   const session = await requireSession()
   const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
-  if (!agent) notFound()
+  if (!agent) {
+    notFound()
+  }
 
   return (
     <ChatFrame
@@ -56,7 +58,7 @@ async function ResolvedChatFrame({
 function ChatFrameSkeleton({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-full min-w-0 flex-col gap-4">
-      <div className="flex items-center justify-between gap-3 border-b border-border pb-4">
+      <div className="flex items-center justify-between gap-3 border-border border-b pb-4">
         <div className="h-4 w-40 animate-pulse rounded-sm bg-muted" />
         <div className="size-8 animate-pulse rounded-md bg-muted" />
       </div>

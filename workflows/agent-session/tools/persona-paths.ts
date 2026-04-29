@@ -14,7 +14,7 @@
  * the set in one module guarantees `write_memory`, `edit_memory`, and
  * `delete_memory` cannot drift.
  */
-export const PERSONA_PATHS = ["AGENTS.md", "SOUL.md"] as const
+export const PERSONA_PATHS = ['AGENTS.md', 'SOUL.md'] as const
 
 export type PersonaPath = (typeof PERSONA_PATHS)[number]
 
@@ -39,7 +39,7 @@ export function isReadOnlyForAgent(path: string): boolean {
  *      the canonical reason without parsing prose.
  */
 export const READ_ONLY_TOOL_ERROR = {
-  error: "read_only" as const,
+  error: 'read_only' as const,
   message:
-    "SOUL.md and AGENTS.md are user-owned identity files. The agent cannot modify them; ask the user to edit them via the agent settings UI.",
+    'SOUL.md and AGENTS.md are user-owned identity files. The agent cannot modify them; ask the user to edit them via the agent settings UI.',
 }

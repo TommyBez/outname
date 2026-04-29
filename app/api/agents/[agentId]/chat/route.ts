@@ -1,21 +1,21 @@
-import { headers } from "next/headers"
-import { NextResponse, type NextRequest } from "next/server"
-import { revalidateTag } from "next/cache"
 import {
   createUIMessageStreamResponse,
   type UIMessage,
   type UIMessageChunk,
-} from "ai"
-import { getRun } from "workflow/api"
-import { auth } from "@/lib/auth"
-import { conversationListTag } from "@/lib/cache-tags"
-import { getAgentById } from "@/lib/start-agent-run"
+} from 'ai'
+import { revalidateTag } from 'next/cache'
+import { headers } from 'next/headers'
+import { type NextRequest, NextResponse } from 'next/server'
+import { getRun } from 'workflow/api'
 import {
   getOrCreateConversationForAgent,
   insertChatMessage,
-} from "@/lib/agent-chat"
-import { dispatchChatTurn } from "@/lib/agent-session"
-import type { ChatRole } from "@/lib/db/schema"
+} from '@/lib/agent-chat'
+import { dispatchChatTurn } from '@/lib/agent-session'
+import { auth } from '@/lib/auth'
+import { conversationListTag } from '@/lib/cache-tags'
+import type { ChatRole } from '@/lib/db/schema'
+import { getAgentById } from '@/lib/start-agent-run'
 
 /**
  * POST /api/agents/[agentId]/chat
@@ -45,22 +45,22 @@ import type { ChatRole } from "@/lib/db/schema"
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ agentId: string }> },
+  { params }: { params: Promise<{ agentId: string }> }
 ) {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 })
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
   const { agentId } = await params
   const agent = await getAgentById(agentId)
   if (!agent || agent.userId !== session.user.id) {
-    return NextResponse.json({ error: "not found" }, { status: 404 })
+    return NextResponse.json({ error: 'not found' }, { status: 404 })
   }
   if (!agent.enabled) {
     return NextResponse.json(
-      { error: "Agent is paused. Enable it before chatting." },
-      { status: 412 },
+      { error: 'Agent is paused. Enable it before chatting.' },
+      { status: 412 }
     )
   }
 
@@ -68,39 +68,39 @@ export async function POST(
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: "invalid json" }, { status: 400 })
+    return NextResponse.json({ error: 'invalid json' }, { status: 400 })
   }
   const uiMessages = body.messages ?? []
   if (!Array.isArray(uiMessages) || uiMessages.length === 0) {
-    return NextResponse.json({ error: "messages required" }, { status: 400 })
+    return NextResponse.json({ error: 'messages required' }, { status: 400 })
   }
 
   const requestedConversationId = body.conversationId
   if (
-    typeof requestedConversationId !== "string" ||
+    typeof requestedConversationId !== 'string' ||
     requestedConversationId.length < 3 ||
     requestedConversationId.length > 64
   ) {
     return NextResponse.json(
-      { error: "conversationId required" },
-      { status: 400 },
+      { error: 'conversationId required' },
+      { status: 400 }
     )
   }
 
   const conversation = await getOrCreateConversationForAgent(
     requestedConversationId,
-    agentId,
+    agentId
   )
   if (!conversation) {
     return NextResponse.json(
-      { error: "conversation not found" },
-      { status: 404 },
+      { error: 'conversation not found' },
+      { status: 404 }
     )
   }
   const conversationId = conversation.id
 
   const last = uiMessages[uiMessages.length - 1]
-  if (last && last.role === "user") {
+  if (last && last.role === 'user') {
     await insertChatMessage({
       conversationId,
       id: last.id,
@@ -108,7 +108,7 @@ export async function POST(
       parts: last.parts,
       metadata: last.metadata,
     })
-    revalidateTag(conversationListTag(agent.id), "max")
+    revalidateTag(conversationListTag(agent.id), 'max')
   }
 
   const { sessionRunId, replyToken } = await dispatchChatTurn({
@@ -128,7 +128,7 @@ export async function POST(
   return createUIMessageStreamResponse({
     stream: readable,
     headers: {
-      "x-workflow-run-id": sessionRunId,
+      'x-workflow-run-id': sessionRunId,
     },
   })
 }

@@ -1,7 +1,7 @@
-import "server-only"
-import { eq } from "drizzle-orm"
-import { db } from "@/lib/db"
-import { agent, type Agent } from "@/lib/db/schema"
+import 'server-only'
+import { eq } from 'drizzle-orm'
+import { db } from '@/lib/db'
+import { type Agent, agent } from '@/lib/db/schema'
 
 /**
  * Owner-scoped agent lookup. Kept in this module (rather than co-located

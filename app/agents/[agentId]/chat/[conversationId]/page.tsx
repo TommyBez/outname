@@ -1,12 +1,9 @@
-import { Suspense } from "react"
-import { notFound } from "next/navigation"
-import { requireSession } from "@/lib/auth-guard"
-import { getCachedAgentByIdForUser } from "@/lib/data"
-import {
-  getConversationForAgent,
-  loadChatHistory,
-} from "@/lib/agent-chat"
-import { AgentChat } from "@/components/agent-chat"
+import { notFound } from 'next/navigation'
+import { Suspense } from 'react'
+import { AgentChat } from '@/components/agent-chat'
+import { getConversationForAgent, loadChatHistory } from '@/lib/agent-chat'
+import { requireSession } from '@/lib/auth-guard'
+import { getCachedAgentByIdForUser } from '@/lib/data'
 
 type Params = Promise<{ agentId: string; conversationId: string }>
 
@@ -28,10 +25,14 @@ async function ConversationShell({ params }: { params: Params }) {
   const { agentId, conversationId } = await params
   const session = await requireSession()
   const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
-  if (!agent) notFound()
+  if (!agent) {
+    notFound()
+  }
 
   const conversation = await getConversationForAgent(conversationId, agent.id)
-  if (!conversation) notFound()
+  if (!conversation) {
+    notFound()
+  }
 
   const initialMessages = await loadChatHistory(conversation.id)
 

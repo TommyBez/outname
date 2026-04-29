@@ -1,7 +1,7 @@
-import { Suspense } from "react"
-import { notFound, redirect } from "next/navigation"
-import { requireSession } from "@/lib/auth-guard"
-import { getCachedAgentByIdForUser } from "@/lib/data"
+import { notFound, redirect } from 'next/navigation'
+import { Suspense } from 'react'
+import { requireSession } from '@/lib/auth-guard'
+import { getCachedAgentByIdForUser } from '@/lib/data'
 
 type Params = Promise<{ agentId: string }>
 
@@ -28,7 +28,9 @@ async function RedirectToChat({ params }: { params: Params }) {
   const { agentId } = await params
   const session = await requireSession()
   const agentRow = await getCachedAgentByIdForUser(agentId, session.user.id)
-  if (!agentRow) notFound()
+  if (!agentRow) {
+    notFound()
+  }
   redirect(`/agents/${agentRow.id}/chat`)
   // Unreachable; satisfies the JSX return contract.
   return null

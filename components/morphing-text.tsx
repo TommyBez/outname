@@ -1,6 +1,6 @@
-"use client"
+'use client'
 
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils'
 
 /**
  * Renders text with a blur + lift entrance animation every time the text
@@ -13,21 +13,21 @@ import { cn } from "@/lib/utils"
 export function MorphingText({
   text,
   className,
-  as: Tag = "span",
+  as: Tag = 'span',
 }: {
   text: string
   className?: string
-  as?: "span" | "p"
+  as?: 'span' | 'p'
 }) {
   return (
     <Tag
-      className={cn("relative block", className)}
-      aria-live="polite"
       aria-atomic="true"
+      aria-live="polite"
+      className={cn('relative block', className)}
     >
       <span
+        className="inline-block animate-text-morph will-change-[transform,filter,opacity]"
         key={text}
-        className="animate-text-morph inline-block will-change-[transform,filter,opacity]"
       >
         {text}
       </span>

@@ -1,4 +1,4 @@
-import type { UIMessage } from "ai"
+import type { UIMessage } from 'ai'
 
 /**
  * Session event union for `agentSessionWorkflow`.
@@ -9,16 +9,16 @@ import type { UIMessage } from "ai"
  */
 export type SessionEvent =
   | {
-      type: "chat"
+      type: 'chat'
       conversationId: string
       replyToken: string
       uiMessages: UIMessage[]
     }
   | {
-      type: "heartbeat"
+      type: 'heartbeat'
       ack?: string
     }
-  | { type: "shutdown" }
+  | { type: 'shutdown' }
 
 // Hook tokens — deterministic from `agentId` only.
 

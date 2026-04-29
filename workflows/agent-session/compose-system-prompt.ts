@@ -1,12 +1,12 @@
-import { getSystemSandbox } from "@/lib/agent-sandbox"
+import { getSystemSandbox } from '@/lib/agent-sandbox'
 import {
   listLiveMemory,
   readLiveMemory,
-} from "@/workflows/agent-session/tools/pending-writes"
+} from '@/workflows/agent-session/tools/pending-writes'
 import {
   PERSONA_PATHS,
   READ_ONLY_FOR_AGENT,
-} from "@/workflows/agent-session/tools/persona-paths"
+} from '@/workflows/agent-session/tools/persona-paths'
 
 /**
  * Build the system prompt: inline AGENTS.md + SOUL.md from the system
@@ -43,48 +43,48 @@ const FOOTER = `## Platform invariants
 `
 
 export async function composeSystemPrompt(
-  args: ComposeSystemPromptArgs,
+  args: ComposeSystemPromptArgs
 ): Promise<string> {
-  "use step"
+  'use step'
   const { agentId, agentName, nowIso } = args
 
   const systemSandbox = await getSystemSandbox(agentId)
 
   const [agentsMd, soulMd, livePaths] = await Promise.all([
-    readLiveMemory(systemSandbox, "AGENTS.md"),
-    readLiveMemory(systemSandbox, "SOUL.md"),
+    readLiveMemory(systemSandbox, 'AGENTS.md'),
+    readLiveMemory(systemSandbox, 'SOUL.md'),
     listLiveMemory(systemSandbox),
   ])
 
   const sections: string[] = []
 
   sections.push(`# Agent: ${agentName}`)
-  if (nowIso) sections.push(`Current UTC time: ${nowIso}`)
+  if (nowIso) {
+    sections.push(`Current UTC time: ${nowIso}`)
+  }
 
   if (agentsMd && agentsMd.trim().length > 0) {
     sections.push(
-      `## AGENTS.md (operational manual — read-only, managed by user)\n\n${agentsMd.trim()}`,
+      `## AGENTS.md (operational manual — read-only, managed by user)\n\n${agentsMd.trim()}`
     )
   }
   if (soulMd && soulMd.trim().length > 0) {
     sections.push(
-      `## SOUL.md (persona — read-only, managed by user)\n\n${soulMd.trim()}`,
+      `## SOUL.md (persona — read-only, managed by user)\n\n${soulMd.trim()}`
     )
   }
 
-  const otherPaths = livePaths
-    .filter((p) => !READ_ONLY_FOR_AGENT.has(p))
-    .sort()
+  const otherPaths = livePaths.filter((p) => !READ_ONLY_FOR_AGENT.has(p)).sort()
   if (otherPaths.length > 0) {
-    const lines = otherPaths.map((p) => `- ${p}`).join("\n")
+    const lines = otherPaths.map((p) => `- ${p}`).join('\n')
     sections.push(`## Memory files available\n\n${lines}`)
   } else {
     sections.push(
-      `## Memory files available\n\n_(none yet — author files with write_memory as you accumulate notes; persona files ${PERSONA_PATHS.join(", ")} are inlined above and cannot be modified by the agent.)_`,
+      `## Memory files available\n\n_(none yet — author files with write_memory as you accumulate notes; persona files ${PERSONA_PATHS.join(', ')} are inlined above and cannot be modified by the agent.)_`
     )
   }
 
   sections.push(FOOTER)
 
-  return sections.join("\n\n")
+  return sections.join('\n\n')
 }

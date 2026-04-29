@@ -1,8 +1,8 @@
-import { Suspense } from "react"
-import { notFound, redirect } from "next/navigation"
-import { requireSession } from "@/lib/auth-guard"
-import { getCachedAgentByIdForUser } from "@/lib/data"
-import { getMostRecentConversationForAgent } from "@/lib/agent-chat"
+import { notFound, redirect } from 'next/navigation'
+import { Suspense } from 'react'
+import { getMostRecentConversationForAgent } from '@/lib/agent-chat'
+import { requireSession } from '@/lib/auth-guard'
+import { getCachedAgentByIdForUser } from '@/lib/data'
 
 type Params = Promise<{ agentId: string }>
 
@@ -28,7 +28,9 @@ async function ResolveChatIndex({ params }: { params: Params }) {
   const { agentId } = await params
   const session = await requireSession()
   const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
-  if (!agent) notFound()
+  if (!agent) {
+    notFound()
+  }
 
   const mostRecent = await getMostRecentConversationForAgent(agent.id)
   if (mostRecent) {

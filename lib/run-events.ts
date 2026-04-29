@@ -1,4 +1,4 @@
-import { getWritable } from "workflow"
+import { getWritable } from 'workflow'
 
 /**
  * Typed progress events written from workflow steps to a per-run stream.
@@ -15,20 +15,20 @@ import { getWritable } from "workflow"
  * back to the legacy `events` namespace for runs created before the
  * refactor.
  */
-export type RunStepName = "read" | "classify" | "persist" | "finalize"
+export type RunStepName = 'read' | 'classify' | 'persist' | 'finalize'
 
 export type RunEvent =
   | {
-      type: "step"
+      type: 'step'
       step: RunStepName
-      status: "start" | "progress" | "done" | "error"
+      status: 'start' | 'progress' | 'done' | 'error'
       message: string
       meta?: Record<string, unknown>
       ts: number
     }
   | {
-      type: "run"
-      status: "started" | "completed" | "failed"
+      type: 'run'
+      status: 'started' | 'completed' | 'failed'
       message: string
       meta?: Record<string, unknown>
       ts: number
@@ -47,12 +47,12 @@ export function runEventsNamespace(runId: string): string {
 export async function emitStep(
   runId: string,
   step: RunStepName,
-  status: "start" | "progress" | "done" | "error",
+  status: 'start' | 'progress' | 'done' | 'error',
   message: string,
-  meta?: Record<string, unknown>,
+  meta?: Record<string, unknown>
 ): Promise<void> {
   await writeOne(runId, {
-    type: "step",
+    type: 'step',
     step,
     status,
     message,
@@ -63,12 +63,12 @@ export async function emitStep(
 
 export async function emitRun(
   runId: string,
-  status: "started" | "completed" | "failed",
+  status: 'started' | 'completed' | 'failed',
   message: string,
-  meta?: Record<string, unknown>,
+  meta?: Record<string, unknown>
 ): Promise<void> {
   await writeOne(runId, {
-    type: "run",
+    type: 'run',
     status,
     message,
     meta,

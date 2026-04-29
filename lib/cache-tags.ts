@@ -15,7 +15,7 @@ export function runTag(runId: string) {
 }
 
 export function runsIndexTag() {
-  return "runs-index"
+  return 'runs-index'
 }
 
 export function gmailConnectionTag(userId: string) {

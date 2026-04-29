@@ -1,18 +1,15 @@
-import { createHook } from "workflow"
-import { handleChat } from "./handlers/handle-chat"
-import { handleHeartbeat } from "./handlers/handle-heartbeat"
-import { sessionToken, type SessionEvent } from "./events"
-import { endOfEvent } from "./steps/end-of-event"
+import { createHook } from 'workflow'
+import { type SessionEvent, sessionToken } from './events'
+import { handleChat } from './handlers/handle-chat'
+import { handleHeartbeat } from './handlers/handle-heartbeat'
+import { endOfEvent } from './steps/end-of-event'
 import {
   ackHeartbeat,
   reapOrphanTicker,
   startTicker,
   stopTicker,
-} from "./steps/ticker-control"
-import {
-  createPendingWrites,
-  type PendingWrites,
-} from "./tools/pending-writes"
+} from './steps/ticker-control'
+import { createPendingWrites, type PendingWrites } from './tools/pending-writes'
 
 /**
  * Long-lived "session" workflow — one running run per `enabled = true`
@@ -40,7 +37,7 @@ import {
 export async function agentSessionWorkflow(input: {
   agentId: string
 }): Promise<void> {
-  "use workflow"
+  'use workflow'
   const { agentId } = input
 
   // Defend against the "previous session crashed mid-handler and left
@@ -56,7 +53,9 @@ export async function agentSessionWorkflow(input: {
     })
 
     for await (const event of hook) {
-      if (event.type === "shutdown") break
+      if (event.type === 'shutdown') {
+        break
+      }
 
       // The handler returns the per-event queue on success; if it
       // throws we still need to call endOfEvent with a fresh empty
@@ -64,7 +63,7 @@ export async function agentSessionWorkflow(input: {
       let pending: PendingWrites = createPendingWrites()
 
       try {
-        if (event.type === "chat") {
+        if (event.type === 'chat') {
           const result = await handleChat({
             agentId,
             conversationId: event.conversationId,
@@ -72,7 +71,7 @@ export async function agentSessionWorkflow(input: {
             uiMessages: event.uiMessages,
           })
           pending = result.pending
-        } else if (event.type === "heartbeat") {
+        } else if (event.type === 'heartbeat') {
           try {
             const result = await handleHeartbeat({ agentId })
             pending = result.pending
@@ -90,7 +89,7 @@ export async function agentSessionWorkflow(input: {
         // for heartbeat; nothing to persist for chat). We log here for
         // observability and continue the loop — one bad event must not
         // poison the long-lived session.
-        console.error("[v0] agentSessionWorkflow: handler failed", err)
+        console.error('[v0] agentSessionWorkflow: handler failed', err)
       }
 
       await endOfEvent({ agentId, pending })

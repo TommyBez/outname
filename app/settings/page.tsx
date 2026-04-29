@@ -1,11 +1,11 @@
-import { Suspense } from "react"
-import Link from "next/link"
-import { getSession, requireSession } from "@/lib/auth-guard"
-import { AppShell } from "@/components/app-shell"
-import { GmailConnect } from "@/components/gmail-connect"
-import { getCachedGmailConnectionForUser } from "@/lib/google-oauth"
-import { getCachedAgentsForUser } from "@/lib/data"
-import { AccountSkeleton, GmailSectionSkeleton } from "@/components/skeletons"
+import Link from 'next/link'
+import { Suspense } from 'react'
+import { AppShell } from '@/components/app-shell'
+import { GmailConnect } from '@/components/gmail-connect'
+import { AccountSkeleton, GmailSectionSkeleton } from '@/components/skeletons'
+import { getSession, requireSession } from '@/lib/auth-guard'
+import { getCachedAgentsForUser } from '@/lib/data'
+import { getCachedGmailConnectionForUser } from '@/lib/google-oauth'
 
 export default function SettingsPage({
   searchParams,
@@ -15,10 +15,10 @@ export default function SettingsPage({
   return (
     <AppShell>
       <header className="mb-12 flex flex-col gap-2 md:mb-16">
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
+        <p className="font-mono text-muted-foreground text-xs uppercase tracking-[0.2em]">
           Settings
         </p>
-        <h1 className="font-serif text-4xl font-medium leading-tight tracking-tight md:text-5xl">
+        <h1 className="font-medium font-serif text-4xl leading-tight tracking-tight md:text-5xl">
           Your assistant.
         </h1>
       </header>
@@ -56,22 +56,22 @@ async function FlashNotice({
   searchParams: Promise<{ gmail?: string; reason?: string }>
 }) {
   const sp = await searchParams
-  if (sp.gmail === "error") {
+  if (sp.gmail === 'error') {
     return (
-      <div className="mb-10 border-l-2 border-destructive pl-4">
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-destructive">
+      <div className="mb-10 border-destructive border-l-2 pl-4">
+        <p className="font-mono text-destructive text-xs uppercase tracking-[0.2em]">
           Connection failed
         </p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {sp.reason ?? "unknown error"}
+        <p className="mt-1 text-muted-foreground text-sm">
+          {sp.reason ?? 'unknown error'}
         </p>
       </div>
     )
   }
-  if (sp.gmail === "connected") {
+  if (sp.gmail === 'connected') {
     return (
-      <div className="mb-10 border-l-2 border-foreground pl-4">
-        <p className="font-serif text-lg font-medium">Gmail connected.</p>
+      <div className="mb-10 border-foreground border-l-2 pl-4">
+        <p className="font-medium font-serif text-lg">Gmail connected.</p>
       </div>
     )
   }
@@ -100,17 +100,17 @@ async function AgentsSummarySection() {
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
       <div>
-        <p className="font-serif text-xl font-medium">
-          {agents.length} agent{agents.length === 1 ? "" : "s"} · {enabled}{" "}
+        <p className="font-medium font-serif text-xl">
+          {agents.length} agent{agents.length === 1 ? '' : 's'} · {enabled}{' '}
           enabled
         </p>
-        <p className="mt-0.5 text-xs text-muted-foreground">
+        <p className="mt-0.5 text-muted-foreground text-xs">
           Per-agent configuration lives on each agent&apos;s page.
         </p>
       </div>
       <Link
+        className="inline-flex shrink-0 items-center justify-center self-start rounded-md border border-border px-4 py-2 font-medium text-sm transition-colors hover:bg-muted sm:self-auto"
         href="/agents"
-        className="inline-flex shrink-0 items-center justify-center self-start rounded-md border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted sm:self-auto"
       >
         Manage agents →
       </Link>
@@ -122,8 +122,8 @@ async function AccountSection() {
   const session = await getSession()
   return (
     <Row label="Signed in as">
-      <p className="font-serif text-xl font-medium leading-tight">
-        {session?.user.email ?? "—"}
+      <p className="font-medium font-serif text-xl leading-tight">
+        {session?.user.email ?? '—'}
       </p>
     </Row>
   )
@@ -138,7 +138,7 @@ function Section({
 }) {
   return (
     <section className="grid grid-cols-1 gap-6 py-10 first:pt-0 last:pb-0 lg:grid-cols-[160px_1fr] lg:gap-10">
-      <h2 className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
+      <h2 className="font-mono text-muted-foreground text-xs uppercase tracking-[0.2em]">
         {title}
       </h2>
       <div className="min-w-0">{children}</div>
@@ -146,10 +146,16 @@ function Section({
   )
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function Row({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
   return (
     <div className="flex flex-col gap-2">
-      <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+      <p className="font-mono text-muted-foreground text-xs uppercase tracking-wider">
         {label}
       </p>
       <div>{children}</div>

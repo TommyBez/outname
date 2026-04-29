@@ -9,11 +9,11 @@
  * importing each other.
  */
 export interface CreateOptions {
-  runtime?: string
-  timeout?: number
+  env?: Record<string, string>
   ports?: number[]
   resources?: { vcpus: number }
-  env?: Record<string, string>
-  tags?: Record<string, string>
+  runtime?: string
   snapshotExpiration?: number
+  tags?: Record<string, string>
+  timeout?: number
 }

@@ -1,19 +1,19 @@
-import { Suspense } from "react"
-import Link from "next/link"
-import { notFound } from "next/navigation"
-import { requireSession } from "@/lib/auth-guard"
+import Link from 'next/link'
+import { notFound } from 'next/navigation'
+import { Suspense } from 'react'
+import { RunProgress } from '@/components/run-progress'
+import { RunResultView } from '@/components/run-result-view'
+import { RunStatus } from '@/components/run-status'
+import { TriggerButton } from '@/components/trigger-button'
+import { requireSession } from '@/lib/auth-guard'
 import {
   getCachedAgentByIdForUser,
   getCachedLatestRunForAgent,
   getCachedRunResult,
   getCachedRunsForAgent,
-} from "@/lib/data"
-import { RunProgress } from "@/components/run-progress"
-import { RunStatus } from "@/components/run-status"
-import { RunResultView } from "@/components/run-result-view"
-import { TriggerButton } from "@/components/trigger-button"
-import { formatDateTime, formatRelative } from "@/lib/format"
-import type { Agent, Run } from "@/lib/db/schema"
+} from '@/lib/data'
+import type { Agent, Run } from '@/lib/db/schema'
+import { formatDateTime, formatRelative } from '@/lib/format'
 
 /**
  * Stringify a heartbeat interval into a compact, human-readable label
@@ -21,11 +21,17 @@ import type { Agent, Run } from "@/lib/db/schema"
  * non-canonical values.
  */
 function formatInterval(minutes: number): string {
-  if (minutes < 60) return `${minutes} min`
-  if (minutes === 60) return "1 hour"
+  if (minutes < 60) {
+    return `${minutes} min`
+  }
+  if (minutes === 60) {
+    return '1 hour'
+  }
   if (minutes % 60 === 0) {
     const hours = minutes / 60
-    if (hours === 24) return "1 day"
+    if (hours === 24) {
+      return '1 day'
+    }
     return `${hours} hours`
   }
   return `${minutes} min`
@@ -55,7 +61,9 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
   const { agentId } = await params
   const session = await requireSession()
   const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
-  if (!agent) notFound()
+  if (!agent) {
+    notFound()
+  }
 
   return (
     <>
@@ -68,7 +76,7 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
       </section>
 
       <section className="py-10">
-        <h2 className="mb-4 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
+        <h2 className="mb-4 font-mono text-muted-foreground text-xs uppercase tracking-[0.2em]">
           History
         </h2>
         <Suspense fallback={<HistorySkeleton />}>
@@ -83,7 +91,7 @@ function AgentOverviewHeader({ agent }: { agent: Agent }) {
   return (
     <header className="mb-10 flex flex-col gap-6">
       <div className="flex flex-col gap-1.5">
-        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-muted-foreground text-xs uppercase tracking-[0.2em]">
           <span>{agent.model}</span>
           {agent.heartbeatEnabled ? (
             <span>
@@ -98,21 +106,21 @@ function AgentOverviewHeader({ agent }: { agent: Agent }) {
             </span>
           )}
         </p>
-        <h1 className="font-serif text-4xl font-medium leading-tight tracking-tight md:text-5xl">
+        <h1 className="font-medium font-serif text-4xl leading-tight tracking-tight md:text-5xl">
           {agent.name}
         </h1>
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <TriggerButton agentId={agent.id} />
         <Link
+          className="inline-flex items-center justify-center rounded-md border border-border px-4 py-2 font-medium text-sm transition-colors hover:bg-muted"
           href={`/agents/${agent.id}/edit`}
-          className="inline-flex items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
         >
           Configure
         </Link>
         <Link
+          className="inline-flex items-center justify-center rounded-md border border-border px-4 py-2 font-medium text-sm transition-colors hover:bg-muted"
           href={`/agents/${agent.id}/files`}
-          className="inline-flex items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
         >
           Files
         </Link>
@@ -126,13 +134,13 @@ async function LastRunSection({ agentId }: { agentId: string }) {
   return (
     <>
       <div className="mb-8 flex items-baseline justify-between gap-4">
-        <h2 className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
+        <h2 className="font-mono text-muted-foreground text-xs uppercase tracking-[0.2em]">
           Last run
         </h2>
         {latest && (
           <Link
+            className="font-mono text-muted-foreground text-xs uppercase tracking-wider transition-colors hover:text-foreground"
             href={`/runs/${latest.id}`}
-            className="font-mono text-xs uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
           >
             Open run →
           </Link>
@@ -146,17 +154,17 @@ async function LastRunSection({ agentId }: { agentId: string }) {
 async function LastRunBody({ latest }: { latest: Run | null }) {
   if (!latest) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-sm">
         No runs yet. Trigger one manually to see results here.
       </p>
     )
   }
 
-  if (latest.status === "running") {
+  if (latest.status === 'running') {
     return <RunProgress key={latest.id} runId={latest.id} />
   }
 
-  if (latest.status === "failed") {
+  if (latest.status === 'failed') {
     return (
       <div className="flex flex-col gap-3">
         <p className="inline-flex items-center gap-3 text-sm">
@@ -170,7 +178,7 @@ async function LastRunBody({ latest }: { latest: Run | null }) {
           </span>
         </p>
         {latest.error && (
-          <pre className="max-h-64 overflow-auto rounded-md border border-border bg-muted/40 p-3 font-mono text-xs text-muted-foreground">
+          <pre className="max-h-64 overflow-auto rounded-md border border-border bg-muted/40 p-3 font-mono text-muted-foreground text-xs">
             {latest.error}
           </pre>
         )}
@@ -181,7 +189,7 @@ async function LastRunBody({ latest }: { latest: Run | null }) {
   const result = await getCachedRunResult(latest.id)
   return (
     <div className="flex flex-col gap-6">
-      <p className="font-mono text-xs text-muted-foreground">
+      <p className="font-mono text-muted-foreground text-xs">
         {formatDateTime(latest.startedAt)}
       </p>
       <RunResultView content={result?.content ?? null} />
@@ -193,26 +201,26 @@ async function AgentHistorySection({ agentId }: { agentId: string }) {
   const runs = await getCachedRunsForAgent(agentId, 20)
 
   if (runs.length === 0) {
-    return <p className="text-sm text-muted-foreground">No runs yet.</p>
+    return <p className="text-muted-foreground text-sm">No runs yet.</p>
   }
 
   return (
-    <ul className="flex flex-col divide-y divide-border border-y border-border">
+    <ul className="flex flex-col divide-y divide-border border-border border-y">
       {runs.map((r) => (
         <li key={r.id}>
           <Link
-            href={`/runs/${r.id}`}
             className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-1 py-3 transition-colors hover:bg-muted/30 sm:grid-cols-[auto_1fr_auto] sm:gap-8 sm:px-2"
+            href={`/runs/${r.id}`}
           >
             <RunStatus
+              initialStatus={r.status as 'running' | 'completed' | 'failed'}
               runId={r.id}
-              initialStatus={r.status as "running" | "completed" | "failed"}
               showTime={false}
             />
-            <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">
+            <span className="min-w-0 truncate font-mono text-muted-foreground text-xs">
               {r.id}
             </span>
-            <span className="col-start-2 font-mono text-xs text-muted-foreground sm:col-auto sm:text-right">
+            <span className="col-start-2 font-mono text-muted-foreground text-xs sm:col-auto sm:text-right">
               {formatRelative(r.startedAt)}
             </span>
           </Link>
@@ -258,9 +266,12 @@ function LastRunSkeleton() {
 
 function HistorySkeleton() {
   return (
-    <div className="flex flex-col gap-3 border-y border-border py-3">
+    <div className="flex flex-col gap-3 border-border border-y py-3">
       {[0, 1, 2].map((index) => (
-        <div key={index} className="grid grid-cols-[auto_1fr_auto] items-center gap-4 px-2 py-3">
+        <div
+          className="grid grid-cols-[auto_1fr_auto] items-center gap-4 px-2 py-3"
+          key={index}
+        >
           <div className="h-4 w-20 animate-pulse rounded-sm bg-muted" />
           <div className="h-3 w-32 animate-pulse rounded-sm bg-muted" />
           <div className="h-3 w-20 animate-pulse rounded-sm bg-muted" />

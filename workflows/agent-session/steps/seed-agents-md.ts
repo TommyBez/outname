@@ -1,10 +1,6 @@
-import {
-  getSystemSandbox,
-  readMarker,
-  writeMarker,
-} from "@/lib/agent-sandbox"
-import { SYSTEM_SANDBOX_ROOT } from "@/lib/agent-sandbox-registry"
-import { AGENTS_MD_TEMPLATE } from "@/lib/agents-md-template"
+import { getSystemSandbox, readMarker, writeMarker } from '@/lib/agent-sandbox'
+import { SYSTEM_SANDBOX_ROOT } from '@/lib/agent-sandbox-registry'
+import { AGENTS_MD_TEMPLATE } from '@/lib/agents-md-template'
 
 const AGENTS_MD_PATH = `${SYSTEM_SANDBOX_ROOT}/AGENTS.md`
 const SEED_MARKER_PATH = `${SYSTEM_SANDBOX_ROOT}/.agents-md-seeded`
@@ -20,7 +16,7 @@ const SEED_MARKER_PATH = `${SYSTEM_SANDBOX_ROOT}/.agents-md-seeded`
 // documents the automatic bash audit log at `logs/<UTC date>.md`)
 // are still in place. Existing dev agents pick up the new template
 // on their next event after deploy.
-const SEED_MARKER_VALUE = "v5"
+const SEED_MARKER_VALUE = 'v5'
 
 /**
  * Process-local cache of agent ids whose `.agents-md-seeded` marker we
@@ -56,7 +52,7 @@ export async function seedAgentsMd(input: {
   agentId: string
   created?: boolean
 }): Promise<void> {
-  "use step"
+  'use step'
   const { agentId, created = true } = input
 
   if (!created && verifiedThisProcess.has(agentId)) {
@@ -78,7 +74,7 @@ export async function seedAgentsMd(input: {
   await sandbox.writeFiles([
     {
       path: AGENTS_MD_PATH,
-      content: Buffer.from(AGENTS_MD_TEMPLATE, "utf8"),
+      content: Buffer.from(AGENTS_MD_TEMPLATE, 'utf8'),
     },
   ])
 

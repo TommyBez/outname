@@ -1,27 +1,32 @@
-"use client"
+'use client'
 
-import { useEffect, useRef, useState } from "react"
-import { useChat } from "@ai-sdk/react"
-import { DefaultChatTransport, type UIMessage } from "ai"
-import { revalidateConversations } from "@/components/agent-sidebar-workspace"
+import { useChat } from '@ai-sdk/react'
+import { DefaultChatTransport, type UIMessage } from 'ai'
+import { useEffect, useRef, useState } from 'react'
+import { revalidateConversations } from '@/components/agent-sidebar-workspace'
 import {
   Conversation,
   ConversationContent,
   ConversationEmptyState,
   ConversationScrollButton,
-} from "@/components/ai-elements/conversation"
+} from '@/components/ai-elements/conversation'
 import {
   Message,
   MessageContent,
   MessageResponse,
-} from "@/components/ai-elements/message"
+} from '@/components/ai-elements/message'
 import {
   PromptInput,
-  PromptInputTextarea,
   PromptInputFooter,
-  PromptInputSubmit,
   type PromptInputMessage,
-} from "@/components/ai-elements/prompt-input"
+  PromptInputSubmit,
+  PromptInputTextarea,
+} from '@/components/ai-elements/prompt-input'
+import {
+  Reasoning,
+  ReasoningContent,
+  ReasoningTrigger,
+} from '@/components/ai-elements/reasoning'
 import {
   Tool,
   ToolContent,
@@ -29,12 +34,7 @@ import {
   ToolInput,
   ToolOutput,
   type ToolPart,
-} from "@/components/ai-elements/tool"
-import {
-  Reasoning,
-  ReasoningTrigger,
-  ReasoningContent,
-} from "@/components/ai-elements/reasoning"
+} from '@/components/ai-elements/tool'
 
 interface AgentChatProps {
   agentId: string
@@ -66,7 +66,7 @@ export function AgentChat({
   initialMessages,
   isDraft,
 }: AgentChatProps) {
-  const [input, setInput] = useState("")
+  const [input, setInput] = useState('')
   const didPromoteDraftRef = useRef(false)
   const { messages, sendMessage, status, error, stop } = useChat({
     messages: initialMessages,
@@ -90,30 +90,38 @@ export function AgentChat({
   // this effect the moment a message exists (before the assistant even
   // finishes) keeps the address bar honest during the first turn.
   useEffect(() => {
-    if (!isDraft) return
-    if (didPromoteDraftRef.current) return
-    if (messages.length === 0) return
+    if (!isDraft) {
+      return
+    }
+    if (didPromoteDraftRef.current) {
+      return
+    }
+    if (messages.length === 0) {
+      return
+    }
     didPromoteDraftRef.current = true
-    if (typeof window !== "undefined") {
+    if (typeof window !== 'undefined') {
       window.history.replaceState(
         null,
-        "",
-        `/agents/${agentId}/chat/${conversationId}`,
+        '',
+        `/agents/${agentId}/chat/${conversationId}`
       )
     }
   }, [agentId, conversationId, isDraft, messages.length])
 
-  const isBusy = status === "submitted" || status === "streaming"
+  const isBusy = status === 'submitted' || status === 'streaming'
 
   // PromptInput's onSubmit contract: AI Elements gathers files + the
   // textarea text and hands us a structured `PromptInputMessage`.
   // The raw FormEvent is the second argument and we do NOT need to call
   // preventDefault on it — the component already does.
   function handleSubmit(message: PromptInputMessage) {
-    const text = (message.text ?? "").trim()
-    if (!text || isBusy) return
+    const text = (message.text ?? '').trim()
+    if (!text || isBusy) {
+      return
+    }
     sendMessage({ text })
-    setInput("")
+    setInput('')
   }
 
   return (
@@ -123,12 +131,12 @@ export function AgentChat({
     // keep wide tool output (tables, code blocks) contained without
     // stretching the chat column past the viewport edge.
     <div className="flex h-full min-w-0 flex-col overflow-hidden">
-      <Conversation className="flex-1 min-h-0">
+      <Conversation className="min-h-0 flex-1">
         <ConversationContent>
           {messages.length === 0 ? (
             <ConversationEmptyState
-              title="Start a conversation"
               description="Ask this agent anything — it has the same tools the scheduled run does."
+              title="Start a conversation"
             />
           ) : (
             messages.map((message) => (
@@ -141,26 +149,26 @@ export function AgentChat({
 
       {error && (
         <p
+          className="mb-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 font-mono text-destructive text-xs"
           role="alert"
-          className="mb-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 font-mono text-xs text-destructive"
         >
-          {error.message || "Something went wrong. Try again."}
+          {error.message || 'Something went wrong. Try again.'}
         </p>
       )}
 
-      <PromptInput onSubmit={handleSubmit} className="mt-4">
+      <PromptInput className="mt-4" onSubmit={handleSubmit}>
         <PromptInputTextarea
-          value={input}
+          disabled={isBusy}
           onChange={(event) => setInput(event.target.value)}
           placeholder="Ask about your inbox…"
-          disabled={isBusy}
+          value={input}
         />
         <PromptInputFooter>
           <div />
           <PromptInputSubmit
-            status={status}
-            onStop={stop}
             disabled={!isBusy && input.trim().length === 0}
+            onStop={stop}
+            status={status}
           />
         </PromptInputFooter>
       </PromptInput>
@@ -170,25 +178,22 @@ export function AgentChat({
 
 function ChatMessage({ message }: { message: UIMessage }) {
   return (
-    <Message from={message.role === "user" ? "user" : "assistant"}>
+    <Message from={message.role === 'user' ? 'user' : 'assistant'}>
       <MessageContent>
         {message.parts.map((part, index) => {
           const key = `${message.id}-${index}`
 
-          if (part.type === "text") {
+          if (part.type === 'text') {
             return <MessageResponse key={key}>{part.text}</MessageResponse>
           }
 
-          if (part.type === "reasoning") {
+          if (part.type === 'reasoning') {
             return (
               // No negative horizontal margin here: on narrow viewports
               // it was shifting the Reasoning trigger (brain icon + label)
               // past `MessageContent`'s `overflow-hidden` clip and cutting
               // off the icon on the left edge.
-              <Reasoning
-                key={key}
-                isStreaming={part.state === "streaming"}
-              >
+              <Reasoning isStreaming={part.state === 'streaming'} key={key}>
                 <ReasoningTrigger />
                 <ReasoningContent>{part.text}</ReasoningContent>
               </Reasoning>
@@ -197,30 +202,32 @@ function ChatMessage({ message }: { message: UIMessage }) {
 
           // Tool parts: `tool-*` (static) and `dynamic-tool` both satisfy ToolPart.
           // ToolHeader takes a discriminated union on `type` so we branch.
-          if (part.type === "dynamic-tool") {
+          if (part.type === 'dynamic-tool') {
             const toolPart = part as ToolPart
             return (
               <Tool key={key}>
                 <ToolHeader
-                  type="dynamic-tool"
                   state={toolPart.state}
                   toolName={
                     // `DynamicToolUIPart` exposes the runtime tool name.
                     (toolPart as { toolName: string }).toolName
                   }
+                  type="dynamic-tool"
                 />
                 <ToolBody part={toolPart} />
               </Tool>
             )
           }
 
-          if (typeof part.type === "string" && part.type.startsWith("tool-")) {
+          if (typeof part.type === 'string' && part.type.startsWith('tool-')) {
             const toolPart = part as ToolPart
             return (
               <Tool key={key}>
                 <ToolHeader
-                  type={toolPart.type as Exclude<ToolPart["type"], "dynamic-tool">}
                   state={toolPart.state}
+                  type={
+                    toolPart.type as Exclude<ToolPart['type'], 'dynamic-tool'>
+                  }
                 />
                 <ToolBody part={toolPart} />
               </Tool>
@@ -243,11 +250,11 @@ function ToolBody({ part }: { part: ToolPart }) {
   return (
     <ToolContent>
       <ToolInput input={part.input} />
-      {part.state === "output-available" && (
-        <ToolOutput output={part.output} errorText={undefined} />
+      {part.state === 'output-available' && (
+        <ToolOutput errorText={undefined} output={part.output} />
       )}
-      {part.state === "output-error" && (
-        <ToolOutput output={undefined} errorText={part.errorText} />
+      {part.state === 'output-error' && (
+        <ToolOutput errorText={part.errorText} output={undefined} />
       )}
     </ToolContent>
   )

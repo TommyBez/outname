@@ -1,8 +1,8 @@
-import "server-only"
-import { randomUUID } from "node:crypto"
-import { and, desc, eq, isNull } from "drizzle-orm"
-import { db } from "@/lib/db"
-import { pendingFileWrites, type PendingFileWrite } from "@/lib/db/schema"
+import 'server-only'
+import { randomUUID } from 'node:crypto'
+import { and, desc, eq, isNull } from 'drizzle-orm'
+import { db } from '@/lib/db'
+import { type PendingFileWrite, pendingFileWrites } from '@/lib/db/schema'
 
 /**
  * UI-side helpers for the `pending_file_writes` queue.
@@ -26,7 +26,7 @@ import { pendingFileWrites, type PendingFileWrite } from "@/lib/db/schema"
  * calls invoked from server actions / RSC loaders.
  */
 
-export const PENDING_PERSONA_PATHS = ["AGENTS.md", "SOUL.md"] as const
+export const PENDING_PERSONA_PATHS = ['AGENTS.md', 'SOUL.md'] as const
 export type PendingPersonaPath = (typeof PENDING_PERSONA_PATHS)[number]
 
 function isPendingPersonaPath(path: string): path is PendingPersonaPath {
@@ -52,7 +52,7 @@ export async function enqueuePendingFileWrite(input: {
 }): Promise<string> {
   if (!isPendingPersonaPath(input.path)) {
     throw new Error(
-      `enqueuePendingFileWrite: path ${JSON.stringify(input.path)} is not a persona file. Only ${PENDING_PERSONA_PATHS.join(" / ")} may be queued.`,
+      `enqueuePendingFileWrite: path ${JSON.stringify(input.path)} is not a persona file. Only ${PENDING_PERSONA_PATHS.join(' / ')} may be queued.`
     )
   }
   const id = randomUUID()
@@ -84,8 +84,8 @@ export async function readLatestPendingFileWrite(input: {
     .where(
       and(
         eq(pendingFileWrites.agentId, input.agentId),
-        eq(pendingFileWrites.path, input.path),
-      ),
+        eq(pendingFileWrites.path, input.path)
+      )
     )
     .orderBy(desc(pendingFileWrites.enqueuedAt))
     .limit(1)
@@ -111,8 +111,8 @@ export async function listUnappliedPendingFileWrites(input: {
     .where(
       and(
         eq(pendingFileWrites.agentId, input.agentId),
-        isNull(pendingFileWrites.appliedAt),
-      ),
+        isNull(pendingFileWrites.appliedAt)
+      )
     )
     .orderBy(pendingFileWrites.enqueuedAt)
 }
@@ -124,7 +124,9 @@ export async function listUnappliedPendingFileWrites(input: {
 export async function markPendingFileWritesApplied(input: {
   ids: string[]
 }): Promise<void> {
-  if (input.ids.length === 0) return
+  if (input.ids.length === 0) {
+    return
+  }
   // drizzle's `inArray` would be cleaner, but the queue is short and
   // a simple loop keeps the call site uniform with the other helpers.
   await Promise.all(
@@ -132,7 +134,7 @@ export async function markPendingFileWritesApplied(input: {
       db
         .update(pendingFileWrites)
         .set({ appliedAt: new Date() })
-        .where(eq(pendingFileWrites.id, id)),
-    ),
+        .where(eq(pendingFileWrites.id, id))
+    )
   )
 }

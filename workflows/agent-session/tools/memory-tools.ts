@@ -1,21 +1,18 @@
-import { tool } from "ai"
-import { z } from "zod"
-import { getSystemSandbox } from "@/lib/agent-sandbox"
+import { tool } from 'ai'
+import { z } from 'zod'
+import { getSystemSandbox } from '@/lib/agent-sandbox'
 import {
   enqueueDelete,
   enqueueEdit,
   enqueueWrite,
   listLiveMemory,
+  type PendingWrites,
   readLiveMemory,
   resolveEffectiveContent,
   resolveEffectiveListing,
   validateMemoryPath,
-  type PendingWrites,
-} from "./pending-writes"
-import {
-  isReadOnlyForAgent,
-  READ_ONLY_TOOL_ERROR,
-} from "./persona-paths"
+} from './pending-writes'
+import { isReadOnlyForAgent, READ_ONLY_TOOL_ERROR } from './persona-paths'
 
 /**
  * Memory tools against the system sandbox. Writes queue into `pending`;
@@ -32,7 +29,7 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
   return {
     list_memory: tool({
       description:
-        "List every memory file (relative paths, all ending in .md) the agent currently has. Reflects pending writes/deletes from this turn.",
+        'List every memory file (relative paths, all ending in .md) the agent currently has. Reflects pending writes/deletes from this turn.',
       inputSchema: z.object({}),
       execute: async () => listMemoryStep(agentId, pending),
     }),
@@ -50,16 +47,18 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
 
     write_memory: tool({
       description:
-        "Create or overwrite a memory file. The write is queued and applied at end of event; subsequent read_memory calls in the same turn see the new content.",
+        'Create or overwrite a memory file. The write is queued and applied at end of event; subsequent read_memory calls in the same turn see the new content.',
       inputSchema: z.object({
         path: z.string(),
         content: z
           .string()
-          .describe("Full UTF-8 content of the file. Overwrites any prior."),
+          .describe('Full UTF-8 content of the file. Overwrites any prior.'),
       }),
       execute: async ({ path, content }) => {
         const safe = validateMemoryPath(path)
-        if (isReadOnlyForAgent(safe)) return READ_ONLY_TOOL_ERROR
+        if (isReadOnlyForAgent(safe)) {
+          return READ_ONLY_TOOL_ERROR
+        }
         enqueueWrite(pending, safe, content)
         return { ok: true as const, path: safe, bytes: content.length }
       },
@@ -67,23 +66,25 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
 
     edit_memory: tool({
       description:
-        "Edit a memory file by replacing oldString with newString. Errors if oldString is not present in the effective content. Use replaceAll=true for global replacement; default replaces only the first occurrence.",
+        'Edit a memory file by replacing oldString with newString. Errors if oldString is not present in the effective content. Use replaceAll=true for global replacement; default replaces only the first occurrence.',
       inputSchema: z.object({
         path: z.string(),
         oldString: z
           .string()
           .min(1)
           .describe(
-            "Exact substring to find. Must include enough surrounding context to be unique unless replaceAll is true.",
+            'Exact substring to find. Must include enough surrounding context to be unique unless replaceAll is true.'
           ),
-        newString: z.string().describe("Replacement text."),
+        newString: z.string().describe('Replacement text.'),
         replaceAll: z.boolean().optional(),
       }),
       execute: async ({ path, oldString, newString, replaceAll }) => {
         // Validate path eagerly so the read-only check fires before
         // we round-trip into a step.
         const safe = validateMemoryPath(path)
-        if (isReadOnlyForAgent(safe)) return READ_ONLY_TOOL_ERROR
+        if (isReadOnlyForAgent(safe)) {
+          return READ_ONLY_TOOL_ERROR
+        }
         return editMemoryStep(agentId, pending, {
           path: safe,
           oldString,
@@ -95,11 +96,13 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
 
     delete_memory: tool({
       description:
-        "Delete a memory file. The deletion is queued and applied at end of event.",
+        'Delete a memory file. The deletion is queued and applied at end of event.',
       inputSchema: z.object({ path: z.string() }),
       execute: async ({ path }) => {
         const safe = validateMemoryPath(path)
-        if (isReadOnlyForAgent(safe)) return READ_ONLY_TOOL_ERROR
+        if (isReadOnlyForAgent(safe)) {
+          return READ_ONLY_TOOL_ERROR
+        }
         enqueueDelete(pending, safe)
         return { ok: true as const, path: safe }
       },
@@ -114,20 +117,20 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
           .min(1)
           .max(500)
           .describe(
-            "JavaScript regular expression source. Compiled with the 'm' flag plus any flags you provide. Anchored matches like '^- ' work line-by-line.",
+            "JavaScript regular expression source. Compiled with the 'm' flag plus any flags you provide. Anchored matches like '^- ' work line-by-line."
           ),
         flags: z
           .string()
           .regex(/^[gimsuy]*$/)
           .optional()
           .describe(
-            "Extra regex flags (subset of 'gimsuy'). 'i' is the most useful — case-insensitive. 'g' is implied; you don't need to pass it.",
+            "Extra regex flags (subset of 'gimsuy'). 'i' is the most useful — case-insensitive. 'g' is implied; you don't need to pass it."
           ),
         pathPrefix: z
           .string()
           .optional()
           .describe(
-            "Restrict the search to files whose relative path starts with this prefix, e.g. 'logs/' or 'projects/'.",
+            "Restrict the search to files whose relative path starts with this prefix, e.g. 'logs/' or 'projects/'."
           ),
         maxResults: z
           .number()
@@ -135,13 +138,13 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
           .min(1)
           .max(200)
           .optional()
-          .describe("Cap on total matches returned. Defaults to 50."),
+          .describe('Cap on total matches returned. Defaults to 50.'),
       }),
       execute: async ({ pattern, flags, pathPrefix, maxResults }) =>
         searchMemoryStep(agentId, pending, {
           pattern,
-          flags: flags ?? "",
-          pathPrefix: pathPrefix ?? "",
+          flags: flags ?? '',
+          pathPrefix: pathPrefix ?? '',
           maxResults: maxResults ?? 50,
         }),
     }),
@@ -152,9 +155,9 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
 
 async function listMemoryStep(
   agentId: string,
-  pending: PendingWrites,
+  pending: PendingWrites
 ): Promise<{ paths: string[] }> {
-  "use step"
+  'use step'
   const sandbox = await getSystemSandbox(agentId)
   const livePaths = await listLiveMemory(sandbox)
   const effective = resolveEffectiveListing(livePaths, pending)
@@ -164,9 +167,9 @@ async function listMemoryStep(
 async function readMemoryStep(
   agentId: string,
   pending: PendingWrites,
-  rawPath: string,
+  rawPath: string
 ): Promise<{ path: string; content: string }> {
-  "use step"
+  'use step'
   const path = validateMemoryPath(rawPath)
   const sandbox = await getSystemSandbox(agentId)
   const live = await readLiveMemory(sandbox, path)
@@ -178,18 +181,18 @@ async function readMemoryStep(
 }
 
 interface EditMemoryArgs {
-  path: string
-  oldString: string
   newString: string
+  oldString: string
+  path: string
   replaceAll: boolean
 }
 
 async function editMemoryStep(
   agentId: string,
   pending: PendingWrites,
-  args: EditMemoryArgs,
+  args: EditMemoryArgs
 ): Promise<{ ok: true; path: string; replacements: number }> {
-  "use step"
+  'use step'
   const path = validateMemoryPath(args.path)
   const sandbox = await getSystemSandbox(agentId)
   const live = await readLiveMemory(sandbox, path)
@@ -200,12 +203,12 @@ async function editMemoryStep(
   const occurrences = countOccurrences(effective, args.oldString)
   if (occurrences === 0) {
     throw new Error(
-      `edit_memory: oldString not found in ${path}. Provide a longer or more unique anchor.`,
+      `edit_memory: oldString not found in ${path}. Provide a longer or more unique anchor.`
     )
   }
   if (occurrences > 1 && !args.replaceAll) {
     throw new Error(
-      `edit_memory: oldString matches ${occurrences} times in ${path}. Provide a unique anchor or set replaceAll=true.`,
+      `edit_memory: oldString matches ${occurrences} times in ${path}. Provide a unique anchor or set replaceAll=true.`
     )
   }
   enqueueEdit(pending, path, args.oldString, args.newString, args.replaceAll)
@@ -217,29 +220,29 @@ async function editMemoryStep(
 }
 
 interface SearchMemoryArgs {
-  pattern: string
   flags: string
-  pathPrefix: string
   maxResults: number
+  pathPrefix: string
+  pattern: string
 }
 
 interface SearchMatch {
-  path: string
   line: number
+  path: string
   text: string
 }
 
 interface SearchResult {
-  truncated: boolean
   matches: SearchMatch[]
+  truncated: boolean
 }
 
 async function searchMemoryStep(
   agentId: string,
   pending: PendingWrites,
-  args: SearchMemoryArgs,
+  args: SearchMemoryArgs
 ): Promise<SearchResult> {
-  "use step"
+  'use step'
   // Compile the regex up front so an invalid pattern fails before we
   // pull any sandbox content. The model sees the constructor's
   // SyntaxError verbatim, which is good enough — JS regex error
@@ -249,11 +252,11 @@ async function searchMemoryStep(
     // Always include 'g' for matchAll. Always include 'm' so '^' / '$'
     // anchors are line-scoped — the search is line-oriented anyway,
     // and the model expects per-line matching.
-    const finalFlags = mergeFlags(args.flags, "gm")
+    const finalFlags = mergeFlags(args.flags, 'gm')
     re = new RegExp(args.pattern, finalFlags)
   } catch (err) {
     throw new Error(
-      `search_memory: invalid regex (${(err as Error).message}). Pass a JS-compatible pattern.`,
+      `search_memory: invalid regex (${(err as Error).message}). Pass a JS-compatible pattern.`
     )
   }
 
@@ -273,25 +276,29 @@ async function searchMemoryStep(
       const live = await readLiveMemory(sandbox, path)
       const effective = resolveEffectiveContent(path, live, pending)
       return [path, effective] as const
-    }),
+    })
   )
 
   const matches: SearchMatch[] = []
   let truncated = false
 
   outer: for (const [path, content] of fileContents) {
-    if (content === null) continue
+    if (content === null) {
+      continue
+    }
     // Walk line-by-line so each match has a stable line number. We
     // could match against the whole file, but per-line is cheaper to
     // explain to the model and keeps the snippets tight.
-    const lines = content.split("\n")
+    const lines = content.split('\n')
     for (let i = 0; i < lines.length; i += 1) {
-      const line = lines[i] ?? ""
+      const line = lines[i] ?? ''
       // Reset lastIndex when reusing the regex with /g across many
       // strings — without this, matchAll-style usage would silently
       // skip later lines.
       re.lastIndex = 0
-      if (!re.test(line)) continue
+      if (!re.test(line)) {
+        continue
+      }
       if (matches.length >= args.maxResults) {
         truncated = true
         break outer
@@ -311,16 +318,20 @@ async function searchMemoryStep(
 
 function mergeFlags(provided: string, required: string): string {
   const set = new Set([...provided, ...required])
-  return Array.from(set).join("")
+  return Array.from(set).join('')
 }
 
 function countOccurrences(haystack: string, needle: string): number {
-  if (needle.length === 0) return 0
+  if (needle.length === 0) {
+    return 0
+  }
   let count = 0
   let from = 0
   while (true) {
     const idx = haystack.indexOf(needle, from)
-    if (idx === -1) break
+    if (idx === -1) {
+      break
+    }
     count += 1
     from = idx + needle.length
   }

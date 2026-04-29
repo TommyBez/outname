@@ -1,12 +1,9 @@
-import { NextResponse, connection, type NextRequest } from "next/server"
-import { eq } from "drizzle-orm"
-import { getWorld } from "workflow/runtime"
-import { db } from "@/lib/db"
-import { agent, type Agent } from "@/lib/db/schema"
-import {
-  isWorkflowRunAlive,
-  restartAgentSession,
-} from "@/lib/agent-session"
+import { eq } from 'drizzle-orm'
+import { connection, type NextRequest, NextResponse } from 'next/server'
+import { getWorld } from 'workflow/runtime'
+import { isWorkflowRunAlive, restartAgentSession } from '@/lib/agent-session'
+import { db } from '@/lib/db'
+import { type Agent, agent } from '@/lib/db/schema'
 
 /**
  * Cron-driven liveness sweeper.
@@ -52,19 +49,13 @@ export async function GET(req: NextRequest) {
 
   const expected = process.env.CRON_SECRET
   if (expected) {
-    const got = req.headers.get("authorization")
+    const got = req.headers.get('authorization')
     if (got !== `Bearer ${expected}`) {
-      return NextResponse.json(
-        { error: "unauthorized" },
-        { status: 401 },
-      )
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
     }
   }
 
-  const enabled = await db
-    .select()
-    .from(agent)
-    .where(eq(agent.enabled, true))
+  const enabled = await db.select().from(agent).where(eq(agent.enabled, true))
 
   let restarted = 0
   let healthy = 0
@@ -92,7 +83,7 @@ export async function GET(req: NextRequest) {
       healthy += 1
     } catch (err) {
       errors += 1
-      console.error("[v0] liveness: agent failed", a.id, err)
+      console.error('[v0] liveness: agent failed', a.id, err)
     }
   }
 
@@ -107,12 +98,16 @@ export async function GET(req: NextRequest) {
 }
 
 async function reapOrphanTickerForDeadSession(a: Agent): Promise<boolean> {
-  if (!a.lastTickerRunId) return false
-  if (!(await isWorkflowRunAlive(a.lastTickerRunId))) return false
+  if (!a.lastTickerRunId) {
+    return false
+  }
+  if (!(await isWorkflowRunAlive(a.lastTickerRunId))) {
+    return false
+  }
   try {
     const world = await getWorld()
     await world.events.create(a.lastTickerRunId, {
-      eventType: "run_cancelled",
+      eventType: 'run_cancelled',
     })
     await db
       .update(agent)
@@ -120,7 +115,7 @@ async function reapOrphanTickerForDeadSession(a: Agent): Promise<boolean> {
       .where(eq(agent.id, a.id))
     return true
   } catch (err) {
-    console.error("[v0] liveness: reap ticker failed", a.id, err)
+    console.error('[v0] liveness: reap ticker failed', a.id, err)
     return false
   }
 }

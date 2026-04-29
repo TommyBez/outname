@@ -1,7 +1,7 @@
-import type { UIMessage } from "ai"
-import { revalidateTag } from "next/cache"
-import { conversationListTag } from "@/lib/cache-tags"
-import { persistNewChatMessages } from "@/lib/agent-chat"
+import type { UIMessage } from 'ai'
+import { revalidateTag } from 'next/cache'
+import { persistNewChatMessages } from '@/lib/agent-chat'
+import { conversationListTag } from '@/lib/cache-tags'
 
 /**
  * Post-stream persistence step.
@@ -20,7 +20,7 @@ export async function persistAssistantTurn(input: {
   conversationId: string
   uiMessages: UIMessage[]
 }): Promise<void> {
-  "use step"
+  'use step'
   await persistNewChatMessages(input)
-  revalidateTag(conversationListTag(input.agentId), "max")
+  revalidateTag(conversationListTag(input.agentId), 'max')
 }

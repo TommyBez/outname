@@ -1,16 +1,16 @@
-import "server-only"
-import { and, asc, desc, eq, isNull } from "drizzle-orm"
-import type { UIMessage } from "ai"
-import { cacheLife, cacheTag } from "next/cache"
-import { db } from "@/lib/db"
+import 'server-only'
+import type { UIMessage } from 'ai'
+import { and, asc, desc, eq, isNull } from 'drizzle-orm'
+import { cacheLife, cacheTag } from 'next/cache'
+import { conversationListTag } from '@/lib/cache-tags'
+import { db } from '@/lib/db'
 import {
-  chatConversation,
-  chatMessage,
   type ChatConversation,
   type ChatMessage,
   type ChatRole,
-} from "@/lib/db/schema"
-import { conversationListTag } from "@/lib/cache-tags"
+  chatConversation,
+  chatMessage,
+} from '@/lib/db/schema'
 
 /**
  * Stable id generator for chat conversations. Matches the existing
@@ -19,7 +19,7 @@ import { conversationListTag } from "@/lib/cache-tags"
  */
 export function newChatConversationId() {
   return (
-    "cc_" +
+    'cc_' +
     Math.random().toString(36).slice(2) +
     Date.now().toString(36).slice(-4)
   )
@@ -40,7 +40,7 @@ export function newChatConversationId() {
  */
 export async function getOrCreateConversationForAgent(
   conversationId: string,
-  agentId: string,
+  agentId: string
 ): Promise<ChatConversation | null> {
   const [existing] = await db
     .select()
@@ -48,11 +48,13 @@ export async function getOrCreateConversationForAgent(
     .where(
       and(
         eq(chatConversation.id, conversationId),
-        eq(chatConversation.agentId, agentId),
-      ),
+        eq(chatConversation.agentId, agentId)
+      )
     )
     .limit(1)
-  if (existing) return existing
+  if (existing) {
+    return existing
+  }
 
   await db
     .insert(chatConversation)
@@ -65,8 +67,8 @@ export async function getOrCreateConversationForAgent(
     .where(
       and(
         eq(chatConversation.id, conversationId),
-        eq(chatConversation.agentId, agentId),
-      ),
+        eq(chatConversation.agentId, agentId)
+      )
     )
     .limit(1)
   return row ?? null
@@ -78,7 +80,7 @@ export async function getOrCreateConversationForAgent(
  */
 export async function getConversationForAgent(
   conversationId: string,
-  agentId: string,
+  agentId: string
 ): Promise<ChatConversation | null> {
   const [row] = await db
     .select()
@@ -86,8 +88,8 @@ export async function getConversationForAgent(
     .where(
       and(
         eq(chatConversation.id, conversationId),
-        eq(chatConversation.agentId, agentId),
-      ),
+        eq(chatConversation.agentId, agentId)
+      )
     )
     .limit(1)
   return row ?? null
@@ -98,7 +100,7 @@ export async function getConversationForAgent(
  * landing redirect so users come back to their last active thread.
  */
 export async function getMostRecentConversationForAgent(
-  agentId: string,
+  agentId: string
 ): Promise<ChatConversation | null> {
   const [row] = await db
     .select()
@@ -115,7 +117,7 @@ export async function getMostRecentConversationForAgent(
  * grows.
  */
 export async function listConversationsForAgent(
-  agentId: string,
+  agentId: string
 ): Promise<ChatConversation[]> {
   return db
     .select()
@@ -125,11 +127,11 @@ export async function listConversationsForAgent(
 }
 
 export async function getCachedConversationListForAgent(
-  agentId: string,
+  agentId: string
 ): Promise<ChatConversation[]> {
-  "use cache"
+  'use cache'
 
-  cacheLife("minutes")
+  cacheLife('minutes')
   cacheTag(conversationListTag(agentId))
   return listConversationsForAgent(agentId)
 }
@@ -142,18 +144,20 @@ export async function getCachedConversationListForAgent(
 export async function renameConversation(
   conversationId: string,
   agentId: string,
-  title: string,
+  title: string
 ): Promise<ChatConversation | null> {
   const trimmed = title.trim().slice(0, 80)
-  if (!trimmed) return null
+  if (!trimmed) {
+    return null
+  }
   const [row] = await db
     .update(chatConversation)
     .set({ title: trimmed, updatedAt: new Date() })
     .where(
       and(
         eq(chatConversation.id, conversationId),
-        eq(chatConversation.agentId, agentId),
-      ),
+        eq(chatConversation.agentId, agentId)
+      )
     )
     .returning()
   return row ?? null
@@ -165,15 +169,15 @@ export async function renameConversation(
  */
 export async function deleteConversation(
   conversationId: string,
-  agentId: string,
+  agentId: string
 ): Promise<boolean> {
   const rows = await db
     .delete(chatConversation)
     .where(
       and(
         eq(chatConversation.id, conversationId),
-        eq(chatConversation.agentId, agentId),
-      ),
+        eq(chatConversation.agentId, agentId)
+      )
     )
     .returning({ id: chatConversation.id })
   return rows.length > 0
@@ -187,18 +191,20 @@ export async function deleteConversation(
  */
 export async function setConversationTitleIfUnset(
   conversationId: string,
-  title: string,
+  title: string
 ): Promise<void> {
   const trimmed = title.trim().slice(0, 80)
-  if (!trimmed) return
+  if (!trimmed) {
+    return
+  }
   await db
     .update(chatConversation)
     .set({ title: trimmed })
     .where(
       and(
         eq(chatConversation.id, conversationId),
-        isNull(chatConversation.title),
-      ),
+        isNull(chatConversation.title)
+      )
     )
 }
 
@@ -206,7 +212,9 @@ export async function setConversationTitleIfUnset(
  * Load the full message history for a conversation, oldest first, in the
  * UIMessage shape expected by the AI SDK and `useChat`.
  */
-export async function loadChatHistory(conversationId: string): Promise<UIMessage[]> {
+export async function loadChatHistory(
+  conversationId: string
+): Promise<UIMessage[]> {
   const rows = await db
     .select()
     .from(chatMessage)
@@ -218,8 +226,8 @@ export async function loadChatHistory(conversationId: string): Promise<UIMessage
 function rowToUIMessage(row: ChatMessage): UIMessage {
   return {
     id: row.id,
-    role: row.role as UIMessage["role"],
-    parts: row.parts as UIMessage["parts"],
+    role: row.role as UIMessage['role'],
+    parts: row.parts as UIMessage['parts'],
     metadata: row.metadata ?? undefined,
   }
 }
@@ -233,7 +241,7 @@ export async function insertChatMessage(input: {
   conversationId: string
   id: string
   role: ChatRole
-  parts: UIMessage["parts"]
+  parts: UIMessage['parts']
   metadata?: unknown
 }): Promise<void> {
   await db
@@ -270,7 +278,9 @@ export async function persistNewChatMessages(input: {
   const seen = new Set(existing.map((r) => r.id))
 
   for (const m of input.uiMessages) {
-    if (seen.has(m.id)) continue
+    if (seen.has(m.id)) {
+      continue
+    }
     await insertChatMessage({
       conversationId: input.conversationId,
       id: m.id,

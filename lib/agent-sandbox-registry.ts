@@ -18,7 +18,7 @@
  * `lib/agent-sandbox.ts`'s startup helpers.
  */
 
-import type { CreateOptions } from "@/lib/agent-sandbox-types"
+import type { CreateOptions } from '@/lib/agent-sandbox-types'
 
 export interface SandboxConfig {
   /**
@@ -30,7 +30,7 @@ export interface SandboxConfig {
 
 export const SYSTEM_SANDBOX_CONFIG: SandboxConfig = {
   createOptions: {
-    runtime: "node22",
+    runtime: 'node22',
     // Memory ops are tiny — read/write a handful of small markdown
     // files. 60s is plenty of headroom for the longest realistic
     // composeSystemPrompt + flush cycle.
@@ -41,7 +41,7 @@ export const SYSTEM_SANDBOX_CONFIG: SandboxConfig = {
 
 export const EXEC_SANDBOX_CONFIG: SandboxConfig = {
   createOptions: {
-    runtime: "node22",
+    runtime: 'node22',
     // Generous default for the exec sandbox: agents may install
     // dependencies, run linters, or hit network APIs from inside it.
     timeout: 300_000,
@@ -49,7 +49,7 @@ export const EXEC_SANDBOX_CONFIG: SandboxConfig = {
   },
 }
 
-export type SandboxRole = "system" | "exec"
+export type SandboxRole = 'system' | 'exec'
 
 export const SANDBOX_CONFIGS: Record<SandboxRole, SandboxConfig> = {
   system: SYSTEM_SANDBOX_CONFIG,
@@ -65,10 +65,10 @@ export const SANDBOX_CONFIGS: Record<SandboxRole, SandboxConfig> = {
  * `endOfEvent` keeps working unchanged when pointed at the system
  * sandbox.
  */
-export const SYSTEM_SANDBOX_ROOT = "/vercel/sandbox"
+export const SYSTEM_SANDBOX_ROOT = '/vercel/sandbox'
 
 /**
  * Working directory inside the exec sandbox. Created by the exec
  * sandbox's setup hook on first boot.
  */
-export const EXEC_SANDBOX_WORKSPACE = "/vercel/sandbox/workspace"
+export const EXEC_SANDBOX_WORKSPACE = '/vercel/sandbox/workspace'

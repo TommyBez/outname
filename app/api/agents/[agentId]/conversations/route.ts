@@ -1,8 +1,8 @@
-import "server-only"
-import { NextResponse } from "next/server"
-import { requireSession } from "@/lib/auth-guard"
-import { getAgentByIdForUser } from "@/lib/data"
-import { listConversationsForAgent } from "@/lib/agent-chat"
+import 'server-only'
+import { NextResponse } from 'next/server'
+import { listConversationsForAgent } from '@/lib/agent-chat'
+import { requireSession } from '@/lib/auth-guard'
+import { getAgentByIdForUser } from '@/lib/data'
 
 /**
  * Client-facing conversation list endpoint. Feeds the sidebar's SWR
@@ -16,13 +16,13 @@ import { listConversationsForAgent } from "@/lib/agent-chat"
  */
 export async function GET(
   _req: Request,
-  { params }: { params: Promise<{ agentId: string }> },
+  { params }: { params: Promise<{ agentId: string }> }
 ) {
   const { agentId } = await params
   const session = await requireSession()
   const agent = await getAgentByIdForUser(agentId, session.user.id)
   if (!agent) {
-    return NextResponse.json({ error: "agent not found" }, { status: 404 })
+    return NextResponse.json({ error: 'agent not found' }, { status: 404 })
   }
 
   const rows = await listConversationsForAgent(agent.id)

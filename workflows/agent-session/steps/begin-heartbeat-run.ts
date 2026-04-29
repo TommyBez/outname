@@ -1,9 +1,8 @@
-import { eq } from "drizzle-orm"
-import { revalidateTag } from "next/cache"
-import { agentRunsTag, runsIndexTag } from "@/lib/cache-tags"
-import { db } from "@/lib/db"
-import { runs } from "@/lib/db/schema"
-import { getWorkflowMetadata } from "workflow"
+import { revalidateTag } from 'next/cache'
+import { getWorkflowMetadata } from 'workflow'
+import { agentRunsTag, runsIndexTag } from '@/lib/cache-tags'
+import { db } from '@/lib/db'
+import { runs } from '@/lib/db/schema'
 
 /**
  * Insert the `runs` row for a heartbeat-driven invocation.
@@ -22,7 +21,7 @@ import { getWorkflowMetadata } from "workflow"
 export async function beginHeartbeatRun(input: {
   agentId: string
 }): Promise<{ runId: string }> {
-  "use step"
+  'use step'
 
   const runId = nanoid()
 
@@ -42,20 +41,19 @@ export async function beginHeartbeatRun(input: {
   await db.insert(runs).values({
     id: runId,
     agentId: input.agentId,
-    status: "running",
+    status: 'running',
     startedAt: new Date(),
     workflowRunId,
   })
 
-  revalidateTag(agentRunsTag(input.agentId), "max")
-  revalidateTag(runsIndexTag(), "max")
+  revalidateTag(agentRunsTag(input.agentId), 'max')
+  revalidateTag(runsIndexTag(), 'max')
 
   return { runId }
 }
 
 function nanoid(): string {
   return (
-    Math.random().toString(36).slice(2, 10) +
-    Date.now().toString(36).slice(-4)
+    Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4)
   )
 }
