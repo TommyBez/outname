@@ -16,13 +16,22 @@ import { enqueueAppend, type PendingWrites } from "./pending-writes"
  * Surface: `bash`, `file_read`, `file_write`, `file_list`, `reset_exec`.
  * Every tool's `execute` callback delegates to a `"use step"` worker
  * (`bashStep`, `fileReadStep`, etc.) so the workflow bundle stays
- * free of `@vercel/sandbox` value imports and Node.js built-ins.
- * The earlier swap to the third-party `bash-tool` package was
- * reverted because that package value-imports `node:path` etc. at
- * the top level of its entry module, which the workflow bundler then
- * pulls into the workflow bundle and warns about ("These will fail
- * at runtime in the workflow sandbox"). Hand-rolling the four shells
- * keeps the import graph clean.
+ * free of Sandbox-instance closures.
+ *
+ * `bashStep` delegates to the third-party `bash-tool` package
+ * (vercel-labs/bash-tool). To keep the workflow bundler happy we
+ * never let a `bash-tool` kit, the wrapped sandbox, or the AI-SDK
+ * tool objects it returns escape a `"use step"` boundary —
+ * `createBashTool` is invoked inside `bashStep` itself, the relevant
+ * tool's `execute` is destructured and called, and the kit is
+ * discarded when the step body returns. The earlier integration
+ * tripped a serde warning because `createExecTools` was async and
+ * held the kit (and via it, a Sandbox handle) in a workflow-body
+ * closure across tool invocations.
+ *
+ * `file_read`, `file_write`, and `file_list` are kept hand-rolled —
+ * they need richer return shapes (truncation flags, byte counts,
+ * directory listings) than `bash-tool` exposes.
  *
  * Why these tools are *not* buffered like memory tools:
  *   - Bash output is the agent's primary feedback signal; buffering
@@ -238,20 +247,56 @@ async function bashStep(
 ): Promise<BashResult> {
   "use step"
   const sandbox = await getExecSandbox(agentId)
-  // We wrap the user's command in `cd workspace && timeout ... bash -c ...`
-  // so the model can stay relative to the workspace root and we get
-  // a hard cap on runtime regardless of what the user typed.
-  const wrapped = `cd ${shellEscape(EXEC_SANDBOX_WORKSPACE)} && timeout --foreground ${Math.max(1, Math.floor(timeoutMs / 1000))}s bash -lc ${shellEscape(command)}`
-  const cmd = await sandbox.runCommand({ cmd: "sh", args: ["-ec", wrapped] })
-  const [stdout, stderr] = await Promise.all([cmd.stdout(), cmd.stderr()])
-  const out = truncateUtf8(stdout, MAX_OUTPUT_BYTES)
-  const err = truncateUtf8(stderr, MAX_OUTPUT_BYTES)
+
+  // Build the kit *inside* the step. The wrapped sandbox handle and
+  // the AI-SDK tool objects bash-tool returns all live in this
+  // function's local scope; nothing escapes back to the workflow
+  // body. This is the constraint the workflow bundler cares about —
+  // the previous integration tripped a serde warning because the kit
+  // (and via it, a Sandbox handle) was held in a workflow-side
+  // closure across tool invocations.
+  //
+  // `onBeforeBashCall` lets us prepend our `timeout` wrapper to every
+  // command without losing bash-tool's `cd "${cwd}" && ...` prefix
+  // (the modified command is concatenated after the cd). The hard
+  // ceiling means a runaway script can't hold the sandbox open past
+  // `MAX_TIMEOUT_MS`.
+  const timeoutSeconds = Math.max(1, Math.floor(timeoutMs / 1000))
+  const kit = await createBashTool({
+    sandbox,
+    destination: EXEC_SANDBOX_WORKSPACE,
+    maxOutputLength: MAX_OUTPUT_BYTES,
+    onBeforeBashCall: ({ command: original }) => ({
+      command: `timeout --foreground ${timeoutSeconds}s bash -lc ${shellEscape(original)}`,
+    }),
+  })
+
+  // Destructure the bash tool's `execute` and call it directly. The
+  // toolkit's bash execute doesn't read the AI-SDK options arg — it
+  // only uses the input — so we pass an inert stub. The cast keeps
+  // the type fudge confined to one line; the call itself is safe.
+  const execute = kit.tools.bash.execute
+  if (!execute) {
+    throw new Error("bash-tool returned a tool without an execute callback")
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const raw = (await execute({ command }, {} as any)) as {
+    stdout: string
+    stderr: string
+    exitCode: number | null
+  }
+
+  // bash-tool inlines a "[stdout truncated: N characters removed]"
+  // marker into the string itself instead of returning a flag. We
+  // sniff that marker so the workflow surface keeps its boolean-flag
+  // contract — the model can branch on `stdoutTruncated` without
+  // parsing the message.
   return {
-    exitCode: cmd.exitCode,
-    stdout: out.value,
-    stdoutTruncated: out.truncated,
-    stderr: err.value,
-    stderrTruncated: err.truncated,
+    exitCode: raw.exitCode,
+    stdout: raw.stdout,
+    stdoutTruncated: /\[stdout truncated:/.test(raw.stdout),
+    stderr: raw.stderr,
+    stderrTruncated: /\[stderr truncated:/.test(raw.stderr),
   }
 }
 
