@@ -59,9 +59,12 @@ export async function GET(req: Request) {
     revalidatePath('/')
     settingsUrl.searchParams.set('gmail', 'connected')
     return NextResponse.redirect(settingsUrl)
-  } catch (err: any) {
+  } catch (err: unknown) {
     settingsUrl.searchParams.set('gmail', 'error')
-    settingsUrl.searchParams.set('reason', err?.message ?? 'unknown')
+    settingsUrl.searchParams.set(
+      'reason',
+      err instanceof Error ? err.message : 'unknown'
+    )
     return NextResponse.redirect(settingsUrl)
   }
 }

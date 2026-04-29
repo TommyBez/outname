@@ -1,4 +1,3 @@
-import { sql } from 'drizzle-orm'
 import {
   boolean,
   index,
@@ -9,6 +8,7 @@ import {
   text,
   timestamp,
 } from 'drizzle-orm/pg-core'
+import { isNull } from 'drizzle-orm/pg-core/expressions'
 
 // Better Auth tables
 export const user = pgTable('user', {
@@ -135,9 +135,7 @@ export const agent = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => ({
-    userIdx: index('agent_user_idx').on(t.userId),
-  })
+  (t) => [index('agent_user_idx').on(t.userId)]
 )
 
 export const runs = pgTable(
@@ -155,10 +153,10 @@ export const runs = pgTable(
     completedAt: timestamp('completed_at', { withTimezone: true }),
     error: text('error'),
   },
-  (t) => ({
-    startedAtIdx: index('runs_started_at_idx').on(t.startedAt),
-    agentIdx: index('runs_agent_idx').on(t.agentId),
-  })
+  (t) => [
+    index('runs_started_at_idx').on(t.startedAt),
+    index('runs_agent_idx').on(t.agentId),
+  ]
 )
 
 /**
@@ -203,12 +201,12 @@ export const chatConversation = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => ({
-    agentUpdatedIdx: index('chat_conversation_agent_updated_idx').on(
+  (t) => [
+    index('chat_conversation_agent_updated_idx').on(
       t.agentId,
       t.updatedAt.desc()
     ),
-  })
+  ]
 )
 
 // Chat messages: store full UIMessage parts array as JSONB so we keep tool
@@ -227,12 +225,9 @@ export const chatMessage = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => ({
-    conversationIdx: index('chat_message_conversation_idx').on(
-      t.conversationId,
-      t.createdAt
-    ),
-  })
+  (t) => [
+    index('chat_message_conversation_idx').on(t.conversationId, t.createdAt),
+  ]
 )
 
 /**
@@ -258,10 +253,10 @@ export const agentFiles = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => ({
-    pk: primaryKey({ columns: [t.agentId, t.path] }),
-    agentIdx: index('agent_files_agent_idx').on(t.agentId),
-  })
+  (t) => [
+    primaryKey({ columns: [t.agentId, t.path] }),
+    index('agent_files_agent_idx').on(t.agentId),
+  ]
 )
 
 /**
@@ -294,11 +289,11 @@ export const pendingFileWrites = pgTable(
       .defaultNow(),
     appliedAt: timestamp('applied_at', { withTimezone: true }),
   },
-  (t) => ({
-    unappliedIdx: index('pending_file_writes_agent_unapplied_idx')
+  (t) => [
+    index('pending_file_writes_agent_unapplied_idx')
       .on(t.agentId)
-      .where(sql`${t.appliedAt} IS NULL`),
-  })
+      .where(isNull(t.appliedAt)),
+  ]
 )
 
 export const gmailConnection = pgTable('gmail_connection', {

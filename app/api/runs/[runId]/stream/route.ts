@@ -69,7 +69,7 @@ export async function GET(
   const body = source.pipeThrough(
     new TransformStream<RunEvent, Uint8Array>({
       transform(chunk, controller) {
-        controller.enqueue(encoder.encode(JSON.stringify(chunk) + '\n'))
+        controller.enqueue(encoder.encode(`${JSON.stringify(chunk)}\n`))
       },
     })
   )

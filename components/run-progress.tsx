@@ -57,22 +57,32 @@ export function RunProgress({ runId }: { runId: string }) {
   )
 }
 
-function StepRow({ step, index }: { step: StepState; index: number }) {
-  const dot =
-    step.status === 'active'
-      ? 'bg-foreground animate-pulse ring-4 ring-foreground/10'
-      : step.status === 'done'
-        ? 'bg-foreground'
-        : step.status === 'error'
-          ? 'bg-destructive'
-          : 'bg-border'
+function stepDotClassName(status: StepState['status']): string {
+  if (status === 'active') {
+    return 'bg-foreground animate-pulse ring-4 ring-foreground/10'
+  }
+  if (status === 'done') {
+    return 'bg-foreground'
+  }
+  if (status === 'error') {
+    return 'bg-destructive'
+  }
+  return 'bg-border'
+}
 
-  const label =
-    step.status === 'error'
-      ? 'text-destructive'
-      : step.status === 'pending'
-        ? 'text-muted-foreground'
-        : 'text-foreground'
+function stepLabelClassName(status: StepState['status']): string {
+  if (status === 'error') {
+    return 'text-destructive'
+  }
+  if (status === 'pending') {
+    return 'text-muted-foreground'
+  }
+  return 'text-foreground'
+}
+
+function StepRow({ step, index }: { step: StepState; index: number }) {
+  const dot = stepDotClassName(step.status)
+  const label = stepLabelClassName(step.status)
 
   return (
     <li className="grid grid-cols-[auto_auto_1fr] items-start gap-4">

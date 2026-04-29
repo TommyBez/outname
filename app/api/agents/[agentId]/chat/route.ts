@@ -99,7 +99,7 @@ export async function POST(
   }
   const conversationId = conversation.id
 
-  const last = uiMessages[uiMessages.length - 1]
+  const last = uiMessages.at(-1)
   if (last && last.role === 'user') {
     await insertChatMessage({
       conversationId,

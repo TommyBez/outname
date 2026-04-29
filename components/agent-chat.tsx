@@ -74,13 +74,13 @@ export function AgentChat({
       api: `/api/agents/${agentId}/chat`,
       body: { conversationId },
     }),
-    onFinish: () => {
+    onFinish: async () => {
       // Ask the sidebar to refetch its own list so the new row + title
       // appear. This replaces the previous `router.refresh()` call,
       // which re-rendered the whole RSC tree under Next 16's cache
       // components and could strand the freshly streamed assistant
       // message out of view on soft navigation.
-      void revalidateConversations(agentId)
+      await revalidateConversations(agentId)
     },
   })
 

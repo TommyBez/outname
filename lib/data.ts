@@ -28,7 +28,7 @@ export async function getLatestRun(): Promise<Run | null> {
 }
 
 export async function getAllRuns(limit = 100): Promise<Run[]> {
-  return db.select().from(runs).orderBy(desc(runs.startedAt)).limit(limit)
+  return await db.select().from(runs).orderBy(desc(runs.startedAt)).limit(limit)
 }
 
 export async function getCachedAllRuns(limit = 100): Promise<Run[]> {
@@ -36,7 +36,7 @@ export async function getCachedAllRuns(limit = 100): Promise<Run[]> {
 
   cacheLife('minutes')
   cacheTag(runsIndexTag())
-  return getAllRuns(limit)
+  return await getAllRuns(limit)
 }
 
 export async function getRunById(runId: string): Promise<Run | null> {
@@ -49,7 +49,7 @@ export async function getCachedRunById(runId: string): Promise<Run | null> {
 
   cacheLife('minutes')
   cacheTag(runTag(runId))
-  return getRunById(runId)
+  return await getRunById(runId)
 }
 
 /**
@@ -72,11 +72,11 @@ export async function getCachedRunResult(
 
   cacheLife('hours')
   cacheTag(runTag(runId))
-  return getRunResult(runId)
+  return await getRunResult(runId)
 }
 
 export async function getAgentsForUser(userId: string): Promise<Agent[]> {
-  return db
+  return await db
     .select()
     .from(agent)
     .where(eq(agent.userId, userId))
@@ -88,7 +88,7 @@ export async function getCachedAgentsForUser(userId: string): Promise<Agent[]> {
 
   cacheLife('minutes')
   cacheTag(userAgentsTag(userId))
-  return getAgentsForUser(userId)
+  return await getAgentsForUser(userId)
 }
 
 /**
@@ -115,7 +115,7 @@ export async function getCachedAgentByIdForUser(
 
   cacheLife('minutes')
   cacheTag(userAgentsTag(userId), agentTag(agentId))
-  return getAgentByIdForUser(agentId, userId)
+  return await getAgentByIdForUser(agentId, userId)
 }
 
 export async function getLatestRunForAgent(
@@ -137,14 +137,14 @@ export async function getCachedLatestRunForAgent(
 
   cacheLife('minutes')
   cacheTag(agentRunsTag(agentId))
-  return getLatestRunForAgent(agentId)
+  return await getLatestRunForAgent(agentId)
 }
 
 export async function getRunsForAgent(
   agentId: string,
   limit = 50
 ): Promise<Run[]> {
-  return db
+  return await db
     .select()
     .from(runs)
     .where(eq(runs.agentId, agentId))
@@ -160,5 +160,5 @@ export async function getCachedRunsForAgent(
 
   cacheLife('minutes')
   cacheTag(agentRunsTag(agentId))
-  return getRunsForAgent(agentId, limit)
+  return await getRunsForAgent(agentId, limit)
 }

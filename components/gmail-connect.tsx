@@ -95,10 +95,9 @@ export function GmailConnect({ connection }: Props) {
           </Button>
         ) : null}
         {confirming ? (
-          <div
+          <fieldset
             aria-label="Confirm disconnect"
-            className="flex items-center gap-4"
-            role="group"
+            className="flex min-w-0 flex-wrap items-center gap-4 border-0 p-0"
           >
             <button
               className="text-destructive text-sm underline underline-offset-4 transition-colors hover:text-destructive/80 disabled:opacity-50"
@@ -123,7 +122,7 @@ export function GmailConnect({ connection }: Props) {
             >
               Cancel
             </button>
-          </div>
+          </fieldset>
         ) : (
           <button
             className="text-muted-foreground text-sm underline-offset-4 transition-colors hover:text-foreground hover:underline"

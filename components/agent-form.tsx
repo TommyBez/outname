@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { type FormEvent, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -86,12 +86,18 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
   // alphabetical within each group; the gateway already returned them
   // sorted that way but we don't rely on it here.
   const grouped = models.reduce<Record<string, ModelOption[]>>((acc, m) => {
-    ;(acc[m.ownedBy] ??= []).push(m)
+    const key = m.ownedBy
+    let group = acc[key]
+    if (!group) {
+      group = []
+      acc[key] = group
+    }
+    group.push(m)
     return acc
   }, {})
   const ownedByKeys = Object.keys(grouped).sort()
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const trimmed = name.trim()
     if (!trimmed) {

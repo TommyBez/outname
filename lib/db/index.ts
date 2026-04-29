@@ -1,6 +1,34 @@
 import { neon } from '@neondatabase/serverless'
 import { drizzle } from 'drizzle-orm/neon-http'
-import * as schema from './schema'
+import {
+  account,
+  agent,
+  agentFiles,
+  chatConversation,
+  chatMessage,
+  gmailConnection,
+  pendingFileWrites,
+  runResult,
+  runs,
+  session,
+  user,
+  verification,
+} from './schema'
+
+const schema = {
+  user,
+  session,
+  account,
+  verification,
+  agent,
+  runs,
+  runResult,
+  chatConversation,
+  chatMessage,
+  agentFiles,
+  pendingFileWrites,
+  gmailConnection,
+}
 
 type DB = ReturnType<typeof drizzle<typeof schema>>
 
@@ -26,5 +54,3 @@ export const db = new Proxy({} as DB, {
     return Reflect.get(target, prop, receiver)
   },
 })
-
-export { schema }

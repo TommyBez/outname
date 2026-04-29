@@ -270,7 +270,7 @@ function ConversationRow({
         return
       }
       setIsEditing(false)
-      void revalidateConversations(agentId)
+      await revalidateConversations(agentId)
     })
   }
 
@@ -295,7 +295,7 @@ function ConversationRow({
       }
       toast.success('Conversation deleted.')
       setShowDelete(false)
-      void revalidateConversations(agentId)
+      await revalidateConversations(agentId)
     })
   }
 

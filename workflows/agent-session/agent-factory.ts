@@ -1,7 +1,5 @@
 import { DurableAgent } from '@workflow/ai/agent'
-import { eq } from 'drizzle-orm'
-import { db } from '@/lib/db'
-import { agent } from '@/lib/db/schema'
+import { getAgentById } from '@/lib/start-agent-run'
 import { composeSystemPrompt } from './compose-system-prompt'
 import { createExecTools } from './tools/exec-tools'
 import { createMemoryTools } from './tools/memory-tools'
@@ -34,20 +32,11 @@ export interface BuildAgentResult {
 export async function buildAgent(
   args: BuildAgentArgs
 ): Promise<BuildAgentResult> {
-  const { agentId } = args
-  // Reserved for future run-scoped tooling; steps still key on agentId.
-  void args.runId
+  const { agentId, runId } = args
 
-  const [row] = await db
-    .select({
-      name: agent.name,
-      model: agent.model,
-    })
-    .from(agent)
-    .where(eq(agent.id, agentId))
-    .limit(1)
+  const row = await getAgentById(agentId)
   if (!row) {
-    throw new Error(`buildAgent: agent ${agentId} not found`)
+    throw new Error(`buildAgent: agent ${agentId} not found (run ${runId})`)
   }
 
   const systemPrompt = await composeSystemPrompt({

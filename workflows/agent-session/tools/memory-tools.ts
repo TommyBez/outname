@@ -14,6 +14,8 @@ import {
 } from './pending-writes'
 import { isReadOnlyForAgent, READ_ONLY_TOOL_ERROR } from './persona-paths'
 
+const MEMORY_SEARCH_FLAGS_SOURCE = /^[gimsuy]*$/
+
 /**
  * Memory tools against the system sandbox. Writes queue into `pending`;
  * reads resolve the pending overlay for the current turn.
@@ -54,7 +56,7 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
           .string()
           .describe('Full UTF-8 content of the file. Overwrites any prior.'),
       }),
-      execute: async ({ path, content }) => {
+      execute: ({ path, content }) => {
         const safe = validateMemoryPath(path)
         if (isReadOnlyForAgent(safe)) {
           return READ_ONLY_TOOL_ERROR
@@ -85,7 +87,7 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
         if (isReadOnlyForAgent(safe)) {
           return READ_ONLY_TOOL_ERROR
         }
-        return editMemoryStep(agentId, pending, {
+        return await editMemoryStep(agentId, pending, {
           path: safe,
           oldString,
           newString,
@@ -98,7 +100,7 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
       description:
         'Delete a memory file. The deletion is queued and applied at end of event.',
       inputSchema: z.object({ path: z.string() }),
-      execute: async ({ path }) => {
+      execute: ({ path }) => {
         const safe = validateMemoryPath(path)
         if (isReadOnlyForAgent(safe)) {
           return READ_ONLY_TOOL_ERROR
@@ -121,7 +123,7 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
           ),
         flags: z
           .string()
-          .regex(/^[gimsuy]*$/)
+          .regex(MEMORY_SEARCH_FLAGS_SOURCE)
           .optional()
           .describe(
             "Extra regex flags (subset of 'gimsuy'). 'i' is the most useful — case-insensitive. 'g' is implied; you don't need to pass it."

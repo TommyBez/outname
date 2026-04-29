@@ -1,5 +1,10 @@
 import { Skeleton } from '@/components/ui/skeleton'
 
+const SUMMARY_CELL_KEYS = ['sk-0', 'sk-1', 'sk-2', 'sk-3'] as const
+const RESULT_SECTION_KEYS = ['sec-0', 'sec-1'] as const
+const RESULT_LINE_KEYS = ['ln-0', 'ln-1', 'ln-2'] as const
+const RUN_LIST_ROW_KEYS = ['row-0', 'row-1', 'row-2', 'row-3', 'row-4'] as const
+
 export function SummarySkeleton() {
   return (
     <section className="mb-14 grid grid-cols-1 gap-10 border-border border-y py-8 md:grid-cols-[auto_1fr] md:gap-16 md:py-10">
@@ -9,8 +14,8 @@ export function SummarySkeleton() {
         <Skeleton className="mt-4 h-3 w-20" />
       </div>
       <dl className="grid grid-cols-2 gap-x-10 gap-y-6 self-end sm:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div className="flex flex-col gap-2" key={i}>
+        {SUMMARY_CELL_KEYS.map((key) => (
+          <div className="flex flex-col gap-2" key={key}>
             <Skeleton className="h-3 w-16" />
             <Skeleton className="h-8 w-10" />
           </div>
@@ -27,15 +32,15 @@ export function RunResultSkeleton() {
         <Skeleton className="h-6 w-full max-w-2xl" />
         <Skeleton className="h-6 w-3/4 max-w-xl" />
       </div>
-      {Array.from({ length: 2 }).map((_, s) => (
-        <section key={s}>
+      {RESULT_SECTION_KEYS.map((sectionKey) => (
+        <section key={sectionKey}>
           <div className="mb-6 flex items-baseline gap-3">
             <Skeleton className="h-3 w-20" />
             <Skeleton className="h-3 w-6" />
           </div>
           <ul className="flex flex-col divide-y divide-border border-border border-t">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <li className="py-6 first:pt-6" key={i}>
+            {RESULT_LINE_KEYS.map((lineKey) => (
+              <li className="py-6 first:pt-6" key={`${sectionKey}-${lineKey}`}>
                 <div className="mb-2 flex items-baseline justify-between gap-4">
                   <Skeleton className="h-3 w-28" />
                   <Skeleton className="h-3 w-12" />
@@ -54,10 +59,10 @@ export function RunResultSkeleton() {
 export function RunListSkeleton() {
   return (
     <ul className="flex flex-col divide-y divide-border border-border border-y">
-      {Array.from({ length: 5 }).map((_, i) => (
+      {RUN_LIST_ROW_KEYS.map((key) => (
         <li
           className="grid grid-cols-[1fr_auto] items-baseline gap-6 py-5 md:grid-cols-[1fr_auto_auto] md:gap-10"
-          key={i}
+          key={key}
         >
           <div className="flex min-w-0 flex-col gap-2">
             <Skeleton className="h-5 w-48" />

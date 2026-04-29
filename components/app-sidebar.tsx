@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import * as React from 'react'
+import { type ReactNode, useCallback, useEffect, useTransition } from 'react'
 import { toast } from 'sonner'
 import {
   Sidebar,
@@ -39,27 +39,27 @@ interface AppSidebarProps {
    * agent's conversation list) slot into the same sidebar rather than
    * spawning a second one.
    */
-  sidebarExtras?: React.ReactNode
+  sidebarExtras?: ReactNode
 }
 
 export function AppSidebar({ sidebarExtras }: AppSidebarProps = {}) {
   const pathname = usePathname()
   const { setOpenMobile, isMobile } = useSidebar()
 
-  const isActive = React.useCallback(
+  const isActive = useCallback(
     (href: string) =>
       href === '/'
         ? pathname === '/'
-        : pathname === href || pathname.startsWith(href + '/'),
+        : pathname === href || pathname.startsWith(`${href}/`),
     [pathname]
   )
 
   // Auto-close the mobile drawer when the route changes.
-  React.useEffect(() => {
+  useEffect(() => {
     if (isMobile) {
       setOpenMobile(false)
     }
-  }, [pathname, isMobile, setOpenMobile])
+  }, [isMobile, setOpenMobile])
 
   return (
     <Sidebar className="border-sidebar-border border-r" collapsible="icon">
@@ -162,7 +162,7 @@ export function AppSidebarFallback() {
 
 function SignOutMenuButton() {
   const router = useRouter()
-  const [isPending, startTransition] = React.useTransition()
+  const [isPending, startTransition] = useTransition()
 
   async function handleSignOut() {
     try {

@@ -119,7 +119,7 @@ export async function getMostRecentConversationForAgent(
 export async function listConversationsForAgent(
   agentId: string
 ): Promise<ChatConversation[]> {
-  return db
+  return await db
     .select()
     .from(chatConversation)
     .where(eq(chatConversation.agentId, agentId))
@@ -133,7 +133,7 @@ export async function getCachedConversationListForAgent(
 
   cacheLife('minutes')
   cacheTag(conversationListTag(agentId))
-  return listConversationsForAgent(agentId)
+  return await listConversationsForAgent(agentId)
 }
 
 /**

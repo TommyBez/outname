@@ -23,6 +23,33 @@ const devTrustedOrigins = [
   'https://*.vusercontent.net',
 ]
 
+function productionTrustedOrigins(): string[] | undefined {
+  const url = process.env.BETTER_AUTH_URL
+  if (url) {
+    return [url]
+  }
+  return
+}
+
+function devTrustedOriginsList(request: Request | undefined): string[] {
+  const origins = [
+    ...(process.env.BETTER_AUTH_URL ? [process.env.BETTER_AUTH_URL] : []),
+    ...devTrustedOrigins,
+  ]
+  if (request && typeof request.headers?.get === 'function') {
+    const originHeader =
+      request.headers.get('origin') || request.headers.get('referer')
+    if (originHeader) {
+      try {
+        origins.push(new URL(originHeader).origin)
+      } catch {
+        // ignore invalid URLs
+      }
+    }
+  }
+  return origins
+}
+
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: 'pg',
@@ -44,29 +71,8 @@ export const auth = betterAuth({
   // is trusted. In dev: trust the incoming origin + a static allowlist so
   // the v0 sandbox and local dev work without per-host configuration.
   trustedOrigins: isProduction
-    ? process.env.BETTER_AUTH_URL
-      ? [process.env.BETTER_AUTH_URL]
-      : undefined
-    : async (request) => {
-        const origins = [
-          ...(process.env.BETTER_AUTH_URL ? [process.env.BETTER_AUTH_URL] : []),
-          ...devTrustedOrigins,
-        ]
-        // `request` can be undefined when Better Auth invokes this from
-        // non-HTTP contexts (e.g. during initialization), so guard it.
-        if (request && typeof request.headers?.get === 'function') {
-          const originHeader =
-            request.headers.get('origin') || request.headers.get('referer')
-          if (originHeader) {
-            try {
-              origins.push(new URL(originHeader).origin)
-            } catch {
-              // ignore invalid URLs
-            }
-          }
-        }
-        return origins
-      },
+    ? productionTrustedOrigins()
+    : (request) => devTrustedOriginsList(request),
   // Only override cookie attributes in non-production so the session
   // cookie works inside the v0 integrated preview's cross-site iframe.
   // Production keeps Better Auth's defaults (SameSite=Lax, Secure, HttpOnly).

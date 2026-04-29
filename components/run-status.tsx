@@ -24,6 +24,18 @@ const LABEL: Record<StatusResp['status'], string> = {
   failed: 'Failed',
 }
 
+function statusDotClassName(
+  status: 'running' | 'completed' | 'failed'
+): string {
+  if (status === 'running') {
+    return 'bg-accent animate-pulse'
+  }
+  if (status === 'completed') {
+    return 'bg-foreground/50'
+  }
+  return 'bg-destructive'
+}
+
 export function RunStatus({
   runId,
   initialStatus,
@@ -46,12 +58,7 @@ export function RunStatus({
     }
   }, [status, initialStatus, router])
 
-  const dot =
-    status === 'running'
-      ? 'bg-accent animate-pulse'
-      : status === 'completed'
-        ? 'bg-foreground/50'
-        : 'bg-destructive'
+  const dot = statusDotClassName(status)
 
   const tone = status === 'failed' ? 'text-destructive' : 'text-foreground'
 

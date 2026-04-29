@@ -48,7 +48,7 @@ export async function createExecTools(ctx: ExecToolsContext) {
       inputSchema: bashTool.tools.bash.inputSchema,
       execute: async ({ command }, options) => {
         'use step'
-        const result = await bashTool.tools.bash.execute!({ command }, options)
+        const result = await bashTool.tools.bash.execute?.({ command }, options)
 
         const day = new Date().toISOString().slice(0, 10)
         const auditCommand =
@@ -68,7 +68,7 @@ export async function createExecTools(ctx: ExecToolsContext) {
       inputSchema: bashTool.tools.readFile.inputSchema,
       execute: async ({ path }, options) => {
         'use step'
-        return bashTool.tools.readFile.execute!({ path }, options)
+        return await bashTool.tools.readFile.execute?.({ path }, options)
       },
     }),
 
@@ -77,7 +77,10 @@ export async function createExecTools(ctx: ExecToolsContext) {
       inputSchema: bashTool.tools.writeFile.inputSchema,
       execute: async ({ path, content }, options) => {
         'use step'
-        return bashTool.tools.writeFile.execute!({ path, content }, options)
+        return await bashTool.tools.writeFile.execute?.(
+          { path, content },
+          options
+        )
       },
     }),
     reset_exec: tool({
@@ -93,6 +96,7 @@ export async function createExecTools(ctx: ExecToolsContext) {
           ),
       }),
       execute: async ({ reason }) => {
+        'use step'
         const result = await resetExecSandbox({ agentId })
         const day = new Date().toISOString().slice(0, 10)
         const auditReason =

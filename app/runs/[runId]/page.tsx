@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { requireSession } from '@/lib/auth-guard'
 import { getCachedRunById, getCachedRunResult } from '@/lib/data'
 import { formatDateTime } from '@/lib/format'
+import { toRunLifecycleStatus } from '@/lib/run-lifecycle'
 
 export default function RunDetailPage({
   params,
@@ -69,26 +70,43 @@ async function RunDetail({ params }: { params: Promise<{ runId: string }> }) {
           <h1 className="text-balance font-medium font-serif text-3xl leading-tight tracking-tight md:text-4xl">
             {formatDateTime(run.startedAt)}
           </h1>
-          <RunStatus initialStatus={run.status as any} runId={run.id} />
+          <RunStatus
+            initialStatus={toRunLifecycleStatus(run.status)}
+            runId={run.id}
+          />
         </div>
       </header>
 
-      {run.status === 'failed' ? (
-        <div className="border-destructive/30 border-t pt-8">
-          <p className="font-mono text-destructive text-xs uppercase tracking-[0.2em]">
-            Run failed
-          </p>
-          {run.error && (
-            <pre className="mt-4 max-h-64 overflow-auto rounded-md border border-border bg-muted/40 p-3 font-mono text-muted-foreground text-xs">
-              {run.error}
-            </pre>
-          )}
-        </div>
-      ) : run.status === 'running' ? (
-        <RunProgress key={run.id} runId={run.id} />
-      ) : (
-        <RunResultView content={result?.content ?? null} />
-      )}
+      <RunDetailMain resultContent={result?.content ?? null} run={run} />
     </>
   )
+}
+
+function RunDetailMain({
+  run,
+  resultContent,
+}: {
+  resultContent: string | null
+  run: NonNullable<Awaited<ReturnType<typeof getCachedRunById>>>
+}) {
+  if (run.status === 'failed') {
+    return (
+      <div className="border-destructive/30 border-t pt-8">
+        <p className="font-mono text-destructive text-xs uppercase tracking-[0.2em]">
+          Run failed
+        </p>
+        {run.error ? (
+          <pre className="mt-4 max-h-64 overflow-auto rounded-md border border-border bg-muted/40 p-3 font-mono text-muted-foreground text-xs">
+            {run.error}
+          </pre>
+        ) : null}
+      </div>
+    )
+  }
+
+  if (run.status === 'running') {
+    return <RunProgress key={run.id} runId={run.id} />
+  }
+
+  return <RunResultView content={resultContent} />
 }

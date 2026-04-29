@@ -56,6 +56,8 @@ export function formatLongDate(date: Date | string | null | undefined): string {
   })
 }
 
+const SENDER_EMAIL_LINE = /^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/
+
 export function parseSender(raw: string | null): {
   name: string
   email: string
@@ -63,7 +65,7 @@ export function parseSender(raw: string | null): {
   if (!raw) {
     return { name: 'Unknown', email: '' }
   }
-  const match = raw.match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/)
+  const match = raw.match(SENDER_EMAIL_LINE)
   if (match) {
     return { name: match[1].trim() || match[2], email: match[2] }
   }

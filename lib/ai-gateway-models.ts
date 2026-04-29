@@ -73,6 +73,31 @@ interface RawResponse {
   object?: string
 }
 
+function isLanguageToolModel(m: RawModel): m is RawModel & { id: string } {
+  if (!m.id || typeof m.id !== 'string') {
+    return false
+  }
+  if (m.type !== 'language') {
+    return false
+  }
+  return Boolean(Array.isArray(m.tags) && m.tags.includes('tool-use'))
+}
+
+function rawModelToOption(m: RawModel & { id: string }): ModelOption {
+  return {
+    id: m.id,
+    name: typeof m.name === 'string' && m.name.length > 0 ? m.name : m.id,
+    ownedBy:
+      typeof m.owned_by === 'string' && m.owned_by.length > 0
+        ? m.owned_by
+        : (m.id.split('/')[0] ?? 'unknown'),
+    contextWindow:
+      typeof m.context_window === 'number' && m.context_window > 0
+        ? m.context_window
+        : 0,
+  }
+}
+
 /**
  * Server-only. Fetches the catalog with a 1h revalidate so the form
  * picks up new models within an hour without us redeploying. Result
@@ -98,27 +123,10 @@ export async function getAvailableModels(): Promise<ModelOption[]> {
     const data = Array.isArray(json?.data) ? json.data : []
     const mapped: ModelOption[] = []
     for (const m of data) {
-      if (!m.id || typeof m.id !== 'string') {
+      if (!isLanguageToolModel(m)) {
         continue
       }
-      if (m.type !== 'language') {
-        continue
-      }
-      if (!(Array.isArray(m.tags) && m.tags.includes('tool-use'))) {
-        continue
-      }
-      mapped.push({
-        id: m.id,
-        name: typeof m.name === 'string' && m.name.length > 0 ? m.name : m.id,
-        ownedBy:
-          typeof m.owned_by === 'string' && m.owned_by.length > 0
-            ? m.owned_by
-            : (m.id.split('/')[0] ?? 'unknown'),
-        contextWindow:
-          typeof m.context_window === 'number' && m.context_window > 0
-            ? m.context_window
-            : 0,
-      })
+      mapped.push(rawModelToOption(m))
     }
     if (mapped.length === 0) {
       console.error(
@@ -153,7 +161,7 @@ export async function isModelIdValid(modelId: string): Promise<boolean> {
   // perfectly valid id we just can't see right now.
   const isFallback =
     list.length === FALLBACK.length &&
-    list.every((o, i) => o.id === FALLBACK[i]!.id)
+    list.every((o, i) => o.id === FALLBACK[i]?.id)
   if (isFallback) {
     return true
   }

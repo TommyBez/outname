@@ -96,8 +96,8 @@ export function ChatHeader({ agentId, agentName, enabled }: ChatHeaderProps) {
             {agentName}
           </h1>
           <span
-            aria-label={enabled ? 'active' : 'paused'}
             className="hidden font-mono text-[10px] text-muted-foreground uppercase tracking-[0.2em] sm:inline"
+            title={enabled ? 'active' : 'paused'}
           >
             · {enabled ? 'active' : 'paused'}
           </span>
@@ -130,9 +130,9 @@ export function ChatHeader({ agentId, agentName, enabled }: ChatHeaderProps) {
           <DropdownMenuSeparator />
           <DropdownMenuItem
             disabled={isTriggering}
-            onSelect={(event) => {
+            onSelect={async (event) => {
               event.preventDefault()
-              void handleTriggerNow()
+              await handleTriggerNow()
             }}
           >
             <Play className="mr-2 size-3.5" />

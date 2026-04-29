@@ -6,6 +6,14 @@ import { cacheLife, cacheTag } from 'next/cache'
 import { gmailConnectionTag } from '@/lib/cache-tags'
 import { gmailConnection } from '@/lib/db/schema'
 
+function requireEnv(name: string): string {
+  const value = process.env[name]
+  if (!value) {
+    throw new Error(`${name} is not set`)
+  }
+  return value
+}
+
 export const GMAIL_SCOPES = [
   'https://www.googleapis.com/auth/gmail.readonly',
   'https://www.googleapis.com/auth/userinfo.email',
@@ -50,13 +58,15 @@ export async function exchangeCodeForTokens(
   code: string,
   redirectUri: string
 ): Promise<TokenResponse> {
+  const clientId = requireEnv('GOOGLE_CLIENT_ID')
+  const clientSecret = requireEnv('GOOGLE_CLIENT_SECRET')
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       code,
-      client_id: process.env.GOOGLE_CLIENT_ID!,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+      client_id: clientId,
+      client_secret: clientSecret,
       redirect_uri: redirectUri,
       grant_type: 'authorization_code',
     }),
@@ -93,7 +103,7 @@ export async function revokeToken(token: string): Promise<void> {
 }
 
 function getDb() {
-  const sql = neon(process.env.DATABASE_URL!)
+  const sql = neon(requireEnv('DATABASE_URL'))
   return drizzle(sql, { schema: { gmailConnection } })
 }
 
@@ -118,7 +128,7 @@ export async function getCachedGmailConnectionForUser(userId: string) {
 
   cacheLife('minutes')
   cacheTag(gmailConnectionTag(userId))
-  return getGmailConnectionForUser(userId)
+  return await getGmailConnectionForUser(userId)
 }
 
 export async function upsertGmailConnection(values: {

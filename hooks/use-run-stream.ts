@@ -33,6 +33,49 @@ function initialSteps(): StepState[] {
   }))
 }
 
+function eventStepStatus(status: string): StepState['status'] {
+  if (status === 'done') {
+    return 'done'
+  }
+  if (status === 'error') {
+    return 'error'
+  }
+  return 'active'
+}
+
+function parseEventLine(line: string): RunEvent | null {
+  try {
+    return JSON.parse(line) as RunEvent
+  } catch {
+    return null
+  }
+}
+
+async function drainNdjsonStream(
+  reader: ReadableStreamDefaultReader<string>,
+  onEvent: (evt: RunEvent) => void
+): Promise<void> {
+  let buffer = ''
+  for (;;) {
+    const { value, done } = await reader.read()
+    if (done) {
+      break
+    }
+    buffer += value
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+    for (const line of lines) {
+      if (!line.trim()) {
+        continue
+      }
+      const evt = parseEventLine(line)
+      if (evt) {
+        onEvent(evt)
+      }
+    }
+  }
+}
+
 /**
  * Read the /api/runs/[runId]/stream newline-delimited JSON response and
  * derive per-step UI state. Uses plain fetch + ReadableStream - no
@@ -47,10 +90,32 @@ export function useRunStream(runId: string) {
   useEffect(() => {
     const controller = new AbortController()
 
-    // Reset per-run state whenever the runId changes.
     setSteps(initialSteps())
     setStatus('connecting')
     setConnected(false)
+
+    function applyEvent(evt: RunEvent) {
+      if (evt.type === 'step') {
+        setSteps((prev) =>
+          prev.map((s) => {
+            if (s.name !== evt.step) {
+              return s
+            }
+            return {
+              ...s,
+              status: eventStepStatus(evt.status),
+              message: evt.message,
+              meta: evt.meta,
+              updatedAt: evt.ts,
+            }
+          })
+        )
+        return
+      }
+      if (evt.type === 'run' && evt.status === 'failed') {
+        setStatus('failed')
+      }
+    }
 
     async function run() {
       try {
@@ -66,68 +131,16 @@ export function useRunStream(runId: string) {
         setStatus('open')
         setConnected(true)
 
-        // Yield to let React flush the "connected" state before we block on
-        // reader.read(). Without this, React batches the state updates and
-        // never re-renders until the stream yields a chunk.
         await new Promise((r) => setTimeout(r, 0))
 
         const reader = res.body.pipeThrough(new TextDecoderStream()).getReader()
-
-        let buffer = ''
-        for (;;) {
-          const { value, done } = await reader.read()
-          if (done) {
-            break
-          }
-          buffer += value
-          const lines = buffer.split('\n')
-          buffer = lines.pop() ?? ''
-          for (const line of lines) {
-            if (!line.trim()) {
-              continue
-            }
-            let evt: RunEvent
-            try {
-              evt = JSON.parse(line) as RunEvent
-            } catch {
-              continue
-            }
-            apply(evt)
-          }
-        }
+        await drainNdjsonStream(reader, applyEvent)
         setStatus((prev) => (prev === 'failed' ? prev : 'done'))
       } catch (err) {
         if ((err as Error)?.name === 'AbortError') {
           return
         }
         setStatus('error')
-      }
-    }
-
-    function apply(evt: RunEvent) {
-      if (evt.type === 'step') {
-        setSteps((prev) =>
-          prev.map((s) => {
-            if (s.name !== evt.step) {
-              return s
-            }
-            const nextStatus: StepState['status'] =
-              evt.status === 'done'
-                ? 'done'
-                : evt.status === 'error'
-                  ? 'error'
-                  : 'active'
-            return {
-              ...s,
-              status: nextStatus,
-              message: evt.message,
-              meta: evt.meta,
-              updatedAt: evt.ts,
-            }
-          })
-        )
-      } else if (evt.type === 'run' && evt.status === 'failed') {
-        setStatus('failed')
       }
     }
 

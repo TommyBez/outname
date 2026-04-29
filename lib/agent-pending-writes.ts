@@ -105,7 +105,7 @@ export async function readLatestPendingFileWrite(input: {
 export async function listUnappliedPendingFileWrites(input: {
   agentId: string
 }): Promise<PendingFileWrite[]> {
-  return db
+  return await db
     .select()
     .from(pendingFileWrites)
     .where(

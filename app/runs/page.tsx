@@ -6,6 +6,7 @@ import { RunListSkeleton } from '@/components/skeletons'
 import { requireSession } from '@/lib/auth-guard'
 import { getCachedAllRuns } from '@/lib/data'
 import { formatDateTime } from '@/lib/format'
+import { toRunLifecycleStatus } from '@/lib/run-lifecycle'
 
 export default function RunsPage() {
   return (
@@ -66,7 +67,7 @@ async function RunList() {
               </span>
             </div>
             <RunStatus
-              initialStatus={run.status as any}
+              initialStatus={toRunLifecycleStatus(run.status)}
               runId={run.id}
               showTime={false}
             />
