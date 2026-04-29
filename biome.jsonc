@@ -10,5 +10,8 @@
       "semicolons": "asNeeded",
       "quoteStyle": "single"
     }
+  },
+  "files": {
+    "includes": ["**/*", "!components/ui/*", "!components/ai-elements/*"]
   }
 }
