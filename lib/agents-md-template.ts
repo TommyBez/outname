@@ -71,16 +71,15 @@ immediately.
 Use these whenever you need a shell, a file outside the memory volume,
 or to run scripts/builds/HTTP calls. Files persist across events.
 
-- \`bash({ command, timeoutMs? })\` — run a single shell command.
+- \`bash({ command })\` — run a single shell command.
   Returns \`{ exitCode, stdout, stderr, *Truncated }\`. Output is
   truncated to 64 KiB per stream. **Every call is auto-appended to
   \`logs/<UTC date>.md\`** with timestamp, exit code, and the command
   itself, so you can grep your own command history with
   \`search_memory\` in later turns.
-- \`file_read({ path })\` — read a UTF-8 text file (max 256 KiB).
+- \`file_read({ path })\` — read a UTF-8 text file.
 - \`file_write({ path, content })\` — create/overwrite a text file.
   Parents are created automatically.
-- \`file_list({ path? })\` — list immediate children of a directory.
 - \`reset_exec({ reason })\` — last-resort: destroy the exec sandbox
   AND its persisted snapshot, then re-provision a clean one. Memory
   files are unaffected. Use only when the workspace is genuinely

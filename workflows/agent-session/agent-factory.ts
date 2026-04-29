@@ -84,16 +84,9 @@ export async function buildAgent(
     throw new Error(`buildAgent: agent ${agentId} not found`)
   }
 
-  // composeSystemPrompt is itself a `"use step"` boundary — it
-  // takes the agent id (NOT a live `Sandbox` handle) and resumes
-  // the system sandbox internally. Doing the resume inside the step
-  // is what keeps `@vercel/sandbox` value imports out of the
-  // workflow bundle; otherwise the workflow bundler picks the SDK
-  // (and its Node built-in transitive deps: assert, async_hooks,
-  // crypto, dns, events, fs, module, os, path, stream, url, util,
-  // worker_threads, zlib) into the workflow bundle and emits the
-  // serde warning. Cheap in the steady state — the sandbox is
-  // already hot from `startupSystemSandbox` + `drainPendingWrites`.
+  // Keep the live Sandbox handle inside composeSystemPrompt's step;
+  // passing only the id avoids pulling @vercel/sandbox into the
+  // workflow bundle.
   const systemPrompt = await composeSystemPrompt({
     agentId,
     agentName: row.name,
@@ -106,10 +99,8 @@ export async function buildAgent(
   // The exec tools also receive `pending` so the bash audit log can
   // enqueue an append op into the shared per-event buffer instead of
   // doing a synchronous round-trip to the system sandbox per call.
-  // `createExecTools` is synchronous — every tool delegates to a
-  // `"use step"` worker, so there's nothing to resume at construction
-  // time.
-  const execTools = createExecTools({ agentId, pending })
+  // `createExecTools` prepares the bash-tool wrapper once per event.
+  const execTools = await createExecTools({ agentId, pending })
 
   const durableAgent = new DurableAgent({
     model: row.model,
