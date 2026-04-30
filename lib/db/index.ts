@@ -4,14 +4,15 @@ import {
   account,
   agent,
   agentFiles,
+  agentTools,
   chatConversation,
   chatMessage,
-  gmailConnection,
   pendingFileWrites,
   runResult,
   runs,
   session,
   user,
+  userConnections,
   verification,
 } from './schema'
 
@@ -27,7 +28,8 @@ const schema = {
   chatMessage,
   agentFiles,
   pendingFileWrites,
-  gmailConnection,
+  userConnections,
+  agentTools,
 }
 
 type DB = ReturnType<typeof drizzle<typeof schema>>

@@ -1,0 +1,19 @@
+import 'server-only'
+import { calcomConnector } from './calcom'
+import { resendConnector } from './resend'
+import type { Connector } from './types'
+
+/**
+ * Central connector registry. Add a connector here and the runtime,
+ * the HTTP layer, and the catalog UI pick it up automatically.
+ */
+
+const CONNECTORS: Connector[] = [resendConnector, calcomConnector]
+
+export function listConnectors(): readonly Connector[] {
+  return CONNECTORS
+}
+
+export function getConnector(provider: string): Connector | undefined {
+  return CONNECTORS.find((c) => c.provider === provider)
+}

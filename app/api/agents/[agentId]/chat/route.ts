@@ -39,9 +39,11 @@ import { getAgentById } from '@/lib/start-agent-run'
  * completes — see `workflows/chat/steps/persist-assistant-turn.ts`.
  *
  * Phase 2 dropped the per-kind chat gate (every agent is generic).
- * Connector-specific pre-flight (e.g. Gmail) returns in Phase 3 once
- * `user_connections` lands; until then chat works against whatever
- * memory + exec the agent has on disk.
+ * Phase 3 introduced `user_connections` + `agent_tools`: per-tool
+ * credential resolution now happens inside the workflow's boot step
+ * (`workflows/agent-session/steps/resolve-tool-plan.ts`), and tools
+ * that fail to resolve are surfaced as a "Tools needing reconnection"
+ * block in the system prompt rather than failing the chat round-trip.
  */
 export async function POST(
   req: NextRequest,

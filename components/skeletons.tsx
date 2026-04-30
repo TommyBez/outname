@@ -90,7 +90,7 @@ export function ConnectionNoticeSkeleton() {
   )
 }
 
-export function GmailSectionSkeleton() {
+export function ConnectionsSectionSkeleton() {
   return (
     <div className="flex flex-col gap-5">
       <div>

@@ -4,18 +4,24 @@ import { cacheLife, cacheTag } from 'next/cache'
 import {
   agentRunsTag,
   agentTag,
+  agentToolsTag,
   runsIndexTag,
   runTag,
   userAgentsTag,
+  userConnectionsTag,
 } from '@/lib/cache-tags'
 import { db } from '@/lib/db'
 import {
   type Agent,
+  type AgentTool,
   agent,
+  agentTools,
   type Run,
   type RunResult,
   runResult,
   runs,
+  type UserConnection,
+  userConnections,
 } from '@/lib/db/schema'
 
 export async function getLatestRun(): Promise<Run | null> {
@@ -161,4 +167,42 @@ export async function getCachedRunsForAgent(
   cacheLife('minutes')
   cacheTag(agentRunsTag(agentId))
   return await getRunsForAgent(agentId, limit)
+}
+
+export async function getUserConnections(
+  userId: string
+): Promise<UserConnection[]> {
+  return await db
+    .select()
+    .from(userConnections)
+    .where(eq(userConnections.userId, userId))
+    .orderBy(desc(userConnections.updatedAt))
+}
+
+export async function getCachedUserConnections(
+  userId: string
+): Promise<UserConnection[]> {
+  'use cache'
+
+  cacheLife('minutes')
+  cacheTag(userConnectionsTag(userId))
+  return await getUserConnections(userId)
+}
+
+export async function getAgentTools(agentId: string): Promise<AgentTool[]> {
+  return await db
+    .select()
+    .from(agentTools)
+    .where(eq(agentTools.agentId, agentId))
+    .orderBy(desc(agentTools.updatedAt))
+}
+
+export async function getCachedAgentTools(
+  agentId: string
+): Promise<AgentTool[]> {
+  'use cache'
+
+  cacheLife('minutes')
+  cacheTag(agentToolsTag(agentId))
+  return await getAgentTools(agentId)
 }

@@ -18,8 +18,12 @@ export function runsIndexTag() {
   return 'runs-index'
 }
 
-export function gmailConnectionTag(userId: string) {
-  return `gmail-connection-${userId}`
+export function userConnectionsTag(userId: string) {
+  return `user-connections-${userId}`
+}
+
+export function agentToolsTag(agentId: string) {
+  return `agent-tools-${agentId}`
 }
 
 export function conversationListTag(agentId: string) {

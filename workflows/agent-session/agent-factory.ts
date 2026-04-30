@@ -1,14 +1,16 @@
 import { DurableAgent } from '@workflow/ai/agent'
 import { getAgentById } from '@/lib/start-agent-run'
+import { buildAttachedTools } from '@/tools/build-attached-tools'
 import { composeSystemPrompt } from './compose-system-prompt'
+import { resolveToolPlan } from './steps/resolve-tool-plan'
 import { createExecTools } from './tools/exec-tools'
 import { createMemoryTools } from './tools/memory-tools'
 import { createPendingWrites, type PendingWrites } from './tools/pending-writes'
 
 /**
  * One event's agent: DB load, composed system prompt from sandbox persona
- * files, memory + exec tools, and a `pending` buffer the caller must flush
- * via `endOfEvent`.
+ * files, memory + exec tools + maintainer tools (Phase 3), and a `pending`
+ * buffer the caller must flush via `endOfEvent`.
  */
 export interface BuildAgentArgs {
   agentId: string
@@ -39,10 +41,21 @@ export async function buildAgent(
     throw new Error(`buildAgent: agent ${agentId} not found (run ${runId})`)
   }
 
+  // Resolve attached maintainer tools first so we know which need
+  // reconnection — those reasons get rendered into the system prompt
+  // so the model can recover gracefully.
+  //
+  // Two-stage boot keeps the workflow bundle free of `node:crypto`:
+  // (1) the step does DB + decrypt + refresh and returns plain JSON;
+  // (2) the workflow synchronously calls `tool.build()` on the result.
+  const plan = await resolveToolPlan({ agentId, userId: row.userId })
+  const attached = buildAttachedTools({ agentId, plan })
+
   const systemPrompt = await composeSystemPrompt({
     agentId,
     agentName: row.name,
     nowIso: args.nowIso ?? new Date().toISOString(),
+    reconnects: attached.reconnects,
   })
 
   const pending = createPendingWrites()
@@ -56,6 +69,7 @@ export async function buildAgent(
     tools: {
       ...memoryTools,
       ...execTools,
+      ...attached.tools,
     },
   })
 
