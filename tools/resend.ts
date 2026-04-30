@@ -1,5 +1,6 @@
 import 'server-only'
 import { tool } from 'ai'
+import { fetch as workflowFetch } from 'workflow'
 import { z } from 'zod'
 import { resendApiKey } from '@/connectors/resend'
 import type { MaintainerTool } from './types'
@@ -57,6 +58,7 @@ export const resendSendTool: MaintainerTool = {
           .describe('Optional HTML body — providers prefer this when present.'),
       }),
       async execute({ to, subject, text, html }) {
+        'use step'
         const apiKey = resendApiKey(credentials.resend)
         const body: Record<string, unknown> = {
           from: parsed.fromEmail,
@@ -67,7 +69,7 @@ export const resendSendTool: MaintainerTool = {
         if (html) {
           body.html = html
         }
-        const res = await fetch('https://api.resend.com/emails', {
+        const res = await workflowFetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
             authorization: `Bearer ${apiKey}`,

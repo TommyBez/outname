@@ -35,26 +35,6 @@ export const resendConnector: ApiKeyConnector = {
           'Generate at resend.com/api-keys. The key is encrypted at rest before storage.',
       },
     ],
-    async validate(values) {
-      const parsed = resendCredentialSchema.safeParse(values)
-      if (!parsed.success) {
-        return {
-          ok: false,
-          error: parsed.error.issues[0]?.message ?? 'Invalid API key',
-        }
-      }
-      // Cheap probe: list domains. Validates the key without sending.
-      const res = await fetch('https://api.resend.com/domains', {
-        headers: { authorization: `Bearer ${parsed.data.apiKey}` },
-      })
-      if (!res.ok) {
-        return {
-          ok: false,
-          error: `Resend rejected the key (HTTP ${res.status}). Double-check it and try again.`,
-        }
-      }
-      return { ok: true, metadata: {} }
-    },
   },
 }
 
