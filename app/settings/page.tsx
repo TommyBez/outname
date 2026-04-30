@@ -2,7 +2,10 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 import { AppShell } from '@/components/app-shell'
 import { ConnectionsList } from '@/components/connections-list'
-import { AccountSkeleton, GmailSectionSkeleton } from '@/components/skeletons'
+import {
+  AccountSkeleton,
+  ConnectionsSectionSkeleton,
+} from '@/components/skeletons'
 import { listConnectors } from '@/connectors/registry'
 import { getSession, requireSession } from '@/lib/auth-guard'
 import { getCachedAgentsForUser, getCachedUserConnections } from '@/lib/data'
@@ -27,7 +30,7 @@ export default function SettingsPage({
 
       <div className="border-foreground border-y-2">
         <Section title="Connections">
-          <Suspense fallback={<GmailSectionSkeleton />}>
+          <Suspense fallback={<ConnectionsSectionSkeleton />}>
             <ConnectionsSection />
           </Suspense>
         </Section>

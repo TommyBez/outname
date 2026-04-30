@@ -56,7 +56,9 @@ A user-created entity with:
 An invocable capability the agent can call via the AI SDK tool protocol. Four sources at runtime, one interface:
 - **Built-in memory tools** — always present. `read_memory`, `write_memory`, `append_memory`, `list_memory`, `search_memory`, `delete_memory`, `move_memory`. The only path to read/write memory files. Tool-layer write block on `SOUL.md` and `AGENTS.md`. A consequence of having a system sandbox.
 - **Built-in exec tools** — always present. `bash`, `readFile`, `writeFile` (all run against the **exec sandbox**, supplied by [vercel-labs/bash-tool](https://github.com/vercel-labs/bash-tool)), plus our own `reset_exec` (drops the exec snapshot, boots fresh next event). None of these can reach memory files (different VM). A consequence of having an exec sandbox.
-- **Maintainer catalog tools** — global, code-defined, versioned with the app (`gmail.search`, `web.fetch`, `browser.open`, …). Attached per-agent via the catalog UI.
+- **Maintainer catalog tools** — global, code-defined, versioned with the app (`gmail.search`, `web.fetch`[^webfetch], `browser.open`, …). Attached per-agent via the catalog UI.
+
+  [^webfetch]: `web.fetch` is **deferred past Phase 3**. Until SSRF guards (allowlist, scheme/host validation, response-size cap, redirect-chain checks) are designed, agents reach the open web via `bash + curl` inside the exec sandbox, where the existing sandbox boundary contains the blast radius. See §7 Phase 3 for the catalog actually shipped.
 - **Synthesized agent-tools** — one per user-owned agent, generated at runtime so agents can call each other (§4.5). Attached via the catalog UI as if they were maintainer tools.
 
 To the LLM all three are indistinguishable — they're just functions in the `ToolSet`.
@@ -596,7 +598,7 @@ In this phase the agent's `ToolSet` is just memory tools + exec tools (`bash` + 
   - Generic `api_key` connector with a Zod-driven form modal for any provider tagged `kind:"api_key"`.
 - Generalise `gmailConnection` → `user_connections` with `kind` and `metadata` columns. Tool-attach flow triggers the appropriate connector when a `user_connection` requirement is unmet.
 - Per-attachment config: render `tool.configSchema` as a form alongside the "Attach" button; persist into `agent_tools.config`; surface in `ToolBuildContext.config` (Zod-validated) at session start.
-- First real tool set: `gmail.search`, `gmail.send`, `google-calendar.read`, `google-calendar.create`, `web.fetch`. (No `memory.write` / `tasks.write` catalog tools — those are subsumed by the built-in memory tools shipped in Phase 2.) At least one api_key tool exercised in tests (e.g. a `resend.send` or similar) to prove the api_key connector path.
+- First real tool set: `gmail.search`, `gmail.send`, `google-calendar.read`, `google-calendar.create`, plus `resend.send` to exercise the api_key connector path. **`web.fetch` was dropped from the Phase 3 cut and deferred** — until SSRF guards are designed (allowlist, scheme/host validation, response-size cap, redirect-chain checks), agents use `bash + curl` in the exec sandbox for ad-hoc HTTP. (No `memory.write` / `tasks.write` catalog tools — those are subsumed by the built-in memory tools shipped in Phase 2.)
 - Tool-catalog UI and attach/detach flow. Attachment updates `agent_tools`; the session rebuilds its `ToolSet` at the start of the next event. Missing / expired credentials surface as a "reconnect" prompt instead of crashing the session.
 
 **Testable end state.** A user can rebuild an equivalent of the original "daily email brief" agent entirely through the UI — create an agent, attach `gmail.search` (OAuth flow runs once), write `SOUL.md` (identity) and per-agent `AGENTS.md` instructions (e.g. "every heartbeat: fetch today's email with `gmail.search`, summarise, `append_memory('MEMORY.md', …)`") — with no code deploy required. An api_key tool (e.g. `resend.send`) can also be attached via the form-driven flow.
