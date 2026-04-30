@@ -25,7 +25,7 @@ import type { Reconnect } from './types'
 export interface BuildAttachedToolsResult {
   /** Reconnects to surface in the system prompt + UI. */
   reconnects: Reconnect[]
-  /** AI-SDK tool dictionary, keyed by tool id (e.g. "gmail_search"). */
+  /** AI-SDK tool dictionary, keyed by tool id (e.g. "resend_send"). */
   tools: Record<string, Tool>
 }
 

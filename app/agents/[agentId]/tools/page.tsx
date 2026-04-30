@@ -61,7 +61,7 @@ async function Resolved({ params }: { params: Params }) {
     return {
       provider,
       displayName: connector?.displayName ?? provider,
-      status: c ? (c.status as 'active' | 'expired' | 'revoked') : null,
+      status: c ? (c.status as 'active' | 'invalid') : null,
     }
   })
 

@@ -2,13 +2,11 @@ import type { z } from 'zod'
 
 /**
  * Connector contract — the per-provider plumbing the platform calls to
- * obtain, refresh, and revoke credentials. Connectors are intentionally
- * generic OAuth 2.0 / api_key adapters: they hold no opinions about
- * which scopes a tool needs, what shape `metadata` takes, or which
- * tools sit on top of them. Those are tool-author concerns.
+ * obtain API-key credentials. OAuth is intentionally deferred past
+ * Phase 3; this contract only covers simple form-driven secrets.
  *
- *   tool author    -> chooses provider + scopes + config layer
- *   connector      -> exchanges, refreshes, revokes credentials
+ *   tool author    -> chooses provider + config layer
+ *   connector      -> validates and describes credential form fields
  *   runtime        -> persists, resolves, surfaces reconnect reasons
  */
 
@@ -21,59 +19,6 @@ import type { z } from 'zod'
  * `ToolBuildContext.credentials[provider]`.
  */
 export type RawCredential = unknown
-
-/**
- * Result of every successful OAuth credential mint — both initial code
- * exchange and subsequent refreshes return this shape so the runtime
- * has a single persistence path.
- *
- *   `raw`            connector-private credential payload
- *   `expiresAt`      ISO-8601 string, or null when the credential has
- *                    no expiry (e.g. some long-lived API keys)
- *   `grantedScopes`  scopes the provider actually granted; runtime uses
- *                    these for scope-gap detection. Connectors MUST
- *                    parse this from the token response, not from the
- *                    request — providers are free to grant more or
- *                    fewer scopes than were requested.
- *   `metadata`       free-form, connector-defined. Common entries:
- *                    `email`, `accountId`. Persisted as-is into
- *                    `user_connections.metadata`.
- */
-export interface OAuthExchangeResult {
-  expiresAt: string | null
-  grantedScopes: string[]
-  metadata: Record<string, unknown>
-  raw: RawCredential
-}
-
-export interface OAuthBuildAuthorizeUrlArgs {
-  redirectUri: string
-  /**
-   * Opaque set of provider-defined scope strings. The runtime computes
-   * this server-side as the union of scopes required by the agent's
-   * attached tools — connectors NEVER inject defaults of their own.
-   */
-  scopes: string[]
-  state: string
-}
-
-export interface OAuthExchangeCodeArgs {
-  code: string
-  redirectUri: string
-}
-
-export interface OAuthConnector {
-  description: string
-  displayName: string
-  kind: 'oauth'
-  oauth: {
-    buildAuthorizeUrl(args: OAuthBuildAuthorizeUrlArgs): string
-    exchangeCode(args: OAuthExchangeCodeArgs): Promise<OAuthExchangeResult>
-    refresh(raw: RawCredential): Promise<OAuthExchangeResult>
-    revoke?(raw: RawCredential): Promise<void>
-  }
-  provider: string
-}
 
 export interface ApiKeyFieldDescriptor {
   description?: string
@@ -113,7 +58,7 @@ export interface ApiKeyConnector {
   provider: string
 }
 
-export type Connector = OAuthConnector | ApiKeyConnector
+export type Connector = ApiKeyConnector
 
 // `Reconnect` lives in `tools/types.ts` — the system prompt and the
 // catalog UI both consume it directly from there. Connector code

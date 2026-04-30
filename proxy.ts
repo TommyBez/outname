@@ -22,6 +22,5 @@ export const config = {
     '/settings/:path*',
     '/api/workflow/:path*',
     '/api/runs/:path*',
-    '/api/google/:path*',
   ],
 }

@@ -297,23 +297,19 @@ export const pendingFileWrites = pgTable(
 )
 
 /**
- * Generic per-(user, provider) credential store. Replaces the bespoke
- * `gmail_connection` table from Phase 2.
+ * Generic per-(user, provider) API-key credential store. Replaces the
+ * bespoke `gmail_connection` table from Phase 2.
  *
  * `credentials` is a base64-encoded AES-256-GCM envelope produced by
  * `lib/connection-crypto.ts`. Plaintext shape is opaque to the platform —
  * each connector defines its own.
  *
- * `metadata.scopes: string[]` is the source of truth for granted OAuth
- * scopes (used by `resolveCredentials` for scope-gap detection).
- * Other free-form fields (account email, account id, ...) are
- * connector-defined.
+ * `metadata` is connector-defined free-form status context. API keys
+ * do not get read by the UI, only decrypted inside the tool runtime.
  *
  * `status` lifecycle is owned by `connectors/runtime.ts`:
- *   active   ←   exchangeCode succeeds
- *   active   ←   refresh succeeds
- *   expired  ←   refresh returns invalid_token / 401-style error
- *   revoked  ←   refresh returns invalid_grant: revoked OR explicit disconnect
+ *   active   ←   API key validates and saves
+ *   invalid  ←   stored credential cannot be decrypted
  */
 export const userConnections = pgTable(
   'user_connections',
@@ -324,7 +320,7 @@ export const userConnections = pgTable(
     provider: text('provider').notNull(),
     credentials: text('credentials').notNull(),
     metadata: jsonb('metadata').notNull().default({}),
-    status: text('status').notNull().default('active'), // active | expired | revoked
+    status: text('status').notNull().default('active'), // active | invalid
     expiresAt: timestamp('expires_at', { withTimezone: true }),
     lastError: text('last_error'),
     createdAt: timestamp('created_at', { withTimezone: true })
@@ -342,7 +338,7 @@ export const userConnections = pgTable(
 
 /**
  * Agent's attached maintainer tools. One row per (agent, tool); `tool_id`
- * is the registry id (e.g. "gmail_search"). `config` is validated
+ * is the registry id (e.g. "resend_send"). `config` is validated
  * against the maintainer tool's `configSchema` at attach time and at
  * every event boot — drift surfaces as `reason: "config_invalid"` in the
  * reconnects channel rather than crashing.
@@ -379,4 +375,4 @@ export type ChatConversation = typeof chatConversation.$inferSelect
 export type ChatMessage = typeof chatMessage.$inferSelect
 export type ChatRole = 'user' | 'assistant' | 'system'
 export type RunStatus = 'running' | 'completed' | 'failed'
-export type ConnectionStatus = 'active' | 'expired' | 'revoked'
+export type ConnectionStatus = 'active' | 'invalid'

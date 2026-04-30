@@ -21,7 +21,7 @@ export interface ToolCatalogEntry {
   configFields: ToolConfigField[]
   description: string
   displayName: string
-  /** Required providers (`google`, `resend`, ...) extracted from `requirements`. */
+  /** Required providers (`resend`, ...) extracted from `requirements`. */
   providers: string[]
   toolId: string
 }

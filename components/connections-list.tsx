@@ -18,7 +18,7 @@ interface ConnectorSummary {
   }>
   description: string
   displayName: string
-  kind: 'oauth' | 'api_key'
+  kind: 'api_key'
   provider: string
 }
 
@@ -54,8 +54,7 @@ function describeIdentity(metadata: Record<string, unknown>): string | null {
 
 const STATUS_COPY: Record<ConnectionStatus, string> = {
   active: 'Connected',
-  expired: 'Expired — reconnect required',
-  revoked: 'Revoked — reconnect required',
+  invalid: 'Invalid — replace key',
 }
 
 export function ConnectionsList({ connectors, connections }: Props) {
@@ -108,12 +107,12 @@ function ConnectorRow({
             </p>
           )}
           {connection?.lastError && (
-            <p className="mt-2 break-words text-destructive text-xs">
+            <p className="wrap-break-word mt-2 text-destructive text-xs">
               {connection.lastError}
             </p>
           )}
         </div>
-        <ConnectorAction connection={connection} connector={connector} />
+        <ApiKeyControls connection={connection} connector={connector} />
       </div>
     </div>
   )
@@ -122,9 +121,6 @@ function ConnectorRow({
 function statusDotClass(status: ConnectionStatus): string {
   if (status === 'active') {
     return 'bg-foreground'
-  }
-  if (status === 'expired') {
-    return 'bg-accent'
   }
   return 'bg-destructive'
 }
@@ -135,65 +131,6 @@ function StatusDot({ status }: { status: ConnectionStatus }) {
       aria-hidden
       className={`inline-block size-2 ${statusDotClass(status)}`}
     />
-  )
-}
-
-function ConnectorAction({
-  connector,
-  connection,
-}: {
-  connector: ConnectorSummary
-  connection: ConnectionView | null
-}) {
-  if (connector.kind === 'oauth') {
-    return <OAuthButtons connection={connection} connector={connector} />
-  }
-  return <ApiKeyControls connection={connection} connector={connector} />
-}
-
-function OAuthButtons({
-  connector,
-  connection,
-}: {
-  connector: ConnectorSummary
-  connection: ConnectionView | null
-}) {
-  const [pending, startTransition] = useTransition()
-  const router = useRouter()
-
-  function handleDisconnect() {
-    startTransition(async () => {
-      const res = await disconnectConnectionAction(connector.provider)
-      if (!res.ok) {
-        toast.error(res.error ?? 'Disconnect failed.')
-        return
-      }
-      toast.success('Disconnected.')
-      router.refresh()
-    })
-  }
-
-  const connectHref = `/api/connections/${connector.provider}/connect?returnTo=/settings`
-
-  return (
-    <div className="flex shrink-0 items-center gap-2">
-      <a
-        className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
-        href={connectHref}
-      >
-        {connection ? 'Reconnect' : 'Connect'}
-      </a>
-      {connection && (
-        <button
-          className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
-          disabled={pending}
-          onClick={handleDisconnect}
-          type="button"
-        >
-          {pending ? '...' : 'Disconnect'}
-        </button>
-      )}
-    </div>
   )
 }
 

@@ -29,8 +29,8 @@ import type { Reconnect } from '@/tools/types'
  *                   never carries DB rows or encrypted bytes.
  *   - `reconnects`  Same shape `composeSystemPrompt` consumes —
  *                   tool-keyed (`tool_removed`, `config_invalid`) AND
- *                   provider-keyed (`expired`, `revoked`, `scope_gap`,
- *                   `missing_credential`).
+ *                   provider-keyed (`missing_credential`,
+ *                   `invalid_credential`).
  */
 export interface PlannedTool {
   config: Record<string, unknown>
@@ -93,14 +93,13 @@ export async function resolveToolPlan(args: {
         .filter((r) => r.kind === 'connection')
         .map((r) => ({
           provider: r.provider,
-          scopes: r.scopes,
           toolId: row.toolId,
         })),
     })
   }
 
-  // Pass 2: resolve credentials. One DB read + one refresh per
-  // provider, regardless of how many tools share the connection.
+  // Pass 2: resolve credentials. One DB read + decrypt per provider,
+  // regardless of how many tools share the connection.
   const requirements = planned.flatMap((p) => p.requirements)
   const { ready, reconnects: credentialReconnects } = await resolveCredentials({
     userId,

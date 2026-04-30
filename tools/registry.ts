@@ -1,6 +1,4 @@
 import 'server-only'
-import { gmailSearchTool, gmailSendTool } from './gmail'
-import { calendarCreateTool, calendarReadTool } from './google-calendar'
 import { resendSendTool } from './resend'
 import type { MaintainerTool } from './types'
 
@@ -10,17 +8,11 @@ import type { MaintainerTool } from './types'
  * remove one and existing `agent_tools` rows referencing it surface as
  * `reason: "tool_removed"` in the reconnects channel (no crash).
  *
- * `web.fetch` is intentionally absent for Phase 3 — the agent reaches
- * the open web via `bash + curl` in the exec sandbox until SSRF guards
- * are designed (architecture §7 footnote).
+ * Phase 3 intentionally ships only API-key or no-auth catalog tools.
+ * OAuth-backed tools are deferred until the connector flow is worth the
+ * extra product and security surface.
  */
-const TOOLS: MaintainerTool[] = [
-  gmailSearchTool,
-  gmailSendTool,
-  calendarReadTool,
-  calendarCreateTool,
-  resendSendTool,
-]
+const TOOLS: MaintainerTool[] = [resendSendTool]
 
 export function listMaintainerTools(): readonly MaintainerTool[] {
   return TOOLS
@@ -34,4 +26,4 @@ export function getMaintainerTool(toolId: string): MaintainerTool | undefined {
  * Coarse category ordering for the catalog UI. Tools with categories
  * not in this list fall to the end alphabetically.
  */
-export const TOOL_CATEGORY_ORDER = ['gmail', 'calendar', 'email'] as const
+export const TOOL_CATEGORY_ORDER = ['email'] as const

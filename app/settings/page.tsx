@@ -95,7 +95,7 @@ async function ConnectionsSection() {
 
   const connections = rows.map((r) => ({
     provider: r.provider,
-    status: r.status as 'active' | 'expired' | 'revoked',
+    status: r.status as 'active' | 'invalid',
     metadata: (r.metadata ?? {}) as Record<string, unknown>,
     lastError: r.lastError,
     connectedAt: r.createdAt.toISOString(),

@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidateTag } from 'next/cache'
-import { getApiKeyConnectorOrThrow, getConnector } from '@/connectors/registry'
+import { getConnector } from '@/connectors/registry'
 import {
   disconnectProvider,
   persistApiKeyConnection,
@@ -29,12 +29,6 @@ export async function saveApiKeyConnectionAction(
   if (!connector) {
     return { ok: false, error: 'Unknown provider.' }
   }
-  if (connector.kind !== 'api_key') {
-    return {
-      ok: false,
-      error: 'Provider does not accept api_key credentials.',
-    }
-  }
 
   const parsed = connector.apiKey.formSchema.safeParse(values)
   if (!parsed.success) {
@@ -44,10 +38,9 @@ export async function saveApiKeyConnectionAction(
     }
   }
 
-  const apiKeyConnector = getApiKeyConnectorOrThrow(provider)
-  if (apiKeyConnector.apiKey.validate) {
+  if (connector.apiKey.validate) {
     try {
-      const result = await apiKeyConnector.apiKey.validate(parsed.data)
+      const result = await connector.apiKey.validate(parsed.data)
       if (!result.ok) {
         return { ok: false, error: result.error ?? 'Invalid credentials.' }
       }

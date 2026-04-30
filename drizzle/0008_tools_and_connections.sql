@@ -3,10 +3,10 @@
 DROP TABLE IF EXISTS "gmail_connection";
 
 --> statement-breakpoint
--- Generic per-(user, provider) credential store. `credentials` is the
+-- Generic per-(user, provider) API-key credential store. `credentials` is the
 -- base64 AES-256-GCM envelope produced by lib/connection-crypto.ts.
--- `metadata.scopes: string[]` is the source of truth for granted OAuth
--- scopes. `status` lifecycle is owned by connectors/runtime.ts.
+-- `metadata` is connector-defined status context. `status` lifecycle
+-- is owned by connectors/runtime.ts (`active` | `invalid`).
 CREATE TABLE IF NOT EXISTS "user_connections" (
 	"user_id" text NOT NULL,
 	"provider" text NOT NULL,

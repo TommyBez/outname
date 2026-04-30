@@ -24,8 +24,7 @@ import type { RawCredential } from '@/connectors/types'
 /**
  * Capability a maintainer tool needs at build time.
  *
- *   `connection` — needs a stored credential at the named provider,
- *                  optionally with a minimum scope set (OAuth only).
+ *   `connection` — needs a stored credential at the named provider.
  *
  * Future Phase 4 additions (`tool_sandbox`, …) plug in here without
  * touching every existing tool.
@@ -33,7 +32,6 @@ import type { RawCredential } from '@/connectors/types'
 export interface ToolRequirement {
   kind: 'connection'
   provider: string
-  scopes?: string[]
 }
 
 /**
@@ -65,12 +63,11 @@ export interface ToolBuildContext {
   config: Record<string, unknown>
   /**
    * Decrypted, refreshed credentials keyed by provider id. The runtime
-   * has already verified that every required provider is present and
-   * any required scopes are granted; tools can dereference without
-   * re-checking.
+   * has already verified that every required provider is present; tools
+   * can dereference without re-checking.
    */
   credentials: Record<string, RawCredential>
-  /** Registry id, e.g. "gmail_search". For logging / error attribution. */
+  /** Registry id, e.g. "resend_send". For logging / error attribution. */
   toolId: string
 }
 
@@ -87,22 +84,14 @@ export interface ToolBuildContext {
  *     reconnection" block)
  *   - the catalog UI (`/agents/[agentId]/tools` shows per-row banners
  *     with the appropriate "Reconnect" / "Re-attach" / "Detach" CTA)
- *   - the connect endpoint (callers send the user here when a tool is
- *     missing scopes or credentials)
+ *   - the settings page (where users replace missing/invalid API keys)
  *
  * Keep the variants small and orthogonal — every new variant is a UI
  * obligation in three places.
  */
 export type Reconnect =
   | { provider: string; toolId: string; reason: 'missing_credential' }
-  | { provider: string; toolId: string; reason: 'expired' }
-  | { provider: string; toolId: string; reason: 'revoked' }
-  | {
-      provider: string
-      toolId: string
-      reason: 'scope_gap'
-      neededScopes: string[]
-    }
+  | { provider: string; toolId: string; reason: 'invalid_credential' }
   | { toolId: string; reason: 'config_invalid'; message: string }
   | { toolId: string; reason: 'build_failed'; message: string }
   | { toolId: string; reason: 'tool_removed' }
