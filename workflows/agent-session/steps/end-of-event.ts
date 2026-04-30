@@ -9,6 +9,7 @@ import {
 import { SYSTEM_SANDBOX_ROOT } from '@/lib/agent-sandbox-registry'
 import { db } from '@/lib/db'
 import { agentFiles } from '@/lib/db/schema'
+import { stopAllToolSandboxesForRun } from '@/lib/tool-sandbox-runtime'
 import {
   flushPendingWrites,
   type PendingWrites,
@@ -79,6 +80,11 @@ export async function endOfEvent(input: {
       .filter((s): s is Sandbox => s !== null)
       .map((s) => releaseSandbox(s))
   )
+
+  // Phase 4: tear down any tool sandboxes (e.g. agent-browser) that
+  // were spawned during this event so the next event boots fresh.
+  // Errors are logged-and-swallowed inside the helper.
+  await stopAllToolSandboxesForRun()
 }
 
 async function mirrorMemoryToDb(

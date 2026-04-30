@@ -105,18 +105,48 @@ async function runAgentBrowser(
 ): Promise<RunAgentBrowserResult> {
   'use step'
   const sandbox = await getOrStartToolSandbox('agent-browser')
-  const result = await sandbox.runCommand({
-    cmd: 'agent-browser',
-    args: [input.command, ...input.args],
-    // Note: the SDK accepts a sandbox-side timeout; we pass it through
-    // so the model's `timeoutMs` actually clips runaway commands.
+
+  // The Vercel Sandbox SDK doesn't expose a per-command wall-clock
+  // budget directly, so we race the run against a JS-side timeout.
+  // The runaway command keeps running inside the sandbox until the
+  // sandbox itself is stopped at end-of-event — that's acceptable
+  // because tool sandboxes are scoped to one workflow run.
+  const exec = (async () => {
+    const result = await sandbox.runCommand('agent-browser', [
+      input.command,
+      ...input.args,
+    ])
+    const [stdout, stderr] = await Promise.all([
+      result.stdout(),
+      result.stderr(),
+    ])
+    return {
+      ok: result.exitCode === 0,
+      exitCode: result.exitCode,
+      stdout: stdout.slice(0, MAX_STDOUT_BYTES),
+      stderr: stderr.slice(0, MAX_STDERR_BYTES),
+    } satisfies RunAgentBrowserResult
+  })()
+
+  let timer: ReturnType<typeof setTimeout> | null = null
+  const timeout = new Promise<RunAgentBrowserResult>((resolve) => {
+    timer = setTimeout(() => {
+      resolve({
+        ok: false,
+        exitCode: -1,
+        stdout: '',
+        stderr: `agent-browser ${input.command} timed out after ${input.timeoutMs}ms`,
+        timedOut: true,
+      })
+    }, input.timeoutMs)
   })
-  const [stdout, stderr] = await Promise.all([result.stdout(), result.stderr()])
-  return {
-    ok: result.exitCode === 0,
-    exitCode: result.exitCode,
-    stdout: stdout.slice(0, MAX_STDOUT_BYTES),
-    stderr: stderr.slice(0, MAX_STDERR_BYTES),
+
+  try {
+    return await Promise.race([exec, timeout])
+  } finally {
+    if (timer) {
+      clearTimeout(timer)
+    }
   }
 }
 

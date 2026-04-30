@@ -1,44 +1,54 @@
-import type { UIMessage, UIMessageChunk } from 'ai'
+import {
+  convertToModelMessages,
+  type UIMessage,
+  type UIMessageChunk,
+} from 'ai'
 import { eq } from 'drizzle-orm'
-import { getWritable } from 'workflow'
+import { revalidateTag } from 'next/cache'
+import { getWorkflowMetadata, getWritable } from 'workflow'
 import { resumeHook } from 'workflow/api'
 import { startupExecSandbox, startupSystemSandbox } from '@/lib/agent-sandbox'
+import { agentRunsTag, runsIndexTag, runTag } from '@/lib/cache-tags'
 import { db } from '@/lib/db'
 import { runs } from '@/lib/db/schema'
 import { buildAgent } from '../agent-factory'
-import { drainPendingWrites } from '../steps/drain-pending-writes'
 import type { SubAgentReply } from '../events'
+import { drainPendingWrites } from '../steps/drain-pending-writes'
 import { type PendingWrites, createPendingWrites } from '../tools/pending-writes'
 
 /**
- * Phase 4: invocation event handler — runs inside the child agent's
- * long-lived session workflow when a parent agent calls it via
- * `agent_<childId>`.
+ * Phase 4: invocation event handler — runs inside the **child**
+ * agent's session workflow when a parent agent's `agent_<childId>`
+ * tool call dispatches an `invocation` event onto its hook.
  *
  * Mirrors `handleChat` shape with key differences:
  *
- *   - No `conversationId`, no chat-message persistence — the parent's
- *     tool call is the unit of conversation, not a UI thread.
- *   - Allocates its own `runs` row for observability so sub-agent
- *     calls show up as linked workflow runs.
- *   - Streams to a per-invocation namespace keyed by `replyTo` so we
- *     can debug a specific call without trawling the session's
- *     general stream.
+ *   - No `conversationId` and no chat-message persistence — the
+ *     parent's tool call IS the unit of conversation, not a UI thread.
+ *   - Allocates its own `runs` row so sub-agent calls show up in
+ *     `/runs/...` for observability and the existing
+ *     `/api/runs/[runId]/stream` route can replay this run's chunks.
+ *   - Streams to a per-invocation namespace keyed by `replyTo` so a
+ *     specific call's chunks are easy to isolate.
  *   - Calls `resumeHook(replyTo, { type: 'reply', ... })` exactly
- *     once at the end so the parent's `createHook` inside its tool's
- *     `execute()` unblocks. Errors also send a failure reply — the
- *     parent must never deadlock waiting on us.
+ *     once at the end, success or failure, so the parent's
+ *     `createHook` inside its `agent_<child>` tool's `execute()` is
+ *     guaranteed to unblock. The parent must never deadlock waiting
+ *     on us.
  *
- * Returns the per-event `pending` queue exactly like `handleChat`.
+ * Returns the per-event `pending` queue so the session loop can pass
+ * it to `endOfEvent`, exactly like `handleChat`.
  */
 export async function handleInvocation(input: {
   agentId: string
-  instruction: string
+  /** Parent's free-text instruction. Plays the role of the user turn. */
+  input: string
+  /** Ephemeral hook token the parent's `execute()` is awaiting on. */
   replyTo: string
   callStack: string[]
   depth: number
 }): Promise<{ pending: PendingWrites }> {
-  const { agentId, instruction, replyTo, callStack, depth } = input
+  const { agentId, input: instruction, replyTo, callStack, depth } = input
 
   const runId = await beginInvocationRun({ agentId })
 
@@ -48,6 +58,7 @@ export async function handleInvocation(input: {
 
   let pending: PendingWrites = createPendingWrites()
   let replied = false
+
   try {
     await startupSystemSandbox({ agentId })
     await startupExecSandbox({ agentId }).catch((err) => {
@@ -64,13 +75,14 @@ export async function handleInvocation(input: {
     pending = built.pending
 
     const userMessage: UIMessage = {
-      id: `inv_${Math.random().toString(36).slice(2, 10)}`,
+      id: invocationMessageId(),
       role: 'user',
       parts: [{ type: 'text', text: instruction }],
     }
+    const modelMessages = convertToModelMessages([userMessage])
 
     const result = await built.agent.stream({
-      messages: [{ role: 'user', content: instruction }],
+      messages: modelMessages,
       writable,
       maxSteps: 40,
       collectUIMessages: true,
@@ -80,11 +92,6 @@ export async function handleInvocation(input: {
     await finalizeInvocationRun({ runId, status: 'completed' })
     await replyOnce(replyTo, { type: 'reply', ok: true, output })
     replied = true
-
-    // userMessage is intentionally referenced so the linter knows we
-    // built it for parity with future logging/tracing — keep the
-    // shape stable now to avoid churn later.
-    void userMessage
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     try {
@@ -99,6 +106,9 @@ export async function handleInvocation(input: {
       await replyOnce(replyTo, { type: 'reply', ok: false, error: message })
       replied = true
     }
+    // Re-throw so the session loop logs it just like a chat-handler
+    // failure. The parent has already received a structured reply, so
+    // re-throwing here doesn't risk a deadlock.
     throw err
   }
 
@@ -112,6 +122,9 @@ async function replyOnce(
   try {
     await resumeHook(replyTo, payload)
   } catch (err) {
+    // resumeHook can fail if the parent's hook expired; we log and
+    // move on — the parent's `execute()` will then time out on its
+    // own bound. Either way the child's run record is finalized.
     console.error('[v0] handleInvocation: resumeHook failed', err)
   }
 }
@@ -120,13 +133,26 @@ async function beginInvocationRun(input: {
   agentId: string
 }): Promise<string> {
   'use step'
-  const runId = nanoid()
+  const runId = invocationRunId()
+
+  let workflowRunId: string | null = null
+  try {
+    workflowRunId = getWorkflowMetadata().workflowRunId
+  } catch {
+    // Outside a workflow context — leave null.
+  }
+
   await db.insert(runs).values({
     id: runId,
     agentId: input.agentId,
     status: 'running',
     startedAt: new Date(),
+    workflowRunId,
   })
+
+  revalidateTag(agentRunsTag(input.agentId), 'max')
+  revalidateTag(runsIndexTag(), 'max')
+
   return runId
 }
 
@@ -136,7 +162,7 @@ async function finalizeInvocationRun(input: {
   error?: string
 }): Promise<void> {
   'use step'
-  await db
+  const [row] = await db
     .update(runs)
     .set({
       status: input.status,
@@ -144,12 +170,25 @@ async function finalizeInvocationRun(input: {
       error: input.error?.slice(0, 8_000) ?? null,
     })
     .where(eq(runs.id, input.runId))
+    .returning({ agentId: runs.agentId })
+
+  if (row?.agentId) {
+    revalidateTag(agentRunsTag(row.agentId), 'max')
+  }
+  revalidateTag(runTag(input.runId), 'max')
+  revalidateTag(runsIndexTag(), 'max')
 }
 
-function nanoid(): string {
+function invocationRunId(): string {
   return (
-    Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4)
+    'inv_' +
+    Math.random().toString(36).slice(2, 10) +
+    Date.now().toString(36).slice(-4)
   )
+}
+
+function invocationMessageId(): string {
+  return 'inv_msg_' + Math.random().toString(36).slice(2, 10)
 }
 
 /**
