@@ -16,7 +16,7 @@ import {
 } from '@/lib/data'
 import { getLatestBuildForManifest } from '@/lib/tool-sandbox-build'
 import { describeConfigSchema } from '@/lib/zod-config-fields'
-import { AGENT_TOOL_PREFIX } from '@/tools/agent-tool'
+import { AGENT_TOOL_PREFIX } from '@/tools/agent-tool-prefix'
 import { listMaintainerTools } from '@/tools/registry'
 
 type Params = Promise<{ agentId: string }>
@@ -124,7 +124,6 @@ async function Resolved({ params }: { params: Params }) {
     .map((a) => ({
       agentId: a.id,
       name: a.name,
-      description: a.description,
       enabled: a.enabled,
     }))
 
@@ -140,9 +139,9 @@ async function Resolved({ params }: { params: Params }) {
               Tools
             </h1>
             <p className="text-muted-foreground text-sm">
-              Maintainer tools the agent may call. Attach the ones you want
-              this agent to use; configure their per-attachment settings;
-              connect any required provider once on the settings page.
+              Maintainer tools the agent may call. Attach the ones you want this
+              agent to use; configure their per-attachment settings; connect any
+              required provider once on the settings page.
             </p>
           </div>
           <div className="flex flex-wrap items-start gap-3 border-foreground border-l-2 pl-4 md:justify-end">

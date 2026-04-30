@@ -17,15 +17,21 @@
  * is an implementation detail of `setup.sh`.
  */
 export interface ToolSandboxManifest {
+  /** `Sandbox.create` parameters used during the build. */
+  build: {
+    runtime: string
+    /** Per-build wall clock budget in ms. */
+    timeout: number
+  }
+  description: string
+  /** Human label for logs / future catalog UI. */
+  displayName: string
   /**
    * Stable id used as PK in `tool_sandbox_snapshots`, in
    * `agent_tools.tool_sandbox_manifest`, and as the lookup key the
    * runtime uses to spawn into a snapshot.
    */
   id: string
-  /** Human label for logs / future catalog UI. */
-  displayName: string
-  description: string
   /**
    * Bumped whenever the manifest's intent changes (new dep, removed
    * dep, different install steps). Combined with a hash of `setup.sh`
@@ -33,10 +39,4 @@ export interface ToolSandboxManifest {
    * have to match for the existing snapshot to be reused.
    */
   version: number
-  /** `Sandbox.create` parameters used during the build. */
-  build: {
-    runtime: string
-    /** Per-build wall clock budget in ms. */
-    timeout: number
-  }
 }

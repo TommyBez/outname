@@ -13,8 +13,8 @@ import {
 } from '@/lib/db/schema'
 import { AGENT_TOOL_PREFIX } from '@/tools/agent-tool'
 import { getMaintainerTool } from '@/tools/registry'
-import { getToolSandboxManifest } from '@/tools/sandboxes'
-import type { Reconnect } from '@/tools/types'
+import { getToolSandboxManifest, manifestHash } from '@/tools/sandboxes'
+import type { MaintainerTool, Reconnect } from '@/tools/types'
 
 /**
  * Step boundary that pulls every credential / crypto path OUT of the
@@ -50,19 +50,18 @@ export interface PlannedTool {
 }
 
 export interface PlannedSubAgent {
-  /** Composite tool key the AI SDK will see (e.g. `agent_<childId>`). */
-  toolId: string
   childAgentId: string
   childName: string
-  childDescription: string | null
   childUserId: string
+  /** Composite tool key the AI SDK will see (e.g. `agent_<childId>`). */
+  toolId: string
 }
 
 export interface ResolveToolPlanResult {
   creds: Record<string, RawCredential>
   planned: PlannedTool[]
-  subAgents: PlannedSubAgent[]
   reconnects: Reconnect[]
+  subAgents: PlannedSubAgent[]
 }
 
 /**
@@ -72,6 +71,16 @@ export interface ResolveToolPlanResult {
  * costs the platform 2^N concurrent sessions worst-case, so we cap.
  */
 export const MAX_SUB_AGENT_DEPTH = 3
+
+interface SubAgentRow {
+  childAgentId: string
+  toolId: string
+}
+
+interface MaintainerRow {
+  config: unknown
+  toolId: string
+}
 
 export async function resolveToolPlan(args: {
   agentId: string
@@ -106,184 +115,38 @@ export async function resolveToolPlan(args: {
   const planned: PlannedTool[] = []
   const subAgents: PlannedSubAgent[] = []
 
-  // Partition rows by tool kind. Maintainer rows are validated
-  // synchronously here; sub-agent rows need a DB join we batch below.
-  const subAgentRows: { childAgentId: string; toolId: string }[] = []
+  const subAgentRows: SubAgentRow[] = []
+  const maintainerRows: MaintainerRow[] = []
   for (const row of rows) {
     if (row.toolId.startsWith(AGENT_TOOL_PREFIX)) {
       subAgentRows.push({
         toolId: row.toolId,
         childAgentId: row.toolId.slice(AGENT_TOOL_PREFIX.length),
       })
-      continue
+    } else {
+      maintainerRows.push({ toolId: row.toolId, config: row.config })
     }
-
-    const tool = getMaintainerTool(row.toolId)
-    if (!tool) {
-      reconnects.push({ toolId: row.toolId, reason: 'tool_removed' })
-      continue
-    }
-    let parsedConfig: Record<string, unknown> = {}
-    if (tool.configSchema) {
-      const result = tool.configSchema.safeParse(row.config ?? {})
-      if (!result.success) {
-        reconnects.push({
-          toolId: row.toolId,
-          reason: 'config_invalid',
-          message: result.error.issues
-            .map((i) => `${i.path.join('.') || '<root>'}: ${i.message}`)
-            .join('; '),
-        })
-        continue
-      }
-      parsedConfig = result.data as Record<string, unknown>
-    }
-
-    // Validate every `tool_sandbox` requirement against the latest
-    // ready snapshot. If the snapshot is missing or the manifest hash
-    // has drifted, surface a reconnect so the LLM doesn't see a tool
-    // that would crash on first call. A missing manifest in the
-    // registry is treated like a removed tool.
-    let sandboxBlocked = false
-    for (const req of tool.requirements) {
-      if (req.kind !== 'tool_sandbox') {
-        continue
-      }
-      const manifest = getToolSandboxManifest(req.manifest)
-      if (!manifest) {
-        reconnects.push({
-          toolId: row.toolId,
-          reason: 'tool_sandbox_unavailable',
-          manifest: req.manifest,
-          message: `Tool sandbox manifest "${req.manifest}" is not registered`,
-        })
-        sandboxBlocked = true
-        break
-      }
-      const [snap] = await db
-        .select()
-        .from(toolSandboxSnapshots)
-        .where(eq(toolSandboxSnapshots.manifestId, req.manifest))
-        .limit(1)
-
-      const desiredHash = manifest.hash
-      if (!snap || snap.manifestHash !== desiredHash) {
-        // Look for an in-flight build matching the desired hash so the
-        // UI can attach to its progress stream rather than starting a
-        // duplicate one. We cap at the most recent N to bound cost.
-        const [build] = await db
-          .select({ id: toolSandboxBuilds.id })
-          .from(toolSandboxBuilds)
-          .where(
-            and(
-              eq(toolSandboxBuilds.manifestId, req.manifest),
-              eq(toolSandboxBuilds.manifestHash, desiredHash),
-              inArray(toolSandboxBuilds.status, ['pending', 'running'])
-            )
-          )
-          .orderBy(desc(toolSandboxBuilds.startedAt))
-          .limit(1)
-
-        if (build) {
-          reconnects.push({
-            toolId: row.toolId,
-            reason: 'tool_sandbox_building',
-            manifest: req.manifest,
-            buildId: build.id,
-          })
-        } else {
-          reconnects.push({
-            toolId: row.toolId,
-            reason: 'tool_sandbox_unavailable',
-            manifest: req.manifest,
-            message: `No ready snapshot for "${req.manifest}"`,
-          })
-        }
-        sandboxBlocked = true
-        break
-      }
-    }
-    if (sandboxBlocked) {
-      continue
-    }
-
-    planned.push({
-      toolId: row.toolId,
-      config: parsedConfig,
-      requirements: tool.requirements
-        .filter((r): r is { kind: 'connection'; provider: string } => {
-          return r.kind === 'connection'
-        })
-        .map((r) => ({
-          provider: r.provider,
-          toolId: row.toolId,
-        })),
-    })
   }
 
-  // Sub-agent validation: owner-only, enabled, cycle, depth.
-  if (subAgentRows.length > 0) {
-    const childIds = Array.from(
-      new Set(subAgentRows.map((s) => s.childAgentId))
-    )
-    const childRows = await db
-      .select({
-        id: agent.id,
-        name: agent.name,
-        description: agent.description,
-        userId: agent.userId,
-        enabled: agent.enabled,
-      })
-      .from(agent)
-      .where(inArray(agent.id, childIds))
-
-    const byId = new Map(childRows.map((r) => [r.id, r]))
-
-    for (const sub of subAgentRows) {
-      const child = byId.get(sub.childAgentId)
-      if (!child) {
-        reconnects.push({
-          toolId: sub.toolId,
-          reason: 'sub_agent_unavailable',
-          message: 'Sub-agent has been deleted',
-        })
-        continue
-      }
-      if (child.userId !== userId) {
-        // We never reveal another user's agent — surface as if the
-        // sub-agent simply isn't available.
-        reconnects.push({
-          toolId: sub.toolId,
-          reason: 'sub_agent_unavailable',
-          message: 'Sub-agent is not owned by the current user',
-        })
-        continue
-      }
-      if (!child.enabled) {
-        reconnects.push({
-          toolId: sub.toolId,
-          reason: 'sub_agent_unavailable',
-          message: 'Sub-agent is disabled',
-        })
-        continue
-      }
-      if (callStack.includes(child.id) || child.id === agentId) {
-        reconnects.push({ toolId: sub.toolId, reason: 'sub_agent_cycle' })
-        continue
-      }
-      if (depth + 1 > MAX_SUB_AGENT_DEPTH) {
-        reconnects.push({ toolId: sub.toolId, reason: 'sub_agent_depth' })
-        continue
-      }
-
-      subAgents.push({
-        toolId: sub.toolId,
-        childAgentId: child.id,
-        childName: child.name,
-        childDescription: child.description,
-        childUserId: child.userId,
-      })
+  for (const row of maintainerRows) {
+    const result = await resolveMaintainerRow(row)
+    if (result.kind === 'reconnect') {
+      reconnects.push(...result.reconnects)
+    } else {
+      planned.push(result.planned)
     }
+  }
+
+  if (subAgentRows.length > 0) {
+    const subResult = await resolveSubAgentRows({
+      agentId,
+      userId,
+      callStack,
+      depth,
+      subAgentRows,
+    })
+    reconnects.push(...subResult.reconnects)
+    subAgents.push(...subResult.subAgents)
   }
 
   // Pass 2: resolve credentials. One DB read + decrypt per provider,
@@ -312,4 +175,266 @@ export async function resolveToolPlan(args: {
   }
 
   return { planned: filteredPlanned, subAgents, creds, reconnects }
+}
+
+type MaintainerOutcome =
+  | { kind: 'planned'; planned: PlannedTool }
+  | { kind: 'reconnect'; reconnects: Reconnect[] }
+
+async function resolveMaintainerRow(
+  row: MaintainerRow
+): Promise<MaintainerOutcome> {
+  const tool = getMaintainerTool(row.toolId)
+  if (!tool) {
+    return {
+      kind: 'reconnect',
+      reconnects: [{ toolId: row.toolId, reason: 'tool_removed' }],
+    }
+  }
+
+  const parsed = parseMaintainerConfig(tool, row)
+  if (parsed.kind === 'reconnect') {
+    return parsed
+  }
+
+  const sandbox = await checkSandboxRequirements(tool, row.toolId)
+  if (sandbox) {
+    return { kind: 'reconnect', reconnects: [sandbox] }
+  }
+
+  return {
+    kind: 'planned',
+    planned: {
+      toolId: row.toolId,
+      config: parsed.config,
+      requirements: tool.requirements
+        .filter(
+          (r): r is { kind: 'connection'; provider: string } =>
+            r.kind === 'connection'
+        )
+        .map((r) => ({ provider: r.provider, toolId: row.toolId })),
+    },
+  }
+}
+
+type ParsedConfig =
+  | { kind: 'parsed'; config: Record<string, unknown> }
+  | { kind: 'reconnect'; reconnects: Reconnect[] }
+
+function parseMaintainerConfig(
+  tool: MaintainerTool,
+  row: MaintainerRow
+): ParsedConfig {
+  if (!tool.configSchema) {
+    return { kind: 'parsed', config: {} }
+  }
+  const result = tool.configSchema.safeParse(row.config ?? {})
+  if (!result.success) {
+    return {
+      kind: 'reconnect',
+      reconnects: [
+        {
+          toolId: row.toolId,
+          reason: 'config_invalid',
+          message: result.error.issues
+            .map((i) => `${i.path.join('.') || '<root>'}: ${i.message}`)
+            .join('; '),
+        },
+      ],
+    }
+  }
+  return { kind: 'parsed', config: result.data as Record<string, unknown> }
+}
+
+/**
+ * Returns the first blocking reconnect for this tool's `tool_sandbox`
+ * requirements, or `null` if every requirement has a ready snapshot.
+ */
+async function checkSandboxRequirements(
+  tool: MaintainerTool,
+  toolId: string
+): Promise<Reconnect | null> {
+  for (const req of tool.requirements) {
+    if (req.kind !== 'tool_sandbox') {
+      continue
+    }
+    const blocking = await checkSandboxRequirement(req.manifest, toolId)
+    if (blocking) {
+      return blocking
+    }
+  }
+  return null
+}
+
+async function checkSandboxRequirement(
+  manifestId: string,
+  toolId: string
+): Promise<Reconnect | null> {
+  try {
+    getToolSandboxManifest(manifestId)
+  } catch {
+    return {
+      toolId,
+      reason: 'tool_sandbox_unavailable',
+      manifest: manifestId,
+      message: `Tool sandbox manifest "${manifestId}" is not registered`,
+    }
+  }
+
+  const [snap] = await db
+    .select()
+    .from(toolSandboxSnapshots)
+    .where(eq(toolSandboxSnapshots.manifestId, manifestId))
+    .limit(1)
+
+  const desiredHash = manifestHash(manifestId)
+  if (snap && snap.manifestHash === desiredHash) {
+    return null
+  }
+
+  // Snapshot missing or stale — look for an in-flight build the UI
+  // can attach to.
+  const [build] = await db
+    .select({ id: toolSandboxBuilds.id })
+    .from(toolSandboxBuilds)
+    .where(
+      and(
+        eq(toolSandboxBuilds.manifestId, manifestId),
+        eq(toolSandboxBuilds.manifestHash, desiredHash),
+        inArray(toolSandboxBuilds.status, ['pending', 'running'])
+      )
+    )
+    .orderBy(desc(toolSandboxBuilds.startedAt))
+    .limit(1)
+
+  if (build) {
+    return {
+      toolId,
+      reason: 'tool_sandbox_building',
+      manifest: manifestId,
+      buildId: build.id,
+    }
+  }
+  return {
+    toolId,
+    reason: 'tool_sandbox_unavailable',
+    manifest: manifestId,
+    message: `No ready snapshot for "${manifestId}"`,
+  }
+}
+
+interface SubAgentResolution {
+  reconnects: Reconnect[]
+  subAgents: PlannedSubAgent[]
+}
+
+async function resolveSubAgentRows(input: {
+  agentId: string
+  userId: string
+  callStack: string[]
+  depth: number
+  subAgentRows: SubAgentRow[]
+}): Promise<SubAgentResolution> {
+  const { agentId, userId, callStack, depth, subAgentRows } = input
+  const reconnects: Reconnect[] = []
+  const subAgents: PlannedSubAgent[] = []
+
+  const childIds = Array.from(new Set(subAgentRows.map((s) => s.childAgentId)))
+  const childRows = await db
+    .select({
+      id: agent.id,
+      name: agent.name,
+      userId: agent.userId,
+      enabled: agent.enabled,
+    })
+    .from(agent)
+    .where(inArray(agent.id, childIds))
+
+  const byId = new Map(childRows.map((r) => [r.id, r]))
+
+  for (const sub of subAgentRows) {
+    const child = byId.get(sub.childAgentId)
+    const validated = validateSubAgentChild({
+      sub,
+      child,
+      userId,
+      agentId,
+      callStack,
+      depth,
+    })
+    if (validated.kind === 'reconnect') {
+      reconnects.push(validated.reconnect)
+    } else {
+      subAgents.push(validated.planned)
+    }
+  }
+
+  return { reconnects, subAgents }
+}
+
+function validateSubAgentChild(input: {
+  sub: SubAgentRow
+  child:
+    | { id: string; name: string; userId: string; enabled: boolean }
+    | undefined
+  userId: string
+  agentId: string
+  callStack: string[]
+  depth: number
+}):
+  | { kind: 'reconnect'; reconnect: Reconnect }
+  | { kind: 'planned'; planned: PlannedSubAgent } {
+  const { sub, child, userId, agentId, callStack, depth } = input
+
+  if (!child) {
+    return {
+      kind: 'reconnect',
+      reconnect: {
+        toolId: sub.toolId,
+        reason: 'sub_agent_unavailable',
+        message: 'Sub-agent has been deleted',
+      },
+    }
+  }
+  if (child.userId !== userId) {
+    return {
+      kind: 'reconnect',
+      reconnect: {
+        toolId: sub.toolId,
+        reason: 'sub_agent_unavailable',
+        message: 'Sub-agent is not owned by the current user',
+      },
+    }
+  }
+  if (!child.enabled) {
+    return {
+      kind: 'reconnect',
+      reconnect: {
+        toolId: sub.toolId,
+        reason: 'sub_agent_unavailable',
+        message: 'Sub-agent is disabled',
+      },
+    }
+  }
+  if (callStack.includes(child.id) || child.id === agentId) {
+    return {
+      kind: 'reconnect',
+      reconnect: { toolId: sub.toolId, reason: 'sub_agent_cycle' },
+    }
+  }
+  if (depth + 1 > MAX_SUB_AGENT_DEPTH) {
+    return {
+      kind: 'reconnect',
+      reconnect: { toolId: sub.toolId, reason: 'sub_agent_depth' },
+    }
+  }
+  return {
+    kind: 'planned',
+    planned: {
+      toolId: sub.toolId,
+      childAgentId: child.id,
+      childName: child.name,
+      childUserId: child.userId,
+    },
+  }
 }

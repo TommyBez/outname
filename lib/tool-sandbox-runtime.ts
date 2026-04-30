@@ -40,11 +40,10 @@ interface CachedSandbox {
 const cache = new Map<string, Map<string, CachedSandbox>>()
 
 class ToolSandboxUnavailableError extends Error {
-  constructor(
-    public readonly manifestId: string,
-    message: string
-  ) {
+  readonly manifestId: string
+  constructor(manifestId: string, message: string) {
     super(message)
+    this.manifestId = manifestId
     this.name = 'ToolSandboxUnavailableError'
   }
 }
@@ -89,7 +88,10 @@ export async function getOrStartToolSandbox(
     }
   }
 
-  const manifest = getToolSandboxManifest(manifestId)
+  // Reading the manifest also asserts it's still registered — a
+  // tool whose manifest was removed from the registry shouldn't be
+  // spawnable even if a stale snapshot row exists.
+  getToolSandboxManifest(manifestId)
   const snapshotId = await readSnapshotId(manifestId)
   if (!snapshotId) {
     throw new ToolSandboxUnavailableError(
@@ -98,11 +100,13 @@ export async function getOrStartToolSandbox(
     )
   }
 
+  // `runtime` is intentionally not passed: when sourcing from a
+  // snapshot, the SDK rejects `runtime` (it's already encoded in the
+  // snapshot itself).
   const sandbox = await Sandbox.create({
     source: { type: 'snapshot', snapshotId },
-    runtime: manifest.build.runtime,
     timeout: 600_000,
-  } as Parameters<typeof Sandbox.create>[0])
+  })
 
   if (!perRun) {
     perRun = new Map()

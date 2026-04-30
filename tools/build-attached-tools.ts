@@ -34,13 +34,13 @@ export interface BuildAttachedToolsResult {
 
 export interface BuildAttachedToolsArgs {
   agentId: string
-  /** Owner of the agent — used to thread parentUserId into sub-agent tools. */
-  userId: string
-  plan: ResolveToolPlanResult
   /** Phase 4: parent-call lineage. Empty for top-level user-driven turns. */
   callStack?: string[]
   /** Phase 4: parent's nesting depth. 0 for top-level. */
   depth?: number
+  plan: ResolveToolPlanResult
+  /** Owner of the agent — used to thread parentUserId into sub-agent tools. */
+  userId: string
 }
 
 function buildOne(args: {
@@ -103,7 +103,6 @@ function buildSubAgentEntry(args: {
       tool: buildAgentTool({
         childAgentId: sub.childAgentId,
         childName: sub.childName,
-        childDescription: sub.childDescription,
         childUserId: sub.childUserId,
         parentUserId,
         parentCallStack: callStack,

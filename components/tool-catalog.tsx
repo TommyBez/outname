@@ -24,23 +24,16 @@ export interface ToolCatalogEntry {
   displayName: string
   /** Required providers (`resend`, ...) extracted from `requirements`. */
   providers: string[]
+  toolId: string
   /**
    * Phase 4: manifest id this tool requires a tool-sandbox snapshot
    * for. `null` means "no sandbox needed" (e.g. resend_send).
    */
   toolSandboxManifest: string | null
-  toolId: string
 }
 
 export interface AttachedToolView {
   config: Record<string, unknown>
-  /**
-   * Phase 4: lifecycle of the attachment row. `pending` means the
-   * tool needs a tool sandbox that's still being built; the catalog
-   * shows live progress and disables the form until the build
-   * finishes.
-   */
-  status: 'connected' | 'pending'
   /**
    * Phase 4: id of the latest in-flight build for this tool's
    * manifest, if any. Set when `status === 'pending'`. The catalog
@@ -48,11 +41,18 @@ export interface AttachedToolView {
    */
   pendingBuildId: string | null
   /**
+   * Phase 4: lifecycle of the attachment row. `pending` means the
+   * tool needs a tool sandbox that's still being built; the catalog
+   * shows live progress and disables the form until the build
+   * finishes.
+   */
+  status: 'connected' | 'pending'
+  toolId: string
+  /**
    * Phase 4: sticky error from the last failed build, surfaced
    * alongside a Retry button.
    */
   toolSandboxError: string | null
-  toolId: string
 }
 
 export interface ProviderConnectionView {
@@ -138,11 +138,12 @@ function ToolRow({
             {entry.description}
           </p>
           <div className="mt-3 flex flex-wrap gap-3">
-            {providerStates.length === 0 && entry.toolSandboxManifest === null && (
-              <span className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
-                No connection required
-              </span>
-            )}
+            {providerStates.length === 0 &&
+              entry.toolSandboxManifest === null && (
+                <span className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
+                  No connection required
+                </span>
+              )}
             {entry.toolSandboxManifest !== null && (
               <span className="inline-flex h-7 items-center border-2 border-foreground px-3 font-bold text-[10px] uppercase tracking-[0.16em]">
                 Sandbox: {entry.toolSandboxManifest}

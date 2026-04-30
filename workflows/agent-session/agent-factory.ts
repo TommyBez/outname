@@ -15,10 +15,6 @@ import { createPendingWrites, type PendingWrites } from './tools/pending-writes'
  */
 export interface BuildAgentArgs {
   agentId: string
-  /** Optional UTC "now" for the system prompt; defaults to `new Date()`. */
-  nowIso?: string
-  /** Heartbeat: `runs.id`; chat: conversation id. */
-  runId: string
   /**
    * Phase 4: parent agent ids leading to this run. Empty for normal
    * user-driven chat / heartbeat turns. Populated when this turn was
@@ -33,6 +29,10 @@ export interface BuildAgentArgs {
    * would push depth past `MAX_SUB_AGENT_DEPTH`.
    */
   depth?: number
+  /** Optional UTC "now" for the system prompt; defaults to `new Date()`. */
+  nowIso?: string
+  /** Heartbeat: `runs.id`; chat: conversation id. */
+  runId: string
 }
 
 export interface BuildAgentResult {

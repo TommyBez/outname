@@ -10,12 +10,15 @@ export type ToolSandboxBuildState =
   | { kind: 'failed'; error: string }
 
 interface BuildStreamEvent {
-  type: 'progress' | 'ready' | 'failed' | string
+  error?: string
   message?: string
   phase?: string
-  error?: string
   ts?: string
+  type: 'progress' | 'ready' | 'failed' | string
 }
+
+type StreamSetter = (state: ToolSandboxBuildState) => void
+type TerminalCallback = (state: 'ready' | 'failed', error?: string) => void
 
 /**
  * Phase 4: subscribe to a tool-sandbox build's NDJSON progress
@@ -39,7 +42,7 @@ interface BuildStreamEvent {
  */
 export function useToolSandboxBuildStream(
   buildId: string | null,
-  onTerminal?: (state: 'ready' | 'failed', error?: string) => void
+  onTerminal?: TerminalCallback
 ): ToolSandboxBuildState {
   const [state, setState] = useState<ToolSandboxBuildState>({ kind: 'idle' })
 
@@ -49,92 +52,131 @@ export function useToolSandboxBuildStream(
       return
     }
 
-    let cancelled = false
     const abort = new AbortController()
-
+    const ctx = { cancelled: false }
     setState({ kind: 'connecting' })
 
-    async function run() {
-      try {
-        const res = await fetch(
-          `/api/tool-sandbox-builds/${encodeURIComponent(buildId as string)}/stream?startIndex=0`,
-          { signal: abort.signal }
-        )
-        if (!res.ok || !res.body) {
-          if (cancelled) return
-          setState({
-            kind: 'failed',
-            error: `stream open failed (${res.status})`,
-          })
-          return
-        }
-
-        const reader = res.body.getReader()
-        const decoder = new TextDecoder()
-        let buffer = ''
-
-        while (!cancelled) {
-          const { done, value } = await reader.read()
-          if (done) {
-            break
-          }
-          buffer += decoder.decode(value, { stream: true })
-          let nl = buffer.indexOf('\n')
-          while (nl >= 0) {
-            const line = buffer.slice(0, nl).trim()
-            buffer = buffer.slice(nl + 1)
-            nl = buffer.indexOf('\n')
-            if (!line) continue
-            try {
-              const evt = JSON.parse(line) as BuildStreamEvent
-              applyEvent(evt)
-            } catch (err) {
-              // Skip malformed lines — the stream is best-effort.
-              console.error(
-                '[v0] useToolSandboxBuildStream: bad line',
-                line,
-                err
-              )
-            }
-          }
-        }
-      } catch (err) {
-        if (cancelled || abort.signal.aborted) return
-        setState({
-          kind: 'failed',
-          error: err instanceof Error ? err.message : String(err),
-        })
-      }
-    }
-
-    function applyEvent(evt: BuildStreamEvent) {
-      if (cancelled) return
-      if (evt.type === 'progress') {
-        setState({
-          kind: 'progress',
-          message: evt.message ?? 'Working...',
-          phase: evt.phase,
-        })
-      } else if (evt.type === 'ready') {
-        setState({ kind: 'ready' })
-        onTerminal?.('ready')
-      } else if (evt.type === 'failed') {
-        setState({
-          kind: 'failed',
-          error: evt.error ?? 'Build failed',
-        })
-        onTerminal?.('failed', evt.error)
-      }
-    }
-
-    run()
+    consumeStream({ buildId, abort, ctx, setState, onTerminal })
 
     return () => {
-      cancelled = true
+      ctx.cancelled = true
       abort.abort()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buildId])
+  }, [buildId, onTerminal])
 
   return state
+}
+
+interface ConsumeStreamArgs {
+  abort: AbortController
+  buildId: string
+  ctx: { cancelled: boolean }
+  onTerminal?: TerminalCallback
+  setState: StreamSetter
+}
+
+async function consumeStream(args: ConsumeStreamArgs): Promise<void> {
+  const { buildId, abort, ctx, setState, onTerminal } = args
+  try {
+    const res = await fetch(
+      `/api/tool-sandbox-builds/${encodeURIComponent(buildId)}/stream?startIndex=0`,
+      { signal: abort.signal }
+    )
+    if (!(res.ok && res.body)) {
+      if (!ctx.cancelled) {
+        setState({
+          kind: 'failed',
+          error: `stream open failed (${res.status})`,
+        })
+      }
+      return
+    }
+    await readNdjson({
+      body: res.body,
+      ctx,
+      onEvent: (evt) => applyEvent({ evt, ctx, setState, onTerminal }),
+    })
+  } catch (err) {
+    if (ctx.cancelled || abort.signal.aborted) {
+      return
+    }
+    setState({
+      kind: 'failed',
+      error: err instanceof Error ? err.message : String(err),
+    })
+  }
+}
+
+async function readNdjson(input: {
+  body: ReadableStream<Uint8Array>
+  ctx: { cancelled: boolean }
+  onEvent: (evt: BuildStreamEvent) => void
+}): Promise<void> {
+  const reader = input.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  while (!input.ctx.cancelled) {
+    const { done, value } = await reader.read()
+    if (done) {
+      return
+    }
+    buffer += decoder.decode(value, { stream: true })
+    buffer = drainLines(buffer, input.onEvent)
+  }
+}
+
+function drainLines(
+  buffer: string,
+  onEvent: (evt: BuildStreamEvent) => void
+): string {
+  let working = buffer
+  let nl = working.indexOf('\n')
+  while (nl >= 0) {
+    const line = working.slice(0, nl).trim()
+    working = working.slice(nl + 1)
+    nl = working.indexOf('\n')
+    if (!line) {
+      continue
+    }
+    try {
+      onEvent(JSON.parse(line) as BuildStreamEvent)
+    } catch (err) {
+      // Skip malformed lines — the stream is best-effort.
+      console.error('[v0] useToolSandboxBuildStream: bad line', line, err)
+    }
+  }
+  return working
+}
+
+function applyEvent(input: {
+  evt: BuildStreamEvent
+  ctx: { cancelled: boolean }
+  setState: StreamSetter
+  onTerminal?: TerminalCallback
+}): void {
+  const { evt, ctx, setState, onTerminal } = input
+  if (ctx.cancelled) {
+    return
+  }
+  if (evt.type === 'progress') {
+    setState({
+      kind: 'progress',
+      message: evt.message ?? 'Working...',
+      phase: evt.phase,
+    })
+    return
+  }
+  if (evt.type === 'ready') {
+    setState({ kind: 'ready' })
+    onTerminal?.('ready')
+    return
+  }
+  if (evt.type === 'failed') {
+    setState({
+      kind: 'failed',
+      error: evt.error ?? 'Build failed',
+    })
+    onTerminal?.('failed', evt.error)
+  }
 }

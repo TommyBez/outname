@@ -4,11 +4,10 @@ import { useRouter } from 'next/navigation'
 import { useTransition } from 'react'
 import { toast } from 'sonner'
 import { attachToolAction, detachToolAction } from '@/lib/tool-actions'
-import { AGENT_TOOL_PREFIX } from '@/tools/agent-tool'
+import { AGENT_TOOL_PREFIX } from '@/tools/agent-tool-prefix'
 
 export interface SubAgentCatalogEntry {
   agentId: string
-  description: string | null
   enabled: boolean
   name: string
 }
@@ -112,11 +111,6 @@ function SubAgentRow({
           <p className="mt-1 font-black font-serif text-xl uppercase tracking-[-0.04em]">
             {entry.name}
           </p>
-          {entry.description && entry.description.trim().length > 0 && (
-            <p className="mt-1 text-muted-foreground text-sm">
-              {entry.description}
-            </p>
-          )}
           {!entry.enabled && (
             <p className="mt-2 font-bold text-[10px] text-destructive uppercase tracking-[0.2em]">
               Currently disabled — turn it on from its overview page before

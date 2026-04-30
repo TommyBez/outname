@@ -63,27 +63,27 @@ export async function runSandboxBuild(input: {
     })
 
     if (result.exitCode !== 0) {
-      const stderr = (await result.stderr()).slice(0, 4_000)
-      const stdout = (await result.stdout()).slice(0, 1_000)
+      const stderr = (await result.stderr()).slice(0, 4000)
+      const stdout = (await result.stdout()).slice(0, 1000)
       throw new Error(
         `setup.sh exited with code ${result.exitCode}\n--- stderr ---\n${stderr}\n--- stdout (tail) ---\n${stdout}`
       )
     }
 
     await emit('Capturing snapshot...')
-    const snapshotResult = await sandbox.snapshot()
-    const snapshotId = readSnapshotId(snapshotResult)
-    if (!snapshotId) {
-      throw new Error('sandbox.snapshot() returned no snapshot id')
-    }
-
-    return { snapshotId }
+    // `sandbox.snapshot()` stops this sandbox internally as part of
+    // creating the snapshot, so the `sandbox.stop()` call in `finally`
+    // becomes a no-op (it'll throw, which we already swallow).
+    const snapshot = await sandbox.snapshot()
+    return { snapshotId: snapshot.snapshotId }
   } finally {
     if (sandbox) {
       try {
         await sandbox.stop()
-      } catch (err) {
-        console.error('[v0] runSandboxBuild: sandbox.stop failed', err)
+      } catch {
+        // `sandbox.snapshot()` already stops the sandbox; this catch
+        // also covers the early-exit failure path where no snapshot
+        // was taken. Either way, double-stop is harmless.
       }
     }
     try {
@@ -92,20 +92,4 @@ export async function runSandboxBuild(input: {
       // Ignore — closing twice or after a failed write is harmless.
     }
   }
-}
-
-function readSnapshotId(value: unknown): string | null {
-  if (typeof value === 'string') {
-    return value
-  }
-  if (value && typeof value === 'object') {
-    const obj = value as Record<string, unknown>
-    if (typeof obj.snapshotId === 'string') {
-      return obj.snapshotId
-    }
-    if (typeof obj.id === 'string') {
-      return obj.id
-    }
-  }
-  return null
 }

@@ -1,8 +1,5 @@
 import { getWritable } from 'workflow'
-import {
-  buildToolSandboxNamespace,
-  type ToolSandboxBuildEvent,
-} from './events'
+import { buildToolSandboxNamespace, type ToolSandboxBuildEvent } from './events'
 import {
   loadBuildRow,
   markBuildFailed,

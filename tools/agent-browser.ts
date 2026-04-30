@@ -87,16 +87,16 @@ const inputSchema = z.object({
 })
 
 interface RunAgentBrowserInput {
-  command: string
   args: string[]
+  command: string
   timeoutMs: number
 }
 
 interface RunAgentBrowserResult {
-  ok: boolean
   exitCode: number
-  stdout: string
+  ok: boolean
   stderr: string
+  stdout: string
   timedOut?: true
 }
 
@@ -160,11 +160,10 @@ export const agentBrowserTool: MaintainerTool = {
   build() {
     return tool({
       description:
-        'Run an agent-browser CLI subcommand inside this conversation\'s persistent browser sandbox. The browser session lives for the lifetime of the chat turn — you can `open` once, then issue `snapshot`, `click @ref`, `type`, etc. without re-navigating. Tools that take a URL: pass it as the first arg. Tools that take a ref id (e.g. `click`): use the @e1 / @e2 refs printed by `snapshot -i`.',
+        "Run an agent-browser CLI subcommand inside this conversation's persistent browser sandbox. The browser session lives for the lifetime of the chat turn — you can `open` once, then issue `snapshot`, `click @ref`, `type`, etc. without re-navigating. Tools that take a URL: pass it as the first arg. Tools that take a ref id (e.g. `click`): use the @e1 / @e2 refs printed by `snapshot -i`.",
       inputSchema,
-      execute: async ({ command, args, timeoutMs }) => {
-        return await runAgentBrowser({ command, args, timeoutMs })
-      },
+      execute: async ({ command, args, timeoutMs }) =>
+        await runAgentBrowser({ command, args, timeoutMs }),
     })
   },
 }

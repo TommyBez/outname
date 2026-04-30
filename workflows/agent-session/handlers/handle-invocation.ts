@@ -1,8 +1,4 @@
-import {
-  convertToModelMessages,
-  type UIMessage,
-  type UIMessageChunk,
-} from 'ai'
+import { convertToModelMessages, type UIMessage, type UIMessageChunk } from 'ai'
 import { eq } from 'drizzle-orm'
 import { revalidateTag } from 'next/cache'
 import { getWorkflowMetadata, getWritable } from 'workflow'
@@ -14,7 +10,10 @@ import { runs } from '@/lib/db/schema'
 import { buildAgent } from '../agent-factory'
 import type { SubAgentReply } from '../events'
 import { drainPendingWrites } from '../steps/drain-pending-writes'
-import { type PendingWrites, createPendingWrites } from '../tools/pending-writes'
+import {
+  createPendingWrites,
+  type PendingWrites,
+} from '../tools/pending-writes'
 
 /**
  * Phase 4: invocation event handler — runs inside the **child**
@@ -79,7 +78,7 @@ export async function handleInvocation(input: {
       role: 'user',
       parts: [{ type: 'text', text: instruction }],
     }
-    const modelMessages = convertToModelMessages([userMessage])
+    const modelMessages = await convertToModelMessages([userMessage])
 
     const result = await built.agent.stream({
       messages: modelMessages,
@@ -129,9 +128,7 @@ async function replyOnce(
   }
 }
 
-async function beginInvocationRun(input: {
-  agentId: string
-}): Promise<string> {
+async function beginInvocationRun(input: { agentId: string }): Promise<string> {
   'use step'
   const runId = invocationRunId()
 
@@ -167,7 +164,7 @@ async function finalizeInvocationRun(input: {
     .set({
       status: input.status,
       completedAt: new Date(),
-      error: input.error?.slice(0, 8_000) ?? null,
+      error: input.error?.slice(0, 8000) ?? null,
     })
     .where(eq(runs.id, input.runId))
     .returning({ agentId: runs.agentId })
@@ -188,7 +185,7 @@ function invocationRunId(): string {
 }
 
 function invocationMessageId(): string {
-  return 'inv_msg_' + Math.random().toString(36).slice(2, 10)
+  return `inv_msg_${Math.random().toString(36).slice(2, 10)}`
 }
 
 /**

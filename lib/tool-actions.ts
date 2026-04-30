@@ -46,10 +46,7 @@ export async function attachToolAction(
   // attachment, not a maintainer-tool attachment. Route it through
   // the dedicated helper so the form layer can stay agnostic.
   if (toolId.startsWith(AGENT_TOOL_PREFIX)) {
-    return attachSubAgentAction(
-      agentId,
-      toolId.slice(AGENT_TOOL_PREFIX.length)
-    )
+    return attachSubAgentAction(agentId, toolId.slice(AGENT_TOOL_PREFIX.length))
   }
 
   const userId = await requireUserId()
@@ -90,7 +87,9 @@ export async function attachToolAction(
   let rowStatus: 'connected' | 'pending' = 'connected'
   if (sandboxManifest) {
     try {
-      const result = await ensureToolSandboxBuild({ manifestId: sandboxManifest })
+      const result = await ensureToolSandboxBuild({
+        manifestId: sandboxManifest,
+      })
       if (result.state === 'building') {
         rowStatus = 'pending'
         pendingBuildId = result.buildId

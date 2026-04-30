@@ -408,9 +408,7 @@ export const toolSandboxSnapshots = pgTable('tool_sandbox_snapshots', {
   manifestId: text('manifest_id').primaryKey(),
   snapshotId: text('snapshot_id').notNull(),
   manifestHash: text('manifest_hash').notNull(),
-  builtAt: timestamp('built_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  builtAt: timestamp('built_at', { withTimezone: true }).notNull().defaultNow(),
 })
 export type ToolSandboxSnapshot = typeof toolSandboxSnapshots.$inferSelect
 

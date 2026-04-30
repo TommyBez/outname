@@ -111,7 +111,7 @@ function jsonError(status: number, error: string, extra?: object): Response {
 
 async function waitForWorkflowRunId(
   buildId: string,
-  maxMs = 5_000
+  maxMs = 5000
 ): Promise<string | null> {
   const deadline = Date.now() + maxMs
   while (Date.now() < deadline) {

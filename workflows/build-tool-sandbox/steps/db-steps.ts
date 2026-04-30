@@ -16,8 +16,8 @@ import {
  */
 
 export interface LoadBuildRowResult {
-  manifestId: string
   manifestHash: string
+  manifestId: string
 }
 
 export async function loadBuildRow(input: {
@@ -154,7 +154,7 @@ export async function markBuildFailed(input: {
       .set({
         status: 'failed',
         finishedAt: new Date(),
-        errorText: input.error.slice(0, 8_000),
+        errorText: input.error.slice(0, 8000),
       })
       .where(eq(toolSandboxBuilds.id, input.buildId))
 
@@ -162,7 +162,7 @@ export async function markBuildFailed(input: {
       await tx
         .update(agentTools)
         .set({
-          toolSandboxError: input.error.slice(0, 8_000),
+          toolSandboxError: input.error.slice(0, 8000),
           updatedAt: new Date(),
         })
         .where(
@@ -199,4 +199,3 @@ export async function readManifestSetupScript(input: {
   const { manifestSetupScript } = await import('@/tools/sandboxes')
   return { setup: manifestSetupScript(input.manifestId) }
 }
-
