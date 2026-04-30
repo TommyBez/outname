@@ -214,11 +214,10 @@ function bucketRequirementsByProvider(
 function fanOutReconnect(
   reconnects: Reconnect[],
   provider: string,
-  toolIds: Iterable<string>,
-  reason: 'missing_credential' | 'invalid_credential'
+  toolIds: Iterable<string>
 ): void {
   for (const toolId of toolIds) {
-    reconnects.push({ provider, toolId, reason })
+    reconnects.push({ provider, toolId, reason: 'connection_unavailable' })
   }
 }
 
@@ -232,18 +231,18 @@ async function resolveOneProvider(args: {
   const { userId, provider, bucket, ready, reconnects } = args
   const connector = getConnector(provider)
   if (!connector) {
-    fanOutReconnect(reconnects, provider, bucket.toolIds, 'missing_credential')
+    fanOutReconnect(reconnects, provider, bucket.toolIds)
     return
   }
 
   const row = await readConnectionRow(userId, provider)
   if (!row) {
-    fanOutReconnect(reconnects, provider, bucket.toolIds, 'missing_credential')
+    fanOutReconnect(reconnects, provider, bucket.toolIds)
     return
   }
 
   if (row.status === 'invalid' || row.raw === null) {
-    fanOutReconnect(reconnects, provider, bucket.toolIds, 'invalid_credential')
+    fanOutReconnect(reconnects, provider, bucket.toolIds)
     return
   }
 

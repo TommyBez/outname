@@ -84,14 +84,13 @@ export interface ToolBuildContext {
  *     reconnection" block)
  *   - the catalog UI (`/agents/[agentId]/tools` shows per-row banners
  *     with the appropriate "Reconnect" / "Re-attach" / "Detach" CTA)
- *   - the settings page (where users replace missing/invalid API keys)
+ *   - the settings page (where users connect or replace API keys)
  *
  * Keep the variants small and orthogonal — every new variant is a UI
  * obligation in three places.
  */
 export type Reconnect =
-  | { provider: string; toolId: string; reason: 'missing_credential' }
-  | { provider: string; toolId: string; reason: 'invalid_credential' }
+  | { provider: string; toolId: string; reason: 'connection_unavailable' }
   | { toolId: string; reason: 'config_invalid'; message: string }
   | { toolId: string; reason: 'build_failed'; message: string }
   | { toolId: string; reason: 'tool_removed' }

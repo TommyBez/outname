@@ -51,10 +51,8 @@ const FOOTER = `## Platform invariants
 
 function describeReconnect(r: Reconnect): string {
   switch (r.reason) {
-    case 'missing_credential':
-      return `- \`${r.toolId}\` (provider: ${r.provider}) — user has not connected this provider yet. Ask them to attach it from the agent's tools page.`
-    case 'invalid_credential':
-      return `- \`${r.toolId}\` (provider: ${r.provider}) — stored API key is invalid or unreadable. Ask the user to replace it from settings.`
+    case 'connection_unavailable':
+      return `- \`${r.toolId}\` (provider: ${r.provider}) — connection is missing or unusable. Ask the user to connect or replace it from settings.`
     case 'config_invalid':
       return `- \`${r.toolId}\` — attached configuration is invalid (${r.message}). Ask the user to re-attach this tool.`
     case 'build_failed':

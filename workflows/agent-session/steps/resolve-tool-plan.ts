@@ -29,8 +29,7 @@ import type { Reconnect } from '@/tools/types'
  *                   never carries DB rows or encrypted bytes.
  *   - `reconnects`  Same shape `composeSystemPrompt` consumes —
  *                   tool-keyed (`tool_removed`, `config_invalid`) AND
- *                   provider-keyed (`missing_credential`,
- *                   `invalid_credential`).
+ *                   provider-keyed (`connection_unavailable`).
  */
 export interface PlannedTool {
   config: Record<string, unknown>
