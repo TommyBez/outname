@@ -1,10 +1,13 @@
 import 'server-only'
 import type { UIMessage } from 'ai'
 import { eq } from 'drizzle-orm'
-import { getRun, resumeHook, start } from 'workflow/api'
+import { getHookByToken, getRun, resumeHook, start } from 'workflow/api'
 import { db } from '@/lib/db'
 import { type Agent, agent } from '@/lib/db/schema'
-import { sessionToken } from '@/workflows/agent-session/events'
+import {
+  type SessionEvent,
+  sessionToken,
+} from '@/workflows/agent-session/events'
 import { agentSessionWorkflow } from '@/workflows/agent-session/workflow'
 
 /**
@@ -25,6 +28,8 @@ import { agentSessionWorkflow } from '@/workflows/agent-session/workflow'
  */
 
 const TERMINAL_STATUSES = new Set(['completed', 'failed', 'cancelled'])
+const SESSION_HOOK_READY_TIMEOUT_MS = 5000
+const SESSION_HOOK_POLL_MS = 100
 
 function newReplyToken() {
   return (
@@ -135,6 +140,89 @@ function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms))
 }
 
+function isHookNotFoundError(err: unknown): boolean {
+  return err instanceof Error && err.name === 'HookNotFoundError'
+}
+
+async function waitForSessionHook(
+  agentId: string,
+  sessionRunId: string
+): Promise<boolean> {
+  const token = sessionToken(agentId)
+  const deadlineMs = Date.now() + SESSION_HOOK_READY_TIMEOUT_MS
+
+  while (Date.now() < deadlineMs) {
+    try {
+      const hook = await getHookByToken(token)
+      if (hook.runId === sessionRunId) {
+        return true
+      }
+    } catch (err) {
+      if (!isHookNotFoundError(err)) {
+        throw err
+      }
+    }
+
+    if (!(await isWorkflowRunAlive(sessionRunId))) {
+      return false
+    }
+    await sleep(SESSION_HOOK_POLL_MS)
+  }
+
+  return false
+}
+
+async function readySessionRunId(a: Agent): Promise<string> {
+  let { sessionRunId } = await startAgentSession(a)
+  if (await waitForSessionHook(a.id, sessionRunId)) {
+    return sessionRunId
+  }
+
+  console.warn('[v0] agent session hook was not ready; restarting session', {
+    agentId: a.id,
+    sessionRunId,
+  })
+
+  ;({ sessionRunId } = await restartAgentSession(a))
+  if (await waitForSessionHook(a.id, sessionRunId)) {
+    return sessionRunId
+  }
+
+  throw new Error(
+    `Session hook for agent ${a.id} was not ready after restart (${sessionRunId}).`
+  )
+}
+
+async function resumeSessionEvent(
+  a: Agent,
+  event: SessionEvent
+): Promise<{ sessionRunId: string }> {
+  let sessionRunId = await readySessionRunId(a)
+  try {
+    await resumeHook(sessionToken(a.id), event)
+    return { sessionRunId }
+  } catch (err) {
+    if (!isHookNotFoundError(err)) {
+      throw err
+    }
+  }
+
+  console.warn('[v0] agent session hook disappeared; restarting session', {
+    agentId: a.id,
+    sessionRunId,
+  })
+
+  sessionRunId = (await restartAgentSession(a)).sessionRunId
+  if (!(await waitForSessionHook(a.id, sessionRunId))) {
+    throw new Error(
+      `Session hook for agent ${a.id} was not ready after recovery restart (${sessionRunId}).`
+    )
+  }
+
+  await resumeHook(sessionToken(a.id), event)
+  return { sessionRunId }
+}
+
 /**
  * Ensure the session is running and push a single heartbeat event.
  * Returns the session run id. The push has no `ack` field so the
@@ -144,9 +232,7 @@ function sleep(ms: number) {
 export async function pokeHeartbeat(opts: {
   agent: Agent
 }): Promise<{ sessionRunId: string }> {
-  const { sessionRunId } = await startAgentSession(opts.agent)
-  await resumeHook(sessionToken(opts.agent.id), { type: 'heartbeat' })
-  return { sessionRunId }
+  return await resumeSessionEvent(opts.agent, { type: 'heartbeat' })
 }
 
 /**
@@ -160,9 +246,8 @@ export async function dispatchChatTurn(opts: {
   conversationId: string
   uiMessages: UIMessage[]
 }): Promise<{ sessionRunId: string; replyToken: string }> {
-  const { sessionRunId } = await startAgentSession(opts.agent)
   const replyToken = newReplyToken()
-  await resumeHook(sessionToken(opts.agent.id), {
+  const { sessionRunId } = await resumeSessionEvent(opts.agent, {
     type: 'chat',
     conversationId: opts.conversationId,
     uiMessages: opts.uiMessages,
