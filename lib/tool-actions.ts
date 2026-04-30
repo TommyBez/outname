@@ -1,16 +1,16 @@
 'use server'
 
-import { revalidateTag } from 'next/cache'
 import { and, eq } from 'drizzle-orm'
-import { db } from '@/lib/db'
-import { agent, agentTools } from '@/lib/db/schema'
+import { revalidateTag } from 'next/cache'
 import { requireUserId } from '@/lib/auth-guard'
 import { agentToolsTag } from '@/lib/cache-tags'
+import { db } from '@/lib/db'
+import { agent, agentTools } from '@/lib/db/schema'
 import { getMaintainerTool } from '@/tools/registry'
 
 interface AttachResult {
-  ok: boolean
   error?: string
+  ok: boolean
 }
 
 async function assertAgentOwnership(agentId: string, userId: string) {
@@ -20,8 +20,12 @@ async function assertAgentOwnership(agentId: string, userId: string) {
     .where(eq(agent.id, agentId))
     .limit(1)
 
-  if (!row) throw new Error('Agent not found.')
-  if (row.userId !== userId) throw new Error('Forbidden.')
+  if (!row) {
+    throw new Error('Agent not found.')
+  }
+  if (row.userId !== userId) {
+    throw new Error('Forbidden.')
+  }
 }
 
 export async function attachToolAction(
@@ -33,11 +37,16 @@ export async function attachToolAction(
   try {
     await assertAgentOwnership(agentId, userId)
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Forbidden.' }
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Forbidden.',
+    }
   }
 
   const tool = getMaintainerTool(toolId)
-  if (!tool) return { ok: false, error: 'Unknown tool.' }
+  if (!tool) {
+    return { ok: false, error: 'Unknown tool.' }
+  }
 
   const schema = tool.configSchema
   const parsed = schema
@@ -77,7 +86,10 @@ export async function detachToolAction(
   try {
     await assertAgentOwnership(agentId, userId)
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Forbidden.' }
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Forbidden.',
+    }
   }
 
   await db

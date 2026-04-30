@@ -24,18 +24,18 @@ import type {
  */
 
 interface GoogleCredential {
-  refreshToken: string
   accessToken: string
   accessTokenExpiresAt: string
+  refreshToken: string
 }
 
 interface GoogleTokenResponse {
   access_token: string
   expires_in: number
+  id_token?: string
   refresh_token?: string
   scope?: string
   token_type: string
-  id_token?: string
 }
 
 interface GoogleUserInfo {

@@ -25,16 +25,16 @@ const calendarConfigSchema = z.object({
 })
 
 interface CalendarEvent {
-  id: string
-  summary?: string
-  description?: string
-  location?: string
-  start?: { dateTime?: string; date?: string; timeZone?: string }
-  end?: { dateTime?: string; date?: string; timeZone?: string }
   attendees?: Array<{ email: string; responseStatus?: string }>
+  description?: string
+  end?: { dateTime?: string; date?: string; timeZone?: string }
   hangoutLink?: string
   htmlLink?: string
+  id: string
+  location?: string
+  start?: { dateTime?: string; date?: string; timeZone?: string }
   status?: string
+  summary?: string
 }
 
 interface EventListResponse {
@@ -48,7 +48,9 @@ export const calendarReadTool: MaintainerTool = {
   displayName: 'Calendar · Read',
   description:
     'List upcoming events from the configured Google Calendar. Defaults to the next 7 days, capped at 25 events.',
-  requirements: [{ kind: 'connection', provider: 'google', scopes: [CALENDAR_READONLY] }],
+  requirements: [
+    { kind: 'connection', provider: 'google', scopes: [CALENDAR_READONLY] },
+  ],
   configSchema: calendarConfigSchema,
   configFields: [
     {
@@ -151,7 +153,9 @@ export const calendarCreateTool: MaintainerTool = {
   displayName: 'Calendar · Create event',
   description:
     'Create a new event on the configured Google Calendar. Requires a title and start/end timestamps.',
-  requirements: [{ kind: 'connection', provider: 'google', scopes: [CALENDAR_EVENTS] }],
+  requirements: [
+    { kind: 'connection', provider: 'google', scopes: [CALENDAR_EVENTS] },
+  ],
   configSchema: calendarConfigSchema,
   configFields: [
     {

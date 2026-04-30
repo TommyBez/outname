@@ -1,20 +1,17 @@
 'use server'
 
 import { revalidateTag } from 'next/cache'
+import { getApiKeyConnectorOrThrow, getConnector } from '@/connectors/registry'
+import {
+  disconnectProvider,
+  persistApiKeyConnection,
+} from '@/connectors/runtime'
 import { requireUserId } from '@/lib/auth-guard'
 import { userConnectionsTag } from '@/lib/cache-tags'
-import {
-  getConnector,
-  getApiKeyConnectorOrThrow,
-} from '@/connectors/registry'
-import {
-  persistApiKeyConnection,
-  disconnectProvider,
-} from '@/connectors/runtime'
 
 interface SaveApiKeyResult {
-  ok: boolean
   error?: string
+  ok: boolean
 }
 
 /**
@@ -41,7 +38,10 @@ export async function saveApiKeyConnectionAction(
 
   const parsed = connector.apiKey.formSchema.safeParse(values)
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalid input.' }
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? 'Invalid input.',
+    }
   }
 
   const apiKeyConnector = getApiKeyConnectorOrThrow(provider)

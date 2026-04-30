@@ -2,6 +2,7 @@ import { DurableAgent } from '@workflow/ai/agent'
 import { getAgentById } from '@/lib/start-agent-run'
 import { buildAttachedTools } from '@/tools/build-attached-tools'
 import { composeSystemPrompt } from './compose-system-prompt'
+import { resolveToolPlan } from './steps/resolve-tool-plan'
 import { createExecTools } from './tools/exec-tools'
 import { createMemoryTools } from './tools/memory-tools'
 import { createPendingWrites, type PendingWrites } from './tools/pending-writes'
@@ -43,10 +44,12 @@ export async function buildAgent(
   // Resolve attached maintainer tools first so we know which need
   // reconnection — those reasons get rendered into the system prompt
   // so the model can recover gracefully.
-  const attached = await buildAttachedTools({
-    agentId,
-    userId: row.userId,
-  })
+  //
+  // Two-stage boot keeps the workflow bundle free of `node:crypto`:
+  // (1) the step does DB + decrypt + refresh and returns plain JSON;
+  // (2) the workflow synchronously calls `tool.build()` on the result.
+  const plan = await resolveToolPlan({ agentId, userId: row.userId })
+  const attached = buildAttachedTools({ agentId, plan })
 
   const systemPrompt = await composeSystemPrompt({
     agentId,

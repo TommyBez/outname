@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server'
-import { requireUserId } from '@/lib/auth-guard'
 import { revalidateTag } from 'next/cache'
-import { userConnectionsTag } from '@/lib/cache-tags'
-import { disconnectProvider } from '@/connectors/runtime'
+import { NextResponse } from 'next/server'
 import { getConnector } from '@/connectors/registry'
+import { disconnectProvider } from '@/connectors/runtime'
+import { requireUserId } from '@/lib/auth-guard'
+import { userConnectionsTag } from '@/lib/cache-tags'
 
 export async function POST(
   _request: Request,
@@ -13,10 +13,7 @@ export async function POST(
   const { provider } = await context.params
 
   if (!getConnector(provider)) {
-    return NextResponse.json(
-      { error: 'unknown_provider' },
-      { status: 404 }
-    )
+    return NextResponse.json({ error: 'unknown_provider' }, { status: 404 })
   }
 
   await disconnectProvider({ userId, provider })

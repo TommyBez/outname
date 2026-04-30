@@ -30,7 +30,7 @@ import type { RawCredential } from '@/connectors/types'
  * Future Phase 4 additions (`tool_sandbox`, …) plug in here without
  * touching every existing tool.
  */
-export type ToolRequirement = {
+export interface ToolRequirement {
   kind: 'connection'
   provider: string
   scopes?: string[]
@@ -42,14 +42,14 @@ export type ToolRequirement = {
  * fancier should land as a separate sub-form, not as flags here.
  */
 export interface ToolConfigFieldDescriptor {
-  name: string
-  label: string
+  default?: string
   description?: string
-  type: 'text' | 'select'
+  label: string
+  name: string
   options?: { value: string; label: string }[]
   placeholder?: string
   required?: boolean
-  default?: string
+  type: 'text' | 'select'
 }
 
 /**
@@ -61,8 +61,6 @@ export interface ToolConfigFieldDescriptor {
 export interface ToolBuildContext {
   /** `agent.id` of the agent owning this attachment. For logging only. */
   agentId: string
-  /** Registry id, e.g. "gmail_search". For logging / error attribution. */
-  toolId: string
   /** Validated attachment config — `{}` if the tool has no `configSchema`. */
   config: Record<string, unknown>
   /**
@@ -72,6 +70,8 @@ export interface ToolBuildContext {
    * re-checking.
    */
   credentials: Record<string, RawCredential>
+  /** Registry id, e.g. "gmail_search". For logging / error attribution. */
+  toolId: string
 }
 
 /**
@@ -108,24 +108,24 @@ export type Reconnect =
   | { toolId: string; reason: 'tool_removed' }
 
 export interface MaintainerTool {
-  /** Stable id used in `agent_tools.tool_id` and as the AI-SDK tool key. */
-  id: string
-  /** Coarse category for catalog grouping. */
-  category: string
-  /** Human label for catalog cards. */
-  displayName: string
-  /** One-paragraph user-facing description. */
-  description: string
-  /** Capabilities the tool needs at build time. */
-  requirements: ToolRequirement[]
-  /** Optional Zod schema for `agent_tools.config`. */
-  configSchema?: z.ZodTypeAny
-  /** Optional UI metadata for the configure panel. */
-  configFields?: ToolConfigFieldDescriptor[]
   /**
    * Build the AI-SDK Tool the agent actually invokes. Must throw on
    * unrecoverable misconfiguration — the runtime catches and surfaces
    * as `reason: "build_failed"`.
    */
   build(ctx: ToolBuildContext): Tool
+  /** Coarse category for catalog grouping. */
+  category: string
+  /** Optional UI metadata for the configure panel. */
+  configFields?: ToolConfigFieldDescriptor[]
+  /** Optional Zod schema for `agent_tools.config`. */
+  configSchema?: z.ZodTypeAny
+  /** One-paragraph user-facing description. */
+  description: string
+  /** Human label for catalog cards. */
+  displayName: string
+  /** Stable id used in `agent_tools.tool_id` and as the AI-SDK tool key. */
+  id: string
+  /** Capabilities the tool needs at build time. */
+  requirements: ToolRequirement[]
 }

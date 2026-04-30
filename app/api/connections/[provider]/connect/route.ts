@@ -3,6 +3,7 @@ import { and, eq } from 'drizzle-orm'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { getOAuthConnectorOrThrow } from '@/connectors/registry'
+import type { OAuthConnector } from '@/connectors/types'
 import { requireSession } from '@/lib/auth-guard'
 import { db } from '@/lib/db'
 import { agent } from '@/lib/db/schema'
@@ -39,7 +40,7 @@ export async function GET(
   const session = await requireSession()
   const { provider } = await params
 
-  let connector
+  let connector: OAuthConnector
   try {
     connector = getOAuthConnectorOrThrow(provider)
   } catch {
@@ -48,10 +49,7 @@ export async function GET(
 
   const url = new URL(req.url)
   const agentIdRaw = url.searchParams.get('agentId')
-  const returnTo = safeReturnToOr(
-    url.searchParams.get('returnTo'),
-    '/settings'
-  )
+  const returnTo = safeReturnToOr(url.searchParams.get('returnTo'), '/settings')
 
   // Verify agentId ownership before doing anything else. Without this
   // check, user A could cause user B's session-level connect attempt
@@ -70,9 +68,7 @@ export async function GET(
   }
 
   // Derive scopes server-side. NEVER read scopes from the URL.
-  const scopes = agentId
-    ? await unionScopesForAgent({ agentId, provider })
-    : []
+  const scopes = agentId ? await unionScopesForAgent({ agentId, provider }) : []
 
   const state = randomBytes(32).toString('base64url')
   const redirectUri = new URL(

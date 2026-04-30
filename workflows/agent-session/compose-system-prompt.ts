@@ -73,7 +73,9 @@ function describeReconnect(r: Reconnect): string {
 }
 
 function renderReconnects(reconnects: readonly Reconnect[]): string | null {
-  if (reconnects.length === 0) return null
+  if (reconnects.length === 0) {
+    return null
+  }
   const lines = reconnects.map(describeReconnect).join('\n')
   return [
     '## Tools needing reconnection',
@@ -131,7 +133,9 @@ export async function composeSystemPrompt(
   }
 
   const reconnectsBlock = renderReconnects(args.reconnects ?? [])
-  if (reconnectsBlock) sections.push(reconnectsBlock)
+  if (reconnectsBlock) {
+    sections.push(reconnectsBlock)
+  }
 
   sections.push(FOOTER)
 

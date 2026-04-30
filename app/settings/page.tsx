@@ -98,7 +98,7 @@ async function ConnectionsSection() {
     connectedAt: r.createdAt.toISOString(),
   }))
 
-  return <ConnectionsList connectors={connectors} connections={connections} />
+  return <ConnectionsList connections={connections} connectors={connectors} />
 }
 
 async function AgentsSummarySection() {

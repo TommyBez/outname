@@ -1,38 +1,38 @@
 'use client'
 
-import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import {
-  saveApiKeyConnectionAction,
   disconnectConnectionAction,
+  saveApiKeyConnectionAction,
 } from '@/lib/connection-actions'
 import type { ConnectionStatus } from '@/lib/db/schema'
 
 interface ConnectorSummary {
-  provider: string
-  kind: 'oauth' | 'api_key'
-  displayName: string
-  description: string
   apiKeyFields?: Array<{
     name: string
     label: string
     type: 'text' | 'password'
     placeholder?: string
   }>
+  description: string
+  displayName: string
+  kind: 'oauth' | 'api_key'
+  provider: string
 }
 
 interface ConnectionView {
+  connectedAt: string
+  lastError: string | null
+  metadata: Record<string, unknown>
   provider: string
   status: ConnectionStatus
-  metadata: Record<string, unknown>
-  lastError: string | null
-  connectedAt: string
 }
 
 interface Props {
-  connectors: ConnectorSummary[]
   connections: ConnectionView[]
+  connectors: ConnectorSummary[]
 }
 
 function findConnection(connections: ConnectionView[], provider: string) {
@@ -41,9 +41,14 @@ function findConnection(connections: ConnectionView[], provider: string) {
 
 function describeIdentity(metadata: Record<string, unknown>): string | null {
   const email = typeof metadata.email === 'string' ? metadata.email : null
-  if (email) return email
-  const accountId = typeof metadata.accountId === 'string' ? metadata.accountId : null
-  if (accountId) return accountId
+  if (email) {
+    return email
+  }
+  const accountId =
+    typeof metadata.accountId === 'string' ? metadata.accountId : null
+  if (accountId) {
+    return accountId
+  }
   return null
 }
 
@@ -59,8 +64,8 @@ export function ConnectionsList({ connectors, connections }: Props) {
       {connectors.map((c) => {
         const conn = findConnection(connections, c.provider)
         return (
-          <li key={c.provider} className="py-6">
-            <ConnectorRow connector={c} connection={conn} />
+          <li className="py-6" key={c.provider}>
+            <ConnectorRow connection={conn} connector={c} />
           </li>
         )
       })}
@@ -108,20 +113,29 @@ function ConnectorRow({
             </p>
           )}
         </div>
-        <ConnectorAction connector={connector} connection={connection} />
+        <ConnectorAction connection={connection} connector={connector} />
       </div>
     </div>
   )
 }
 
+function statusDotClass(status: ConnectionStatus): string {
+  if (status === 'active') {
+    return 'bg-foreground'
+  }
+  if (status === 'expired') {
+    return 'bg-accent'
+  }
+  return 'bg-destructive'
+}
+
 function StatusDot({ status }: { status: ConnectionStatus }) {
-  const cls =
-    status === 'active'
-      ? 'bg-foreground'
-      : status === 'expired'
-        ? 'bg-accent'
-        : 'bg-destructive'
-  return <span aria-hidden className={`inline-block size-2 ${cls}`} />
+  return (
+    <span
+      aria-hidden
+      className={`inline-block size-2 ${statusDotClass(status)}`}
+    />
+  )
 }
 
 function ConnectorAction({
@@ -132,9 +146,9 @@ function ConnectorAction({
   connection: ConnectionView | null
 }) {
   if (connector.kind === 'oauth') {
-    return <OAuthButtons connector={connector} connection={connection} />
+    return <OAuthButtons connection={connection} connector={connector} />
   }
-  return <ApiKeyControls connector={connector} connection={connection} />
+  return <ApiKeyControls connection={connection} connector={connector} />
 }
 
 function OAuthButtons({
@@ -171,10 +185,10 @@ function OAuthButtons({
       </a>
       {connection && (
         <button
-          type="button"
           className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
-          onClick={handleDisconnect}
           disabled={pending}
+          onClick={handleDisconnect}
+          type="button"
         >
           {pending ? '...' : 'Disconnect'}
         </button>
@@ -226,18 +240,18 @@ function ApiKeyControls({
     <div className="flex shrink-0 flex-col items-stretch gap-2 md:items-end">
       <div className="flex items-center gap-2">
         <button
-          type="button"
           className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
           onClick={() => setOpen((v) => !v)}
+          type="button"
         >
           {connection ? 'Replace key' : 'Connect'}
         </button>
         {connection && (
           <button
-            type="button"
             className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
-            onClick={handleDisconnect}
             disabled={pending}
+            onClick={handleDisconnect}
+            type="button"
           >
             {pending ? '...' : 'Disconnect'}
           </button>
@@ -249,26 +263,26 @@ function ApiKeyControls({
           onSubmit={handleSubmit}
         >
           {(connector.apiKeyFields ?? []).map((field) => (
-            <label key={field.name} className="flex flex-col gap-1">
+            <label className="flex flex-col gap-1" key={field.name}>
               <span className="font-bold text-[10px] uppercase tracking-[0.2em]">
                 {field.label}
               </span>
               <input
                 className="h-10 w-full border-2 border-foreground bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-                type={field.type}
-                value={values[field.name] ?? ''}
-                placeholder={field.placeholder}
                 onChange={(e) =>
                   setValues((v) => ({ ...v, [field.name]: e.target.value }))
                 }
+                placeholder={field.placeholder}
                 required
+                type={field.type}
+                value={values[field.name] ?? ''}
               />
             </label>
           ))}
           <button
-            type="submit"
             className="inline-flex h-10 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
             disabled={pending}
+            type="submit"
           >
             {pending ? 'Saving...' : 'Save'}
           </button>

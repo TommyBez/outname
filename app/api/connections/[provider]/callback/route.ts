@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { getOAuthConnectorOrThrow } from '@/connectors/registry'
 import { persistOAuthExchange } from '@/connectors/runtime'
+import type { OAuthConnector } from '@/connectors/types'
 import { requireSession } from '@/lib/auth-guard'
 import { db } from '@/lib/db'
 import { agent } from '@/lib/db/schema'
@@ -23,9 +24,9 @@ function stateCookieName(provider: string): string {
 }
 
 interface StateCookie {
-  state: string
   agentId: string | null
   returnTo: string
+  state: string
 }
 
 function parseStateCookie(value: string | undefined): StateCookie | null {
@@ -86,7 +87,7 @@ export async function GET(
     return bail(url.origin, returnTo, error)
   }
 
-  let connector
+  let connector: OAuthConnector
   try {
     connector = getOAuthConnectorOrThrow(provider)
   } catch {

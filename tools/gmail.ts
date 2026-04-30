@@ -26,13 +26,26 @@ interface MessageHeader {
 
 interface Message {
   id: string
-  threadId: string
-  snippet?: string
-  labelIds?: string[]
   internalDate?: string
+  labelIds?: string[]
   payload?: {
     headers?: MessageHeader[]
   }
+  snippet?: string
+  threadId: string
+}
+
+// Hoisted to module scope; rebuilding regex literals on every send was
+// flagged by useTopLevelRegex.
+const BASE64_PLUS = /\+/g
+const BASE64_SLASH = /\//g
+const BASE64_TRAILING_EQ = /=+$/
+
+function toBase64Url(b64: string): string {
+  return b64
+    .replace(BASE64_PLUS, '-')
+    .replace(BASE64_SLASH, '_')
+    .replace(BASE64_TRAILING_EQ, '')
 }
 
 function header(headers: MessageHeader[] | undefined, name: string): string {
@@ -48,7 +61,9 @@ export const gmailSearchTool: MaintainerTool = {
   displayName: 'Gmail · Search',
   description:
     'Search the connected Gmail account using Gmail query syntax (e.g. "from:billing@stripe.com newer_than:7d"). Returns up to 25 message summaries.',
-  requirements: [{ kind: 'connection', provider: 'google', scopes: [GMAIL_READONLY] }],
+  requirements: [
+    { kind: 'connection', provider: 'google', scopes: [GMAIL_READONLY] },
+  ],
   build({ credentials, toolId }) {
     return tool({
       description:
@@ -109,7 +124,9 @@ export const gmailSearchTool: MaintainerTool = {
         )
         return {
           ok: true as const,
-          messages: detailed.filter((m): m is NonNullable<typeof m> => m !== null),
+          messages: detailed.filter(
+            (m): m is NonNullable<typeof m> => m !== null
+          ),
           totalEstimate: list.resultSizeEstimate ?? null,
         }
       },
@@ -123,7 +140,9 @@ export const gmailSendTool: MaintainerTool = {
   displayName: 'Gmail · Send',
   description:
     'Send an email from the connected Gmail account. Plain-text body only; subject + recipients are required.',
-  requirements: [{ kind: 'connection', provider: 'google', scopes: [GMAIL_SEND] }],
+  requirements: [
+    { kind: 'connection', provider: 'google', scopes: [GMAIL_SEND] },
+  ],
   build({ credentials, toolId }) {
     return tool({
       description:
@@ -146,11 +165,7 @@ export const gmailSendTool: MaintainerTool = {
         }
         headers.push('Content-Type: text/plain; charset="UTF-8"')
         const rfc2822 = `${headers.join('\r\n')}\r\n\r\n${body}`
-        const raw = Buffer.from(rfc2822, 'utf8')
-          .toString('base64')
-          .replace(/\+/g, '-')
-          .replace(/\//g, '_')
-          .replace(/=+$/, '')
+        const raw = toBase64Url(Buffer.from(rfc2822, 'utf8').toString('base64'))
         const res = await fetch(
           'https://gmail.googleapis.com/gmail/v1/users/me/messages/send',
           {

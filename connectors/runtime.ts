@@ -1,16 +1,13 @@
 import 'server-only'
 import { and, eq } from 'drizzle-orm'
 import { revalidateTag } from 'next/cache'
-import {
-  decryptCredential,
-  encryptCredential,
-} from '@/lib/connection-crypto'
+import { userConnectionsTag } from '@/lib/cache-tags'
+import { decryptCredential, encryptCredential } from '@/lib/connection-crypto'
 import { db } from '@/lib/db'
 import { userConnections } from '@/lib/db/schema'
-import { userConnectionsTag } from '@/lib/cache-tags'
 import type { Reconnect } from '@/tools/types'
 import { getConnector } from './registry'
-import type { OAuthExchangeResult, RawCredential } from './types'
+import type { Connector, OAuthExchangeResult, RawCredential } from './types'
 
 /**
  * Status lifecycle for `user_connections.status` — owned exclusively by
@@ -27,11 +24,11 @@ import type { OAuthExchangeResult, RawCredential } from './types'
  */
 
 interface ConnectionRowData {
-  raw: RawCredential
-  metadata: Record<string, unknown>
   expiresAt: Date | null
-  status: 'active' | 'expired' | 'revoked'
   lastError: string | null
+  metadata: Record<string, unknown>
+  raw: RawCredential
+  status: 'active' | 'expired' | 'revoked'
 }
 
 async function readConnectionRow(
@@ -128,7 +125,7 @@ async function persistOAuthExchangeResult(args: {
   revalidateTag(userConnectionsTag(userId), 'max')
 }
 
-export async function persistOAuthExchange(args: {
+export function persistOAuthExchange(args: {
   userId: string
   provider: string
   result: OAuthExchangeResult
@@ -239,15 +236,17 @@ function nearExpiry(expiresAt: Date | null): boolean {
   return expiresAt.getTime() - Date.now() < 60_000
 }
 
-function classifyRefreshError(
-  err: unknown
-): 'expired' | 'revoked' {
+// Hoisted to module scope so we don't rebuild the regex on every
+// failed refresh.
+const INVALID_GRANT_REVOKED = /invalid_grant.*(revoked|consent)/i
+
+function classifyRefreshError(err: unknown): 'expired' | 'revoked' {
   // Google + most providers send 400 with body containing
   // `invalid_grant` for revoked or expired refresh tokens. We treat
   // both as "user needs to reconnect"; the only difference between
   // expired vs revoked here is which copy we surface to the model.
   const message = err instanceof Error ? err.message : String(err)
-  if (/invalid_grant.*(revoked|consent)/i.test(message)) {
+  if (INVALID_GRANT_REVOKED.test(message)) {
     return 'revoked'
   }
   return 'expired'
@@ -278,16 +277,16 @@ export interface ResolveCredentialsResult {
  *   function.
  * - Scope-gap math is generic set-difference on `metadata.scopes`.
  */
-export async function resolveCredentials(args: {
-  userId: string
-  requirements: ProviderRequirement[]
-}): Promise<ResolveCredentialsResult> {
-  const ready = new Map<string, RawCredential>()
-  const reconnects: Reconnect[] = []
+interface ProviderBucket {
+  scopes: Set<string>
+  toolIds: Set<string>
+}
 
-  // Bucket requirements by provider, unioning scope sets.
-  const byProvider = new Map<string, { scopes: Set<string>; toolIds: Set<string> }>()
-  for (const req of args.requirements) {
+function bucketRequirementsByProvider(
+  requirements: ProviderRequirement[]
+): Map<string, ProviderBucket> {
+  const byProvider = new Map<string, ProviderBucket>()
+  for (const req of requirements) {
     let bucket = byProvider.get(req.provider)
     if (!bucket) {
       bucket = { scopes: new Set(), toolIds: new Set() }
@@ -298,97 +297,145 @@ export async function resolveCredentials(args: {
     }
     bucket.toolIds.add(req.toolId)
   }
+  return byProvider
+}
+
+function fanOutReconnect(
+  reconnects: Reconnect[],
+  provider: string,
+  toolIds: Iterable<string>,
+  reason: 'missing_credential' | 'expired' | 'revoked'
+): void {
+  for (const toolId of toolIds) {
+    reconnects.push({ provider, toolId, reason })
+  }
+}
+
+function computeScopeGap(wanted: Set<string>, granted: string[]): string[] {
+  if (wanted.size === 0) {
+    return []
+  }
+  const grantedSet = new Set(granted)
+  const gap: string[] = []
+  for (const s of wanted) {
+    if (!grantedSet.has(s)) {
+      gap.push(s)
+    }
+  }
+  return gap
+}
+
+interface RefreshOutcome {
+  credential: RawCredential
+  grantedScopes: string[]
+}
+
+async function maybeRefreshOAuth(
+  connector: Connector,
+  row: ConnectionRowData,
+  userId: string,
+  provider: string
+): Promise<RefreshOutcome | { failed: true; reason: 'expired' | 'revoked' }> {
+  if (connector.kind !== 'oauth' || !nearExpiry(row.expiresAt)) {
+    return {
+      credential: row.raw,
+      grantedScopes: (row.metadata.scopes as string[] | undefined) ?? [],
+    }
+  }
+  try {
+    const next = await connector.oauth.refresh(row.raw)
+    await persistOAuthExchangeResult({
+      userId,
+      provider,
+      result: next,
+      // Refreshes often omit the metadata fields we care about
+      // (email, accountId, …). Merge so we keep the exchange-time
+      // identity sticky.
+      mergeMetadata: true,
+    })
+    const previousScopes = (row.metadata.scopes as string[] | undefined) ?? []
+    return {
+      credential: next.raw,
+      // Refresh responses sometimes omit the scope claim entirely;
+      // fall back to whatever we already had.
+      grantedScopes:
+        next.grantedScopes.length > 0 ? next.grantedScopes : previousScopes,
+    }
+  } catch (err) {
+    const reason = classifyRefreshError(err)
+    await markStatus({
+      userId,
+      provider,
+      status: reason,
+      error: err instanceof Error ? err.message : String(err),
+    })
+    return { failed: true, reason }
+  }
+}
+
+async function resolveOneProvider(args: {
+  userId: string
+  provider: string
+  bucket: ProviderBucket
+  ready: Map<string, RawCredential>
+  reconnects: Reconnect[]
+}): Promise<void> {
+  const { userId, provider, bucket, ready, reconnects } = args
+  const connector = getConnector(provider)
+  if (!connector) {
+    fanOutReconnect(reconnects, provider, bucket.toolIds, 'missing_credential')
+    return
+  }
+
+  const row = await readConnectionRow(userId, provider)
+  if (!row) {
+    fanOutReconnect(reconnects, provider, bucket.toolIds, 'missing_credential')
+    return
+  }
+
+  if (row.status === 'revoked' || row.status === 'expired') {
+    fanOutReconnect(reconnects, provider, bucket.toolIds, row.status)
+    return
+  }
+
+  const refreshed = await maybeRefreshOAuth(connector, row, userId, provider)
+  if ('failed' in refreshed) {
+    fanOutReconnect(reconnects, provider, bucket.toolIds, refreshed.reason)
+    return
+  }
+
+  const gap = computeScopeGap(bucket.scopes, refreshed.grantedScopes)
+  if (gap.length > 0) {
+    for (const toolId of bucket.toolIds) {
+      reconnects.push({
+        provider,
+        toolId,
+        reason: 'scope_gap',
+        neededScopes: gap,
+      })
+    }
+    return
+  }
+
+  ready.set(provider, refreshed.credential)
+}
+
+export async function resolveCredentials(args: {
+  userId: string
+  requirements: ProviderRequirement[]
+}): Promise<ResolveCredentialsResult> {
+  const ready = new Map<string, RawCredential>()
+  const reconnects: Reconnect[] = []
+  const byProvider = bucketRequirementsByProvider(args.requirements)
 
   for (const [provider, bucket] of byProvider) {
-    const connector = getConnector(provider)
-    if (!connector) {
-      // Unknown provider in registry — surface as missing for every
-      // tool that wanted it. Catalog UI will offer Detach.
-      for (const toolId of bucket.toolIds) {
-        reconnects.push({ provider, toolId, reason: 'missing_credential' })
-      }
-      continue
-    }
-
-    const row = await readConnectionRow(args.userId, provider)
-    if (!row) {
-      for (const toolId of bucket.toolIds) {
-        reconnects.push({ provider, toolId, reason: 'missing_credential' })
-      }
-      continue
-    }
-
-    if (row.status === 'revoked') {
-      for (const toolId of bucket.toolIds) {
-        reconnects.push({ provider, toolId, reason: 'revoked' })
-      }
-      continue
-    }
-    if (row.status === 'expired') {
-      for (const toolId of bucket.toolIds) {
-        reconnects.push({ provider, toolId, reason: 'expired' })
-      }
-      continue
-    }
-
-    let credential = row.raw
-    let grantedScopes = (row.metadata.scopes as string[] | undefined) ?? []
-
-    if (connector.kind === 'oauth' && nearExpiry(row.expiresAt)) {
-      try {
-        const next = await connector.oauth.refresh(row.raw)
-        await persistOAuthExchangeResult({
-          userId: args.userId,
-          provider,
-          result: next,
-          // Refreshes return an empty metadata object; merge so we
-          // keep `email`, `accountId`, etc. from the original exchange.
-          mergeMetadata: true,
-        })
-        credential = next.raw
-        // Refresh responses sometimes omit the scope claim entirely;
-        // fall back to whatever we already had.
-        grantedScopes =
-          next.grantedScopes.length > 0 ? next.grantedScopes : grantedScopes
-      } catch (err) {
-        const reason = classifyRefreshError(err)
-        await markStatus({
-          userId: args.userId,
-          provider,
-          status: reason,
-          error: err instanceof Error ? err.message : String(err),
-        })
-        for (const toolId of bucket.toolIds) {
-          reconnects.push({ provider, toolId, reason })
-        }
-        continue
-      }
-    }
-
-    // Scope-gap math (generic; OAuth only — api_key bucket.scopes is
-    // empty by construction, so the gap is trivially empty).
-    if (bucket.scopes.size > 0) {
-      const granted = new Set(grantedScopes)
-      const gap: string[] = []
-      for (const s of bucket.scopes) {
-        if (!granted.has(s)) {
-          gap.push(s)
-        }
-      }
-      if (gap.length > 0) {
-        for (const toolId of bucket.toolIds) {
-          reconnects.push({
-            provider,
-            toolId,
-            reason: 'scope_gap',
-            neededScopes: gap,
-          })
-        }
-        continue
-      }
-    }
-
-    ready.set(provider, credential)
+    await resolveOneProvider({
+      userId: args.userId,
+      provider,
+      bucket,
+      ready,
+      reconnects,
+    })
   }
 
   return { ready, reconnects }
@@ -425,7 +472,13 @@ export async function getConnectionStatus(args: {
     )
     .limit(1)
   if (!row) {
-    return { exists: false, status: null, metadata: {}, lastError: null, expiresAt: null }
+    return {
+      exists: false,
+      status: null,
+      metadata: {},
+      lastError: null,
+      expiresAt: null,
+    }
   }
   return {
     exists: true,
@@ -470,4 +523,3 @@ export async function listUserConnections(userId: string): Promise<
     createdAt: r.createdAt,
   }))
 }
-

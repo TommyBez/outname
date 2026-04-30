@@ -1,5 +1,5 @@
 import 'server-only'
-import { z } from 'zod'
+import type { z } from 'zod'
 
 /**
  * Best-effort introspection of a Zod object schema into UI field
@@ -12,13 +12,13 @@ import { z } from 'zod'
  * tool author writing one by hand.
  */
 export interface ConfigField {
-  name: string
-  label: string
-  type: 'text' | 'number' | 'boolean'
-  description?: string
   defaultValue?: string | number | boolean
-  required: boolean
+  description?: string
+  label: string
+  name: string
   placeholder?: string
+  required: boolean
+  type: 'text' | 'number' | 'boolean'
 }
 
 function unwrap(schema: z.ZodTypeAny): {
@@ -28,15 +28,28 @@ function unwrap(schema: z.ZodTypeAny): {
 } {
   let s: z.ZodTypeAny = schema
   let optional = false
-  let defaultValue: unknown = undefined
+  let defaultValue: unknown
   // Peel off ZodOptional / ZodNullable / ZodDefault layers.
   for (let i = 0; i < 8; i++) {
-    const def = (s as unknown as { _def?: { typeName?: string; defaultValue?: () => unknown; innerType?: z.ZodTypeAny } })._def
-    if (!def) break
+    const def = (
+      s as unknown as {
+        _def?: {
+          typeName?: string
+          defaultValue?: () => unknown
+          innerType?: z.ZodTypeAny
+        }
+      }
+    )._def
+    if (!def) {
+      break
+    }
     if (def.typeName === 'ZodOptional' || def.typeName === 'ZodNullable') {
       optional = true
-      if (def.innerType) s = def.innerType
-      else break
+      if (def.innerType) {
+        s = def.innerType
+      } else {
+        break
+      }
     } else if (def.typeName === 'ZodDefault') {
       optional = true
       if (typeof def.defaultValue === 'function') {
@@ -46,8 +59,11 @@ function unwrap(schema: z.ZodTypeAny): {
           defaultValue = undefined
         }
       }
-      if (def.innerType) s = def.innerType
-      else break
+      if (def.innerType) {
+        s = def.innerType
+      } else {
+        break
+      }
     } else {
       break
     }
@@ -77,9 +93,17 @@ function humanize(name: string): string {
 export function describeConfigSchema(
   schema: z.ZodTypeAny | undefined
 ): ConfigField[] {
-  if (!schema) return []
-  const def = (schema as unknown as { _def?: { typeName?: string; shape?: () => Record<string, z.ZodTypeAny> } })._def
-  if (def?.typeName !== 'ZodObject' || !def.shape) return []
+  if (!schema) {
+    return []
+  }
+  const def = (
+    schema as unknown as {
+      _def?: { typeName?: string; shape?: () => Record<string, z.ZodTypeAny> }
+    }
+  )._def
+  if (def?.typeName !== 'ZodObject' || !def.shape) {
+    return []
+  }
 
   const shape = def.shape()
   const fields: ConfigField[] = []

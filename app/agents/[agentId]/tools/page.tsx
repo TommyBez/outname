@@ -1,11 +1,8 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
-import {
-  ToolCatalog,
-  type ToolCatalogEntry,
-} from '@/components/tool-catalog'
-import { listConnectors, getConnector } from '@/connectors/registry'
+import { ToolCatalog, type ToolCatalogEntry } from '@/components/tool-catalog'
+import { getConnector } from '@/connectors/registry'
 import { requireSession } from '@/lib/auth-guard'
 import {
   getCachedAgentByIdForUser,
@@ -29,7 +26,9 @@ async function Resolved({ params }: { params: Params }) {
   const { agentId } = await params
   const session = await requireSession()
   const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
-  if (!agent) notFound()
+  if (!agent) {
+    notFound()
+  }
 
   const [attachedRows, connectionRows] = await Promise.all([
     getCachedAgentTools(agentId),
@@ -62,15 +61,9 @@ async function Resolved({ params }: { params: Params }) {
     return {
       provider,
       displayName: connector?.displayName ?? provider,
-      status: c
-        ? (c.status as 'active' | 'expired' | 'revoked')
-        : null,
+      status: c ? (c.status as 'active' | 'expired' | 'revoked') : null,
     }
   })
-
-  // Make sure listConnectors is referenced (silences unused import in
-  // the rare case the catalog has no connection-bound tool).
-  void listConnectors
 
   return (
     <>
@@ -84,9 +77,9 @@ async function Resolved({ params }: { params: Params }) {
               Tools
             </h1>
             <p className="text-muted-foreground text-sm">
-              Maintainer tools the agent may call. Attach the ones you want
-              this agent to use; configure their per-attachment settings;
-              connect any required provider once on the settings page.
+              Maintainer tools the agent may call. Attach the ones you want this
+              agent to use; configure their per-attachment settings; connect any
+              required provider once on the settings page.
             </p>
           </div>
           <div className="flex flex-wrap items-start gap-3 border-foreground border-l-2 pl-4 md:justify-end">
@@ -108,8 +101,8 @@ async function Resolved({ params }: { params: Params }) {
 
       <ToolCatalog
         agentId={agentId}
-        catalog={catalog}
         attached={attached}
+        catalog={catalog}
         connections={connections}
       />
     </>

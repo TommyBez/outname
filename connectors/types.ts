@@ -40,14 +40,13 @@ export type RawCredential = unknown
  *                    `user_connections.metadata`.
  */
 export interface OAuthExchangeResult {
-  raw: RawCredential
   expiresAt: string | null
   grantedScopes: string[]
   metadata: Record<string, unknown>
+  raw: RawCredential
 }
 
 export interface OAuthBuildAuthorizeUrlArgs {
-  state: string
   redirectUri: string
   /**
    * Opaque set of provider-defined scope strings. The runtime computes
@@ -55,6 +54,7 @@ export interface OAuthBuildAuthorizeUrlArgs {
    * attached tools — connectors NEVER inject defaults of their own.
    */
   scopes: string[]
+  state: string
 }
 
 export interface OAuthExchangeCodeArgs {
@@ -63,37 +63,33 @@ export interface OAuthExchangeCodeArgs {
 }
 
 export interface OAuthConnector {
-  provider: string
-  kind: 'oauth'
-  displayName: string
   description: string
+  displayName: string
+  kind: 'oauth'
   oauth: {
     buildAuthorizeUrl(args: OAuthBuildAuthorizeUrlArgs): string
     exchangeCode(args: OAuthExchangeCodeArgs): Promise<OAuthExchangeResult>
     refresh(raw: RawCredential): Promise<OAuthExchangeResult>
     revoke?(raw: RawCredential): Promise<void>
   }
+  provider: string
 }
 
 export interface ApiKeyFieldDescriptor {
-  name: string
-  label: string
-  type: 'text' | 'password'
-  placeholder?: string
   description?: string
+  label: string
+  name: string
+  placeholder?: string
+  type: 'text' | 'password'
 }
 
 export interface ApiKeyValidateResult {
-  ok: boolean
   error?: string
   metadata?: Record<string, unknown>
+  ok: boolean
 }
 
 export interface ApiKeyConnector {
-  provider: string
-  kind: 'api_key'
-  displayName: string
-  description: string
   apiKey: {
     /**
      * Zod schema covering ONLY credential fields (the secret + any
@@ -111,6 +107,10 @@ export interface ApiKeyConnector {
      */
     validate?(values: Record<string, string>): Promise<ApiKeyValidateResult>
   }
+  description: string
+  displayName: string
+  kind: 'api_key'
+  provider: string
 }
 
 export type Connector = OAuthConnector | ApiKeyConnector
