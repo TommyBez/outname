@@ -9,14 +9,31 @@ import { createPendingWrites, type PendingWrites } from './tools/pending-writes'
 
 /**
  * One event's agent: DB load, composed system prompt from sandbox persona
- * files, memory + exec tools + maintainer tools (Phase 3), and a `pending`
- * buffer the caller must flush via `endOfEvent`.
+ * files, memory + exec tools + maintainer tools (Phase 3) + sub-agent
+ * tools (Phase 4), and a `pending` buffer the caller must flush via
+ * `endOfEvent`.
  */
 export interface BuildAgentArgs {
   agentId: string
+  /**
+   * Phase 4: parent agent ids leading to this run. Empty for normal
+   * user-driven chat / heartbeat turns. Populated when this turn was
+   * dispatched as a sub-agent invocation. resolveToolPlan uses it to
+   * refuse cycles, and the synthesised `agent_<child>` tools append
+   * their own id before dispatching.
+   */
+  callStack?: string[]
+  /** Durable `runs.id` for this event, when one exists. */
+  currentRunId?: string | null
+  /**
+   * Phase 4: nesting depth. 0 for normal turns, parentDepth + 1 for
+   * sub-agent runs. resolveToolPlan refuses any sub-agent attach that
+   * would push depth past `MAX_SUB_AGENT_DEPTH`.
+   */
+  depth?: number
   /** Optional UTC "now" for the system prompt; defaults to `new Date()`. */
   nowIso?: string
-  /** Heartbeat: `runs.id`; chat: conversation id. */
+  /** Heartbeat/invocation: `runs.id`; chat: conversation id. */
   runId: string
 }
 
@@ -35,6 +52,8 @@ export async function buildAgent(
   args: BuildAgentArgs
 ): Promise<BuildAgentResult> {
   const { agentId, runId } = args
+  const callStack = args.callStack ?? []
+  const depth = args.depth ?? 0
 
   const row = await getAgentById(agentId)
   if (!row) {
@@ -48,8 +67,20 @@ export async function buildAgent(
   // Two-stage boot keeps the workflow bundle free of `node:crypto`:
   // (1) the step does DB + decrypt + refresh and returns plain JSON;
   // (2) the workflow synchronously calls `tool.build()` on the result.
-  const plan = await resolveToolPlan({ agentId, userId: row.userId })
-  const attached = buildAttachedTools({ agentId, plan })
+  const plan = await resolveToolPlan({
+    agentId,
+    userId: row.userId,
+    callStack,
+    depth,
+  })
+  const attached = buildAttachedTools({
+    agentId,
+    userId: row.userId,
+    plan,
+    callStack,
+    currentRunId: args.currentRunId,
+    depth,
+  })
 
   const systemPrompt = await composeSystemPrompt({
     agentId,

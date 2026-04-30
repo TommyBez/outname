@@ -257,6 +257,63 @@ export async function dispatchChatTurn(opts: {
 }
 
 /**
+ * Phase 4: dispatch a sub-agent invocation.
+ *
+ * Used by the synthesised `agent_<child>` tool inside a parent's
+ * workflow run. Wakes (or starts) the child agent's session and
+ * pushes an `invocation` event. The reply will arrive on
+ * `replyTo` (an ephemeral hook token the parent is awaiting via
+ * `createHook` inside its tool's `execute()`).
+ *
+ * Throws if the child agent does not exist or does not belong to the
+ * same user as the parent — the resolveToolPlan step is supposed to
+ * filter those out before the parent's LLM sees the tool, so reaching
+ * here means a runtime drift we don't want to silently swallow.
+ */
+export async function dispatchInvocation(input: {
+  childAgentId: string
+  childUserId: string
+  parentUserId: string
+  parentRunId: string | null
+  parentToolId: string
+  instruction: string
+  replyTo: string
+  callStack: string[]
+  depth: number
+}): Promise<{ sessionRunId: string }> {
+  if (input.childUserId !== input.parentUserId) {
+    throw new Error(
+      `dispatchInvocation: child ${input.childAgentId} does not belong to caller`
+    )
+  }
+
+  const [child] = await db
+    .select()
+    .from(agent)
+    .where(eq(agent.id, input.childAgentId))
+    .limit(1)
+  if (!child) {
+    throw new Error(`dispatchInvocation: child ${input.childAgentId} not found`)
+  }
+  if (!child.enabled) {
+    throw new Error(
+      `dispatchInvocation: child ${input.childAgentId} is disabled`
+    )
+  }
+
+  const { sessionRunId } = await resumeSessionEvent(child, {
+    type: 'invocation',
+    input: input.instruction,
+    replyTo: input.replyTo,
+    parentRunId: input.parentRunId,
+    parentToolId: input.parentToolId,
+    callStack: input.callStack,
+    depth: input.depth,
+  })
+  return { sessionRunId }
+}
+
+/**
  * Return the workflow runtime id of the running session, or null if
  * `last_session_run_id` is unset or points at a terminated workflow.
  */

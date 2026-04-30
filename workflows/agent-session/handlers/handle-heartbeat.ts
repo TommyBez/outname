@@ -70,7 +70,11 @@ export async function handleHeartbeat(input: {
     // reads them inside buildAgent.
     await drainPendingWrites({ agentId })
 
-    const { agent, pending } = await buildAgent({ agentId, runId })
+    const { agent, pending } = await buildAgent({
+      agentId,
+      runId,
+      currentRunId: runId,
+    })
 
     const kickoff = buildHeartbeatKickoff({
       nowIso: new Date().toISOString(),

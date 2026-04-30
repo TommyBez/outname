@@ -1,4 +1,5 @@
 import 'server-only'
+import { agentBrowserTool } from './agent-browser'
 import { calcomRequestTool } from './calcom'
 import { resendSendTool } from './resend'
 import type { MaintainerTool } from './types'
@@ -11,9 +12,15 @@ import type { MaintainerTool } from './types'
  *
  * Phase 3 intentionally ships only API-key or no-auth catalog tools.
  * OAuth-backed tools are deferred until the connector flow is worth the
- * extra product and security surface.
+ * extra product and security surface. Phase 4 adds tool-sandbox-backed
+ * tools (e.g. `agent_browser`) — those carry a `tool_sandbox`
+ * requirement instead of (or in addition to) a `connection`.
  */
-const TOOLS: MaintainerTool[] = [resendSendTool, calcomRequestTool]
+const TOOLS: MaintainerTool[] = [
+  resendSendTool,
+  calcomRequestTool,
+  agentBrowserTool,
+]
 
 export function listMaintainerTools(): readonly MaintainerTool[] {
   return TOOLS
@@ -27,4 +34,4 @@ export function getMaintainerTool(toolId: string): MaintainerTool | undefined {
  * Coarse category ordering for the catalog UI. Tools with categories
  * not in this list fall to the end alphabetically.
  */
-export const TOOL_CATEGORY_ORDER = ['email', 'scheduling'] as const
+export const TOOL_CATEGORY_ORDER = ['email', 'scheduling', 'browser'] as const

@@ -5,6 +5,11 @@ import type { UIMessage } from 'ai'
  *
  * - `chat` — user turn; `replyToken` namespaces streamed chunks for the route.
  * - `heartbeat` — ticker or manual trigger; optional `ack` so the ticker knows the run finished.
+ * - `invocation` — Phase 4: a parent agent's `agent_<child>` tool call.
+ *   Carries the parent's free-text instruction, an ephemeral
+ *   `replyTo` token used to deliver the result back, and the
+ *   call-stack/depth that resolveToolPlan and the runtime use to
+ *   refuse cycles or excessive nesting.
  * - `shutdown` — agent disabled/deleted; loop exits and the ticker is torn down.
  */
 export type SessionEvent =
@@ -18,7 +23,24 @@ export type SessionEvent =
       type: 'heartbeat'
       ack?: string
     }
+  | {
+      type: 'invocation'
+      input: string
+      replyTo: string
+      parentRunId?: string | null
+      parentToolId?: string | null
+      callStack: string[]
+      depth: number
+    }
   | { type: 'shutdown' }
+
+/**
+ * Reply payload the child workflow resumes back on the parent's
+ * one-shot reply hook. Always one message, never a stream.
+ */
+export type SubAgentReply =
+  | { type: 'reply'; ok: true; output: string }
+  | { type: 'reply'; ok: false; error: string }
 
 // Hook tokens — deterministic from `agentId` only.
 

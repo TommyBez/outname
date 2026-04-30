@@ -58,6 +58,26 @@ export async function getCachedRunById(runId: string): Promise<Run | null> {
   return await getRunById(runId)
 }
 
+export async function getChildRunsForParent(
+  parentRunId: string
+): Promise<Run[]> {
+  return await db
+    .select()
+    .from(runs)
+    .where(eq(runs.parentRunId, parentRunId))
+    .orderBy(desc(runs.startedAt))
+}
+
+export async function getCachedChildRunsForParent(
+  parentRunId: string
+): Promise<Run[]> {
+  'use cache'
+
+  cacheLife('minutes')
+  cacheTag(runTag(parentRunId), runsIndexTag())
+  return await getChildRunsForParent(parentRunId)
+}
+
 /**
  * Fetch the single agent-agnostic text result attached to a run, if any.
  * The row is keyed by `run_id` (PK), so there is at most one per run.

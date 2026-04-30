@@ -2,6 +2,7 @@ import { createHook } from 'workflow'
 import { type SessionEvent, sessionToken } from './events'
 import { handleChat } from './handlers/handle-chat'
 import { handleHeartbeat } from './handlers/handle-heartbeat'
+import { handleInvocation } from './handlers/handle-invocation'
 import { endOfEvent } from './steps/end-of-event'
 import {
   ackHeartbeat,
@@ -83,6 +84,21 @@ export async function agentSessionWorkflow(input: {
               await ackHeartbeat({ agentId, ack: event.ack })
             }
           }
+        } else if (event.type === 'invocation') {
+          // Phase 4: parent agent's `agent_<child>` tool call. The
+          // handler always replies on `event.replyTo` (success or
+          // failure) so the parent's `execute()` is unblocked even
+          // if this turn aborts mid-stream.
+          const result = await handleInvocation({
+            agentId,
+            input: event.input,
+            replyTo: event.replyTo,
+            parentRunId: event.parentRunId,
+            parentToolId: event.parentToolId,
+            callStack: event.callStack,
+            depth: event.depth,
+          })
+          pending = result.pending
         }
       } catch (err) {
         // Handlers own their own per-run breadcrumbs (failed `runs` row

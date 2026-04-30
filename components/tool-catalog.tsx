@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useMemo, useState, useTransition } from 'react'
 import { toast } from 'sonner'
+import { useToolSandboxBuildStream } from '@/hooks/use-tool-sandbox-build-stream'
 import type { ConnectionStatus } from '@/lib/db/schema'
 import { attachToolAction, detachToolAction } from '@/lib/tool-actions'
 
@@ -24,11 +25,34 @@ export interface ToolCatalogEntry {
   /** Required providers (`resend`, ...) extracted from `requirements`. */
   providers: string[]
   toolId: string
+  /**
+   * Phase 4: manifest id this tool requires a tool-sandbox snapshot
+   * for. `null` means "no sandbox needed" (e.g. resend_send).
+   */
+  toolSandboxManifest: string | null
 }
 
 export interface AttachedToolView {
   config: Record<string, unknown>
+  /**
+   * Phase 4: id of the latest in-flight build for this tool's
+   * manifest, if any. Set when `status === 'pending'`. The catalog
+   * subscribes to its progress stream.
+   */
+  pendingBuildId: string | null
+  /**
+   * Phase 4: lifecycle of the attachment row. `pending` means the
+   * tool needs a tool sandbox that's still being built; the catalog
+   * shows live progress and disables the form until the build
+   * finishes.
+   */
+  status: 'connected' | 'pending'
   toolId: string
+  /**
+   * Phase 4: sticky error from the last failed build, surfaced
+   * alongside a Retry button.
+   */
+  toolSandboxError: string | null
 }
 
 export interface ProviderConnectionView {
@@ -89,6 +113,11 @@ function ToolRow({
   connections: ProviderConnectionView[]
 }) {
   const isAttached = attached !== null
+  const isPending = attached?.status === 'pending'
+  const isBuilding = Boolean(isPending && attached?.pendingBuildId)
+  const isFailedPending = Boolean(
+    isPending && !attached?.pendingBuildId && attached?.toolSandboxError
+  )
 
   const providerStates = entry.providers.map((p) => {
     const c = findConnection(connections, p)
@@ -113,9 +142,15 @@ function ToolRow({
             {entry.description}
           </p>
           <div className="mt-3 flex flex-wrap gap-3">
-            {providerStates.length === 0 && (
-              <span className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
-                No connection required
+            {providerStates.length === 0 &&
+              entry.toolSandboxManifest === null && (
+                <span className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
+                  No connection required
+                </span>
+              )}
+            {entry.toolSandboxManifest !== null && (
+              <span className="inline-flex h-7 items-center border-2 border-foreground px-3 font-bold text-[10px] uppercase tracking-[0.16em]">
+                Sandbox: {entry.toolSandboxManifest}
               </span>
             )}
             {providerStates.map((p) => (
@@ -124,12 +159,69 @@ function ToolRow({
           </div>
         </div>
       </div>
+      {isPending && attached?.pendingBuildId && (
+        <PendingBuildStrip buildId={attached.pendingBuildId} />
+      )}
+      {attached?.toolSandboxError && (
+        <p
+          className="border-2 border-destructive bg-destructive/5 px-3 py-2 font-mono text-destructive text-xs"
+          role="alert"
+        >
+          Last build failed: {attached.toolSandboxError}
+        </p>
+      )}
       <AttachmentForm
         agentId={agentId}
         attached={attached}
         entry={entry}
         isAttached={isAttached}
+        isBuilding={isBuilding}
+        isFailedPending={isFailedPending}
+        isPending={isPending}
       />
+    </div>
+  )
+}
+
+function PendingBuildStrip({ buildId }: { buildId: string }) {
+  const router = useRouter()
+  const state = useToolSandboxBuildStream(buildId, () => {
+    // Both `ready` and `failed` are terminal — refresh the page so
+    // the server component re-reads the agent_tools row and the
+    // catalog rerenders with the new status (and any sticky error).
+    router.refresh()
+  })
+
+  let label = 'Preparing tool environment...'
+  if (state.kind === 'progress') {
+    label = state.message
+  } else if (state.kind === 'connecting') {
+    label = 'Connecting to build stream...'
+  } else if (state.kind === 'ready') {
+    label = 'Snapshot ready, finalizing...'
+  } else if (state.kind === 'failed') {
+    label = `Build failed: ${state.error}`
+  }
+
+  const isError = state.kind === 'failed'
+
+  return (
+    <div
+      aria-live="polite"
+      className={`flex items-center gap-3 border-2 px-3 py-2 ${
+        isError
+          ? 'border-destructive bg-destructive/5 text-destructive'
+          : 'border-foreground bg-muted'
+      }`}
+      role="status"
+    >
+      {!isError && (
+        <span
+          aria-hidden="true"
+          className="inline-block h-2 w-2 animate-pulse rounded-full bg-foreground"
+        />
+      )}
+      <p className="font-mono text-xs leading-relaxed">{label}</p>
     </div>
   )
 }
@@ -210,12 +302,18 @@ function AttachmentForm({
   agentId,
   entry,
   attached,
+  isBuilding,
   isAttached,
+  isFailedPending,
+  isPending,
 }: {
   agentId: string
   entry: ToolCatalogEntry
   attached: AttachedToolView | null
+  isBuilding: boolean
   isAttached: boolean
+  isFailedPending: boolean
+  isPending: boolean
 }) {
   const [pending, startTransition] = useTransition()
   const router = useRouter()
@@ -253,7 +351,11 @@ function AttachmentForm({
         toast.error(res.error ?? 'Attach failed.')
         return
       }
-      toast.success(isAttached ? 'Tool updated.' : 'Tool attached.')
+      if (res.pendingBuildId) {
+        toast.success('Tool environment is being prepared...')
+      } else {
+        toast.success(isAttached ? 'Tool updated.' : 'Tool attached.')
+      }
       setOpen(false)
       router.refresh()
     })
@@ -278,7 +380,7 @@ function AttachmentForm({
         {!(isAttached || hasFields) && (
           <button
             className="inline-flex h-10 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
-            disabled={pending}
+            disabled={pending || isBuilding}
             onClick={() => handleAttach()}
             type="button"
           >
@@ -287,7 +389,8 @@ function AttachmentForm({
         )}
         {!isAttached && hasFields && (
           <button
-            className="inline-flex h-10 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground"
+            className="inline-flex h-10 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
+            disabled={isBuilding}
             onClick={() => setOpen((v) => !v)}
             type="button"
           >
@@ -296,29 +399,62 @@ function AttachmentForm({
         )}
         {isAttached && hasFields && (
           <button
-            className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+            className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background disabled:opacity-50"
+            disabled={isBuilding}
             onClick={() => setOpen((v) => !v)}
             type="button"
           >
             {open ? 'Cancel' : 'Edit config'}
           </button>
         )}
+        {isAttached && hasFields && isFailedPending && (
+          <button
+            className="inline-flex h-10 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
+            disabled={pending}
+            onClick={() => handleAttach()}
+            type="button"
+          >
+            {pending ? '...' : 'Retry'}
+          </button>
+        )}
+        {isAttached && !hasFields && isFailedPending && (
+          <button
+            className="inline-flex h-10 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
+            disabled={pending}
+            onClick={() => handleAttach()}
+            type="button"
+          >
+            {pending ? '...' : 'Retry'}
+          </button>
+        )}
         {isAttached && (
           <button
             className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
-            disabled={pending}
+            disabled={pending || isBuilding}
             onClick={handleDetach}
             type="button"
           >
             {pending ? '...' : 'Detach'}
           </button>
         )}
-        {isAttached && (
+        {isAttached && !isPending && (
           <span
             className="inline-flex h-10 items-center border-2 border-foreground bg-foreground px-3 font-bold text-[10px] text-background uppercase tracking-[0.16em]"
             role="status"
           >
             Attached
+          </span>
+        )}
+        {isPending && (
+          <span
+            className={`inline-flex h-10 items-center border-2 px-3 font-bold text-[10px] uppercase tracking-[0.16em] ${
+              isFailedPending
+                ? 'border-destructive text-destructive'
+                : 'border-foreground'
+            }`}
+            role="status"
+          >
+            {isFailedPending ? 'Build failed' : 'Preparing...'}
           </span>
         )}
       </div>

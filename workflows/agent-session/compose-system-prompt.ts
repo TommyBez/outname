@@ -59,6 +59,16 @@ function describeReconnect(r: Reconnect): string {
       return `- \`${r.toolId}\` — failed to initialize (${r.message}). The platform owner has been notified; route around this tool for now.`
     case 'tool_removed':
       return `- \`${r.toolId}\` — this tool no longer exists in the registry. Ask the user to detach it.`
+    case 'tool_sandbox_building':
+      return `- \`${r.toolId}\` — its tool environment ("${r.manifest}") is still being prepared. Ask the user to retry in a moment; do not pretend the tool ran.`
+    case 'tool_sandbox_unavailable':
+      return `- \`${r.toolId}\` — its tool environment ("${r.manifest}") is unavailable (${r.message}). Tell the user the tool needs to be re-attached from settings.`
+    case 'sub_agent_unavailable':
+      return `- \`${r.toolId}\` — sub-agent unavailable (${r.message}).`
+    case 'sub_agent_cycle':
+      return `- \`${r.toolId}\` — refused to load: would create a sub-agent cycle. Tell the user this delegation is not allowed.`
+    case 'sub_agent_depth':
+      return `- \`${r.toolId}\` — refused to load: sub-agent nesting limit exceeded. Tell the user the chain is too deep and break the task into fewer levels.`
     default: {
       const _exhaustive: never = r
       return `- (unknown reconnect reason) ${JSON.stringify(_exhaustive)}`
