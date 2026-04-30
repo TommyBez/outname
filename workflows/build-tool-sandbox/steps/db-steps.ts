@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, gt } from 'drizzle-orm'
 import { revalidateTag } from 'next/cache'
 import { agentToolsTag } from '@/lib/cache-tags'
 import { db } from '@/lib/db'
@@ -54,7 +54,7 @@ export async function markBuildRunning(input: {
 }
 
 /**
- * Atomic finish-line for a successful build:
+ * Finish-line for a successful build:
  *   1. Upsert `tool_sandbox_snapshots` (manifest -> latest snapshot id).
  *   2. Mark the build row `ready`.
  *   3. Flip every `agent_tools` row that was waiting on this manifest
@@ -70,8 +70,30 @@ export async function markBuildReady(input: {
 }): Promise<void> {
   'use step'
 
-  await db.transaction(async (tx) => {
-    await tx
+  const [currentBuild] = await db
+    .select({ startedAt: toolSandboxBuilds.startedAt })
+    .from(toolSandboxBuilds)
+    .where(eq(toolSandboxBuilds.id, input.buildId))
+    .limit(1)
+
+  const [newerReadyBuild] = currentBuild
+    ? await db
+        .select({ id: toolSandboxBuilds.id })
+        .from(toolSandboxBuilds)
+        .where(
+          and(
+            eq(toolSandboxBuilds.manifestId, input.manifestId),
+            eq(toolSandboxBuilds.status, 'ready'),
+            gt(toolSandboxBuilds.startedAt, currentBuild.startedAt)
+          )
+        )
+        .limit(1)
+    : []
+
+  const canPublishSnapshot = !newerReadyBuild
+
+  if (canPublishSnapshot) {
+    await db
       .insert(toolSandboxSnapshots)
       .values({
         manifestId: input.manifestId,
@@ -86,17 +108,24 @@ export async function markBuildReady(input: {
           builtAt: new Date(),
         },
       })
+  }
 
-    await tx
-      .update(toolSandboxBuilds)
-      .set({
-        status: 'ready',
-        finishedAt: new Date(),
-        errorText: null,
-      })
-      .where(eq(toolSandboxBuilds.id, input.buildId))
+  await db
+    .update(toolSandboxBuilds)
+    .set({
+      status: 'ready',
+      finishedAt: new Date(),
+      errorText: null,
+    })
+    .where(
+      and(
+        eq(toolSandboxBuilds.id, input.buildId),
+        eq(toolSandboxBuilds.manifestHash, input.manifestHash)
+      )
+    )
 
-    await tx
+  if (canPublishSnapshot) {
+    await db
       .update(agentTools)
       .set({
         status: 'connected',
@@ -106,10 +135,11 @@ export async function markBuildReady(input: {
       .where(
         and(
           eq(agentTools.toolSandboxManifest, input.manifestId),
+          eq(agentTools.toolSandboxManifestHash, input.manifestHash),
           eq(agentTools.status, 'pending')
         )
       )
-  })
+  }
 
   // Invalidate per-agent tool caches for every agent that just had a
   // pending row flipped. We don't have the user-id here so we issue a
@@ -143,36 +173,40 @@ export async function markBuildFailed(input: {
   // Read the manifest id back from the build row so we can update the
   // matching agent_tools rows.
   const [row] = await db
-    .select({ manifestId: toolSandboxBuilds.manifestId })
+    .select({
+      manifestId: toolSandboxBuilds.manifestId,
+      manifestHash: toolSandboxBuilds.manifestHash,
+    })
     .from(toolSandboxBuilds)
     .where(eq(toolSandboxBuilds.id, input.buildId))
     .limit(1)
 
-  await db.transaction(async (tx) => {
-    await tx
-      .update(toolSandboxBuilds)
-      .set({
-        status: 'failed',
-        finishedAt: new Date(),
-        errorText: input.error.slice(0, 8000),
-      })
-      .where(eq(toolSandboxBuilds.id, input.buildId))
+  const errorText = input.error.slice(0, 8000)
 
-    if (row) {
-      await tx
-        .update(agentTools)
-        .set({
-          toolSandboxError: input.error.slice(0, 8000),
-          updatedAt: new Date(),
-        })
-        .where(
-          and(
-            eq(agentTools.toolSandboxManifest, row.manifestId),
-            eq(agentTools.status, 'pending')
-          )
+  await db
+    .update(toolSandboxBuilds)
+    .set({
+      status: 'failed',
+      finishedAt: new Date(),
+      errorText,
+    })
+    .where(eq(toolSandboxBuilds.id, input.buildId))
+
+  if (row) {
+    await db
+      .update(agentTools)
+      .set({
+        toolSandboxError: errorText,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(agentTools.toolSandboxManifest, row.manifestId),
+          eq(agentTools.toolSandboxManifestHash, row.manifestHash),
+          eq(agentTools.status, 'pending')
         )
-    }
-  })
+      )
+  }
 
   if (row) {
     const agentIds = await db

@@ -64,6 +64,13 @@
       "when": 1791993600000,
       "tag": "0008_tools_and_connections",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792080000000,
+      "tag": "0009_tool_sandbox_snapshots",
+      "breakpoints": true
     }
   ]
 }

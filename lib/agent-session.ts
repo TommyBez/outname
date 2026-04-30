@@ -274,6 +274,8 @@ export async function dispatchInvocation(input: {
   childAgentId: string
   childUserId: string
   parentUserId: string
+  parentRunId: string | null
+  parentToolId: string
   instruction: string
   replyTo: string
   callStack: string[]
@@ -303,6 +305,8 @@ export async function dispatchInvocation(input: {
     type: 'invocation',
     input: input.instruction,
     replyTo: input.replyTo,
+    parentRunId: input.parentRunId,
+    parentToolId: input.parentToolId,
     callStack: input.callStack,
     depth: input.depth,
   })

@@ -11,7 +11,7 @@ import {
   toolSandboxBuilds,
   toolSandboxSnapshots,
 } from '@/lib/db/schema'
-import { AGENT_TOOL_PREFIX } from '@/tools/agent-tool'
+import { AGENT_TOOL_PREFIX } from '@/tools/agent-tool-prefix'
 import { getMaintainerTool } from '@/tools/registry'
 import { getToolSandboxManifest, manifestHash } from '@/tools/sandboxes'
 import type { MaintainerTool, Reconnect } from '@/tools/types'
@@ -118,12 +118,12 @@ export async function resolveToolPlan(args: {
   const subAgentRows: SubAgentRow[] = []
   const maintainerRows: MaintainerRow[] = []
   for (const row of rows) {
-    if (row.toolId.startsWith(AGENT_TOOL_PREFIX)) {
+    if (row.kind === 'sub_agent') {
       subAgentRows.push({
         toolId: row.toolId,
-        childAgentId: row.toolId.slice(AGENT_TOOL_PREFIX.length),
+        childAgentId: childAgentIdForToolId(row.toolId),
       })
-    } else {
+    } else if (row.kind === 'maintainer') {
       maintainerRows.push({ toolId: row.toolId, config: row.config })
     }
   }
@@ -175,6 +175,12 @@ export async function resolveToolPlan(args: {
   }
 
   return { planned: filteredPlanned, subAgents, creds, reconnects }
+}
+
+function childAgentIdForToolId(toolId: string): string {
+  return toolId.startsWith(AGENT_TOOL_PREFIX)
+    ? toolId.slice(AGENT_TOOL_PREFIX.length)
+    : toolId
 }
 
 type MaintainerOutcome =

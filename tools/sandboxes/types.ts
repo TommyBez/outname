@@ -33,10 +33,9 @@ export interface ToolSandboxManifest {
    */
   id: string
   /**
-   * Bumped whenever the manifest's intent changes (new dep, removed
-   * dep, different install steps). Combined with a hash of `setup.sh`
-   * bytes to drive rebuilds — both this number and the script bytes
-   * have to match for the existing snapshot to be reused.
+   * Bumped whenever the manifest's intent changes. The full descriptor
+   * plus `setup.sh` bytes drive rebuilds, so runtime/resource changes
+   * also invalidate stale snapshots.
    */
   version: number
 }

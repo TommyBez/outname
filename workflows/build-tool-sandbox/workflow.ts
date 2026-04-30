@@ -1,5 +1,3 @@
-import { getWritable } from 'workflow'
-import { buildToolSandboxNamespace, type ToolSandboxBuildEvent } from './events'
 import {
   loadBuildRow,
   markBuildFailed,
@@ -7,6 +5,7 @@ import {
   markBuildRunning,
   readManifestSetupScript,
 } from './steps/db-steps'
+import { emitBuildEvent } from './steps/emit-build-event'
 import { runSandboxBuild } from './steps/run-sandbox-build'
 
 /**
@@ -42,18 +41,6 @@ export async function buildToolSandboxWorkflow(input: {
   'use workflow'
   const { buildId } = input
 
-  const writable = getWritable<ToolSandboxBuildEvent>({
-    namespace: buildToolSandboxNamespace(buildId),
-  })
-  const writer = writable.getWriter()
-  const emit = async (event: ToolSandboxBuildEvent) => {
-    try {
-      await writer.write(event)
-    } catch {
-      // Stream is best-effort.
-    }
-  }
-
   try {
     await markBuildRunning({ buildId })
     const { manifestId, manifestHash } = await loadBuildRow({ buildId })
@@ -66,7 +53,10 @@ export async function buildToolSandboxWorkflow(input: {
     })
 
     await markBuildReady({ buildId, manifestId, manifestHash, snapshotId })
-    await emit({ type: 'ready', snapshotId, ts: new Date().toISOString() })
+    await emitBuildEvent({
+      buildId,
+      event: { type: 'ready', snapshotId, ts: new Date().toISOString() },
+    })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     try {
@@ -77,13 +67,10 @@ export async function buildToolSandboxWorkflow(input: {
         innerErr
       )
     }
-    await emit({ type: 'failed', error: message, ts: new Date().toISOString() })
+    await emitBuildEvent({
+      buildId,
+      event: { type: 'failed', error: message, ts: new Date().toISOString() },
+    })
     throw err
-  } finally {
-    try {
-      await writer.close()
-    } catch {
-      /* ignore */
-    }
   }
 }

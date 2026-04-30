@@ -36,6 +36,8 @@ export interface BuildAttachedToolsArgs {
   agentId: string
   /** Phase 4: parent-call lineage. Empty for top-level user-driven turns. */
   callStack?: string[]
+  /** App run id for this event, if this event has one. Chat turns do not. */
+  currentRunId?: string | null
   /** Phase 4: parent's nesting depth. 0 for top-level. */
   depth?: number
   plan: ResolveToolPlanResult
@@ -90,13 +92,25 @@ function buildOne(args: {
 }
 
 function buildSubAgentEntry(args: {
+  parentAgentId: string
+  parentRunId: string | null
+  parentToolId: string
   parentUserId: string
   callStack: string[]
   depth: number
   sub: PlannedSubAgent
   reconnects: Reconnect[]
 }): { id: string; tool: Tool } | null {
-  const { parentUserId, callStack, depth, sub, reconnects } = args
+  const {
+    parentAgentId,
+    parentRunId,
+    parentToolId,
+    parentUserId,
+    callStack,
+    depth,
+    sub,
+    reconnects,
+  } = args
   try {
     return {
       id: sub.toolId,
@@ -104,7 +118,10 @@ function buildSubAgentEntry(args: {
         childAgentId: sub.childAgentId,
         childName: sub.childName,
         childUserId: sub.childUserId,
+        parentAgentId,
         parentUserId,
+        parentRunId,
+        parentToolId,
         parentCallStack: callStack,
         parentDepth: depth,
       }),
@@ -124,6 +141,7 @@ export function buildAttachedTools(
 ): BuildAttachedToolsResult {
   const { agentId, userId, plan } = args
   const callStack = args.callStack ?? []
+  const currentRunId = args.currentRunId ?? null
   const depth = args.depth ?? 0
 
   // Start from the reconnects the plan step already produced; this
@@ -140,6 +158,9 @@ export function buildAttachedTools(
 
   for (const sub of plan.subAgents) {
     const built = buildSubAgentEntry({
+      parentAgentId: agentId,
+      parentRunId: currentRunId,
+      parentToolId: sub.toolId,
       parentUserId: userId,
       callStack,
       depth,

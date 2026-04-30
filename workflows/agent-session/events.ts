@@ -27,6 +27,8 @@ export type SessionEvent =
       type: 'invocation'
       input: string
       replyTo: string
+      parentRunId?: string | null
+      parentToolId?: string | null
       callStack: string[]
       depth: number
     }

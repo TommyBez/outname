@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { getToolSandboxBuildStatusAction } from '@/lib/tool-sandbox-actions'
 
 export type ToolSandboxBuildState =
   | { kind: 'idle' }
@@ -45,6 +46,8 @@ export function useToolSandboxBuildStream(
   onTerminal?: TerminalCallback
 ): ToolSandboxBuildState {
   const [state, setState] = useState<ToolSandboxBuildState>({ kind: 'idle' })
+  const onTerminalRef = useRef<TerminalCallback | undefined>(onTerminal)
+  onTerminalRef.current = onTerminal
 
   useEffect(() => {
     if (!buildId) {
@@ -56,14 +59,21 @@ export function useToolSandboxBuildStream(
     const ctx = { cancelled: false }
     setState({ kind: 'connecting' })
 
-    consumeStream({ buildId, abort, ctx, setState, onTerminal })
+    consumeStream({
+      buildId,
+      abort,
+      ctx,
+      setState,
+      onTerminal: (terminalState, error) => {
+        onTerminalRef.current?.(terminalState, error)
+      },
+    })
 
     return () => {
       ctx.cancelled = true
       abort.abort()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buildId, onTerminal])
+  }, [buildId])
 
   return state
 }
@@ -84,12 +94,13 @@ async function consumeStream(args: ConsumeStreamArgs): Promise<void> {
       { signal: abort.signal }
     )
     if (!(res.ok && res.body)) {
-      if (!ctx.cancelled) {
-        setState({
-          kind: 'failed',
-          error: `stream open failed (${res.status})`,
-        })
-      }
+      await recoverFromStatusAction({
+        buildId,
+        ctx,
+        setState,
+        onTerminal,
+        fallbackError: `stream open failed (${res.status})`,
+      })
       return
     }
     await readNdjson({
@@ -97,13 +108,67 @@ async function consumeStream(args: ConsumeStreamArgs): Promise<void> {
       ctx,
       onEvent: (evt) => applyEvent({ evt, ctx, setState, onTerminal }),
     })
+    if (!ctx.cancelled) {
+      await recoverFromStatusAction({ buildId, ctx, setState, onTerminal })
+    }
   } catch (err) {
     if (ctx.cancelled || abort.signal.aborted) {
       return
     }
+    await recoverFromStatusAction({
+      buildId,
+      ctx,
+      setState,
+      onTerminal,
+      fallbackError: err instanceof Error ? err.message : String(err),
+    })
+  }
+}
+
+async function recoverFromStatusAction(input: {
+  buildId: string
+  ctx: { cancelled: boolean }
+  fallbackError?: string
+  onTerminal?: TerminalCallback
+  setState: StreamSetter
+}): Promise<void> {
+  const { buildId, ctx, fallbackError, setState, onTerminal } = input
+  if (ctx.cancelled) {
+    return
+  }
+  try {
+    const status = await getToolSandboxBuildStatusAction(buildId)
+    if (ctx.cancelled) {
+      return
+    }
+    if (!status || status.status === 'forbidden') {
+      setState({ kind: 'failed', error: fallbackError ?? 'build unavailable' })
+      return
+    }
+    if (status.status === 'ready') {
+      setState({ kind: 'ready' })
+      onTerminal?.('ready')
+      return
+    }
+    if (status.status === 'failed') {
+      const error = status.errorText ?? fallbackError ?? 'Build failed'
+      setState({ kind: 'failed', error })
+      onTerminal?.('failed', error)
+      return
+    }
+    setState({
+      kind: 'progress',
+      message: 'Build is still running. Refreshing status shortly...',
+    })
+  } catch (err) {
+    if (ctx.cancelled) {
+      return
+    }
     setState({
       kind: 'failed',
-      error: err instanceof Error ? err.message : String(err),
+      error:
+        fallbackError ??
+        (err instanceof Error ? err.message : 'build status unavailable'),
     })
   }
 }

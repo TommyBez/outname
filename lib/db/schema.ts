@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm'
 import {
   boolean,
   index,
@@ -7,6 +8,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core'
 import { isNull } from 'drizzle-orm/pg-core/expressions'
 
@@ -146,6 +148,9 @@ export const runs = pgTable(
       onDelete: 'cascade',
     }),
     workflowRunId: text('workflow_run_id'),
+    parentRunId: text('parent_run_id'),
+    parentToolId: text('parent_tool_id'),
+    invocationReplyToken: text('invocation_reply_token'),
     status: text('status').notNull().default('running'), // running | completed | failed
     startedAt: timestamp('started_at', { withTimezone: true })
       .notNull()
@@ -156,6 +161,7 @@ export const runs = pgTable(
   (t) => [
     index('runs_started_at_idx').on(t.startedAt),
     index('runs_agent_idx').on(t.agentId),
+    index('runs_parent_run_idx').on(t.parentRunId),
   ]
 )
 
@@ -350,6 +356,10 @@ export const agentTools = pgTable(
       .notNull()
       .references(() => agent.id, { onDelete: 'cascade' }),
     toolId: text('tool_id').notNull(),
+    kind: text('kind')
+      .$type<'maintainer' | 'sub_agent'>()
+      .notNull()
+      .default('maintainer'),
     config: jsonb('config').notNull().default({}),
     /**
      * Phase 4: lifecycle of the attachment.
@@ -374,6 +384,7 @@ export const agentTools = pgTable(
      *     registry.
      */
     toolSandboxManifest: text('tool_sandbox_manifest'),
+    toolSandboxManifestHash: text('tool_sandbox_manifest_hash'),
     /**
      * Phase 4: most recent sticky build error for this manifest, if
      * any. Cleared on the next successful build. UI shows it next to
@@ -388,9 +399,10 @@ export const agentTools = pgTable(
       .defaultNow(),
   },
   (t) => [
-    primaryKey({ columns: [t.agentId, t.toolId] }),
+    primaryKey({ columns: [t.agentId, t.kind, t.toolId] }),
     index('agent_tools_agent_idx').on(t.agentId),
     index('agent_tools_sandbox_manifest_idx').on(t.toolSandboxManifest),
+    index('agent_tools_kind_idx').on(t.kind),
   ]
 )
 
@@ -442,6 +454,9 @@ export const toolSandboxBuilds = pgTable(
   },
   (t) => [
     index('tool_sandbox_builds_manifest_status_idx').on(t.manifestId, t.status),
+    uniqueIndex('tool_sandbox_builds_active_unique_idx')
+      .on(t.manifestId, t.manifestHash)
+      .where(sql`status in ('pending', 'running')`),
   ]
 )
 export type ToolSandboxBuild = typeof toolSandboxBuilds.$inferSelect
@@ -451,6 +466,7 @@ export type RunResult = typeof runResult.$inferSelect
 export type UserConnection = typeof userConnections.$inferSelect
 export type AgentTool = typeof agentTools.$inferSelect
 export type AgentToolStatus = 'connected' | 'pending'
+export type AgentToolKind = 'maintainer' | 'sub_agent'
 export type Agent = typeof agent.$inferSelect
 export type AgentFile = typeof agentFiles.$inferSelect
 export type PendingFileWrite = typeof pendingFileWrites.$inferSelect

@@ -30,6 +30,24 @@ CREATE INDEX IF NOT EXISTS "tool_sandbox_builds_manifest_status_idx"
 	ON "tool_sandbox_builds" ("manifest_id", "status");
 
 --> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "tool_sandbox_builds_active_unique_idx"
+	ON "tool_sandbox_builds" ("manifest_id", "manifest_hash")
+	WHERE "status" IN ('pending', 'running');
+
+--> statement-breakpoint
+ALTER TABLE "agent_tools"
+	ADD COLUMN IF NOT EXISTS "kind" text DEFAULT 'maintainer' NOT NULL;
+
+--> statement-breakpoint
+ALTER TABLE "agent_tools"
+	DROP CONSTRAINT IF EXISTS "agent_tools_agent_id_tool_id_pk";
+
+--> statement-breakpoint
+ALTER TABLE "agent_tools"
+	ADD CONSTRAINT "agent_tools_agent_id_kind_tool_id_pk"
+	PRIMARY KEY ("agent_id", "kind", "tool_id");
+
+--> statement-breakpoint
 ALTER TABLE "agent_tools"
 	ADD COLUMN IF NOT EXISTS "status" text DEFAULT 'connected' NOT NULL;
 
@@ -39,8 +57,32 @@ ALTER TABLE "agent_tools"
 
 --> statement-breakpoint
 ALTER TABLE "agent_tools"
+	ADD COLUMN IF NOT EXISTS "tool_sandbox_manifest_hash" text;
+
+--> statement-breakpoint
+ALTER TABLE "agent_tools"
 	ADD COLUMN IF NOT EXISTS "tool_sandbox_error" text;
 
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "agent_tools_sandbox_manifest_idx"
 	ON "agent_tools" ("tool_sandbox_manifest");
+
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "agent_tools_kind_idx"
+	ON "agent_tools" ("kind");
+
+--> statement-breakpoint
+ALTER TABLE "runs"
+	ADD COLUMN IF NOT EXISTS "parent_run_id" text;
+
+--> statement-breakpoint
+ALTER TABLE "runs"
+	ADD COLUMN IF NOT EXISTS "parent_tool_id" text;
+
+--> statement-breakpoint
+ALTER TABLE "runs"
+	ADD COLUMN IF NOT EXISTS "invocation_reply_token" text;
+
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "runs_parent_run_idx"
+	ON "runs" ("parent_run_id");

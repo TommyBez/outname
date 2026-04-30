@@ -8,7 +8,11 @@ import { RunStatus } from '@/components/run-status'
 import { RunResultSkeleton } from '@/components/skeletons'
 import { Skeleton } from '@/components/ui/skeleton'
 import { requireSession } from '@/lib/auth-guard'
-import { getCachedRunById, getCachedRunResult } from '@/lib/data'
+import {
+  getCachedChildRunsForParent,
+  getCachedRunById,
+  getCachedRunResult,
+} from '@/lib/data'
 import { formatDateTime } from '@/lib/format'
 import { toRunLifecycleStatus } from '@/lib/run-lifecycle'
 
@@ -57,8 +61,11 @@ async function RunDetail({ params }: { params: Promise<{ runId: string }> }) {
     notFound()
   }
 
-  const result =
-    run.status === 'completed' ? await getCachedRunResult(runId) : null
+  const [result, childRuns, parentRun] = await Promise.all([
+    run.status === 'completed' ? getCachedRunResult(runId) : null,
+    getCachedChildRunsForParent(runId),
+    run.parentRunId ? getCachedRunById(run.parentRunId) : null,
+  ])
 
   return (
     <>
@@ -75,8 +82,58 @@ async function RunDetail({ params }: { params: Promise<{ runId: string }> }) {
         </div>
       </header>
 
+      <RunLineage childRuns={childRuns} parentRun={parentRun} run={run} />
       <RunDetailMain resultContent={result?.content ?? null} run={run} />
     </>
+  )
+}
+
+function RunLineage({
+  run,
+  parentRun,
+  childRuns,
+}: {
+  childRuns: NonNullable<
+    Awaited<ReturnType<typeof getCachedChildRunsForParent>>
+  >
+  parentRun: Awaited<ReturnType<typeof getCachedRunById>>
+  run: NonNullable<Awaited<ReturnType<typeof getCachedRunById>>>
+}) {
+  if (!(run.parentRunId || childRuns.length > 0)) {
+    return null
+  }
+
+  return (
+    <section className="mb-10 border-foreground border-t-2 pt-5">
+      <p className="swiss-label text-accent">Linked runs</p>
+      {run.parentRunId && (
+        <p className="mt-3 font-mono text-muted-foreground text-xs uppercase tracking-wider">
+          Parent:{' '}
+          <Link
+            className="text-foreground underline"
+            href={`/runs/${run.parentRunId}`}
+          >
+            {parentRun ? formatDateTime(parentRun.startedAt) : run.parentRunId}
+          </Link>
+          {run.parentToolId ? ` via ${run.parentToolId}` : ''}
+        </p>
+      )}
+      {childRuns.length > 0 && (
+        <ul className="mt-4 flex flex-col divide-y-2 divide-foreground border-foreground border-y-2">
+          {childRuns.map((child) => (
+            <li key={child.id}>
+              <Link
+                className="grid grid-cols-[1fr_auto] gap-4 py-3 font-mono text-xs uppercase tracking-wider transition-colors hover:bg-accent md:px-3"
+                href={`/runs/${child.id}`}
+              >
+                <span>{formatDateTime(child.startedAt)}</span>
+                <span>{child.status}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }
 

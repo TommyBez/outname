@@ -1,10 +1,12 @@
 import 'server-only'
 import { and, desc, eq, inArray } from 'drizzle-orm'
-import { start } from 'workflow/api'
+import { getRun, start } from 'workflow/api'
 import { db } from '@/lib/db'
 import { toolSandboxBuilds, toolSandboxSnapshots } from '@/lib/db/schema'
 import { manifestHash } from '@/tools/sandboxes'
 import { buildToolSandboxWorkflow } from '@/workflows/build-tool-sandbox/workflow'
+
+const TERMINAL_WORKFLOW_STATUSES = new Set(['completed', 'failed', 'cancelled'])
 
 /**
  * Phase 4: server-side helper used by `attachToolAction` to ensure a
@@ -49,31 +51,30 @@ export async function ensureToolSandboxBuild(input: {
     return { state: 'ready', snapshotId: snap.snapshotId }
   }
 
-  // Coalesce on any in-flight build for the same (manifest, hash).
-  const [running] = await db
-    .select()
-    .from(toolSandboxBuilds)
-    .where(
-      and(
-        eq(toolSandboxBuilds.manifestId, manifestId),
-        eq(toolSandboxBuilds.manifestHash, desiredHash),
-        inArray(toolSandboxBuilds.status, ['pending', 'running'])
-      )
-    )
-    .orderBy(desc(toolSandboxBuilds.startedAt))
-    .limit(1)
+  const running = await findReusableActiveBuild(manifestId, desiredHash)
   if (running) {
     return { state: 'building', buildId: running.id }
   }
 
   // No fresh snapshot, no in-flight build — start one.
   const buildId = newBuildId()
-  await db.insert(toolSandboxBuilds).values({
-    id: buildId,
-    manifestId,
-    manifestHash: desiredHash,
-    status: 'pending',
-  })
+  try {
+    await db.insert(toolSandboxBuilds).values({
+      id: buildId,
+      manifestId,
+      manifestHash: desiredHash,
+      status: 'pending',
+    })
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      const coalesced = await findReusableActiveBuild(manifestId, desiredHash)
+      if (coalesced) {
+        return { state: 'building', buildId: coalesced.id }
+      }
+      return ensureToolSandboxBuild({ manifestId })
+    }
+    throw err
+  }
 
   let workflowRunId: string | null = null
   try {
@@ -106,6 +107,79 @@ export async function ensureToolSandboxBuild(input: {
   return { state: 'building', buildId }
 }
 
+async function findReusableActiveBuild(
+  manifestId: string,
+  desiredHash: string
+): Promise<{ id: string } | null> {
+  const active = await findActiveBuild(manifestId, desiredHash)
+  if (!active) {
+    return null
+  }
+
+  if (!(await activeBuildIsAlive(active.workflowRunId))) {
+    await markAbandonedBuildFailed(active.id)
+    return null
+  }
+
+  return { id: active.id }
+}
+
+async function findActiveBuild(
+  manifestId: string,
+  desiredHash: string
+): Promise<{ id: string; workflowRunId: string | null } | null> {
+  const [running] = await db
+    .select({
+      id: toolSandboxBuilds.id,
+      workflowRunId: toolSandboxBuilds.workflowRunId,
+    })
+    .from(toolSandboxBuilds)
+    .where(
+      and(
+        eq(toolSandboxBuilds.manifestId, manifestId),
+        eq(toolSandboxBuilds.manifestHash, desiredHash),
+        inArray(toolSandboxBuilds.status, ['pending', 'running'])
+      )
+    )
+    .orderBy(desc(toolSandboxBuilds.startedAt))
+    .limit(1)
+  return running ?? null
+}
+
+async function activeBuildIsAlive(
+  workflowRunId: string | null
+): Promise<boolean> {
+  if (!workflowRunId) {
+    return true
+  }
+  try {
+    const status = await getRun(workflowRunId).status
+    return typeof status === 'string' && !TERMINAL_WORKFLOW_STATUSES.has(status)
+  } catch {
+    return false
+  }
+}
+
+async function markAbandonedBuildFailed(buildId: string): Promise<void> {
+  await db
+    .update(toolSandboxBuilds)
+    .set({
+      status: 'failed',
+      finishedAt: new Date(),
+      errorText: 'Build workflow ended before producing a snapshot',
+    })
+    .where(eq(toolSandboxBuilds.id, buildId))
+}
+
+function isUniqueViolation(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'code' in err &&
+    (err as { code?: unknown }).code === '23505'
+  )
+}
+
 /**
  * Read the current terminal state of a build row. Used as the
  * polling-fallback path in the catalog UI when the workflow stream
@@ -133,11 +207,18 @@ export async function readToolSandboxBuildStatus(buildId: string): Promise<{
  * page to render an in-flight progress strip alongside a `pending`
  * agent_tools row.
  */
-export async function getLatestBuildForManifest(manifestId: string): Promise<{
+export async function getLatestBuildForManifest(
+  manifestId: string,
+  manifestHash?: string
+): Promise<{
   id: string
   status: 'pending' | 'running' | 'ready' | 'failed'
   errorText: string | null
 } | null> {
+  const predicates = [eq(toolSandboxBuilds.manifestId, manifestId)]
+  if (manifestHash) {
+    predicates.push(eq(toolSandboxBuilds.manifestHash, manifestHash))
+  }
   const [row] = await db
     .select({
       id: toolSandboxBuilds.id,
@@ -145,7 +226,7 @@ export async function getLatestBuildForManifest(manifestId: string): Promise<{
       errorText: toolSandboxBuilds.errorText,
     })
     .from(toolSandboxBuilds)
-    .where(eq(toolSandboxBuilds.manifestId, manifestId))
+    .where(and(...predicates))
     .orderBy(desc(toolSandboxBuilds.startedAt))
     .limit(1)
   return row ?? null

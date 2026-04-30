@@ -114,6 +114,10 @@ function ToolRow({
 }) {
   const isAttached = attached !== null
   const isPending = attached?.status === 'pending'
+  const isBuilding = Boolean(isPending && attached?.pendingBuildId)
+  const isFailedPending = Boolean(
+    isPending && !attached?.pendingBuildId && attached?.toolSandboxError
+  )
 
   const providerStates = entry.providers.map((p) => {
     const c = findConnection(connections, p)
@@ -158,7 +162,7 @@ function ToolRow({
       {isPending && attached?.pendingBuildId && (
         <PendingBuildStrip buildId={attached.pendingBuildId} />
       )}
-      {attached?.toolSandboxError && !isPending && (
+      {attached?.toolSandboxError && (
         <p
           className="border-2 border-destructive bg-destructive/5 px-3 py-2 font-mono text-destructive text-xs"
           role="alert"
@@ -171,6 +175,8 @@ function ToolRow({
         attached={attached}
         entry={entry}
         isAttached={isAttached}
+        isBuilding={isBuilding}
+        isFailedPending={isFailedPending}
         isPending={isPending}
       />
     </div>
@@ -296,13 +302,17 @@ function AttachmentForm({
   agentId,
   entry,
   attached,
+  isBuilding,
   isAttached,
+  isFailedPending,
   isPending,
 }: {
   agentId: string
   entry: ToolCatalogEntry
   attached: AttachedToolView | null
+  isBuilding: boolean
   isAttached: boolean
+  isFailedPending: boolean
   isPending: boolean
 }) {
   const [pending, startTransition] = useTransition()
@@ -370,7 +380,7 @@ function AttachmentForm({
         {!(isAttached || hasFields) && (
           <button
             className="inline-flex h-10 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
-            disabled={pending || isPending}
+            disabled={pending || isBuilding}
             onClick={() => handleAttach()}
             type="button"
           >
@@ -380,7 +390,7 @@ function AttachmentForm({
         {!isAttached && hasFields && (
           <button
             className="inline-flex h-10 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
-            disabled={isPending}
+            disabled={isBuilding}
             onClick={() => setOpen((v) => !v)}
             type="button"
           >
@@ -390,17 +400,37 @@ function AttachmentForm({
         {isAttached && hasFields && (
           <button
             className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background disabled:opacity-50"
-            disabled={isPending}
+            disabled={isBuilding}
             onClick={() => setOpen((v) => !v)}
             type="button"
           >
             {open ? 'Cancel' : 'Edit config'}
           </button>
         )}
+        {isAttached && hasFields && isFailedPending && (
+          <button
+            className="inline-flex h-10 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
+            disabled={pending}
+            onClick={() => handleAttach()}
+            type="button"
+          >
+            {pending ? '...' : 'Retry'}
+          </button>
+        )}
+        {isAttached && !hasFields && isFailedPending && (
+          <button
+            className="inline-flex h-10 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
+            disabled={pending}
+            onClick={() => handleAttach()}
+            type="button"
+          >
+            {pending ? '...' : 'Retry'}
+          </button>
+        )}
         {isAttached && (
           <button
             className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
-            disabled={pending || isPending}
+            disabled={pending || isBuilding}
             onClick={handleDetach}
             type="button"
           >
@@ -417,10 +447,14 @@ function AttachmentForm({
         )}
         {isPending && (
           <span
-            className="inline-flex h-10 items-center border-2 border-foreground px-3 font-bold text-[10px] uppercase tracking-[0.16em]"
+            className={`inline-flex h-10 items-center border-2 px-3 font-bold text-[10px] uppercase tracking-[0.16em] ${
+              isFailedPending
+                ? 'border-destructive text-destructive'
+                : 'border-foreground'
+            }`}
             role="status"
           >
-            Preparing...
+            {isFailedPending ? 'Build failed' : 'Preparing...'}
           </span>
         )}
       </div>

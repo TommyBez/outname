@@ -7,6 +7,7 @@ import { startupExecSandbox, startupSystemSandbox } from '@/lib/agent-sandbox'
 import { agentRunsTag, runsIndexTag, runTag } from '@/lib/cache-tags'
 import { db } from '@/lib/db'
 import { runs } from '@/lib/db/schema'
+import { emitRun, emitStep } from '@/lib/run-events'
 import { buildAgent } from '../agent-factory'
 import type { SubAgentReply } from '../events'
 import { drainPendingWrites } from '../steps/drain-pending-writes'
@@ -44,12 +45,27 @@ export async function handleInvocation(input: {
   input: string
   /** Ephemeral hook token the parent's `execute()` is awaiting on. */
   replyTo: string
+  parentRunId?: string | null
+  parentToolId?: string | null
   callStack: string[]
   depth: number
 }): Promise<{ pending: PendingWrites }> {
-  const { agentId, input: instruction, replyTo, callStack, depth } = input
+  const {
+    agentId,
+    input: instruction,
+    replyTo,
+    parentRunId,
+    parentToolId,
+    callStack,
+    depth,
+  } = input
 
-  const runId = await beginInvocationRun({ agentId })
+  const runId = await beginInvocationRun({
+    agentId,
+    parentRunId: parentRunId ?? null,
+    parentToolId: parentToolId ?? null,
+    replyTo,
+  })
 
   const writable = getWritable<UIMessageChunk>({
     namespace: `invocation:${replyTo}`,
@@ -59,6 +75,10 @@ export async function handleInvocation(input: {
   let replied = false
 
   try {
+    await emitRun(runId, 'started', 'Sub-agent invocation started', {
+      parentRunId: parentRunId ?? null,
+      parentToolId: parentToolId ?? null,
+    })
     await startupSystemSandbox({ agentId })
     await startupExecSandbox({ agentId }).catch((err) => {
       console.error('[v0] handleInvocation: startupExecSandbox failed', err)
@@ -68,6 +88,7 @@ export async function handleInvocation(input: {
     const built = await buildAgent({
       agentId,
       runId,
+      currentRunId: runId,
       callStack,
       depth,
     })
@@ -80,21 +101,26 @@ export async function handleInvocation(input: {
     }
     const modelMessages = await convertToModelMessages([userMessage])
 
+    await emitStep(runId, 'read', 'start', 'Running sub-agent instruction')
     const result = await built.agent.stream({
       messages: modelMessages,
       writable,
       maxSteps: 40,
       collectUIMessages: true,
     })
+    await emitStep(runId, 'read', 'done', 'Sub-agent instruction completed')
 
     const output = extractFinalText(result.uiMessages ?? []) ?? ''
     await finalizeInvocationRun({ runId, status: 'completed' })
+    await emitRun(runId, 'completed', 'Sub-agent invocation completed')
     await replyOnce(replyTo, { type: 'reply', ok: true, output })
     replied = true
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     try {
+      await emitStep(runId, 'read', 'error', message)
       await finalizeInvocationRun({ runId, status: 'failed', error: message })
+      await emitRun(runId, 'failed', message)
     } catch (innerErr) {
       console.error(
         '[v0] handleInvocation: finalizeInvocationRun(failed) failed',
@@ -118,6 +144,7 @@ async function replyOnce(
   replyTo: string,
   payload: SubAgentReply
 ): Promise<void> {
+  'use step'
   try {
     await resumeHook(replyTo, payload)
   } catch (err) {
@@ -128,7 +155,12 @@ async function replyOnce(
   }
 }
 
-async function beginInvocationRun(input: { agentId: string }): Promise<string> {
+async function beginInvocationRun(input: {
+  agentId: string
+  parentRunId: string | null
+  parentToolId: string | null
+  replyTo: string
+}): Promise<string> {
   'use step'
   const runId = invocationRunId()
 
@@ -145,10 +177,16 @@ async function beginInvocationRun(input: { agentId: string }): Promise<string> {
     status: 'running',
     startedAt: new Date(),
     workflowRunId,
+    parentRunId: input.parentRunId,
+    parentToolId: input.parentToolId,
+    invocationReplyToken: input.replyTo,
   })
 
   revalidateTag(agentRunsTag(input.agentId), 'max')
   revalidateTag(runsIndexTag(), 'max')
+  if (input.parentRunId) {
+    revalidateTag(runTag(input.parentRunId), 'max')
+  }
 
   return runId
 }

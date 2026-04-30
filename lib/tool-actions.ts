@@ -5,10 +5,11 @@ import { revalidateTag } from 'next/cache'
 import { requireUserId } from '@/lib/auth-guard'
 import { agentToolsTag } from '@/lib/cache-tags'
 import { db } from '@/lib/db'
-import { agent, agentTools } from '@/lib/db/schema'
+import { type AgentToolKind, agent, agentTools } from '@/lib/db/schema'
 import { ensureToolSandboxBuild } from '@/lib/tool-sandbox-build'
-import { AGENT_TOOL_PREFIX } from '@/tools/agent-tool'
+import { AGENT_TOOL_PREFIX } from '@/tools/agent-tool-prefix'
 import { getMaintainerTool } from '@/tools/registry'
+import { manifestHash } from '@/tools/sandboxes'
 
 interface AttachResult {
   error?: string
@@ -42,13 +43,6 @@ export async function attachToolAction(
   toolId: string,
   rawConfig: Record<string, unknown>
 ): Promise<AttachResult> {
-  // Phase 4: a tool id starting with `agent_` is a sub-agent
-  // attachment, not a maintainer-tool attachment. Route it through
-  // the dedicated helper so the form layer can stay agnostic.
-  if (toolId.startsWith(AGENT_TOOL_PREFIX)) {
-    return attachSubAgentAction(agentId, toolId.slice(AGENT_TOOL_PREFIX.length))
-  }
-
   const userId = await requireUserId()
   try {
     await assertAgentOwnership(agentId, userId)
@@ -82,6 +76,9 @@ export async function attachToolAction(
   // workflow flips it to `connected` on success.
   const sandboxManifest =
     tool.requirements.find((r) => r.kind === 'tool_sandbox')?.manifest ?? null
+  const sandboxManifestHash = sandboxManifest
+    ? manifestHash(sandboxManifest)
+    : null
 
   let pendingBuildId: string | undefined
   let rowStatus: 'connected' | 'pending' = 'connected'
@@ -107,17 +104,21 @@ export async function attachToolAction(
     .values({
       agentId,
       toolId,
+      kind: 'maintainer',
       config: parsed.data ?? {},
       status: rowStatus,
       toolSandboxManifest: sandboxManifest,
+      toolSandboxManifestHash: sandboxManifestHash,
       toolSandboxError: null,
     })
     .onConflictDoUpdate({
-      target: [agentTools.agentId, agentTools.toolId],
+      target: [agentTools.agentId, agentTools.kind, agentTools.toolId],
       set: {
         config: parsed.data ?? {},
+        kind: 'maintainer',
         status: rowStatus,
         toolSandboxManifest: sandboxManifest,
+        toolSandboxManifestHash: sandboxManifestHash,
         // Don't clear an existing error here — markBuildReady /
         // markBuildFailed own that field. Re-attaching with the same
         // hash is a no-op for the build worker.
@@ -180,14 +181,19 @@ export async function attachSubAgentAction(
     .values({
       agentId: parentAgentId,
       toolId,
+      kind: 'sub_agent',
       config: {},
       status: 'connected',
       toolSandboxManifest: null,
+      toolSandboxManifestHash: null,
     })
     .onConflictDoUpdate({
-      target: [agentTools.agentId, agentTools.toolId],
+      target: [agentTools.agentId, agentTools.kind, agentTools.toolId],
       set: {
+        kind: 'sub_agent',
         status: 'connected',
+        toolSandboxManifest: null,
+        toolSandboxManifestHash: null,
         updatedAt: new Date(),
       },
     })
@@ -198,7 +204,8 @@ export async function attachSubAgentAction(
 
 export async function detachToolAction(
   agentId: string,
-  toolId: string
+  toolId: string,
+  kind: AgentToolKind = 'maintainer'
 ): Promise<AttachResult> {
   const userId = await requireUserId()
   try {
@@ -212,7 +219,13 @@ export async function detachToolAction(
 
   await db
     .delete(agentTools)
-    .where(and(eq(agentTools.agentId, agentId), eq(agentTools.toolId, toolId)))
+    .where(
+      and(
+        eq(agentTools.agentId, agentId),
+        eq(agentTools.toolId, toolId),
+        eq(agentTools.kind, kind)
+      )
+    )
 
   revalidateTag(agentToolsTag(agentId), 'max')
   return { ok: true }

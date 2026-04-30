@@ -27,17 +27,21 @@ export async function runSandboxBuild(input: {
   'use step'
 
   const manifest = getToolSandboxManifest(input.manifestId)
-  const writable = getWritable<ToolSandboxBuildEvent>({
-    namespace: buildToolSandboxNamespace(input.buildId),
-  })
-  const writer = writable.getWriter()
   const emit = async (message: string) => {
     try {
-      await writer.write({
-        type: 'progress',
-        message,
-        ts: new Date().toISOString(),
+      const writable = getWritable<ToolSandboxBuildEvent>({
+        namespace: buildToolSandboxNamespace(input.buildId),
       })
+      const writer = writable.getWriter()
+      try {
+        await writer.write({
+          type: 'progress',
+          message,
+          ts: new Date().toISOString(),
+        })
+      } finally {
+        writer.releaseLock()
+      }
     } catch {
       // Stream emit is best-effort; never fail the build for a missed
       // progress message.
@@ -85,11 +89,6 @@ export async function runSandboxBuild(input: {
         // also covers the early-exit failure path where no snapshot
         // was taken. Either way, double-stop is harmless.
       }
-    }
-    try {
-      await writer.close()
-    } catch {
-      // Ignore — closing twice or after a failed write is harmless.
     }
   }
 }

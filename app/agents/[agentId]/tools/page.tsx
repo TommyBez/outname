@@ -63,11 +63,11 @@ async function Resolved({ params }: { params: Params }) {
   // catalog; sub-agent rows mark which children are already attached
   // for the sub-agent catalog.
   const maintainerAttachedRows = attachedRows.filter(
-    (r) => !r.toolId.startsWith(AGENT_TOOL_PREFIX)
+    (r) => r.kind === 'maintainer'
   )
   const attachedChildIds = new Set(
     attachedRows
-      .filter((r) => r.toolId.startsWith(AGENT_TOOL_PREFIX))
+      .filter((r) => r.kind === 'sub_agent')
       .map((r) => r.toolId.slice(AGENT_TOOL_PREFIX.length))
   )
 
@@ -81,7 +81,10 @@ async function Resolved({ params }: { params: Params }) {
   const pendingBuildByManifest = new Map<string, string | null>()
   await Promise.all(
     Array.from(pendingManifests).map(async (m) => {
-      const row = await getLatestBuildForManifest(m)
+      const manifestHash =
+        maintainerAttachedRows.find((r) => r.toolSandboxManifest === m)
+          ?.toolSandboxManifestHash ?? undefined
+      const row = await getLatestBuildForManifest(m, manifestHash)
       pendingBuildByManifest.set(
         m,
         row && (row.status === 'pending' || row.status === 'running')

@@ -3,25 +3,26 @@ import { createHook } from 'workflow'
 import { z } from 'zod'
 import { dispatchInvocation } from '@/lib/agent-session'
 import type { SubAgentReply } from '@/workflows/agent-session/events'
-import { AGENT_TOOL_PREFIX } from './agent-tool-prefix'
-
-// Re-export so server-side callers that import the prefix together
-// with `buildAgentTool` keep working without churn.
-export { AGENT_TOOL_PREFIX }
 
 export interface AgentToolHandle {
   /** Child agent's row data, already vetted by resolveToolPlan. */
   childAgentId: string
   childName: string
   childUserId: string
+  /** Agent currently executing the tool. */
+  parentAgentId: string
   /**
-   * Parent's call stack at build time. We append the child id before
-   * dispatching so the child sees the full lineage and can refuse a
-   * cycle even if our own check missed.
+   * Parent's call stack at build time. We append the current parent id
+   * before dispatching so the child sees the full lineage and can
+   * refuse a cycle even if our own check missed.
    */
   parentCallStack: string[]
   /** Parent's nesting depth. The child runs at parentDepth + 1. */
   parentDepth: number
+  /** App run id for the parent, when the parent itself is a run. */
+  parentRunId: string | null
+  /** Synthesised tool key that triggered the invocation. */
+  parentToolId: string
   /** Parent user — must equal childUserId; resolveToolPlan enforces. */
   parentUserId: string
 }
@@ -70,22 +71,16 @@ export function buildAgentTool(handle: AgentToolHandle) {
         ),
     }),
     execute: async ({ instruction }) => {
-      'use step'
-
       const replyTo = newReplyToken()
 
       // IMPORTANT: open the hook BEFORE dispatching, otherwise the
       // child's resumeHook can race ahead of us and the reply is lost.
       const hook = createHook<SubAgentReply>({ token: replyTo })
 
-      await dispatchInvocation({
-        childAgentId: handle.childAgentId,
-        childUserId: handle.childUserId,
-        parentUserId: handle.parentUserId,
+      await dispatchSubAgentInvocation({
+        handle,
         instruction,
         replyTo,
-        callStack: [...handle.parentCallStack, handle.childAgentId],
-        depth: handle.parentDepth + 1,
       })
 
       // One-shot consumption: take the first event off the hook, then
@@ -103,6 +98,26 @@ export function buildAgentTool(handle: AgentToolHandle) {
 
       throw new Error('sub-agent reply hook closed without a reply')
     },
+  })
+}
+
+async function dispatchSubAgentInvocation(input: {
+  handle: AgentToolHandle
+  instruction: string
+  replyTo: string
+}): Promise<void> {
+  'use step'
+  const { handle, instruction, replyTo } = input
+  await dispatchInvocation({
+    childAgentId: handle.childAgentId,
+    childUserId: handle.childUserId,
+    parentUserId: handle.parentUserId,
+    parentRunId: handle.parentRunId,
+    parentToolId: handle.parentToolId,
+    instruction,
+    replyTo,
+    callStack: [...handle.parentCallStack, handle.parentAgentId],
+    depth: handle.parentDepth + 1,
   })
 }
 

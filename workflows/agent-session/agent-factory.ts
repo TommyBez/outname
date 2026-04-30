@@ -23,6 +23,8 @@ export interface BuildAgentArgs {
    * their own id before dispatching.
    */
   callStack?: string[]
+  /** Durable `runs.id` for this event, when one exists. */
+  currentRunId?: string | null
   /**
    * Phase 4: nesting depth. 0 for normal turns, parentDepth + 1 for
    * sub-agent runs. resolveToolPlan refuses any sub-agent attach that
@@ -31,7 +33,7 @@ export interface BuildAgentArgs {
   depth?: number
   /** Optional UTC "now" for the system prompt; defaults to `new Date()`. */
   nowIso?: string
-  /** Heartbeat: `runs.id`; chat: conversation id. */
+  /** Heartbeat/invocation: `runs.id`; chat: conversation id. */
   runId: string
 }
 
@@ -76,6 +78,7 @@ export async function buildAgent(
     userId: row.userId,
     plan,
     callStack,
+    currentRunId: args.currentRunId,
     depth,
   })
 

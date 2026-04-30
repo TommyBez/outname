@@ -93,6 +93,8 @@ export async function agentSessionWorkflow(input: {
             agentId,
             input: event.input,
             replyTo: event.replyTo,
+            parentRunId: event.parentRunId,
+            parentToolId: event.parentToolId,
             callStack: event.callStack,
             depth: event.depth,
           })

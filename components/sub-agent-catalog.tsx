@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useTransition } from 'react'
 import { toast } from 'sonner'
-import { attachToolAction, detachToolAction } from '@/lib/tool-actions'
+import { attachSubAgentAction, detachToolAction } from '@/lib/tool-actions'
 import { AGENT_TOOL_PREFIX } from '@/tools/agent-tool-prefix'
 
 export interface SubAgentCatalogEntry {
@@ -70,11 +70,7 @@ function SubAgentRow({
 
   function handleAttach() {
     startTransition(async () => {
-      const res = await attachToolAction(
-        parentAgentId,
-        `${AGENT_TOOL_PREFIX}${entry.agentId}`,
-        {}
-      )
+      const res = await attachSubAgentAction(parentAgentId, entry.agentId)
       if (!res.ok) {
         toast.error(res.error ?? 'Attach failed.')
         return
@@ -88,7 +84,8 @@ function SubAgentRow({
     startTransition(async () => {
       const res = await detachToolAction(
         parentAgentId,
-        `${AGENT_TOOL_PREFIX}${entry.agentId}`
+        `${AGENT_TOOL_PREFIX}${entry.agentId}`,
+        'sub_agent'
       )
       if (!res.ok) {
         toast.error(res.error ?? 'Detach failed.')

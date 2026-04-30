@@ -1,7 +1,7 @@
 import 'server-only'
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import path from 'node:path'
 import { agentBrowserManifest } from './agent-browser/manifest'
 import type { ToolSandboxManifest } from './types'
 
@@ -15,16 +15,11 @@ import type { ToolSandboxManifest } from './types'
  */
 interface RegistryEntry {
   manifest: ToolSandboxManifest
-  setupScriptPath: string
 }
 
 const REGISTRY: Record<string, RegistryEntry> = {
   [agentBrowserManifest.id]: {
     manifest: agentBrowserManifest,
-    setupScriptPath: join(
-      process.cwd(),
-      'tools/sandboxes/agent-browser/setup.sh'
-    ),
   },
 }
 
@@ -59,16 +54,29 @@ export function manifestSetupScript(manifestId: string): string {
     return cached
   }
   const entry = entryFor(manifestId)
-  const bytes = readFileSync(entry.setupScriptPath, 'utf8')
+  const bytes = readFileSync(setupScriptPathFor(entry.manifest.id), 'utf8')
   setupScriptCache.set(manifestId, bytes)
   return bytes
 }
 
+function setupScriptPathFor(manifestId: string): string {
+  if (manifestId === agentBrowserManifest.id) {
+    return path.join(
+      /*turbopackIgnore: true*/ process.cwd(),
+      'tools',
+      'sandboxes',
+      'agent-browser',
+      'setup.sh'
+    )
+  }
+  throw new Error(`Unknown tool sandbox manifest: ${manifestId}`)
+}
+
 /**
- * Stable hash that drives rebuilds. Combines the manifest's `version`
- * field with the bytes of its `setup.sh` so either changing knob —
- * bumping `version` or editing the script — invalidates the snapshot
- * on the next attach.
+ * Stable hash that drives rebuilds. Combines the manifest descriptor
+ * with the bytes of its `setup.sh` so changing runtime/resources,
+ * version, or the install script invalidates the snapshot on the next
+ * attach.
  */
 export function manifestHash(manifestId: string): string {
   const cached = manifestHashCache.get(manifestId)
@@ -78,9 +86,25 @@ export function manifestHash(manifestId: string): string {
   const m = entryFor(manifestId).manifest
   const script = manifestSetupScript(manifestId)
   const hash = createHash('sha256')
-    .update(`v${m.version}\n`)
+    .update(stableStringify(m))
+    .update('\n')
     .update(script)
     .digest('hex')
   manifestHashCache.set(manifestId, hash)
   return hash
+}
+
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== 'object') {
+    return JSON.stringify(value)
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(',')}]`
+  }
+
+  const record = value as Record<string, unknown>
+  return `{${Object.keys(record)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
+    .join(',')}}`
 }
