@@ -1,6 +1,5 @@
 import 'server-only'
 import { tool } from 'ai'
-import { fetch as workflowFetch } from 'workflow'
 import { z } from 'zod'
 import { resendApiKey } from '@/connectors/resend'
 import type { MaintainerTool } from './types'
@@ -20,6 +19,57 @@ const resendConfigSchema = z.object({
       'Address each send is From:. Must be a verified domain or address in your Resend account, otherwise the API will reject.'
     ),
 })
+
+const resendSendInputSchema = z.object({
+  to: z.string().email().describe('Recipient email address.'),
+  subject: z.string().min(1),
+  text: z
+    .string()
+    .min(1)
+    .describe('Plain-text body. Use this for non-HTML sends.'),
+  html: z
+    .string()
+    .optional()
+    .describe('Optional HTML body — providers prefer this when present.'),
+})
+
+type ResendSendInput = z.infer<typeof resendSendInputSchema>
+
+interface ExecuteResendSendArgs extends ResendSendInput {
+  apiKey: string
+  fromEmail: string
+  toolId: string
+}
+
+async function executeResendSend(args: ExecuteResendSendArgs) {
+  'use step'
+  const body: Record<string, unknown> = {
+    from: args.fromEmail,
+    to: args.to,
+    subject: args.subject,
+    text: args.text,
+  }
+  if (args.html) {
+    body.html = args.html
+  }
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${args.apiKey}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const errText = await res.text()
+    return {
+      ok: false as const,
+      error: `${args.toolId}: send failed (HTTP ${res.status}) ${errText.slice(0, 200)}`,
+    }
+  }
+  const sent = (await res.json()) as { id: string }
+  return { ok: true as const, id: sent.id }
+}
 
 export const resendSendTool: MaintainerTool = {
   id: 'resend_send',
@@ -45,47 +95,18 @@ export const resendSendTool: MaintainerTool = {
     return tool({
       description:
         'Send a transactional email via Resend. Returns the new message id on success.',
-      inputSchema: z.object({
-        to: z.string().email().describe('Recipient email address.'),
-        subject: z.string().min(1),
-        text: z
-          .string()
-          .min(1)
-          .describe('Plain-text body. Use this for non-HTML sends.'),
-        html: z
-          .string()
-          .optional()
-          .describe('Optional HTML body — providers prefer this when present.'),
-      }),
+      inputSchema: resendSendInputSchema,
       async execute({ to, subject, text, html }) {
-        'use step'
         const apiKey = resendApiKey(credentials.resend)
-        const body: Record<string, unknown> = {
-          from: parsed.fromEmail,
+        return await executeResendSend({
+          apiKey,
+          fromEmail: parsed.fromEmail,
+          toolId,
           to,
           subject,
           text,
-        }
-        if (html) {
-          body.html = html
-        }
-        const res = await workflowFetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            authorization: `Bearer ${apiKey}`,
-            'content-type': 'application/json',
-          },
-          body: JSON.stringify(body),
+          html,
         })
-        if (!res.ok) {
-          const errText = await res.text()
-          return {
-            ok: false as const,
-            error: `${toolId}: send failed (HTTP ${res.status}) ${errText.slice(0, 200)}`,
-          }
-        }
-        const sent = (await res.json()) as { id: string }
-        return { ok: true as const, id: sent.id }
       },
     })
   },
