@@ -1,4 +1,5 @@
 import { getSystemSandbox } from '@/lib/agent-sandbox'
+import type { Reconnect } from '@/tools/types'
 import {
   listLiveMemory,
   readLiveMemory,
@@ -19,6 +20,12 @@ export interface ComposeSystemPromptArgs {
   agentName: string
   /** UTC ISO timestamp embedded so the model knows what "now" is. */
   nowIso?: string
+  /**
+   * Tools that failed to materialize this event. Surfaced verbatim so
+   * the model can either route around them or tell the user to
+   * reconnect.
+   */
+  reconnects?: readonly Reconnect[]
 }
 
 const FOOTER = `## Platform invariants
@@ -41,6 +48,41 @@ const FOOTER = `## Platform invariants
 - Heartbeats are short check-ins, not full work sessions. Skim, log,
   finish quick wins, stop.
 `
+
+function describeReconnect(r: Reconnect): string {
+  switch (r.reason) {
+    case 'missing_credential':
+      return `- \`${r.toolId}\` (provider: ${r.provider}) — user has not connected this provider yet. Ask them to attach it from the agent's tools page.`
+    case 'expired':
+      return `- \`${r.toolId}\` (provider: ${r.provider}) — credential expired and could not be refreshed. Ask the user to reconnect.`
+    case 'revoked':
+      return `- \`${r.toolId}\` (provider: ${r.provider}) — credential was revoked. Ask the user to reconnect.`
+    case 'scope_gap':
+      return `- \`${r.toolId}\` (provider: ${r.provider}) — missing scopes: ${r.neededScopes.join(', ')}. Ask the user to re-authorize.`
+    case 'config_invalid':
+      return `- \`${r.toolId}\` — attached configuration is invalid (${r.message}). Ask the user to re-attach this tool.`
+    case 'build_failed':
+      return `- \`${r.toolId}\` — failed to initialize (${r.message}). The platform owner has been notified; route around this tool for now.`
+    case 'tool_removed':
+      return `- \`${r.toolId}\` — this tool no longer exists in the registry. Ask the user to detach it.`
+  }
+}
+
+function renderReconnects(reconnects: readonly Reconnect[]): string | null {
+  if (reconnects.length === 0) return null
+  const lines = reconnects.map(describeReconnect).join('\n')
+  return [
+    '## Tools needing reconnection',
+    '',
+    'The following maintainer tools are attached but not callable this turn:',
+    '',
+    lines,
+    '',
+    'Do not pretend these tools succeeded. If the user asks you to do',
+    'something that requires one of them, tell them which connection',
+    'needs attention and stop.',
+  ].join('\n')
+}
 
 export async function composeSystemPrompt(
   args: ComposeSystemPromptArgs
@@ -83,6 +125,9 @@ export async function composeSystemPrompt(
       `## Memory files available\n\n_(none yet — author files with write_memory as you accumulate notes; persona files ${PERSONA_PATHS.join(', ')} are inlined above and cannot be modified by the agent.)_`
     )
   }
+
+  const reconnectsBlock = renderReconnects(args.reconnects ?? [])
+  if (reconnectsBlock) sections.push(reconnectsBlock)
 
   sections.push(FOOTER)
 

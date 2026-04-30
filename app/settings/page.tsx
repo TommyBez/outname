@@ -1,16 +1,16 @@
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { AppShell } from '@/components/app-shell'
-import { GmailConnect } from '@/components/gmail-connect'
+import { ConnectionsList } from '@/components/connections-list'
 import { AccountSkeleton, GmailSectionSkeleton } from '@/components/skeletons'
+import { listConnectors } from '@/connectors/registry'
 import { getSession, requireSession } from '@/lib/auth-guard'
-import { getCachedAgentsForUser } from '@/lib/data'
-import { getCachedGmailConnectionForUser } from '@/lib/google-oauth'
+import { getCachedAgentsForUser, getCachedUserConnections } from '@/lib/data'
 
 export default function SettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ gmail?: string; reason?: string }>
+  searchParams: Promise<{ connection?: string; reason?: string }>
 }) {
   return (
     <AppShell>
@@ -26,9 +26,9 @@ export default function SettingsPage({
       </Suspense>
 
       <div className="border-foreground border-y-2">
-        <Section title="Gmail">
+        <Section title="Connections">
           <Suspense fallback={<GmailSectionSkeleton />}>
-            <GmailSection />
+            <ConnectionsSection />
           </Suspense>
         </Section>
 
@@ -51,10 +51,10 @@ export default function SettingsPage({
 async function FlashNotice({
   searchParams,
 }: {
-  searchParams: Promise<{ gmail?: string; reason?: string }>
+  searchParams: Promise<{ connection?: string; reason?: string }>
 }) {
   const sp = await searchParams
-  if (sp.gmail === 'error') {
+  if (sp.connection === 'error') {
     return (
       <div className="mb-10 border-destructive border-l-4 bg-muted py-3 pl-4">
         <p className="font-bold text-destructive text-xs uppercase tracking-[0.2em]">
@@ -66,11 +66,11 @@ async function FlashNotice({
       </div>
     )
   }
-  if (sp.gmail === 'connected') {
+  if (sp.connection === 'connected') {
     return (
       <div className="mb-10 border-foreground border-l-4 bg-muted py-3 pl-4">
         <p className="font-black font-serif text-lg uppercase tracking-[-0.04em]">
-          Gmail connected.
+          Connection saved.
         </p>
       </div>
     )
@@ -78,19 +78,27 @@ async function FlashNotice({
   return null
 }
 
-async function GmailSection() {
+async function ConnectionsSection() {
   const session = await requireSession()
-  const connectionRow = await getCachedGmailConnectionForUser(session.user.id)
-  const connection = connectionRow
-    ? {
-        email: connectionRow.email,
-        status: connectionRow.status,
-        scopes: connectionRow.scopes,
-        connectedAt: connectionRow.connectedAt.toISOString(),
-        lastError: connectionRow.lastError,
-      }
-    : null
-  return <GmailConnect connection={connection} />
+  const rows = await getCachedUserConnections(session.user.id)
+
+  const connectors = listConnectors().map((c) => ({
+    provider: c.provider,
+    kind: c.kind,
+    displayName: c.displayName,
+    description: c.description,
+    apiKeyFields: c.kind === 'api_key' ? c.apiKey.fields : undefined,
+  }))
+
+  const connections = rows.map((r) => ({
+    provider: r.provider,
+    status: r.status as 'active' | 'expired' | 'revoked',
+    metadata: (r.metadata ?? {}) as Record<string, unknown>,
+    lastError: r.lastError,
+    connectedAt: r.createdAt.toISOString(),
+  }))
+
+  return <ConnectionsList connectors={connectors} connections={connections} />
 }
 
 async function AgentsSummarySection() {
