@@ -296,31 +296,82 @@ export const pendingFileWrites = pgTable(
   ]
 )
 
-export const gmailConnection = pgTable('gmail_connection', {
-  id: text('id').primaryKey().default('singleton'),
-  userId: text('user_id')
-    .notNull()
-    .references(() => user.id, { onDelete: 'cascade' }),
-  email: text('email').notNull(),
-  refreshToken: text('refresh_token').notNull(),
-  accessToken: text('access_token'),
-  accessTokenExpiresAt: timestamp('access_token_expires_at', {
-    withTimezone: true,
-  }),
-  scopes: text('scopes').notNull(),
-  status: text('status').notNull().default('active'), // active | expired | revoked
-  lastError: text('last_error'),
-  connectedAt: timestamp('connected_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-})
+/**
+ * Generic per-(user, provider) credential store. Replaces the bespoke
+ * `gmail_connection` table from Phase 2.
+ *
+ * `credentials` is a base64-encoded AES-256-GCM envelope produced by
+ * `lib/connection-crypto.ts`. Plaintext shape is opaque to the platform —
+ * each connector defines its own.
+ *
+ * `metadata.scopes: string[]` is the source of truth for granted OAuth
+ * scopes (used by `resolveCredentials` for scope-gap detection).
+ * Other free-form fields (account email, account id, ...) are
+ * connector-defined.
+ *
+ * `status` lifecycle is owned by `connectors/runtime.ts`:
+ *   active   ←   exchangeCode succeeds
+ *   active   ←   refresh succeeds
+ *   expired  ←   refresh returns invalid_token / 401-style error
+ *   revoked  ←   refresh returns invalid_grant: revoked OR explicit disconnect
+ */
+export const userConnections = pgTable(
+  'user_connections',
+  {
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    provider: text('provider').notNull(),
+    credentials: text('credentials').notNull(),
+    metadata: jsonb('metadata').notNull().default({}),
+    status: text('status').notNull().default('active'), // active | expired | revoked
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    lastError: text('last_error'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.provider] }),
+    index('user_connections_user_idx').on(t.userId),
+  ]
+)
+
+/**
+ * Agent's attached maintainer tools. One row per (agent, tool); `tool_id`
+ * is the registry id (e.g. "gmail_search"). `config` is validated
+ * against the maintainer tool's `configSchema` at attach time and at
+ * every event boot — drift surfaces as `reason: "config_invalid"` in the
+ * reconnects channel rather than crashing.
+ */
+export const agentTools = pgTable(
+  'agent_tools',
+  {
+    agentId: text('agent_id')
+      .notNull()
+      .references(() => agent.id, { onDelete: 'cascade' }),
+    toolId: text('tool_id').notNull(),
+    config: jsonb('config').notNull().default({}),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.agentId, t.toolId] }),
+    index('agent_tools_agent_idx').on(t.agentId),
+  ]
+)
 
 export type Run = typeof runs.$inferSelect
 export type RunResult = typeof runResult.$inferSelect
-export type GmailConnection = typeof gmailConnection.$inferSelect
+export type UserConnection = typeof userConnections.$inferSelect
+export type AgentTool = typeof agentTools.$inferSelect
 export type Agent = typeof agent.$inferSelect
 export type AgentFile = typeof agentFiles.$inferSelect
 export type PendingFileWrite = typeof pendingFileWrites.$inferSelect
@@ -328,3 +379,4 @@ export type ChatConversation = typeof chatConversation.$inferSelect
 export type ChatMessage = typeof chatMessage.$inferSelect
 export type ChatRole = 'user' | 'assistant' | 'system'
 export type RunStatus = 'running' | 'completed' | 'failed'
+export type ConnectionStatus = 'active' | 'expired' | 'revoked'
