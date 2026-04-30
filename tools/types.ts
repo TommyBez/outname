@@ -24,15 +24,14 @@ import type { RawCredential } from '@/connectors/types'
 /**
  * Capability a maintainer tool needs at build time.
  *
- *   `connection` — needs a stored credential at the named provider.
- *
- * Future Phase 4 additions (`tool_sandbox`, …) plug in here without
- * touching every existing tool.
+ *   `connection`    — needs a stored credential at the named provider.
+ *   `tool_sandbox`  — needs a pre-built tool-sandbox snapshot for the
+ *                     named manifest (Phase 4). The runtime spawns
+ *                     into the snapshot lazily on first tool call.
  */
-export interface ToolRequirement {
-  kind: 'connection'
-  provider: string
-}
+export type ToolRequirement =
+  | { kind: 'connection'; provider: string }
+  | { kind: 'tool_sandbox'; manifest: string }
 
 /**
  * Form descriptor for an attachment-config field. Drives the catalog UI
@@ -94,6 +93,24 @@ export type Reconnect =
   | { toolId: string; reason: 'config_invalid'; message: string }
   | { toolId: string; reason: 'build_failed'; message: string }
   | { toolId: string; reason: 'tool_removed' }
+  // Phase 4: maintainer-tool variants when the manifest snapshot
+  // isn't ready this turn.
+  | {
+      toolId: string
+      reason: 'tool_sandbox_building'
+      manifest: string
+      buildId: string
+    }
+  | {
+      toolId: string
+      reason: 'tool_sandbox_unavailable'
+      manifest: string
+      message: string
+    }
+  // Phase 4: agent-as-tool (sub-agent) variants.
+  | { toolId: string; reason: 'sub_agent_unavailable'; message: string }
+  | { toolId: string; reason: 'sub_agent_cycle' }
+  | { toolId: string; reason: 'sub_agent_depth' }
 
 export interface MaintainerTool {
   /**

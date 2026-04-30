@@ -351,6 +351,35 @@ export const agentTools = pgTable(
       .references(() => agent.id, { onDelete: 'cascade' }),
     toolId: text('tool_id').notNull(),
     config: jsonb('config').notNull().default({}),
+    /**
+     * Phase 4: lifecycle of the attachment.
+     *
+     *   - `connected`           — usable this turn.
+     *   - `pending`             — the tool depends on a tool sandbox
+     *                             that's still being built; flipped to
+     *                             `connected` by `markBuildReady` when
+     *                             the build workflow finishes.
+     */
+    status: text('status').notNull().default('connected'),
+    /**
+     * Phase 4: id of the `tool_sandbox_snapshots` manifest this
+     * attachment depends on, or NULL for tools that don't need a
+     * sandbox (e.g. resend_send).
+     *
+     * Stored on the row so:
+     *   - `markBuildReady` can flip every pending row for a manifest
+     *     in one UPDATE,
+     *   - `resolveToolPlan` can decide whether to render
+     *     `tool_sandbox_building` reconnects without re-loading the
+     *     registry.
+     */
+    toolSandboxManifest: text('tool_sandbox_manifest'),
+    /**
+     * Phase 4: most recent sticky build error for this manifest, if
+     * any. Cleared on the next successful build. UI shows it next to
+     * the Retry button.
+     */
+    toolSandboxError: text('tool_sandbox_error'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -361,13 +390,69 @@ export const agentTools = pgTable(
   (t) => [
     primaryKey({ columns: [t.agentId, t.toolId] }),
     index('agent_tools_agent_idx').on(t.agentId),
+    index('agent_tools_sandbox_manifest_idx').on(t.toolSandboxManifest),
   ]
 )
+
+/**
+ * Phase 4: tool-sandbox snapshots.
+ *
+ * One row per manifest holding the most recent READY snapshot id and
+ * the manifest hash that produced it. The runtime reads this table at
+ * tool-call time to spawn a sandbox from the snapshot.
+ *
+ * Global (not user-scoped): one snapshot per manifest serves every
+ * user that has attached a tool requiring it.
+ */
+export const toolSandboxSnapshots = pgTable('tool_sandbox_snapshots', {
+  manifestId: text('manifest_id').primaryKey(),
+  snapshotId: text('snapshot_id').notNull(),
+  manifestHash: text('manifest_hash').notNull(),
+  builtAt: timestamp('built_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+})
+export type ToolSandboxSnapshot = typeof toolSandboxSnapshots.$inferSelect
+
+/**
+ * Phase 4: in-flight + completed build attempts.
+ *
+ * One row per `attachToolAction` invocation that didn't hit the
+ * cached-snapshot fast path. Builds for the same `(manifestId,
+ * manifestHash)` are coalesced — concurrent attaches share the same
+ * row so we only run one workflow per build.
+ *
+ * Only **terminal** state is stored here. Per-step progress messages
+ * are published to the build workflow's per-run stream and read back
+ * by clients via `/api/tool-sandbox-builds/[buildId]/stream`.
+ */
+export const toolSandboxBuilds = pgTable(
+  'tool_sandbox_builds',
+  {
+    id: text('id').primaryKey(),
+    manifestId: text('manifest_id').notNull(),
+    manifestHash: text('manifest_hash').notNull(),
+    status: text('status')
+      .$type<'pending' | 'running' | 'ready' | 'failed'>()
+      .notNull(),
+    workflowRunId: text('workflow_run_id'),
+    errorText: text('error_text'),
+    startedAt: timestamp('started_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('tool_sandbox_builds_manifest_status_idx').on(t.manifestId, t.status),
+  ]
+)
+export type ToolSandboxBuild = typeof toolSandboxBuilds.$inferSelect
 
 export type Run = typeof runs.$inferSelect
 export type RunResult = typeof runResult.$inferSelect
 export type UserConnection = typeof userConnections.$inferSelect
 export type AgentTool = typeof agentTools.$inferSelect
+export type AgentToolStatus = 'connected' | 'pending'
 export type Agent = typeof agent.$inferSelect
 export type AgentFile = typeof agentFiles.$inferSelect
 export type PendingFileWrite = typeof pendingFileWrites.$inferSelect
