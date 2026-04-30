@@ -1,4 +1,5 @@
 import 'server-only'
+import { calcomConnector } from './calcom'
 import { resendConnector } from './resend'
 import type { Connector } from './types'
 
@@ -7,7 +8,7 @@ import type { Connector } from './types'
  * the HTTP layer, and the catalog UI pick it up automatically.
  */
 
-const CONNECTORS: Connector[] = [resendConnector]
+const CONNECTORS: Connector[] = [resendConnector, calcomConnector]
 
 export function listConnectors(): readonly Connector[] {
   return CONNECTORS

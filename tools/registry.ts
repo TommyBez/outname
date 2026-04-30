@@ -1,4 +1,5 @@
 import 'server-only'
+import { calcomRequestTool } from './calcom'
 import { resendSendTool } from './resend'
 import type { MaintainerTool } from './types'
 
@@ -12,7 +13,7 @@ import type { MaintainerTool } from './types'
  * OAuth-backed tools are deferred until the connector flow is worth the
  * extra product and security surface.
  */
-const TOOLS: MaintainerTool[] = [resendSendTool]
+const TOOLS: MaintainerTool[] = [resendSendTool, calcomRequestTool]
 
 export function listMaintainerTools(): readonly MaintainerTool[] {
   return TOOLS
@@ -26,4 +27,4 @@ export function getMaintainerTool(toolId: string): MaintainerTool | undefined {
  * Coarse category ordering for the catalog UI. Tools with categories
  * not in this list fall to the end alphabetically.
  */
-export const TOOL_CATEGORY_ORDER = ['email'] as const
+export const TOOL_CATEGORY_ORDER = ['email', 'scheduling'] as const
