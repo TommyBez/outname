@@ -39,7 +39,10 @@ export async function attachToolAction(
   const tool = getMaintainerTool(toolId)
   if (!tool) return { ok: false, error: 'Unknown tool.' }
 
-  const parsed = tool.configSchema.safeParse(rawConfig)
+  const schema = tool.configSchema
+  const parsed = schema
+    ? schema.safeParse(rawConfig)
+    : ({ success: true as const, data: {} as Record<string, unknown> } as const)
   if (!parsed.success) {
     return {
       ok: false,

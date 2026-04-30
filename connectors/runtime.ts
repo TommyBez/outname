@@ -8,12 +8,9 @@ import {
 import { db } from '@/lib/db'
 import { userConnections } from '@/lib/db/schema'
 import { userConnectionsTag } from '@/lib/cache-tags'
+import type { Reconnect } from '@/tools/types'
 import { getConnector } from './registry'
-import type {
-  OAuthExchangeResult,
-  RawCredential,
-  Reconnect,
-} from './types'
+import type { OAuthExchangeResult, RawCredential } from './types'
 
 /**
  * Status lifecycle for `user_connections.status` — owned exclusively by

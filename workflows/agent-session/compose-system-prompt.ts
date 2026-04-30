@@ -65,6 +65,10 @@ function describeReconnect(r: Reconnect): string {
       return `- \`${r.toolId}\` — failed to initialize (${r.message}). The platform owner has been notified; route around this tool for now.`
     case 'tool_removed':
       return `- \`${r.toolId}\` — this tool no longer exists in the registry. Ask the user to detach it.`
+    default: {
+      const _exhaustive: never = r
+      return `- (unknown reconnect reason) ${JSON.stringify(_exhaustive)}`
+    }
   }
 }
 

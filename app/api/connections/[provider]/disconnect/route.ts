@@ -19,7 +19,7 @@ export async function POST(
     )
   }
 
-  await disconnectProvider(userId, provider)
+  await disconnectProvider({ userId, provider })
 
   revalidateTag(userConnectionsTag(userId), 'max')
 

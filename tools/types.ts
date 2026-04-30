@@ -79,6 +79,34 @@ export interface ToolBuildContext {
  * `tools/registry.ts`; agents enable / configure them via
  * `agent_tools` rows but do not author them.
  */
+/**
+ * Unified discriminator describing why a maintainer tool is not callable
+ * this turn. Consumed by:
+ *
+ *   - the system prompt (`composeSystemPrompt` renders a "Tools needing
+ *     reconnection" block)
+ *   - the catalog UI (`/agents/[agentId]/tools` shows per-row banners
+ *     with the appropriate "Reconnect" / "Re-attach" / "Detach" CTA)
+ *   - the connect endpoint (callers send the user here when a tool is
+ *     missing scopes or credentials)
+ *
+ * Keep the variants small and orthogonal — every new variant is a UI
+ * obligation in three places.
+ */
+export type Reconnect =
+  | { provider: string; toolId: string; reason: 'missing_credential' }
+  | { provider: string; toolId: string; reason: 'expired' }
+  | { provider: string; toolId: string; reason: 'revoked' }
+  | {
+      provider: string
+      toolId: string
+      reason: 'scope_gap'
+      neededScopes: string[]
+    }
+  | { toolId: string; reason: 'config_invalid'; message: string }
+  | { toolId: string; reason: 'build_failed'; message: string }
+  | { toolId: string; reason: 'tool_removed' }
+
 export interface MaintainerTool {
   /** Stable id used in `agent_tools.tool_id` and as the AI-SDK tool key. */
   id: string

@@ -5,7 +5,7 @@ import {
   type ProviderRequirement,
   resolveCredentials,
 } from '@/connectors/runtime'
-import type { Reconnect } from '@/connectors/types'
+import type { Reconnect } from '@/tools/types'
 import { db } from '@/lib/db'
 import { agentTools } from '@/lib/db/schema'
 import { getMaintainerTool } from './registry'
@@ -73,7 +73,7 @@ export async function buildAttachedTools(args: {
         reconnects.push({
           toolId: row.toolId,
           reason: 'config_invalid',
-          details: result.error.issues
+          message: result.error.issues
             .map((i) => `${i.path.join('.') || '<root>'}: ${i.message}`)
             .join('; '),
         })
@@ -144,7 +144,7 @@ export async function buildAttachedTools(args: {
       reconnects.push({
         toolId: p.toolId,
         reason: 'build_failed',
-        details: err instanceof Error ? err.message : String(err),
+        message: err instanceof Error ? err.message : String(err),
       })
     }
   }

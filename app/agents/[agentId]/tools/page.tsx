@@ -38,8 +38,8 @@ async function Resolved({ params }: { params: Params }) {
 
   const catalog: ToolCatalogEntry[] = listMaintainerTools().map((t) => {
     const providers = t.requirements
-      .filter((r) => r.kind === 'provider')
-      .map((r) => (r as { kind: 'provider'; provider: string }).provider)
+      .filter((r) => r.kind === 'connection')
+      .map((r) => r.provider)
     return {
       toolId: t.id,
       displayName: t.displayName,

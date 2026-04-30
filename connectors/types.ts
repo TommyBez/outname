@@ -115,27 +115,7 @@ export interface ApiKeyConnector {
 
 export type Connector = OAuthConnector | ApiKeyConnector
 
-/**
- * Discriminated reason a tool isn't currently runnable. Surfaces in:
- *   - the system prompt's "Tools needing attention" block,
- *   - the catalog UI's per-row status,
- *   - per-tool actions (Reconnect / Re-attach / Detach).
- *
- * Provider-keyed reasons (missing/expired/revoked/scope_gap) drive an
- * OAuth re-auth or api_key re-submit. Tool-keyed reasons
- * (config_invalid/build_failed/tool_removed) drive a Re-attach or
- * Detach action.
- */
-export type Reconnect =
-  | { provider: string; toolId: string; reason: 'missing_credential' }
-  | { provider: string; toolId: string; reason: 'expired' }
-  | { provider: string; toolId: string; reason: 'revoked' }
-  | {
-      provider: string
-      toolId: string
-      reason: 'scope_gap'
-      neededScopes: string[]
-    }
-  | { toolId: string; reason: 'config_invalid'; details?: string }
-  | { toolId: string; reason: 'build_failed'; details?: string }
-  | { toolId: string; reason: 'tool_removed' }
+// `Reconnect` lives in `tools/types.ts` — the system prompt and the
+// catalog UI both consume it directly from there. Connector code
+// imports it from `tools/types.ts` to avoid a circular dependency
+// loop while still sharing one canonical shape.

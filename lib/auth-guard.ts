@@ -15,3 +15,12 @@ export async function requireSession() {
 export async function getSession() {
   return auth.api.getSession({ headers: await headers() })
 }
+
+/**
+ * Convenience wrapper for handlers and Server Actions that only need
+ * the authenticated user's id. Redirects to /login if no session.
+ */
+export async function requireUserId(): Promise<string> {
+  const session = await requireSession()
+  return session.user.id
+}

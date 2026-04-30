@@ -74,7 +74,10 @@ function humanize(name: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-export function describeConfigSchema(schema: z.ZodTypeAny): ConfigField[] {
+export function describeConfigSchema(
+  schema: z.ZodTypeAny | undefined
+): ConfigField[] {
+  if (!schema) return []
   const def = (schema as unknown as { _def?: { typeName?: string; shape?: () => Record<string, z.ZodTypeAny> } })._def
   if (def?.typeName !== 'ZodObject' || !def.shape) return []
 

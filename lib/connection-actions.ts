@@ -8,7 +8,7 @@ import {
   getApiKeyConnectorOrThrow,
 } from '@/connectors/registry'
 import {
-  saveApiKeyCredential,
+  persistApiKeyConnection,
   disconnectProvider,
 } from '@/connectors/runtime'
 
@@ -51,12 +51,12 @@ export async function saveApiKeyConnectionAction(
       if (!result.ok) {
         return { ok: false, error: result.error ?? 'Invalid credentials.' }
       }
-      await saveApiKeyCredential(
+      await persistApiKeyConnection({
         userId,
         provider,
-        parsed.data,
-        result.metadata ?? {}
-      )
+        raw: parsed.data,
+        metadata: result.metadata ?? {},
+      })
     } catch (err) {
       return {
         ok: false,
@@ -64,7 +64,12 @@ export async function saveApiKeyConnectionAction(
       }
     }
   } else {
-    await saveApiKeyCredential(userId, provider, parsed.data, {})
+    await persistApiKeyConnection({
+      userId,
+      provider,
+      raw: parsed.data,
+      metadata: {},
+    })
   }
 
   revalidateTag(userConnectionsTag(userId), 'max')
@@ -78,7 +83,7 @@ export async function disconnectConnectionAction(provider: string) {
     return { ok: false, error: 'Unknown provider.' }
   }
 
-  await disconnectProvider(userId, provider)
+  await disconnectProvider({ userId, provider })
   revalidateTag(userConnectionsTag(userId), 'max')
   return { ok: true }
 }
