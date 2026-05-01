@@ -50,7 +50,7 @@ export async function drainPendingWrites(input: {
   // `seed-agents-md.ts`. Without this prefix the writes land at
   // the sandbox FS root and `composeSystemPrompt`'s
   // `readLiveMemory` (which reads from `${SYSTEM_SANDBOX_ROOT}/...`)
-  // never sees them, breaking the Identity / Instructions UI.
+  // never sees them, breaking the bootstrap-file settings UI.
   await sandbox.writeFiles(
     queued.map((row) => ({
       path: `${SYSTEM_SANDBOX_ROOT}/${row.path}`,

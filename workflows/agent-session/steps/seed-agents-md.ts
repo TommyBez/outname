@@ -5,7 +5,11 @@ import { buildAgentsMdContent } from '@/lib/agents-md-template'
 
 const AGENTS_MD_PATH = `${SYSTEM_SANDBOX_ROOT}/AGENTS.md`
 const SOUL_MD_PATH = `${SYSTEM_SANDBOX_ROOT}/SOUL.md`
+const USER_MD_PATH = `${SYSTEM_SANDBOX_ROOT}/USER.md`
 const SEED_MARKER_PATH = `${SYSTEM_SANDBOX_ROOT}/.agents-md-seeded`
+// Bumped to "v9" when USER.md became an eager, agent-maintained profile
+// and the AGENTS.md baseline learned when to create/update it.
+//
 // Bumped to "v8" when the base template clarified that all memory
 // files except AGENTS.md and SOUL.md are agent-maintained.
 //
@@ -27,7 +31,7 @@ const SEED_MARKER_PATH = `${SYSTEM_SANDBOX_ROOT}/.agents-md-seeded`
 // documents the automatic bash audit log at `logs/<UTC date>.md`)
 // are still in place. Existing dev agents pick up the new template
 // on their next event after deploy.
-const SEED_MARKER_VALUE = 'v8'
+const SEED_MARKER_VALUE = 'v9'
 
 /**
  * Process-local cache of agent ids whose `.agents-md-seeded` marker we
@@ -82,9 +86,10 @@ export async function seedAgentsMd(input: {
     }
   }
 
-  const [agentsMdRow, soulMdRow] = await Promise.all([
+  const [agentsMdRow, soulMdRow, userMdRow] = await Promise.all([
     readLatestPendingFileWrite({ agentId, path: 'AGENTS.md' }),
     readLatestPendingFileWrite({ agentId, path: 'SOUL.md' }),
+    readLatestPendingFileWrite({ agentId, path: 'USER.md' }),
   ])
 
   await sandbox.writeFiles([
@@ -100,6 +105,14 @@ export async function seedAgentsMd(input: {
           {
             path: SOUL_MD_PATH,
             content: Buffer.from(soulMdRow.content, 'utf8'),
+          },
+        ]
+      : []),
+    ...(userMdRow
+      ? [
+          {
+            path: USER_MD_PATH,
+            content: Buffer.from(userMdRow.content, 'utf8'),
           },
         ]
       : []),

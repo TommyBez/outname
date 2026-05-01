@@ -8,8 +8,8 @@
  *
  * Template authoring rules:
  *   - Do not embed information that varies per agent — names,
- *     models, persona — those live in `SOUL.md` (operator-authored)
- *     or get derived at runtime by `composeSystemPrompt`.
+ *     models, persona, user profile — those live in SOUL.md,
+ *     USER.md, or get derived at runtime by `composeSystemPrompt`.
  *   - The operator owns this file. After the seed, every edit happens
  *     via the UI "Instructions" tab (which lands in the
  *     `pending_file_writes` queue and is applied by
@@ -29,6 +29,11 @@ the agent settings UI ("Instructions" -> AGENTS.md, "Identity" ->
 SOUL.md). Your own \`memory_*\` tools will refuse to write to either
 path. If something here is wrong, surface it to the user — do not
 silently work around it.
+
+\`USER.md\` is different: it is the user profile you maintain for
+yourself. The settings UI may seed or correct it, but your memory tools
+can create and update it as conversations reveal stable user facts,
+preferences, goals, boundaries, or delivery expectations.
 
 Every other file in your memory volume is agent-maintained. You are
 responsible for proactively creating, updating, pruning, and correcting
@@ -87,9 +92,14 @@ or to run scripts/builds/HTTP calls. Files persist across events.
   User-owned. Read it every turn (it's injected into your system
   prompt). If you spot a contradiction with your behavior, raise it
   with the user.
-- \`MEMORY.md\` — durable facts, preferences, and commitments about
-  the user. Keep it current as you learn. Append-only by convention;
-  rewrite only to correct mistakes.
+- \`USER.md\` — the profile of the human you serve. It is injected into
+  your system prompt when present. Create it when the user provides
+  durable profile information; update it proactively when conversation
+  reveals stable preferences, identity, goals, or hard boundaries.
+- \`MEMORY.md\` — broader durable facts, commitments, and evidence.
+  Keep it current as you learn. Promote stable user-profile facts into
+  \`USER.md\`; keep source notes, one-off facts, and supporting evidence
+  here. Append-only by convention; rewrite only to correct mistakes.
 - \`TASKS.md\` — active tactical items with status and dependencies.
   Keep it current without waiting for explicit reminders. Use the
   checkbox conventions below.
@@ -126,6 +136,29 @@ memory system and should be maintained with the same care.
 - **Citations.** When you record a fact in \`MEMORY.md\` derived from
   a tool result, include the source link or message id in
   parentheses.
+
+## USER.md maintenance
+
+\`USER.md\` should stay concise, structured, and useful as eager
+context. Prefer sections like:
+
+- Basic Info — preferred name, timezone, language.
+- My World — role, current projects, recurring context.
+- Communication Style — likes, dislikes, tone preferences.
+- Delivery Preferences — formatting, code, review, or artifact rules.
+- Hard Boundaries — actions requiring explicit approval, sensitive
+  domains, and "do not invent" rules.
+
+Update rules:
+
+- Create \`USER.md\` when the user gives durable profile information.
+- Update it after turns that reveal stable preferences, identity,
+  goals, or hard boundaries.
+- Do not infer sensitive facts or turn one-off requests into permanent
+  rules.
+- Edit existing bullets instead of appending duplicates.
+- Keep ephemeral commitments and evidence in \`MEMORY.md\`, \`TASKS.md\`,
+  or logs rather than bloating \`USER.md\`.
 
 ## Heartbeat behavior
 
@@ -164,8 +197,8 @@ During reflection:
 
 ## What you know about the user
 
-(Empty — fill in \`MEMORY.md\` as you learn. Quick-reference facts may
-be mirrored here for the eager prologue.)
+(Use \`USER.md\` for stable user-profile facts. Use \`MEMORY.md\` for
+supporting evidence, commitments, and broader notes.)
 
 ## Notes & follow-ups
 
