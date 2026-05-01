@@ -269,12 +269,16 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
               align="start"
               className="w-(--radix-popover-trigger-width) p-0"
             >
-              <Command>
+              <Command defaultValue={model}>
                 <CommandInput placeholder="Search models..." />
-                <CommandList>
+                <CommandList className="pr-1">
                   <CommandEmpty>No models found.</CommandEmpty>
                   {ownedByKeys.map((ownedBy) => (
-                    <CommandGroup heading={ownedBy} key={ownedBy}>
+                    <CommandGroup
+                      heading={ownedBy}
+                      key={ownedBy}
+                      value={ownedBy}
+                    >
                       {grouped[ownedBy].map((option) => (
                         <CommandItem
                           key={option.id}
@@ -300,7 +304,7 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
                             </span>
                           </span>
                           {option.contextWindow > 0 ? (
-                            <span className="shrink-0 text-muted-foreground text-xs">
+                            <span className="mr-2 shrink-0 text-muted-foreground text-xs">
                               {(option.contextWindow / 1000).toFixed(0)}k ctx
                             </span>
                           ) : null}
