@@ -43,6 +43,31 @@ const INTERVAL_OPTIONS = [
   { value: 1440, label: 'Every day' },
 ] as const
 
+const BOOTSTRAP_FILE_OPTIONS = [
+  {
+    value: 'identity-card',
+    label: 'Identity card',
+    fileName: 'IDENTITY.md',
+  },
+  {
+    value: 'identity',
+    label: 'Persona',
+    fileName: 'SOUL.md',
+  },
+  {
+    value: 'instructions',
+    label: 'Instructions',
+    fileName: 'AGENTS.md',
+  },
+  {
+    value: 'user-profile',
+    label: 'User profile',
+    fileName: 'USER.md',
+  },
+] as const
+
+type BootstrapFileValue = (typeof BOOTSTRAP_FILE_OPTIONS)[number]['value']
+
 const selectedModelSort =
   (selectedId: string) => (a: ModelOption, b: ModelOption) => {
     if (a.id === selectedId) {
@@ -119,6 +144,8 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
   const [userProfile, setUserProfile] = useState(initial?.userProfile ?? '')
   const [modelDialogOpen, setModelDialogOpen] = useState(false)
   const [modelSearch, setModelSearch] = useState('')
+  const [activeBootstrapFile, setActiveBootstrapFile] =
+    useState<BootstrapFileValue>('identity-card')
   // Default model falls back to the gateway's first id if our preferred
   // default isn't in the filtered list. Empty list (fallback mode) is
   // handled by rendering a single passthrough option.
@@ -268,8 +295,45 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
               "These four files are inlined into the agent's system prompt on every event when present. IDENTITY.md is the quick persona card, SOUL.md is the deeper personality layer, AGENTS.md is the operating manual, and USER.md is the user profile. The agent can read them via read_memory, but only USER.md remains agent-maintained."
             }
           </p>
-          <Tabs className="mt-1" defaultValue="identity-card">
-            <TabsList className="grid w-full grid-cols-4">
+          <div className="mb-3 flex flex-col gap-2 md:hidden">
+            <Label
+              className="font-bold text-xs uppercase tracking-[0.14em]"
+              htmlFor="bootstrap-file-view"
+            >
+              File view
+            </Label>
+            <Select
+              onValueChange={(value) =>
+                setActiveBootstrapFile(value as BootstrapFileValue)
+              }
+              value={activeBootstrapFile}
+            >
+              <SelectTrigger
+                className="w-full text-left normal-case tracking-normal"
+                id="bootstrap-file-view"
+              >
+                <SelectValue placeholder="Choose a bootstrap file" />
+              </SelectTrigger>
+              <SelectContent align="start" position="popper">
+                {BOOTSTRAP_FILE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {`${option.label} (${option.fileName})`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-muted-foreground text-xs">
+              Pick one file at a time on smaller screens.
+            </p>
+          </div>
+          <Tabs
+            className="mt-1"
+            onValueChange={(value) =>
+              setActiveBootstrapFile(value as BootstrapFileValue)
+            }
+            value={activeBootstrapFile}
+          >
+            <TabsList className="hidden w-full grid-cols-4 md:grid">
               <TabsTrigger value="identity-card">
                 Identity card (IDENTITY.md)
               </TabsTrigger>
