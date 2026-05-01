@@ -1,0 +1,9 @@
+allowBuilds:
+  '@mongodb-js/zstd': true
+  '@nestjs/core': true
+  '@swc/core': true
+  cbor-extract: true
+  esbuild: true
+  node-liblzma: true
+  sharp: true
+enablePrePostScripts: true
