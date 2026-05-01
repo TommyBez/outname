@@ -276,7 +276,7 @@ export function LandingHomePage() {
                 </p>
               </div>
               <div className="flex min-w-0 flex-col gap-3 sm:flex-row lg:justify-end">
-                <PrimaryLink href="/login?from=/today">
+                <PrimaryLink href="/login?from=/dashboard">
                   Create your first agent
                 </PrimaryLink>
                 <SecondaryLink href="#architecture">
@@ -1082,7 +1082,7 @@ function LandingNav() {
         </Link>
         <div className="hidden items-center gap-1 lg:flex">
           <NavLink href="#architecture">How it works</NavLink>
-          <NavLink href="/login?from=/today">Login</NavLink>
+          <NavLink href="/login?from=/dashboard">Login</NavLink>
         </div>
       </nav>
     </header>

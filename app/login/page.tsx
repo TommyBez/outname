@@ -18,10 +18,10 @@ export default function LoginPage({
             Sign in
           </h1>
           <p className="mt-4 border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
-            Access your scheduled agents and today&apos;s run.
+            Access your scheduled agents and live dashboard.
           </p>
         </div>
-        <Suspense fallback={<LoginForm redirectTo="/today" />}>
+        <Suspense fallback={<LoginForm redirectTo="/dashboard" />}>
           <LoginGate searchParams={searchParams} />
         </Suspense>
       </div>
@@ -36,8 +36,8 @@ async function LoginGate({
 }) {
   const session = await auth.api.getSession({ headers: await headers() })
   if (session) {
-    redirect('/today')
+    redirect('/dashboard')
   }
   const { from } = await searchParams
-  return <LoginForm redirectTo={from || '/today'} />
+  return <LoginForm redirectTo={from || '/dashboard'} />
 }

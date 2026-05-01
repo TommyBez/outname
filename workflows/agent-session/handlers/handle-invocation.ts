@@ -2,7 +2,7 @@ import { convertToModelMessages, type UIMessage, type UIMessageChunk } from 'ai'
 import { getWorkflowMetadata, getWritable } from 'workflow'
 import { resumeHook } from 'workflow/api'
 import { startupExecSandbox, startupSystemSandbox } from '@/lib/agent-sandbox'
-import { emitRun, emitStep } from '@/lib/run-events'
+import { emitActivity, emitRun, emitStep } from '@/lib/run-events'
 import { buildAgent } from '../agent-factory'
 import type { SubAgentReply } from '../events'
 import { drainPendingWrites } from '../steps/drain-pending-writes'
@@ -70,10 +70,15 @@ export async function handleInvocation(input: {
       parentRunId: parentRunId ?? null,
       parentToolId: parentToolId ?? null,
     })
+    await emitActivity(runId, 'Sub-agent: Preparing invocation', {
+      depth,
+      parentRunId: parentRunId ?? null,
+    })
     await startupSystemSandbox({ agentId })
     await startupExecSandbox({ agentId }).catch((err) => {
       console.error('[v0] handleInvocation: startupExecSandbox failed', err)
     })
+    await emitActivity(runId, 'Sub-agent: Syncing memory edits')
     await drainPendingWrites({ agentId })
 
     const built = await buildAgent({
@@ -84,6 +89,9 @@ export async function handleInvocation(input: {
       depth,
     })
     pending = built.pending
+    await emitActivity(runId, 'Sub-agent: Streaming model work', {
+      model: built.meta.model,
+    })
 
     const userMessage: UIMessage = {
       id: invocationMessageId(),
@@ -102,12 +110,14 @@ export async function handleInvocation(input: {
     await emitStep(runId, 'read', 'done', 'Sub-agent instruction completed')
 
     const output = extractFinalText(result.uiMessages ?? []) ?? ''
+    await emitActivity(runId, 'Sub-agent: Finalizing reply')
     await emitRun(runId, 'completed', 'Sub-agent invocation completed')
     await replyOnce(replyTo, { type: 'reply', ok: true, output })
     replied = true
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     try {
+      await emitActivity(runId, 'Sub-agent: Invocation failed', { message })
       await emitStep(runId, 'read', 'error', message)
       await emitRun(runId, 'failed', message)
     } catch (innerErr) {
