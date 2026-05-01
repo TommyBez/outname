@@ -4,8 +4,14 @@ import {
   AgentSidebarSectionSkeleton,
 } from '@/components/agent-sidebar-section'
 import { AppShell } from '@/components/app-shell'
+import { createPrivatePageMetadata } from '@/lib/site-metadata'
 
 type Params = Promise<{ agentId: string }>
+
+export const metadata = createPrivatePageMetadata(
+  'Agent workspace',
+  'Chat, memory, tools, and configuration for a private OUTNA.ME agent.'
+)
 
 /**
  * Shell for every agent route. Supplies the single app shell plus a

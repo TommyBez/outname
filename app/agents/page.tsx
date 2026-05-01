@@ -1,9 +1,16 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { AppShell } from '@/components/app-shell'
 import { requireSession } from '@/lib/auth-guard'
 import { getCachedAgentsForUser } from '@/lib/data'
 import type { Agent } from '@/lib/db/schema'
+import { createPrivatePageMetadata } from '@/lib/site-metadata'
+
+export const metadata: Metadata = createPrivatePageMetadata(
+  'Agents',
+  'Manage personal AI agents, schedules, tools, and memory.'
+)
 
 export default function AgentsListPage() {
   return (

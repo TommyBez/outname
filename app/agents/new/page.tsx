@@ -1,6 +1,12 @@
 import { AgentForm } from '@/components/agent-form'
 import { AppShell } from '@/components/app-shell'
 import { DEFAULT_MODEL_ID, getAvailableModels } from '@/lib/ai-gateway-models'
+import { createPrivatePageMetadata } from '@/lib/site-metadata'
+
+export const metadata = createPrivatePageMetadata(
+  'New agent',
+  'Configure a new OUTNA.ME agent with a model, schedule, memory, and tools.'
+)
 
 // Cache Components is enabled in next.config, so a route-level
 // `dynamic = "force-dynamic"` is forbidden. The model catalog is
