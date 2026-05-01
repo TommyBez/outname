@@ -6,51 +6,58 @@ The app lets a single authenticated operator create persistent agents, chat with
 
 ## Architecture
 
-### Application shell
+This is a single-tenant personal assistant workspace. The Next.js app is the control plane: it renders the operator UI, authenticates the user, owns configuration changes, and exposes route handlers that bridge browser actions into durable agent workflows.
 
-- `app/` contains the Next.js App Router pages and API routes.
-- `components/` contains the shared React UI, including the agent dashboard, chat surface, sidebars, forms, and shadcn/Radix-based primitives.
-- `app/layout.tsx` wires global metadata, styling, providers, and production analytics.
-- `proxy.ts` protects private pages and authenticated API routes with Better Auth session cookies.
+The system has four main layers:
 
-### Authentication and user model
+1. **Operator interface**: App Router pages render the landing page, dashboard, agent detail views, chat, memory files, tool catalog, and settings. Most data-changing interactions are Server Actions so form submissions and UI controls execute on the server with the current Better Auth session.
+2. **Persistence and authorization**: Better Auth stores users and sessions in Neon Postgres through Drizzle. Every agent, conversation, message, memory-file mirror, pending write, connection, and attached tool is also persisted in Postgres. Request-time helpers enforce that each read or mutation is scoped to the authenticated owner.
+3. **Durable agent runtime**: Each enabled agent is backed by a long-lived Vercel Workflow session. Chat turns, heartbeat checks, reflection runs, and sub-agent calls are delivered into that session as events. The workflow streams model output back to the UI, applies queued memory writes, mirrors markdown memory files into Postgres, and releases sandboxes at the end of each event so their filesystems can be snapshotted.
+4. **Execution and integration layer**: Agents can use maintainer-provided tools, encrypted external connections, other agents as sub-agents, and sandbox-backed tools. Vercel Sandbox separates persistent agent memory from clean execution environments, while Vercel AI Gateway supplies model routing and the model catalog.
 
-- `lib/auth.ts` configures Better Auth with a Drizzle adapter.
-- Email/password auth is enabled, but sign-up is disabled. The app is intended to run as a single-user private assistant workspace.
-- `lib/auth-guard.ts` provides server-side helpers for private pages, Server Actions, and route handlers.
+### Request and session flow
 
-### Data layer
+Private pages and API routes require a Better Auth session cookie. Unauthenticated browser requests are redirected to `/login`; API handlers return authorization errors. Sign-up is disabled, so local and production use assume a pre-seeded single operator account.
 
-- `lib/db/schema.ts` defines the Postgres schema for users, sessions, agents, conversations, messages, memory files, pending writes, connections, tools, and tool sandbox builds.
-- `lib/db/index.ts` creates a lazy Neon HTTP client and Drizzle instance from `DATABASE_URL`.
-- `lib/data.ts` contains cached read helpers for agent lists, memory files, file changes, connections, and attached tools.
-- SQL migrations live in `drizzle/`, and `drizzle.config.ts` points Drizzle Kit at `lib/db/schema.ts`.
+After login, the dashboard reads the operator's agents from Postgres. Creating or editing an agent writes the agent row, validates the selected AI Gateway model, queues any persona/instruction file updates, and starts or updates the agent's workflow session. Pausing an agent stops its session; re-enabling it starts a fresh one if needed.
 
-### Agent runtime
+### Chat flow
 
-- `lib/agent-session.ts` owns the lifecycle of each long-lived agent session workflow.
-- `workflows/agent-session/` handles chat turns, scheduled heartbeats, reflection runs, nested agent invocations, memory writes, sandbox file sync, and ticker control.
-- `app/api/agents/[agentId]/chat/route.ts` authenticates chat requests, persists user messages, dispatches the turn into the workflow session, and streams the assistant response back through the AI SDK.
-- `app/api/cron/liveness/route.ts` is called by Vercel Cron every 15 minutes to restart dead sessions when `LIVENESS_CRON_ENABLED=true`.
+When the operator sends a chat message:
 
-### Tools, connectors, and sandboxes
+1. The chat route verifies the session and confirms the agent belongs to the current user.
+2. The user message is saved to the conversation before model work begins, so the transcript survives workflow or streaming failures.
+3. The route resumes the agent's long-lived workflow session with a chat event and a per-turn reply token.
+4. The workflow loads the agent's model, memory, persona files, attached tools, and connection state, then streams model chunks into the run namespace for that reply token.
+5. The route pipes those chunks back to the browser using the AI SDK UI message stream.
+6. At the end of the workflow event, assistant output and memory changes are persisted, markdown memory files are mirrored into Postgres, and sandbox state is released for snapshotting.
 
-- `tools/registry.ts` lists maintainer-shipped tools exposed to agents.
-- `connectors/registry.ts` lists external connection providers such as Resend and Cal.com.
-- `lib/connection-crypto.ts` encrypts stored connection credentials with `CONNECTION_ENCRYPTION_KEY`.
-- `workflows/build-tool-sandbox/` builds sandbox snapshots for tools that need isolated runtime setup.
-- `tools/sandboxes/` contains tool sandbox manifests and setup definitions.
+### Heartbeats, reflection, and liveness
 
-### Platform services
+Agents can be configured for recurring heartbeat work and separate reflection work. A session workflow starts a sibling ticker workflow that gates each scheduled tick on completion of the previous event, preventing overlapping heartbeat runs for the same agent.
 
-This project is designed for Vercel-hosted services:
+Vercel Cron calls the liveness endpoint every 15 minutes. When enabled, it checks every active agent's latest workflow run and restarts sessions that died or belong to an older deployment world. This keeps proactive agents recoverable without requiring the operator to open the UI.
 
-- **Vercel Workflow** runs long-lived agent sessions, heartbeat tickers, sub-agent invocations, and tool sandbox builds.
-- **Vercel Sandbox** provides persistent agent memory sandboxes and clean execution sandboxes.
-- **Vercel AI Gateway** routes model calls and provides the model catalog used by the agent form.
-- **Neon Postgres** stores auth, agents, chats, tools, connections, and memory metadata.
+### Memory and files
 
-Local development can run the UI and database-backed CRUD flows. Autonomous workflow execution, sandbox snapshots, and production-like heartbeat behavior require a Vercel deployment.
+Agent memory lives primarily as markdown files in the agent's persistent system sandbox. The database stores a mirrored view of those files so the UI can render logs, memory, and file-change history without reopening the sandbox for every page load. Pending writes created from forms are queued in Postgres and drained by the next workflow event, which keeps file mutations ordered with model activity.
+
+### Tools and external connections
+
+Maintainer-shipped tools are registered centrally and can require either user-provided connection credentials, a sandbox snapshot, or neither. Connection credentials are encrypted before they are stored. Tools that need their own runtime setup are built by a separate workflow that creates a sandbox snapshot and marks waiting agent-tool rows as connected when the build succeeds. Sub-agent tools are represented as database attachments and are resolved at runtime with recursion guards.
+
+### Local versus deployed behavior
+
+Local development uses the same Next.js app, Better Auth configuration, Drizzle schema, and remote Neon database. It is good for UI work and database-backed CRUD flows.
+
+Production-like autonomous behavior depends on Vercel-hosted services:
+
+- Vercel Workflow runs long-lived agent sessions, ticker workflows, sub-agent invocations, and tool sandbox builds.
+- Vercel Sandbox provides persistent memory sandboxes and clean execution sandboxes.
+- Vercel AI Gateway routes model calls and provides the model catalog.
+- Vercel Cron drives the liveness sweeper.
+
+Because of those dependencies, local development can render the UI and exercise normal data paths, but autonomous agent execution, sandbox snapshotting, and scheduled heartbeat behavior are only fully representative in a Vercel deployment.
 
 ## Local development
 
