@@ -4,6 +4,7 @@ import type { Variants } from 'motion/react'
 import { motion, useReducedMotion, useScroll, useTransform } from 'motion/react'
 import Link from 'next/link'
 import { useRef } from 'react'
+import { TextLoop } from '@/components/motion-primitives/text-loop'
 
 const featureCards = [
   {
@@ -88,6 +89,15 @@ const capabilityRows = [
     detail: 'mail / calendar / agents',
     status: 'attached',
   },
+] as const
+
+const heroLoopWords = [
+  'side',
+  'box',
+  'line',
+  'source',
+  'last',
+  'na.me',
 ] as const
 
 const delegationCards = {
@@ -175,22 +185,36 @@ export function LandingHomePage() {
         className="relative min-h-dvh px-4 pt-28 pb-24 sm:px-6 md:px-10 lg:px-12"
         ref={heroRef}
       >
-        <div className="mx-auto grid w-full max-w-7xl gap-14 lg:grid-cols-[minmax(0,1.05fr)_minmax(22rem,0.95fr)] lg:items-end">
+        <div className="mx-auto grid w-full max-w-7xl gap-14">
           <motion.div
             animate={{ opacity: 1, y: 0 }}
             className="max-w-5xl"
             initial={shouldReduceMotion ? false : { opacity: 0, y: 30 }}
             transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
           >
-            <h1 className="max-w-6xl text-balance font-black font-serif text-[clamp(4.6rem,13vw,12.5rem)] uppercase leading-[0.76] tracking-tighter">
-              AI agents with a life outside the chat box.
+            <h1 className="max-w-none font-black font-serif text-[clamp(3.25rem,9vw,8.5rem)] uppercase leading-[0.78] tracking-tighter md:whitespace-nowrap">
+              <span>out</span>
+              <TextLoop
+                interval={1.8}
+                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                trigger={!shouldReduceMotion}
+              >
+                {heroLoopWords.map((word) => (
+                  <span key={word}>{word}</span>
+                ))}
+              </TextLoop>
             </h1>
-            <div className="mt-10 grid gap-8 border-foreground border-t-4 pt-6 md:grid-cols-[minmax(0,28rem)_auto] md:items-start">
-              <p className="text-pretty text-lg leading-relaxed md:text-xl">
-                OUTNA.ME lets you create personal agents that remember context,
-                run on schedule, use your tools, and come back with finished
-                work instead of another thread to manage.
-              </p>
+            <div className="mt-10 grid gap-8 border-foreground border-t-4 pt-6 md:grid-cols-[minmax(0,42rem)_auto] md:items-start">
+              <div>
+                <h2 className="text-balance font-black font-serif text-4xl uppercase leading-[0.86] tracking-tighter md:text-5xl">
+                  AI agents with a life outside the chat box.
+                </h2>
+                <p className="mt-5 text-pretty text-lg leading-relaxed md:text-xl">
+                  OUTNA.ME lets you create personal agents that remember
+                  context, run on schedule, use your tools, and come back with
+                  finished work instead of another thread to manage.
+                </p>
+              </div>
               <div className="flex flex-col gap-3 sm:flex-row md:justify-end">
                 <PrimaryLink href="/login?from=/today">
                   Create your first agent
@@ -202,7 +226,10 @@ export function LandingHomePage() {
             </div>
           </motion.div>
 
-          <motion.div className="relative lg:pb-8" style={{ y: visualY }}>
+          <motion.div
+            className="relative ml-auto w-full max-w-xl"
+            style={{ y: visualY }}
+          >
             <motion.div
               aria-hidden
               className="absolute -top-14 -left-8 hidden h-40 w-40 border-2 border-foreground bg-background md:block"
