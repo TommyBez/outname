@@ -198,8 +198,8 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
           await updateAgentAction({
             id: initial.id,
             name: trimmed,
-            identity: identityCard,
-            identityOriginal: initial.identityCard,
+            identityCard,
+            identityCardOriginal: initial.identityCard,
             instructions,
             instructionsOriginal: initial.instructions,
             model,
@@ -215,7 +215,7 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
         } else {
           const result = await createAgentAction({
             name: trimmed,
-            identity: identityCard,
+            identityCard,
             instructions,
             model,
             heartbeatEnabled,
