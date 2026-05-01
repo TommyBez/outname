@@ -2,7 +2,7 @@
 
 import { CheckIcon, ChevronsUpDownIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { type FormEvent, useState, useTransition } from 'react'
+import { type FormEvent, useMemo, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
@@ -42,6 +42,21 @@ const INTERVAL_OPTIONS = [
   { value: 720, label: 'Every 12 hours' },
   { value: 1440, label: 'Every day' },
 ] as const
+
+const selectedModelSort =
+  (selectedId: string) => (a: ModelOption, b: ModelOption) => {
+    if (a.id === selectedId) {
+      return -1
+    }
+    if (b.id === selectedId) {
+      return 1
+    }
+    return 0
+  }
+
+function modelSearchValue(option: ModelOption) {
+  return `${option.name} ${option.id} ${option.ownedBy}`.toLowerCase()
+}
 
 interface AgentFormProps {
   defaultModel: string
@@ -105,16 +120,21 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
   const selectedModel =
     availableModels.find((option) => option.id === model) ?? availableModels[0]
 
+  const sortedModels = useMemo(
+    () => [...availableModels].sort(selectedModelSort(model)),
+    [availableModels, model]
+  )
+
   // Group models by provider so a searchable command menu stays scannable.
-  const grouped = availableModels.reduce<Record<string, ModelOption[]>>(
-    (acc, m) => {
-      const key = m.ownedBy
+  const grouped = sortedModels.reduce<Record<string, ModelOption[]>>(
+    (acc, option) => {
+      const key = option.ownedBy
       let group = acc[key]
       if (!group) {
         group = []
         acc[key] = group
       }
-      group.push(m)
+      group.push(option)
       return acc
     },
     {}
@@ -260,6 +280,10 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
           </Button>
           <CommandDialog
             className="border-2 border-foreground"
+            commandProps={{
+              filter: (value: string, search: string) =>
+                value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0,
+            }}
             description="Search models by name, id, or provider."
             onOpenChange={setModelDialogOpen}
             open={modelDialogOpen}
@@ -272,13 +296,13 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
                 <CommandGroup heading={ownedBy} key={ownedBy} value={ownedBy}>
                   {grouped[ownedBy].map((option) => (
                     <CommandItem
+                      className="[&_span]:data-[selected=true]:text-accent-foreground"
                       key={option.id}
-                      keywords={[option.name, option.ownedBy]}
                       onSelect={() => {
                         setModel(option.id)
                         setModelDialogOpen(false)
                       }}
-                      value={option.id}
+                      value={modelSearchValue(option)}
                     >
                       <CheckIcon
                         className={cn(
