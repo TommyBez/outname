@@ -329,8 +329,8 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
                     <CommandItem
                       className="data-[selected=true]:[&_span]:text-accent-foreground data-[selected=true]:[&_svg]:text-accent-foreground"
                       key={option.id}
-                      onSelect={() => {
-                        setModel(option.id)
+                      onSelect={(selectedId) => {
+                        setModel(selectedId)
                         setModelDialogOpen(false)
                       }}
                       value={option.id}
