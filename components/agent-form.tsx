@@ -299,6 +299,10 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-muted-foreground text-xs">
+                Reflection runs at most once per N minutes, and at least once
+                per local day.
+              </p>
             </div>
           ) : null}
         </div>

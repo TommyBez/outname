@@ -1,9 +1,9 @@
 import type { UIMessageChunk } from 'ai'
-import { and, desc, eq } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { getWritable } from 'workflow'
 import { startupExecSandbox, startupSystemSandbox } from '@/lib/agent-sandbox'
 import { db } from '@/lib/db'
-import { agent as agentTable, runs } from '@/lib/db/schema'
+import { agent as agentTable } from '@/lib/db/schema'
 import {
   buildAgent,
   buildHeartbeatKickoff,
@@ -22,23 +22,22 @@ import type { PendingWrites } from '../tools/pending-writes'
  * Phase 2 collapses the per-kind heartbeat lifecycle to a single
  * generic flow:
  *
- *   1. `beginHeartbeatRun` — insert a `runs` row, return its id.
+ *   1. `beginHeartbeatRun` — read the current workflow runtime id.
  *   2. `initRun` — emit the canonical `started` event onto
  *      `events:${runId}` for workflow-level observability.
- *   3. Look up the previous successful heartbeat completion (best
- *      effort, just for the kickoff prompt).
+ *   3. Look up `agent.lastHeartbeatAt` (best effort, just for the
+ *      kickoff prompt).
  *   4. Boot both sandboxes — system is required (system prompt),
  *      exec is best-effort.
  *   5. Build the agent via `buildAgent` and stream it against the
  *      generic `buildHeartbeatKickoff` user message. The agent
  *      decides what to do based on its inlined AGENTS.md / SOUL.md
  *      and current memory inventory.
- *   6. `finalizeRun` — flip the runs row to `completed` (or
- *      `failed`).
+ *   6. `finalizeRun` — emit terminal progress breadcrumbs.
  *
- * Errors are caught and converted to a failed `runs` row before
+ * Errors are caught and converted to failed breadcrumbs before
  * re-throwing so the session loop can surface them via its outer
- * try/catch without losing the run-level breadcrumb.
+ * try/catch without losing the workflow-level breadcrumb.
  *
  * Like `handleChat`, returns the per-event `pending` queue so
  * `agentSessionWorkflow` can flush it via `endOfEvent`.
@@ -55,11 +54,10 @@ export async function handleHeartbeat(input: {
 
   const { runId } = await beginHeartbeatRun({ agentId })
 
-  // Per-run namespace — the run's progress events live here. Distinct
-  // from the chat per-turn namespace so the two flows never collide on
-  // the session workflow's stream graph.
+  // Per-workflow namespace. The legacy app-level run id is gone; this is
+  // keyed directly by the workflow runtime id.
   const writable = getWritable<UIMessageChunk>({
-    namespace: `heartbeat:${runId}`,
+    namespace: runId,
   })
 
   try {
@@ -114,6 +112,8 @@ export async function handleHeartbeat(input: {
         agentId,
         localDate: input.localDate ?? nowIso.slice(0, 10),
       })
+    } else {
+      await markHeartbeatCompleted(agentId)
     }
 
     return { pending, runId }
@@ -125,21 +125,20 @@ export async function handleHeartbeat(input: {
 }
 
 /**
- * Best-effort lookup of the most recent completed run for this agent.
- * Returns `null` if there isn't one (first heartbeat, or all prior
- * heartbeats failed). Used purely as a hint in the kickoff message.
+ * Best-effort lookup of the most recent completed heartbeat for this
+ * agent. Returns `null` if there isn't one. Used purely as a hint in the
+ * kickoff message.
  */
 async function readPreviousHeartbeatCompletion(
   agentId: string
 ): Promise<string | null> {
   'use step'
-  const [prev] = await db
-    .select({ completedAt: runs.completedAt })
-    .from(runs)
-    .where(and(eq(runs.agentId, agentId), eq(runs.status, 'completed')))
-    .orderBy(desc(runs.completedAt))
+  const [row] = await db
+    .select({ lastHeartbeatAt: agentTable.lastHeartbeatAt })
+    .from(agentTable)
+    .where(eq(agentTable.id, agentId))
     .limit(1)
-  return prev?.completedAt ? prev.completedAt.toISOString() : null
+  return row?.lastHeartbeatAt ? row.lastHeartbeatAt.toISOString() : null
 }
 
 async function readPreviousReflectionCompletion(
@@ -152,6 +151,17 @@ async function readPreviousReflectionCompletion(
     .where(eq(agentTable.id, agentId))
     .limit(1)
   return row?.lastReflectionAt ? row.lastReflectionAt.toISOString() : null
+}
+
+async function markHeartbeatCompleted(agentId: string): Promise<void> {
+  'use step'
+  await db
+    .update(agentTable)
+    .set({
+      lastHeartbeatAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(agentTable.id, agentId))
 }
 
 async function markReflectionCompleted(input: {

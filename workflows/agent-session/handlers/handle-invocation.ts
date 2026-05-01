@@ -1,12 +1,7 @@
 import { convertToModelMessages, type UIMessage, type UIMessageChunk } from 'ai'
-import { eq } from 'drizzle-orm'
-import { revalidateTag } from 'next/cache'
 import { getWorkflowMetadata, getWritable } from 'workflow'
 import { resumeHook } from 'workflow/api'
 import { startupExecSandbox, startupSystemSandbox } from '@/lib/agent-sandbox'
-import { agentRunsTag, runsIndexTag, runTag } from '@/lib/cache-tags'
-import { db } from '@/lib/db'
-import { runs } from '@/lib/db/schema'
 import { emitRun, emitStep } from '@/lib/run-events'
 import { buildAgent } from '../agent-factory'
 import type { SubAgentReply } from '../events'
@@ -25,10 +20,9 @@ import {
  *
  *   - No `conversationId` and no chat-message persistence — the
  *     parent's tool call IS the unit of conversation, not a UI thread.
- *   - Allocates its own `runs` row as an internal observability
- *     breadcrumb for linked workflow runs.
- *   - Streams to a per-invocation namespace keyed by `replyTo` so a
- *     specific call's chunks are easy to isolate.
+ *   - Uses the child workflow runtime id for breadcrumbs and source
+ *     attribution. Phase 5 removed the legacy `runs` table.
+ *   - Streams to that workflow runtime id, matching heartbeat events.
  *   - Calls `resumeHook(replyTo, { type: 'reply', ... })` exactly
  *     once at the end, success or failure, so the parent's
  *     `createHook` inside its `agent_<child>` tool's `execute()` is
@@ -66,9 +60,7 @@ export async function handleInvocation(input: {
     replyTo,
   })
 
-  const writable = getWritable<UIMessageChunk>({
-    namespace: `invocation:${replyTo}`,
-  })
+  const writable = getWritable<UIMessageChunk>({ namespace: runId })
 
   let pending: PendingWrites = createPendingWrites()
   let replied = false
@@ -110,7 +102,6 @@ export async function handleInvocation(input: {
     await emitStep(runId, 'read', 'done', 'Sub-agent instruction completed')
 
     const output = extractFinalText(result.uiMessages ?? []) ?? ''
-    await finalizeInvocationRun({ runId, status: 'completed' })
     await emitRun(runId, 'completed', 'Sub-agent invocation completed')
     await replyOnce(replyTo, { type: 'reply', ok: true, output })
     replied = true
@@ -118,11 +109,10 @@ export async function handleInvocation(input: {
     const message = err instanceof Error ? err.message : String(err)
     try {
       await emitStep(runId, 'read', 'error', message)
-      await finalizeInvocationRun({ runId, status: 'failed', error: message })
       await emitRun(runId, 'failed', message)
     } catch (innerErr) {
       console.error(
-        '[v0] handleInvocation: finalizeInvocationRun(failed) failed',
+        '[v0] handleInvocation: failed to emit failure breadcrumbs',
         innerErr
       )
     }
@@ -161,64 +151,27 @@ async function beginInvocationRun(input: {
   replyTo: string
 }): Promise<string> {
   'use step'
-  const runId = invocationRunId()
+  await Promise.resolve()
+  return currentWorkflowRunId(input)
+}
 
-  let workflowRunId: string | null = null
+function currentWorkflowRunId(input: {
+  agentId: string
+  replyTo: string
+}): string {
   try {
-    workflowRunId = getWorkflowMetadata().workflowRunId
+    const metadata = getWorkflowMetadata() as {
+      runId?: string
+      workflowRunId?: string
+    }
+    const runId = metadata.runId ?? metadata.workflowRunId
+    if (runId) {
+      return runId
+    }
   } catch {
-    // Outside a workflow context — leave null.
+    // Outside a workflow context, keep a deterministic local fallback.
   }
-
-  await db.insert(runs).values({
-    id: runId,
-    agentId: input.agentId,
-    status: 'running',
-    startedAt: new Date(),
-    workflowRunId,
-    parentRunId: input.parentRunId,
-    parentToolId: input.parentToolId,
-    invocationReplyToken: input.replyTo,
-  })
-
-  revalidateTag(agentRunsTag(input.agentId), 'max')
-  revalidateTag(runsIndexTag(), 'max')
-  if (input.parentRunId) {
-    revalidateTag(runTag(input.parentRunId), 'max')
-  }
-
-  return runId
-}
-
-async function finalizeInvocationRun(input: {
-  runId: string
-  status: 'completed' | 'failed'
-  error?: string
-}): Promise<void> {
-  'use step'
-  const [row] = await db
-    .update(runs)
-    .set({
-      status: input.status,
-      completedAt: new Date(),
-      error: input.error?.slice(0, 8000) ?? null,
-    })
-    .where(eq(runs.id, input.runId))
-    .returning({ agentId: runs.agentId })
-
-  if (row?.agentId) {
-    revalidateTag(agentRunsTag(row.agentId), 'max')
-  }
-  revalidateTag(runTag(input.runId), 'max')
-  revalidateTag(runsIndexTag(), 'max')
-}
-
-function invocationRunId(): string {
-  return (
-    'inv_' +
-    Math.random().toString(36).slice(2, 10) +
-    Date.now().toString(36).slice(-4)
-  )
+  return input.replyTo
 }
 
 function invocationMessageId(): string {

@@ -12,12 +12,7 @@ import {
 } from '@/lib/agent-session'
 import { DEFAULT_MODEL_ID, isModelIdValid } from '@/lib/ai-gateway-models'
 import { requireSession } from '@/lib/auth-guard'
-import {
-  agentRunsTag,
-  agentTag,
-  conversationListTag,
-  userAgentsTag,
-} from '@/lib/cache-tags'
+import { agentTag, conversationListTag, userAgentsTag } from '@/lib/cache-tags'
 import { db } from '@/lib/db'
 import { agent } from '@/lib/db/schema'
 
@@ -138,8 +133,8 @@ export async function createAgentAction(
   }
 
   // Boot the long-lived session immediately so a (possibly enabled)
-  // heartbeat ticker starts producing runs without forcing the user
-  // to chat or wait for the cron sweeper.
+  // heartbeat ticker can start work without forcing the user to chat or
+  // wait for the cron sweeper.
   try {
     await startAgentSession(created)
   } catch (err) {
@@ -332,7 +327,6 @@ export async function deleteAgentAction(agentId: string): Promise<void> {
 
   updateTag(userAgentsTag(session.user.id))
   updateTag(agentTag(agentId))
-  updateTag(agentRunsTag(agentId))
   updateTag(conversationListTag(agentId))
   revalidatePath('/agents')
   revalidatePath('/')

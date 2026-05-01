@@ -23,17 +23,17 @@ export interface BuildAgentArgs {
    * their own id before dispatching.
    */
   callStack?: string[]
-  /** Durable `runs.id` for this event, when one exists. */
+  /** Workflow runtime id for heartbeat/reflection/invocation events. */
   currentRunId?: string | null
   /**
    * Phase 4: nesting depth. 0 for normal turns, parentDepth + 1 for
-   * sub-agent runs. resolveToolPlan refuses any sub-agent attach that
+   * sub-agent invocations. resolveToolPlan refuses any sub-agent attach that
    * would push depth past `MAX_SUB_AGENT_DEPTH`.
    */
   depth?: number
   /** Optional UTC "now" for the system prompt; defaults to `new Date()`. */
   nowIso?: string
-  /** Heartbeat/invocation: `runs.id`; chat: conversation id. */
+  /** Heartbeat/invocation: workflow runtime id; chat: conversation id. */
   runId: string
 }
 

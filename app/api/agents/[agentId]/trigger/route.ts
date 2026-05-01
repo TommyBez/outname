@@ -1,10 +1,9 @@
 import { eq } from 'drizzle-orm'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 import { type NextRequest, NextResponse } from 'next/server'
 import { pokeHeartbeat, pokeReflection } from '@/lib/agent-session'
 import { auth } from '@/lib/auth'
-import { agentRunsTag, runsIndexTag } from '@/lib/cache-tags'
 import { db } from '@/lib/db'
 import { user } from '@/lib/db/schema'
 import { getAgentById } from '@/lib/start-agent-run'
@@ -53,8 +52,6 @@ export async function POST(
           })
         : await pokeHeartbeat({ agent })
 
-    revalidateTag(agentRunsTag(agent.id), 'max')
-    revalidateTag(runsIndexTag(), 'max')
     revalidatePath(`/agents/${agent.id}`)
     revalidatePath(`/agents/${agent.id}/timeline`)
     revalidatePath(`/agents/${agent.id}/dreams`)

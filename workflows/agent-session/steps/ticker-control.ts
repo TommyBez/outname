@@ -1,8 +1,8 @@
-import { and, eq } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { getRun, resumeHook, start } from 'workflow/api'
 import { getWorld } from 'workflow/runtime'
 import { db } from '@/lib/db'
-import { agent, runs, user } from '@/lib/db/schema'
+import { agent, user } from '@/lib/db/schema'
 import { localDateKey } from '@/lib/timezone'
 import { heartbeatAckToken, sessionToken } from '../events'
 import { agentTickerWorkflow } from '../ticker'
@@ -195,13 +195,6 @@ export async function readHeartbeatSchedule(input: {
     }
   }
 
-  const runningRows = await db
-    .select({ id: runs.id })
-    .from(runs)
-    .where(and(eq(runs.agentId, input.agentId), eq(runs.status, 'running')))
-    .limit(1)
-  const hasRunningEvent = runningRows.length > 0
-
   const localDate = localDateKey(now, row.timezone)
   const reflectionIntervalMs = Math.max(
     60_000,
@@ -213,9 +206,7 @@ export async function readHeartbeatSchedule(input: {
     now.getTime() - lastReflectionMs >= reflectionIntervalMs
   const localDayChanged = row.lastReflectionLocalDate !== localDate
   const reflectionDue =
-    row.reflectionEnabled &&
-    !hasRunningEvent &&
-    (intervalElapsed || localDayChanged)
+    row.reflectionEnabled && (intervalElapsed || localDayChanged)
 
   return {
     heartbeat: {

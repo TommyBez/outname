@@ -525,7 +525,7 @@ chat_conversation, chat_message
 runs, run_result                               -- subsumed by logs/*.md + workflow run history
 ```
 
-> **Phase 1 footnote.** Phase 1 still uses the legacy `runs` / `run_result` tables to keep the existing `/runs` UI working unchanged. They are removed only when the replacement (logs/*.md viewer + workflow run history) lands as part of Phase 5.
+> **Phase 1 footnote.** Phase 1 kept the legacy `runs` / `run_result` tables to keep the existing `/runs` UI working unchanged. Phase 5 removes them once the replacement logs viewer, DREAMS UI, and workflow runtime observability are in place.
 
 ---
 
@@ -537,7 +537,7 @@ These aren't architectural beams but are canonical enough to codify here.
 - **Log retention.** Daily logs are never auto-deleted. `DREAMS.md` digests and summarises old logs. Users may prune manually.
 - **Base system prompt.** Short code-side preamble prepended on every event. Tells the agent: (1) you have two files pre-loaded (`AGENTS.md` = how, `SOUL.md` = who); treat both as given; (2) memory files live in the **system sandbox** and are accessed only via the memory tools (`read_memory`, `write_memory`, `append_memory`, `list_memory`, `search_memory`, …) — read other files (`MEMORY.md`, `TASKS.md`, etc.) lazily when relevant, per the guidance in `AGENTS.md`; (3) `bash` runs in a separate **exec sandbox** — a private, persistent playground — and **cannot reach memory files**; use it freely for risky or destructive work; (4) `SOUL.md` and `AGENTS.md` are read-only for you (write attempts will be rejected); the user owns those. Operational conventions (file layout, checkbox / date formats, memory-tool notes, exec-sandbox guidance, per-agent workflow rules) live in `AGENTS.md` in the system sandbox, not in the base prompt — auditable and version-controlled alongside the agent's other files. Tools are exposed through the AI SDK `ToolSet`, not through a markdown index.
 - **Tool failure handling.** `FatalError` for bad inputs / invalid credentials; `RetryableError` for rate limits / 5xx. Fatal tool errors become an agent-visible message, not a workflow crash.
-- **Streaming namespaces.** Each chat turn uses a per-turn namespace keyed by `replyStreamToken`. Heartbeat work emits to a per-run `heartbeat:${runId}` namespace; sub-agent work emits to per-invocation namespaces (§4.5). The UI may subscribe selectively per run/turn instead of multiplexing through a single global feed.
+- **Streaming namespaces.** Each chat turn uses a per-turn namespace keyed by `replyStreamToken`. Heartbeat/reflection and sub-agent work use the workflow runtime id directly as their stream namespace, with breadcrumbs under `events:${runId}`. The UI may subscribe selectively per turn/event instead of multiplexing through a single global feed.
 - **Model selection** goes through AI Gateway; the supported model list is a small allow-list curated by the maintainer.
 
 ---
@@ -600,7 +600,8 @@ In this phase the agent's `ToolSet` is just memory tools + exec tools (`bash` + 
 ### Phase 5 — DREAMS / reflection
 *Proactivity becomes self-improving.*
 
-- Dedicated heartbeat mode (first tick of the day, or on user demand): digest `logs/*.md`, write to `DREAMS.md`, propose updates to `GOALS.md` / `TASKS.md` (agent writes them directly; UI surfaces diffs for user review).
+- Independent reflection ticker scheduled via `reflection_interval_minutes` plus a forced run on each local-day boundary (using `user.timezone` + `localDateKey`). Manual trigger via `pokeReflection` from `/agents/:id/dreams` "Reflect now".
+- `agent_file_changes` table stores before/after content + sha256 + source attribution (`chat | heartbeat | reflection | invocation`) for every event-touching DREAMS/GOALS/TASKS/logs path. UI surfaces diffs at `/agents/:id/dreams`.
 - Admin UI for the daily-log timeline and the DREAMS stream.
 - Tune the default base system prompt based on what the reflection loop actually produces in practice.
 
@@ -617,6 +618,7 @@ In this phase the agent's `ToolSet` is just memory tools + exec tools (`bash` + 
 - **Agent sharing.** Relax "owner-only invocation" to ACLs. Makes the "credentials are the callee's owner's" rule load-bearing.
 - **Structured UI widgets over MD.** Parse `TASKS.md` / `CALENDAR.md` into shadow tables for filterable / interactive UI. The flat file cache is a stepping stone.
 - **User-defined tools.** No-code tool builder (e.g. "call this HTTPS endpoint with these params"). For now, sub-agents are the only user-authored "tools."
+- **Retention/pruning for `agent_file_changes`.** Unbounded today; cap N most recent per `(agent_id, path)` via cron, or store sha-only and look up content from `agent_files` history. Sized for v1.0.
 - **Multi-user orgs / workspaces / billing.**
 - **Per-agent opt-in to aggressive `SOUL.md` self-rewrite** (meta-reflection agents).
 

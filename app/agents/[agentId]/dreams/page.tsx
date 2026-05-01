@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
+import { FileChangeReviewButton } from '@/components/file-change-review-button'
 import { RunResultView } from '@/components/run-result-view'
 import { TriggerButton } from '@/components/trigger-button'
 import { requireSession } from '@/lib/auth-guard'
@@ -110,15 +111,10 @@ function FileChangeCard({ change }: { change: AgentFileChange }) {
             {change.sourceType} · {formatDateTime(change.createdAt)}
           </p>
         </div>
-        {change.reviewedAt ? (
-          <span className="border border-border px-2 py-1 font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
-            Reviewed
-          </span>
-        ) : (
-          <span className="bg-accent px-2 py-1 font-mono text-[10px] uppercase tracking-wider">
-            New
-          </span>
-        )}
+        <FileChangeReviewButton
+          changeId={change.id}
+          reviewed={Boolean(change.reviewedAt)}
+        />
       </header>
       <div className="grid md:grid-cols-2">
         <DiffPane label="Before" value={change.beforeContent} />

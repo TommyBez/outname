@@ -8,12 +8,12 @@ import { Streamdown } from 'streamdown'
 import { cn } from '@/lib/utils'
 
 /**
- * Agent-agnostic run result renderer.
+ * Agent-agnostic markdown result renderer.
  *
- * Every completed run persists its output as a single markdown document
- * on `run_result.content`. This component is the generic viewer for
- * that document: the same Streamdown + plugin stack used by the chat
- * transcript, wrapped in the project's serif/mono editorial tone.
+ * Used for DREAMS.md, timeline logs, and any other agent-produced
+ * markdown document. It shares the same Streamdown + plugin stack used
+ * by the chat transcript, wrapped in the project's serif/mono editorial
+ * tone.
  *
  * It has no knowledge of Gmail, categories, or any agent-specific data
  * shape — it simply renders whatever markdown the agent produced.
@@ -25,7 +25,7 @@ export function RunResultView({ content }: { content: string | null }) {
     return (
       <div className="border-foreground border-t-2 pt-10">
         <p className="text-pretty font-black font-serif text-2xl text-muted-foreground uppercase leading-none tracking-[-0.04em]">
-          No content for this run.
+          No content yet.
         </p>
       </div>
     )

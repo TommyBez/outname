@@ -82,8 +82,7 @@ export async function agentSessionWorkflow(input: {
       try {
         result = await dispatchSessionEvent({ agentId, event })
       } catch (err) {
-        // Handlers own their own per-run breadcrumbs (failed `runs` row
-        // for heartbeat; nothing to persist for chat). We log here for
+        // Handlers own their own workflow-level breadcrumbs. We log here for
         // observability and continue the loop — one bad event must not
         // poison the long-lived session.
         console.error('[v0] agentSessionWorkflow: handler failed', err)
