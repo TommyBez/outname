@@ -90,6 +90,35 @@ const capabilityRows = [
   },
 ] as const
 
+const delegationCards = {
+  calendar: {
+    eyebrow: 'Tool',
+    title: 'Calendar',
+    detail: 'Find the open slot, respect working hours, then propose the move.',
+    status: 'scheduled',
+  },
+  mail: {
+    eyebrow: 'Tool',
+    title: 'Email',
+    detail:
+      'Draft the reply with context from the agent memory and recent work.',
+    status: 'drafted',
+  },
+  files: {
+    eyebrow: 'Tool',
+    title: 'Files',
+    detail: 'Read the source material and attach the exact references used.',
+    status: 'indexed',
+  },
+  researcher: {
+    eyebrow: 'Sub-agent',
+    title: 'Researcher',
+    detail:
+      'Spin out a focused agent, collect findings, then return the brief.',
+    status: 'delegated',
+  },
+} as const
+
 const revealVariants: Variants = {
   hidden: { opacity: 0, y: 42 },
   visible: {
@@ -130,7 +159,7 @@ export function LandingHomePage() {
   )
 
   return (
-    <main className="relative isolate overflow-hidden bg-background text-foreground">
+    <main className="relative isolate overflow-x-clip bg-background text-foreground">
       <div
         aria-hidden
         className="swiss-grid-pattern pointer-events-none absolute inset-0 -z-10 opacity-80"
@@ -245,6 +274,8 @@ export function LandingHomePage() {
         </motion.div>
       </section>
 
+      <DelegationRevealSection shouldReduceMotion={shouldReduceMotion} />
+
       <section className="px-4 py-24 sm:px-6 md:px-10 md:py-36 lg:px-12">
         <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(18rem,0.72fr)_minmax(0,1.28fr)]">
           <motion.div
@@ -254,7 +285,7 @@ export function LandingHomePage() {
             viewport={{ once: true, margin: '-90px' }}
             whileInView="visible"
           >
-            <p className="swiss-label text-accent">02. Event choreography</p>
+            <p className="swiss-label text-accent">03. Event choreography</p>
             <h2 className="mt-6 text-balance font-black font-serif text-5xl uppercase leading-[0.84] tracking-tighter md:text-7xl">
               From request to follow-up, every step has a record.
             </h2>
@@ -319,7 +350,7 @@ export function LandingHomePage() {
             variants={revealVariants}
           >
             <div>
-              <p className="swiss-label text-accent">03. Application surface</p>
+              <p className="swiss-label text-accent">04. Application surface</p>
               <h2 className="mt-6 text-balance font-black font-serif text-5xl uppercase leading-[0.84] tracking-tighter md:text-8xl">
                 Inspect the work. Edit the memory. Approve the changes.
               </h2>
@@ -401,7 +432,7 @@ export function LandingHomePage() {
         >
           <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
             <div>
-              <p className="swiss-label text-accent">04. Start controlled</p>
+              <p className="swiss-label text-accent">05. Start controlled</p>
               <h2 className="mt-6 max-w-4xl text-balance font-black font-serif text-5xl uppercase leading-[0.84] tracking-tighter md:text-8xl">
                 Build an agent you can trust tomorrow morning.
               </h2>
@@ -418,6 +449,251 @@ export function LandingHomePage() {
         </motion.div>
       </section>
     </main>
+  )
+}
+
+function DelegationRevealSection({
+  shouldReduceMotion,
+}: {
+  shouldReduceMotion: boolean | null
+}) {
+  const sectionRef = useRef<HTMLElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ['start start', 'end end'],
+  })
+
+  const mainScale = useTransform(
+    scrollYProgress,
+    [0, 0.32, 1],
+    shouldReduceMotion ? [1, 1, 1] : [1, 0.96, 0.98]
+  )
+  const mainY = useTransform(
+    scrollYProgress,
+    [0, 1],
+    shouldReduceMotion ? [0, 0] : [0, -24]
+  )
+  const calendarX = useTransform(
+    scrollYProgress,
+    [0, 0.2, 0.62],
+    shouldReduceMotion ? [-292, -292, -292] : [0, -96, -292]
+  )
+  const calendarY = useTransform(
+    scrollYProgress,
+    [0, 0.2, 0.62],
+    shouldReduceMotion ? [-112, -112, -112] : [0, -28, -112]
+  )
+  const calendarRotate = useTransform(
+    scrollYProgress,
+    [0, 0.62],
+    shouldReduceMotion ? [-8, -8] : [0, -8]
+  )
+  const mailX = useTransform(
+    scrollYProgress,
+    [0, 0.28, 0.72],
+    shouldReduceMotion ? [304, 304, 304] : [0, 88, 304]
+  )
+  const mailY = useTransform(
+    scrollYProgress,
+    [0, 0.28, 0.72],
+    shouldReduceMotion ? [-86, -86, -86] : [0, -20, -86]
+  )
+  const mailRotate = useTransform(
+    scrollYProgress,
+    [0, 0.72],
+    shouldReduceMotion ? [7, 7] : [0, 7]
+  )
+  const filesX = useTransform(
+    scrollYProgress,
+    [0, 0.36, 0.82],
+    shouldReduceMotion ? [-224, -224, -224] : [0, -52, -224]
+  )
+  const filesY = useTransform(
+    scrollYProgress,
+    [0, 0.36, 0.82],
+    shouldReduceMotion ? [166, 166, 166] : [0, 50, 166]
+  )
+  const filesRotate = useTransform(
+    scrollYProgress,
+    [0, 0.82],
+    shouldReduceMotion ? [6, 6] : [0, 6]
+  )
+  const researcherX = useTransform(
+    scrollYProgress,
+    [0, 0.42, 0.9],
+    shouldReduceMotion ? [250, 250, 250] : [0, 58, 250]
+  )
+  const researcherY = useTransform(
+    scrollYProgress,
+    [0, 0.42, 0.9],
+    shouldReduceMotion ? [172, 172, 172] : [0, 48, 172]
+  )
+  const researcherRotate = useTransform(
+    scrollYProgress,
+    [0, 0.9],
+    shouldReduceMotion ? [-5, -5] : [0, -5]
+  )
+  const firstOpacity = useTransform(
+    scrollYProgress,
+    [0, 0.16, 0.28],
+    shouldReduceMotion ? [1, 1, 1] : [0, 0, 1]
+  )
+  const secondOpacity = useTransform(
+    scrollYProgress,
+    [0, 0.24, 0.38],
+    shouldReduceMotion ? [1, 1, 1] : [0, 0, 1]
+  )
+  const thirdOpacity = useTransform(
+    scrollYProgress,
+    [0, 0.32, 0.48],
+    shouldReduceMotion ? [1, 1, 1] : [0, 0, 1]
+  )
+  const fourthOpacity = useTransform(
+    scrollYProgress,
+    [0, 0.4, 0.56],
+    shouldReduceMotion ? [1, 1, 1] : [0, 0, 1]
+  )
+
+  return (
+    <section className="px-4 py-0 sm:px-6 md:px-10 lg:px-12" ref={sectionRef}>
+      <div className="mx-auto h-[300vh] max-w-7xl">
+        <div className="sticky top-0 grid h-dvh gap-10 overflow-hidden border-foreground border-t-4 pt-6 md:grid-cols-[minmax(18rem,0.66fr)_minmax(0,1.34fr)] md:items-center">
+          <motion.div
+            initial={shouldReduceMotion ? false : 'hidden'}
+            variants={revealVariants}
+            viewport={{ once: true, margin: '-90px' }}
+            whileInView="visible"
+          >
+            <p className="swiss-label text-accent">02. Delegation map</p>
+            <h2 className="mt-6 text-balance font-black font-serif text-5xl uppercase leading-[0.84] tracking-tighter md:text-7xl">
+              One agent stays in charge while tools and sub-agents move around
+              it.
+            </h2>
+            <p className="mt-8 max-w-md text-muted-foreground leading-relaxed">
+              Scroll through the handoff. The main agent keeps the thread while
+              specialized tools and helper agents reveal from behind it, do
+              their narrow job, and report back into the same workspace.
+            </p>
+          </motion.div>
+
+          <div className="relative overflow-hidden border-2 border-foreground bg-background p-2">
+            <div className="swiss-diagonal relative min-h-176 border border-foreground/15 bg-muted p-4 md:min-h-168">
+              <div
+                aria-hidden
+                className="absolute inset-x-6 top-1/2 h-1 bg-foreground/10"
+              />
+              <div
+                aria-hidden
+                className="absolute top-8 bottom-8 left-1/2 w-1 bg-foreground/10"
+              />
+
+              <motion.article
+                className="absolute top-[calc(50%-10rem)] left-[calc(50%-10rem)] z-30 w-80 border-4 border-foreground bg-background p-2 shadow-[12px_12px_0_#000]"
+                style={{ scale: mainScale, y: mainY }}
+              >
+                <div className="border border-foreground/15 bg-background p-6">
+                  <div className="flex items-start justify-between gap-4 border-foreground border-b-2 pb-5">
+                    <div>
+                      <p className="swiss-label text-accent">Main agent</p>
+                      <h3 className="mt-3 font-black font-serif text-4xl uppercase leading-[0.86] tracking-tighter">
+                        Operator
+                      </h3>
+                    </div>
+                    <span className="grid size-14 place-items-center border-2 border-foreground bg-accent font-black text-xl">
+                      01
+                    </span>
+                  </div>
+                  <p className="mt-6 text-muted-foreground text-sm leading-relaxed">
+                    Owns the goal, memory, approvals, and final response.
+                  </p>
+                  <div className="mt-6 grid gap-2 font-mono text-[10px] uppercase tracking-[0.14em]">
+                    <div className="flex justify-between border border-foreground p-2">
+                      <span>Context</span>
+                      <span>locked</span>
+                    </div>
+                    <div className="flex justify-between border border-foreground bg-foreground p-2 text-background">
+                      <span>Thread</span>
+                      <span>active</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.article>
+
+              <motion.article
+                className="absolute top-[calc(50%-8rem)] left-[calc(50%-8rem)] z-20 w-64 border-2 border-foreground bg-background p-2"
+                style={{
+                  opacity: firstOpacity,
+                  rotate: calendarRotate,
+                  x: calendarX,
+                  y: calendarY,
+                }}
+              >
+                <DelegationCardContent card={delegationCards.calendar} />
+              </motion.article>
+
+              <motion.article
+                className="absolute top-[calc(50%-8rem)] left-[calc(50%-8rem)] z-20 w-64 border-2 border-foreground bg-background p-2"
+                style={{
+                  opacity: secondOpacity,
+                  rotate: mailRotate,
+                  x: mailX,
+                  y: mailY,
+                }}
+              >
+                <DelegationCardContent card={delegationCards.mail} />
+              </motion.article>
+
+              <motion.article
+                className="absolute top-[calc(50%-8rem)] left-[calc(50%-8rem)] z-10 w-64 border-2 border-foreground bg-background p-2"
+                style={{
+                  opacity: thirdOpacity,
+                  rotate: filesRotate,
+                  x: filesX,
+                  y: filesY,
+                }}
+              >
+                <DelegationCardContent card={delegationCards.files} />
+              </motion.article>
+
+              <motion.article
+                className="absolute top-[calc(50%-8rem)] left-[calc(50%-8rem)] z-10 w-64 border-2 border-foreground bg-accent p-2"
+                style={{
+                  opacity: fourthOpacity,
+                  rotate: researcherRotate,
+                  x: researcherX,
+                  y: researcherY,
+                }}
+              >
+                <DelegationCardContent card={delegationCards.researcher} />
+              </motion.article>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function DelegationCardContent({
+  card,
+}: {
+  card: (typeof delegationCards)[keyof typeof delegationCards]
+}) {
+  return (
+    <div className="min-h-48 border border-foreground/15 bg-background p-4">
+      <div className="flex items-start justify-between gap-3">
+        <p className="swiss-label text-accent">{card.eyebrow}</p>
+        <span className="border border-foreground px-2 py-1 font-bold text-[10px] uppercase tracking-[0.14em]">
+          {card.status}
+        </span>
+      </div>
+      <h3 className="mt-8 font-black font-serif text-3xl uppercase leading-[0.86] tracking-tighter">
+        {card.title}
+      </h3>
+      <p className="mt-4 text-muted-foreground text-sm leading-relaxed">
+        {card.detail}
+      </p>
+    </div>
   )
 }
 
