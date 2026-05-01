@@ -267,7 +267,9 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
             </PopoverTrigger>
             <PopoverContent
               align="start"
+              avoidCollisions={false}
               className="w-(--radix-popover-trigger-width) p-0"
+              side="bottom"
             >
               <Command defaultValue={model}>
                 <CommandInput placeholder="Search models..." />
