@@ -268,15 +268,16 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
             <PopoverContent
               align="start"
               avoidCollisions={false}
-              className="w-(--radix-popover-trigger-width) p-0"
+              className="w-(--radix-popover-trigger-width) border-2 border-foreground bg-popover p-0 shadow-lg"
               side="bottom"
             >
-              <Command defaultValue={model}>
+              <Command className="bg-popover" defaultValue={model}>
                 <CommandInput placeholder="Search models..." />
-                <CommandList className="pr-1">
+                <CommandList className="bg-popover pr-1">
                   <CommandEmpty>No models found.</CommandEmpty>
                   {ownedByKeys.map((ownedBy) => (
                     <CommandGroup
+                      className="bg-popover"
                       heading={ownedBy}
                       key={ownedBy}
                       value={ownedBy}
@@ -304,6 +305,9 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
                             <span className="truncate text-muted-foreground text-xs">
                               {option.id}
                             </span>
+                          </span>
+                          <span className="shrink-0 border border-border px-1.5 py-0.5 font-bold text-[10px] text-muted-foreground uppercase tracking-[0.14em]">
+                            {option.ownedBy}
                           </span>
                           {option.contextWindow > 0 ? (
                             <span className="mr-2 shrink-0 text-muted-foreground text-xs">
