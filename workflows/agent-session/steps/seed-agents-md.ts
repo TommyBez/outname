@@ -6,10 +6,11 @@ import { buildAgentsMdContent } from '@/lib/agents-md-template'
 const AGENTS_MD_PATH = `${SYSTEM_SANDBOX_ROOT}/AGENTS.md`
 const IDENTITY_MD_PATH = `${SYSTEM_SANDBOX_ROOT}/IDENTITY.md`
 const SOUL_MD_PATH = `${SYSTEM_SANDBOX_ROOT}/SOUL.md`
+const USER_MD_PATH = `${SYSTEM_SANDBOX_ROOT}/USER.md`
 const SEED_MARKER_PATH = `${SYSTEM_SANDBOX_ROOT}/.agents-md-seeded`
-// Bumped to "v9" to bootstrap `IDENTITY.md` alongside the existing
-// AGENTS.md baseline so the first event always has a stable compact
-// identity card path available for prompt injection.
+// Bumped to "v10" to keep the upstream eager USER.md profile support
+// while also bootstrapping `IDENTITY.md` as a stable compact identity
+// card path on every fresh system sandbox.
 //
 // Bumped to "v8" when the base template clarified that all memory
 // files except AGENTS.md, IDENTITY.md, and SOUL.md are agent-maintained.
@@ -32,7 +33,7 @@ const SEED_MARKER_PATH = `${SYSTEM_SANDBOX_ROOT}/.agents-md-seeded`
 // documents the automatic bash audit log at `logs/<UTC date>.md`)
 // are still in place. Existing dev agents pick up the new template
 // on their next event after deploy.
-const SEED_MARKER_VALUE = 'v9'
+const SEED_MARKER_VALUE = 'v10'
 
 /**
  * Process-local cache of agent ids whose `.agents-md-seeded` marker we
@@ -87,10 +88,11 @@ export async function seedAgentsMd(input: {
     }
   }
 
-  const [agentsMdRow, identityMdRow, soulMdRow] = await Promise.all([
+  const [agentsMdRow, identityMdRow, soulMdRow, userMdRow] = await Promise.all([
     readLatestPendingFileWrite({ agentId, path: 'AGENTS.md' }),
     readLatestPendingFileWrite({ agentId, path: 'IDENTITY.md' }),
     readLatestPendingFileWrite({ agentId, path: 'SOUL.md' }),
+    readLatestPendingFileWrite({ agentId, path: 'USER.md' }),
   ])
 
   await sandbox.writeFiles([
@@ -110,6 +112,14 @@ export async function seedAgentsMd(input: {
           {
             path: SOUL_MD_PATH,
             content: Buffer.from(soulMdRow.content, 'utf8'),
+          },
+        ]
+      : []),
+    ...(userMdRow
+      ? [
+          {
+            path: USER_MD_PATH,
+            content: Buffer.from(userMdRow.content, 'utf8'),
           },
         ]
       : []),

@@ -6,7 +6,7 @@ import { deleteAgentAction } from '@/lib/agent-actions'
 import { readLatestPendingFileWrite } from '@/lib/agent-pending-writes'
 import { DEFAULT_MODEL_ID, getAvailableModels } from '@/lib/ai-gateway-models'
 import { requireSession } from '@/lib/auth-guard'
-import { getCachedAgentByIdForUser } from '@/lib/data'
+import { getCachedAgentByIdForUser, getCachedAgentMemoryFile } from '@/lib/data'
 
 type Params = Promise<{ agentId: string }>
 
@@ -28,24 +28,38 @@ async function AgentEdit({ params }: { params: Params }) {
   const session = await requireSession()
 
   // Fetch the agent + the AI Gateway model catalog + the most recent
-  // user-authored persona content in parallel. The catalog is
+  // settings-managed bootstrap content in parallel. The catalog is
   // internally `revalidate: 3600`, so the gateway hit is shared
-  // across all visitors. The persona prefills come from
-  // `pending_file_writes` — that table is the UI's source of truth
-  // for "what is effectively on disk" because the seed step writes
-  // platform defaults and only the UI mutates these files
-  // afterwards (the agent's memory_* tools refuse persona paths).
-  const [agentRow, models, identityRow, soulRow, agentsMdRow] =
-    await Promise.all([
-      getCachedAgentByIdForUser(agentId, session.user.id),
-      getAvailableModels(),
-      readLatestPendingFileWrite({ agentId, path: 'IDENTITY.md' }),
-      readLatestPendingFileWrite({ agentId, path: 'SOUL.md' }),
-      readLatestPendingFileWrite({ agentId, path: 'AGENTS.md' }),
-    ])
+  // across all visitors. The file prefills come from
+  // for operator-authored seeds/corrections. `IDENTITY.md`, `SOUL.md`,
+  // and `AGENTS.md` are settings-managed bootstrap files. `USER.md` may
+  // also evolve through the agent's own memory tools, so fall back to
+  // the mirrored `agent_files` content when no newer settings edit
+  // exists.
+  const [
+    agentRow,
+    models,
+    identityRow,
+    soulRow,
+    agentsMdRow,
+    userMdRow,
+    userMdFile,
+  ] = await Promise.all([
+    getCachedAgentByIdForUser(agentId, session.user.id),
+    getAvailableModels(),
+    readLatestPendingFileWrite({ agentId, path: 'IDENTITY.md' }),
+    readLatestPendingFileWrite({ agentId, path: 'SOUL.md' }),
+    readLatestPendingFileWrite({ agentId, path: 'AGENTS.md' }),
+    readLatestPendingFileWrite({ agentId, path: 'USER.md' }),
+    getCachedAgentMemoryFile({ agentId, path: 'USER.md' }),
+  ])
   if (!agentRow) {
     notFound()
   }
+  const userProfile =
+    userMdRow && (!userMdFile || userMdRow.enqueuedAt >= userMdFile.updatedAt)
+      ? userMdRow.content
+      : (userMdFile?.content ?? '')
 
   async function remove() {
     'use server'
@@ -77,6 +91,7 @@ async function AgentEdit({ params }: { params: Params }) {
             identityCard: identityRow?.content ?? '',
             identity: soulRow?.content ?? '',
             instructions: agentsMdRow?.content ?? '',
+            userProfile,
             model: agentRow.model,
             heartbeatEnabled: agentRow.heartbeatEnabled,
             heartbeatIntervalMinutes: agentRow.heartbeatIntervalMinutes,

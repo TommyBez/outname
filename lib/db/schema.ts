@@ -122,8 +122,7 @@ export const agent = pgTable(
     // reflection. Used to make "daily" mean once per local day.
     lastReflectionLocalDate: text('last_reflection_local_date'),
     // Persistent Vercel Sandbox ids. The system sandbox holds the
-    // agent's memory volume + AGENTS.md / IDENTITY.md / SOUL.md
-    // bootstrap files;
+    // agent's memory volume + eager bootstrap files;
     // the exec sandbox is a clean `/workspace` for ad-hoc bash and
     // file ops driven by exec tools. Both are NULL before the first
     // session boot; once set, subsequent boots resume the same
@@ -234,13 +233,13 @@ export const agentFiles = pgTable(
  * into the agent's system sandbox before any handler runs.
  *
  * The memory tools refuse to write to `AGENTS.md`, `IDENTITY.md`, and
- * `SOUL.md` — those bootstrap files are user-owned. Edits made via the
- * agent settings UI (identity card / persona / instructions tabs) land
- * here as a row, and the
+ * `SOUL.md` — those protected bootstrap files are user-owned. Edits
+ * made via the agent settings UI (Identity card / Persona /
+ * Instructions / User profile tabs) land here as a row, and the
  * `drainPendingWrites` step at the top of `agentSessionWorkflow`
  * applies them via `sandbox.writeFiles`, bypassing the tool-layer
- * block. This is the one entry point that is allowed to mutate
- * persona files.
+ * block for protected files. `USER.md` is included as a manual
+ * seed/correction path, while agent memory tools may also update it.
  *
  * Rows are not deleted after application — `applied_at` is set so the
  * UI can show audit history later. The partial index narrows the

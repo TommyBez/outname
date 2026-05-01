@@ -9,13 +9,12 @@ import { type PendingFileWrite, pendingFileWrites } from '@/lib/db/schema'
  *
  * Two responsibilities:
  *
- *   1. **Enqueue** — server actions writing to AGENTS.md / IDENTITY.md /
- *      SOUL.md
- *      from the agent settings UI insert a row here. The drain step
- *      that runs at the top of every session event picks rows up and
+ *   1. **Enqueue** — server actions writing to bootstrap files from
+ *      the agent settings UI insert a row here. The drain step that
+ *      runs at the top of every session event picks rows up and
  *      applies them to the system sandbox, then stamps `applied_at`.
- *      The memory_* tools refuse to mutate persona files, so this is
- *      the only path that can.
+ *      SOUL.md / AGENTS.md use this as their only mutation path;
+ *      USER.md can also be edited by the agent through memory tools.
  *
  *   2. **Read latest** — the create / edit form prefills its tabs
  *      from the most recent row per path (applied or not) so the
@@ -27,15 +26,16 @@ import { type PendingFileWrite, pendingFileWrites } from '@/lib/db/schema'
  * calls invoked from server actions / RSC loaders.
  */
 
-export const PENDING_PERSONA_PATHS = [
+export const PENDING_BOOTSTRAP_PATHS = [
   'AGENTS.md',
   'IDENTITY.md',
   'SOUL.md',
+  'USER.md',
 ] as const
-export type PendingPersonaPath = (typeof PENDING_PERSONA_PATHS)[number]
+export type PendingBootstrapPath = (typeof PENDING_BOOTSTRAP_PATHS)[number]
 
-function isPendingPersonaPath(path: string): path is PendingPersonaPath {
-  return (PENDING_PERSONA_PATHS as readonly string[]).includes(path)
+function isPendingBootstrapPath(path: string): path is PendingBootstrapPath {
+  return (PENDING_BOOTSTRAP_PATHS as readonly string[]).includes(path)
 }
 
 /**
@@ -43,21 +43,19 @@ function isPendingPersonaPath(path: string): path is PendingPersonaPath {
  * up on the next session event. Returns the row id so callers can
  * thread it into telemetry if they want.
  *
- * Defense-in-depth: this is the *only* code path that bypasses the
- * memory_* tool layer's persona-file write block, so the queue MUST
- * be locked to the persona surface. Any future caller that tries to
- * enqueue an arbitrary path (e.g. "journal.md") would otherwise sneak
- * a write past `isReadOnlyForAgent`. We refuse non-persona paths
- * here instead of trusting every call site to hardcode the constant.
+ * Defense-in-depth: this path bypasses normal memory-tool writes for
+ * the protected bootstrap files, so the queue MUST stay locked to the
+ * small settings-managed surface. USER.md is included so the operator
+ * can seed or correct the agent-maintained profile.
  */
 export async function enqueuePendingFileWrite(input: {
   agentId: string
   path: string
   content: string
 }): Promise<string> {
-  if (!isPendingPersonaPath(input.path)) {
+  if (!isPendingBootstrapPath(input.path)) {
     throw new Error(
-      `enqueuePendingFileWrite: path ${JSON.stringify(input.path)} is not a persona file. Only ${PENDING_PERSONA_PATHS.join(' / ')} may be queued.`
+      `enqueuePendingFileWrite: path ${JSON.stringify(input.path)} is not a settings-managed bootstrap file. Only ${PENDING_BOOTSTRAP_PATHS.join(' / ')} may be queued.`
     )
   }
   const id = randomUUID()
@@ -73,12 +71,12 @@ export async function enqueuePendingFileWrite(input: {
 /**
  * Read the most recent pending-write row for `(agentId, path)`,
  * applied or not. Used by the agent-form RSC to prefill the
- * Identity / Instructions tabs.
+ * Identity / Instructions / User profile tabs.
  *
  * Returns `null` if the user has never authored this path through
  * the UI. The form layer decides what default to show in that case
- * (empty for IDENTITY.md / SOUL.md, the AGENTS.md seed template for
- * AGENTS.md).
+ * (empty for IDENTITY.md / SOUL.md / USER.md, the AGENTS.md seed
+ * template for AGENTS.md).
  */
 export async function readLatestPendingFileWrite(input: {
   agentId: string

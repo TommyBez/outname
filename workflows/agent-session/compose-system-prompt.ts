@@ -5,13 +5,12 @@ import {
   readLiveMemory,
 } from '@/workflows/agent-session/tools/pending-writes'
 import {
-  PERSONA_PATHS,
+  EAGER_CONTEXT_PATHS,
   READ_ONLY_FOR_AGENT,
 } from '@/workflows/agent-session/tools/persona-paths'
 
 /**
- * Build the system prompt: inline AGENTS.md + IDENTITY.md + SOUL.md from the
- * system
+ * Build the system prompt: inline eager context files from the system
  * sandbox, list other memory paths, append platform invariants. Computed
  * once per event; on-disk writes from this turn show up after `endOfEvent`.
  */
@@ -35,10 +34,16 @@ const FOOTER = `## Platform invariants
   tools to take notes; anything you write outside the memory volume
   (e.g. via bash/file_write in the exec sandbox) does NOT show up in
   your context next time.
-- AGENTS.md, IDENTITY.md, and SOUL.md are user-owned bootstrap files.
-  Your memory_* tools will refuse to write or delete them and return a
-  structured read_only error. If a change is needed, ask the user to
-  make it through the agent settings UI.
+- AGENTS.md and SOUL.md are user-owned bootstrap files. Your memory_*
+  tools will refuse to write or delete them and return a structured
+  read_only error. If a change is needed, ask the user to make it
+  through the agent settings UI.
+- IDENTITY.md is also a user-owned bootstrap file. Your memory_* tools
+  will refuse to write or delete it; ask the user to edit it through
+  the agent settings UI.
+- USER.md is an eager user profile file when present. You may create
+  or update it with memory tools when conversations reveal durable
+  user preferences, identity, goals, or hard boundaries.
 - Reads in the same turn see your queued memory writes. Writes are
   flushed to disk at end-of-event, then mirrored into the agent files
   UI.
@@ -52,6 +57,9 @@ const FOOTER = `## Platform invariants
   evidence, cite memory paths/line numbers when updating DREAMS.md, and
   only change GOALS.md or TASKS.md when the evidence supports it.
 `
+
+const MAX_EAGER_CONTEXT_CHARS = 12_000
+const EAGER_CONTEXT_PATH_SET: ReadonlySet<string> = new Set(EAGER_CONTEXT_PATHS)
 
 function describeReconnect(r: Reconnect): string {
   switch (r.reason) {
@@ -98,6 +106,22 @@ function renderReconnects(reconnects: readonly Reconnect[]): string | null {
   ].join('\n')
 }
 
+function renderEagerContext(args: {
+  content: string | null
+  heading: string
+  path: string
+}): string | null {
+  const trimmed = args.content?.trim()
+  if (!trimmed) {
+    return null
+  }
+  if (trimmed.length <= MAX_EAGER_CONTEXT_CHARS) {
+    return `## ${args.heading}\n\n${trimmed}`
+  }
+  const truncated = trimmed.slice(0, MAX_EAGER_CONTEXT_CHARS).trimEnd()
+  return `## ${args.heading}\n\n${truncated}\n\n_[${args.path} truncated to ${MAX_EAGER_CONTEXT_CHARS} characters for this turn.]_`
+}
+
 export async function composeSystemPrompt(
   args: ComposeSystemPromptArgs
 ): Promise<string> {
@@ -106,10 +130,11 @@ export async function composeSystemPrompt(
 
   const systemSandbox = await getSystemSandbox(agentId)
 
-  const [agentsMd, identityMd, soulMd, livePaths] = await Promise.all([
+  const [agentsMd, identityMd, soulMd, userMd, livePaths] = await Promise.all([
     readLiveMemory(systemSandbox, 'AGENTS.md'),
     readLiveMemory(systemSandbox, 'IDENTITY.md'),
     readLiveMemory(systemSandbox, 'SOUL.md'),
+    readLiveMemory(systemSandbox, 'USER.md'),
     listLiveMemory(systemSandbox),
   ])
 
@@ -120,29 +145,41 @@ export async function composeSystemPrompt(
     sections.push(`Current UTC time: ${nowIso}`)
   }
 
-  if (agentsMd && agentsMd.trim().length > 0) {
-    sections.push(
-      `## AGENTS.md (operational manual — read-only, managed by user)\n\n${agentsMd.trim()}`
-    )
-  }
-  if (identityMd && identityMd.trim().length > 0) {
-    sections.push(
-      `## IDENTITY.md (identity card — read-only, managed by user)\n\n${identityMd.trim()}`
-    )
-  }
-  if (soulMd && soulMd.trim().length > 0) {
-    sections.push(
-      `## SOUL.md (persona — read-only, managed by user)\n\n${soulMd.trim()}`
-    )
-  }
+  const eagerSections = [
+    renderEagerContext({
+      content: agentsMd,
+      heading: 'AGENTS.md (operational manual — read-only, managed by user)',
+      path: 'AGENTS.md',
+    }),
+    renderEagerContext({
+      content: identityMd,
+      heading: 'IDENTITY.md (identity card — read-only, managed by user)',
+      path: 'IDENTITY.md',
+    }),
+    renderEagerContext({
+      content: soulMd,
+      heading: 'SOUL.md (persona — read-only, managed by user)',
+      path: 'SOUL.md',
+    }),
+    renderEagerContext({
+      content: userMd,
+      heading:
+        'USER.md (user profile — agent-maintained, update with memory tools)',
+      path: 'USER.md',
+    }),
+  ].filter((section): section is string => section !== null)
+  sections.push(...eagerSections)
 
-  const otherPaths = livePaths.filter((p) => !READ_ONLY_FOR_AGENT.has(p)).sort()
+  const otherPaths = livePaths
+    .filter((p) => !EAGER_CONTEXT_PATH_SET.has(p))
+    .sort()
   if (otherPaths.length > 0) {
     const lines = otherPaths.map((p) => `- ${p}`).join('\n')
     sections.push(`## Memory files available\n\n${lines}`)
   } else {
+    const protectedPaths = Array.from(READ_ONLY_FOR_AGENT).sort().join(', ')
     sections.push(
-      `## Memory files available\n\n_(none yet — author files with write_memory as you accumulate notes; persona files ${PERSONA_PATHS.join(', ')} are inlined above and cannot be modified by the agent.)_`
+      `## Memory files available\n\n_(none yet — author files with write_memory as you accumulate notes; eager files ${EAGER_CONTEXT_PATHS.join(', ')} are inlined above when present. Protected files ${protectedPaths} cannot be modified by the agent; USER.md can be created or updated with memory tools.)_`
     )
   }
 

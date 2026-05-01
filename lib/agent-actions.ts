@@ -58,7 +58,7 @@ interface CreateInput {
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
   /**
-   * IDENTITY.md content authored via the "Identity" tab. Empty string
+   * IDENTITY.md content authored via the "Identity card" tab. Empty string
    * means "keep the default empty identity card" — the seed step still
    * creates the file so every agent has a stable injection point.
    */
@@ -80,6 +80,11 @@ interface CreateInput {
    * until the user fills it in later.
    */
   soul: string
+  /**
+   * USER.md seed/correction content from the "User profile" tab. Empty
+   * string means "let the agent create it when it learns stable facts."
+   */
+  userProfile: string
 }
 
 export async function createAgentAction(
@@ -145,6 +150,14 @@ export async function createAgentAction(
       content: instructions,
     })
   }
+  const userProfile = normalizeNewlines(input.userProfile).trim()
+  if (userProfile.length > 0) {
+    await enqueuePendingFileWrite({
+      agentId: id,
+      path: 'USER.md',
+      content: userProfile,
+    })
+  }
 
   // Boot the long-lived session immediately so a (possibly enabled)
   // heartbeat ticker can start work without forcing the user to chat or
@@ -187,6 +200,10 @@ interface UpdateInput {
   soul: string
   /** Original SOUL.md content the form was rendered with. */
   soulOriginal: string
+  /** USER.md seed/correction content from the "User profile" tab. */
+  userProfile: string
+  /** Original USER.md content the form was rendered with. */
+  userProfileOriginal: string
 }
 
 export async function updateAgentAction(input: UpdateInput): Promise<void> {
@@ -226,7 +243,7 @@ export async function updateAgentAction(input: UpdateInput): Promise<void> {
     .where(eq(agent.id, input.id))
     .returning()
 
-  // Persona files: only enqueue a pending write when the operator
+  // Bootstrap files: only enqueue a pending write when the operator
   // actually edited the textarea. This keeps the queue from
   // ballooning with no-op rows when the user just changes the model
   // or the heartbeat interval.
@@ -261,6 +278,15 @@ export async function updateAgentAction(input: UpdateInput): Promise<void> {
       agentId: input.id,
       path: 'AGENTS.md',
       content: instructionsNorm,
+    })
+  }
+  const userProfileNorm = normalizeNewlines(input.userProfile)
+  const userProfileOrigNorm = normalizeNewlines(input.userProfileOriginal)
+  if (userProfileNorm !== userProfileOrigNorm) {
+    await enqueuePendingFileWrite({
+      agentId: input.id,
+      path: 'USER.md',
+      content: userProfileNorm,
     })
   }
 

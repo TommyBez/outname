@@ -1,31 +1,48 @@
 /**
- * Persona file ownership policy — single source of truth.
+ * Eager context + protected-file policy — single source of truth.
  *
- * Per ARCHITECTURE.md §3 (Tool) and §4.2 (Sandbox):
+ * `AGENTS.md`, `IDENTITY.md`, `SOUL.md`, and `USER.md` are injected
+ * into the system prompt when present.
  *
  *   - `AGENTS.md` is seeded by the system on first sandbox boot with a
- *     baseline template (`seedAgentsMd`). The user can later customize
- *     it via the pending-writes queue.
+ *     baseline template and later customized via pending writes.
  *   - `IDENTITY.md` is a compact user-authored identity card. The seed
  *     step bootstraps an empty file so every sandbox has a stable place
  *     for it.
- *   - `SOUL.md` is a deeper user-authored persona file. It appears only
- *     when the operator writes one.
+ *   - `SOUL.md` is a deeper user-authored persona file.
+ *   - `USER.md` is an eager user profile that the agent may create and
+ *     refine as conversations reveal durable facts about the human it
+ *     serves.
  *
- * The agent itself MUST NOT modify any of these files at runtime.
- * Centralising the set in one module guarantees `write_memory`,
- * `edit_memory`, and `delete_memory` cannot drift.
+ * The agent itself MUST NOT modify `AGENTS.md`, `IDENTITY.md`, or
+ * `SOUL.md` at runtime. Centralising the sets in one module guarantees
+ * `write_memory`, `edit_memory`, and `delete_memory` cannot drift.
  */
-export const PERSONA_PATHS = ['IDENTITY.md', 'SOUL.md', 'AGENTS.md'] as const
+export const EAGER_CONTEXT_PATHS = [
+  'AGENTS.md',
+  'IDENTITY.md',
+  'SOUL.md',
+  'USER.md',
+] as const
 
-export type PersonaPath = (typeof PERSONA_PATHS)[number]
+export type EagerContextPath = (typeof EAGER_CONTEXT_PATHS)[number]
+
+export const PROTECTED_CONTEXT_PATHS = [
+  'AGENTS.md',
+  'IDENTITY.md',
+  'SOUL.md',
+] as const
+
+export type ProtectedContextPath = (typeof PROTECTED_CONTEXT_PATHS)[number]
 
 /**
  * Set of paths the agent's memory tools MUST refuse to mutate. The
  * tool returns a structured `{ error: "read_only", ... }` result so
  * the model can react in its reply rather than crash mid-stream.
  */
-export const READ_ONLY_FOR_AGENT: ReadonlySet<string> = new Set(PERSONA_PATHS)
+export const READ_ONLY_FOR_AGENT: ReadonlySet<string> = new Set(
+  PROTECTED_CONTEXT_PATHS
+)
 
 export function isReadOnlyForAgent(path: string): boolean {
   return READ_ONLY_FOR_AGENT.has(path)
@@ -33,7 +50,7 @@ export function isReadOnlyForAgent(path: string): boolean {
 
 /**
  * Stable structured error every memory tool returns when asked to
- * mutate a persona file. Structured rather than thrown so:
+ * mutate a protected context file. Structured rather than thrown so:
  *   1. The model receives a tool result it can quote / react to in
  *      the same turn (a thrown step error would surface as a generic
  *      stream failure).
@@ -43,5 +60,5 @@ export function isReadOnlyForAgent(path: string): boolean {
 export const READ_ONLY_TOOL_ERROR = {
   error: 'read_only' as const,
   message:
-    'IDENTITY.md, SOUL.md, and AGENTS.md are user-owned bootstrap files. The agent cannot modify them; ask the user to edit them via the agent settings UI.',
+    'AGENTS.md, IDENTITY.md, and SOUL.md are protected bootstrap files. The agent cannot modify them; ask the user to edit them via the agent settings UI.',
 }
