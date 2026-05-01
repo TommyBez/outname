@@ -35,12 +35,14 @@ async function AgentEdit({ params }: { params: Params }) {
   // for "what is effectively on disk" because the seed step writes
   // platform defaults and only the UI mutates these files
   // afterwards (the agent's memory_* tools refuse persona paths).
-  const [agentRow, models, soulRow, agentsMdRow] = await Promise.all([
-    getCachedAgentByIdForUser(agentId, session.user.id),
-    getAvailableModels(),
-    readLatestPendingFileWrite({ agentId, path: 'SOUL.md' }),
-    readLatestPendingFileWrite({ agentId, path: 'AGENTS.md' }),
-  ])
+  const [agentRow, models, identityRow, soulRow, agentsMdRow] =
+    await Promise.all([
+      getCachedAgentByIdForUser(agentId, session.user.id),
+      getAvailableModels(),
+      readLatestPendingFileWrite({ agentId, path: 'IDENTITY.md' }),
+      readLatestPendingFileWrite({ agentId, path: 'SOUL.md' }),
+      readLatestPendingFileWrite({ agentId, path: 'AGENTS.md' }),
+    ])
   if (!agentRow) {
     notFound()
   }
@@ -72,6 +74,7 @@ async function AgentEdit({ params }: { params: Params }) {
           initial={{
             id: agentRow.id,
             name: agentRow.name,
+            identityCard: identityRow?.content ?? '',
             identity: soulRow?.content ?? '',
             instructions: agentsMdRow?.content ?? '',
             model: agentRow.model,

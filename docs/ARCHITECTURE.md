@@ -171,11 +171,12 @@ Rules:
 Every file lives in the **system sandbox** under `/home/agent/`. They are the sole persistent memory of the agent between events. **The agent never accesses these files via bash** — bash runs in the exec sandbox, which is a different VM. Memory access is mediated entirely through the **memory tool** surface (§4.4).
 
 Two tiers:
-- **Eager** — `AGENTS.md` (HOW) and `SOUL.md` (WHO) are read by a setup step (via `read_memory`) and injected into the system message on every event. Small, stable, always relevant.
+- **Eager** — `AGENTS.md` (HOW), `IDENTITY.md` (instant card), and `SOUL.md` (WHO) are read by a setup step (via `read_memory`) and injected into the system message on every event. Small, stable, always relevant.
 - **Lazy** — every other file is read by the agent on demand via memory tools (`read_memory`, `search_memory`, `list_memory`). Keeps prompts compact as files grow; matches how a coding agent navigates a codebase, but through a strict tool surface rather than free bash.
 
 | File | Tier | Role | Written by | Read by |
 |---|---|---|---|---|
+| `IDENTITY.md` | **eager** | **Instant Card** — compact name, role, vibe, emoji, and sign-off | User only (via pending-writes queue). **Tool-layer write block.** Agent self-rewrite rejected by `write_memory` | Setup step, every event |
 | `SOUL.md` | **eager** | **WHO** — identity, persona, values, voice, scope of interest | User only (via pending-writes queue). **Tool-layer write block.** Agent self-rewrite rejected by `write_memory` | Setup step, every event |
 | `AGENTS.md` | **eager** | **HOW** — operational manual for this sandbox per the [agents.md](https://agents.md/) spec: filesystem layout, roles and conventions of the other MD files, date/checklist formats, memory-tool conventions — **plus per-agent workflow instructions** (escalation rules, preferred tools, "read MEMORY.md before chat," domain checklists) | System (template seed at agent creation) **+ user** (via pending-writes queue for per-agent instructions). **Tool-layer write block.** Agent self-rewrite rejected by `write_memory` | Setup step, every event |
 | `MEMORY.md` | lazy | Durable facts, preferences, commitments | Agent (via `write_memory` / `append_memory`); user (via pending-writes queue) | Agent on demand (`read_memory`) |
@@ -187,7 +188,7 @@ Two tiers:
 
 > **Note — `AGENTS.md` follows the [agents.md](https://agents.md/) public standard, with per-agent customization.** The spec defines a markdown file that tells AI agents how to operate within a given codebase, and explicitly supports hierarchical / context-specific variants. Each agent's "codebase" is its own system sandbox, so a per-agent `AGENTS.md` is spec-aligned. It has two layers: a **template baseline** seeded by the system at agent creation (memory-file layout, conventions, memory-tool usage notes, exec-sandbox guidance), and **per-agent instructions** appended or edited by the user via the pending-writes queue (escalation rules, preferred tools, "always read MEMORY.md before replying to chat," domain-specific checklists). Agents should not self-rewrite `AGENTS.md`; the `write_memory` tool rejects writes to it regardless.
 >
-> **`SOUL.md` vs `AGENTS.md` — WHO vs HOW.** `SOUL.md` is identity and persona; `AGENTS.md` is operational instructions. The UI surfaces them on separate tabs (*Identity* / *Instructions*) to avoid user confusion.
+> **`IDENTITY.md` vs `SOUL.md` vs `AGENTS.md` — card vs who vs how.** `IDENTITY.md` is the quick first-impression card, `SOUL.md` is the deeper identity/persona layer, and `AGENTS.md` is operational instructions. The UI surfaces them on separate tabs (*Identity card* / *Persona* / *Instructions*) to avoid user confusion.
 >
 > **No "other agents" file.** Agents are not automatically aware of other agents the user owns. Sub-agents are made available only by explicit attachment via the tool catalog (§4.4–4.5, stored in `agent_tools` as `"agent:<uuid>"`). An agent knows exactly what has been given to it — nothing more.
 >
@@ -198,7 +199,7 @@ Two tiers:
 #### Event-loop reading pattern
 Every event the agent processes starts with the same minimal prologue (assembled by a step before the `DurableAgent` call):
 ```
-base system prompt + AGENTS.md + SOUL.md
+base system prompt + AGENTS.md + IDENTITY.md + SOUL.md
 ```
 The setup step reads both files via `read_memory` from the system sandbox. All other MD files (`MEMORY.md`, `TASKS.md`, `CALENDAR.md`, `GOALS.md`, `DREAMS.md`, `logs/*.md`) are **read lazily** by the agent via memory tools when it decides they are relevant. `AGENTS.md` tells the agent what exists, when to consult each file, and which memory tool to use; per-agent instructions in `AGENTS.md` (e.g. *"always read MEMORY.md before replying to chat"*) can force eager-style behavior for files the agent's owner deems load-bearing. Keeps prompts compact as memory files grow; matches how a coding agent navigates a codebase, but routed through a strict tool surface rather than free bash.
 

@@ -17,7 +17,7 @@ type Params = Promise<{ agentId: string }>
  * `endOfEvent` is correctly snapshotting the sandbox after each chat
  * turn / heartbeat without having to SSH into a sandbox or read the DB
  * directly. Phase 2 will replace this with a richer "memory browser"
- * once agents start authoring more than just `AGENTS.md`.
+ * once agents start authoring more than just the bootstrap files.
  *
  * Owner-scoped via `getCachedAgentByIdForUser`; the file listing
  * inherits that authorization and filters by `agentId` in the query.
@@ -60,9 +60,13 @@ async function ResolvedAgentFiles({ params }: { params: Params }) {
 
       {rows.length === 0 ? (
         <p className="text-muted-foreground text-sm">
-          No files yet. The agent will create{' '}
+          No files yet. The agent will create bootstrap files like{' '}
           <code className="border border-border bg-muted px-1 py-0.5 font-mono text-xs">
             AGENTS.md
+          </code>{' '}
+          and{' '}
+          <code className="border border-border bg-muted px-1 py-0.5 font-mono text-xs">
+            IDENTITY.md
           </code>{' '}
           on its first run.
         </p>

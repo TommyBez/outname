@@ -8,8 +8,9 @@
  *
  * Template authoring rules:
  *   - Do not embed information that varies per agent — names,
- *     models, persona — those live in `SOUL.md` (operator-authored)
- *     or get derived at runtime by `composeSystemPrompt`.
+ *     models, persona — those live in `IDENTITY.md` / `SOUL.md`
+ *     (operator-authored) or get derived at runtime by
+ *     `composeSystemPrompt`.
  *   - The operator owns this file. After the seed, every edit happens
  *     via the UI "Instructions" tab (which lands in the
  *     `pending_file_writes` queue and is applied by
@@ -24,10 +25,11 @@ one is for, and the conventions you should follow when editing them.
 
 ## Ownership of this file
 
-\`AGENTS.md\` and \`SOUL.md\` are **user-owned**. They are edited via
-the agent settings UI ("Instructions" -> AGENTS.md, "Identity" ->
-SOUL.md). Your own \`memory_*\` tools will refuse to write to either
-path. If something here is wrong, surface it to the user — do not
+\`AGENTS.md\`, \`IDENTITY.md\`, and \`SOUL.md\` are **user-owned**. They
+are edited via the agent settings UI ("Instructions" -> AGENTS.md,
+"Identity card" -> IDENTITY.md, "Persona" -> SOUL.md). Your own
+\`memory_*\` tools will refuse to write to any of them. If something
+here is wrong, surface it to the user — do not
 silently work around it.
 
 Every other file in your memory volume is agent-maintained. You are
@@ -83,6 +85,9 @@ or to run scripts/builds/HTTP calls. Files persist across events.
 ## Files in your memory volume
 
 - \`AGENTS.md\` — this file. User-owned (see above).
+- \`IDENTITY.md\` — your compact identity card: name, role, vibe, emoji,
+  and other quick first-impression cues. User-owned. Read it every turn
+  (it's injected into your system prompt). Keep it short.
 - \`SOUL.md\` — your persona, identity, voice, and self-model.
   User-owned. Read it every turn (it's injected into your system
   prompt). If you spot a contradiction with your behavior, raise it
@@ -129,10 +134,11 @@ memory system and should be maintained with the same care.
 
 ## Heartbeat behavior
 
-On each scheduled heartbeat, follow your persona in \`SOUL.md\` and
-the operational directives in this file, especially the user custom
-instructions appended below. Do one small useful unit of work that
-matches those directives.
+On each scheduled heartbeat, follow your quick identity card in
+\`IDENTITY.md\`, your deeper persona in \`SOUL.md\`, and the operational
+directives in this file, especially the user custom instructions
+appended below. Do one small useful unit of work that matches those
+directives.
 
 If custom instructions define a heartbeat ritual, perform it. If they
 do not, inspect the relevant memory files (\`TASKS.md\`,

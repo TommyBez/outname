@@ -6,15 +6,17 @@
  *   - `AGENTS.md` is seeded by the system on first sandbox boot with a
  *     baseline template (`seedAgentsMd`). The user can later customize
  *     it via the pending-writes queue.
- *   - `SOUL.md` is purely user-authored. The agent has no path to
- *     create it; it appears only when the operator writes one (Phase 2
- *     does this via direct DB upsert; Phase 3 adds a UI editor).
+ *   - `IDENTITY.md` is a compact user-authored identity card. The seed
+ *     step bootstraps an empty file so every sandbox has a stable place
+ *     for it.
+ *   - `SOUL.md` is a deeper user-authored persona file. It appears only
+ *     when the operator writes one.
  *
- * The agent itself MUST NOT modify either file at runtime. Centralising
- * the set in one module guarantees `write_memory`, `edit_memory`, and
- * `delete_memory` cannot drift.
+ * The agent itself MUST NOT modify any of these files at runtime.
+ * Centralising the set in one module guarantees `write_memory`,
+ * `edit_memory`, and `delete_memory` cannot drift.
  */
-export const PERSONA_PATHS = ['AGENTS.md', 'SOUL.md'] as const
+export const PERSONA_PATHS = ['IDENTITY.md', 'SOUL.md', 'AGENTS.md'] as const
 
 export type PersonaPath = (typeof PERSONA_PATHS)[number]
 
@@ -41,5 +43,5 @@ export function isReadOnlyForAgent(path: string): boolean {
 export const READ_ONLY_TOOL_ERROR = {
   error: 'read_only' as const,
   message:
-    'SOUL.md and AGENTS.md are user-owned identity files. The agent cannot modify them; ask the user to edit them via the agent settings UI.',
+    'IDENTITY.md, SOUL.md, and AGENTS.md are user-owned bootstrap files. The agent cannot modify them; ask the user to edit them via the agent settings UI.',
 }

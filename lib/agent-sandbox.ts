@@ -138,9 +138,9 @@ export async function writeMarker(
 
 /**
  * Ensure the agent's **system** sandbox is booted. The system sandbox
- * holds AGENTS.md, SOUL.md, and the agent's memory `*.md` files. After
- * the sandbox is ready we delegate to `seedAgentsMd` to install (or
- * upgrade) the AGENTS.md baseline.
+ * holds AGENTS.md, IDENTITY.md, SOUL.md, and the agent's memory `*.md`
+ * files. After the sandbox is ready we delegate to `seedAgentsMd` to
+ * install (or upgrade) the AGENTS.md baseline and bootstrap IDENTITY.md.
  *
  * Idempotent — safe to call from every event handler.
  */

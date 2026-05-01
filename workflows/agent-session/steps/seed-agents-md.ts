@@ -4,10 +4,15 @@ import { SYSTEM_SANDBOX_ROOT } from '@/lib/agent-sandbox-registry'
 import { buildAgentsMdContent } from '@/lib/agents-md-template'
 
 const AGENTS_MD_PATH = `${SYSTEM_SANDBOX_ROOT}/AGENTS.md`
+const IDENTITY_MD_PATH = `${SYSTEM_SANDBOX_ROOT}/IDENTITY.md`
 const SOUL_MD_PATH = `${SYSTEM_SANDBOX_ROOT}/SOUL.md`
 const SEED_MARKER_PATH = `${SYSTEM_SANDBOX_ROOT}/.agents-md-seeded`
+// Bumped to "v9" to bootstrap `IDENTITY.md` alongside the existing
+// AGENTS.md baseline so the first event always has a stable compact
+// identity card path available for prompt injection.
+//
 // Bumped to "v8" when the base template clarified that all memory
-// files except AGENTS.md and SOUL.md are agent-maintained.
+// files except AGENTS.md, IDENTITY.md, and SOUL.md are agent-maintained.
 //
 // Bumped to "v7" when heartbeat behavior moved from the generic
 // kickoff prompt into the base AGENTS.md operating contract.
@@ -23,11 +28,11 @@ const SEED_MARKER_PATH = `${SYSTEM_SANDBOX_ROOT}/.agents-md-seeded`
 // match the actual tool names the model gets handed at construction
 // time. The earlier v4 changes (architect rev: documents
 // `search_memory` + `reset_exec`, clarifies user ownership of
-// AGENTS.md / SOUL.md via the UI Identity / Instructions tabs,
+// AGENTS.md / IDENTITY.md / SOUL.md via the UI tabs,
 // documents the automatic bash audit log at `logs/<UTC date>.md`)
 // are still in place. Existing dev agents pick up the new template
 // on their next event after deploy.
-const SEED_MARKER_VALUE = 'v8'
+const SEED_MARKER_VALUE = 'v9'
 
 /**
  * Process-local cache of agent ids whose `.agents-md-seeded` marker we
@@ -82,8 +87,9 @@ export async function seedAgentsMd(input: {
     }
   }
 
-  const [agentsMdRow, soulMdRow] = await Promise.all([
+  const [agentsMdRow, identityMdRow, soulMdRow] = await Promise.all([
     readLatestPendingFileWrite({ agentId, path: 'AGENTS.md' }),
+    readLatestPendingFileWrite({ agentId, path: 'IDENTITY.md' }),
     readLatestPendingFileWrite({ agentId, path: 'SOUL.md' }),
   ])
 
@@ -94,6 +100,10 @@ export async function seedAgentsMd(input: {
         buildAgentsMdContent({ customInstructions: agentsMdRow?.content }),
         'utf8'
       ),
+    },
+    {
+      path: IDENTITY_MD_PATH,
+      content: Buffer.from(identityMdRow?.content ?? '', 'utf8'),
     },
     ...(soulMdRow
       ? [

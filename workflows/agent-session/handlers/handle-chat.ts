@@ -68,10 +68,10 @@ export async function handleChat(input: {
     console.error('[v0] handleChat: startupExecSandbox failed', err)
   })
 
-  // Apply any UI-authored persona-file edits before composing the
-  // system prompt. composeSystemPrompt inlines AGENTS.md / SOUL.md
-  // verbatim, so this guarantees the operator's latest save is what
-  // the model sees this turn.
+  // Apply any UI-authored bootstrap-file edits before composing the
+  // system prompt. composeSystemPrompt inlines AGENTS.md / IDENTITY.md /
+  // SOUL.md verbatim, so this guarantees the operator's latest save is
+  // what the model sees this turn.
   await emitActivity(sessionRunId, 'Chat: Syncing memory edits')
   await drainPendingWrites({ agentId })
 

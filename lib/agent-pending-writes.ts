@@ -9,7 +9,8 @@ import { type PendingFileWrite, pendingFileWrites } from '@/lib/db/schema'
  *
  * Two responsibilities:
  *
- *   1. **Enqueue** — server actions writing to AGENTS.md / SOUL.md
+ *   1. **Enqueue** — server actions writing to AGENTS.md / IDENTITY.md /
+ *      SOUL.md
  *      from the agent settings UI insert a row here. The drain step
  *      that runs at the top of every session event picks rows up and
  *      applies them to the system sandbox, then stamps `applied_at`.
@@ -26,7 +27,11 @@ import { type PendingFileWrite, pendingFileWrites } from '@/lib/db/schema'
  * calls invoked from server actions / RSC loaders.
  */
 
-export const PENDING_PERSONA_PATHS = ['AGENTS.md', 'SOUL.md'] as const
+export const PENDING_PERSONA_PATHS = [
+  'AGENTS.md',
+  'IDENTITY.md',
+  'SOUL.md',
+] as const
 export type PendingPersonaPath = (typeof PENDING_PERSONA_PATHS)[number]
 
 function isPendingPersonaPath(path: string): path is PendingPersonaPath {
@@ -72,7 +77,8 @@ export async function enqueuePendingFileWrite(input: {
  *
  * Returns `null` if the user has never authored this path through
  * the UI. The form layer decides what default to show in that case
- * (empty for SOUL.md, the AGENTS.md seed template for AGENTS.md).
+ * (empty for IDENTITY.md / SOUL.md, the AGENTS.md seed template for
+ * AGENTS.md).
  */
 export async function readLatestPendingFileWrite(input: {
   agentId: string

@@ -10,7 +10,8 @@ import {
 } from '@/workflows/agent-session/tools/persona-paths'
 
 /**
- * Build the system prompt: inline AGENTS.md + SOUL.md from the system
+ * Build the system prompt: inline AGENTS.md + IDENTITY.md + SOUL.md from the
+ * system
  * sandbox, list other memory paths, append platform invariants. Computed
  * once per event; on-disk writes from this turn show up after `endOfEvent`.
  */
@@ -34,10 +35,10 @@ const FOOTER = `## Platform invariants
   tools to take notes; anything you write outside the memory volume
   (e.g. via bash/file_write in the exec sandbox) does NOT show up in
   your context next time.
-- AGENTS.md and SOUL.md are user-owned identity files. Your memory_*
-  tools will refuse to write or delete them and return a structured
-  read_only error. If a change is needed, ask the user to make it
-  through the agent settings UI.
+- AGENTS.md, IDENTITY.md, and SOUL.md are user-owned bootstrap files.
+  Your memory_* tools will refuse to write or delete them and return a
+  structured read_only error. If a change is needed, ask the user to
+  make it through the agent settings UI.
 - Reads in the same turn see your queued memory writes. Writes are
   flushed to disk at end-of-event, then mirrored into the agent files
   UI.
@@ -105,8 +106,9 @@ export async function composeSystemPrompt(
 
   const systemSandbox = await getSystemSandbox(agentId)
 
-  const [agentsMd, soulMd, livePaths] = await Promise.all([
+  const [agentsMd, identityMd, soulMd, livePaths] = await Promise.all([
     readLiveMemory(systemSandbox, 'AGENTS.md'),
+    readLiveMemory(systemSandbox, 'IDENTITY.md'),
     readLiveMemory(systemSandbox, 'SOUL.md'),
     listLiveMemory(systemSandbox),
   ])
@@ -121,6 +123,11 @@ export async function composeSystemPrompt(
   if (agentsMd && agentsMd.trim().length > 0) {
     sections.push(
       `## AGENTS.md (operational manual — read-only, managed by user)\n\n${agentsMd.trim()}`
+    )
+  }
+  if (identityMd && identityMd.trim().length > 0) {
+    sections.push(
+      `## IDENTITY.md (identity card — read-only, managed by user)\n\n${identityMd.trim()}`
     )
   }
   if (soulMd && soulMd.trim().length > 0) {
