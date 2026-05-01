@@ -316,7 +316,7 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
             <ChevronsUpDownIcon className="size-4 shrink-0 opacity-50" />
           </Button>
           <CommandDialog
-            className="border-2 border-foreground"
+            className="border-2 border-foreground sm:max-w-2xl"
             commandProps={{
               shouldFilter: false,
             }}
@@ -328,6 +328,7 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
               }
             }}
             open={modelDialogOpen}
+            showHeader
             title="Select model"
           >
             <CommandInput
