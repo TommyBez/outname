@@ -1,4 +1,3 @@
-
 import Link from 'next/link'
 import { Suspense } from 'react'
 import {
@@ -11,6 +10,12 @@ import { TodayDate } from '@/components/today-date'
 import { requireSession } from '@/lib/auth-guard'
 import { getCachedAgentsForUser } from '@/lib/data'
 import type { Agent } from '@/lib/db/schema'
+import { createPrivatePageMetadata } from '@/lib/site-metadata'
+
+export const metadata = createPrivatePageMetadata(
+  'Dashboard',
+  'Monitor personal AI agents, session state, and live activity in one private OUTNA.ME operator view.'
+)
 
 export default function DashboardPage() {
   return (
