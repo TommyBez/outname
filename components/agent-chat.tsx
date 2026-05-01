@@ -275,7 +275,7 @@ function WorkflowStatusMessage({ status }: { status: WorkflowStatusData }) {
   return (
     <Message from="assistant">
       <MessageContent>
-        <div className="flex items-center gap-2 border-2 border-border bg-muted/40 px-3 py-2 font-medium text-muted-foreground text-xs uppercase tracking-[0.12em]">
+        <div className="flex items-center gap-2 border-2 border-border bg-muted/40 px-3 py-3 font-medium text-muted-foreground text-xs uppercase leading-5 tracking-[0.12em]">
           <span className="size-2 animate-pulse rounded-full bg-primary" />
           <span>{status.message}</span>
         </div>
