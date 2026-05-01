@@ -5,6 +5,7 @@ import { maybeGenerateConversationTitle } from '@/workflows/chat/steps/generate-
 import { persistAssistantTurn } from '@/workflows/chat/steps/persist-assistant-turn'
 import { buildAgent } from '../agent-factory'
 import { drainPendingWrites } from '../steps/drain-pending-writes'
+import { emitChatStatus } from '../steps/emit-chat-status'
 import type { PendingWrites } from '../tools/pending-writes'
 
 /**
@@ -49,7 +50,17 @@ export async function handleChat(input: {
     namespace: replyToken,
   })
 
+  await emitChatStatus({
+    message: 'Starting system sandbox...',
+    phase: 'system-sandbox',
+    replyToken,
+  })
   await startupSystemSandbox({ agentId })
+  await emitChatStatus({
+    message: 'Starting execution sandbox...',
+    phase: 'exec-sandbox',
+    replyToken,
+  })
   await startupExecSandbox({ agentId }).catch((err) => {
     // Don't kill the chat turn if the exec sandbox can't boot — the
     // agent can still answer text-only turns. The exec_* tools will
@@ -61,8 +72,18 @@ export async function handleChat(input: {
   // system prompt. composeSystemPrompt inlines AGENTS.md / SOUL.md
   // verbatim, so this guarantees the operator's latest save is what
   // the model sees this turn.
+  await emitChatStatus({
+    message: 'Applying pending workspace updates...',
+    phase: 'pending-writes',
+    replyToken,
+  })
   await drainPendingWrites({ agentId })
 
+  await emitChatStatus({
+    message: 'Preparing agent tools and instructions...',
+    phase: 'agent-build',
+    replyToken,
+  })
   const { agent, pending } = await buildAgent({
     agentId,
     runId: conversationId,
@@ -70,6 +91,11 @@ export async function handleChat(input: {
 
   const modelMessages = await convertToModelMessages(uiMessages)
 
+  await emitChatStatus({
+    message: 'Connecting to the agent...',
+    phase: 'agent-stream',
+    replyToken,
+  })
   const [, result] = await Promise.all([
     maybeGenerateConversationTitle({
       agentId,
