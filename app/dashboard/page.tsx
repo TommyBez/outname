@@ -21,25 +21,27 @@ export default function DashboardPage() {
   return (
     <AppShell>
       <header className="mb-12 border-foreground border-t-4 pt-6 md:mb-16">
-        <div className="grid gap-8 md:grid-cols-[minmax(0,7fr)_minmax(14rem,3fr)] md:items-end">
-          <div>
+        <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(14rem,18rem)] xl:items-end">
+          <div className="min-w-0">
             <p className="swiss-label mb-4 text-accent">
               01. <TodayDate />
             </p>
-            <h1 className="text-balance font-black font-serif text-6xl uppercase leading-[0.86] tracking-tighter md:text-8xl lg:text-[9rem]">
+            <h1 className="text-balance font-black font-serif text-6xl uppercase leading-[0.86] tracking-tighter md:text-[clamp(4.5rem,7vw,7rem)]">
               Dashboard
             </h1>
           </div>
-          <p className="max-w-xs border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
-            Every agent, current session state, and live activity in one
-            operator view.
-          </p>
-          <Link
-            className="inline-flex h-14 shrink-0 items-center justify-center self-start border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground md:self-auto"
-            href="/agents/new"
-          >
-            + New agent
-          </Link>
+          <div className="flex flex-col items-start gap-6 xl:items-stretch xl:justify-self-end">
+            <p className="max-w-xs border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
+              Every agent, current session state, and live activity in one
+              operator view.
+            </p>
+            <Link
+              className="inline-flex h-14 shrink-0 items-center justify-center border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground"
+              href="/agents/new"
+            >
+              + New agent
+            </Link>
+          </div>
         </div>
       </header>
 
