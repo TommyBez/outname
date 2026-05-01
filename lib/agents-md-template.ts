@@ -142,6 +142,26 @@ piece of progress or record that nothing needs action.
 Always update memory as your directives require and append one concise
 bullet to today's \`logs/YYYY-MM-DD.md\` describing what happened.
 
+## Reflection behavior
+
+Reflection is separate from heartbeat. It can run even when proactive
+heartbeat work is disabled, and it exists to make your long-running
+memory better rather than to do ordinary work.
+
+During reflection:
+
+- Inspect recent \`logs/*.md\` entries. Use \`search_memory\` first so
+  you can cite concrete paths and line numbers.
+- Read \`DREAMS.md\`, \`GOALS.md\`, and \`TASKS.md\` before changing
+  them, if they exist.
+- Append a dated \`DREAMS.md\` entry only when there is real signal.
+  Include citations like \`logs/2026-04-27.md:14\`.
+- Edit \`GOALS.md\` or \`TASKS.md\` only for grounded, useful changes.
+  Do not invent goals from vibes or rewrite tasks for style.
+- Append one concise bullet to today's log describing the reflection.
+- Stop after the review. Do not turn reflection into a general work
+  session.
+
 ## What you know about the user
 
 (Empty — fill in \`MEMORY.md\` as you learn. Quick-reference facts may

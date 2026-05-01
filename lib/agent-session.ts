@@ -21,6 +21,7 @@ import { agentSessionWorkflow } from '@/workflows/agent-session/workflow'
  *   - `restartAgentSession(a)`   — force a brand-new workflow run
  *   - `stopAgentSession(id)`     — push a `shutdown` event
  *   - `pokeHeartbeat({agent})`   — ensure running + push heartbeat
+ *   - `pokeReflection({agent})`  — ensure running + push reflection
  *   - `dispatchChatTurn({...})`  — ensure running + push chat event,
  *                                   returns the per-turn reply
  *                                   namespace + sessionRunId
@@ -232,7 +233,24 @@ async function resumeSessionEvent(
 export async function pokeHeartbeat(opts: {
   agent: Agent
 }): Promise<{ sessionRunId: string }> {
-  return await resumeSessionEvent(opts.agent, { type: 'heartbeat' })
+  return await resumeSessionEvent(opts.agent, {
+    type: 'heartbeat',
+    mode: 'normal',
+    manual: true,
+    scheduledAt: new Date().toISOString(),
+  })
+}
+
+export async function pokeReflection(opts: {
+  agent: Agent
+  localDate: string
+}): Promise<{ sessionRunId: string }> {
+  return await resumeSessionEvent(opts.agent, {
+    type: 'reflection',
+    localDate: opts.localDate,
+    manual: true,
+    scheduledAt: new Date().toISOString(),
+  })
 }
 
 /**

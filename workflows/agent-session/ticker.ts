@@ -3,6 +3,7 @@ import { heartbeatAckToken } from './events'
 import { generateAckId } from './steps/generate-ack-id'
 import {
   pokeSessionHeartbeat,
+  pokeSessionReflection,
   readHeartbeatSchedule,
 } from './steps/ticker-control'
 
@@ -22,11 +23,10 @@ const DISABLED_POLL_MS = 5 * 60 * 1000
  *
  * Each iteration:
  *
- *   1. Read the live heartbeat schedule from the agent row.
- *      - Disabled → sleep `DISABLED_POLL_MS` and re-check. This keeps
- *        the ticker alive so a re-enable doesn't require a session
- *        restart, while costing one DB read per 5 min.
- *      - Enabled  → fall through to the heartbeat handshake.
+ *   1. Read the live heartbeat + reflection schedules from the agent row.
+ *      - Both disabled → sleep `DISABLED_POLL_MS` and re-check.
+ *      - Reflection due → dispatch it first, independent of heartbeat.
+ *      - Heartbeat enabled → dispatch the normal proactive heartbeat.
  *   2. Generate a fresh ack id (in a step so retries are stable).
  *   3. Create the per-tick ack hook on the deterministic
  *      `agent:<id>:hb-ack:<ack>` token.
@@ -49,26 +49,63 @@ export async function agentTickerWorkflow(input: {
 
   while (true) {
     const schedule = await readHeartbeatSchedule({ agentId })
+    const now = new Date().toISOString()
 
-    if (!schedule.enabled) {
+    if (!(schedule.heartbeat.enabled || schedule.reflection.enabled)) {
       await sleep(DISABLED_POLL_MS)
       continue
     }
 
-    const ack = await generateAckId({ agentId })
+    if (schedule.reflection.due) {
+      await dispatchReflection({
+        agentId,
+        localDate: schedule.reflection.localDate,
+      })
+    }
 
-    const ackHook = createHook<{ done: true }>({
-      token: heartbeatAckToken(agentId, ack),
-    })
+    if (!schedule.heartbeat.enabled) {
+      await sleep(Math.min(DISABLED_POLL_MS, schedule.reflection.intervalMs))
+      continue
+    }
 
-    await pokeSessionHeartbeat({ agentId, ack })
+    await dispatchHeartbeat({ agentId })
 
-    // Block until the session signals "heartbeat handler returned".
-    // If the session run dies mid-handler, the ack never arrives and
-    // the workflow appears stuck — the cron liveness sweeper will
-    // restart both this ticker and the session in that case.
-    await ackHook
-
-    await sleep(schedule.intervalMs)
+    // Preserve the pre-Phase-5 normal heartbeat semantics: the rest
+    // interval starts after the previous proactive event finishes.
+    console.log('[v0] agentTickerWorkflow: tick complete', { agentId, now })
+    await sleep(schedule.heartbeat.intervalMs)
   }
+}
+
+async function dispatchHeartbeat(input: { agentId: string }): Promise<void> {
+  const { agentId } = input
+  const ack = await generateAckId({ agentId })
+
+  const ackHook = createHook<{ done: true }>({
+    token: heartbeatAckToken(agentId, ack),
+  })
+
+  await pokeSessionHeartbeat({ agentId, ack })
+
+  // Block until the session signals "handler returned".
+  // If the session run dies mid-handler, the ack never arrives and
+  // the workflow appears stuck — the cron liveness sweeper will
+  // restart both this ticker and the session in that case.
+  await ackHook
+}
+
+async function dispatchReflection(input: {
+  agentId: string
+  localDate: string
+}): Promise<void> {
+  const { agentId, localDate } = input
+  const ack = await generateAckId({ agentId })
+
+  const ackHook = createHook<{ done: true }>({
+    token: heartbeatAckToken(agentId, ack),
+  })
+
+  await pokeSessionReflection({ agentId, ack, localDate })
+
+  await ackHook
 }

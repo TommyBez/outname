@@ -57,6 +57,8 @@ interface AgentFormProps {
     model: string
     heartbeatEnabled: boolean
     heartbeatIntervalMinutes: number
+    reflectionEnabled: boolean
+    reflectionIntervalMinutes: number
   }
   models: ModelOption[]
 }
@@ -77,6 +79,12 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
   )
   const [intervalMinutes, setIntervalMinutes] = useState(
     initial?.heartbeatIntervalMinutes ?? 30
+  )
+  const [reflectionEnabled, setReflectionEnabled] = useState(
+    initial?.reflectionEnabled ?? true
+  )
+  const [reflectionIntervalMinutes, setReflectionIntervalMinutes] = useState(
+    initial?.reflectionIntervalMinutes ?? 1440
   )
 
   const isEdit = Boolean(initial?.id)
@@ -117,6 +125,8 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
             model,
             heartbeatEnabled,
             heartbeatIntervalMinutes: intervalMinutes,
+            reflectionEnabled,
+            reflectionIntervalMinutes,
           })
           toast.success('Agent updated')
           router.refresh()
@@ -128,6 +138,8 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
             model,
             heartbeatEnabled,
             heartbeatIntervalMinutes: intervalMinutes,
+            reflectionEnabled,
+            reflectionIntervalMinutes,
           })
           toast.success('Agent created')
           router.push(`/agents/${result.id}`)
@@ -277,6 +289,59 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
                 value={String(intervalMinutes)}
               >
                 <SelectTrigger id="agent-interval">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {INTERVAL_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={String(opt.value)}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-muted-foreground text-xs">
+                Reflection runs at most once per N minutes, and at least once
+                per local day.
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="grid gap-4 border-2 border-foreground bg-background p-5 md:grid-cols-[12rem_minmax(0,1fr)]">
+        <Label
+          className="font-bold text-sm uppercase tracking-[0.14em]"
+          htmlFor="agent-reflection"
+        >
+          Reflection
+        </Label>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-1">
+              <p className="text-muted-foreground text-xs">
+                When on, the agent periodically reviews its logs, writes
+                DREAMS.md, and proposes updates to goals or tasks. This can run
+                even when heartbeat is off.
+              </p>
+            </div>
+            <Switch
+              checked={reflectionEnabled}
+              id="agent-reflection"
+              onCheckedChange={setReflectionEnabled}
+            />
+          </div>
+          {reflectionEnabled ? (
+            <div className="flex flex-col gap-2">
+              <Label className="text-sm" htmlFor="agent-reflection-interval">
+                Reflection cadence
+              </Label>
+              <Select
+                onValueChange={(v) =>
+                  setReflectionIntervalMinutes(Number.parseInt(v, 10))
+                }
+                value={String(reflectionIntervalMinutes)}
+              >
+                <SelectTrigger id="agent-reflection-interval">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

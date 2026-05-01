@@ -2,7 +2,8 @@ import { eq } from 'drizzle-orm'
 import { getRun, resumeHook, start } from 'workflow/api'
 import { getWorld } from 'workflow/runtime'
 import { db } from '@/lib/db'
-import { agent } from '@/lib/db/schema'
+import { agent, user } from '@/lib/db/schema'
+import { localDateKey } from '@/lib/timezone'
 import { heartbeatAckToken, sessionToken } from '../events'
 import { agentTickerWorkflow } from '../ticker'
 
@@ -146,27 +147,79 @@ export async function reapOrphanTicker(input: {
  * paused agent and will keep idling at the disabled-poll cadence
  * until the cron sweeper notices the row is gone.
  */
+export interface AgentTickerSchedule {
+  heartbeat: {
+    enabled: boolean
+    intervalMs: number
+  }
+  reflection: {
+    due: boolean
+    enabled: boolean
+    intervalMs: number
+    localDate: string
+    timezone: string
+  }
+}
+
 export async function readHeartbeatSchedule(input: {
   agentId: string
-}): Promise<{ enabled: boolean; intervalMs: number }> {
+}): Promise<AgentTickerSchedule> {
   'use step'
+  const now = new Date()
   const rows = await db
     .select({
-      enabled: agent.heartbeatEnabled,
-      intervalMinutes: agent.heartbeatIntervalMinutes,
+      heartbeatEnabled: agent.heartbeatEnabled,
+      heartbeatIntervalMinutes: agent.heartbeatIntervalMinutes,
+      reflectionEnabled: agent.reflectionEnabled,
+      reflectionIntervalMinutes: agent.reflectionIntervalMinutes,
+      lastReflectionAt: agent.lastReflectionAt,
+      lastReflectionLocalDate: agent.lastReflectionLocalDate,
+      timezone: user.timezone,
     })
     .from(agent)
+    .innerJoin(user, eq(agent.userId, user.id))
     .where(eq(agent.id, input.agentId))
     .limit(1)
 
   const row = rows[0]
   if (!row) {
-    return { enabled: false, intervalMs: 0 }
+    return {
+      heartbeat: { enabled: false, intervalMs: 0 },
+      reflection: {
+        due: false,
+        enabled: false,
+        intervalMs: 0,
+        localDate: localDateKey(now),
+        timezone: 'UTC',
+      },
+    }
   }
 
+  const localDate = localDateKey(now, row.timezone)
+  const reflectionIntervalMs = Math.max(
+    60_000,
+    row.reflectionIntervalMinutes * 60_000
+  )
+  const lastReflectionMs = row.lastReflectionAt?.getTime() ?? null
+  const intervalElapsed =
+    lastReflectionMs === null ||
+    now.getTime() - lastReflectionMs >= reflectionIntervalMs
+  const localDayChanged = row.lastReflectionLocalDate !== localDate
+  const reflectionDue =
+    row.reflectionEnabled && (intervalElapsed || localDayChanged)
+
   return {
-    enabled: row.enabled,
-    intervalMs: Math.max(60_000, row.intervalMinutes * 60_000),
+    heartbeat: {
+      enabled: row.heartbeatEnabled,
+      intervalMs: Math.max(60_000, row.heartbeatIntervalMinutes * 60_000),
+    },
+    reflection: {
+      due: reflectionDue,
+      enabled: row.reflectionEnabled,
+      intervalMs: reflectionIntervalMs,
+      localDate,
+      timezone: row.timezone,
+    },
   }
 }
 
@@ -183,6 +236,22 @@ export async function pokeSessionHeartbeat(input: {
   await resumeHook(sessionToken(input.agentId), {
     type: 'heartbeat',
     ack: input.ack,
+    mode: 'normal',
+    scheduledAt: new Date().toISOString(),
+  })
+}
+
+export async function pokeSessionReflection(input: {
+  agentId: string
+  ack: string
+  localDate: string
+}): Promise<void> {
+  'use step'
+  await resumeHook(sessionToken(input.agentId), {
+    type: 'reflection',
+    ack: input.ack,
+    localDate: input.localDate,
+    scheduledAt: new Date().toISOString(),
   })
 }
 

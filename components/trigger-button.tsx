@@ -15,11 +15,13 @@ export function TriggerButton({
   agentId,
   variant = 'default',
   label = 'Run now',
+  mode = 'heartbeat',
   className,
 }: {
   agentId: string
   variant?: 'default' | 'outline' | 'link'
   label?: string
+  mode?: 'heartbeat' | 'reflection'
   className?: string
 }) {
   const router = useRouter()
@@ -31,20 +33,30 @@ export function TriggerButton({
     try {
       const res = await fetch(`/api/agents/${agentId}/trigger`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode }),
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: res.statusText }))
         throw new Error(body.error ?? `HTTP ${res.status}`)
       }
-      const { sessionRunId } = (await res.json()) as { sessionRunId: string }
-      toast.success('Run started', {
-        description: `Session ${sessionRunId.slice(0, 8)}`,
-      })
+      const { sessionRunId } = (await res.json()) as { sessionRunId?: string }
+      toast.success(
+        mode === 'reflection' ? 'Reflection started' : 'Run started',
+        sessionRunId
+          ? { description: `Session ${sessionRunId.slice(0, 8)}` }
+          : undefined
+      )
       startTransition(() => router.refresh())
     } catch (err) {
-      toast.error('Could not start run', {
-        description: err instanceof Error ? err.message : 'Unknown error',
-      })
+      toast.error(
+        mode === 'reflection'
+          ? 'Could not start reflection'
+          : 'Could not start run',
+        {
+          description: err instanceof Error ? err.message : 'Unknown error',
+        }
+      )
     } finally {
       setIsLoading(false)
     }

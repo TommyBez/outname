@@ -47,6 +47,9 @@ const FOOTER = `## Platform invariants
   first; only ask if it's truly missing.
 - Heartbeats are short check-ins, not full work sessions. Skim, log,
   finish quick wins, stop.
+- Reflection passes are deeper but still bounded reviews. Use logs as
+  evidence, cite memory paths/line numbers when updating DREAMS.md, and
+  only change GOALS.md or TASKS.md when the evidence supports it.
 `
 
 function describeReconnect(r: Reconnect): string {

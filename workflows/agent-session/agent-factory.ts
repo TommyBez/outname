@@ -23,17 +23,17 @@ export interface BuildAgentArgs {
    * their own id before dispatching.
    */
   callStack?: string[]
-  /** Durable `runs.id` for this event, when one exists. */
+  /** Workflow runtime id for heartbeat/reflection/invocation events. */
   currentRunId?: string | null
   /**
    * Phase 4: nesting depth. 0 for normal turns, parentDepth + 1 for
-   * sub-agent runs. resolveToolPlan refuses any sub-agent attach that
+   * sub-agent invocations. resolveToolPlan refuses any sub-agent attach that
    * would push depth past `MAX_SUB_AGENT_DEPTH`.
    */
   depth?: number
   /** Optional UTC "now" for the system prompt; defaults to `new Date()`. */
   nowIso?: string
-  /** Heartbeat/invocation: `runs.id`; chat: conversation id. */
+  /** Heartbeat/invocation: workflow runtime id; chat: conversation id. */
   runId: string
 }
 
@@ -139,5 +139,39 @@ export function buildHeartbeatKickoff(args: {
     'from SOUL.md. Perform one small, useful heartbeat-sized action,',
     'update memory as your directives require, append a brief bullet to',
     "today's log, then stop.",
+  ].join('\n')
+}
+
+export function buildReflectionKickoff(args: {
+  localDate: string
+  manual: boolean
+  nowIso: string
+  previousIso: string | null
+}): string {
+  const trigger = args.manual
+    ? 'The user explicitly requested this reflection pass.'
+    : 'This is your scheduled reflection pass.'
+  const previous = args.previousIso
+    ? `Your last completed reflection was at ${args.previousIso}.`
+    : 'This is your first completed reflection window.'
+
+  return [
+    `It is now ${args.nowIso}. Local date: ${args.localDate}.`,
+    trigger,
+    previous,
+    '',
+    'Run a focused DREAMS / reflection pass:',
+    '',
+    '1. Use list_memory/search_memory to inspect recent logs under logs/.',
+    '   Prefer today and recent days, but do not read huge files blindly.',
+    '2. Read DREAMS.md, GOALS.md, and TASKS.md if they exist.',
+    '3. Append a dated entry to DREAMS.md. Cite specific evidence using',
+    '   memory paths and line numbers returned by search_memory, e.g.',
+    '   `logs/2026-04-30.md:12`.',
+    '4. Edit GOALS.md and TASKS.md only when the evidence supports a',
+    '   concrete change. Avoid speculative churn.',
+    "5. Append one concise bullet to today's log summarizing the reflection.",
+    '',
+    'Stop after the reflection. Do not start an open-ended work session.',
   ].join('\n')
 }

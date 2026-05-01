@@ -2,104 +2,24 @@ import 'server-only'
 import { and, desc, eq } from 'drizzle-orm'
 import { cacheLife, cacheTag } from 'next/cache'
 import {
-  agentRunsTag,
   agentTag,
   agentToolsTag,
-  runsIndexTag,
-  runTag,
   userAgentsTag,
   userConnectionsTag,
 } from '@/lib/cache-tags'
 import { db } from '@/lib/db'
 import {
   type Agent,
+  type AgentFile,
+  type AgentFileChange,
   type AgentTool,
   agent,
+  agentFileChanges,
+  agentFiles,
   agentTools,
-  type Run,
-  type RunResult,
-  runResult,
-  runs,
   type UserConnection,
   userConnections,
 } from '@/lib/db/schema'
-
-export async function getLatestRun(): Promise<Run | null> {
-  const [row] = await db
-    .select()
-    .from(runs)
-    .orderBy(desc(runs.startedAt))
-    .limit(1)
-  return row ?? null
-}
-
-export async function getAllRuns(limit = 100): Promise<Run[]> {
-  return await db.select().from(runs).orderBy(desc(runs.startedAt)).limit(limit)
-}
-
-export async function getCachedAllRuns(limit = 100): Promise<Run[]> {
-  'use cache'
-
-  cacheLife('minutes')
-  cacheTag(runsIndexTag())
-  return await getAllRuns(limit)
-}
-
-export async function getRunById(runId: string): Promise<Run | null> {
-  const [row] = await db.select().from(runs).where(eq(runs.id, runId)).limit(1)
-  return row ?? null
-}
-
-export async function getCachedRunById(runId: string): Promise<Run | null> {
-  'use cache'
-
-  cacheLife('minutes')
-  cacheTag(runTag(runId))
-  return await getRunById(runId)
-}
-
-export async function getChildRunsForParent(
-  parentRunId: string
-): Promise<Run[]> {
-  return await db
-    .select()
-    .from(runs)
-    .where(eq(runs.parentRunId, parentRunId))
-    .orderBy(desc(runs.startedAt))
-}
-
-export async function getCachedChildRunsForParent(
-  parentRunId: string
-): Promise<Run[]> {
-  'use cache'
-
-  cacheLife('minutes')
-  cacheTag(runTag(parentRunId), runsIndexTag())
-  return await getChildRunsForParent(parentRunId)
-}
-
-/**
- * Fetch the single agent-agnostic text result attached to a run, if any.
- * The row is keyed by `run_id` (PK), so there is at most one per run.
- */
-export async function getRunResult(runId: string): Promise<RunResult | null> {
-  const [row] = await db
-    .select()
-    .from(runResult)
-    .where(eq(runResult.runId, runId))
-    .limit(1)
-  return row ?? null
-}
-
-export async function getCachedRunResult(
-  runId: string
-): Promise<RunResult | null> {
-  'use cache'
-
-  cacheLife('hours')
-  cacheTag(runTag(runId))
-  return await getRunResult(runId)
-}
 
 export async function getAgentsForUser(userId: string): Promise<Agent[]> {
   return await db
@@ -144,49 +64,80 @@ export async function getCachedAgentByIdForUser(
   return await getAgentByIdForUser(agentId, userId)
 }
 
-export async function getLatestRunForAgent(
+export async function getAgentLogFiles(agentId: string): Promise<AgentFile[]> {
+  const rows = await db
+    .select()
+    .from(agentFiles)
+    .where(eq(agentFiles.agentId, agentId))
+    .orderBy(desc(agentFiles.path))
+  return rows.filter((row) => row.path.startsWith('logs/'))
+}
+
+export async function getCachedAgentLogFiles(
   agentId: string
-): Promise<Run | null> {
+): Promise<AgentFile[]> {
+  'use cache'
+
+  cacheLife('minutes')
+  cacheTag(agentTag(agentId))
+  return await getAgentLogFiles(agentId)
+}
+
+export async function getAgentMemoryFile(input: {
+  agentId: string
+  path: string
+}): Promise<AgentFile | null> {
   const [row] = await db
     .select()
-    .from(runs)
-    .where(eq(runs.agentId, agentId))
-    .orderBy(desc(runs.startedAt))
+    .from(agentFiles)
+    .where(
+      and(
+        eq(agentFiles.agentId, input.agentId),
+        eq(agentFiles.path, input.path)
+      )
+    )
     .limit(1)
   return row ?? null
 }
 
-export async function getCachedLatestRunForAgent(
+export async function getCachedAgentMemoryFile(input: {
   agentId: string
-): Promise<Run | null> {
+  path: string
+}): Promise<AgentFile | null> {
   'use cache'
 
   cacheLife('minutes')
-  cacheTag(agentRunsTag(agentId))
-  return await getLatestRunForAgent(agentId)
+  cacheTag(agentTag(input.agentId))
+  return await getAgentMemoryFile(input)
 }
 
-export async function getRunsForAgent(
-  agentId: string,
-  limit = 50
-): Promise<Run[]> {
+export async function getAgentFileChanges(input: {
+  agentId: string
+  limit?: number
+  path?: string
+}): Promise<AgentFileChange[]> {
+  const filters = [eq(agentFileChanges.agentId, input.agentId)]
+  if (input.path) {
+    filters.push(eq(agentFileChanges.path, input.path))
+  }
   return await db
     .select()
-    .from(runs)
-    .where(eq(runs.agentId, agentId))
-    .orderBy(desc(runs.startedAt))
-    .limit(limit)
+    .from(agentFileChanges)
+    .where(and(...filters))
+    .orderBy(desc(agentFileChanges.createdAt))
+    .limit(input.limit ?? 50)
 }
 
-export async function getCachedRunsForAgent(
-  agentId: string,
-  limit = 50
-): Promise<Run[]> {
+export async function getCachedAgentFileChanges(input: {
+  agentId: string
+  limit?: number
+  path?: string
+}): Promise<AgentFileChange[]> {
   'use cache'
 
   cacheLife('minutes')
-  cacheTag(agentRunsTag(agentId))
-  return await getRunsForAgent(agentId, limit)
+  cacheTag(agentTag(input.agentId))
+  return await getAgentFileChanges(input)
 }
 
 export async function getUserConnections(

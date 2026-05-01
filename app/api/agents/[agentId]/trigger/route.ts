@@ -1,10 +1,15 @@
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { eq } from 'drizzle-orm'
+import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 import { type NextRequest, NextResponse } from 'next/server'
-import { pokeHeartbeat } from '@/lib/agent-session'
+import { pokeHeartbeat, pokeReflection } from '@/lib/agent-session'
 import { auth } from '@/lib/auth'
-import { agentRunsTag, runsIndexTag } from '@/lib/cache-tags'
+import { db } from '@/lib/db'
+import { user } from '@/lib/db/schema'
 import { getAgentById } from '@/lib/start-agent-run'
+import { localDateKey } from '@/lib/timezone'
+
+type TriggerMode = 'heartbeat' | 'reflection'
 
 /**
  * Manually trigger an out-of-band heartbeat for a single agent.
@@ -16,7 +21,7 @@ import { getAgentById } from '@/lib/start-agent-run'
  * force a run without waiting for the next tick.
  */
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ agentId: string }> }
 ) {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -38,16 +43,22 @@ export async function POST(
   }
 
   try {
-    const { sessionRunId } = await pokeHeartbeat({ agent })
+    const mode = await readTriggerMode(req)
+    const { sessionRunId } =
+      mode === 'reflection'
+        ? await pokeReflection({
+            agent,
+            localDate: await readUserLocalDate(session.user.id),
+          })
+        : await pokeHeartbeat({ agent })
 
-    revalidateTag(agentRunsTag(agent.id), 'max')
-    revalidateTag(runsIndexTag(), 'max')
     revalidatePath(`/agents/${agent.id}`)
+    revalidatePath(`/agents/${agent.id}/timeline`)
+    revalidatePath(`/agents/${agent.id}/dreams`)
     revalidatePath('/agents')
-    revalidatePath('/runs')
     revalidatePath('/')
 
-    return NextResponse.json({ ok: true, sessionRunId })
+    return NextResponse.json({ ok: true, mode, sessionRunId })
   } catch (err) {
     console.error('[trigger] failed', err)
     return NextResponse.json(
@@ -55,4 +66,18 @@ export async function POST(
       { status: 500 }
     )
   }
+}
+
+async function readTriggerMode(req: NextRequest): Promise<TriggerMode> {
+  const body = await req.json().catch(() => null)
+  return body && body.mode === 'reflection' ? 'reflection' : 'heartbeat'
+}
+
+async function readUserLocalDate(userId: string): Promise<string> {
+  const [row] = await db
+    .select({ timezone: user.timezone })
+    .from(user)
+    .where(eq(user.id, userId))
+    .limit(1)
+  return localDateKey(new Date(), row?.timezone)
 }

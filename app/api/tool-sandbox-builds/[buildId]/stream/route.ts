@@ -11,8 +11,8 @@ import {
 /**
  * Phase 4: stream tool-sandbox build progress events as NDJSON.
  *
- * Modeled on `/api/runs/[runId]/stream` — the build workflow writes to
- * a per-build namespace; this route relays it to the client. We open
+ * The build workflow writes to a per-build namespace; this route relays
+ * it to the client. We open
  * the readable with `startIndex: 0` so a re-mount or refresh replays
  * every progress event the workflow has emitted, which is what makes
  * persisting messages to the DB unnecessary.

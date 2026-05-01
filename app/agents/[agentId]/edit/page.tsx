@@ -77,6 +77,8 @@ async function AgentEdit({ params }: { params: Params }) {
             model: agentRow.model,
             heartbeatEnabled: agentRow.heartbeatEnabled,
             heartbeatIntervalMinutes: agentRow.heartbeatIntervalMinutes,
+            reflectionEnabled: agentRow.reflectionEnabled,
+            reflectionIntervalMinutes: agentRow.reflectionIntervalMinutes,
           }}
           models={models}
         />

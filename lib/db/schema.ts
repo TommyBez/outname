@@ -19,6 +19,7 @@ export const user = pgTable('user', {
   emailVerified: boolean('emailVerified').notNull().default(false),
   name: text('name'),
   image: text('image'),
+  timezone: text('timezone').notNull().default('UTC'),
   createdAt: timestamp('createdAt', { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -109,6 +110,17 @@ export const agent = pgTable(
     heartbeatIntervalMinutes: integer('heartbeat_interval_minutes')
       .notNull()
       .default(30),
+    lastHeartbeatAt: timestamp('last_heartbeat_at', { withTimezone: true }),
+    // Reflection is independent from normal heartbeat. An agent can
+    // keep daily self-review active even when proactive work is off.
+    reflectionEnabled: boolean('reflection_enabled').notNull().default(true),
+    reflectionIntervalMinutes: integer('reflection_interval_minutes')
+      .notNull()
+      .default(1440),
+    lastReflectionAt: timestamp('last_reflection_at', { withTimezone: true }),
+    // Local date in the owning user's timezone for the last completed
+    // reflection. Used to make "daily" mean once per local day.
+    lastReflectionLocalDate: text('last_reflection_local_date'),
     // Persistent Vercel Sandbox ids. The system sandbox holds the
     // agent's memory volume + AGENTS.md / SOUL.md persona files;
     // the exec sandbox is a clean `/workspace` for ad-hoc bash and
@@ -139,55 +151,6 @@ export const agent = pgTable(
   },
   (t) => [index('agent_user_idx').on(t.userId)]
 )
-
-export const runs = pgTable(
-  'runs',
-  {
-    id: text('id').primaryKey(),
-    agentId: text('agent_id').references(() => agent.id, {
-      onDelete: 'cascade',
-    }),
-    workflowRunId: text('workflow_run_id'),
-    parentRunId: text('parent_run_id'),
-    parentToolId: text('parent_tool_id'),
-    invocationReplyToken: text('invocation_reply_token'),
-    status: text('status').notNull().default('running'), // running | completed | failed
-    startedAt: timestamp('started_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    completedAt: timestamp('completed_at', { withTimezone: true }),
-    error: text('error'),
-  },
-  (t) => [
-    index('runs_started_at_idx').on(t.startedAt),
-    index('runs_agent_idx').on(t.agentId),
-    index('runs_parent_run_idx').on(t.parentRunId),
-  ]
-)
-
-/**
- * Agent-agnostic run output.
- *
- * Every completed run may attach one `run_result` row keyed by `run_id`.
- * `content` is a markdown (or plain text) document produced by the agent
- * itself — the platform does not impose any schema on what the agent
- * renders. `metrics` holds optional agent-defined per-run counts (e.g.
- * `{ emailsScanned: 12 }`) and lives on the same row so publishing a
- * result is one atomic insert.
- *
- * The PK on `run_id` gives us the "one result per run" invariant for
- * free and is the only index required — lookups are always by run id.
- */
-export const runResult = pgTable('run_result', {
-  runId: text('run_id')
-    .primaryKey()
-    .references(() => runs.id, { onDelete: 'cascade' }),
-  content: text('content').notNull(),
-  metrics: jsonb('metrics'),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-})
 
 // Chat conversations: an agent can own many independent threads. Listing
 // in the sidebar is always "newest first for this agent", so we index on
@@ -299,6 +262,41 @@ export const pendingFileWrites = pgTable(
     index('pending_file_writes_agent_unapplied_idx')
       .on(t.agentId)
       .where(isNull(t.appliedAt)),
+  ]
+)
+
+/**
+ * Reviewable memory-file deltas captured at the end of an event.
+ *
+ * The agent writes `DREAMS.md`, `GOALS.md`, `TASKS.md`, and logs directly
+ * through memory tools. This table keeps a post-event before/after record
+ * so the UI can show what changed without introducing a blocking approval
+ * gate into the single-threaded session loop.
+ */
+export const agentFileChanges = pgTable(
+  'agent_file_changes',
+  {
+    id: text('id').primaryKey(),
+    agentId: text('agent_id')
+      .notNull()
+      .references(() => agent.id, { onDelete: 'cascade' }),
+    path: text('path').notNull(),
+    sourceType: text('source_type')
+      .$type<'chat' | 'heartbeat' | 'reflection' | 'invocation'>()
+      .notNull(),
+    sourceId: text('source_id'),
+    beforeContent: text('before_content'),
+    afterContent: text('after_content'),
+    beforeSha256: text('before_sha256'),
+    afterSha256: text('after_sha256'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('agent_file_changes_agent_created_idx').on(t.agentId, t.createdAt),
+    index('agent_file_changes_path_idx').on(t.path),
   ]
 )
 
@@ -461,10 +459,9 @@ export const toolSandboxBuilds = pgTable(
 )
 export type ToolSandboxBuild = typeof toolSandboxBuilds.$inferSelect
 
-export type Run = typeof runs.$inferSelect
-export type RunResult = typeof runResult.$inferSelect
 export type UserConnection = typeof userConnections.$inferSelect
 export type AgentTool = typeof agentTools.$inferSelect
+export type AgentFileChange = typeof agentFileChanges.$inferSelect
 export type AgentToolStatus = 'connected' | 'pending'
 export type AgentToolKind = 'maintainer' | 'sub_agent'
 export type Agent = typeof agent.$inferSelect
@@ -473,5 +470,4 @@ export type PendingFileWrite = typeof pendingFileWrites.$inferSelect
 export type ChatConversation = typeof chatConversation.$inferSelect
 export type ChatMessage = typeof chatMessage.$inferSelect
 export type ChatRole = 'user' | 'assistant' | 'system'
-export type RunStatus = 'running' | 'completed' | 'failed'
 export type ConnectionStatus = 'active' | 'invalid'

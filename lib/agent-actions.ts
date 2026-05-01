@@ -12,12 +12,7 @@ import {
 } from '@/lib/agent-session'
 import { DEFAULT_MODEL_ID, isModelIdValid } from '@/lib/ai-gateway-models'
 import { requireSession } from '@/lib/auth-guard'
-import {
-  agentRunsTag,
-  agentTag,
-  conversationListTag,
-  userAgentsTag,
-} from '@/lib/cache-tags'
+import { agentTag, conversationListTag, userAgentsTag } from '@/lib/cache-tags'
 import { db } from '@/lib/db'
 import { agent } from '@/lib/db/schema'
 
@@ -77,6 +72,8 @@ interface CreateInput {
   instructions: string
   model: string
   name: string
+  reflectionEnabled: boolean
+  reflectionIntervalMinutes: number
 }
 
 export async function createAgentAction(
@@ -89,6 +86,9 @@ export async function createAgentAction(
     ? input.model
     : DEFAULT_MODEL_ID
   const heartbeatIntervalMinutes = clampInterval(input.heartbeatIntervalMinutes)
+  const reflectionIntervalMinutes = clampInterval(
+    input.reflectionIntervalMinutes
+  )
 
   const id = nanoid()
   const [created] = await db
@@ -101,6 +101,8 @@ export async function createAgentAction(
       enabled: true,
       heartbeatEnabled: input.heartbeatEnabled,
       heartbeatIntervalMinutes,
+      reflectionEnabled: input.reflectionEnabled,
+      reflectionIntervalMinutes,
     })
     .returning()
 
@@ -131,8 +133,8 @@ export async function createAgentAction(
   }
 
   // Boot the long-lived session immediately so a (possibly enabled)
-  // heartbeat ticker starts producing runs without forcing the user
-  // to chat or wait for the cron sweeper.
+  // heartbeat ticker can start work without forcing the user to chat or
+  // wait for the cron sweeper.
   try {
     await startAgentSession(created)
   } catch (err) {
@@ -165,6 +167,8 @@ interface UpdateInput {
   instructionsOriginal: string
   model: string
   name: string
+  reflectionEnabled: boolean
+  reflectionIntervalMinutes: number
 }
 
 export async function updateAgentAction(input: UpdateInput): Promise<void> {
@@ -186,6 +190,9 @@ export async function updateAgentAction(input: UpdateInput): Promise<void> {
       ? input.model
       : existing.model
   const heartbeatIntervalMinutes = clampInterval(input.heartbeatIntervalMinutes)
+  const reflectionIntervalMinutes = clampInterval(
+    input.reflectionIntervalMinutes
+  )
 
   const [updated] = await db
     .update(agent)
@@ -194,6 +201,8 @@ export async function updateAgentAction(input: UpdateInput): Promise<void> {
       model,
       heartbeatEnabled: input.heartbeatEnabled,
       heartbeatIntervalMinutes,
+      reflectionEnabled: input.reflectionEnabled,
+      reflectionIntervalMinutes,
       updatedAt: new Date(),
     })
     .where(eq(agent.id, input.id))
@@ -228,10 +237,10 @@ export async function updateAgentAction(input: UpdateInput): Promise<void> {
     })
   }
 
-  // The ticker reads its interval / opt-in once on session boot, so
-  // mid-session schedule changes only take effect on the next restart.
-  // Poke a heartbeat so the user sees immediate feedback when they
-  // flip the switch.
+  // The ticker re-reads schedules on every loop. Poking a heartbeat
+  // gives immediate feedback when users change the normal proactive
+  // schedule; reflection changes wait for their own scheduler/manual
+  // trigger so they don't surprise users with a deep review run.
   if (
     updated.enabled &&
     (existing.heartbeatEnabled !== updated.heartbeatEnabled ||
@@ -318,7 +327,6 @@ export async function deleteAgentAction(agentId: string): Promise<void> {
 
   updateTag(userAgentsTag(session.user.id))
   updateTag(agentTag(agentId))
-  updateTag(agentRunsTag(agentId))
   updateTag(conversationListTag(agentId))
   revalidatePath('/agents')
   revalidatePath('/')
