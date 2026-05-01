@@ -64,6 +64,19 @@ function modelMatchesSearch(option: ModelOption, search: string) {
   )
 }
 
+function uniqueModelsById(options: ModelOption[]) {
+  const seen = new Set<string>()
+  const unique: ModelOption[] = []
+  for (const option of options) {
+    if (seen.has(option.id)) {
+      continue
+    }
+    seen.add(option.id)
+    unique.push(option)
+  }
+  return unique
+}
+
 interface AgentFormProps {
   defaultModel: string
   /**
@@ -113,7 +126,7 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
   const isEdit = Boolean(initial?.id)
   const submitLabel = isEdit ? 'Save changes' : 'Create agent'
 
-  const availableModels =
+  const availableModels = uniqueModelsById(
     models.length > 0
       ? models
       : [
@@ -124,6 +137,7 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
             ownedBy: 'gateway',
           },
         ]
+  )
   const selectedModel =
     availableModels.find((option) => option.id === model) ?? availableModels[0]
 
