@@ -1,8 +1,4 @@
-import {
-  createUIMessageStreamResponse,
-  type UIMessage,
-  type UIMessageChunk,
-} from 'ai'
+import { createUIMessageStream, createUIMessageStreamResponse } from 'ai'
 import { revalidateTag } from 'next/cache'
 import { headers } from 'next/headers'
 import { type NextRequest, NextResponse } from 'next/server'
@@ -11,6 +7,12 @@ import {
   getOrCreateConversationForAgent,
   insertChatMessage,
 } from '@/lib/agent-chat'
+import {
+  type AgentChatChunk,
+  type AgentChatMessage,
+  CHAT_STATUS_PART_ID,
+  CHAT_STATUS_PART_TYPE,
+} from '@/lib/agent-chat-status'
 import { dispatchChatTurn } from '@/lib/agent-session'
 import { auth } from '@/lib/auth'
 import { conversationListTag } from '@/lib/cache-tags'
@@ -66,7 +68,7 @@ export async function POST(
     )
   }
 
-  let body: { messages?: UIMessage[]; conversationId?: string }
+  let body: { messages?: AgentChatMessage[]; conversationId?: string }
   try {
     body = await req.json()
   } catch {
@@ -113,24 +115,37 @@ export async function POST(
     revalidateTag(conversationListTag(agent.id), 'max')
   }
 
-  const { sessionRunId, replyToken } = await dispatchChatTurn({
-    agent,
-    conversationId,
-    uiMessages,
-  })
+  const stream = createUIMessageStream<AgentChatMessage>({
+    async execute({ writer }) {
+      writer.write({
+        type: CHAT_STATUS_PART_TYPE,
+        id: CHAT_STATUS_PART_ID,
+        data: {
+          message: 'Starting workflow session...',
+          phase: 'workflow-session',
+          timestamp: new Date().toISOString(),
+        },
+        transient: true,
+      })
 
-  // Subscribe to the per-turn namespaced sub-stream of the session run.
-  // The session's `handleChat` writes `UIMessageChunk`s into this same
-  // namespace; the AI SDK helper repacks them into `useChat`'s
-  // expected shape.
-  const readable = getRun(sessionRunId).getReadable<UIMessageChunk>({
-    namespace: replyToken,
+      const { sessionRunId, replyToken } = await dispatchChatTurn({
+        agent,
+        conversationId,
+        uiMessages,
+      })
+
+      // Subscribe to the per-turn namespaced sub-stream of the session run.
+      // The session's `handleChat` writes `UIMessageChunk`s into this same
+      // namespace; the AI SDK helper repacks them into `useChat`'s
+      // expected shape.
+      const readable = getRun(sessionRunId).getReadable<AgentChatChunk>({
+        namespace: replyToken,
+      })
+      writer.merge(readable)
+    },
   })
 
   return createUIMessageStreamResponse({
-    stream: readable,
-    headers: {
-      'x-workflow-run-id': sessionRunId,
-    },
+    stream,
   })
 }

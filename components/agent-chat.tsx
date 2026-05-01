@@ -1,20 +1,13 @@
 'use client'
 
 import { useChat } from '@ai-sdk/react'
-import { DefaultChatTransport, type UIMessage } from 'ai'
+import { DefaultChatTransport } from 'ai'
 import { useEffect, useRef, useState } from 'react'
+import {
+  AgentChatTranscript,
+  hasAssistantContentAfterLatestUser,
+} from '@/components/agent-chat-transcript'
 import { revalidateConversations } from '@/components/agent-sidebar-workspace'
-import {
-  Conversation,
-  ConversationContent,
-  ConversationEmptyState,
-  ConversationScrollButton,
-} from '@/components/ai-elements/conversation'
-import {
-  Message,
-  MessageContent,
-  MessageResponse,
-} from '@/components/ai-elements/message'
 import {
   PromptInput,
   PromptInputFooter,
@@ -23,18 +16,10 @@ import {
   PromptInputTextarea,
 } from '@/components/ai-elements/prompt-input'
 import {
-  Reasoning,
-  ReasoningContent,
-  ReasoningTrigger,
-} from '@/components/ai-elements/reasoning'
-import {
-  Tool,
-  ToolContent,
-  ToolHeader,
-  ToolInput,
-  ToolOutput,
-  type ToolPart,
-} from '@/components/ai-elements/tool'
+  type AgentChatMessage,
+  CHAT_STATUS_PART_TYPE,
+  type WorkflowStatusData,
+} from '@/lib/agent-chat-status'
 
 interface AgentChatProps {
   agentId: string
@@ -43,7 +28,7 @@ interface AgentChatProps {
    * on the first user message; for existing conversations it's the real
    * row id. */
   conversationId: string
-  initialMessages: UIMessage[]
+  initialMessages: AgentChatMessage[]
   /** When true, the chat was mounted at `/chat/new` with a candidate id
    * that the DB does not yet know about. On the first successful send
    * we swap the URL to the canonical `/chat/:id` route so a refresh
@@ -67,22 +52,31 @@ export function AgentChat({
   isDraft,
 }: AgentChatProps) {
   const [input, setInput] = useState('')
+  const [workflowStatus, setWorkflowStatus] =
+    useState<WorkflowStatusData | null>(null)
   const didPromoteDraftRef = useRef(false)
-  const { messages, sendMessage, status, error, stop } = useChat({
-    messages: initialMessages,
-    transport: new DefaultChatTransport({
-      api: `/api/agents/${agentId}/chat`,
-      body: { conversationId },
-    }),
-    onFinish: async () => {
-      // Ask the sidebar to refetch its own list so the new row + title
-      // appear. This replaces the previous `router.refresh()` call,
-      // which re-rendered the whole RSC tree under Next 16's cache
-      // components and could strand the freshly streamed assistant
-      // message out of view on soft navigation.
-      await revalidateConversations(agentId)
-    },
-  })
+  const { messages, sendMessage, status, error, stop } =
+    useChat<AgentChatMessage>({
+      messages: initialMessages,
+      transport: new DefaultChatTransport({
+        api: `/api/agents/${agentId}/chat`,
+        body: { conversationId },
+      }),
+      onData: (part) => {
+        if (isWorkflowStatusPart(part)) {
+          setWorkflowStatus(part.data)
+        }
+      },
+      onFinish: async () => {
+        setWorkflowStatus(null)
+        // Ask the sidebar to refetch its own list so the new row + title
+        // appear. This replaces the previous `router.refresh()` call,
+        // which re-rendered the whole RSC tree under Next 16's cache
+        // components and could strand the freshly streamed assistant
+        // message out of view on soft navigation.
+        await revalidateConversations(agentId)
+      },
+    })
 
   // Draft → persisted URL swap. We do this in `history.replaceState`
   // instead of `router.replace` because the latter would unmount the
@@ -110,6 +104,16 @@ export function AgentChat({
   }, [agentId, conversationId, isDraft, messages.length])
 
   const isBusy = status === 'submitted' || status === 'streaming'
+  const showWorkflowStatus = isBusy && workflowStatus !== null
+
+  useEffect(() => {
+    if (!(workflowStatus && isBusy)) {
+      return
+    }
+    if (hasAssistantContentAfterLatestUser(messages)) {
+      setWorkflowStatus(null)
+    }
+  }, [isBusy, messages, workflowStatus])
 
   // PromptInput's onSubmit contract: AI Elements gathers files + the
   // textarea text and hands us a structured `PromptInputMessage`.
@@ -120,6 +124,7 @@ export function AgentChat({
     if (!text || isBusy) {
       return
     }
+    setWorkflowStatus(null)
     sendMessage({ text })
     setInput('')
   }
@@ -131,21 +136,12 @@ export function AgentChat({
     // keep wide tool output (tables, code blocks) contained without
     // stretching the chat column past the viewport edge.
     <div className="flex h-full min-w-0 flex-col overflow-hidden">
-      <Conversation className="min-h-0 flex-1">
-        <ConversationContent>
-          {messages.length === 0 ? (
-            <ConversationEmptyState
-              description="Ask this agent anything — it has the same tools the scheduled run does."
-              title="Start a conversation"
-            />
-          ) : (
-            messages.map((message) => (
-              <ChatMessage key={message.id} message={message} />
-            ))
-          )}
-        </ConversationContent>
-        <ConversationScrollButton />
-      </Conversation>
+      <AgentChatTranscript
+        emptyDescription="Ask this agent anything — it has the same tools the scheduled run does."
+        emptyTitle="Start a conversation"
+        messages={messages}
+        workflowStatus={showWorkflowStatus ? workflowStatus : null}
+      />
 
       {error && (
         <p
@@ -176,86 +172,21 @@ export function AgentChat({
   )
 }
 
-function ChatMessage({ message }: { message: UIMessage }) {
+function isWorkflowStatusPart(part: {
+  data: unknown
+  type: string
+}): part is { data: WorkflowStatusData; type: typeof CHAT_STATUS_PART_TYPE } {
+  if (part.type !== CHAT_STATUS_PART_TYPE) {
+    return false
+  }
+  if (!(typeof part.data === 'object' && part.data !== null)) {
+    return false
+  }
+
+  const data = part.data as Partial<WorkflowStatusData>
   return (
-    <Message from={message.role === 'user' ? 'user' : 'assistant'}>
-      <MessageContent>
-        {message.parts.map((part, index) => {
-          const key = `${message.id}-${index}`
-
-          if (part.type === 'text') {
-            return <MessageResponse key={key}>{part.text}</MessageResponse>
-          }
-
-          if (part.type === 'reasoning') {
-            return (
-              // No negative horizontal margin here: on narrow viewports
-              // it was shifting the Reasoning trigger (brain icon + label)
-              // past `MessageContent`'s `overflow-hidden` clip and cutting
-              // off the icon on the left edge.
-              <Reasoning isStreaming={part.state === 'streaming'} key={key}>
-                <ReasoningTrigger />
-                <ReasoningContent>{part.text}</ReasoningContent>
-              </Reasoning>
-            )
-          }
-
-          // Tool parts: `tool-*` (static) and `dynamic-tool` both satisfy ToolPart.
-          // ToolHeader takes a discriminated union on `type` so we branch.
-          if (part.type === 'dynamic-tool') {
-            const toolPart = part as ToolPart
-            return (
-              <Tool key={key}>
-                <ToolHeader
-                  state={toolPart.state}
-                  toolName={
-                    // `DynamicToolUIPart` exposes the runtime tool name.
-                    (toolPart as { toolName: string }).toolName
-                  }
-                  type="dynamic-tool"
-                />
-                <ToolBody part={toolPart} />
-              </Tool>
-            )
-          }
-
-          if (typeof part.type === 'string' && part.type.startsWith('tool-')) {
-            const toolPart = part as ToolPart
-            return (
-              <Tool key={key}>
-                <ToolHeader
-                  state={toolPart.state}
-                  type={
-                    toolPart.type as Exclude<ToolPart['type'], 'dynamic-tool'>
-                  }
-                />
-                <ToolBody part={toolPart} />
-              </Tool>
-            )
-          }
-
-          return null
-        })}
-      </MessageContent>
-    </Message>
-  )
-}
-
-/**
- * Shared body for tool parts: renders the input and, once available, either
- * the output or the error. Pulled out so both branches of the header union
- * share the exact same markup.
- */
-function ToolBody({ part }: { part: ToolPart }) {
-  return (
-    <ToolContent>
-      <ToolInput input={part.input} />
-      {part.state === 'output-available' && (
-        <ToolOutput errorText={undefined} output={part.output} />
-      )}
-      {part.state === 'output-error' && (
-        <ToolOutput errorText={part.errorText} output={undefined} />
-      )}
-    </ToolContent>
+    typeof data.message === 'string' &&
+    typeof data.phase === 'string' &&
+    typeof data.timestamp === 'string'
   )
 }

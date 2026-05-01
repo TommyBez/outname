@@ -4,6 +4,7 @@ import { getWritable } from 'workflow'
 import { startupExecSandbox, startupSystemSandbox } from '@/lib/agent-sandbox'
 import { db } from '@/lib/db'
 import { agent as agentTable } from '@/lib/db/schema'
+import { emitActivity } from '@/lib/run-events'
 import {
   buildAgent,
   buildHeartbeatKickoff,
@@ -62,12 +63,23 @@ export async function handleHeartbeat(input: {
 
   try {
     await initRun(runId)
+    await emitActivity(
+      runId,
+      activityMessage(mode, 'Preparing agent session'),
+      {
+        mode,
+        manual: input.manual ?? false,
+      }
+    )
 
     const previousIso =
       mode === 'reflection'
         ? await readPreviousReflectionCompletion(agentId)
         : await readPreviousHeartbeatCompletion(agentId)
 
+    await emitActivity(runId, activityMessage(mode, 'Starting sandboxes'), {
+      previousIso,
+    })
     await startupSystemSandbox({ agentId })
     await startupExecSandbox({ agentId }).catch((err) => {
       // Don't fail the heartbeat just because exec didn't boot — the
@@ -76,16 +88,24 @@ export async function handleHeartbeat(input: {
       console.error('[v0] handleHeartbeat: startupExecSandbox failed', err)
     })
 
+    await emitActivity(runId, activityMessage(mode, 'Syncing memory edits'))
     // Drain UI-authored persona-file edits before composeSystemPrompt
     // reads them inside buildAgent.
     await drainPendingWrites({ agentId })
 
-    const { agent, pending } = await buildAgent({
+    const {
+      agent: durableAgent,
+      meta,
+      pending,
+    } = await buildAgent({
       agentId,
       runId,
       currentRunId: runId,
     })
 
+    await emitActivity(runId, activityMessage(mode, 'Streaming model work'), {
+      model: meta.model,
+    })
     const nowIso = input.scheduledAt ?? new Date().toISOString()
     const kickoff =
       mode === 'reflection'
@@ -100,12 +120,13 @@ export async function handleHeartbeat(input: {
             previousIso,
           })
 
-    await agent.stream({
+    await durableAgent.stream({
       messages: [{ role: 'user', content: kickoff }],
       writable,
       maxSteps: mode === 'reflection' ? 80 : 60,
     })
 
+    await emitActivity(runId, activityMessage(mode, 'Finalizing changes'))
     await finalizeRun(runId, 'completed')
     if (mode === 'reflection') {
       await markReflectionCompleted({
@@ -119,9 +140,17 @@ export async function handleHeartbeat(input: {
     return { pending, runId }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
+    await emitActivity(runId, activityMessage(mode, 'Run failed'), { message })
     await finalizeRun(runId, 'failed', message)
     throw err
   }
+}
+
+function activityMessage(
+  mode: 'normal' | 'reflection',
+  message: string
+): string {
+  return mode === 'reflection' ? `Reflection: ${message}` : message
 }
 
 /**
