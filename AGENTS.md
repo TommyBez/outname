@@ -152,4 +152,5 @@ AI_GATEWAY_API_KEY=<from env>
 - **Auth is single-user** with sign-up disabled. The test user is pre-seeded in the database. Use `TEST_USER_EMAIL` and `TEST_USER_PASSWORD` env vars to log in.
 - **Vercel Workflow, Sandbox, and AI Gateway** are Vercel platform services. Agent sessions, sandboxes, and heartbeat loops require a Vercel deployment to work fully. Locally, the UI and CRUD operations work but autonomous agent execution does not.
 - **`drizzle-kit push`** requires a TTY for confirmation prompts. Use `drizzle-kit push --force` or run interactively if schema changes are needed.
+- **Do not commit `pnpm-workspace.yaml` allow-build overrides.** They make the production build fail in this app.
 - **No automated test suite** exists in this repo currently. Testing is manual via the UI.
