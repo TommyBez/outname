@@ -1,17 +1,24 @@
 'use client'
 
+import { CheckIcon, ChevronsUpDownIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { type FormEvent, useState, useTransition } from 'react'
+import { type FormEvent, useMemo, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
@@ -20,6 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { createAgentAction, updateAgentAction } from '@/lib/agent-actions'
 import type { ModelOption } from '@/lib/ai-gateway-models'
+import { cn } from '@/lib/utils'
 
 // Heartbeat interval is stored as minutes; a small allowlist keeps the
 // UI predictable and the ticker math obvious. Phase 3 may move this
@@ -34,6 +42,40 @@ const INTERVAL_OPTIONS = [
   { value: 720, label: 'Every 12 hours' },
   { value: 1440, label: 'Every day' },
 ] as const
+
+const selectedModelSort =
+  (selectedId: string) => (a: ModelOption, b: ModelOption) => {
+    if (a.id === selectedId) {
+      return -1
+    }
+    if (b.id === selectedId) {
+      return 1
+    }
+    return 0
+  }
+
+function modelMatchesSearch(option: ModelOption, search: string) {
+  const query = search.trim().toLowerCase()
+  if (!query) {
+    return true
+  }
+  return [option.name, option.id, option.ownedBy].some((candidate) =>
+    candidate.toLowerCase().includes(query)
+  )
+}
+
+function uniqueModelsById(options: ModelOption[]) {
+  const seen = new Set<string>()
+  const unique: ModelOption[] = []
+  for (const option of options) {
+    if (seen.has(option.id)) {
+      continue
+    }
+    seen.add(option.id)
+    unique.push(option)
+  }
+  return unique
+}
 
 interface AgentFormProps {
   defaultModel: string
@@ -70,6 +112,8 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
   const [name, setName] = useState(initial?.name ?? '')
   const [identity, setIdentity] = useState(initial?.identity ?? '')
   const [instructions, setInstructions] = useState(initial?.instructions ?? '')
+  const [modelDialogOpen, setModelDialogOpen] = useState(false)
+  const [modelSearch, setModelSearch] = useState('')
   // Default model falls back to the gateway's first id if our preferred
   // default isn't in the filtered list. Empty list (fallback mode) is
   // handled by rendering a single passthrough option.
@@ -90,20 +134,54 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
   const isEdit = Boolean(initial?.id)
   const submitLabel = isEdit ? 'Save changes' : 'Create agent'
 
-  // Group models by `ownedBy` so the <select> is browseable. Order is
-  // alphabetical within each group; the gateway already returned them
-  // sorted that way but we don't rely on it here.
-  const grouped = models.reduce<Record<string, ModelOption[]>>((acc, m) => {
-    const key = m.ownedBy
-    let group = acc[key]
-    if (!group) {
-      group = []
-      acc[key] = group
+  const availableModels = uniqueModelsById(
+    models.length > 0
+      ? models
+      : [
+          {
+            contextWindow: 0,
+            id: defaultModel,
+            name: defaultModel,
+            ownedBy: 'gateway',
+          },
+        ]
+  )
+  const selectedModel =
+    availableModels.find((option) => option.id === model) ?? availableModels[0]
+
+  const sortedModels = useMemo(
+    () => [...availableModels].sort(selectedModelSort(model)),
+    [availableModels, model]
+  )
+  const visibleModels = useMemo(
+    () =>
+      sortedModels.filter((option) => modelMatchesSearch(option, modelSearch)),
+    [sortedModels, modelSearch]
+  )
+
+  // Group models by provider so a searchable command menu stays scannable.
+  const grouped = visibleModels.reduce<Record<string, ModelOption[]>>(
+    (acc, option) => {
+      const key = option.ownedBy
+      let group = acc[key]
+      if (!group) {
+        group = []
+        acc[key] = group
+      }
+      group.push(option)
+      return acc
+    },
+    {}
+  )
+  const ownedByKeys = Object.keys(grouped).sort((a, b) => {
+    if (a === selectedModel?.ownedBy) {
+      return -1
     }
-    group.push(m)
-    return acc
-  }, {})
-  const ownedByKeys = Object.keys(grouped).sort()
+    if (b === selectedModel?.ownedBy) {
+      return 1
+    }
+    return a.localeCompare(b)
+  })
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -225,30 +303,98 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
       <div className="grid gap-3 border-foreground border-b-2 pb-8 md:grid-cols-[12rem_minmax(0,1fr)]">
         <Label htmlFor="agent-model">Model</Label>
         <div className="flex flex-col gap-2">
-          <Select onValueChange={setModel} value={model}>
-            <SelectTrigger id="agent-model">
-              <SelectValue placeholder="Select a model" />
-            </SelectTrigger>
-            <SelectContent>
-              {ownedByKeys.length === 0 ? (
-                <SelectItem value={defaultModel}>{defaultModel}</SelectItem>
-              ) : (
-                ownedByKeys.map((ownedBy) => (
-                  <SelectGroup key={ownedBy}>
-                    <SelectLabel>{ownedBy}</SelectLabel>
-                    {grouped[ownedBy].map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        <span className="font-medium">{m.name}</span>
-                        <span className="ml-2 text-muted-foreground text-xs">
-                          {(m.contextWindow / 1000).toFixed(0)}k ctx
+          <Button
+            aria-expanded={modelDialogOpen}
+            aria-haspopup="dialog"
+            className="h-auto min-h-11 w-full justify-between gap-4 whitespace-normal px-3 py-2 text-left normal-case tracking-normal"
+            id="agent-model"
+            onClick={() => {
+              setModelSearch('')
+              setModelDialogOpen(true)
+            }}
+            type="button"
+            variant="outline"
+          >
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="truncate font-medium text-sm">
+                {selectedModel?.name ?? 'Select a model'}
+              </span>
+              {selectedModel ? (
+                <span className="truncate text-muted-foreground text-xs">
+                  {selectedModel.id}
+                </span>
+              ) : null}
+            </span>
+            <ChevronsUpDownIcon className="size-4 shrink-0 opacity-50" />
+          </Button>
+          <CommandDialog
+            className="border-2 border-foreground sm:max-w-2xl"
+            commandProps={{
+              shouldFilter: false,
+            }}
+            description="Search models by name, id, or provider."
+            onOpenChange={(open) => {
+              setModelDialogOpen(open)
+              if (!open) {
+                setModelSearch('')
+              }
+            }}
+            open={modelDialogOpen}
+            showHeader
+            title="Select model"
+          >
+            <CommandInput
+              onValueChange={setModelSearch}
+              placeholder="Search models..."
+              value={modelSearch}
+            />
+            <CommandList className="max-h-[60vh] pr-1">
+              <CommandEmpty>No models found.</CommandEmpty>
+              {ownedByKeys.map((ownedBy) => (
+                <CommandGroup heading={ownedBy} key={ownedBy} value={ownedBy}>
+                  {grouped[ownedBy].map((option) => (
+                    <CommandItem
+                      className="data-[selected=true]:[&_span]:text-accent-foreground data-[selected=true]:[&_svg]:text-accent-foreground"
+                      key={option.id}
+                      onSelect={(selectedId) => {
+                        setModel(selectedId)
+                        setModelDialogOpen(false)
+                      }}
+                      value={option.id}
+                    >
+                      <CheckIcon
+                        className={cn(
+                          'size-4 text-current',
+                          model === option.id ? 'opacity-100' : 'opacity-0'
+                        )}
+                      />
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate font-medium">
+                          {option.name}
                         </span>
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                ))
-              )}
-            </SelectContent>
-          </Select>
+                        <span className="truncate text-muted-foreground text-xs">
+                          {option.id}
+                        </span>
+                      </span>
+                      <span className="shrink-0 border border-border px-1.5 py-0.5 font-bold text-[10px] text-muted-foreground uppercase tracking-[0.14em]">
+                        {option.ownedBy}
+                      </span>
+                      {model === option.id ? (
+                        <span className="shrink-0 border border-current px-1.5 py-0.5 font-bold text-[10px] uppercase tracking-[0.14em]">
+                          Current
+                        </span>
+                      ) : null}
+                      {option.contextWindow > 0 ? (
+                        <span className="mr-2 shrink-0 text-muted-foreground text-xs">
+                          {(option.contextWindow / 1000).toFixed(0)}k ctx
+                        </span>
+                      ) : null}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              ))}
+            </CommandList>
+          </CommandDialog>
           <p className="text-muted-foreground text-xs">
             Routed through the Vercel AI Gateway. Filtered to models that
             support tool calling.
