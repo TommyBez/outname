@@ -12,8 +12,10 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'agents',
-  description: 'A minimal multi-agent platform.',
+  metadataBase: new URL('https://outna.me'),
+  title: 'OUTNA.ME | Personal AI agents that keep working',
+  description:
+    'OUTNA.ME helps you create personal AI agents with memory, schedules, tools, and sandboxed execution.',
 }
 
 export const viewport: Viewport = {
