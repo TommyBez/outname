@@ -121,3 +121,35 @@ Biome's linter will catch most issues automatically. Focus your attention on:
 ---
 
 Most formatting and common issues are automatically fixed by Biome. Run `pnpm dlx ultracite fix` before committing to ensure compliance.
+
+---
+
+## Cursor Cloud specific instructions
+
+### Services overview
+
+This is a single Next.js 16 application (not a monorepo). The dev server is the only service needed locally.
+
+- **Dev server**: `pnpm dev` → http://localhost:3000
+- **Database**: Remote Neon Postgres via `DATABASE_URL` (no local DB required)
+- **Lint**: `pnpm check` (Ultracite/Biome)
+- **Format**: `pnpm fix` (auto-fix lint/format issues)
+
+### Environment variables
+
+Required secrets are injected automatically. A `.env.local` must exist for Next.js to read them at runtime. Create it with:
+
+```
+DATABASE_URL=<from env>
+BETTER_AUTH_SECRET=<from env>
+BETTER_AUTH_URL=http://localhost:3000
+CONNECTION_ENCRYPTION_KEY=<from env>
+AI_GATEWAY_API_KEY=<from env>
+```
+
+### Known caveats
+
+- **Auth is single-user** with sign-up disabled. The test user is pre-seeded in the database. Use `TEST_USER_EMAIL` and `TEST_USER_PASSWORD` env vars to log in.
+- **Vercel Workflow, Sandbox, and AI Gateway** are Vercel platform services. Agent sessions, sandboxes, and heartbeat loops require a Vercel deployment to work fully. Locally, the UI and CRUD operations work but autonomous agent execution does not.
+- **`drizzle-kit push`** requires a TTY for confirmation prompts. Use `drizzle-kit push --force` or run interactively if schema changes are needed.
+- **No automated test suite** exists in this repo currently. Testing is manual via the UI.
