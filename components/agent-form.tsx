@@ -54,8 +54,8 @@ const selectedModelSort =
     return 0
   }
 
-function modelSearchValue(option: ModelOption) {
-  return `${option.name} ${option.id} ${option.ownedBy}`.toLowerCase()
+function modelSearchKeywords(option: ModelOption) {
+  return [option.name, option.ownedBy]
 }
 
 interface AgentFormProps {
@@ -139,7 +139,15 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
     },
     {}
   )
-  const ownedByKeys = Object.keys(grouped).sort()
+  const ownedByKeys = Object.keys(grouped).sort((a, b) => {
+    if (a === selectedModel?.ownedBy) {
+      return -1
+    }
+    if (b === selectedModel?.ownedBy) {
+      return 1
+    }
+    return a.localeCompare(b)
+  })
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -281,8 +289,15 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
           <CommandDialog
             className="border-2 border-foreground"
             commandProps={{
-              filter: (value: string, search: string) =>
-                value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0,
+              filter: (value: string, search: string, keywords?: string[]) => {
+                const query = search.toLowerCase()
+                const searchableValues = [value, ...(keywords ?? [])]
+                return searchableValues.some((candidate) =>
+                  candidate.toLowerCase().includes(query)
+                )
+                  ? 1
+                  : 0
+              },
             }}
             description="Search models by name, id, or provider."
             onOpenChange={setModelDialogOpen}
@@ -298,11 +313,12 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
                     <CommandItem
                       className="[&_span]:data-[selected=true]:text-accent-foreground"
                       key={option.id}
+                      keywords={modelSearchKeywords(option)}
                       onSelect={() => {
                         setModel(option.id)
                         setModelDialogOpen(false)
                       }}
-                      value={modelSearchValue(option)}
+                      value={option.id}
                     >
                       <CheckIcon
                         className={cn(
