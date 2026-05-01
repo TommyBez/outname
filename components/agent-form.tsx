@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { createAgentAction, updateAgentAction } from '@/lib/agent-actions'
 import type { ModelOption } from '@/lib/ai-gateway-models'
@@ -326,25 +326,33 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
               Pick one file at a time on smaller screens.
             </p>
           </div>
-          <Tabs
-            className="mt-1"
-            onValueChange={(value) =>
-              setActiveBootstrapFile(value as BootstrapFileValue)
-            }
-            value={activeBootstrapFile}
-          >
-            <TabsList className="hidden w-full grid-cols-4 md:grid">
-              <TabsTrigger value="identity-card">
-                Identity card (IDENTITY.md)
-              </TabsTrigger>
-              <TabsTrigger value="identity">Persona (SOUL.md)</TabsTrigger>
-              <TabsTrigger value="instructions">
-                Instructions (AGENTS.md)
-              </TabsTrigger>
-              <TabsTrigger value="user-profile">
-                User profile (USER.md)
-              </TabsTrigger>
-            </TabsList>
+          <div className="hidden gap-2 md:grid md:grid-cols-2 xl:grid-cols-4">
+            {BOOTSTRAP_FILE_OPTIONS.map((option) => {
+              const isActive = activeBootstrapFile === option.value
+              return (
+                <button
+                  aria-pressed={isActive}
+                  className={cn(
+                    'flex min-h-16 flex-col items-start justify-between gap-2 border-2 px-4 py-3 text-left transition-colors',
+                    isActive
+                      ? 'border-foreground bg-muted text-foreground'
+                      : 'border-border bg-background text-muted-foreground hover:bg-muted'
+                  )}
+                  key={option.value}
+                  onClick={() => setActiveBootstrapFile(option.value)}
+                  type="button"
+                >
+                  <span className="font-bold text-xs uppercase tracking-[0.14em]">
+                    {option.label}
+                  </span>
+                  <span className="font-mono text-[11px] tracking-normal">
+                    {option.fileName}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          <Tabs className="mt-3" value={activeBootstrapFile}>
             <TabsContent className="mt-3" value="identity-card">
               <Textarea
                 className="font-mono text-sm"
