@@ -15,7 +15,7 @@ export default function NotFound() {
           className="mt-8 inline-flex h-11 items-center gap-2 border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
           href="/"
         >
-          Back to today&apos;s briefing
+          Back home
           <span
             aria-hidden
             className="transition-transform group-hover:translate-x-0.5"
