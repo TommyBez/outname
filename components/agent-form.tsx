@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { createAgentAction, updateAgentAction } from '@/lib/agent-actions'
 import type { ModelOption } from '@/lib/ai-gateway-models'
@@ -42,6 +42,31 @@ const INTERVAL_OPTIONS = [
   { value: 720, label: 'Every 12 hours' },
   { value: 1440, label: 'Every day' },
 ] as const
+
+const BOOTSTRAP_FILE_OPTIONS = [
+  {
+    value: 'identity-card',
+    label: 'Identity card',
+    fileName: 'IDENTITY.md',
+  },
+  {
+    value: 'identity',
+    label: 'Persona',
+    fileName: 'SOUL.md',
+  },
+  {
+    value: 'instructions',
+    label: 'Instructions',
+    fileName: 'AGENTS.md',
+  },
+  {
+    value: 'user-profile',
+    label: 'User profile',
+    fileName: 'USER.md',
+  },
+] as const
+
+type BootstrapFileValue = (typeof BOOTSTRAP_FILE_OPTIONS)[number]['value']
 
 const selectedModelSort =
   (selectedId: string) => (a: ModelOption, b: ModelOption) => {
@@ -119,6 +144,8 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
   const [userProfile, setUserProfile] = useState(initial?.userProfile ?? '')
   const [modelDialogOpen, setModelDialogOpen] = useState(false)
   const [modelSearch, setModelSearch] = useState('')
+  const [activeBootstrapFile, setActiveBootstrapFile] =
+    useState<BootstrapFileValue>('identity-card')
   // Default model falls back to the gateway's first id if our preferred
   // default isn't in the filtered list. Empty list (fallback mode) is
   // handled by rendering a single passthrough option.
@@ -268,19 +295,64 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
               "These four files are inlined into the agent's system prompt on every event when present. IDENTITY.md is the quick persona card, SOUL.md is the deeper personality layer, AGENTS.md is the operating manual, and USER.md is the user profile. The agent can read them via read_memory, but only USER.md remains agent-maintained."
             }
           </p>
-          <Tabs className="mt-1" defaultValue="identity-card">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="identity-card">
-                Identity card (IDENTITY.md)
-              </TabsTrigger>
-              <TabsTrigger value="identity">Persona (SOUL.md)</TabsTrigger>
-              <TabsTrigger value="instructions">
-                Instructions (AGENTS.md)
-              </TabsTrigger>
-              <TabsTrigger value="user-profile">
-                User profile (USER.md)
-              </TabsTrigger>
-            </TabsList>
+          <div className="mb-3 flex flex-col gap-2 md:hidden">
+            <Label
+              className="font-bold text-xs uppercase tracking-[0.14em]"
+              htmlFor="bootstrap-file-view"
+            >
+              File view
+            </Label>
+            <Select
+              onValueChange={(value) =>
+                setActiveBootstrapFile(value as BootstrapFileValue)
+              }
+              value={activeBootstrapFile}
+            >
+              <SelectTrigger
+                className="w-full text-left normal-case tracking-normal"
+                id="bootstrap-file-view"
+              >
+                <SelectValue placeholder="Choose a bootstrap file" />
+              </SelectTrigger>
+              <SelectContent align="start" position="popper">
+                {BOOTSTRAP_FILE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {`${option.label} (${option.fileName})`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-muted-foreground text-xs">
+              Pick one file at a time on smaller screens.
+            </p>
+          </div>
+          <div className="hidden gap-2 md:grid md:grid-cols-2 xl:grid-cols-4">
+            {BOOTSTRAP_FILE_OPTIONS.map((option) => {
+              const isActive = activeBootstrapFile === option.value
+              return (
+                <button
+                  aria-pressed={isActive}
+                  className={cn(
+                    'flex min-h-16 flex-col items-start justify-between gap-2 border-2 px-4 py-3 text-left transition-colors',
+                    isActive
+                      ? 'border-foreground bg-muted text-foreground'
+                      : 'border-border bg-background text-muted-foreground hover:bg-muted'
+                  )}
+                  key={option.value}
+                  onClick={() => setActiveBootstrapFile(option.value)}
+                  type="button"
+                >
+                  <span className="font-bold text-xs uppercase tracking-[0.14em]">
+                    {option.label}
+                  </span>
+                  <span className="font-mono text-[11px] tracking-normal">
+                    {option.fileName}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          <Tabs className="mt-3" value={activeBootstrapFile}>
             <TabsContent className="mt-3" value="identity-card">
               <Textarea
                 className="font-mono text-sm"
