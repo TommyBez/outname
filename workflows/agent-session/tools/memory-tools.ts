@@ -87,12 +87,14 @@ export function createMemoryTools(ctx: MemoryToolsContext) {
         if (isReadOnlyForAgent(safe)) {
           return READ_ONLY_TOOL_ERROR
         }
-        return await editMemoryStep(agentId, pending, {
+        const result = await editMemoryStep(agentId, pending, {
           path: safe,
           oldString,
           newString,
           replaceAll: replaceAll ?? false,
         })
+        enqueueEdit(pending, safe, oldString, newString, replaceAll ?? false)
+        return result
       },
     }),
 
@@ -213,7 +215,6 @@ async function editMemoryStep(
       `edit_memory: oldString matches ${occurrences} times in ${path}. Provide a unique anchor or set replaceAll=true.`
     )
   }
-  enqueueEdit(pending, path, args.oldString, args.newString, args.replaceAll)
   return {
     ok: true as const,
     path,
