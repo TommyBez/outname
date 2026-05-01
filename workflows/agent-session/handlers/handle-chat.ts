@@ -13,7 +13,7 @@ import type { PendingWrites } from '../tools/pending-writes'
  * Chat event handler — runs inside the long-lived session workflow.
  *
  *   1. Boot both sandboxes for this event:
- *        - system (memory volume + persona files) — required, used by
+ *        - system (memory volume + bootstrap files) — required, used by
  *          composeSystemPrompt and the memory_* tools.
  *        - exec   (clean /workspace) — best-effort; if it fails we log
  *          and proceed so the agent can still answer text-only turns.

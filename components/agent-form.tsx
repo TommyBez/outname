@@ -84,8 +84,8 @@ interface AgentFormProps {
    * `agent.enabled` and stays unchanged by this form — toggle it
    * from the overview page.
    *
-   * `identity` and `instructions` are pre-filled from the most
-   * recent `pending_file_writes` row for SOUL.md / AGENTS.md (the
+   * `identity`, `instructions`, and `userProfile` are pre-filled from the most
+   * recent `pending_file_writes` row for SOUL.md / AGENTS.md / USER.md (the
    * UI's source of truth for what's effectively on disk). The
    * caller should pass empty strings on a brand-new agent — the
    * form treats those as "show the placeholders" and doesn't
@@ -96,6 +96,7 @@ interface AgentFormProps {
     name: string
     identity: string
     instructions: string
+    userProfile: string
     model: string
     heartbeatEnabled: boolean
     heartbeatIntervalMinutes: number
@@ -112,6 +113,7 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
   const [name, setName] = useState(initial?.name ?? '')
   const [identity, setIdentity] = useState(initial?.identity ?? '')
   const [instructions, setInstructions] = useState(initial?.instructions ?? '')
+  const [userProfile, setUserProfile] = useState(initial?.userProfile ?? '')
   const [modelDialogOpen, setModelDialogOpen] = useState(false)
   const [modelSearch, setModelSearch] = useState('')
   // Default model falls back to the gateway's first id if our preferred
@@ -200,6 +202,8 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
             identityOriginal: initial.identity,
             instructions,
             instructionsOriginal: initial.instructions,
+            userProfile,
+            userProfileOriginal: initial.userProfile,
             model,
             heartbeatEnabled,
             heartbeatIntervalMinutes: intervalMinutes,
@@ -213,6 +217,7 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
             name: trimmed,
             identity,
             instructions,
+            userProfile,
             model,
             heartbeatEnabled,
             heartbeatIntervalMinutes: intervalMinutes,
@@ -249,19 +254,22 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
 
       <div className="grid gap-3 border-foreground border-b-2 pb-8 md:grid-cols-[12rem_minmax(0,1fr)]">
         <div>
-          <Label>Persona files</Label>
+          <Label>Bootstrap files</Label>
         </div>
         <div>
           <p className="mb-4 max-w-2xl text-muted-foreground text-xs leading-relaxed">
             {
-              "These two files are inlined verbatim into the agent's system prompt on every event. They live in the agent's memory volume — the agent can read them via read_memory but its tools refuse to write or delete them. Save here flushes to disk on the next event."
+              "These files are inlined into the agent's system prompt on every event when present. SOUL.md and AGENTS.md are protected from agent writes; USER.md is a seed/correction surface the agent may later refine with memory tools."
             }
           </p>
           <Tabs className="mt-1" defaultValue="identity">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="identity">Identity (SOUL.md)</TabsTrigger>
               <TabsTrigger value="instructions">
                 Instructions (AGENTS.md)
+              </TabsTrigger>
+              <TabsTrigger value="user-profile">
+                User profile (USER.md)
               </TabsTrigger>
             </TabsList>
             <TabsContent className="mt-3" value="identity">
@@ -294,6 +302,22 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
               <p className="mt-2 text-muted-foreground text-xs">
                 Saved to <span className="font-mono">AGENTS.md</span> in the
                 agent&apos;s memory volume.
+              </p>
+            </TabsContent>
+            <TabsContent className="mt-3" value="user-profile">
+              <Textarea
+                className="font-mono text-sm"
+                id="agent-user-profile"
+                onChange={(e) => setUserProfile(e.target.value)}
+                placeholder={
+                  '## Basic Info\n- What to call me:\n- My timezone:\n\n## My World\n- Current projects, role, usual tasks.\n\n## Communication Style\n- I like:\n- I dislike:\n\n## Delivery Preferences\n- Formatting, language, code, or review preferences.\n\n## Hard Boundaries\n- Actions forbidden without explicit approval.'
+                }
+                rows={12}
+                value={userProfile}
+              />
+              <p className="mt-2 text-muted-foreground text-xs">
+                Seeds or corrects <span className="font-mono">USER.md</span>.
+                The agent can update this file as it learns stable facts.
               </p>
             </TabsContent>
           </Tabs>
