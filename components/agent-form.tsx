@@ -6,7 +6,7 @@ import { type FormEvent, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
-  Command,
+  CommandDialog,
   CommandEmpty,
   CommandGroup,
   CommandInput,
@@ -15,11 +15,6 @@ import {
 } from '@/components/ui/command'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
 import {
   Select,
   SelectContent,
@@ -81,7 +76,7 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
   const [name, setName] = useState(initial?.name ?? '')
   const [identity, setIdentity] = useState(initial?.identity ?? '')
   const [instructions, setInstructions] = useState(initial?.instructions ?? '')
-  const [modelPopoverOpen, setModelPopoverOpen] = useState(false)
+  const [modelDialogOpen, setModelDialogOpen] = useState(false)
   // Default model falls back to the gateway's first id if our preferred
   // default isn't in the filtered list. Empty list (fallback mode) is
   // handled by rendering a single passthrough option.
@@ -242,86 +237,77 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
       <div className="grid gap-3 border-foreground border-b-2 pb-8 md:grid-cols-[12rem_minmax(0,1fr)]">
         <Label htmlFor="agent-model">Model</Label>
         <div className="flex flex-col gap-2">
-          <Popover onOpenChange={setModelPopoverOpen} open={modelPopoverOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                aria-expanded={modelPopoverOpen}
-                className="h-auto min-h-11 w-full justify-between gap-4 whitespace-normal px-3 py-2 text-left normal-case tracking-normal"
-                id="agent-model"
-                role="combobox"
-                type="button"
-                variant="outline"
-              >
-                <span className="flex min-w-0 flex-col gap-0.5">
-                  <span className="truncate font-medium text-sm">
-                    {selectedModel?.name ?? 'Select a model'}
-                  </span>
-                  {selectedModel ? (
-                    <span className="truncate text-muted-foreground text-xs">
-                      {selectedModel.id}
-                    </span>
-                  ) : null}
+          <Button
+            aria-expanded={modelDialogOpen}
+            aria-haspopup="dialog"
+            className="h-auto min-h-11 w-full justify-between gap-4 whitespace-normal px-3 py-2 text-left normal-case tracking-normal"
+            id="agent-model"
+            onClick={() => setModelDialogOpen(true)}
+            type="button"
+            variant="outline"
+          >
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="truncate font-medium text-sm">
+                {selectedModel?.name ?? 'Select a model'}
+              </span>
+              {selectedModel ? (
+                <span className="truncate text-muted-foreground text-xs">
+                  {selectedModel.id}
                 </span>
-                <ChevronsUpDownIcon className="size-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent
-              align="start"
-              avoidCollisions={false}
-              className="w-(--radix-popover-trigger-width) border-2 border-foreground bg-popover p-0 shadow-lg"
-              side="bottom"
-            >
-              <Command className="bg-popover" defaultValue={model}>
-                <CommandInput placeholder="Search models..." />
-                <CommandList className="bg-popover pr-1">
-                  <CommandEmpty>No models found.</CommandEmpty>
-                  {ownedByKeys.map((ownedBy) => (
-                    <CommandGroup
-                      className="bg-popover"
-                      heading={ownedBy}
-                      key={ownedBy}
-                      value={ownedBy}
+              ) : null}
+            </span>
+            <ChevronsUpDownIcon className="size-4 shrink-0 opacity-50" />
+          </Button>
+          <CommandDialog
+            className="border-2 border-foreground"
+            description="Search models by name, id, or provider."
+            onOpenChange={setModelDialogOpen}
+            open={modelDialogOpen}
+            title="Select model"
+          >
+            <CommandInput placeholder="Search models..." />
+            <CommandList className="max-h-[60vh] pr-1">
+              <CommandEmpty>No models found.</CommandEmpty>
+              {ownedByKeys.map((ownedBy) => (
+                <CommandGroup heading={ownedBy} key={ownedBy} value={ownedBy}>
+                  {grouped[ownedBy].map((option) => (
+                    <CommandItem
+                      key={option.id}
+                      keywords={[option.name, option.ownedBy]}
+                      onSelect={() => {
+                        setModel(option.id)
+                        setModelDialogOpen(false)
+                      }}
+                      value={option.id}
                     >
-                      {grouped[ownedBy].map((option) => (
-                        <CommandItem
-                          key={option.id}
-                          keywords={[option.name, option.ownedBy]}
-                          onSelect={() => {
-                            setModel(option.id)
-                            setModelPopoverOpen(false)
-                          }}
-                          value={option.id}
-                        >
-                          <CheckIcon
-                            className={cn(
-                              'size-4',
-                              model === option.id ? 'opacity-100' : 'opacity-0'
-                            )}
-                          />
-                          <span className="flex min-w-0 flex-1 flex-col">
-                            <span className="truncate font-medium">
-                              {option.name}
-                            </span>
-                            <span className="truncate text-muted-foreground text-xs">
-                              {option.id}
-                            </span>
-                          </span>
-                          <span className="shrink-0 border border-border px-1.5 py-0.5 font-bold text-[10px] text-muted-foreground uppercase tracking-[0.14em]">
-                            {option.ownedBy}
-                          </span>
-                          {option.contextWindow > 0 ? (
-                            <span className="mr-2 shrink-0 text-muted-foreground text-xs">
-                              {(option.contextWindow / 1000).toFixed(0)}k ctx
-                            </span>
-                          ) : null}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
+                      <CheckIcon
+                        className={cn(
+                          'size-4',
+                          model === option.id ? 'opacity-100' : 'opacity-0'
+                        )}
+                      />
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate font-medium">
+                          {option.name}
+                        </span>
+                        <span className="truncate text-muted-foreground text-xs">
+                          {option.id}
+                        </span>
+                      </span>
+                      <span className="shrink-0 border border-border px-1.5 py-0.5 font-bold text-[10px] text-muted-foreground uppercase tracking-[0.14em]">
+                        {option.ownedBy}
+                      </span>
+                      {option.contextWindow > 0 ? (
+                        <span className="mr-2 shrink-0 text-muted-foreground text-xs">
+                          {(option.contextWindow / 1000).toFixed(0)}k ctx
+                        </span>
+                      ) : null}
+                    </CommandItem>
                   ))}
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
+                </CommandGroup>
+              ))}
+            </CommandList>
+          </CommandDialog>
           <p className="text-muted-foreground text-xs">
             Routed through the Vercel AI Gateway. Filtered to models that
             support tool calling.
