@@ -2,10 +2,12 @@
 
 import {
   Check,
+  FileText,
   MessageSquarePlus,
   MoreHorizontal,
   Pencil,
   Settings as SettingsIcon,
+  Sparkles,
   Trash2,
   X,
 } from 'lucide-react'
@@ -146,6 +148,30 @@ export function AgentSidebarWorkspace({
       <SidebarGroupContent>
         {isChatCapable ? (
           <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === `/agents/${agentId}/timeline`}
+                tooltip="Timeline"
+              >
+                <Link href={`/agents/${agentId}/timeline`}>
+                  <FileText aria-hidden />
+                  <span>Timeline</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === `/agents/${agentId}/dreams`}
+                tooltip="DREAMS"
+              >
+                <Link href={`/agents/${agentId}/dreams`}>
+                  <Sparkles aria-hidden />
+                  <span>DREAMS</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild

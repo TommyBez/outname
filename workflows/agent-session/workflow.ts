@@ -12,6 +12,22 @@ import {
 } from './steps/ticker-control'
 import { createPendingWrites, type PendingWrites } from './tools/pending-writes'
 
+type EventSource =
+  | { sourceType: 'chat'; sourceId: string }
+  | { sourceType: 'heartbeat'; sourceId: string | null }
+  | { sourceType: 'reflection'; sourceId: string | null }
+  | { sourceType: 'invocation'; sourceId: string | null }
+
+interface EventDispatchResult {
+  pending: PendingWrites
+  source: EventSource
+}
+
+const FALLBACK_SOURCE: EventSource = {
+  sourceType: 'heartbeat',
+  sourceId: null,
+}
+
 /**
  * Long-lived "session" workflow — one running run per `enabled = true`
  * agent.
@@ -58,48 +74,13 @@ export async function agentSessionWorkflow(input: {
         break
       }
 
-      // The handler returns the per-event queue on success; if it
-      // throws we still need to call endOfEvent with a fresh empty
-      // queue so the sandboxes release.
-      let pending: PendingWrites = createPendingWrites()
+      let result: EventDispatchResult = {
+        pending: createPendingWrites(),
+        source: FALLBACK_SOURCE,
+      }
 
       try {
-        if (event.type === 'chat') {
-          const result = await handleChat({
-            agentId,
-            conversationId: event.conversationId,
-            replyToken: event.replyToken,
-            uiMessages: event.uiMessages,
-          })
-          pending = result.pending
-        } else if (event.type === 'heartbeat') {
-          try {
-            const result = await handleHeartbeat({ agentId })
-            pending = result.pending
-          } finally {
-            // Always release the ticker, even if the handler threw —
-            // an unbroken handshake would freeze the heartbeat loop
-            // forever.
-            if (event.ack) {
-              await ackHeartbeat({ agentId, ack: event.ack })
-            }
-          }
-        } else if (event.type === 'invocation') {
-          // Phase 4: parent agent's `agent_<child>` tool call. The
-          // handler always replies on `event.replyTo` (success or
-          // failure) so the parent's `execute()` is unblocked even
-          // if this turn aborts mid-stream.
-          const result = await handleInvocation({
-            agentId,
-            input: event.input,
-            replyTo: event.replyTo,
-            parentRunId: event.parentRunId,
-            parentToolId: event.parentToolId,
-            callStack: event.callStack,
-            depth: event.depth,
-          })
-          pending = result.pending
-        }
+        result = await dispatchSessionEvent({ agentId, event })
       } catch (err) {
         // Handlers own their own per-run breadcrumbs (failed `runs` row
         // for heartbeat; nothing to persist for chat). We log here for
@@ -108,9 +89,128 @@ export async function agentSessionWorkflow(input: {
         console.error('[v0] agentSessionWorkflow: handler failed', err)
       }
 
-      await endOfEvent({ agentId, pending })
+      await endOfEvent({
+        agentId,
+        pending: result.pending,
+        source: result.source,
+      })
     }
   } finally {
     await stopTicker({ agentId, tickerRunId })
   }
+}
+
+async function dispatchSessionEvent(input: {
+  agentId: string
+  event: Exclude<SessionEvent, { type: 'shutdown' }>
+}): Promise<EventDispatchResult> {
+  const { agentId, event } = input
+  switch (event.type) {
+    case 'chat':
+      return await dispatchChatEvent({ agentId, event })
+    case 'heartbeat':
+      return await dispatchHeartbeatEvent({ agentId, event })
+    case 'reflection':
+      return await dispatchReflectionEvent({ agentId, event })
+    case 'invocation':
+      return await dispatchInvocationEvent({ agentId, event })
+    default: {
+      const _exhaustive: never = event
+      throw new Error(
+        `Unsupported session event: ${JSON.stringify(_exhaustive)}`
+      )
+    }
+  }
+}
+
+async function dispatchChatEvent(input: {
+  agentId: string
+  event: Extract<SessionEvent, { type: 'chat' }>
+}): Promise<EventDispatchResult> {
+  const { agentId, event } = input
+  const result = await handleChat({
+    agentId,
+    conversationId: event.conversationId,
+    replyToken: event.replyToken,
+    uiMessages: event.uiMessages,
+  })
+  return {
+    pending: result.pending,
+    source: { sourceType: 'chat', sourceId: event.conversationId },
+  }
+}
+
+async function dispatchHeartbeatEvent(input: {
+  agentId: string
+  event: Extract<SessionEvent, { type: 'heartbeat' }>
+}): Promise<EventDispatchResult> {
+  const { agentId, event } = input
+  try {
+    const result = await handleHeartbeat({
+      agentId,
+      manual: event.manual ?? false,
+      mode: 'normal',
+      scheduledAt: event.scheduledAt,
+    })
+    return {
+      pending: result.pending,
+      source: { sourceType: 'heartbeat', sourceId: result.runId },
+    }
+  } finally {
+    await ackIfNeeded({ agentId, ack: event.ack })
+  }
+}
+
+async function dispatchReflectionEvent(input: {
+  agentId: string
+  event: Extract<SessionEvent, { type: 'reflection' }>
+}): Promise<EventDispatchResult> {
+  const { agentId, event } = input
+  try {
+    const result = await handleHeartbeat({
+      agentId,
+      localDate: event.localDate,
+      manual: event.manual ?? false,
+      mode: 'reflection',
+      scheduledAt: event.scheduledAt,
+    })
+    return {
+      pending: result.pending,
+      source: { sourceType: 'reflection', sourceId: result.runId },
+    }
+  } finally {
+    await ackIfNeeded({ agentId, ack: event.ack })
+  }
+}
+
+async function dispatchInvocationEvent(input: {
+  agentId: string
+  event: Extract<SessionEvent, { type: 'invocation' }>
+}): Promise<EventDispatchResult> {
+  const { agentId, event } = input
+  // The handler always replies on `event.replyTo` (success or failure)
+  // so the parent's tool call is unblocked even if this turn aborts.
+  const result = await handleInvocation({
+    agentId,
+    callStack: event.callStack,
+    depth: event.depth,
+    input: event.input,
+    parentRunId: event.parentRunId,
+    parentToolId: event.parentToolId,
+    replyTo: event.replyTo,
+  })
+  return {
+    pending: result.pending,
+    source: { sourceType: 'invocation', sourceId: result.runId },
+  }
+}
+
+async function ackIfNeeded(input: {
+  ack?: string
+  agentId: string
+}): Promise<void> {
+  if (!input.ack) {
+    return
+  }
+  await ackHeartbeat({ agentId: input.agentId, ack: input.ack })
 }

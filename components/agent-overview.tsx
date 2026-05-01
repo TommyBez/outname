@@ -1,19 +1,10 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
-import { RunProgress } from '@/components/run-progress'
-import { RunResultView } from '@/components/run-result-view'
-import { RunStatus } from '@/components/run-status'
 import { TriggerButton } from '@/components/trigger-button'
 import { requireSession } from '@/lib/auth-guard'
-import {
-  getCachedAgentByIdForUser,
-  getCachedLatestRunForAgent,
-  getCachedRunResult,
-  getCachedRunsForAgent,
-} from '@/lib/data'
-import type { Agent, Run } from '@/lib/db/schema'
-import { formatDateTime, formatRelative } from '@/lib/format'
+import { getCachedAgentByIdForUser } from '@/lib/data'
+import type { Agent } from '@/lib/db/schema'
 
 /**
  * Stringify a heartbeat interval into a compact, human-readable label
@@ -69,17 +60,25 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
     <>
       <AgentOverviewHeader agent={agent} />
 
-      <section>
-        <Suspense fallback={<LastRunSkeleton />}>
-          <LastRunSection agentId={agent.id} />
-        </Suspense>
-      </section>
-
       <section className="py-12">
-        <h2 className="swiss-label mb-6 text-accent">06. History</h2>
-        <Suspense fallback={<HistorySkeleton />}>
-          <AgentHistorySection agentId={agent.id} />
-        </Suspense>
+        <h2 className="swiss-label mb-6 text-accent">05. Memory surfaces</h2>
+        <div className="grid gap-4 md:grid-cols-3">
+          <SurfaceCard
+            description="Read daily logs mirrored from the agent's memory volume."
+            href={`/agents/${agent.id}/timeline`}
+            title="Timeline"
+          />
+          <SurfaceCard
+            description="Review DREAMS.md and goal/task diffs from reflection."
+            href={`/agents/${agent.id}/dreams`}
+            title="DREAMS"
+          />
+          <SurfaceCard
+            description="Inspect every markdown file currently cached for the agent."
+            href={`/agents/${agent.id}/files`}
+            title="Files"
+          />
+        </div>
       </section>
     </>
   )
@@ -105,13 +104,27 @@ function AgentOverviewHeader({ agent }: { agent: Agent }) {
                 PAUSED
               </span>
             )}
+            {agent.reflectionEnabled ? (
+              <span>
+                · reflection every{' '}
+                {formatInterval(agent.reflectionIntervalMinutes)}
+              </span>
+            ) : (
+              <span>· reflection off</span>
+            )}
           </p>
           <h1 className="font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter md:text-7xl">
             {agent.name}
           </h1>
         </div>
         <div className="flex flex-wrap items-start gap-3 border-foreground border-l-2 pl-4 md:justify-end">
-          <TriggerButton agentId={agent.id} />
+          <TriggerButton agentId={agent.id} label="Heartbeat" />
+          <TriggerButton
+            agentId={agent.id}
+            label="Reflect"
+            mode="reflection"
+            variant="outline"
+          />
           <Link
             className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
             href={`/agents/${agent.id}/edit`}
@@ -130,105 +143,45 @@ function AgentOverviewHeader({ agent }: { agent: Agent }) {
           >
             Files
           </Link>
+          <Link
+            className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+            href={`/agents/${agent.id}/timeline`}
+          >
+            Timeline
+          </Link>
+          <Link
+            className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+            href={`/agents/${agent.id}/dreams`}
+          >
+            Dreams
+          </Link>
         </div>
       </div>
     </header>
   )
 }
 
-async function LastRunSection({ agentId }: { agentId: string }) {
-  const latest = await getCachedLatestRunForAgent(agentId)
+function SurfaceCard({
+  description,
+  href,
+  title,
+}: {
+  description: string
+  href: string
+  title: string
+}) {
   return (
-    <>
-      <div className="mb-8 flex items-baseline justify-between gap-4 border-foreground border-t-2 pt-6">
-        <h2 className="swiss-label text-accent">05. Last run</h2>
-        {latest && (
-          <Link
-            className="font-bold text-muted-foreground text-xs uppercase tracking-wider transition-colors hover:text-accent"
-            href={`/runs/${latest.id}`}
-          >
-            Open run →
-          </Link>
-        )}
-      </div>
-      <LastRunBody latest={latest} />
-    </>
-  )
-}
-
-async function LastRunBody({ latest }: { latest: Run | null }) {
-  if (!latest) {
-    return (
-      <p className="text-muted-foreground text-sm">
-        No runs yet. Trigger one manually to see results here.
+    <Link
+      className="group border-2 border-foreground p-5 transition-colors hover:bg-accent"
+      href={href}
+    >
+      <p className="font-black font-serif text-2xl uppercase leading-none tracking-tighter">
+        {title}
       </p>
-    )
-  }
-
-  if (latest.status === 'running') {
-    return <RunProgress key={latest.id} runId={latest.id} />
-  }
-
-  if (latest.status === 'failed') {
-    return (
-      <div className="flex flex-col gap-3">
-        <p className="inline-flex items-center gap-3 text-sm">
-          <span aria-hidden className="inline-block size-2 bg-destructive" />
-          <span className="text-destructive">Run failed</span>
-          <span className="text-muted-foreground">
-            · {formatDateTime(latest.startedAt)}
-          </span>
-        </p>
-        {latest.error && (
-          <pre className="max-h-64 overflow-auto border-2 border-border bg-muted p-4 font-mono text-muted-foreground text-xs">
-            {latest.error}
-          </pre>
-        )}
-      </div>
-    )
-  }
-
-  const result = await getCachedRunResult(latest.id)
-  return (
-    <div className="flex flex-col gap-6">
-      <p className="font-mono text-muted-foreground text-xs">
-        {formatDateTime(latest.startedAt)}
+      <p className="mt-3 text-muted-foreground text-sm leading-relaxed group-hover:text-foreground">
+        {description}
       </p>
-      <RunResultView content={result?.content ?? null} />
-    </div>
-  )
-}
-
-async function AgentHistorySection({ agentId }: { agentId: string }) {
-  const runs = await getCachedRunsForAgent(agentId, 20)
-
-  if (runs.length === 0) {
-    return <p className="text-muted-foreground text-sm">No runs yet.</p>
-  }
-
-  return (
-    <ul className="border-foreground border-y-2">
-      {runs.map((r) => (
-        <li key={r.id}>
-          <Link
-            className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-1 border-foreground border-b-2 py-4 transition-colors last:border-b-0 hover:bg-accent sm:grid-cols-[auto_1fr_auto] sm:gap-8 sm:px-3"
-            href={`/runs/${r.id}`}
-          >
-            <RunStatus
-              initialStatus={r.status as 'running' | 'completed' | 'failed'}
-              runId={r.id}
-              showTime={false}
-            />
-            <span className="min-w-0 truncate font-mono text-muted-foreground text-xs">
-              {r.id}
-            </span>
-            <span className="col-start-2 font-mono text-muted-foreground text-xs sm:col-auto sm:text-right">
-              {formatRelative(r.startedAt)}
-            </span>
-          </Link>
-        </li>
-      ))}
-    </ul>
+    </Link>
   )
 }
 
@@ -248,37 +201,5 @@ function OverviewSkeleton() {
       <div className="mb-6 h-3 w-20 animate-pulse rounded-sm bg-muted" />
       <div className="h-48 w-full animate-pulse rounded-sm bg-muted" />
     </>
-  )
-}
-
-function LastRunSkeleton() {
-  return (
-    <>
-      <div className="mb-8 flex items-baseline justify-between gap-4">
-        <div className="h-3 w-16 animate-pulse rounded-sm bg-muted" />
-        <div className="h-3 w-20 animate-pulse rounded-sm bg-muted" />
-      </div>
-      <div className="flex flex-col gap-3">
-        <div className="h-4 w-36 animate-pulse rounded-sm bg-muted" />
-        <div className="h-24 w-full animate-pulse rounded-sm bg-muted" />
-      </div>
-    </>
-  )
-}
-
-function HistorySkeleton() {
-  return (
-    <div className="flex flex-col gap-3 border-border border-y py-3">
-      {[0, 1, 2].map((index) => (
-        <div
-          className="grid grid-cols-[auto_1fr_auto] items-center gap-4 px-2 py-3"
-          key={index}
-        >
-          <div className="h-4 w-20 animate-pulse rounded-sm bg-muted" />
-          <div className="h-3 w-32 animate-pulse rounded-sm bg-muted" />
-          <div className="h-3 w-20 animate-pulse rounded-sm bg-muted" />
-        </div>
-      ))}
-    </div>
   )
 }

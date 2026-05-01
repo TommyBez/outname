@@ -5,6 +5,7 @@ import type { UIMessage } from 'ai'
  *
  * - `chat` — user turn; `replyToken` namespaces streamed chunks for the route.
  * - `heartbeat` — ticker or manual trigger; optional `ack` so the ticker knows the run finished.
+ * - `reflection` — ticker or manual reflection pass; same ack contract.
  * - `invocation` — Phase 4: a parent agent's `agent_<child>` tool call.
  *   Carries the parent's free-text instruction, an ephemeral
  *   `replyTo` token used to deliver the result back, and the
@@ -22,6 +23,16 @@ export type SessionEvent =
   | {
       type: 'heartbeat'
       ack?: string
+      mode?: 'normal'
+      manual?: boolean
+      scheduledAt?: string
+    }
+  | {
+      type: 'reflection'
+      ack?: string
+      localDate: string
+      manual?: boolean
+      scheduledAt?: string
     }
   | {
       type: 'invocation'

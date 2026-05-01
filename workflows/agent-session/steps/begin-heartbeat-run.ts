@@ -7,12 +7,10 @@ import { runs } from '@/lib/db/schema'
 /**
  * Insert the `runs` row for a heartbeat-driven invocation.
  *
- * Phase 1 keeps the existing `runs` schema and the `/runs` UI working
- * unchanged — every heartbeat produces one row whose lifecycle
+ * Every heartbeat/reflection produces one internal row whose lifecycle
  * (`running` → `completed`/`failed`) is owned by the existing
  * `finalizeRun` step. We backfill `workflowRunId` with the current
- * session workflow's runtime id so the `/runs/:runId/stream` route can
- * still resolve the workflow and surface live progress.
+ * session workflow's runtime id for low-level observability.
  *
  * Returns the freshly generated internal run id; the heartbeat handler
  * threads it through every downstream step (init-run, prepare-brief,
@@ -28,9 +26,9 @@ export async function beginHeartbeatRun(input: {
   // `getWorkflowMetadata()` is available inside step functions and
   // returns the runtime id of the *currently executing* workflow run —
   // for us, the long-lived session run. Wiring it into the runs row's
-  // `workflowRunId` lets the existing /runs stream route resolve a
-  // namespace under the session workflow without us having to thread
-  // the value down from the workflow body.
+  // `workflowRunId` ties this short event to the long-lived session
+  // workflow without us having to thread the value down from the
+  // workflow body.
   let workflowRunId: string | null = null
   try {
     workflowRunId = getWorkflowMetadata().workflowRunId

@@ -3,8 +3,12 @@ import { and, desc, eq } from 'drizzle-orm'
 import { getWritable } from 'workflow'
 import { startupExecSandbox, startupSystemSandbox } from '@/lib/agent-sandbox'
 import { db } from '@/lib/db'
-import { runs } from '@/lib/db/schema'
-import { buildAgent, buildHeartbeatKickoff } from '../agent-factory'
+import { agent as agentTable, runs } from '@/lib/db/schema'
+import {
+  buildAgent,
+  buildHeartbeatKickoff,
+  buildReflectionKickoff,
+} from '../agent-factory'
 import { beginHeartbeatRun } from '../steps/begin-heartbeat-run'
 import { drainPendingWrites } from '../steps/drain-pending-writes'
 import { finalizeRun } from '../steps/finalize-run'
@@ -20,7 +24,7 @@ import type { PendingWrites } from '../tools/pending-writes'
  *
  *   1. `beginHeartbeatRun` — insert a `runs` row, return its id.
  *   2. `initRun` — emit the canonical `started` event onto
- *      `events:${runId}` so `/runs/:runId/stream` lights up.
+ *      `events:${runId}` for workflow-level observability.
  *   3. Look up the previous successful heartbeat completion (best
  *      effort, just for the kickoff prompt).
  *   4. Boot both sandboxes — system is required (system prompt),
@@ -41,8 +45,13 @@ import type { PendingWrites } from '../tools/pending-writes'
  */
 export async function handleHeartbeat(input: {
   agentId: string
-}): Promise<{ pending: PendingWrites }> {
+  localDate?: string
+  manual?: boolean
+  mode?: 'normal' | 'reflection'
+  scheduledAt?: string
+}): Promise<{ pending: PendingWrites; runId: string }> {
   const { agentId } = input
+  const mode = input.mode ?? 'normal'
 
   const { runId } = await beginHeartbeatRun({ agentId })
 
@@ -56,7 +65,10 @@ export async function handleHeartbeat(input: {
   try {
     await initRun(runId)
 
-    const previousIso = await readPreviousHeartbeatCompletion(agentId)
+    const previousIso =
+      mode === 'reflection'
+        ? await readPreviousReflectionCompletion(agentId)
+        : await readPreviousHeartbeatCompletion(agentId)
 
     await startupSystemSandbox({ agentId })
     await startupExecSandbox({ agentId }).catch((err) => {
@@ -76,20 +88,35 @@ export async function handleHeartbeat(input: {
       currentRunId: runId,
     })
 
-    const kickoff = buildHeartbeatKickoff({
-      nowIso: new Date().toISOString(),
-      previousIso,
-    })
+    const nowIso = input.scheduledAt ?? new Date().toISOString()
+    const kickoff =
+      mode === 'reflection'
+        ? buildReflectionKickoff({
+            localDate: input.localDate ?? nowIso.slice(0, 10),
+            manual: input.manual ?? false,
+            nowIso,
+            previousIso,
+          })
+        : buildHeartbeatKickoff({
+            nowIso,
+            previousIso,
+          })
 
     await agent.stream({
       messages: [{ role: 'user', content: kickoff }],
       writable,
-      maxSteps: 60,
+      maxSteps: mode === 'reflection' ? 80 : 60,
     })
 
     await finalizeRun(runId, 'completed')
+    if (mode === 'reflection') {
+      await markReflectionCompleted({
+        agentId,
+        localDate: input.localDate ?? nowIso.slice(0, 10),
+      })
+    }
 
-    return { pending }
+    return { pending, runId }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     await finalizeRun(runId, 'failed', message)
@@ -113,4 +140,31 @@ async function readPreviousHeartbeatCompletion(
     .orderBy(desc(runs.completedAt))
     .limit(1)
   return prev?.completedAt ? prev.completedAt.toISOString() : null
+}
+
+async function readPreviousReflectionCompletion(
+  agentId: string
+): Promise<string | null> {
+  'use step'
+  const [row] = await db
+    .select({ lastReflectionAt: agentTable.lastReflectionAt })
+    .from(agentTable)
+    .where(eq(agentTable.id, agentId))
+    .limit(1)
+  return row?.lastReflectionAt ? row.lastReflectionAt.toISOString() : null
+}
+
+async function markReflectionCompleted(input: {
+  agentId: string
+  localDate: string
+}): Promise<void> {
+  'use step'
+  await db
+    .update(agentTable)
+    .set({
+      lastReflectionAt: new Date(),
+      lastReflectionLocalDate: input.localDate,
+      updatedAt: new Date(),
+    })
+    .where(eq(agentTable.id, input.agentId))
 }

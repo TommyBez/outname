@@ -1,19 +1,28 @@
 import { createHash } from 'node:crypto'
 import type { Sandbox } from '@vercel/sandbox'
 import { and, eq } from 'drizzle-orm'
+import { revalidateTag } from 'next/cache'
 import {
   getExecSandbox,
   getSystemSandbox,
   releaseSandbox,
 } from '@/lib/agent-sandbox'
 import { SYSTEM_SANDBOX_ROOT } from '@/lib/agent-sandbox-registry'
+import { agentTag } from '@/lib/cache-tags'
 import { db } from '@/lib/db'
-import { agentFiles } from '@/lib/db/schema'
+import { agentFileChanges, agentFiles } from '@/lib/db/schema'
 import { stopAllToolSandboxesForRun } from '@/lib/tool-sandbox-runtime'
 import {
   flushPendingWrites,
   type PendingWrites,
+  readLiveMemory,
 } from '@/workflows/agent-session/tools/pending-writes'
+
+type EndOfEventSource =
+  | { sourceType: 'chat'; sourceId: string | null }
+  | { sourceType: 'heartbeat'; sourceId: string | null }
+  | { sourceType: 'reflection'; sourceId: string | null }
+  | { sourceType: 'invocation'; sourceId: string | null }
 
 /**
  * End-of-event handler.
@@ -39,6 +48,7 @@ import {
 export async function endOfEvent(input: {
   agentId: string
   pending: PendingWrites
+  source: EndOfEventSource
 }): Promise<void> {
   'use step'
 
@@ -54,6 +64,9 @@ export async function endOfEvent(input: {
     return
   }
 
+  const reviewPaths = collectReviewPaths(input.pending)
+  const beforeReviewContent = await readReviewFiles(systemSandbox, reviewPaths)
+
   try {
     await flushPendingWrites(systemSandbox, input.pending)
   } catch (err) {
@@ -61,7 +74,20 @@ export async function endOfEvent(input: {
   }
 
   try {
+    await persistReviewChanges({
+      agentId: input.agentId,
+      beforeByPath: beforeReviewContent,
+      paths: reviewPaths,
+      sandbox: systemSandbox,
+      source: input.source,
+    })
+  } catch (err) {
+    console.error('[v0] endOfEvent: persistReviewChanges failed', err)
+  }
+
+  try {
     await mirrorMemoryToDb(systemSandbox, input.agentId)
+    revalidateTag(agentTag(input.agentId), 'max')
   } catch (err) {
     console.error('[v0] endOfEvent: mirrorMemoryToDb failed', err)
   }
@@ -85,6 +111,78 @@ export async function endOfEvent(input: {
   // were spawned during this event so the next event boots fresh.
   // Errors are logged-and-swallowed inside the helper.
   await stopAllToolSandboxesForRun()
+}
+
+function collectReviewPaths(pending: PendingWrites): string[] {
+  const paths = new Set<string>()
+  for (const op of pending.ops) {
+    if (isReviewPath(op.path)) {
+      paths.add(op.path)
+    }
+  }
+  return Array.from(paths).sort()
+}
+
+function isReviewPath(path: string): boolean {
+  return (
+    path === 'DREAMS.md' ||
+    path === 'GOALS.md' ||
+    path === 'TASKS.md' ||
+    path.startsWith('logs/')
+  )
+}
+
+async function readReviewFiles(
+  sandbox: Sandbox,
+  paths: readonly string[]
+): Promise<Map<string, string | null>> {
+  const entries = await Promise.all(
+    paths.map(
+      async (path) => [path, await readLiveMemory(sandbox, path)] as const
+    )
+  )
+  return new Map(entries)
+}
+
+async function persistReviewChanges(input: {
+  agentId: string
+  beforeByPath: Map<string, string | null>
+  paths: readonly string[]
+  sandbox: Sandbox
+  source: EndOfEventSource
+}): Promise<void> {
+  for (const path of input.paths) {
+    const before = input.beforeByPath.get(path) ?? null
+    const after = await readLiveMemory(input.sandbox, path)
+    if (before === after) {
+      continue
+    }
+
+    await db.insert(agentFileChanges).values({
+      id: fileChangeId(),
+      agentId: input.agentId,
+      path,
+      sourceType: input.source.sourceType,
+      sourceId: input.source.sourceId,
+      beforeContent: before,
+      afterContent: after,
+      beforeSha256: before === null ? null : sha256(before),
+      afterSha256: after === null ? null : sha256(after),
+      createdAt: new Date(),
+    })
+  }
+}
+
+function fileChangeId(): string {
+  return (
+    'chg_' +
+    Math.random().toString(36).slice(2, 10) +
+    Date.now().toString(36).slice(-4)
+  )
+}
+
+function sha256(content: string): string {
+  return createHash('sha256').update(content).digest('hex')
 }
 
 async function mirrorMemoryToDb(

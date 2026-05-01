@@ -2,9 +2,8 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 import { AppShell } from '@/components/app-shell'
 import { requireSession } from '@/lib/auth-guard'
-import { getCachedAgentsForUser, getCachedLatestRunForAgent } from '@/lib/data'
-import type { Agent, Run } from '@/lib/db/schema'
-import { formatRelative } from '@/lib/format'
+import { getCachedAgentsForUser } from '@/lib/data'
+import type { Agent } from '@/lib/db/schema'
 
 export default function AgentsListPage() {
   return (
@@ -18,7 +17,8 @@ export default function AgentsListPage() {
             </h1>
           </div>
           <p className="max-w-xs border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
-            Each worker has its own model, schedule, memory, and run history.
+            Each worker has its own model, schedules, memory, and reflection
+            stream.
           </p>
           <Link
             className="inline-flex h-14 shrink-0 items-center justify-center self-start border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground md:self-auto"
@@ -40,15 +40,7 @@ async function AgentsListBody() {
   const session = await requireSession()
   const agents = await getCachedAgentsForUser(session.user.id)
 
-  // Parallelize latest-run lookups
-  const withLatest = await Promise.all(
-    agents.map(async (a) => ({
-      agent: a,
-      latest: await getCachedLatestRunForAgent(a.id),
-    }))
-  )
-
-  if (withLatest.length === 0) {
+  if (agents.length === 0) {
     return (
       <div className="swiss-dots border-2 border-foreground bg-muted p-8 md:p-12">
         <p className="font-black font-serif text-3xl uppercase leading-none tracking-tighter">
@@ -64,16 +56,16 @@ async function AgentsListBody() {
 
   return (
     <ul className="border-foreground border-y-2">
-      {withLatest.map(({ agent, latest }) => (
+      {agents.map((agent) => (
         <li key={agent.id}>
-          <AgentListRow agent={agent} latest={latest} />
+          <AgentListRow agent={agent} />
         </li>
       ))}
     </ul>
   )
 }
 
-function AgentListRow({ agent, latest }: { agent: Agent; latest: Run | null }) {
+function AgentListRow({ agent }: { agent: Agent }) {
   return (
     <Link
       className="group grid grid-cols-1 gap-4 border-foreground border-b-2 py-6 transition-colors last:border-b-0 hover:bg-accent md:grid-cols-[1fr_auto_auto] md:items-center md:gap-8 md:px-4"
@@ -93,7 +85,10 @@ function AgentListRow({ agent, latest }: { agent: Agent; latest: Run | null }) {
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-muted-foreground text-xs group-hover:text-foreground md:flex-col md:items-end md:gap-y-1">
-        <span>{latest ? formatRelative(latest.startedAt) : 'Never run'}</span>
+        <span>{agent.heartbeatEnabled ? 'Heartbeat on' : 'Heartbeat off'}</span>
+        <span>
+          {agent.reflectionEnabled ? 'Reflection on' : 'Reflection off'}
+        </span>
       </div>
       <span
         aria-hidden

@@ -77,6 +77,8 @@ interface CreateInput {
   instructions: string
   model: string
   name: string
+  reflectionEnabled: boolean
+  reflectionIntervalMinutes: number
 }
 
 export async function createAgentAction(
@@ -89,6 +91,9 @@ export async function createAgentAction(
     ? input.model
     : DEFAULT_MODEL_ID
   const heartbeatIntervalMinutes = clampInterval(input.heartbeatIntervalMinutes)
+  const reflectionIntervalMinutes = clampInterval(
+    input.reflectionIntervalMinutes
+  )
 
   const id = nanoid()
   const [created] = await db
@@ -101,6 +106,8 @@ export async function createAgentAction(
       enabled: true,
       heartbeatEnabled: input.heartbeatEnabled,
       heartbeatIntervalMinutes,
+      reflectionEnabled: input.reflectionEnabled,
+      reflectionIntervalMinutes,
     })
     .returning()
 
@@ -165,6 +172,8 @@ interface UpdateInput {
   instructionsOriginal: string
   model: string
   name: string
+  reflectionEnabled: boolean
+  reflectionIntervalMinutes: number
 }
 
 export async function updateAgentAction(input: UpdateInput): Promise<void> {
@@ -186,6 +195,9 @@ export async function updateAgentAction(input: UpdateInput): Promise<void> {
       ? input.model
       : existing.model
   const heartbeatIntervalMinutes = clampInterval(input.heartbeatIntervalMinutes)
+  const reflectionIntervalMinutes = clampInterval(
+    input.reflectionIntervalMinutes
+  )
 
   const [updated] = await db
     .update(agent)
@@ -194,6 +206,8 @@ export async function updateAgentAction(input: UpdateInput): Promise<void> {
       model,
       heartbeatEnabled: input.heartbeatEnabled,
       heartbeatIntervalMinutes,
+      reflectionEnabled: input.reflectionEnabled,
+      reflectionIntervalMinutes,
       updatedAt: new Date(),
     })
     .where(eq(agent.id, input.id))
@@ -228,10 +242,10 @@ export async function updateAgentAction(input: UpdateInput): Promise<void> {
     })
   }
 
-  // The ticker reads its interval / opt-in once on session boot, so
-  // mid-session schedule changes only take effect on the next restart.
-  // Poke a heartbeat so the user sees immediate feedback when they
-  // flip the switch.
+  // The ticker re-reads schedules on every loop. Poking a heartbeat
+  // gives immediate feedback when users change the normal proactive
+  // schedule; reflection changes wait for their own scheduler/manual
+  // trigger so they don't surprise users with a deep review run.
   if (
     updated.enabled &&
     (existing.heartbeatEnabled !== updated.heartbeatEnabled ||

@@ -25,9 +25,8 @@ import {
  *
  *   - No `conversationId` and no chat-message persistence — the
  *     parent's tool call IS the unit of conversation, not a UI thread.
- *   - Allocates its own `runs` row so sub-agent calls show up in
- *     `/runs/...` for observability and the existing
- *     `/api/runs/[runId]/stream` route can replay this run's chunks.
+ *   - Allocates its own `runs` row as an internal observability
+ *     breadcrumb for linked workflow runs.
  *   - Streams to a per-invocation namespace keyed by `replyTo` so a
  *     specific call's chunks are easy to isolate.
  *   - Calls `resumeHook(replyTo, { type: 'reply', ... })` exactly
@@ -49,7 +48,7 @@ export async function handleInvocation(input: {
   parentToolId?: string | null
   callStack: string[]
   depth: number
-}): Promise<{ pending: PendingWrites }> {
+}): Promise<{ pending: PendingWrites; runId: string }> {
   const {
     agentId,
     input: instruction,
@@ -137,7 +136,7 @@ export async function handleInvocation(input: {
     throw err
   }
 
-  return { pending }
+  return { pending, runId }
 }
 
 async function replyOnce(

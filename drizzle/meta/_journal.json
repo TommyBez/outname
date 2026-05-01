@@ -71,6 +71,13 @@
       "when": 1792080000000,
       "tag": "0009_tool_sandbox_snapshots",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792166400000,
+      "tag": "0010_reflection_loop",
+      "breakpoints": true
     }
   ]
 }

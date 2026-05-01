@@ -5,8 +5,7 @@ import { AppShell } from '@/components/app-shell'
 import { AgentCardSkeleton, RunResultSkeleton } from '@/components/skeletons'
 import { TodayDate } from '@/components/today-date'
 import { requireSession } from '@/lib/auth-guard'
-import { getCachedAgentsForUser, getCachedLatestRunForAgent } from '@/lib/data'
-import type { Agent } from '@/lib/db/schema'
+import { getCachedAgentsForUser } from '@/lib/data'
 
 export default function DashboardPage() {
   return (
@@ -78,17 +77,12 @@ async function AgentsList({ userId }: { userId: string }) {
       {agents.map((a) => (
         <li key={a.id}>
           <Suspense fallback={<AgentCardSkeleton />}>
-            <AgentCardContainer agent={a} />
+            <AgentTodayCard agent={a} />
           </Suspense>
         </li>
       ))}
     </ul>
   )
-}
-
-async function AgentCardContainer({ agent }: { agent: Agent }) {
-  const latest = await getCachedLatestRunForAgent(agent.id)
-  return <AgentTodayCard agent={agent} latestRun={latest} />
 }
 
 function DashboardContentFallback() {
