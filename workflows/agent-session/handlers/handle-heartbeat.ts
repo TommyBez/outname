@@ -32,8 +32,8 @@ import type { PendingWrites } from '../tools/pending-writes'
  *      exec is best-effort.
  *   5. Build the agent via `buildAgent` and stream it against the
  *      generic `buildHeartbeatKickoff` user message. The agent
- *      decides what to do based on its inlined AGENTS.md / SOUL.md
- *      and current memory inventory.
+ *      decides what to do based on its inlined AGENTS.md /
+ *      IDENTITY.md / SOUL.md and current memory inventory.
  *   6. `finalizeRun` — emit terminal progress breadcrumbs.
  *
  * Errors are caught and converted to failed breadcrumbs before

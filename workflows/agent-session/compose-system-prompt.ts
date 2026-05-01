@@ -38,6 +38,9 @@ const FOOTER = `## Platform invariants
   tools will refuse to write or delete them and return a structured
   read_only error. If a change is needed, ask the user to make it
   through the agent settings UI.
+- IDENTITY.md is also a user-owned bootstrap file. Your memory_* tools
+  will refuse to write or delete it; ask the user to edit it through
+  the agent settings UI.
 - USER.md is an eager user profile file when present. You may create
   or update it with memory tools when conversations reveal durable
   user preferences, identity, goals, or hard boundaries.
@@ -127,8 +130,9 @@ export async function composeSystemPrompt(
 
   const systemSandbox = await getSystemSandbox(agentId)
 
-  const [agentsMd, soulMd, userMd, livePaths] = await Promise.all([
+  const [agentsMd, identityMd, soulMd, userMd, livePaths] = await Promise.all([
     readLiveMemory(systemSandbox, 'AGENTS.md'),
+    readLiveMemory(systemSandbox, 'IDENTITY.md'),
     readLiveMemory(systemSandbox, 'SOUL.md'),
     readLiveMemory(systemSandbox, 'USER.md'),
     listLiveMemory(systemSandbox),
@@ -146,6 +150,11 @@ export async function composeSystemPrompt(
       content: agentsMd,
       heading: 'AGENTS.md (operational manual — read-only, managed by user)',
       path: 'AGENTS.md',
+    }),
+    renderEagerContext({
+      content: identityMd,
+      heading: 'IDENTITY.md (identity card — read-only, managed by user)',
+      path: 'IDENTITY.md',
     }),
     renderEagerContext({
       content: soulMd,

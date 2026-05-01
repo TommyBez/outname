@@ -232,14 +232,14 @@ export const agentFiles = pgTable(
  * Queue of UI-driven file writes that the next session event drains
  * into the agent's system sandbox before any handler runs.
  *
- * The memory tools refuse to write to `AGENTS.md` / `SOUL.md` — those
- * protected bootstrap files are user-owned. Edits made via the agent
- * settings UI (Identity / Instructions / User profile tabs) land here
- * as a row, and the `drainPendingWrites` step at the top of
- * `agentSessionWorkflow` applies them via `sandbox.writeFiles`,
- * bypassing the tool-layer block for protected files. `USER.md` is
- * included as a manual seed/correction path, while agent memory tools
- * may also update it.
+ * The memory tools refuse to write to `AGENTS.md`, `IDENTITY.md`, and
+ * `SOUL.md` — those protected bootstrap files are user-owned. Edits
+ * made via the agent settings UI (Identity card / Persona /
+ * Instructions / User profile tabs) land here as a row, and the
+ * `drainPendingWrites` step at the top of `agentSessionWorkflow`
+ * applies them via `sandbox.writeFiles`, bypassing the tool-layer
+ * block for protected files. `USER.md` is included as a manual
+ * seed/correction path, while agent memory tools may also update it.
  *
  * Rows are not deleted after application — `applied_at` is set so the
  * UI can show audit history later. The partial index narrows the

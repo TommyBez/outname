@@ -1,16 +1,37 @@
 /**
  * Eager context + protected-file policy — single source of truth.
  *
- * `AGENTS.md`, `SOUL.md`, and `USER.md` are injected into the system
- * prompt when present, but only AGENTS/SOUL are protected from agent
- * writes. `USER.md` is agent-maintained: the model should create and
- * refine it as conversations reveal stable user-profile facts.
+ * `AGENTS.md`, `IDENTITY.md`, `SOUL.md`, and `USER.md` are injected
+ * into the system prompt when present.
+ *
+ *   - `AGENTS.md` is seeded by the system on first sandbox boot with a
+ *     baseline template and later customized via pending writes.
+ *   - `IDENTITY.md` is a compact user-authored identity card. The seed
+ *     step bootstraps an empty file so every sandbox has a stable place
+ *     for it.
+ *   - `SOUL.md` is a deeper user-authored persona file.
+ *   - `USER.md` is an eager user profile that the agent may create and
+ *     refine as conversations reveal durable facts about the human it
+ *     serves.
+ *
+ * The agent itself MUST NOT modify `AGENTS.md`, `IDENTITY.md`, or
+ * `SOUL.md` at runtime. Centralising the sets in one module guarantees
+ * `write_memory`, `edit_memory`, and `delete_memory` cannot drift.
  */
-export const EAGER_CONTEXT_PATHS = ['AGENTS.md', 'SOUL.md', 'USER.md'] as const
+export const EAGER_CONTEXT_PATHS = [
+  'AGENTS.md',
+  'IDENTITY.md',
+  'SOUL.md',
+  'USER.md',
+] as const
 
 export type EagerContextPath = (typeof EAGER_CONTEXT_PATHS)[number]
 
-export const PROTECTED_CONTEXT_PATHS = ['AGENTS.md', 'SOUL.md'] as const
+export const PROTECTED_CONTEXT_PATHS = [
+  'AGENTS.md',
+  'IDENTITY.md',
+  'SOUL.md',
+] as const
 
 export type ProtectedContextPath = (typeof PROTECTED_CONTEXT_PATHS)[number]
 
@@ -39,5 +60,5 @@ export function isReadOnlyForAgent(path: string): boolean {
 export const READ_ONLY_TOOL_ERROR = {
   error: 'read_only' as const,
   message:
-    'SOUL.md and AGENTS.md are protected bootstrap files. The agent cannot modify them; ask the user to edit them via the agent settings UI.',
+    'AGENTS.md, IDENTITY.md, and SOUL.md are protected bootstrap files. The agent cannot modify them; ask the user to edit them via the agent settings UI.',
 }

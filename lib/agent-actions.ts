@@ -58,11 +58,11 @@ interface CreateInput {
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
   /**
-   * SOUL.md content authored via the "Identity" tab. Empty string
-   * means "don't seed an identity yet" — the persona file is left
-   * absent until the user fills it in later.
+   * IDENTITY.md content authored via the "Identity card" tab. Empty string
+   * means "keep the default empty identity card" — the seed step still
+   * creates the file so every agent has a stable injection point.
    */
-  identity: string
+  identityCard: string
   /**
    * AGENTS.md content authored via the "Instructions" tab. Empty
    * string means "use the default seed template" — the
@@ -74,6 +74,12 @@ interface CreateInput {
   name: string
   reflectionEnabled: boolean
   reflectionIntervalMinutes: number
+  /**
+   * SOUL.md content authored via the "Soul" tab. Empty string means
+   * "don't seed a deeper persona layer yet" — the file is left absent
+   * until the user fills it in later.
+   */
+  soul: string
   /**
    * USER.md seed/correction content from the "User profile" tab. Empty
    * string means "let the agent create it when it learns stable facts."
@@ -120,12 +126,20 @@ export async function createAgentAction(
   //
   // Normalize newlines on the way in so the first thing on disk
   // matches the convention used by the update path's no-op diff.
-  const identity = normalizeNewlines(input.identity).trim()
-  if (identity.length > 0) {
+  const identityCard = normalizeNewlines(input.identityCard).trim()
+  if (identityCard.length > 0) {
+    await enqueuePendingFileWrite({
+      agentId: id,
+      path: 'IDENTITY.md',
+      content: identityCard,
+    })
+  }
+  const soul = normalizeNewlines(input.soul).trim()
+  if (soul.length > 0) {
     await enqueuePendingFileWrite({
       agentId: id,
       path: 'SOUL.md',
-      content: identity,
+      content: soul,
     })
   }
   const instructions = normalizeNewlines(input.instructions).trim()
@@ -166,14 +180,14 @@ interface UpdateInput {
   heartbeatIntervalMinutes: number
   id: string
   /**
-   * SOUL.md content from the "Identity" tab. Empty string is a
+   * IDENTITY.md content from the "Identity" tab. Empty string is a
    * legal value — it means "leave whatever is on disk alone". The
    * action only enqueues a pending write if the operator wrote
    * something AND it differs from the prefill that was rendered.
    */
-  identity: string
-  /** Original SOUL.md content the form was rendered with. */
-  identityOriginal: string
+  identityCard: string
+  /** Original IDENTITY.md content the form was rendered with. */
+  identityCardOriginal: string
   /** AGENTS.md content from the "Instructions" tab. */
   instructions: string
   /** Original AGENTS.md content the form was rendered with. */
@@ -182,6 +196,10 @@ interface UpdateInput {
   name: string
   reflectionEnabled: boolean
   reflectionIntervalMinutes: number
+  /** SOUL.md content from the "Soul" tab. */
+  soul: string
+  /** Original SOUL.md content the form was rendered with. */
+  soulOriginal: string
   /** USER.md seed/correction content from the "User profile" tab. */
   userProfile: string
   /** Original USER.md content the form was rendered with. */
@@ -235,13 +253,22 @@ export async function updateAgentAction(input: UpdateInput): Promise<void> {
   // pairs — doesn't manufacture a phantom edit. We persist the
   // normalized content so disk and queue agree on a single line-ending
   // convention forever.
-  const identityNorm = normalizeNewlines(input.identity)
-  const identityOrigNorm = normalizeNewlines(input.identityOriginal)
-  if (identityNorm !== identityOrigNorm) {
+  const identityCardNorm = normalizeNewlines(input.identityCard)
+  const identityCardOrigNorm = normalizeNewlines(input.identityCardOriginal)
+  if (identityCardNorm !== identityCardOrigNorm) {
+    await enqueuePendingFileWrite({
+      agentId: input.id,
+      path: 'IDENTITY.md',
+      content: identityCardNorm,
+    })
+  }
+  const soulNorm = normalizeNewlines(input.soul)
+  const soulOrigNorm = normalizeNewlines(input.soulOriginal)
+  if (soulNorm !== soulOrigNorm) {
     await enqueuePendingFileWrite({
       agentId: input.id,
       path: 'SOUL.md',
-      content: identityNorm,
+      content: soulNorm,
     })
   }
   const instructionsNorm = normalizeNewlines(input.instructions)

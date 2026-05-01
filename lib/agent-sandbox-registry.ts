@@ -2,8 +2,9 @@
  * Per-role sandbox configuration. Phase 2 splits each agent's persistent
  * Vercel Sandbox into two roles:
  *
- *   - "system" — holds the agent's memory volume: AGENTS.md, SOUL.md,
- *     and the rest of the memory `*.md` files. Read on every event by
+ *   - "system" — holds the agent's memory volume: AGENTS.md, IDENTITY.md,
+ *     SOUL.md, and the rest of the memory `*.md` files. Read on every
+ *     event by
  *     `composeSystemPrompt`; written by the memory tool's pending-writes
  *     queue at end-of-event. Booted with a small fixed timeout because
  *     it never runs heavy work.
@@ -57,9 +58,10 @@ export const SANDBOX_CONFIGS: Record<SandboxRole, SandboxConfig> = {
 }
 
 /**
- * Persistent sandbox root inside the system sandbox. AGENTS.md, SOUL.md,
- * and every memory file the agent writes via the `memory_*` tools live
- * directly under this prefix (e.g. `/vercel/sandbox/journal.md`).
+ * Persistent sandbox root inside the system sandbox. AGENTS.md,
+ * IDENTITY.md, SOUL.md, and every memory file the agent writes via the
+ * `memory_*` tools live directly under this prefix (e.g.
+ * `/vercel/sandbox/journal.md`).
  *
  * This matches Phase 1's layout so the existing `agent_files` flush in
  * `endOfEvent` keeps working unchanged when pointed at the system

@@ -84,16 +84,18 @@ interface AgentFormProps {
    * `agent.enabled` and stays unchanged by this form — toggle it
    * from the overview page.
    *
-   * `identity`, `instructions`, and `userProfile` are pre-filled from the most
-   * recent `pending_file_writes` row for SOUL.md / AGENTS.md / USER.md (the
-   * UI's source of truth for what's effectively on disk). The
-   * caller should pass empty strings on a brand-new agent — the
-   * form treats those as "show the placeholders" and doesn't
-   * enqueue a write unless the operator actually types something.
+   * `identityCard`, `identity`, `instructions`, and `userProfile` are
+   * pre-filled from the most recent `pending_file_writes` row for
+   * IDENTITY.md / SOUL.md / AGENTS.md / USER.md (the UI's source of
+   * truth for what's effectively on disk). The caller should pass empty
+   * strings on a brand-new agent — the form treats those as "show the
+   * placeholders" and doesn't enqueue a write unless the operator
+   * actually types something.
    */
   initial?: {
     id: string
     name: string
+    identityCard: string
     identity: string
     instructions: string
     userProfile: string
@@ -111,6 +113,7 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
   const [pending, startTransition] = useTransition()
 
   const [name, setName] = useState(initial?.name ?? '')
+  const [identityCard, setIdentityCard] = useState(initial?.identityCard ?? '')
   const [identity, setIdentity] = useState(initial?.identity ?? '')
   const [instructions, setInstructions] = useState(initial?.instructions ?? '')
   const [userProfile, setUserProfile] = useState(initial?.userProfile ?? '')
@@ -198,8 +201,8 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
           await updateAgentAction({
             id: initial.id,
             name: trimmed,
-            identity,
-            identityOriginal: initial.identity,
+            identityCard,
+            identityCardOriginal: initial.identityCard,
             instructions,
             instructionsOriginal: initial.instructions,
             userProfile,
@@ -209,13 +212,15 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
             heartbeatIntervalMinutes: intervalMinutes,
             reflectionEnabled,
             reflectionIntervalMinutes,
+            soul: identity,
+            soulOriginal: initial.identity,
           })
           toast.success('Agent updated')
           router.refresh()
         } else {
           const result = await createAgentAction({
             name: trimmed,
-            identity,
+            identityCard,
             instructions,
             userProfile,
             model,
@@ -223,6 +228,7 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
             heartbeatIntervalMinutes: intervalMinutes,
             reflectionEnabled,
             reflectionIntervalMinutes,
+            soul: identity,
           })
           toast.success('Agent created')
           router.push(`/agents/${result.id}`)
@@ -259,12 +265,15 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
         <div>
           <p className="mb-4 max-w-2xl text-muted-foreground text-xs leading-relaxed">
             {
-              "These files are inlined into the agent's system prompt on every event when present. SOUL.md and AGENTS.md are protected from agent writes; USER.md is a seed/correction surface the agent may later refine with memory tools."
+              "These four files are inlined into the agent's system prompt on every event when present. IDENTITY.md is the quick persona card, SOUL.md is the deeper personality layer, AGENTS.md is the operating manual, and USER.md is the user profile. The agent can read them via read_memory, but only USER.md remains agent-maintained."
             }
           </p>
-          <Tabs className="mt-1" defaultValue="identity">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="identity">Identity (SOUL.md)</TabsTrigger>
+          <Tabs className="mt-1" defaultValue="identity-card">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="identity-card">
+                Identity card (IDENTITY.md)
+              </TabsTrigger>
+              <TabsTrigger value="identity">Persona (SOUL.md)</TabsTrigger>
               <TabsTrigger value="instructions">
                 Instructions (AGENTS.md)
               </TabsTrigger>
@@ -272,20 +281,36 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
                 User profile (USER.md)
               </TabsTrigger>
             </TabsList>
+            <TabsContent className="mt-3" value="identity-card">
+              <Textarea
+                className="font-mono text-sm"
+                id="agent-identity-card"
+                onChange={(e) => setIdentityCard(e.target.value)}
+                placeholder={
+                  'A compact first-impression card. Example:\nYou are ROOK.\nRole: snarky research associate + code reviewer\nVibe: Unreasonably cheerful, terminally online, but surprisingly wise.\nEmoji: 🐙\nSign-off: "Over and out, meatbag."'
+                }
+                rows={10}
+                value={identityCard}
+              />
+              <p className="mt-2 text-muted-foreground text-xs">
+                Saved to <span className="font-mono">IDENTITY.md</span> in the
+                agent&apos;s memory volume. Keep it short and scannable.
+              </p>
+            </TabsContent>
             <TabsContent className="mt-3" value="identity">
               <Textarea
                 className="font-mono text-sm"
                 id="agent-identity"
                 onChange={(e) => setIdentity(e.target.value)}
                 placeholder={
-                  'Voice, tone, name preferences, hobbies, anything that makes this agent feel like a specific person. Empty is fine — the agent will just present a generic helper persona.'
+                  'Deeper persona guidance: voice, tone, values, preferences, habits, and boundaries. Empty is fine — the agent will lean on IDENTITY.md plus its built-in defaults.'
                 }
                 rows={12}
                 value={identity}
               />
               <p className="mt-2 text-muted-foreground text-xs">
                 Saved to <span className="font-mono">SOUL.md</span> in the
-                agent&apos;s memory volume.
+                agent&apos;s memory volume for the long-form persona layer.
               </p>
             </TabsContent>
             <TabsContent className="mt-3" value="instructions">

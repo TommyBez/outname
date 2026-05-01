@@ -117,7 +117,7 @@ export async function buildAgent(
 /**
  * Heartbeat kickoff message — the seed user turn that triggers a
  * heartbeat run. Generic by design: every agent gets the same prompt
- * and decides what to do via its own AGENTS.md / SOUL.md.
+ * and decides what to do via its own AGENTS.md / IDENTITY.md / SOUL.md.
  */
 export function buildHeartbeatKickoff(args: {
   /** ISO timestamp the run began. */
@@ -135,8 +135,9 @@ export function buildHeartbeatKickoff(args: {
     `It is now ${args.nowIso}. This is your scheduled heartbeat.`,
     sinceClause,
     '',
-    'Follow your operational directives from AGENTS.md and your persona',
-    'from SOUL.md. Perform one small, useful heartbeat-sized action,',
+    'Follow your operational directives from AGENTS.md, your identity',
+    'card from IDENTITY.md, and your deeper persona from SOUL.md.',
+    'Perform one small, useful heartbeat-sized action,',
     'update memory as your directives require, append a brief bullet to',
     "today's log, then stop.",
   ].join('\n')

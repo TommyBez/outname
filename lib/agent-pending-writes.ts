@@ -28,6 +28,7 @@ import { type PendingFileWrite, pendingFileWrites } from '@/lib/db/schema'
 
 export const PENDING_BOOTSTRAP_PATHS = [
   'AGENTS.md',
+  'IDENTITY.md',
   'SOUL.md',
   'USER.md',
 ] as const
@@ -74,7 +75,8 @@ export async function enqueuePendingFileWrite(input: {
  *
  * Returns `null` if the user has never authored this path through
  * the UI. The form layer decides what default to show in that case
- * (empty for SOUL.md, the AGENTS.md seed template for AGENTS.md).
+ * (empty for IDENTITY.md / SOUL.md / USER.md, the AGENTS.md seed
+ * template for AGENTS.md).
  */
 export async function readLatestPendingFileWrite(input: {
   agentId: string
