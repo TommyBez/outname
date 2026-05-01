@@ -6,6 +6,7 @@ import { maybeGenerateConversationTitle } from '@/workflows/chat/steps/generate-
 import { persistAssistantTurn } from '@/workflows/chat/steps/persist-assistant-turn'
 import { buildAgent } from '../agent-factory'
 import { drainPendingWrites } from '../steps/drain-pending-writes'
+import { emitChatStatus } from '../steps/emit-chat-status'
 import type { PendingWrites } from '../tools/pending-writes'
 
 /**
@@ -55,6 +56,11 @@ export async function handleChat(input: {
     conversationId,
   })
   await startupSystemSandbox({ agentId })
+  await emitChatStatus({
+    message: 'Starting execution sandbox...',
+    phase: 'exec-sandbox',
+    replyToken,
+  })
   await startupExecSandbox({ agentId }).catch((err) => {
     // Don't kill the chat turn if the exec sandbox can't boot — the
     // agent can still answer text-only turns. The exec_* tools will
@@ -79,6 +85,11 @@ export async function handleChat(input: {
     model: meta.model,
   })
 
+  await emitChatStatus({
+    message: 'Connecting to the agent...',
+    phase: 'agent-stream',
+    replyToken,
+  })
   const [, result] = await Promise.all([
     maybeGenerateConversationTitle({
       agentId,

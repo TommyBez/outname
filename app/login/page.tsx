@@ -1,8 +1,15 @@
+import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import { auth } from '@/lib/auth'
+import { createPrivatePageMetadata } from '@/lib/site-metadata'
 import { LoginForm } from './login-form'
+
+export const metadata: Metadata = createPrivatePageMetadata(
+  'Sign in',
+  "Access your OUTNA.ME agents, schedules, tools, and today's run."
+)
 
 export default function LoginPage({
   searchParams,
