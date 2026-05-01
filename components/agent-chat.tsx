@@ -83,7 +83,7 @@ export function AgentChat({
         body: { conversationId },
       }),
       onData: (part) => {
-        if (part.type === CHAT_STATUS_PART_TYPE) {
+        if (isWorkflowStatusPart(part)) {
           setWorkflowStatus(part.data)
         }
       },
@@ -314,6 +314,25 @@ function hasVisibleAssistantContent(message: AgentChatMessage) {
       (typeof part.type === 'string' && part.type.startsWith('tool-'))
     )
   })
+}
+
+function isWorkflowStatusPart(part: {
+  data: unknown
+  type: string
+}): part is { data: WorkflowStatusData; type: typeof CHAT_STATUS_PART_TYPE } {
+  if (part.type !== CHAT_STATUS_PART_TYPE) {
+    return false
+  }
+  if (!(typeof part.data === 'object' && part.data !== null)) {
+    return false
+  }
+
+  const data = part.data as Partial<WorkflowStatusData>
+  return (
+    typeof data.message === 'string' &&
+    typeof data.phase === 'string' &&
+    typeof data.timestamp === 'string'
+  )
 }
 
 /**
