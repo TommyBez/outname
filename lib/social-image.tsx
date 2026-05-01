@@ -19,7 +19,7 @@ export const createSocialImageResponse = () =>
         height: '100%',
         justifyContent: 'space-between',
         overflow: 'hidden',
-        padding: 56,
+        padding: 48,
         position: 'relative',
         width: '100%',
       }}
@@ -45,7 +45,7 @@ export const createSocialImageResponse = () =>
           flex: 1,
           flexDirection: 'column',
           justifyContent: 'space-between',
-          padding: 44,
+          padding: 38,
           position: 'relative',
         }}
       >
@@ -67,7 +67,7 @@ export const createSocialImageResponse = () =>
               style={{
                 color: '#ff3000',
                 display: 'flex',
-                fontSize: 28,
+                fontSize: 24,
                 fontWeight: 900,
                 letterSpacing: '0.24em',
                 textTransform: 'uppercase',
@@ -78,7 +78,7 @@ export const createSocialImageResponse = () =>
             <div
               style={{
                 display: 'flex',
-                fontSize: 26,
+                fontSize: 24,
                 fontWeight: 700,
                 letterSpacing: '-0.02em',
               }}
@@ -92,12 +92,12 @@ export const createSocialImageResponse = () =>
               background: '#000000',
               color: '#ffffff',
               display: 'flex',
-              fontSize: 52,
+              fontSize: 42,
               fontWeight: 900,
-              height: 112,
+              height: 84,
               justifyContent: 'center',
               letterSpacing: '-0.08em',
-              width: 112,
+              width: 84,
             }}
           >
             ON
@@ -108,18 +108,18 @@ export const createSocialImageResponse = () =>
           style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: 26,
-            maxWidth: 880,
+            gap: 18,
+            maxWidth: 960,
           }}
         >
           <div
             style={{
               display: 'flex',
               flexDirection: 'column',
-              fontSize: 108,
+              fontSize: 76,
               fontWeight: 950,
               letterSpacing: '-0.085em',
-              lineHeight: 0.82,
+              lineHeight: 0.86,
               textTransform: 'uppercase',
             }}
           >
@@ -131,11 +131,11 @@ export const createSocialImageResponse = () =>
             style={{
               borderLeft: '8px solid #ff3000',
               display: 'flex',
-              fontSize: 34,
+              fontSize: 28,
               fontWeight: 700,
-              lineHeight: 1.15,
-              paddingLeft: 22,
-              width: 760,
+              lineHeight: 1.12,
+              paddingLeft: 20,
+              width: 800,
             }}
           >
             Create durable agents that remember context, return on schedule, and
@@ -154,10 +154,10 @@ export const createSocialImageResponse = () =>
             style={{
               borderTop: '4px solid #000000',
               display: 'flex',
-              fontSize: 64,
+              fontSize: 50,
               fontWeight: 950,
               letterSpacing: '-0.08em',
-              paddingTop: 14,
+              paddingTop: 12,
             }}
           >
             {siteConfig.name}
@@ -167,9 +167,9 @@ export const createSocialImageResponse = () =>
               alignItems: 'center',
               background: '#ff3000',
               display: 'flex',
-              fontSize: 24,
+              fontSize: 20,
               fontWeight: 900,
-              height: 60,
+              height: 52,
               justifyContent: 'center',
               letterSpacing: '0.18em',
               padding: '0 24px',
