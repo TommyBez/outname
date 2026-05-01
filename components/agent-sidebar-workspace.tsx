@@ -1,13 +1,14 @@
 'use client'
 
 import {
+  Brain,
   Check,
   FileText,
+  Info,
   MessageSquarePlus,
   MoreHorizontal,
   Pencil,
   Settings as SettingsIcon,
-  Sparkles,
   Trash2,
   X,
 } from 'lucide-react'
@@ -151,6 +152,30 @@ export function AgentSidebarWorkspace({
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
+                isActive={pathname === `/agents/${agentId}/about`}
+                tooltip="About"
+              >
+                <Link href={`/agents/${agentId}/about`}>
+                  <Info aria-hidden />
+                  <span>About</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === `/agents/${agentId}/edit`}
+                tooltip="Configure"
+              >
+                <Link href={`/agents/${agentId}/edit`}>
+                  <SettingsIcon aria-hidden />
+                  <span>Configure</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
                 isActive={pathname === `/agents/${agentId}/timeline`}
                 tooltip="Timeline"
               >
@@ -167,7 +192,7 @@ export function AgentSidebarWorkspace({
                 tooltip="DREAMS"
               >
                 <Link href={`/agents/${agentId}/dreams`}>
-                  <Sparkles aria-hidden />
+                  <Brain aria-hidden />
                   <span>DREAMS</span>
                 </Link>
               </SidebarMenuButton>
@@ -203,7 +228,23 @@ export function AgentSidebarWorkspace({
         ) : (
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Configure">
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === `/agents/${agentId}/about`}
+                tooltip="About"
+              >
+                <Link href={`/agents/${agentId}/about`}>
+                  <Info aria-hidden />
+                  <span>About</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === `/agents/${agentId}/edit`}
+                tooltip="Configure"
+              >
                 <Link href={`/agents/${agentId}/edit`}>
                   <SettingsIcon aria-hidden />
                   <span>Configure</span>

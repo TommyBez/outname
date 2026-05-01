@@ -40,12 +40,12 @@ export function TriggerButton({
         const body = await res.json().catch(() => ({ error: res.statusText }))
         throw new Error(body.error ?? `HTTP ${res.status}`)
       }
-      const { sessionRunId } = (await res.json()) as { sessionRunId: string }
+      const { sessionRunId } = (await res.json()) as { sessionRunId?: string }
       toast.success(
         mode === 'reflection' ? 'Reflection started' : 'Run started',
-        {
-          description: `Session ${sessionRunId.slice(0, 8)}`,
-        }
+        sessionRunId
+          ? { description: `Session ${sessionRunId.slice(0, 8)}` }
+          : undefined
       )
       startTransition(() => router.refresh())
     } catch (err) {
