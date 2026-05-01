@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { AppShell } from '@/components/app-shell'
@@ -9,6 +10,12 @@ import {
 import { listConnectors } from '@/connectors/registry'
 import { getSession, requireSession } from '@/lib/auth-guard'
 import { getCachedAgentsForUser, getCachedUserConnections } from '@/lib/data'
+import { createPrivatePageMetadata } from '@/lib/site-metadata'
+
+export const metadata: Metadata = createPrivatePageMetadata(
+  'Settings',
+  'Manage OUTNA.ME account settings, connected tools, and agent configuration.'
+)
 
 export default function SettingsPage({
   searchParams,
