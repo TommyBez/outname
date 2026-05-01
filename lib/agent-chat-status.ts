@@ -1,9 +1,10 @@
-import type { UIMessage } from 'ai'
+import type { UIMessage, UIMessageChunk } from 'ai'
 
 export const CHAT_STATUS_PART_ID = 'workflow-bootstrap' as const
 export const CHAT_STATUS_PART_TYPE = 'data-workflow-status' as const
 
 export const CHAT_STATUS_PHASES = [
+  'workflow-session',
   'system-sandbox',
   'exec-sandbox',
   'pending-writes',
@@ -24,3 +25,4 @@ export type AgentChatDataParts = Record<string, unknown> & {
 }
 
 export type AgentChatMessage = UIMessage<unknown, AgentChatDataParts>
+export type AgentChatChunk = UIMessageChunk<unknown, AgentChatDataParts>
