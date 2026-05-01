@@ -35,6 +35,11 @@ import {
   ToolOutput,
   type ToolPart,
 } from '@/components/ai-elements/tool'
+import {
+  type AgentChatMessage,
+  CHAT_STATUS_PART_TYPE,
+  type WorkflowStatusData,
+} from '@/lib/agent-chat-status'
 
 interface AgentChatProps {
   agentId: string
@@ -43,7 +48,7 @@ interface AgentChatProps {
    * on the first user message; for existing conversations it's the real
    * row id. */
   conversationId: string
-  initialMessages: UIMessage[]
+  initialMessages: AgentChatMessage[]
   /** When true, the chat was mounted at `/chat/new` with a candidate id
    * that the DB does not yet know about. On the first successful send
    * we swap the URL to the canonical `/chat/:id` route so a refresh
@@ -67,22 +72,31 @@ export function AgentChat({
   isDraft,
 }: AgentChatProps) {
   const [input, setInput] = useState('')
+  const [workflowStatus, setWorkflowStatus] =
+    useState<WorkflowStatusData | null>(null)
   const didPromoteDraftRef = useRef(false)
-  const { messages, sendMessage, status, error, stop } = useChat({
-    messages: initialMessages,
-    transport: new DefaultChatTransport({
-      api: `/api/agents/${agentId}/chat`,
-      body: { conversationId },
-    }),
-    onFinish: async () => {
-      // Ask the sidebar to refetch its own list so the new row + title
-      // appear. This replaces the previous `router.refresh()` call,
-      // which re-rendered the whole RSC tree under Next 16's cache
-      // components and could strand the freshly streamed assistant
-      // message out of view on soft navigation.
-      await revalidateConversations(agentId)
-    },
-  })
+  const { messages, sendMessage, status, error, stop } =
+    useChat<AgentChatMessage>({
+      messages: initialMessages,
+      transport: new DefaultChatTransport({
+        api: `/api/agents/${agentId}/chat`,
+        body: { conversationId },
+      }),
+      onData: (part) => {
+        if (part.type === CHAT_STATUS_PART_TYPE) {
+          setWorkflowStatus(part.data)
+        }
+      },
+      onFinish: async () => {
+        setWorkflowStatus(null)
+        // Ask the sidebar to refetch its own list so the new row + title
+        // appear. This replaces the previous `router.refresh()` call,
+        // which re-rendered the whole RSC tree under Next 16's cache
+        // components and could strand the freshly streamed assistant
+        // message out of view on soft navigation.
+        await revalidateConversations(agentId)
+      },
+    })
 
   // Draft → persisted URL swap. We do this in `history.replaceState`
   // instead of `router.replace` because the latter would unmount the
@@ -110,6 +124,16 @@ export function AgentChat({
   }, [agentId, conversationId, isDraft, messages.length])
 
   const isBusy = status === 'submitted' || status === 'streaming'
+  const showWorkflowStatus = isBusy && workflowStatus !== null
+
+  useEffect(() => {
+    if (!(workflowStatus && isBusy)) {
+      return
+    }
+    if (hasAssistantContentAfterLatestUser(messages)) {
+      setWorkflowStatus(null)
+    }
+  }, [isBusy, messages, workflowStatus])
 
   // PromptInput's onSubmit contract: AI Elements gathers files + the
   // textarea text and hands us a structured `PromptInputMessage`.
@@ -120,6 +144,7 @@ export function AgentChat({
     if (!text || isBusy) {
       return
     }
+    setWorkflowStatus(null)
     sendMessage({ text })
     setInput('')
   }
@@ -139,9 +164,14 @@ export function AgentChat({
               title="Start a conversation"
             />
           ) : (
-            messages.map((message) => (
-              <ChatMessage key={message.id} message={message} />
-            ))
+            <>
+              {messages.map((message) => (
+                <ChatMessage key={message.id} message={message} />
+              ))}
+              {showWorkflowStatus && (
+                <WorkflowStatusMessage status={workflowStatus} />
+              )}
+            </>
           )}
         </ConversationContent>
         <ConversationScrollButton />
@@ -239,6 +269,51 @@ function ChatMessage({ message }: { message: UIMessage }) {
       </MessageContent>
     </Message>
   )
+}
+
+function WorkflowStatusMessage({ status }: { status: WorkflowStatusData }) {
+  return (
+    <Message from="assistant">
+      <MessageContent>
+        <div className="flex items-center gap-2 border-2 border-border bg-muted/40 px-3 py-2 font-medium text-muted-foreground text-xs uppercase tracking-[0.12em]">
+          <span className="size-2 animate-pulse rounded-full bg-primary" />
+          <span>{status.message}</span>
+        </div>
+      </MessageContent>
+    </Message>
+  )
+}
+
+function hasAssistantContentAfterLatestUser(messages: AgentChatMessage[]) {
+  const latestUserIndex = messages.findLastIndex(
+    (message) => message.role === 'user'
+  )
+  if (latestUserIndex < 0) {
+    return false
+  }
+
+  return messages.slice(latestUserIndex + 1).some(hasVisibleAssistantContent)
+}
+
+function hasVisibleAssistantContent(message: AgentChatMessage) {
+  if (message.role !== 'assistant') {
+    return false
+  }
+
+  return message.parts.some((part) => {
+    if (part.type === 'text' || part.type === 'reasoning') {
+      return part.text.trim().length > 0
+    }
+
+    return (
+      part.type === 'dynamic-tool' ||
+      part.type === 'source-url' ||
+      part.type === 'source-document' ||
+      part.type === 'file' ||
+      part.type === 'step-start' ||
+      (typeof part.type === 'string' && part.type.startsWith('tool-'))
+    )
+  })
 }
 
 /**
