@@ -3,7 +3,7 @@
 import type { Variants } from 'motion/react'
 import { motion, useReducedMotion, useScroll, useTransform } from 'motion/react'
 import Link from 'next/link'
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { TextLoop } from '@/components/motion-primitives/text-loop'
 
 const featureCards = [
@@ -88,6 +88,60 @@ const capabilityRows = [
     name: 'Connected tools',
     detail: 'mail / calendar / agents',
     status: 'attached',
+  },
+] as const
+
+const workspaceTabs = ['Timeline', 'Memory', 'Tools', 'Files'] as const
+type WorkspaceTab = (typeof workspaceTabs)[number]
+type WriteStatus = 'pending' | 'approved' | 'edited' | 'rejected'
+
+const pendingWrites = [
+  {
+    id: 'decision',
+    label: 'Decision',
+    copy: 'Reschedule weekly review to Thursday after Luca confirms travel.',
+  },
+  {
+    id: 'memory',
+    label: 'Memory write',
+    copy: 'Prefers compact agenda summaries with exact source links.',
+  },
+] as const
+type PendingWriteId = (typeof pendingWrites)[number]['id']
+
+const initialWriteStatuses: Record<PendingWriteId, WriteStatus> = {
+  decision: 'pending',
+  memory: 'pending',
+}
+
+const executionLog = [
+  {
+    id: 'calendar',
+    time: '09:08',
+    label: 'Calendar checked',
+  },
+  {
+    id: 'mail',
+    time: '09:11',
+    label: 'Reply drafted',
+  },
+  {
+    id: 'approval',
+    time: '09:14',
+    label: 'Awaiting approval',
+  },
+] as const
+
+const fileReferences = [
+  {
+    id: 'agenda',
+    name: 'meeting-notes.md',
+    detail: '2 citations used',
+  },
+  {
+    id: 'thread',
+    name: 'luca-follow-up.eml',
+    detail: 'reply context',
   },
 ] as const
 
@@ -182,32 +236,38 @@ export function LandingHomePage() {
       <LandingNav />
 
       <section
-        className="relative min-h-dvh px-4 pt-28 pb-24 sm:px-6 md:px-10 lg:px-12"
+        className="relative min-h-dvh px-4 pt-24 pb-20 sm:px-6 sm:pt-28 md:px-10 lg:px-12"
         ref={heroRef}
       >
-        <div className="mx-auto grid w-full max-w-7xl gap-14">
+        <div className="mx-auto grid w-full max-w-7xl gap-10 lg:min-h-[calc(100dvh-7rem)] lg:grid-cols-[minmax(0,1fr)_minmax(22rem,36rem)] lg:items-end lg:gap-14">
           <motion.div
             animate={{ opacity: 1, y: 0 }}
-            className="max-w-5xl"
+            className="min-w-0 max-w-5xl"
             initial={shouldReduceMotion ? false : { opacity: 0, y: 30 }}
             transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
           >
-            <h1 className="max-w-none font-black font-serif text-[clamp(3.25rem,9vw,8.5rem)] uppercase leading-[0.78] tracking-tighter md:whitespace-nowrap">
-              <span>out</span>
-              <TextLoop
-                interval={1.8}
-                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                trigger={!shouldReduceMotion}
-              >
-                {heroLoopWords.map((word) => (
-                  <span key={word}>{word}</span>
-                ))}
-              </TextLoop>
+            <p className="swiss-label mb-5 text-accent">
+              <span>OUT</span>
+              <span aria-hidden>
+                <TextLoop
+                  className="ml-1"
+                  interval={1.8}
+                  transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                  trigger={!shouldReduceMotion}
+                >
+                  {heroLoopWords.map((word) => (
+                    <span key={word}>{word}</span>
+                  ))}
+                </TextLoop>
+              </span>
+            </p>
+            <h1 className="max-w-[11ch] text-wrap font-black font-serif text-[clamp(2.65rem,12vw,4.6rem)] uppercase leading-[0.82] tracking-tighter sm:text-[clamp(3.4rem,12vw,5.8rem)] md:max-w-[10ch] md:text-[clamp(4.9rem,10vw,7.2rem)] xl:max-w-none xl:text-[clamp(5.8rem,9vw,8.5rem)]">
+              Agents that work outside the chat box.
             </h1>
-            <div className="mt-10 grid gap-8 border-foreground border-t-4 pt-6 md:grid-cols-[minmax(0,42rem)_auto] md:items-start">
-              <div>
+            <div className="mt-10 grid min-w-0 gap-8 border-foreground border-t-4 pt-6 lg:grid-cols-[minmax(0,42rem)_auto] lg:items-start">
+              <div className="min-w-0">
                 <h2 className="text-balance font-black font-serif text-4xl uppercase leading-[0.86] tracking-tighter md:text-5xl">
-                  AI agents with a life outside the chat box.
+                  Memory, tools, schedule, and follow-through in one workspace.
                 </h2>
                 <p className="mt-5 text-pretty text-lg leading-relaxed md:text-xl">
                   OUTNA.ME lets you create personal agents that remember
@@ -215,7 +275,7 @@ export function LandingHomePage() {
                   finished work instead of another thread to manage.
                 </p>
               </div>
-              <div className="flex flex-col gap-3 sm:flex-row md:justify-end">
+              <div className="flex min-w-0 flex-col gap-3 sm:flex-row lg:justify-end">
                 <PrimaryLink href="/login?from=/today">
                   Create your first agent
                 </PrimaryLink>
@@ -227,7 +287,7 @@ export function LandingHomePage() {
           </motion.div>
 
           <motion.div
-            className="relative ml-auto w-full max-w-xl"
+            className="relative w-full min-w-0 max-w-xl lg:ml-auto"
             style={{ y: visualY }}
           >
             <motion.div
@@ -389,63 +449,7 @@ export function LandingHomePage() {
             </p>
           </motion.div>
 
-          <motion.div
-            className="mt-12 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]"
-            variants={staggerVariants}
-          >
-            <motion.div
-              className="border-2 border-foreground bg-foreground p-2 text-background"
-              variants={revealVariants}
-            >
-              <div className="min-h-112 border border-background/20 bg-foreground p-6 md:p-8">
-                <div className="flex flex-wrap items-center justify-between gap-4 border-background border-b-2 pb-5">
-                  <p className="swiss-label text-accent">OUTNA.ME workspace</p>
-                  <p className="font-mono text-background/70 text-xs">
-                    workflow://agent-session
-                  </p>
-                </div>
-                <div className="mt-8 grid gap-4">
-                  {capabilityRows.map((row) => (
-                    <div
-                      className="grid gap-3 border border-background/25 p-4 md:grid-cols-[minmax(0,1fr)_9rem_6rem] md:items-center"
-                      key={row.id}
-                    >
-                      <p className="font-black text-2xl uppercase leading-none tracking-tighter">
-                        {row.name}
-                      </p>
-                      <p className="font-mono text-background/65 text-xs">
-                        {row.detail}
-                      </p>
-                      <p className="bg-background px-2 py-1 text-center font-bold text-[10px] text-foreground uppercase tracking-[0.16em]">
-                        {row.status}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div className="grid gap-4" variants={staggerVariants}>
-              <motion.div
-                className="border-2 border-foreground bg-background p-7"
-                variants={revealVariants}
-              >
-                <p className="swiss-label text-accent">Pending writes</p>
-                <p className="mt-8 font-black font-serif text-5xl uppercase leading-[0.86] tracking-tighter">
-                  Keep human approval in the loop.
-                </p>
-              </motion.div>
-              <motion.div
-                className="border-2 border-foreground bg-accent p-7"
-                variants={revealVariants}
-              >
-                <p className="swiss-label">Sub-agents</p>
-                <p className="mt-8 font-black font-serif text-5xl uppercase leading-[0.86] tracking-tighter">
-                  Delegate without losing the thread.
-                </p>
-              </motion.div>
-            </motion.div>
-          </motion.div>
+          <InteractiveWorkspaceSurface />
         </motion.div>
       </section>
 
@@ -477,6 +481,292 @@ export function LandingHomePage() {
       </section>
     </main>
   )
+}
+
+function InteractiveWorkspaceSurface() {
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>('Timeline')
+  const [selectedWriteId, setSelectedWriteId] =
+    useState<PendingWriteId>('decision')
+  const [writeStatuses, setWriteStatuses] =
+    useState<Record<PendingWriteId, WriteStatus>>(initialWriteStatuses)
+
+  const selectedWrite =
+    pendingWrites.find((write) => write.id === selectedWriteId) ??
+    pendingWrites[0]
+  const selectedStatus = writeStatuses[selectedWrite.id]
+  const updateSelectedWrite = (status: WriteStatus) => {
+    setWriteStatuses((currentStatuses) => ({
+      ...currentStatuses,
+      [selectedWrite.id]: status,
+    }))
+  }
+
+  return (
+    <motion.div
+      className="mt-12 grid gap-4 lg:grid-cols-[1.18fr_0.82fr]"
+      variants={staggerVariants}
+    >
+      <motion.div
+        className="border-2 border-foreground bg-foreground p-2 text-background"
+        variants={revealVariants}
+      >
+        <div className="min-h-112 border border-background/20 bg-foreground p-4 md:p-8">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-background border-b-2 pb-5">
+            <div>
+              <p className="swiss-label text-accent">OUTNA.ME workspace</p>
+              <h3 className="mt-3 font-black font-serif text-4xl uppercase leading-[0.86] tracking-tighter md:text-6xl">
+                Morning operator
+              </h3>
+            </div>
+            <p className="border border-background/35 px-3 py-2 font-mono text-[10px] text-background/70 uppercase tracking-[0.14em]">
+              heartbeat +30m
+            </p>
+          </div>
+
+          <div
+            aria-label="Workspace panels"
+            className="mt-6 flex flex-wrap gap-2 border-background/25 border-b pb-6"
+            role="tablist"
+          >
+            {workspaceTabs.map((tab) => (
+              <button
+                aria-selected={activeTab === tab}
+                className={
+                  activeTab === tab
+                    ? 'bg-background px-3 py-2 font-bold text-[10px] text-foreground uppercase tracking-[0.16em] transition-colors duration-200 ease-out'
+                    : 'border border-background/25 px-3 py-2 font-bold text-[10px] text-background/65 uppercase tracking-[0.16em] transition-colors duration-200 ease-out hover:border-background hover:text-background'
+                }
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                role="tab"
+                type="button"
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+
+          <WorkspaceTabPanel
+            activeTab={activeTab}
+            selectedWriteId={selectedWriteId}
+            setSelectedWriteId={setSelectedWriteId}
+            writeStatuses={writeStatuses}
+          />
+        </div>
+      </motion.div>
+
+      <motion.div className="grid gap-4" variants={staggerVariants}>
+        <motion.div
+          className="border-2 border-foreground bg-background p-6 md:p-7"
+          variants={revealVariants}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="swiss-label text-accent">Memory diff</p>
+            <span
+              className={`border border-foreground px-2 py-1 font-bold text-[10px] uppercase tracking-[0.14em] ${getWriteStatusClass(
+                selectedStatus
+              )}`}
+            >
+              {selectedStatus}
+            </span>
+          </div>
+          <p className="mt-8 font-black font-serif text-5xl uppercase leading-[0.86] tracking-tighter md:text-6xl">
+            {selectedWrite.copy}
+          </p>
+          <div className="mt-8 grid gap-2 font-mono text-[10px] uppercase tracking-[0.14em]">
+            <p className="border border-foreground p-3">
+              + selected: {selectedWrite.label}
+            </p>
+            <p className="border border-foreground bg-muted p-3">
+              + state: {selectedStatus}
+            </p>
+          </div>
+        </motion.div>
+        <motion.div
+          className="border-2 border-foreground bg-accent p-6 md:p-7"
+          variants={revealVariants}
+        >
+          <p className="swiss-label">Approval rail</p>
+          <p className="mt-8 font-black font-serif text-5xl uppercase leading-[0.86] tracking-tighter md:text-6xl">
+            Choose what happens to this write.
+          </p>
+          <div className="mt-8 grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
+            {(['approved', 'edited', 'rejected'] as const).map((status) => (
+              <button
+                className="border-2 border-foreground bg-background px-4 py-3 font-black text-[10px] uppercase tracking-[0.16em] transition-[transform,background-color,color] duration-200 ease-out hover:bg-foreground hover:text-background active:scale-[0.98]"
+                key={status}
+                onClick={() => updateSelectedWrite(status)}
+                type="button"
+              >
+                {status}
+              </button>
+            ))}
+          </div>
+        </motion.div>
+      </motion.div>
+    </motion.div>
+  )
+}
+
+function WorkspaceTabPanel({
+  activeTab,
+  selectedWriteId,
+  setSelectedWriteId,
+  writeStatuses,
+}: {
+  activeTab: WorkspaceTab
+  selectedWriteId: PendingWriteId
+  setSelectedWriteId: (id: PendingWriteId) => void
+  writeStatuses: Record<PendingWriteId, WriteStatus>
+}) {
+  if (activeTab === 'Memory') {
+    return (
+      <div className="mt-8 grid gap-4" role="tabpanel">
+        {pendingWrites.map((write) => (
+          <button
+            className={
+              selectedWriteId === write.id
+                ? 'border border-background bg-background p-4 text-left text-foreground'
+                : 'border border-background/25 p-4 text-left text-background transition-colors duration-200 ease-out hover:border-background'
+            }
+            key={write.id}
+            onClick={() => setSelectedWriteId(write.id)}
+            type="button"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="swiss-label text-accent">{write.label}</p>
+              <span
+                className={`border px-2 py-1 font-bold text-[10px] uppercase tracking-[0.14em] ${
+                  selectedWriteId === write.id
+                    ? 'border-foreground'
+                    : 'border-background/35'
+                }`}
+              >
+                {writeStatuses[write.id]}
+              </span>
+            </div>
+            <p className="mt-5 text-pretty font-black text-2xl uppercase leading-none tracking-tighter">
+              {write.copy}
+            </p>
+          </button>
+        ))}
+      </div>
+    )
+  }
+
+  if (activeTab === 'Tools') {
+    return (
+      <div className="mt-8 grid gap-3 sm:grid-cols-2" role="tabpanel">
+        {capabilityRows.map((row) => (
+          <div className="border border-background/25 p-4" key={row.id}>
+            <p className="font-black text-2xl uppercase leading-none tracking-tighter">
+              {row.name}
+            </p>
+            <p className="mt-2 font-mono text-background/60 text-xs">
+              {row.detail}
+            </p>
+            <p className="mt-5 inline-flex bg-background px-2 py-1 font-bold text-[10px] text-foreground uppercase tracking-[0.16em]">
+              {row.status}
+            </p>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (activeTab === 'Files') {
+    return (
+      <div className="mt-8 grid gap-4 sm:grid-cols-2" role="tabpanel">
+        {fileReferences.map((file) => (
+          <article
+            className="border border-background/25 bg-background p-4 text-foreground"
+            key={file.id}
+          >
+            <p className="swiss-label text-accent">Reference</p>
+            <h4 className="mt-5 font-black text-2xl uppercase leading-none tracking-tighter">
+              {file.name}
+            </h4>
+            <p className="mt-3 font-mono text-muted-foreground text-xs uppercase tracking-[0.12em]">
+              {file.detail}
+            </p>
+          </article>
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="mt-8 grid gap-4 xl:grid-cols-[minmax(0,1fr)_15rem]"
+      role="tabpanel"
+    >
+      <div className="grid gap-4">
+        {pendingWrites.map((write) => (
+          <button
+            className={
+              selectedWriteId === write.id
+                ? 'border border-background bg-background p-4 text-left text-foreground'
+                : 'border border-background/25 bg-foreground p-4 text-left text-background transition-colors duration-200 ease-out hover:border-background'
+            }
+            key={write.id}
+            onClick={() => setSelectedWriteId(write.id)}
+            type="button"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="swiss-label text-accent">{write.label}</p>
+              <span
+                className={`border px-2 py-1 font-bold text-[10px] uppercase tracking-[0.14em] ${
+                  selectedWriteId === write.id
+                    ? 'border-foreground'
+                    : 'border-background/35'
+                }`}
+              >
+                {writeStatuses[write.id]}
+              </span>
+            </div>
+            <p className="mt-5 text-pretty font-black text-2xl uppercase leading-none tracking-tighter">
+              {write.copy}
+            </p>
+          </button>
+        ))}
+      </div>
+
+      <aside className="border border-background/25 p-4">
+        <p className="swiss-label text-accent">Tool trace</p>
+        <div className="mt-5 grid gap-3">
+          {executionLog.map((entry) => (
+            <div
+              className="grid grid-cols-[3.5rem_minmax(0,1fr)] gap-3 border border-background/20 p-3"
+              key={entry.id}
+            >
+              <p className="font-mono text-background/60 text-xs">
+                {entry.time}
+              </p>
+              <p className="font-bold text-xs uppercase tracking-[0.12em]">
+                {entry.label}
+              </p>
+            </div>
+          ))}
+        </div>
+      </aside>
+    </div>
+  )
+}
+
+function getWriteStatusClass(status: WriteStatus) {
+  if (status === 'approved') {
+    return 'bg-foreground text-background'
+  }
+
+  if (status === 'rejected') {
+    return 'bg-accent text-foreground'
+  }
+
+  if (status === 'edited') {
+    return 'bg-muted text-foreground'
+  }
+
+  return 'bg-background text-foreground'
 }
 
 function DelegationRevealSection({
@@ -582,8 +872,16 @@ function DelegationRevealSection({
   )
 
   return (
-    <section className="px-4 py-0 sm:px-6 md:px-10 lg:px-12" ref={sectionRef}>
-      <div className="mx-auto h-[300vh] max-w-7xl">
+    <section
+      className="px-4 py-24 sm:px-6 md:px-10 lg:px-12 lg:py-0"
+      ref={sectionRef}
+    >
+      <div className="mx-auto grid max-w-7xl gap-10 border-foreground border-t-4 pt-6 xl:hidden">
+        <DelegationIntro />
+        <MobileDelegationMap />
+      </div>
+
+      <div className="mx-auto hidden h-[300vh] max-w-7xl xl:block">
         <div className="sticky top-0 grid h-dvh gap-10 overflow-hidden border-foreground border-t-4 pt-6 md:grid-cols-[minmax(18rem,0.66fr)_minmax(0,1.34fr)] md:items-center">
           <motion.div
             initial={shouldReduceMotion ? false : 'hidden'}
@@ -591,16 +889,7 @@ function DelegationRevealSection({
             viewport={{ once: true, margin: '-90px' }}
             whileInView="visible"
           >
-            <p className="swiss-label text-accent">02. Delegation map</p>
-            <h2 className="mt-6 text-balance font-black font-serif text-5xl uppercase leading-[0.84] tracking-tighter md:text-7xl">
-              One agent stays in charge while tools and sub-agents move around
-              it.
-            </h2>
-            <p className="mt-8 max-w-md text-muted-foreground leading-relaxed">
-              Scroll through the handoff. The main agent keeps the thread while
-              specialized tools and helper agents reveal from behind it, do
-              their narrow job, and report back into the same workspace.
-            </p>
+            <DelegationIntro />
           </motion.div>
 
           <div className="relative overflow-hidden border-2 border-foreground bg-background p-2">
@@ -701,6 +990,59 @@ function DelegationRevealSection({
   )
 }
 
+function DelegationIntro() {
+  return (
+    <div>
+      <p className="swiss-label text-accent">02. Delegation map</p>
+      <h2 className="mt-6 text-balance font-black font-serif text-5xl uppercase leading-[0.84] tracking-tighter md:text-7xl">
+        One agent stays in charge while tools and sub-agents move around it.
+      </h2>
+      <p className="mt-8 max-w-md text-muted-foreground leading-relaxed">
+        The main agent keeps the thread while specialized tools and helper
+        agents do their narrow job, then report back into the same workspace.
+      </p>
+    </div>
+  )
+}
+
+function MobileDelegationMap() {
+  return (
+    <div className="relative overflow-hidden border-2 border-foreground bg-background p-2">
+      <div className="swiss-diagonal border border-foreground/15 bg-muted p-4">
+        <article className="border-4 border-foreground bg-background p-2 shadow-[8px_8px_0_#000]">
+          <div className="border border-foreground/15 bg-background p-5">
+            <div className="flex items-start justify-between gap-4 border-foreground border-b-2 pb-5">
+              <div>
+                <p className="swiss-label text-accent">Main agent</p>
+                <h3 className="mt-3 font-black font-serif text-4xl uppercase leading-[0.86] tracking-tighter">
+                  Operator
+                </h3>
+              </div>
+              <span className="grid size-12 shrink-0 place-items-center border-2 border-foreground bg-accent font-black text-lg">
+                01
+              </span>
+            </div>
+            <p className="mt-5 text-muted-foreground text-sm leading-relaxed">
+              Owns the goal, memory, approvals, and final response.
+            </p>
+          </div>
+        </article>
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          {Object.values(delegationCards).map((card) => (
+            <article
+              className="border-2 border-foreground bg-background p-2"
+              key={card.title}
+            >
+              <DelegationCardContent card={card} />
+            </article>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function DelegationCardContent({
   card,
 }: {
@@ -729,16 +1071,16 @@ function LandingNav() {
     <header className="absolute top-0 right-0 left-0 z-10 px-4 pt-5 sm:px-6 md:px-10 lg:px-12">
       <nav
         aria-label="Home"
-        className="mx-auto flex max-w-7xl items-center justify-between gap-4 border-2 border-foreground bg-background p-2"
+        className="mx-auto flex w-full min-w-0 max-w-7xl items-center justify-between gap-4 border-2 border-foreground bg-background p-2"
       >
         <Link
-          className="flex min-h-11 items-center gap-3 px-3 font-black text-sm uppercase tracking-[0.22em] transition-colors duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:text-accent"
+          className="flex min-h-11 min-w-0 items-center gap-3 px-3 font-black text-sm uppercase tracking-[0.22em] transition-colors duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:text-accent"
           href="/"
         >
           <span aria-hidden className="size-3 bg-accent" />
           OUTNA.ME
         </Link>
-        <div className="hidden items-center gap-1 md:flex">
+        <div className="hidden items-center gap-1 lg:flex">
           <NavLink href="#architecture">How it works</NavLink>
           <NavLink href="/login?from=/today">Login</NavLink>
         </div>
@@ -773,7 +1115,7 @@ function PrimaryLink({
 }) {
   return (
     <Link
-      className="group inline-flex min-h-14 items-center justify-center gap-4 border-2 border-foreground bg-foreground py-2 pr-2 pl-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-[transform,background-color,color,border-color] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-accent hover:bg-accent hover:text-foreground active:scale-[0.98]"
+      className="group inline-flex min-h-14 w-full items-center justify-center gap-4 border-2 border-foreground bg-foreground py-2 pr-2 pl-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-[transform,background-color,color,border-color] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-accent hover:bg-accent hover:text-foreground active:scale-[0.98] sm:w-auto"
       href={href}
     >
       {children}
@@ -796,7 +1138,7 @@ function SecondaryLink({
 }) {
   return (
     <Link
-      className="inline-flex min-h-14 items-center justify-center border-2 border-foreground bg-background px-6 font-bold text-xs uppercase tracking-[0.16em] transition-[transform,background-color,color] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-foreground hover:text-background active:scale-[0.98]"
+      className="inline-flex min-h-14 w-full items-center justify-center border-2 border-foreground bg-background px-6 font-bold text-xs uppercase tracking-[0.16em] transition-[transform,background-color,color] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-foreground hover:text-background active:scale-[0.98] sm:w-auto"
       href={href}
     >
       {children}
