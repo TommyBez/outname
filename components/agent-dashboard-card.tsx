@@ -2,16 +2,17 @@
 
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
+import { AgentChatTranscript } from '@/components/agent-chat-transcript'
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
 import {
-  type AgentActivityEvent,
-  useAgentActivityPreview,
-  useAgentActivityStream,
-} from '@/hooks/use-agent-activity-stream'
+  type AgentRunTranscriptState,
+  useAgentRunTranscript,
+  useAgentRunTranscriptPreview,
+} from '@/hooks/use-agent-run-transcript'
 import { cn } from '@/lib/utils'
 
 export interface DashboardAgent {
@@ -29,19 +30,19 @@ export interface DashboardAgent {
 
 export function AgentDashboardCard({ agent }: { agent: DashboardAgent }) {
   const [open, setOpen] = useState(false)
-  const stream = useAgentActivityStream({
+  const transcript = useAgentRunTranscript({
     agentId: agent.id,
-    enabled: agent.enabled,
+    enabled: agent.enabled && open,
     sessionRunId: agent.lastSessionRunId,
   })
-  const preview = useAgentActivityPreview({
+  const preview = useAgentRunTranscriptPreview({
     enabled: agent.enabled,
     lastHeartbeatAt: agent.lastHeartbeatAt,
     lastReflectionAt: agent.lastReflectionAt,
     sessionRunId: agent.lastSessionRunId,
-    streamState: stream,
+    streamState: transcript,
   })
-  const status = getStatusLabel(agent, stream.kind)
+  const status = getStatusLabel(agent, transcript.kind)
 
   return (
     <Collapsible onOpenChange={setOpen} open={open}>
@@ -87,7 +88,7 @@ export function AgentDashboardCard({ agent }: { agent: DashboardAgent }) {
         </CollapsibleTrigger>
 
         <CollapsibleContent>
-          <AgentActivityPanel agent={agent} stream={stream} />
+          <AgentActivityPanel agent={agent} transcript={transcript} />
         </CollapsibleContent>
       </article>
     </Collapsible>
@@ -96,36 +97,38 @@ export function AgentDashboardCard({ agent }: { agent: DashboardAgent }) {
 
 function AgentActivityPanel({
   agent,
-  stream,
+  transcript,
 }: {
   agent: DashboardAgent
-  stream: ReturnType<typeof useAgentActivityStream>
+  transcript: AgentRunTranscriptState
 }) {
   const schedule = useMemo(() => buildSchedule(agent), [agent])
 
   return (
     <div className="grid gap-6 border-foreground border-t-2 px-0 py-6 md:grid-cols-[minmax(0,1fr)_18rem] md:px-4">
-      <section aria-label={`${agent.name} activity stream`}>
+      <section
+        aria-label={`${agent.name} run monitor`}
+        className="min-h-0 min-w-0"
+      >
         <div className="mb-4 flex items-center justify-between gap-4">
           <p className="font-bold text-[10px] uppercase tracking-[0.2em]">
-            Live stream
+            Run monitor
           </p>
           <p className="text-muted-foreground text-xs">
-            {formatStreamState(stream.kind)}
+            {formatTranscriptState(transcript.kind)}
           </p>
         </div>
-        <ol className="max-h-80 overflow-y-auto border-foreground border-y-2">
-          {stream.events.length > 0 ? (
-            stream.events.map((event) => (
-              <ActivityEventRow event={event} key={event.id} />
-            ))
-          ) : (
-            <li className="py-6 text-muted-foreground text-sm">
-              {getStreamMessage(stream) ??
-                'No streamed activity yet. Trigger a heartbeat or chat turn to populate this feed.'}
-            </li>
-          )}
-        </ol>
+        <div className="h-128 min-h-0 overflow-hidden border-foreground border-y-2 bg-background">
+          <AgentChatTranscript
+            className="h-full"
+            emptyDescription={
+              getTranscriptMessage(transcript) ??
+              'Trigger a heartbeat or reflection to populate this read-only run monitor.'
+            }
+            emptyTitle="No run transcript yet"
+            messages={transcript.messages}
+          />
+        </div>
       </section>
 
       <aside className="border-foreground border-t-2 pt-5 md:border-t-0 md:border-l-2 md:pl-6">
@@ -153,33 +156,14 @@ function AgentActivityPanel({
   )
 }
 
-function ActivityEventRow({ event }: { event: AgentActivityEvent }) {
-  return (
-    <li className="grid gap-2 border-foreground border-b py-4 last:border-b-0 md:grid-cols-[7rem_1fr]">
-      <time
-        className="font-mono text-muted-foreground text-xs"
-        dateTime={event.isoTime}
-      >
-        {event.time}
-      </time>
-      <div>
-        <p className="font-medium text-sm">{event.message}</p>
-        <p className="mt-1 text-muted-foreground text-xs uppercase tracking-[0.16em]">
-          {event.label}
-        </p>
-      </div>
-    </li>
-  )
-}
-
 function getStatusLabel(
   agent: DashboardAgent,
-  streamKind: ReturnType<typeof useAgentActivityStream>['kind']
+  transcriptKind: AgentRunTranscriptState['kind']
 ): string {
   if (!agent.enabled) {
     return 'paused'
   }
-  if (streamKind === 'streaming') {
+  if (transcriptKind === 'streaming') {
     return 'live'
   }
   if (agent.lastSessionRunId) {
@@ -188,10 +172,10 @@ function getStatusLabel(
   return 'idle'
 }
 
-function getStreamMessage(
-  stream: ReturnType<typeof useAgentActivityStream>
+function getTranscriptMessage(
+  transcript: AgentRunTranscriptState
 ): string | null {
-  return 'message' in stream ? stream.message : null
+  return 'message' in transcript ? transcript.message : null
 }
 
 function buildSchedule(agent: DashboardAgent) {
@@ -227,18 +211,16 @@ function formatNullableDate(value: string | null): string {
   }).format(new Date(value))
 }
 
-function formatStreamState(
-  kind: ReturnType<typeof useAgentActivityStream>['kind']
-): string {
+function formatTranscriptState(kind: AgentRunTranscriptState['kind']): string {
   switch (kind) {
     case 'connecting':
       return 'connecting'
     case 'streaming':
-      return 'receiving events'
+      return 'receiving transcript'
     case 'unavailable':
-      return 'stream unavailable'
+      return 'transcript unavailable'
     case 'failed':
-      return 'stream failed'
+      return 'transcript failed'
     case 'idle':
       return 'idle'
     default:
