@@ -1,6 +1,7 @@
 import { convertToModelMessages, type UIMessage, type UIMessageChunk } from 'ai'
-import { getWritable } from 'workflow'
+import { getWorkflowMetadata, getWritable } from 'workflow'
 import { startupExecSandbox, startupSystemSandbox } from '@/lib/agent-sandbox'
+import { emitActivity } from '@/lib/run-events'
 import { maybeGenerateConversationTitle } from '@/workflows/chat/steps/generate-conversation-title'
 import { persistAssistantTurn } from '@/workflows/chat/steps/persist-assistant-turn'
 import { buildAgent } from '../agent-factory'
@@ -45,15 +46,14 @@ export async function handleChat(input: {
   uiMessages: UIMessage[]
 }): Promise<{ pending: PendingWrites }> {
   const { agentId, conversationId, replyToken, uiMessages } = input
+  const sessionRunId = await currentSessionRunId(conversationId)
 
   const writable = getWritable<UIMessageChunk>({
     namespace: replyToken,
   })
 
-  await emitChatStatus({
-    message: 'Starting system sandbox...',
-    phase: 'system-sandbox',
-    replyToken,
+  await emitActivity(sessionRunId, 'Chat: Preparing response', {
+    conversationId,
   })
   await startupSystemSandbox({ agentId })
   await emitChatStatus({
@@ -72,24 +72,18 @@ export async function handleChat(input: {
   // system prompt. composeSystemPrompt inlines AGENTS.md / SOUL.md
   // verbatim, so this guarantees the operator's latest save is what
   // the model sees this turn.
-  await emitChatStatus({
-    message: 'Applying pending workspace updates...',
-    phase: 'pending-writes',
-    replyToken,
-  })
+  await emitActivity(sessionRunId, 'Chat: Syncing memory edits')
   await drainPendingWrites({ agentId })
 
-  await emitChatStatus({
-    message: 'Preparing agent tools and instructions...',
-    phase: 'agent-build',
-    replyToken,
-  })
-  const { agent, pending } = await buildAgent({
+  const { agent, meta, pending } = await buildAgent({
     agentId,
     runId: conversationId,
   })
 
   const modelMessages = await convertToModelMessages(uiMessages)
+  await emitActivity(sessionRunId, 'Chat: Streaming model response', {
+    model: meta.model,
+  })
 
   await emitChatStatus({
     message: 'Connecting to the agent...',
@@ -115,6 +109,21 @@ export async function handleChat(input: {
     conversationId,
     uiMessages: result.uiMessages ?? [],
   })
+  await emitActivity(sessionRunId, 'Chat: Response saved', { conversationId })
 
   return { pending }
+}
+
+async function currentSessionRunId(fallback: string): Promise<string> {
+  'use step'
+  await Promise.resolve()
+  try {
+    const metadata = getWorkflowMetadata() as {
+      runId?: string
+      workflowRunId?: string
+    }
+    return metadata.runId ?? metadata.workflowRunId ?? fallback
+  } catch {
+    return fallback
+  }
 }

@@ -2,7 +2,7 @@
 
 import {
   Bot,
-  CalendarDays,
+  LayoutDashboard,
   LogOut,
   Settings as SettingsIcon,
 } from 'lucide-react'
@@ -25,7 +25,7 @@ import {
 import { signOut } from '@/lib/auth-client'
 
 const NAV_ITEMS = [
-  { href: '/today', label: 'Today', icon: CalendarDays },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/agents', label: 'Agents', icon: Bot },
   { href: '/settings', label: 'Settings', icon: SettingsIcon },
 ] as const
@@ -64,7 +64,7 @@ export function AppSidebar({ sidebarExtras }: AppSidebarProps = {}) {
       <SidebarHeader className="border-sidebar-border border-b-2 px-3 py-5">
         <Link
           className="flex min-h-11 items-center gap-3 font-black text-foreground text-sm uppercase tracking-[0.22em] transition-colors hover:text-accent"
-          href="/today"
+          href="/dashboard"
         >
           <span
             aria-hidden

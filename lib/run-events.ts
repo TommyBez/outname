@@ -22,6 +22,12 @@ export type RunEvent =
       ts: number
     }
   | {
+      type: 'activity'
+      message: string
+      meta?: Record<string, unknown>
+      ts: number
+    }
+  | {
       type: 'run'
       status: 'started' | 'completed' | 'failed'
       message: string
@@ -63,6 +69,19 @@ export async function emitRun(
   await writeOne(runId, {
     type: 'run',
     status,
+    message,
+    meta,
+    ts: Date.now(),
+  })
+}
+
+export async function emitActivity(
+  runId: string,
+  message: string,
+  meta?: Record<string, unknown>
+): Promise<void> {
+  await writeOne(runId, {
+    type: 'activity',
     message,
     meta,
     ts: Date.now(),

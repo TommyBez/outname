@@ -59,7 +59,7 @@ export function AppShell({
           <SidebarTrigger className="-ml-1 size-10 border-foreground md:size-9" />
           <Link
             className="inline-flex min-h-11 items-center gap-2 font-bold text-sm uppercase tracking-[0.2em] transition-colors hover:text-accent md:hidden"
-            href="/today"
+            href="/dashboard"
           >
             <span aria-hidden className="inline-block size-3 bg-accent" />
             <span>agents</span>
