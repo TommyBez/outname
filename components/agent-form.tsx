@@ -54,8 +54,14 @@ const selectedModelSort =
     return 0
   }
 
-function modelSearchKeywords(option: ModelOption) {
-  return [option.name, option.ownedBy]
+function modelMatchesSearch(option: ModelOption, search: string) {
+  const query = search.trim().toLowerCase()
+  if (!query) {
+    return true
+  }
+  return [option.name, option.id, option.ownedBy].some((candidate) =>
+    candidate.toLowerCase().includes(query)
+  )
 }
 
 interface AgentFormProps {
@@ -92,6 +98,7 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
   const [identity, setIdentity] = useState(initial?.identity ?? '')
   const [instructions, setInstructions] = useState(initial?.instructions ?? '')
   const [modelDialogOpen, setModelDialogOpen] = useState(false)
+  const [modelSearch, setModelSearch] = useState('')
   // Default model falls back to the gateway's first id if our preferred
   // default isn't in the filtered list. Empty list (fallback mode) is
   // handled by rendering a single passthrough option.
@@ -124,9 +131,14 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
     () => [...availableModels].sort(selectedModelSort(model)),
     [availableModels, model]
   )
+  const visibleModels = useMemo(
+    () =>
+      sortedModels.filter((option) => modelMatchesSearch(option, modelSearch)),
+    [sortedModels, modelSearch]
+  )
 
   // Group models by provider so a searchable command menu stays scannable.
-  const grouped = sortedModels.reduce<Record<string, ModelOption[]>>(
+  const grouped = visibleModels.reduce<Record<string, ModelOption[]>>(
     (acc, option) => {
       const key = option.ownedBy
       let group = acc[key]
@@ -270,7 +282,10 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
             aria-haspopup="dialog"
             className="h-auto min-h-11 w-full justify-between gap-4 whitespace-normal px-3 py-2 text-left normal-case tracking-normal"
             id="agent-model"
-            onClick={() => setModelDialogOpen(true)}
+            onClick={() => {
+              setModelSearch('')
+              setModelDialogOpen(true)
+            }}
             type="button"
             variant="outline"
           >
@@ -289,31 +304,31 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
           <CommandDialog
             className="border-2 border-foreground"
             commandProps={{
-              filter: (value: string, search: string, keywords?: string[]) => {
-                const query = search.toLowerCase()
-                const searchableValues = [value, ...(keywords ?? [])]
-                return searchableValues.some((candidate) =>
-                  candidate.toLowerCase().includes(query)
-                )
-                  ? 1
-                  : 0
-              },
+              shouldFilter: false,
             }}
             description="Search models by name, id, or provider."
-            onOpenChange={setModelDialogOpen}
+            onOpenChange={(open) => {
+              setModelDialogOpen(open)
+              if (!open) {
+                setModelSearch('')
+              }
+            }}
             open={modelDialogOpen}
             title="Select model"
           >
-            <CommandInput placeholder="Search models..." />
+            <CommandInput
+              onValueChange={setModelSearch}
+              placeholder="Search models..."
+              value={modelSearch}
+            />
             <CommandList className="max-h-[60vh] pr-1">
               <CommandEmpty>No models found.</CommandEmpty>
               {ownedByKeys.map((ownedBy) => (
                 <CommandGroup heading={ownedBy} key={ownedBy} value={ownedBy}>
                   {grouped[ownedBy].map((option) => (
                     <CommandItem
-                      className="[&_span]:data-[selected=true]:text-accent-foreground"
+                      className="data-[selected=true]:[&_span]:text-accent-foreground data-[selected=true]:[&_svg]:text-accent-foreground"
                       key={option.id}
-                      keywords={modelSearchKeywords(option)}
                       onSelect={() => {
                         setModel(option.id)
                         setModelDialogOpen(false)
@@ -322,7 +337,7 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
                     >
                       <CheckIcon
                         className={cn(
-                          'size-4',
+                          'size-4 text-current',
                           model === option.id ? 'opacity-100' : 'opacity-0'
                         )}
                       />
@@ -337,6 +352,11 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
                       <span className="shrink-0 border border-border px-1.5 py-0.5 font-bold text-[10px] text-muted-foreground uppercase tracking-[0.14em]">
                         {option.ownedBy}
                       </span>
+                      {model === option.id ? (
+                        <span className="shrink-0 border border-current px-1.5 py-0.5 font-bold text-[10px] uppercase tracking-[0.14em]">
+                          Current
+                        </span>
+                      ) : null}
                       {option.contextWindow > 0 ? (
                         <span className="mr-2 shrink-0 text-muted-foreground text-xs">
                           {(option.contextWindow / 1000).toFixed(0)}k ctx
