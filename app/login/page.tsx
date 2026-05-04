@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
+import { Skeleton } from '@/components/ui/skeleton'
 import { auth } from '@/lib/auth'
 import { createPrivatePageMetadata } from '@/lib/site-metadata'
 import { LoginForm } from './login-form'
@@ -28,7 +29,7 @@ export default function LoginPage({
             Access your scheduled agents and live dashboard.
           </p>
         </div>
-        <Suspense fallback={<LoginForm redirectTo="/dashboard" />}>
+        <Suspense fallback={<LoginFormSkeleton />}>
           <LoginGate searchParams={searchParams} />
         </Suspense>
       </div>
@@ -47,4 +48,25 @@ async function LoginGate({
   }
   const { from } = await searchParams
   return <LoginForm redirectTo={from || '/dashboard'} />
+}
+
+function LoginFormSkeleton() {
+  return (
+    <div
+      aria-busy="true"
+      aria-label="Loading sign in form"
+      className="flex flex-col gap-5"
+      role="status"
+    >
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-4 w-12" />
+        <Skeleton className="h-10 w-full border-2 border-border" />
+      </div>
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="h-10 w-full border-2 border-border" />
+      </div>
+      <Skeleton className="mt-2 h-10 w-full border-2 border-border" />
+    </div>
+  )
 }
