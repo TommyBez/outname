@@ -5,6 +5,13 @@ import { emitActivity } from '@/lib/run-events'
 import { maybeGenerateConversationTitle } from '@/workflows/chat/steps/generate-conversation-title'
 import { persistAssistantTurn } from '@/workflows/chat/steps/persist-assistant-turn'
 import { buildAgent } from '../agent-factory'
+import {
+  appendStepLimitNoticeToMessages,
+  buildStepLimitNotice,
+  didReachStepLimit,
+  resolveStepLimit,
+  resolveStepLimitCount,
+} from '../step-limit'
 import { drainPendingWrites } from '../steps/drain-pending-writes'
 import { emitChatStatus } from '../steps/emit-chat-status'
 import type { PendingWrites } from '../tools/pending-writes'
@@ -86,34 +93,87 @@ export async function handleChat(input: {
   await emitActivity(sessionRunId, 'Chat: Streaming model response', {
     model: meta.model,
   })
+  const stepLimitInput = {
+    mode: meta.stepLimitMode,
+    custom: meta.stepLimitCustom,
+  } as const
 
   await emitChatStatus({
     message: 'Connecting to the agent...',
     phase: 'agent-stream',
     replyToken,
   })
-  const [, result] = await Promise.all([
-    maybeGenerateConversationTitle({
-      agentId,
-      conversationId,
-      uiMessages,
-    }),
-    agent.stream({
-      messages: modelMessages,
-      writable,
-      maxSteps: 40,
-      collectUIMessages: true,
-    }),
-  ])
-
-  await persistAssistantTurn({
+  const titlePromise = maybeGenerateConversationTitle({
     agentId,
     conversationId,
-    uiMessages: result.uiMessages ?? [],
+    uiMessages,
   })
-  await emitActivity(sessionRunId, 'Chat: Response saved', { conversationId })
+  const streamPromise = agent.stream({
+    messages: modelMessages,
+    writable,
+    stopWhen: resolveStepLimit(stepLimitInput),
+    collectUIMessages: true,
+    preventClose: true,
+    sendFinish: false,
+  })
+  let streamClosed = false
+  try {
+    const [, result] = await Promise.all([titlePromise, streamPromise])
 
-  return { pending }
+    let persistedMessages = result.uiMessages ?? []
+    if (
+      didReachStepLimit({
+        ...stepLimitInput,
+        steps: result.steps,
+      })
+    ) {
+      const notice = buildStepLimitNotice(stepLimitInput)
+      await emitActivity(
+        sessionRunId,
+        'Chat: Step limit reached, finalizing early',
+        {
+          conversationId,
+          stepLimit: resolveStepLimitCount(stepLimitInput),
+        }
+      )
+      await emitChatStatus({
+        message: 'Step limit reached, finalizing the turn...',
+        phase: 'agent-stream',
+        replyToken,
+      })
+      await writeAssistantNotice(
+        replyToken,
+        formatStepLimitStreamText(result.uiMessages ?? [], notice)
+      )
+      persistedMessages = appendStepLimitNoticeToMessages(
+        persistedMessages,
+        notice
+      )
+    }
+
+    await finishUiMessageStream(replyToken)
+    streamClosed = true
+
+    await persistAssistantTurn({
+      agentId,
+      conversationId,
+      uiMessages: persistedMessages,
+    })
+    await emitActivity(sessionRunId, 'Chat: Response saved', { conversationId })
+
+    return { pending }
+  } catch (error) {
+    await streamPromise.catch(() => {
+      // Wait for the agent stream to settle before we manually finish it.
+    })
+    throw error
+  } finally {
+    if (!streamClosed) {
+      await finishUiMessageStream(replyToken).catch(() => {
+        // Best-effort close so the client stream does not hang on failures.
+      })
+    }
+  }
 }
 
 async function currentSessionRunId(fallback: string): Promise<string> {
@@ -128,4 +188,50 @@ async function currentSessionRunId(fallback: string): Promise<string> {
   } catch {
     return fallback
   }
+}
+
+function formatStepLimitStreamText(
+  messages: readonly UIMessage[],
+  notice: string
+): string {
+  const lastMessage = messages.at(-1)
+  const hasAssistantText =
+    lastMessage?.role === 'assistant' &&
+    lastMessage.parts.some(
+      (part) => part.type === 'text' && part.text.trim().length > 0
+    )
+  return `${hasAssistantText ? '\n\n' : ''}${notice}`
+}
+
+async function writeAssistantNotice(
+  replyToken: string,
+  notice: string
+): Promise<void> {
+  'use step'
+  const writable = getWritable<UIMessageChunk>({
+    namespace: replyToken,
+  })
+  const writer = writable.getWriter()
+  const partId = `step_limit_${Math.random().toString(36).slice(2, 10)}`
+  try {
+    await writer.write({ type: 'text-start', id: partId })
+    await writer.write({ type: 'text-delta', id: partId, delta: notice })
+    await writer.write({ type: 'text-end', id: partId })
+  } finally {
+    writer.releaseLock()
+  }
+}
+
+async function finishUiMessageStream(replyToken: string): Promise<void> {
+  'use step'
+  const writable = getWritable<UIMessageChunk>({
+    namespace: replyToken,
+  })
+  const writer = writable.getWriter()
+  try {
+    await writer.write({ type: 'finish' })
+  } finally {
+    writer.releaseLock()
+  }
+  await writable.close()
 }

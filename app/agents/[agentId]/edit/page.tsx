@@ -97,6 +97,13 @@ async function AgentEdit({ params }: { params: Params }) {
             heartbeatIntervalMinutes: agentRow.heartbeatIntervalMinutes,
             reflectionEnabled: agentRow.reflectionEnabled,
             reflectionIntervalMinutes: agentRow.reflectionIntervalMinutes,
+            stepLimitMode: (agentRow.stepLimitMode ?? 'medium') as
+              | 'custom'
+              | 'grind'
+              | 'high'
+              | 'low'
+              | 'medium',
+            stepLimitCustom: agentRow.stepLimitCustom,
           }}
           models={models}
         />

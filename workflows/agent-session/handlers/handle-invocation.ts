@@ -5,6 +5,13 @@ import { startupExecSandbox, startupSystemSandbox } from '@/lib/agent-sandbox'
 import { emitActivity, emitRun, emitStep } from '@/lib/run-events'
 import { buildAgent } from '../agent-factory'
 import type { SubAgentReply } from '../events'
+import {
+  appendStepLimitNoticeToOutput,
+  buildStepLimitNotice,
+  didReachStepLimit,
+  resolveStepLimit,
+  resolveStepLimitCount,
+} from '../step-limit'
 import { drainPendingWrites } from '../steps/drain-pending-writes'
 import {
   createPendingWrites,
@@ -92,6 +99,10 @@ export async function handleInvocation(input: {
     await emitActivity(runId, 'Sub-agent: Streaming model work', {
       model: built.meta.model,
     })
+    const stepLimitInput = {
+      mode: built.meta.stepLimitMode,
+      custom: built.meta.stepLimitCustom,
+    } as const
 
     const userMessage: UIMessage = {
       id: invocationMessageId(),
@@ -104,14 +115,46 @@ export async function handleInvocation(input: {
     const result = await built.agent.stream({
       messages: modelMessages,
       writable,
-      maxSteps: 40,
+      stopWhen: resolveStepLimit(stepLimitInput),
       collectUIMessages: true,
     })
-    await emitStep(runId, 'read', 'done', 'Sub-agent instruction completed')
+    const hitStepLimit = didReachStepLimit({
+      ...stepLimitInput,
+      steps: result.steps,
+    })
+    if (hitStepLimit) {
+      await emitActivity(
+        runId,
+        'Sub-agent: Step limit reached, finalizing early',
+        {
+          stepLimit: resolveStepLimitCount(stepLimitInput),
+        }
+      )
+    }
+    await emitStep(
+      runId,
+      'read',
+      'done',
+      hitStepLimit
+        ? 'Sub-agent instruction reached the step limit'
+        : 'Sub-agent instruction completed'
+    )
 
-    const output = extractFinalText(result.uiMessages ?? []) ?? ''
+    const baseOutput = extractFinalText(result.uiMessages ?? []) ?? ''
+    const output = hitStepLimit
+      ? appendStepLimitNoticeToOutput(
+          baseOutput,
+          buildStepLimitNotice(stepLimitInput)
+        )
+      : baseOutput
     await emitActivity(runId, 'Sub-agent: Finalizing reply')
-    await emitRun(runId, 'completed', 'Sub-agent invocation completed')
+    await emitRun(
+      runId,
+      'completed',
+      hitStepLimit
+        ? 'Sub-agent invocation completed after reaching the step limit'
+        : 'Sub-agent invocation completed'
+    )
     await replyOnce(replyTo, { type: 'reply', ok: true, output })
     replied = true
   } catch (err) {

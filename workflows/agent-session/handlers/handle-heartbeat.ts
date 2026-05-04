@@ -10,6 +10,11 @@ import {
   buildHeartbeatKickoff,
   buildReflectionKickoff,
 } from '../agent-factory'
+import {
+  didReachStepLimit,
+  resolveStepLimit,
+  resolveStepLimitCount,
+} from '../step-limit'
 import { beginHeartbeatRun } from '../steps/begin-heartbeat-run'
 import { drainPendingWrites } from '../steps/drain-pending-writes'
 import { finalizeRun } from '../steps/finalize-run'
@@ -106,6 +111,10 @@ export async function handleHeartbeat(input: {
     await emitActivity(runId, activityMessage(mode, 'Streaming model work'), {
       model: meta.model,
     })
+    const stepLimitInput = {
+      mode: meta.stepLimitMode,
+      custom: meta.stepLimitCustom,
+    } as const
     const nowIso = input.scheduledAt ?? new Date().toISOString()
     const kickoff =
       mode === 'reflection'
@@ -120,14 +129,34 @@ export async function handleHeartbeat(input: {
             previousIso,
           })
 
-    await durableAgent.stream({
+    const result = await durableAgent.stream({
       messages: [{ role: 'user', content: kickoff }],
       writable,
-      maxSteps: mode === 'reflection' ? 80 : 60,
+      stopWhen: resolveStepLimit(stepLimitInput),
+    })
+    const hitStepLimit = didReachStepLimit({
+      ...stepLimitInput,
+      steps: result.steps,
     })
 
-    await emitActivity(runId, activityMessage(mode, 'Finalizing changes'))
-    await finalizeRun(runId, 'completed')
+    if (hitStepLimit) {
+      await emitActivity(
+        runId,
+        activityMessage(mode, 'Step limit reached, finalizing early'),
+        {
+          stepLimit: resolveStepLimitCount(stepLimitInput),
+        }
+      )
+    } else {
+      await emitActivity(runId, activityMessage(mode, 'Finalizing changes'))
+    }
+    await finalizeRun(
+      runId,
+      'completed',
+      hitStepLimit
+        ? activityMessage(mode, 'Completed after reaching the step limit')
+        : undefined
+    )
     if (mode === 'reflection') {
       await markReflectionCompleted({
         agentId,
