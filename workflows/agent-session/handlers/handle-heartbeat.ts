@@ -10,6 +10,7 @@ import {
   buildHeartbeatKickoff,
   buildReflectionKickoff,
 } from '../agent-factory'
+import { resolveStepLimit } from '../step-limit'
 import { beginHeartbeatRun } from '../steps/begin-heartbeat-run'
 import { drainPendingWrites } from '../steps/drain-pending-writes'
 import { finalizeRun } from '../steps/finalize-run'
@@ -123,7 +124,10 @@ export async function handleHeartbeat(input: {
     await durableAgent.stream({
       messages: [{ role: 'user', content: kickoff }],
       writable,
-      maxSteps: mode === 'reflection' ? 80 : 60,
+      stopWhen: resolveStepLimit({
+        mode: meta.stepLimitMode,
+        custom: meta.stepLimitCustom,
+      }),
     })
 
     await emitActivity(runId, activityMessage(mode, 'Finalizing changes'))

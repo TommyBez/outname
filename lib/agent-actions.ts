@@ -80,6 +80,8 @@ interface CreateInput {
    * until the user fills it in later.
    */
   soul: string
+  stepLimitCustom?: number | null
+  stepLimitMode: 'custom' | 'grind' | 'high' | 'low' | 'medium'
   /**
    * USER.md seed/correction content from the "User profile" tab. Empty
    * string means "let the agent create it when it learns stable facts."
@@ -114,6 +116,11 @@ export async function createAgentAction(
       heartbeatIntervalMinutes,
       reflectionEnabled: input.reflectionEnabled,
       reflectionIntervalMinutes,
+      stepLimitMode: input.stepLimitMode,
+      stepLimitCustom:
+        input.stepLimitMode === 'custom'
+          ? Math.max(1, Math.floor(input.stepLimitCustom ?? 30))
+          : null,
     })
     .returning()
 
@@ -200,6 +207,8 @@ interface UpdateInput {
   soul: string
   /** Original SOUL.md content the form was rendered with. */
   soulOriginal: string
+  stepLimitCustom?: number | null
+  stepLimitMode: 'custom' | 'grind' | 'high' | 'low' | 'medium'
   /** USER.md seed/correction content from the "User profile" tab. */
   userProfile: string
   /** Original USER.md content the form was rendered with. */
@@ -238,6 +247,11 @@ export async function updateAgentAction(input: UpdateInput): Promise<void> {
       heartbeatIntervalMinutes,
       reflectionEnabled: input.reflectionEnabled,
       reflectionIntervalMinutes,
+      stepLimitMode: input.stepLimitMode,
+      stepLimitCustom:
+        input.stepLimitMode === 'custom'
+          ? Math.max(1, Math.floor(input.stepLimitCustom ?? 30))
+          : null,
       updatedAt: new Date(),
     })
     .where(eq(agent.id, input.id))

@@ -129,6 +129,8 @@ interface AgentFormProps {
     heartbeatIntervalMinutes: number
     reflectionEnabled: boolean
     reflectionIntervalMinutes: number
+    stepLimitCustom: number | null
+    stepLimitMode: 'custom' | 'grind' | 'high' | 'low' | 'medium'
   }
   models: ModelOption[]
 }
@@ -161,6 +163,12 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
   )
   const [reflectionIntervalMinutes, setReflectionIntervalMinutes] = useState(
     initial?.reflectionIntervalMinutes ?? 1440
+  )
+  const [stepLimitMode, setStepLimitMode] = useState<
+    'custom' | 'grind' | 'high' | 'low' | 'medium'
+  >(initial?.stepLimitMode ?? 'medium')
+  const [stepLimitCustom, setStepLimitCustom] = useState(
+    initial?.stepLimitCustom ?? 30
   )
 
   const isEdit = Boolean(initial?.id)
@@ -239,6 +247,8 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
             heartbeatIntervalMinutes: intervalMinutes,
             reflectionEnabled,
             reflectionIntervalMinutes,
+            stepLimitMode,
+            stepLimitCustom,
             soul: identity,
             soulOriginal: initial.identity,
           })
@@ -255,6 +265,8 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
             heartbeatIntervalMinutes: intervalMinutes,
             reflectionEnabled,
             reflectionIntervalMinutes,
+            stepLimitMode,
+            stepLimitCustom,
             soul: identity,
           })
           toast.success('Agent created')
@@ -520,6 +532,47 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
             Routed through the Vercel AI Gateway. Filtered to models that
             support tool calling.
           </p>
+        </div>
+      </div>
+
+      <div className="grid gap-4 border-2 border-foreground bg-background p-5 md:grid-cols-[12rem_minmax(0,1fr)]">
+        <Label
+          className="font-bold text-sm uppercase tracking-[0.14em]"
+          htmlFor="agent-step-limit-mode"
+        >
+          Step limit
+        </Label>
+        <div className="flex flex-col gap-2">
+          <Select
+            onValueChange={(v) =>
+              setStepLimitMode(
+                v as 'custom' | 'grind' | 'high' | 'low' | 'medium'
+              )
+            }
+            value={stepLimitMode}
+          >
+            <SelectTrigger id="agent-step-limit-mode">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="low">Low (10)</SelectItem>
+              <SelectItem value="medium">Medium (30)</SelectItem>
+              <SelectItem value="high">High (50)</SelectItem>
+              <SelectItem value="custom">Custom</SelectItem>
+              <SelectItem value="grind">Grind (unlimited)</SelectItem>
+            </SelectContent>
+          </Select>
+          {stepLimitMode === 'custom' ? (
+            <Input
+              id="agent-step-limit-custom"
+              min={1}
+              onChange={(e) =>
+                setStepLimitCustom(Number.parseInt(e.target.value, 10) || 30)
+              }
+              type="number"
+              value={stepLimitCustom}
+            />
+          ) : null}
         </div>
       </div>
 

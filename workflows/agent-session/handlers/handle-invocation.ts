@@ -5,6 +5,7 @@ import { startupExecSandbox, startupSystemSandbox } from '@/lib/agent-sandbox'
 import { emitActivity, emitRun, emitStep } from '@/lib/run-events'
 import { buildAgent } from '../agent-factory'
 import type { SubAgentReply } from '../events'
+import { resolveStepLimit } from '../step-limit'
 import { drainPendingWrites } from '../steps/drain-pending-writes'
 import {
   createPendingWrites,
@@ -104,7 +105,10 @@ export async function handleInvocation(input: {
     const result = await built.agent.stream({
       messages: modelMessages,
       writable,
-      maxSteps: 40,
+      stopWhen: resolveStepLimit({
+        mode: built.meta.stepLimitMode,
+        custom: built.meta.stepLimitCustom,
+      }),
       collectUIMessages: true,
     })
     await emitStep(runId, 'read', 'done', 'Sub-agent instruction completed')

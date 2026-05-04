@@ -102,6 +102,10 @@ export const agent = pgTable(
     // agent-action time against `getAvailableModels()` so we never
     // persist an id the gateway can't route.
     model: text('model').notNull().default('openai/gpt-5-mini'),
+    // Per-agent model-step budget. Used to build `stopWhen` guards for
+    // chat/heartbeat/reflection/invocation streams.
+    stepLimitMode: text('step_limit_mode').notNull().default('medium'),
+    stepLimitCustom: integer('step_limit_custom'),
     // Per-agent heartbeat opt-in + cadence. Used by both the ticker
     // workflow (read once per restart) and the liveness sweeper.
     // Phase 3 lifts these onto a triggers table; for Phase 2 they

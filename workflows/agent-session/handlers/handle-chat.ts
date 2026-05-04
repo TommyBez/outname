@@ -5,6 +5,7 @@ import { emitActivity } from '@/lib/run-events'
 import { maybeGenerateConversationTitle } from '@/workflows/chat/steps/generate-conversation-title'
 import { persistAssistantTurn } from '@/workflows/chat/steps/persist-assistant-turn'
 import { buildAgent } from '../agent-factory'
+import { resolveStepLimit } from '../step-limit'
 import { drainPendingWrites } from '../steps/drain-pending-writes'
 import { emitChatStatus } from '../steps/emit-chat-status'
 import type { PendingWrites } from '../tools/pending-writes'
@@ -101,7 +102,10 @@ export async function handleChat(input: {
     agent.stream({
       messages: modelMessages,
       writable,
-      maxSteps: 40,
+      stopWhen: resolveStepLimit({
+        mode: meta.stepLimitMode,
+        custom: meta.stepLimitCustom,
+      }),
       collectUIMessages: true,
     }),
   ])

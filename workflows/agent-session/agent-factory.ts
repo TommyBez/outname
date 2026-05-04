@@ -45,6 +45,8 @@ export interface BuildAgentResult {
   meta: {
     name: string
     model: string
+    stepLimitCustom: number | null
+    stepLimitMode: 'custom' | 'grind' | 'high' | 'low' | 'medium'
   }
   /** Per-event memory mutation buffer. Pass to `endOfEvent`. */
   pending: PendingWrites
@@ -113,6 +115,13 @@ export async function buildAgent(
     meta: {
       name: row.name,
       model: row.model,
+      stepLimitCustom: row.stepLimitCustom,
+      stepLimitMode: row.stepLimitMode as
+        | 'custom'
+        | 'grind'
+        | 'high'
+        | 'low'
+        | 'medium',
     },
   }
 }

@@ -92,6 +92,13 @@
       "when": 1792339200000,
       "tag": "0012_tool_invocations",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792425600000,
+      "tag": "0013_agent_step_limits",
+      "breakpoints": true
     }
   ]
 }
