@@ -3,8 +3,11 @@ import { drizzle } from 'drizzle-orm/neon-http'
 import {
   account,
   agent,
+  agentChannelBindings,
   agentFiles,
   agentTools,
+  channelInstallations,
+  channelThreadConversations,
   chatConversation,
   chatMessage,
   pendingFileWrites,
@@ -26,6 +29,9 @@ const schema = {
   pendingFileWrites,
   userConnections,
   agentTools,
+  channelInstallations,
+  agentChannelBindings,
+  channelThreadConversations,
 }
 
 type DB = ReturnType<typeof drizzle<typeof schema>>

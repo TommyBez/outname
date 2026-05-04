@@ -220,6 +220,17 @@ The app favors durable checkpoints over optimistic in-memory state:
 
 This architecture accepts that autonomous agents are long-running and failure-prone. The control plane keeps enough recovery metadata in Postgres to resume, restart, or explain degraded behavior without relying on a browser tab staying open.
 
+### Channel surfaces
+
+The web UI is the primary surface, but agents can also be reached from
+external chat platforms. Slack is implemented today on top of the
+[Vercel Chat SDK](https://github.com/vercel/chat) (`chat` +
+`@chat-adapter/slack`); follow [docs/SLACK_INTEGRATION.md](docs/SLACK_INTEGRATION.md)
+for setup. The pipeline is intentionally channel-agnostic — the same
+agent session workflow, conversation persistence, memory, and tool
+runtime back every surface, so adding Microsoft Teams, Discord, or
+WhatsApp is a matter of dropping in the matching adapter.
+
 ### Local versus deployed behavior
 
 Local development uses the same Next.js app, Better Auth configuration, Drizzle schema, and remote Neon database. It is good for UI work and database-backed CRUD flows.
@@ -262,6 +273,14 @@ Optional cron settings:
 ```bash
 CRON_SECRET=<shared-cron-secret>
 LIVENESS_CRON_ENABLED=false
+```
+
+Optional Slack integration (see [docs/SLACK_INTEGRATION.md](docs/SLACK_INTEGRATION.md)):
+
+```bash
+SLACK_BOT_TOKEN=xoxb-...
+SLACK_SIGNING_SECRET=...
+SLACK_BOT_USERNAME=assistant
 ```
 
 Generate a local encryption key with:
