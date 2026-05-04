@@ -22,36 +22,6 @@ import type { RawCredential } from './types'
 
 type ConnectionStatus = 'active' | 'invalid'
 
-interface ConnectionRowData {
-  lastError: string | null
-  metadata: Record<string, unknown>
-  status: ConnectionStatus
-}
-
-async function readConnectionStatusRow(
-  userId: string,
-  provider: string
-): Promise<ConnectionRowData | null> {
-  const [row] = await db
-    .select()
-    .from(userConnections)
-    .where(
-      and(
-        eq(userConnections.userId, userId),
-        eq(userConnections.provider, provider)
-      )
-    )
-    .limit(1)
-  if (!row) {
-    return null
-  }
-  return {
-    metadata: (row.metadata as Record<string, unknown>) ?? {},
-    status: row.status as ConnectionStatus,
-    lastError: row.lastError,
-  }
-}
-
 async function hasConnectionRow(args: {
   userId: string
   provider: string
@@ -154,7 +124,7 @@ export interface ProviderRequirement {
 }
 
 export interface ResolveConnectionAvailabilityResult {
-  /** Providers that have an active connection row. No secret bytes. */
+  /** Providers whose stored credentials decrypted and parsed. No secret bytes. */
   readyProviders: Set<string>
   /** One row per (provider, toolId) pair that couldn't be satisfied. */
   reconnects: Reconnect[]
@@ -163,10 +133,10 @@ export interface ResolveConnectionAvailabilityResult {
 /**
  * Resolve connection availability for a session event.
  *
- * Buckets requirements by provider so we read each connection status
- * once per event. This intentionally does NOT decrypt credentials;
- * decrypted bytes are reserved for the brokered HTTP step at execute
- * time so tool plans never carry secrets.
+ * Buckets requirements by provider so we validate each connection once
+ * per event. This decrypts through the same broker credential path used
+ * at execute time, but the credential bytes are discarded immediately:
+ * only provider readiness crosses the workflow boundary.
  */
 interface ProviderBucket {
   toolIds: Set<string>
@@ -211,13 +181,12 @@ async function resolveOneProvider(args: {
     return
   }
 
-  const row = await readConnectionStatusRow(userId, provider)
-  if (!row) {
-    fanOutReconnect(reconnects, provider, bucket.toolIds)
-    return
-  }
-
-  if (row.status === 'invalid') {
+  try {
+    await readBrokeredCredential({ userId, provider })
+  } catch (err) {
+    if (!(err instanceof BrokerCredentialUnavailableError)) {
+      throw err
+    }
     fanOutReconnect(reconnects, provider, bucket.toolIds)
     return
   }

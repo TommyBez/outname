@@ -21,9 +21,10 @@ import type { MaintainerTool, Reconnect } from '@/tools/types'
  * readiness checks.
  *
  * Decrypted credentials are intentionally not part of this plan. The
- * plan only checks whether each required connection exists and is
- * active; brokered HTTP decrypts at execute time inside a server-only
- * step and injects credentials through Vercel Sandbox network policy.
+ * plan only validates that each required connection can decrypt and
+ * parse; brokered HTTP still decrypts again at execute time inside a
+ * server-only step and injects credentials through Vercel Sandbox
+ * network policy.
  *
  * Returns:
  *
