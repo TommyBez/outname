@@ -33,9 +33,20 @@ export interface ToolSandboxManifest {
    */
   id: string
   /**
+   * Repo-relative setup script path. Keeping this in the manifest makes
+   * new sandbox folders self-contained and removes central path switches.
+   */
+  setupScript: string
+  /**
    * Bumped whenever the manifest's intent changes. The full descriptor
    * plus `setup.sh` bytes drive rebuilds, so runtime/resource changes
    * also invalidate stale snapshots.
    */
   version: number
+}
+
+export function defineSandboxManifest(
+  manifest: ToolSandboxManifest
+): ToolSandboxManifest {
+  return manifest
 }

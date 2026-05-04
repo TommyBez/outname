@@ -40,7 +40,7 @@ export async function saveApiKeyConnectionAction(
 
   if (connector.apiKey.validate) {
     try {
-      const result = await connector.apiKey.validate(parsed.data)
+      const result = await connector.apiKey.validate(values)
       if (!result.ok) {
         return { ok: false, error: result.error ?? 'Invalid credentials.' }
       }

@@ -1,4 +1,5 @@
 import { getSystemSandbox } from '@/lib/agent-sandbox'
+import { reconnectPromptLine } from '@/tools/reconnect-renderer'
 import type { Reconnect } from '@/tools/types'
 import {
   listLiveMemory,
@@ -61,38 +62,11 @@ const FOOTER = `## Platform invariants
 const MAX_EAGER_CONTEXT_CHARS = 12_000
 const EAGER_CONTEXT_PATH_SET: ReadonlySet<string> = new Set(EAGER_CONTEXT_PATHS)
 
-function describeReconnect(r: Reconnect): string {
-  switch (r.reason) {
-    case 'connection_unavailable':
-      return `- \`${r.toolId}\` (provider: ${r.provider}) — connection is missing or unusable. Ask the user to connect or replace it from settings.`
-    case 'config_invalid':
-      return `- \`${r.toolId}\` — attached configuration is invalid (${r.message}). Ask the user to re-attach this tool.`
-    case 'build_failed':
-      return `- \`${r.toolId}\` — failed to initialize (${r.message}). The platform owner has been notified; route around this tool for now.`
-    case 'tool_removed':
-      return `- \`${r.toolId}\` — this tool no longer exists in the registry. Ask the user to detach it.`
-    case 'tool_sandbox_building':
-      return `- \`${r.toolId}\` — its tool environment ("${r.manifest}") is still being prepared. Ask the user to retry in a moment; do not pretend the tool ran.`
-    case 'tool_sandbox_unavailable':
-      return `- \`${r.toolId}\` — its tool environment ("${r.manifest}") is unavailable (${r.message}). Tell the user the tool needs to be re-attached from settings.`
-    case 'sub_agent_unavailable':
-      return `- \`${r.toolId}\` — sub-agent unavailable (${r.message}).`
-    case 'sub_agent_cycle':
-      return `- \`${r.toolId}\` — refused to load: would create a sub-agent cycle. Tell the user this delegation is not allowed.`
-    case 'sub_agent_depth':
-      return `- \`${r.toolId}\` — refused to load: sub-agent nesting limit exceeded. Tell the user the chain is too deep and break the task into fewer levels.`
-    default: {
-      const _exhaustive: never = r
-      return `- (unknown reconnect reason) ${JSON.stringify(_exhaustive)}`
-    }
-  }
-}
-
 function renderReconnects(reconnects: readonly Reconnect[]): string | null {
   if (reconnects.length === 0) {
     return null
   }
-  const lines = reconnects.map(describeReconnect).join('\n')
+  const lines = reconnects.map(reconnectPromptLine).join('\n')
   return [
     '## Tools needing reconnection',
     '',

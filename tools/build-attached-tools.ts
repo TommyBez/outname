@@ -1,5 +1,4 @@
 import type { Tool } from 'ai'
-import type { RawCredential } from '@/connectors/types'
 import type {
   PlannedSubAgent,
   PlannedTool,
@@ -19,8 +18,8 @@ import type { Reconnect } from './types'
  * `connection-crypto`, no `connectors/runtime`. That keeps the
  * workflow function bundle free of `node:crypto`.
  *
- * Inputs come straight from `resolveToolPlan` — `planned`, `creds`,
- * and `subAgents` are already filtered for tools that hit
+ * Inputs come straight from `resolveToolPlan` — `planned` and
+ * `subAgents` are already filtered for tools that hit
  * credential / cycle / depth / sandbox-readiness reconnects, so we
  * only have to handle one remaining failure mode: the tool's own
  * `build()` throwing.
@@ -47,33 +46,23 @@ export interface BuildAttachedToolsArgs {
 
 function buildOne(args: {
   agentId: string
-  creds: Record<string, RawCredential>
   planned: PlannedTool
   reconnects: Reconnect[]
+  userId: string
 }): { id: string; tool: Tool } | null {
-  const { agentId, creds, planned: p, reconnects } = args
+  const { agentId, userId, planned: p, reconnects } = args
   const tool = getMaintainerTool(p.toolId)
   if (!tool) {
     return null
-  }
-  // Build the credentials slice the tool actually needs. The plan
-  // step already guaranteed every required provider is present in
-  // `creds`.
-  const credentials: Record<string, RawCredential> = {}
-  for (const req of p.requirements) {
-    const raw = creds[req.provider]
-    if (raw !== undefined) {
-      credentials[req.provider] = raw
-    }
   }
   try {
     return {
       id: p.toolId,
       tool: tool.build({
         agentId,
+        userId,
         toolId: p.toolId,
         config: p.config,
-        credentials,
       }),
     }
   } catch (err) {
@@ -150,7 +139,7 @@ export function buildAttachedTools(
   const tools: Record<string, Tool> = {}
 
   for (const planned of plan.planned) {
-    const built = buildOne({ agentId, creds: plan.creds, planned, reconnects })
+    const built = buildOne({ agentId, userId, planned, reconnects })
     if (built) {
       tools[built.id] = built.tool
     }

@@ -1,8 +1,10 @@
 import 'server-only'
-import { tool } from 'ai'
 import { z } from 'zod'
-import { getOrStartToolSandbox } from '@/lib/tool-sandbox-runtime'
-import type { MaintainerTool } from './types'
+import {
+  defineSandboxTool,
+  toolError,
+  toolSuccess,
+} from './define-maintainer-tool'
 
 /**
  * Phase 4: agent-browser tool.
@@ -100,31 +102,34 @@ interface RunAgentBrowserResult {
   timedOut?: true
 }
 
-async function runAgentBrowser(
-  input: RunAgentBrowserInput
-): Promise<RunAgentBrowserResult> {
-  'use step'
-  const sandbox = await getOrStartToolSandbox('agent-browser')
-
+async function runAgentBrowser(input: {
+  run: (args: {
+    args: string[]
+    cmd: string
+    manifestId: string
+    stderrLimit?: number
+    stdoutLimit?: number
+  }) => Promise<{ exitCode: number; stderr: string; stdout: string }>
+  value: RunAgentBrowserInput
+}): Promise<RunAgentBrowserResult> {
   // The Vercel Sandbox SDK doesn't expose a per-command wall-clock
   // budget directly, so we race the run against a JS-side timeout.
   // The runaway command keeps running inside the sandbox until the
   // sandbox itself is stopped at end-of-event — that's acceptable
   // because tool sandboxes are scoped to one workflow run.
   const exec = (async () => {
-    const result = await sandbox.runCommand('agent-browser', [
-      input.command,
-      ...input.args,
-    ])
-    const [stdout, stderr] = await Promise.all([
-      result.stdout(),
-      result.stderr(),
-    ])
+    const result = await input.run({
+      manifestId: 'agent-browser',
+      cmd: 'agent-browser',
+      args: [input.value.command, ...input.value.args],
+      stdoutLimit: MAX_STDOUT_BYTES,
+      stderrLimit: MAX_STDERR_BYTES,
+    })
     return {
       ok: result.exitCode === 0,
       exitCode: result.exitCode,
-      stdout: stdout.slice(0, MAX_STDOUT_BYTES),
-      stderr: stderr.slice(0, MAX_STDERR_BYTES),
+      stdout: result.stdout,
+      stderr: result.stderr,
     } satisfies RunAgentBrowserResult
   })()
 
@@ -135,10 +140,10 @@ async function runAgentBrowser(
         ok: false,
         exitCode: -1,
         stdout: '',
-        stderr: `agent-browser ${input.command} timed out after ${input.timeoutMs}ms`,
+        stderr: `agent-browser ${input.value.command} timed out after ${input.value.timeoutMs}ms`,
         timedOut: true,
       })
-    }, input.timeoutMs)
+    }, input.value.timeoutMs)
   })
 
   try {
@@ -150,20 +155,22 @@ async function runAgentBrowser(
   }
 }
 
-export const agentBrowserTool: MaintainerTool = {
+export const agentBrowserTool = defineSandboxTool({
   id: 'agent_browser',
   category: 'browser',
   displayName: 'agent-browser',
   description:
     'Drive a headless browser via the agent-browser CLI. The browser session persists across calls for the duration of this conversation, so you can chain `open` -> `snapshot` -> `click @ref` etc. Returns exit code, stdout, and stderr per call.',
-  requirements: [{ kind: 'tool_sandbox', manifest: 'agent-browser' }],
-  build() {
-    return tool({
-      description:
-        "Run an agent-browser CLI subcommand inside this conversation's persistent browser sandbox. The browser session lives for the lifetime of the chat turn — you can `open` once, then issue `snapshot`, `click @ref`, `type`, etc. without re-navigating. Tools that take a URL: pass it as the first arg. Tools that take a ref id (e.g. `click`): use the @e1 / @e2 refs printed by `snapshot -i`.",
-      inputSchema,
-      execute: async ({ command, args, timeoutMs }) =>
-        await runAgentBrowser({ command, args, timeoutMs }),
+  manifestId: 'agent-browser',
+  inputSchema,
+  async execute({ input: { command, args, timeoutMs }, ctx }) {
+    const result = await runAgentBrowser({
+      run: ctx.sandbox.run,
+      value: { command, args: args ?? [], timeoutMs: timeoutMs ?? 30_000 },
     })
+    if (result.timedOut) {
+      return toolError('provider_error', result.stderr)
+    }
+    return toolSuccess(result)
   },
-}
+})

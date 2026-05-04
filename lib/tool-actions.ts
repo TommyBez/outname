@@ -75,7 +75,7 @@ export async function attachToolAction(
   // inserted in `pending` state when a build is in flight; the build
   // workflow flips it to `connected` on success.
   const sandboxManifest =
-    tool.requirements.find((r) => r.kind === 'tool_sandbox')?.manifest ?? null
+    tool.capabilities.find((r) => r.kind === 'tool_sandbox')?.manifest ?? null
   const sandboxManifestHash = sandboxManifest
     ? manifestHash(sandboxManifest)
     : null

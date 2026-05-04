@@ -2,8 +2,10 @@ import 'server-only'
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import { agentBrowserManifest } from './agent-browser/manifest'
-import type { ToolSandboxManifest } from './types'
+import {
+  getToolSandboxManifest as readToolSandboxManifest,
+  listToolSandboxManifests as readToolSandboxManifests,
+} from './registry'
 
 /**
  * Tool-sandbox manifest registry.
@@ -13,35 +15,15 @@ import type { ToolSandboxManifest } from './types'
  * loaded lazily (and cached) so attach-time hash checks are cheap and
  * the workflow build step has the script to run.
  */
-interface RegistryEntry {
-  manifest: ToolSandboxManifest
-}
-
-const REGISTRY: Record<string, RegistryEntry> = {
-  [agentBrowserManifest.id]: {
-    manifest: agentBrowserManifest,
-  },
-}
-
 const setupScriptCache = new Map<string, string>()
 const manifestHashCache = new Map<string, string>()
 
-function entryFor(manifestId: string): RegistryEntry {
-  const entry = REGISTRY[manifestId]
-  if (!entry) {
-    throw new Error(`Unknown tool sandbox manifest: ${manifestId}`)
-  }
-  return entry
+export function getToolSandboxManifest(manifestId: string) {
+  return readToolSandboxManifest(manifestId)
 }
 
-export function getToolSandboxManifest(
-  manifestId: string
-): ToolSandboxManifest {
-  return entryFor(manifestId).manifest
-}
-
-export function listToolSandboxManifests(): ToolSandboxManifest[] {
-  return Object.values(REGISTRY).map((e) => e.manifest)
+export function listToolSandboxManifests() {
+  return readToolSandboxManifests()
 }
 
 /**
@@ -53,23 +35,13 @@ export function manifestSetupScript(manifestId: string): string {
   if (cached !== undefined) {
     return cached
   }
-  const entry = entryFor(manifestId)
-  const bytes = readFileSync(setupScriptPathFor(entry.manifest.id), 'utf8')
+  const manifest = readToolSandboxManifest(manifestId)
+  const bytes = readFileSync(
+    path.join(/*turbopackIgnore: true*/ process.cwd(), manifest.setupScript),
+    'utf8'
+  )
   setupScriptCache.set(manifestId, bytes)
   return bytes
-}
-
-function setupScriptPathFor(manifestId: string): string {
-  if (manifestId === agentBrowserManifest.id) {
-    return path.join(
-      /*turbopackIgnore: true*/ process.cwd(),
-      'tools',
-      'sandboxes',
-      'agent-browser',
-      'setup.sh'
-    )
-  }
-  throw new Error(`Unknown tool sandbox manifest: ${manifestId}`)
 }
 
 /**
@@ -83,7 +55,7 @@ export function manifestHash(manifestId: string): string {
   if (cached !== undefined) {
     return cached
   }
-  const m = entryFor(manifestId).manifest
+  const m = readToolSandboxManifest(manifestId)
   const script = manifestSetupScript(manifestId)
   const hash = createHash('sha256')
     .update(stableStringify(m))

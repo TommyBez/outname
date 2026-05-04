@@ -25,11 +25,10 @@ type ConnectionStatus = 'active' | 'invalid'
 interface ConnectionRowData {
   lastError: string | null
   metadata: Record<string, unknown>
-  raw: RawCredential | null
   status: ConnectionStatus
 }
 
-async function readConnectionRow(
+async function readConnectionStatusRow(
   userId: string,
   provider: string
 ): Promise<ConnectionRowData | null> {
@@ -46,31 +45,7 @@ async function readConnectionRow(
   if (!row) {
     return null
   }
-  let raw: RawCredential
-  try {
-    raw = decryptCredential(row.credentials)
-  } catch (err) {
-    // Tampering / key mismatch / corruption: mark invalid so the user
-    // can replace the key instead of getting a 500.
-    console.error('[v0] decryptCredential failed', {
-      provider,
-      userId,
-      err,
-    })
-    const message =
-      err instanceof Error
-        ? err.message
-        : 'Stored credential could not decrypt.'
-    await markInvalid({ userId, provider, error: message })
-    return {
-      raw: null,
-      metadata: (row.metadata as Record<string, unknown>) ?? {},
-      status: 'invalid',
-      lastError: message,
-    }
-  }
   return {
-    raw,
     metadata: (row.metadata as Record<string, unknown>) ?? {},
     status: row.status as ConnectionStatus,
     lastError: row.lastError,
@@ -178,19 +153,20 @@ export interface ProviderRequirement {
   toolId: string
 }
 
-export interface ResolveCredentialsResult {
-  /** Map of provider id -> decrypted credential. */
-  ready: Map<string, RawCredential>
+export interface ResolveConnectionAvailabilityResult {
+  /** Providers that have an active connection row. No secret bytes. */
+  readyProviders: Set<string>
   /** One row per (provider, toolId) pair that couldn't be satisfied. */
   reconnects: Reconnect[]
 }
 
 /**
- * Resolve the credential bundle for a session event.
+ * Resolve connection availability for a session event.
  *
- * Buckets requirements by provider so we read and decrypt each API key
- * once per event. Failures produce reconnect entries and never throw
- * out of this function.
+ * Buckets requirements by provider so we read each connection status
+ * once per event. This intentionally does NOT decrypt credentials;
+ * decrypted bytes are reserved for the brokered HTTP step at execute
+ * time so tool plans never carry secrets.
  */
 interface ProviderBucket {
   toolIds: Set<string>
@@ -225,49 +201,131 @@ async function resolveOneProvider(args: {
   userId: string
   provider: string
   bucket: ProviderBucket
-  ready: Map<string, RawCredential>
+  readyProviders: Set<string>
   reconnects: Reconnect[]
 }): Promise<void> {
-  const { userId, provider, bucket, ready, reconnects } = args
+  const { userId, provider, bucket, readyProviders, reconnects } = args
   const connector = getConnector(provider)
   if (!connector) {
     fanOutReconnect(reconnects, provider, bucket.toolIds)
     return
   }
 
-  const row = await readConnectionRow(userId, provider)
+  const row = await readConnectionStatusRow(userId, provider)
   if (!row) {
     fanOutReconnect(reconnects, provider, bucket.toolIds)
     return
   }
 
-  if (row.status === 'invalid' || row.raw === null) {
+  if (row.status === 'invalid') {
     fanOutReconnect(reconnects, provider, bucket.toolIds)
     return
   }
 
-  ready.set(provider, row.raw)
+  readyProviders.add(provider)
 }
 
-export async function resolveCredentials(args: {
+export async function resolveConnectionAvailability(args: {
   userId: string
   requirements: ProviderRequirement[]
-}): Promise<ResolveCredentialsResult> {
-  const ready = new Map<string, RawCredential>()
+}): Promise<ResolveConnectionAvailabilityResult> {
+  const readyProviders = new Set<string>()
   const reconnects: Reconnect[] = []
   const byProvider = bucketRequirementsByProvider(args.requirements)
 
-  for (const [provider, bucket] of byProvider) {
-    await resolveOneProvider({
-      userId: args.userId,
-      provider,
-      bucket,
-      ready,
-      reconnects,
-    })
+  await Promise.all(
+    Array.from(byProvider.entries()).map(([provider, bucket]) =>
+      resolveOneProvider({
+        userId: args.userId,
+        provider,
+        bucket,
+        readyProviders,
+        reconnects,
+      })
+    )
+  )
+
+  return { readyProviders, reconnects }
+}
+
+export class BrokerCredentialUnavailableError extends Error {
+  readonly code = 'connection_unavailable' as const
+  readonly provider: string
+
+  constructor(provider: string, message: string) {
+    super(message)
+    this.provider = provider
+    this.name = 'BrokerCredentialUnavailableError'
+  }
+}
+
+/**
+ * Decrypt and validate one provider credential for brokered HTTP.
+ * This is the only runtime path that turns encrypted connection bytes
+ * into a provider-specific credential object.
+ */
+export async function readBrokeredCredential(args: {
+  provider: string
+  userId: string
+}): Promise<RawCredential> {
+  const connector = getConnector(args.provider)
+  if (!connector) {
+    throw new BrokerCredentialUnavailableError(
+      args.provider,
+      `Unknown provider: ${args.provider}`
+    )
   }
 
-  return { ready, reconnects }
+  const [row] = await db
+    .select({
+      credentials: userConnections.credentials,
+      status: userConnections.status,
+    })
+    .from(userConnections)
+    .where(
+      and(
+        eq(userConnections.userId, args.userId),
+        eq(userConnections.provider, args.provider)
+      )
+    )
+    .limit(1)
+
+  if (!row || row.status === 'invalid') {
+    throw new BrokerCredentialUnavailableError(
+      args.provider,
+      `Connection for ${args.provider} is missing or invalid.`
+    )
+  }
+
+  let raw: RawCredential
+  try {
+    raw = decryptCredential(row.credentials)
+  } catch (err) {
+    const message =
+      err instanceof Error
+        ? err.message
+        : 'Stored credential could not decrypt.'
+    await markInvalid({
+      userId: args.userId,
+      provider: args.provider,
+      error: message,
+    })
+    throw new BrokerCredentialUnavailableError(args.provider, message)
+  }
+
+  const parsed = connector.apiKey.formSchema.safeParse(raw)
+  if (!parsed.success) {
+    const message =
+      parsed.error.issues[0]?.message ?? 'Stored credential shape is invalid.'
+    await markInvalid({
+      userId: args.userId,
+      provider: args.provider,
+      error: message,
+    })
+    throw new BrokerCredentialUnavailableError(args.provider, message)
+  }
+
+  return parsed.data
 }
 
 /**

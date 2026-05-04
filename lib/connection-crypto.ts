@@ -1,5 +1,6 @@
 import 'server-only'
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
+import { getConnectionEncryptionKey } from '@/lib/key-provider'
 
 /**
  * AES-256-GCM at-rest encryption for `user_connections.credentials`.
@@ -12,44 +13,21 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
  * without re-reading every row in a single big-bang. Today only `0x01`
  * is defined.
  *
- * Key sourcing:
- *   `CONNECTION_ENCRYPTION_KEY` is a 32-byte key encoded as base64.
- *   Generate with `openssl rand -base64 32`. We refuse to start
- *   encrypting / decrypting without it.
+ * Key sourcing is delegated to `lib/key-provider.ts`. The current
+ * provider still reads `CONNECTION_ENCRYPTION_KEY`; future KMS or
+ * per-tenant DEK providers can slot in behind the same interface.
  */
 
 const VERSION = 0x01
 const IV_LEN = 12
 const TAG_LEN = 16
 
-let cachedKey: Buffer | null = null
-
-function getKey(): Buffer {
-  if (cachedKey) {
-    return cachedKey
-  }
-  const raw = process.env.CONNECTION_ENCRYPTION_KEY
-  if (!raw) {
-    throw new Error(
-      'CONNECTION_ENCRYPTION_KEY is not set. Generate one with `openssl rand -base64 32` and add it to the project env.'
-    )
-  }
-  const buf = Buffer.from(raw, 'base64')
-  if (buf.length !== 32) {
-    throw new Error(
-      `CONNECTION_ENCRYPTION_KEY must decode to 32 bytes (got ${buf.length}). Did you set a base64-encoded 32-byte key?`
-    )
-  }
-  cachedKey = buf
-  return buf
-}
-
 /**
  * Encrypt an arbitrary JSON-serialisable value into a base64 envelope.
  * Each call uses a fresh random IV — never reuse one with the same key.
  */
 export function encryptCredential(value: unknown): string {
-  const key = getKey()
+  const key = getConnectionEncryptionKey()
   const iv = randomBytes(IV_LEN)
   const plaintext = Buffer.from(JSON.stringify(value), 'utf8')
   const cipher = createCipheriv('aes-256-gcm', key, iv)
@@ -64,7 +42,7 @@ export function encryptCredential(value: unknown): string {
  * any tampering, key mismatch, or unknown version byte.
  */
 export function decryptCredential<T = unknown>(envelopeB64: string): T {
-  const key = getKey()
+  const key = getConnectionEncryptionKey()
   const envelope = Buffer.from(envelopeB64, 'base64')
   if (envelope.length < 1 + IV_LEN + TAG_LEN) {
     throw new Error('decryptCredential: envelope too short')
