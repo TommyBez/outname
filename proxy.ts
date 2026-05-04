@@ -5,6 +5,17 @@ export function proxy(req: NextRequest) {
   const sessionCookie = getSessionCookie(req)
   const { pathname } = req.nextUrl
 
+  if (pathname === '/login') {
+    if (sessionCookie) {
+      const url = req.nextUrl.clone()
+      url.pathname = '/dashboard'
+      url.search = ''
+      return NextResponse.redirect(url)
+    }
+
+    return NextResponse.next()
+  }
+
   if (!sessionCookie) {
     const url = req.nextUrl.clone()
     url.pathname = '/login'
@@ -17,6 +28,7 @@ export function proxy(req: NextRequest) {
 
 export const config = {
   matcher: [
+    '/login',
     '/dashboard',
     '/settings/:path*',
     '/api/workflow/:path*',

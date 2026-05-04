@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import { auth } from '@/lib/auth'
 import { createPrivatePageMetadata } from '@/lib/site-metadata'
+import { LoginFallback } from './login-fallback'
 import { LoginForm } from './login-form'
 
 export const metadata: Metadata = createPrivatePageMetadata(
@@ -28,7 +29,7 @@ export default function LoginPage({
             Access your scheduled agents and live dashboard.
           </p>
         </div>
-        <Suspense fallback={<LoginForm redirectTo="/dashboard" />}>
+        <Suspense fallback={<LoginFallback />}>
           <LoginGate searchParams={searchParams} />
         </Suspense>
       </div>
