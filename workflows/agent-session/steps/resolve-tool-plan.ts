@@ -1,9 +1,8 @@
 import { and, desc, eq, inArray } from 'drizzle-orm'
 import {
   type ProviderRequirement,
-  resolveCredentials,
+  resolveConnectionAvailability,
 } from '@/connectors/runtime'
-import type { RawCredential } from '@/connectors/types'
 import { db } from '@/lib/db'
 import {
   agent,
@@ -11,41 +10,38 @@ import {
   toolSandboxBuilds,
   toolSandboxSnapshots,
 } from '@/lib/db/schema'
-import { AGENT_TOOL_PREFIX } from '@/tools/agent-tool-prefix'
 import { getMaintainerTool } from '@/tools/registry'
 import { getToolSandboxManifest, manifestHash } from '@/tools/sandboxes'
+import { resolveToolKindRows } from '@/tools/tool-kind-plugins'
 import type { MaintainerTool, Reconnect } from '@/tools/types'
 
 /**
- * Step boundary that pulls every credential / crypto path OUT of the
- * workflow function bundle, plus all DB lookups for sub-agents and
- * tool-sandbox readiness.
+ * Step boundary that pulls DB lookups for tool planning OUT of the
+ * workflow function bundle, plus all sub-agent and tool-sandbox
+ * readiness checks.
  *
- * The workflow SDK refuses to bundle `node:crypto` (used by
- * `lib/connection-crypto.ts` for the AES-GCM envelope around stored
- * credentials). By terminating that import graph at this step we keep
- * the workflow runtime's bundle clean: the step runs as a regular
- * Node function, returns a plain JSON-shaped plan, and the workflow
- * just does synchronous `tool.build()` calls on the result.
+ * Decrypted credentials are intentionally not part of this plan. The
+ * plan only validates that each required connection can decrypt and
+ * parse; brokered HTTP still decrypts again at execute time inside a
+ * server-only step and injects credentials through Vercel Sandbox
+ * network policy.
  *
  * Returns:
  *
  *   - `planned`     One entry per maintainer-tool agent_tools row
- *                   whose config parsed AND whose required
- *                   credentials are now in `creds` AND whose tool
- *                   sandbox snapshot (if any) is ready.
+ *                   whose config parsed AND whose required connection
+ *                   is active AND whose tool sandbox snapshot (if any)
+ *                   is ready.
  *   - `subAgents`   Sub-agent rows whose `agent:<childId>` pointer
  *                   resolves to an enabled, owned, non-cyclic, non-
  *                   over-deep child agent. Each has the metadata the
  *                   workflow needs to synthesise an `agent_<id>` tool.
- *   - `creds`       provider id -> RawCredential. JSON-safe by
- *                   design; never carries DB rows or encrypted bytes.
  *   - `reconnects`  Same shape `composeSystemPrompt` consumes —
  *                   tool-keyed and provider-keyed.
  */
 export interface PlannedTool {
   config: Record<string, unknown>
-  requirements: ProviderRequirement[]
+  providerRequirements: ProviderRequirement[]
   toolId: string
 }
 
@@ -58,7 +54,6 @@ export interface PlannedSubAgent {
 }
 
 export interface ResolveToolPlanResult {
-  creds: Record<string, RawCredential>
   planned: PlannedTool[]
   reconnects: Reconnect[]
   subAgents: PlannedSubAgent[]
@@ -108,7 +103,7 @@ export async function resolveToolPlan(args: {
     .where(eq(agentTools.agentId, agentId))
 
   if (rows.length === 0) {
-    return { planned: [], subAgents: [], creds: {}, reconnects: [] }
+    return { planned: [], subAgents: [], reconnects: [] }
   }
 
   const reconnects: Reconnect[] = []
@@ -117,19 +112,18 @@ export async function resolveToolPlan(args: {
 
   const subAgentRows: SubAgentRow[] = []
   const maintainerRows: MaintainerRow[] = []
-  for (const row of rows) {
+  for (const row of resolveToolKindRows(rows)) {
     if (row.kind === 'sub_agent') {
-      subAgentRows.push({
-        toolId: row.toolId,
-        childAgentId: childAgentIdForToolId(row.toolId),
-      })
-    } else if (row.kind === 'maintainer') {
-      maintainerRows.push({ toolId: row.toolId, config: row.config })
+      subAgentRows.push(row)
+    } else {
+      maintainerRows.push(row)
     }
   }
 
-  for (const row of maintainerRows) {
-    const result = await resolveMaintainerRow(row)
+  const maintainerResults = await Promise.all(
+    maintainerRows.map((row) => resolveMaintainerRow(row))
+  )
+  for (const result of maintainerResults) {
     if (result.kind === 'reconnect') {
       reconnects.push(...result.reconnects)
     } else {
@@ -149,16 +143,18 @@ export async function resolveToolPlan(args: {
     subAgents.push(...subResult.subAgents)
   }
 
-  // Pass 2: resolve credentials. One DB read + decrypt per provider,
-  // regardless of how many tools share the connection.
-  const requirements = planned.flatMap((p) => p.requirements)
-  const { ready, reconnects: credentialReconnects } = await resolveCredentials({
-    userId,
-    requirements,
-  })
+  // Pass 2: resolve connection availability. One DB read per provider,
+  // regardless of how many tools share the connection. No secret bytes
+  // cross this workflow boundary.
+  const requirements = planned.flatMap((p) => p.providerRequirements)
+  const { reconnects: credentialReconnects } =
+    await resolveConnectionAvailability({
+      userId,
+      requirements,
+    })
   reconnects.push(...credentialReconnects)
 
-  // Drop any tool whose creds didn't fully resolve — the workflow
+  // Drop any tool whose connection didn't fully resolve — the workflow
   // side never calls `tool.build()` with a half-resolved bundle.
   const reconnectedToolIds = new Set(
     credentialReconnects.map((r) => ('toolId' in r ? r.toolId : ''))
@@ -167,20 +163,7 @@ export async function resolveToolPlan(args: {
     (p) => !reconnectedToolIds.has(p.toolId)
   )
 
-  // Materialize the credential map as a plain object so it survives
-  // the step boundary (JSON-only) without needing a custom serializer.
-  const creds: Record<string, RawCredential> = {}
-  for (const [provider, raw] of ready) {
-    creds[provider] = raw
-  }
-
-  return { planned: filteredPlanned, subAgents, creds, reconnects }
-}
-
-function childAgentIdForToolId(toolId: string): string {
-  return toolId.startsWith(AGENT_TOOL_PREFIX)
-    ? toolId.slice(AGENT_TOOL_PREFIX.length)
-    : toolId
+  return { planned: filteredPlanned, subAgents, reconnects }
 }
 
 type MaintainerOutcome =
@@ -213,10 +196,10 @@ async function resolveMaintainerRow(
     planned: {
       toolId: row.toolId,
       config: parsed.config,
-      requirements: tool.requirements
+      providerRequirements: tool.capabilities
         .filter(
-          (r): r is { kind: 'connection'; provider: string } =>
-            r.kind === 'connection'
+          (r): r is { kind: 'brokered_http'; provider: string } =>
+            r.kind === 'brokered_http'
         )
         .map((r) => ({ provider: r.provider, toolId: row.toolId })),
     },
@@ -260,7 +243,7 @@ async function checkSandboxRequirements(
   tool: MaintainerTool,
   toolId: string
 ): Promise<Reconnect | null> {
-  for (const req of tool.requirements) {
+  for (const req of tool.capabilities) {
     if (req.kind !== 'tool_sandbox') {
       continue
     }

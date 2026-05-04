@@ -78,6 +78,8 @@ export async function handleChat(input: {
   const { agent, meta, pending } = await buildAgent({
     agentId,
     runId: conversationId,
+    currentRunId: sessionRunId,
+    conversationId,
   })
 
   const modelMessages = await convertToModelMessages(uiMessages)

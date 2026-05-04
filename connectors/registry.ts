@@ -9,11 +9,33 @@ import type { Connector } from './types'
  */
 
 const CONNECTORS: Connector[] = [resendConnector, calcomConnector]
+const CONNECTOR_BY_PROVIDER = new Map<string, Connector>()
+
+for (const connector of CONNECTORS) {
+  if (CONNECTOR_BY_PROVIDER.has(connector.provider)) {
+    throw new Error(`Duplicate connector provider: ${connector.provider}`)
+  }
+  for (const host of connector.broker.allowedHosts) {
+    if (host.includes('*') || host !== host.toLowerCase()) {
+      throw new Error(
+        `Connector ${connector.provider} must declare exact lowercase broker hosts. Invalid host: ${host}`
+      )
+    }
+  }
+  for (const header of connector.broker.injectedHeaderNames) {
+    if (header !== header.toLowerCase()) {
+      throw new Error(
+        `Connector ${connector.provider} must declare lowercase injected header names. Invalid header: ${header}`
+      )
+    }
+  }
+  CONNECTOR_BY_PROVIDER.set(connector.provider, connector)
+}
 
 export function listConnectors(): readonly Connector[] {
   return CONNECTORS
 }
 
 export function getConnector(provider: string): Connector | undefined {
-  return CONNECTORS.find((c) => c.provider === provider)
+  return CONNECTOR_BY_PROVIDER.get(provider)
 }

@@ -1,6 +1,5 @@
 import type { Tool } from 'ai'
 import type { z } from 'zod'
-import type { RawCredential } from '@/connectors/types'
 
 /**
  * Three-layer mapping (anchor for every maintainer tool we ship):
@@ -8,7 +7,8 @@ import type { RawCredential } from '@/connectors/types'
  *   Layer            Owns                                            Storage                            Lifecycle
  *   ─────────────    ──────────────────────────────────────────────  ─────────────────────────────────  ─────────────────────────────────────────
  *   Credential       "I can talk to provider X"                      `user_connections.credentials`     One per (user, provider). Shared across
- *                                                                    (encrypted)                        all tool attachments.
+ *                                                                    (encrypted)                        all tool attachments. Never handed to
+ *                                                                                                       tool code; brokered HTTP injects it.
  *   Attachment       "How this specific tool attachment is           `agent_tools.config` (jsonb)       One per (agent, tool). Validated against
  *   config           configured" — fromEmail, defaultCalendarId, …                                      `tool.configSchema` at attach AND at
  *                                                                                                       every event boot.
@@ -22,59 +22,55 @@ import type { RawCredential } from '@/connectors/types'
  */
 
 /**
- * Capability a maintainer tool needs at build time.
+ * Capability a maintainer tool needs at build / execute time.
  *
- *   `connection`    — needs a stored credential at the named provider.
+ *   `brokered_http` — needs a stored credential at the named provider.
+ *                     Authenticated calls must go through Vercel
+ *                     Sandbox network-policy header injection.
  *   `tool_sandbox`  — needs a pre-built tool-sandbox snapshot for the
- *                     named manifest (Phase 4). The runtime spawns
- *                     into the snapshot lazily on first tool call.
+ *                     named manifest. The runtime spawns into the
+ *                     snapshot lazily on first tool call.
+ *   `none`          — no external capability. Mostly documentary; an
+ *                     empty capability list is also valid.
  */
-export type ToolRequirement =
-  | { kind: 'connection'; provider: string }
+export type ToolCapability =
+  | { kind: 'brokered_http'; provider: string }
   | { kind: 'tool_sandbox'; manifest: string }
+  | { kind: 'none' }
 
-/**
- * Form descriptor for an attachment-config field. Drives the catalog UI
- * "Configure this tool" panel. Keep field shapes minimal — anything
- * fancier should land as a separate sub-form, not as flags here.
- */
-export interface ToolConfigFieldDescriptor {
-  default?: string
-  description?: string
-  label: string
-  name: string
-  options?: { value: string; label: string }[]
-  placeholder?: string
-  required?: boolean
-  type: 'text' | 'select'
-}
+export type ToolErrorCode =
+  | 'invalid_input'
+  | 'policy_denied'
+  | 'provider_error'
+  | 'rate_limited'
+  | 'unavailable'
+  | 'internal_error'
+
+export type ToolResult<TData = unknown> =
+  | { ok: true; data: TData }
+  | { ok: false; code: ToolErrorCode; message: string }
 
 /**
  * Build context handed to `MaintainerTool.build`. Tools receive ONLY
- * what they need: validated config + decrypted credentials + a couple
- * of identifiers for logging. There is no `userId` — tools must not
- * reach around the credential layer with raw DB queries.
+ * what they need to produce AI SDK tool closures. Raw credentials are
+ * deliberately absent; authenticated provider calls happen through the
+ * broker runtime during `execute`.
  */
 export interface ToolBuildContext {
   /** `agent.id` of the agent owning this attachment. For logging only. */
   agentId: string
   /** Validated attachment config — `{}` if the tool has no `configSchema`. */
   config: Record<string, unknown>
-  /**
-   * Decrypted, refreshed credentials keyed by provider id. The runtime
-   * has already verified that every required provider is present; tools
-   * can dereference without re-checking.
-   */
-  credentials: Record<string, RawCredential>
+  /** Chat conversation id for UI turns; null for heartbeat/invocation turns. */
+  conversationId: string | null
+  /** Workflow/runtime run id for this event, when available. */
+  runId: string | null
   /** Registry id, e.g. "resend_send". For logging / error attribution. */
   toolId: string
+  /** Owner of the agent; used only by shared runtime services. */
+  userId: string
 }
 
-/**
- * Maintainer-shipped tool definition. The platform owns every entry in
- * `tools/registry.ts`; agents enable / configure them via
- * `agent_tools` rows but do not author them.
- */
 /**
  * Unified discriminator describing why a maintainer tool is not callable
  * this turn. Consumed by:
@@ -112,6 +108,11 @@ export type Reconnect =
   | { toolId: string; reason: 'sub_agent_cycle' }
   | { toolId: string; reason: 'sub_agent_depth' }
 
+/**
+ * Maintainer-shipped tool definition. The platform owns every entry in
+ * `tools/registry.ts`; agents enable / configure them via
+ * `agent_tools` rows but do not author them.
+ */
 export interface MaintainerTool {
   /**
    * Build the AI-SDK Tool the agent actually invokes. Must throw on
@@ -119,10 +120,10 @@ export interface MaintainerTool {
    * as `reason: "build_failed"`.
    */
   build(ctx: ToolBuildContext): Tool
+  /** Capabilities the tool needs at build / execute time. */
+  capabilities: ToolCapability[]
   /** Coarse category for catalog grouping. */
   category: string
-  /** Optional UI metadata for the configure panel. */
-  configFields?: ToolConfigFieldDescriptor[]
   /** Optional Zod schema for `agent_tools.config`. */
   configSchema?: z.ZodTypeAny
   /** One-paragraph user-facing description. */
@@ -131,6 +132,4 @@ export interface MaintainerTool {
   displayName: string
   /** Stable id used in `agent_tools.tool_id` and as the AI-SDK tool key. */
   id: string
-  /** Capabilities the tool needs at build time. */
-  requirements: ToolRequirement[]
 }

@@ -460,6 +460,44 @@ export const toolSandboxBuilds = pgTable(
 )
 export type ToolSandboxBuild = typeof toolSandboxBuilds.$inferSelect
 
+/**
+ * PII-light maintainer tool audit trail.
+ *
+ * Payloads and provider responses are intentionally omitted. The row is
+ * meant for forensics, debugging, and coarse product metrics without
+ * persisting user/tool content.
+ */
+export const toolInvocations = pgTable(
+  'tool_invocations',
+  {
+    id: text('id').primaryKey(),
+    agentId: text('agent_id')
+      .notNull()
+      .references(() => agent.id, { onDelete: 'cascade' }),
+    userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }),
+    runId: text('run_id'),
+    conversationId: text('conversation_id'),
+    toolId: text('tool_id').notNull(),
+    kind: text('kind').notNull(),
+    ok: boolean('ok').notNull(),
+    durationMs: integer('duration_ms').notNull(),
+    errorCode: text('error_code'),
+    errorMessage: text('error_message'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index('tool_invocations_agent_created_idx').on(
+      t.agentId,
+      t.createdAt.desc()
+    ),
+    index('tool_invocations_user_created_idx').on(t.userId, t.createdAt.desc()),
+    index('tool_invocations_tool_created_idx').on(t.toolId, t.createdAt.desc()),
+  ]
+)
+export type ToolInvocation = typeof toolInvocations.$inferSelect
+
 export type UserConnection = typeof userConnections.$inferSelect
 export type AgentTool = typeof agentTools.$inferSelect
 export type AgentFileChange = typeof agentFileChanges.$inferSelect

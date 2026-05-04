@@ -44,11 +44,11 @@ async function Resolved({ params }: { params: Params }) {
   ])
 
   const catalog: ToolCatalogEntry[] = listMaintainerTools().map((t) => {
-    const providers = t.requirements
-      .filter((r) => r.kind === 'connection')
+    const providers = t.capabilities
+      .filter((r) => r.kind === 'brokered_http')
       .map((r) => r.provider)
     const sandboxManifest =
-      t.requirements.find((r) => r.kind === 'tool_sandbox')?.manifest ?? null
+      t.capabilities.find((r) => r.kind === 'tool_sandbox')?.manifest ?? null
     return {
       toolId: t.id,
       displayName: t.displayName,

@@ -1,6 +1,6 @@
 import 'server-only'
 import { z } from 'zod'
-import type { ApiKeyConnector, RawCredential } from './types'
+import { defineConnector } from './define-connector'
 
 /**
  * Resend api_key connector. Holds the raw API key only — the
@@ -18,26 +18,25 @@ const resendCredentialSchema = z.object({
 
 export type ResendCredential = z.infer<typeof resendCredentialSchema>
 
-export const resendConnector: ApiKeyConnector = {
-  provider: 'resend',
-  kind: 'api_key',
+export const resendConnector = defineConnector('resend', {
   displayName: 'Resend',
   description: 'Transactional email via Resend. Used by the resend.send tool.',
-  apiKey: {
-    formSchema: resendCredentialSchema,
-    fields: [
-      {
-        name: 'apiKey',
-        label: 'API key',
-        type: 'password',
-        placeholder: 're_...',
-        description:
-          'Generate at resend.com/api-keys. The key is encrypted at rest before storage.',
-      },
-    ],
+  credential: resendCredentialSchema,
+  fields: [
+    {
+      name: 'apiKey',
+      label: 'API key',
+      type: 'password',
+      placeholder: 're_...',
+      description:
+        'Generate at resend.com/api-keys. The key is encrypted at rest before storage.',
+    },
+  ],
+  broker: {
+    allowedHosts: ['api.resend.com'] as const,
+    injectedHeaderNames: ['authorization'] as const,
+    injectedHeaders: (credential: ResendCredential) => ({
+      authorization: `Bearer ${credential.apiKey}`,
+    }),
   },
-}
-
-export function resendApiKey(raw: RawCredential): string {
-  return (raw as ResendCredential).apiKey
-}
+})

@@ -22,7 +22,7 @@ export interface ToolCatalogEntry {
   configFields: ToolConfigField[]
   description: string
   displayName: string
-  /** Required providers (`resend`, ...) extracted from `requirements`. */
+  /** Required providers (`resend`, ...) extracted from tool capabilities. */
   providers: string[]
   toolId: string
   /**

@@ -1,5 +1,4 @@
 import type { Tool } from 'ai'
-import type { RawCredential } from '@/connectors/types'
 import type {
   PlannedSubAgent,
   PlannedTool,
@@ -19,8 +18,8 @@ import type { Reconnect } from './types'
  * `connection-crypto`, no `connectors/runtime`. That keeps the
  * workflow function bundle free of `node:crypto`.
  *
- * Inputs come straight from `resolveToolPlan` — `planned`, `creds`,
- * and `subAgents` are already filtered for tools that hit
+ * Inputs come straight from `resolveToolPlan` — `planned` and
+ * `subAgents` are already filtered for tools that hit
  * credential / cycle / depth / sandbox-readiness reconnects, so we
  * only have to handle one remaining failure mode: the tool's own
  * `build()` throwing.
@@ -36,6 +35,8 @@ export interface BuildAttachedToolsArgs {
   agentId: string
   /** Phase 4: parent-call lineage. Empty for top-level user-driven turns. */
   callStack?: string[]
+  /** Chat conversation id for this event, if any. */
+  conversationId?: string | null
   /** App run id for this event, if this event has one. Chat turns do not. */
   currentRunId?: string | null
   /** Phase 4: parent's nesting depth. 0 for top-level. */
@@ -47,33 +48,34 @@ export interface BuildAttachedToolsArgs {
 
 function buildOne(args: {
   agentId: string
-  creds: Record<string, RawCredential>
+  conversationId: string | null
   planned: PlannedTool
   reconnects: Reconnect[]
+  runId: string | null
+  userId: string
 }): { id: string; tool: Tool } | null {
-  const { agentId, creds, planned: p, reconnects } = args
+  const {
+    agentId,
+    conversationId,
+    runId,
+    userId,
+    planned: p,
+    reconnects,
+  } = args
   const tool = getMaintainerTool(p.toolId)
   if (!tool) {
     return null
-  }
-  // Build the credentials slice the tool actually needs. The plan
-  // step already guaranteed every required provider is present in
-  // `creds`.
-  const credentials: Record<string, RawCredential> = {}
-  for (const req of p.requirements) {
-    const raw = creds[req.provider]
-    if (raw !== undefined) {
-      credentials[req.provider] = raw
-    }
   }
   try {
     return {
       id: p.toolId,
       tool: tool.build({
         agentId,
+        userId,
         toolId: p.toolId,
         config: p.config,
-        credentials,
+        runId,
+        conversationId,
       }),
     }
   } catch (err) {
@@ -142,6 +144,7 @@ export function buildAttachedTools(
   const { agentId, userId, plan } = args
   const callStack = args.callStack ?? []
   const currentRunId = args.currentRunId ?? null
+  const conversationId = args.conversationId ?? null
   const depth = args.depth ?? 0
 
   // Start from the reconnects the plan step already produced; this
@@ -150,7 +153,14 @@ export function buildAttachedTools(
   const tools: Record<string, Tool> = {}
 
   for (const planned of plan.planned) {
-    const built = buildOne({ agentId, creds: plan.creds, planned, reconnects })
+    const built = buildOne({
+      agentId,
+      userId,
+      planned,
+      reconnects,
+      runId: currentRunId,
+      conversationId,
+    })
     if (built) {
       tools[built.id] = built.tool
     }

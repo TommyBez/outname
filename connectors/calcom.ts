@@ -1,6 +1,6 @@
 import 'server-only'
 import { z } from 'zod'
-import type { ApiKeyConnector, RawCredential } from './types'
+import { defineConnector } from './define-connector'
 
 const CALCOM_API_VERSION = '2024-08-13'
 
@@ -33,61 +33,52 @@ function metadataFromProfile(profile: {
   return metadata
 }
 
-export const calcomConnector: ApiKeyConnector = {
-  provider: 'calcom',
-  kind: 'api_key',
+export const calcomConnector = defineConnector('calcom', {
   displayName: 'Cal.com',
   description: 'Scheduling and booking automation via the Cal.com API v2.',
-  apiKey: {
-    formSchema: calcomCredentialSchema,
-    fields: [
-      {
-        name: 'apiKey',
-        label: 'API key',
-        type: 'password',
-        placeholder: 'cal_... or cal_live_...',
-        description:
-          'Generate in Cal.com under Settings > Security. The key is encrypted at rest before storage.',
-      },
-    ],
-    async validate(values) {
-      const parsed = calcomCredentialSchema.safeParse(values)
-      if (!parsed.success) {
-        return {
-          ok: false,
-          error: parsed.error.issues[0]?.message ?? 'Invalid API key',
-        }
-      }
-
-      const res = await fetch('https://api.cal.com/v2/me', {
-        headers: {
-          authorization: `Bearer ${parsed.data.apiKey}`,
-          'cal-api-version': CALCOM_API_VERSION,
-        },
-      })
-      if (!res.ok) {
-        return {
-          ok: false,
-          error: `Cal.com rejected the key (HTTP ${res.status}). Double-check it and try again.`,
-        }
-      }
-
-      const profile = (await res.json()) as {
-        data?: {
-          email?: string
-          id?: number | string
-          name?: string
-          username?: string
-        }
-      }
-      return {
-        ok: true,
-        metadata: metadataFromProfile(profile),
-      }
+  credential: calcomCredentialSchema,
+  fields: [
+    {
+      name: 'apiKey',
+      label: 'API key',
+      type: 'password',
+      placeholder: 'cal_... or cal_live_...',
+      description:
+        'Generate in Cal.com under Settings > Security. The key is encrypted at rest before storage.',
     },
+  ],
+  broker: {
+    allowedHosts: ['api.cal.com'] as const,
+    injectedHeaderNames: ['authorization'] as const,
+    injectedHeaders: (credential: CalcomCredential) => ({
+      authorization: `Bearer ${credential.apiKey}`,
+    }),
   },
-}
+  async validate(values) {
+    const res = await fetch('https://api.cal.com/v2/me', {
+      headers: {
+        authorization: `Bearer ${values.apiKey}`,
+        'cal-api-version': CALCOM_API_VERSION,
+      },
+    })
+    if (!res.ok) {
+      return {
+        ok: false,
+        error: `Cal.com rejected the key (HTTP ${res.status}). Double-check it and try again.`,
+      }
+    }
 
-export function calcomApiKey(raw: RawCredential): string {
-  return (raw as CalcomCredential).apiKey
-}
+    const profile = (await res.json()) as {
+      data?: {
+        email?: string
+        id?: number | string
+        name?: string
+        username?: string
+      }
+    }
+    return {
+      ok: true,
+      metadata: metadataFromProfile(profile),
+    }
+  },
+})

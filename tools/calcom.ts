@@ -1,8 +1,11 @@
 import 'server-only'
-import { tool } from 'ai'
 import { z } from 'zod'
-import { calcomApiKey } from '@/connectors/calcom'
-import type { MaintainerTool } from './types'
+import {
+  defineApiPassthroughTool,
+  type ToolPolicy,
+  toolError,
+  toolSuccess,
+} from './define-maintainer-tool'
 
 const CALCOM_API_BASE = 'https://api.cal.com/v2'
 const CALCOM_API_VERSION = '2024-08-13'
@@ -10,58 +13,49 @@ const CALCOM_BOOKINGS_API_VERSION = '2026-02-25'
 const CALCOM_EVENT_TYPES_API_VERSION = '2024-06-14'
 const CALCOM_SCHEDULES_API_VERSION = '2024-06-11'
 const CALCOM_SLOTS_API_VERSION = '2024-09-04'
-const MAX_RESPONSE_TEXT_LENGTH = 12_000
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i
 
 const calcomMethodSchema = z.enum(['GET', 'POST', 'PATCH', 'PUT', 'DELETE'])
 
 const CALCOM_ENDPOINT_GUIDE =
-  'Documented Cal.com API v2 examples: GET /me for the current user; GET /event-types to list event types; POST /event-types to create one; PATCH /event-types/{id} to update one; GET /bookings to list bookings; POST /bookings to create a booking; POST /bookings/{uid}/cancel to cancel; POST /bookings/{uid}/reschedule to reschedule; GET /slots with eventTypeId, start, and end query params to check slots; GET /schedules and POST /schedules for schedules; GET /webhooks and POST /webhooks for webhooks; GET /teams to list teams. The tool chooses documented endpoint-specific cal-api-version values internally: bookings use 2026-02-25, event-types use 2024-06-14, schedules use 2024-06-11, slots use 2024-09-04, and other endpoints use 2024-08-13. Use v2 request bodies: bookings use attendee, not responses; event types use lengthInMinutes; webhook create uses triggers.'
+  'Allowed Cal.com API v2 paths: /me, /event-types, /bookings, /bookings/{uid}/cancel, /bookings/{uid}/reschedule, /slots, /schedules, /webhooks, /teams. Destructive or booking-mutating calls require confirmIrreversible=true.'
+const PROVIDER_ERROR_BODY_LIMIT = 1000
 
 const calcomRequestInputSchema = z.object({
-  method: calcomMethodSchema.describe('HTTP method to use.'),
+  method: calcomMethodSchema.describe('HTTP method to use. DELETE is denied.'),
   path: z
     .string()
     .min(1)
-    .describe(
-      `Cal.com API v2 path under https://api.cal.com/v2. ${CALCOM_ENDPOINT_GUIDE}`
-    ),
+    .describe(`Relative Cal.com API v2 path. ${CALCOM_ENDPOINT_GUIDE}`),
   query: z
     .record(z.string())
     .optional()
-    .describe(
-      'Optional query parameters. Values are appended as strings. For /slots, Cal.com documents start and end plus either eventTypeId, eventTypeSlug with username or teamSlug, or usernames for dynamic availability.'
-    ),
+    .describe('Optional query parameters appended as strings.'),
   body: z
     .record(z.unknown())
     .optional()
+    .describe('Optional JSON request body for non-GET requests.'),
+  confirmIrreversible: z
+    .boolean()
+    .default(false)
     .describe(
-      'Optional JSON request body for non-GET requests. Cal.com v2 examples include booking bodies with eventTypeId, start, attendee, location, and metadata; event type bodies with title, slug, lengthInMinutes, and locations; webhook bodies with subscriberUrl, triggers, active, and optional payloadTemplate.'
+      'Set true only for booking-mutating calls such as create, cancel, or reschedule.'
     ),
 })
 
 type CalcomHttpMethod = z.infer<typeof calcomMethodSchema>
+type CalcomRequestInput = z.infer<typeof calcomRequestInputSchema>
 
-interface ExecuteCalcomRequestArgs {
-  apiKey: string
-  apiVersion: string
-  body?: Record<string, unknown>
-  method: CalcomHttpMethod
-  path: string
-  query?: Record<string, string>
-  toolId: string
-}
-
-function normalizeCalcomPath(path: string, toolId: string): string {
+function normalizeCalcomPath(path: string): string {
   const trimmed = path.trim()
   if (ABSOLUTE_URL_PATTERN.test(trimmed) || trimmed.startsWith('//')) {
-    throw new Error(`${toolId}: path must be a relative Cal.com API path.`)
+    throw new Error('Path must be a relative Cal.com API path.')
   }
   if (!trimmed.startsWith('/')) {
-    throw new Error(`${toolId}: path must start with "/".`)
+    throw new Error('Path must start with "/".')
   }
   if (trimmed.includes('\n') || trimmed.includes('\r')) {
-    throw new Error(`${toolId}: path must be a single line.`)
+    throw new Error('Path must be a single line.')
   }
   if (trimmed === '/v2') {
     return '/'
@@ -72,17 +66,15 @@ function normalizeCalcomPath(path: string, toolId: string): string {
   return trimmed
 }
 
-function normalizedCalcomPathname(path: string, toolId: string): string {
-  const normalized = normalizeCalcomPath(path, toolId)
-  return new URL(normalized, CALCOM_API_BASE).pathname
+function normalizedCalcomPathname(path: string): string {
+  return new URL(normalizeCalcomPath(path), CALCOM_API_BASE).pathname
 }
 
 function defaultCalcomApiVersion(
   path: string,
-  method: CalcomHttpMethod,
-  toolId: string
+  method: CalcomHttpMethod
 ): string {
-  const normalized = normalizedCalcomPathname(path, toolId)
+  const normalized = normalizedCalcomPathname(path)
   if (normalized === '/bookings' || normalized.startsWith('/bookings/')) {
     return CALCOM_BOOKINGS_API_VERSION
   }
@@ -101,91 +93,141 @@ function defaultCalcomApiVersion(
   return CALCOM_API_VERSION
 }
 
-function clippedText(text: string): { text: string; truncated: boolean } {
-  if (text.length <= MAX_RESPONSE_TEXT_LENGTH) {
-    return { text, truncated: false }
-  }
-  return {
-    text: text.slice(0, MAX_RESPONSE_TEXT_LENGTH),
-    truncated: true,
-  }
+function isAllowedPath(pathname: string): boolean {
+  return (
+    pathname === '/me' ||
+    pathname === '/event-types' ||
+    pathname.startsWith('/event-types/') ||
+    pathname === '/bookings' ||
+    pathname.startsWith('/bookings/') ||
+    pathname === '/slots' ||
+    pathname === '/schedules' ||
+    pathname.startsWith('/schedules/') ||
+    pathname === '/webhooks' ||
+    pathname.startsWith('/webhooks/') ||
+    pathname === '/teams'
+  )
 }
 
-function parseResponseBody(raw: string, contentType: string | null) {
-  const clipped = clippedText(raw)
-  if (raw.length === 0) {
-    return { body: null, truncated: false }
+function isIrreversible(input: CalcomRequestInput): boolean {
+  const pathname = normalizedCalcomPathname(input.path)
+  if (input.method === 'DELETE') {
+    return true
   }
-  if (clipped.truncated) {
-    return { body: clipped.text, truncated: true }
+  if (input.method === 'POST' && pathname === '/bookings') {
+    return true
+  }
+  return (
+    input.method === 'POST' &&
+    (pathname.endsWith('/cancel') || pathname.endsWith('/reschedule'))
+  )
+}
+
+const calcomSafetyPolicy: ToolPolicy<
+  CalcomRequestInput,
+  Record<string, never>
+> = ({ input }) => {
+  if (input.method === 'DELETE') {
+    return { ok: false, message: 'DELETE requests are not allowed.' }
+  }
+  if (input.method === 'GET' && input.body !== undefined) {
+    return { ok: false, message: 'GET requests cannot include a body.' }
+  }
+  let pathname: string
+  try {
+    pathname = normalizedCalcomPathname(input.path)
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : 'Invalid path.',
+    }
+  }
+  if (!isAllowedPath(pathname)) {
+    return {
+      ok: false,
+      message: `Path "${pathname}" is outside the allowed Cal.com surface.`,
+    }
+  }
+  if (isIrreversible(input) && !input.confirmIrreversible) {
+    return {
+      ok: false,
+      message:
+        'This Cal.com call can change bookings and requires confirmIrreversible=true.',
+    }
+  }
+  return { ok: true }
+}
+
+function parseResponseBody(
+  raw: string,
+  contentType: string | undefined
+): unknown {
+  if (raw.length === 0) {
+    return null
   }
   if (contentType?.includes('application/json')) {
     try {
-      return { body: JSON.parse(raw) as unknown, truncated: false }
+      return JSON.parse(raw) as unknown
     } catch {
-      return { body: raw, truncated: false }
+      return raw
     }
   }
-  return { body: raw, truncated: false }
+  return raw
 }
 
-async function executeCalcomRequest(args: ExecuteCalcomRequestArgs) {
-  'use step'
-  if (args.method === 'GET' && args.body !== undefined) {
-    throw new Error(`${args.toolId}: GET requests cannot include a body.`)
+function clippedProviderError(response: {
+  bodyText: string
+  status: number
+  truncated: boolean
+}): string {
+  const body = response.bodyText.trim()
+  if (!body) {
+    return `Cal.com request failed (HTTP ${response.status}).`
   }
-
-  const path = normalizeCalcomPath(args.path, args.toolId)
-  const url = new URL(`${CALCOM_API_BASE}${path}`)
-  for (const [key, value] of Object.entries(args.query ?? {})) {
-    url.searchParams.append(key, value)
-  }
-
-  const res = await fetch(url, {
-    method: args.method,
-    headers: {
-      authorization: `Bearer ${args.apiKey}`,
-      'cal-api-version': args.apiVersion,
-      'content-type': 'application/json',
-    },
-    body: args.body === undefined ? undefined : JSON.stringify(args.body),
-  })
-  const raw = await res.text()
-  const parsed = parseResponseBody(raw, res.headers.get('content-type'))
-
-  return {
-    ok: res.ok,
-    status: res.status,
-    apiVersionUsed: args.apiVersion,
-    normalizedPath: path,
-    body: parsed.body,
-    truncated: parsed.truncated,
-  }
+  const truncated =
+    response.truncated || body.length > PROVIDER_ERROR_BODY_LIMIT
+  const suffix = truncated ? ' [truncated]' : ''
+  return `Cal.com request failed (HTTP ${response.status}): ${body.slice(0, PROVIDER_ERROR_BODY_LIMIT)}${suffix}`
 }
 
-export const calcomRequestTool: MaintainerTool = {
+export const calcomRequestTool = defineApiPassthroughTool({
   id: 'calcom_request',
   category: 'scheduling',
   displayName: 'Cal.com · Request',
-  description:
-    'Call authenticated Cal.com API v2 endpoints for scheduling, bookings, event types, availability, and related resources.',
-  requirements: [{ kind: 'connection', provider: 'calcom' }],
-  build({ credentials, toolId }) {
-    return tool({
-      description: `Call a Cal.com API v2 endpoint using the connected API key. Use relative paths only. ${CALCOM_ENDPOINT_GUIDE}`,
-      inputSchema: calcomRequestInputSchema,
-      async execute({ method, path, query, body }) {
-        const apiKey = calcomApiKey(credentials.calcom)
-        return await executeCalcomRequest({
-          apiKey,
-          apiVersion: defaultCalcomApiVersion(path, method, toolId),
-          body,
-          method,
-          path,
-          query,
-          toolId,
-        })
+  description: `Call authenticated Cal.com API v2 endpoints for scheduling, bookings, event types, availability, and related resources. ${CALCOM_ENDPOINT_GUIDE}`,
+  provider: 'calcom',
+  inputSchema: calcomRequestInputSchema,
+  policies: [calcomSafetyPolicy],
+  toRequest({ input }) {
+    const path = normalizeCalcomPath(input.path)
+    const url = new URL(`${CALCOM_API_BASE}${path}`)
+    for (const [key, value] of Object.entries(input.query ?? {})) {
+      url.searchParams.append(key, value)
+    }
+    return {
+      method: input.method,
+      url: url.toString(),
+      headers: {
+        'cal-api-version': defaultCalcomApiVersion(input.path, input.method),
+        'content-type': 'application/json',
       },
+      body: input.body,
+    }
+  },
+  handleResponse(response, { input }) {
+    if (!response.ok) {
+      return toolError('provider_error', clippedProviderError(response))
+    }
+    const normalizedPath = normalizeCalcomPath(input.path)
+    return toolSuccess({
+      status: response.status,
+      apiVersionUsed: defaultCalcomApiVersion(input.path, input.method),
+      normalizedPath,
+      body: parseResponseBody(
+        response.bodyText,
+        response.headers['content-type']
+      ),
+      truncated: response.truncated,
     })
   },
-}
+})

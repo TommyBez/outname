@@ -23,6 +23,8 @@ export interface BuildAgentArgs {
    * their own id before dispatching.
    */
   callStack?: string[]
+  /** Chat conversation id for audit attribution; null for non-chat events. */
+  conversationId?: string | null
   /** Workflow runtime id for heartbeat/reflection/invocation events. */
   currentRunId?: string | null
   /**
@@ -79,6 +81,7 @@ export async function buildAgent(
     plan,
     callStack,
     currentRunId: args.currentRunId,
+    conversationId: args.conversationId,
     depth,
   })
 
