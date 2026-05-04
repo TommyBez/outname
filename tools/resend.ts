@@ -2,7 +2,6 @@ import 'server-only'
 import { z } from 'zod'
 import {
   defineActionTool,
-  type ToolPolicy,
   toolError,
   toolSuccess,
 } from './define-maintainer-tool'
@@ -35,18 +34,6 @@ const resendSendInputSchema = z.object({
     .describe('Optional HTML body. Providers prefer this when present.'),
 })
 
-type ResendConfig = z.infer<typeof resendConfigSchema>
-type ResendSendInput = z.infer<typeof resendSendInputSchema>
-
-const requireConfiguredSender: ToolPolicy<ResendSendInput, ResendConfig> = ({
-  config,
-}) => {
-  if (!config.fromEmail.includes('@')) {
-    return { ok: false, message: 'Configured sender email is invalid.' }
-  }
-  return { ok: true }
-}
-
 export const resendSendTool = defineActionTool({
   id: 'resend_send',
   category: 'email',
@@ -56,7 +43,6 @@ export const resendSendTool = defineActionTool({
   capabilities: [{ kind: 'brokered_http', provider: 'resend' }],
   configSchema: resendConfigSchema,
   inputSchema: resendSendInputSchema,
-  policies: [requireConfiguredSender],
   async execute({ input, config, ctx }) {
     const body: Record<string, unknown> = {
       from: config.fromEmail,

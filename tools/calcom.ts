@@ -19,6 +19,7 @@ const calcomMethodSchema = z.enum(['GET', 'POST', 'PATCH', 'PUT', 'DELETE'])
 
 const CALCOM_ENDPOINT_GUIDE =
   'Allowed Cal.com API v2 paths: /me, /event-types, /bookings, /bookings/{uid}/cancel, /bookings/{uid}/reschedule, /slots, /schedules, /webhooks, /teams. Destructive or booking-mutating calls require confirmIrreversible=true.'
+const PROVIDER_ERROR_BODY_LIMIT = 1000
 
 const calcomRequestInputSchema = z.object({
   method: calcomMethodSchema.describe('HTTP method to use. DELETE is denied.'),
@@ -174,6 +175,21 @@ function parseResponseBody(
   return raw
 }
 
+function clippedProviderError(response: {
+  bodyText: string
+  status: number
+  truncated: boolean
+}): string {
+  const body = response.bodyText.trim()
+  if (!body) {
+    return `Cal.com request failed (HTTP ${response.status}).`
+  }
+  const truncated =
+    response.truncated || body.length > PROVIDER_ERROR_BODY_LIMIT
+  const suffix = truncated ? ' [truncated]' : ''
+  return `Cal.com request failed (HTTP ${response.status}): ${body.slice(0, PROVIDER_ERROR_BODY_LIMIT)}${suffix}`
+}
+
 export const calcomRequestTool = defineApiPassthroughTool({
   id: 'calcom_request',
   category: 'scheduling',
@@ -200,10 +216,7 @@ export const calcomRequestTool = defineApiPassthroughTool({
   },
   handleResponse(response, { input }) {
     if (!response.ok) {
-      return toolError(
-        'provider_error',
-        `Cal.com request failed (HTTP ${response.status}).`
-      )
+      return toolError('provider_error', clippedProviderError(response))
     }
     const normalizedPath = normalizeCalcomPath(input.path)
     return toolSuccess({

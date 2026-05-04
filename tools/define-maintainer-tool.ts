@@ -21,7 +21,7 @@ export interface ToolSandboxRunner {
   run(input: {
     args: string[]
     cmd: string
-    manifestId: string
+    manifestId?: string
     stderrLimit?: number
     stdoutLimit?: number
   }): Promise<{ exitCode: number; stderr: string; stdout: string }>
@@ -31,6 +31,7 @@ export interface ToolAuditSink {
   record(input: {
     durationMs: number
     errorCode: ToolErrorCode | null
+    errorMessage: string | null
     ok: boolean
   }): Promise<void>
 }
@@ -38,9 +39,12 @@ export interface ToolAuditSink {
 export interface ToolRuntimeContext {
   agentId: string
   audit: ToolAuditSink
+  conversationId: string | null
   http: BrokeredHttpClient
+  runId: string | null
   sandbox: ToolSandboxRunner
   toolId: string
+  userId: string
 }
 
 export type PolicyResult = { ok: true } | { ok: false; message: string }
@@ -57,7 +61,8 @@ interface ExecuteArgs<TInput, TConfig> {
   input: TInput
 }
 
-type ExecuteResult<TData> = Promise<TData | ToolResult<TData>>
+type ExecuteResult<TData> = Promise<ToolResult<TData>> | ToolResult<TData>
+type ToolFailure = Extract<ToolResult<never>, { ok: false }>
 
 interface DefineMaintainerToolArgs<TInput, TConfig, TData> {
   capabilities: ToolCapability[]
@@ -69,48 +74,86 @@ interface DefineMaintainerToolArgs<TInput, TConfig, TData> {
   id: string
   inputSchema: z.ZodType<TInput, z.ZodTypeDef, unknown>
   policies?: ToolPolicy<TInput, TConfig>[]
+  sandboxManifestId?: string
 }
 
 const emptyConfigSchema = z.object({})
-
-function isToolResult<TData>(value: unknown): value is ToolResult<TData> {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'ok' in value &&
-    typeof (value as { ok?: unknown }).ok === 'boolean'
-  )
-}
 
 export function toolSuccess<TData>(data: TData): ToolResult<TData> {
   return { ok: true, data }
 }
 
-export function toolError(
-  code: ToolErrorCode,
-  message: string
-): ToolResult<never> {
+export function toolError(code: ToolErrorCode, message: string): ToolFailure {
   return { ok: false, code, message }
 }
 
-function errorFromUnknown(err: unknown): ToolResult<never> {
-  if (err instanceof Error) {
-    return toolError('internal_error', err.message)
+const toolErrorCodes = new Set<ToolErrorCode>([
+  'invalid_input',
+  'policy_denied',
+  'provider_error',
+  'rate_limited',
+  'unavailable',
+  'internal_error',
+])
+const httpStatusPattern = /HTTP \d{3}/
+
+function codeFromUnknown(err: unknown): ToolErrorCode {
+  if (typeof err !== 'object' || err === null || !('code' in err)) {
+    return 'internal_error'
   }
-  return toolError('internal_error', String(err))
+  const code = (err as { code?: unknown }).code
+  if (code === 'connection_unavailable') {
+    return 'unavailable'
+  }
+  if (typeof code === 'string' && toolErrorCodes.has(code as ToolErrorCode)) {
+    return code as ToolErrorCode
+  }
+  return 'internal_error'
+}
+
+function errorFromUnknown(err: unknown): ToolFailure {
+  const code = codeFromUnknown(err)
+  if (err instanceof Error) {
+    return toolError(code, err.message)
+  }
+  return toolError(code, String(err))
+}
+
+function auditErrorMessage(
+  code: ToolErrorCode | null,
+  message: string | null
+): string | null {
+  if (!(code && message)) {
+    return null
+  }
+  if (code === 'provider_error') {
+    return message.match(httpStatusPattern)?.[0] ?? 'Provider error'
+  }
+  return message
 }
 
 function createRuntimeContext(input: {
   agentId: string
+  conversationId: string | null
+  runId: string | null
+  sandboxManifestId?: string
   toolId: string
   userId: string
 }): ToolRuntimeContext {
-  const { agentId, toolId, userId } = input
+  const { agentId, conversationId, runId, sandboxManifestId, toolId, userId } =
+    input
   return {
     agentId,
+    conversationId,
+    runId,
     toolId,
+    userId,
     http: {
       async request(provider, request) {
+        // Keep these imports lazy so maintainer-tool definitions stay
+        // workflow-bundle clean. The imported modules carry DB,
+        // crypto, and Sandbox SDK edges that belong only inside
+        // `'use step'` execution.
         const { brokeredHttpRequest } = await import('./brokered-http')
         return await brokeredHttpRequest({
           agentId,
@@ -123,9 +166,13 @@ function createRuntimeContext(input: {
     },
     sandbox: {
       async run(args) {
+        const manifestId = args.manifestId ?? sandboxManifestId
+        if (!manifestId) {
+          throw new Error('No tool sandbox manifest is bound for this tool.')
+        }
         const { runToolSandboxCommand } = await import('./tool-sandbox-runner')
         return await runToolSandboxCommand({
-          manifestId: args.manifestId,
+          manifestId,
           cmd: args.cmd,
           args: args.args,
           stdoutLimit: args.stdoutLimit ?? 64 * 1024,
@@ -143,6 +190,10 @@ function createRuntimeContext(input: {
           ok: record.ok,
           durationMs: record.durationMs,
           errorCode: record.errorCode,
+          errorMessage: record.errorMessage,
+          runId,
+          conversationId,
+          userId,
         })
       },
     },
@@ -177,37 +228,42 @@ export function defineMaintainerTool<
             agentId: ctx.agentId,
             userId: ctx.userId,
             toolId: ctx.toolId,
+            runId: ctx.runId,
+            conversationId: ctx.conversationId,
+            sandboxManifestId: definition.sandboxManifestId,
           })
           const startedAt = Date.now()
           let ok = false
           let errorCode: ToolErrorCode | null = null
+          let errorMessage: string | null = null
           try {
             for (const policy of definition.policies ?? []) {
               const result = policy({ input, config, ctx: runtime })
               if (!result.ok) {
                 errorCode = 'policy_denied'
+                errorMessage = result.message
                 return toolError('policy_denied', result.message)
               }
             }
-            const value = await definition.execute({
+            const result = await definition.execute({
               input,
               config,
               ctx: runtime,
             })
-            const result = isToolResult<TData>(value)
-              ? value
-              : toolSuccess(value)
             ok = result.ok
             errorCode = result.ok ? null : result.code
+            errorMessage = result.ok ? null : result.message
             return result
           } catch (err) {
             const result = errorFromUnknown(err)
-            errorCode = 'internal_error'
+            errorCode = result.code
+            errorMessage = result.message
             return result
           } finally {
             await runtime.audit.record({
               ok,
               errorCode,
+              errorMessage: auditErrorMessage(errorCode, errorMessage),
               durationMs: Date.now() - startedAt,
             })
           }
@@ -231,7 +287,7 @@ export function defineApiPassthroughTool<
     handleResponse(
       response: BrokeredHttpResponse,
       input: ExecuteArgs<TInput, TConfig>
-    ): Promise<TData | ToolResult<TData>> | TData | ToolResult<TData>
+    ): Promise<ToolResult<TData>> | ToolResult<TData>
     provider: string
     toRequest(input: ExecuteArgs<TInput, TConfig>): BrokeredHttpRequest
   }
@@ -264,5 +320,6 @@ export function defineSandboxTool<
   return defineMaintainerTool({
     ...args,
     capabilities: [{ kind: 'tool_sandbox', manifest: args.manifestId }],
+    sandboxManifestId: args.manifestId,
   })
 }

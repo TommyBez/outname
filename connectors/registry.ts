@@ -22,6 +22,13 @@ for (const connector of CONNECTORS) {
       )
     }
   }
+  for (const header of connector.broker.injectedHeaderNames) {
+    if (header !== header.toLowerCase()) {
+      throw new Error(
+        `Connector ${connector.provider} must declare lowercase injected header names. Invalid header: ${header}`
+      )
+    }
+  }
   CONNECTOR_BY_PROVIDER.set(connector.provider, connector)
 }
 

@@ -34,6 +34,7 @@ export const resendConnector = defineConnector('resend', {
   ],
   broker: {
     allowedHosts: ['api.resend.com'] as const,
+    injectedHeaderNames: ['authorization'] as const,
     injectedHeaders: (credential: ResendCredential) => ({
       authorization: `Bearer ${credential.apiKey}`,
     }),

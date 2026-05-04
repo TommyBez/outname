@@ -49,6 +49,7 @@ export const calcomConnector = defineConnector('calcom', {
   ],
   broker: {
     allowedHosts: ['api.cal.com'] as const,
+    injectedHeaderNames: ['authorization'] as const,
     injectedHeaders: (credential: CalcomCredential) => ({
       authorization: `Bearer ${credential.apiKey}`,
     }),

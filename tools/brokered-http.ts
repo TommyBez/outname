@@ -1,6 +1,7 @@
 import 'server-only'
 import { Buffer } from 'node:buffer'
 import { type NetworkPolicy, Sandbox } from '@vercel/sandbox'
+import { getWorkflowMetadata } from 'workflow'
 import { getConnector } from '@/connectors/registry'
 import { readBrokeredCredential } from '@/connectors/runtime'
 
@@ -72,11 +73,39 @@ export class BrokeredHttpError extends Error {
   }
 }
 
-function normalizeHeaders(headers: Record<string, string> | undefined) {
+interface CachedBrokerSandbox {
+  provider: string
+  sandboxPromise: Promise<Sandbox>
+}
+
+/**
+ * Per-workflow-run broker sandbox pool.
+ *
+ * This mirrors `lib/tool-sandbox-runtime.ts`: the cache is module-local
+ * and best-effort, so a cross-pod `endOfEvent` may miss a sandbox that
+ * was created elsewhere. In that case Vercel's 10-minute sandbox
+ * timeout is the cleanup backstop. Credentials are injected into the
+ * network policy once when the sandbox is created; a key rotated
+ * mid-event takes effect on the next event/run.
+ */
+const brokerSandboxCache = new Map<string, Map<string, CachedBrokerSandbox>>()
+
+function currentRunId(): string {
+  return getWorkflowMetadata().workflowRunId
+}
+
+function normalizeHeaders(
+  headers: Record<string, string> | undefined,
+  injectedHeaderNames: readonly string[]
+) {
   const normalized: Record<string, string> = {}
+  const brokerManagedHeaders = new Set([
+    ...FORBIDDEN_REQUEST_HEADERS,
+    ...injectedHeaderNames.map((header) => header.toLowerCase()),
+  ])
   for (const [key, value] of Object.entries(headers ?? {})) {
     const lower = key.toLowerCase()
-    if (FORBIDDEN_REQUEST_HEADERS.has(lower)) {
+    if (brokerManagedHeaders.has(lower)) {
       throw new BrokeredHttpError(`Header "${key}" is managed by the broker.`)
     }
     normalized[lower] = value
@@ -123,6 +152,101 @@ function bodyTextFor(body: unknown): string | undefined {
   return typeof body === 'string' ? body : JSON.stringify(body)
 }
 
+function validateInjectedHeaders(
+  provider: string,
+  declaredHeaderNames: readonly string[],
+  injectedHeaders: Record<string, string>
+): Record<string, string> {
+  const declared = new Set(
+    declaredHeaderNames.map((header) => header.toLowerCase())
+  )
+  const normalized: Record<string, string> = {}
+  for (const [key, value] of Object.entries(injectedHeaders)) {
+    const lower = key.toLowerCase()
+    if (!declared.has(lower)) {
+      throw new BrokeredHttpError(
+        `${provider}: connector injected undeclared header "${key}".`
+      )
+    }
+    normalized[lower] = value
+  }
+  for (const key of declared) {
+    if (!(key in normalized)) {
+      throw new BrokeredHttpError(
+        `${provider}: connector did not provide declared header "${key}".`
+      )
+    }
+  }
+  return normalized
+}
+
+function createNetworkPolicy(
+  allowedHosts: readonly string[],
+  injectedHeaders: Record<string, string>
+): NetworkPolicy {
+  const allow: Record<
+    string,
+    { transform: { headers: Record<string, string> }[] }[]
+  > = {}
+  for (const host of allowedHosts) {
+    allow[host] = [{ transform: [{ headers: injectedHeaders }] }]
+  }
+  return { allow } as NetworkPolicy
+}
+
+async function getOrCreateBrokerSandbox(input: {
+  createSandbox: () => Promise<Sandbox>
+  provider: string
+  runId: string
+}): Promise<Sandbox> {
+  let perRun = brokerSandboxCache.get(input.runId)
+  if (perRun) {
+    const cached = perRun.get(input.provider)
+    if (cached) {
+      return await cached.sandboxPromise
+    }
+  } else {
+    perRun = new Map()
+    brokerSandboxCache.set(input.runId, perRun)
+  }
+
+  const sandboxPromise = input.createSandbox().catch((err) => {
+    perRun?.delete(input.provider)
+    throw err
+  })
+  perRun.set(input.provider, {
+    provider: input.provider,
+    sandboxPromise,
+  })
+  return await sandboxPromise
+}
+
+async function createBrokerSandbox(input: {
+  connector: NonNullable<ReturnType<typeof getConnector>>
+  provider: string
+  userId: string
+}): Promise<Sandbox> {
+  const credential = await readBrokeredCredential({
+    provider: input.provider,
+    userId: input.userId,
+  })
+  const injectedHeaders = validateInjectedHeaders(
+    input.provider,
+    input.connector.broker.injectedHeaderNames,
+    input.connector.broker.injectedHeaders(credential)
+  )
+  const networkPolicy = createNetworkPolicy(
+    input.connector.broker.allowedHosts,
+    injectedHeaders
+  )
+  return await Sandbox.create({
+    runtime: 'node24',
+    timeout: 600_000,
+    networkPolicy,
+    resources: { vcpus: 1 },
+  })
+}
+
 export async function brokeredHttpRequest(input: {
   agentId: string
   provider: string
@@ -141,22 +265,10 @@ export async function brokeredHttpRequest(input: {
     input.request.url,
     connector.broker.allowedHosts
   )
-  const headers = normalizeHeaders(input.request.headers)
-  const credential = await readBrokeredCredential({
-    provider: input.provider,
-    userId: input.userId,
-  })
-  const injectedHeaders = connector.broker.injectedHeaders(credential)
-  const networkPolicy: NetworkPolicy = {
-    allow: {
-      [url.hostname]: [
-        {
-          transform: [{ headers: injectedHeaders }],
-        },
-      ],
-    },
-  }
-
+  const headers = normalizeHeaders(
+    input.request.headers,
+    connector.broker.injectedHeaderNames
+  )
   const runnerInput = {
     url: url.toString(),
     method: input.request.method.toUpperCase(),
@@ -169,42 +281,58 @@ export async function brokeredHttpRequest(input: {
     ),
   }
 
-  let sandbox: Sandbox | null = null
-  try {
-    sandbox = await Sandbox.create({
-      runtime: 'node24',
-      timeout: Math.max(runnerInput.timeoutMs + 10_000, DEFAULT_TIMEOUT_MS),
-      networkPolicy,
-      resources: { vcpus: 1 },
-    })
-    const encoded = Buffer.from(JSON.stringify(runnerInput)).toString(
-      'base64url'
+  const sandbox = await getOrCreateBrokerSandbox({
+    runId: currentRunId(),
+    provider: input.provider,
+    createSandbox: () =>
+      createBrokerSandbox({
+        connector,
+        provider: input.provider,
+        userId: input.userId,
+      }),
+  })
+  const encoded = Buffer.from(JSON.stringify(runnerInput)).toString('base64url')
+  const result = await sandbox.runCommand('node', [
+    '--input-type=module',
+    '-e',
+    FETCH_RUNNER,
+    encoded,
+  ])
+  const [stdout, stderr] = await Promise.all([result.stdout(), result.stderr()])
+  if (result.exitCode !== 0) {
+    throw new BrokeredHttpError(
+      `${input.toolId}: brokered request failed (${stderr.slice(0, MAX_STDERR_BYTES)})`
     )
-    const result = await sandbox.runCommand('node', [
-      '--input-type=module',
-      '-e',
-      FETCH_RUNNER,
-      encoded,
-    ])
-    const [stdout, stderr] = await Promise.all([
-      result.stdout(),
-      result.stderr(),
-    ])
-    if (result.exitCode !== 0) {
-      throw new BrokeredHttpError(
-        `${input.toolId}: brokered request failed (${stderr.slice(0, MAX_STDERR_BYTES)})`
-      )
-    }
-    return JSON.parse(stdout) as BrokeredHttpResponse
-  } finally {
-    if (sandbox) {
-      await sandbox.stop().catch((err) => {
-        console.error('[v0] brokeredHttpRequest: sandbox.stop failed', {
-          agentId: input.agentId,
-          toolId: input.toolId,
+  }
+  return JSON.parse(stdout) as BrokeredHttpResponse
+}
+
+export async function stopAllBrokeredHttpSandboxesForRun(): Promise<void> {
+  let runId: string
+  try {
+    runId = currentRunId()
+  } catch {
+    return
+  }
+
+  const perRun = brokerSandboxCache.get(runId)
+  if (!perRun || perRun.size === 0) {
+    brokerSandboxCache.delete(runId)
+    return
+  }
+
+  await Promise.all(
+    Array.from(perRun.values()).map(async ({ provider, sandboxPromise }) => {
+      try {
+        const sandbox = await sandboxPromise
+        await sandbox.stop()
+      } catch (err) {
+        console.error('[v0] stopAllBrokeredHttpSandboxesForRun: stop failed', {
+          provider,
           err,
         })
-      })
-    }
-  }
+      }
+    })
+  )
+  brokerSandboxCache.delete(runId)
 }

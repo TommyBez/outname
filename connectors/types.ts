@@ -49,6 +49,12 @@ export interface ConnectorBroker<TCredential> {
    */
   allowedHosts: readonly string[]
   /**
+   * Header names the broker owns for this connector. Tool-supplied
+   * requests may not set these, even if the header is provider-specific
+   * and absent from the global forbidden-header backstop.
+   */
+  injectedHeaderNames: readonly string[]
+  /**
    * Convert decrypted connector credentials into HTTP headers injected
    * by Vercel Sandbox network policy. These bytes never enter the VM.
    */

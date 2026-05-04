@@ -35,6 +35,8 @@ export interface BuildAttachedToolsArgs {
   agentId: string
   /** Phase 4: parent-call lineage. Empty for top-level user-driven turns. */
   callStack?: string[]
+  /** Chat conversation id for this event, if any. */
+  conversationId?: string | null
   /** App run id for this event, if this event has one. Chat turns do not. */
   currentRunId?: string | null
   /** Phase 4: parent's nesting depth. 0 for top-level. */
@@ -46,11 +48,20 @@ export interface BuildAttachedToolsArgs {
 
 function buildOne(args: {
   agentId: string
+  conversationId: string | null
   planned: PlannedTool
   reconnects: Reconnect[]
+  runId: string | null
   userId: string
 }): { id: string; tool: Tool } | null {
-  const { agentId, userId, planned: p, reconnects } = args
+  const {
+    agentId,
+    conversationId,
+    runId,
+    userId,
+    planned: p,
+    reconnects,
+  } = args
   const tool = getMaintainerTool(p.toolId)
   if (!tool) {
     return null
@@ -63,6 +74,8 @@ function buildOne(args: {
         userId,
         toolId: p.toolId,
         config: p.config,
+        runId,
+        conversationId,
       }),
     }
   } catch (err) {
@@ -131,6 +144,7 @@ export function buildAttachedTools(
   const { agentId, userId, plan } = args
   const callStack = args.callStack ?? []
   const currentRunId = args.currentRunId ?? null
+  const conversationId = args.conversationId ?? null
   const depth = args.depth ?? 0
 
   // Start from the reconnects the plan step already produced; this
@@ -139,7 +153,14 @@ export function buildAttachedTools(
   const tools: Record<string, Tool> = {}
 
   for (const planned of plan.planned) {
-    const built = buildOne({ agentId, userId, planned, reconnects })
+    const built = buildOne({
+      agentId,
+      userId,
+      planned,
+      reconnects,
+      runId: currentRunId,
+      conversationId,
+    })
     if (built) {
       tools[built.id] = built.tool
     }

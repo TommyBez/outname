@@ -106,7 +106,6 @@ async function runAgentBrowser(input: {
   run: (args: {
     args: string[]
     cmd: string
-    manifestId: string
     stderrLimit?: number
     stdoutLimit?: number
   }) => Promise<{ exitCode: number; stderr: string; stdout: string }>
@@ -119,7 +118,6 @@ async function runAgentBrowser(input: {
   // because tool sandboxes are scoped to one workflow run.
   const exec = (async () => {
     const result = await input.run({
-      manifestId: 'agent-browser',
       cmd: 'agent-browser',
       args: [input.value.command, ...input.value.args],
       stdoutLimit: MAX_STDOUT_BYTES,

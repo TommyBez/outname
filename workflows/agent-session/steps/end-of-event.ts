@@ -12,6 +12,7 @@ import { agentTag } from '@/lib/cache-tags'
 import { db } from '@/lib/db'
 import { agentFileChanges, agentFiles } from '@/lib/db/schema'
 import { stopAllToolSandboxesForRun } from '@/lib/tool-sandbox-runtime'
+import { stopAllBrokeredHttpSandboxesForRun } from '@/tools/brokered-http'
 import {
   flushPendingWrites,
   type PendingWrites,
@@ -107,10 +108,13 @@ export async function endOfEvent(input: {
       .map((s) => releaseSandbox(s))
   )
 
-  // Phase 4: tear down any tool sandboxes (e.g. agent-browser) that
-  // were spawned during this event so the next event boots fresh.
-  // Errors are logged-and-swallowed inside the helper.
-  await stopAllToolSandboxesForRun()
+  // Tear down maintainer-tool sandboxes spawned during this event so
+  // the next event boots fresh. Errors are logged-and-swallowed inside
+  // the helpers.
+  await Promise.all([
+    stopAllToolSandboxesForRun(),
+    stopAllBrokeredHttpSandboxesForRun(),
+  ])
 }
 
 function collectReviewPaths(pending: PendingWrites): string[] {

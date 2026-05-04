@@ -61,6 +61,10 @@ export interface ToolBuildContext {
   agentId: string
   /** Validated attachment config — `{}` if the tool has no `configSchema`. */
   config: Record<string, unknown>
+  /** Chat conversation id for UI turns; null for heartbeat/invocation turns. */
+  conversationId: string | null
+  /** Workflow/runtime run id for this event, when available. */
+  runId: string | null
   /** Registry id, e.g. "resend_send". For logging / error attribution. */
   toolId: string
   /** Owner of the agent; used only by shared runtime services. */

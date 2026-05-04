@@ -474,11 +474,15 @@ export const toolInvocations = pgTable(
     agentId: text('agent_id')
       .notNull()
       .references(() => agent.id, { onDelete: 'cascade' }),
+    userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }),
+    runId: text('run_id'),
+    conversationId: text('conversation_id'),
     toolId: text('tool_id').notNull(),
     kind: text('kind').notNull(),
     ok: boolean('ok').notNull(),
     durationMs: integer('duration_ms').notNull(),
     errorCode: text('error_code'),
+    errorMessage: text('error_message'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -488,6 +492,7 @@ export const toolInvocations = pgTable(
       t.agentId,
       t.createdAt.desc()
     ),
+    index('tool_invocations_user_created_idx').on(t.userId, t.createdAt.desc()),
     index('tool_invocations_tool_created_idx').on(t.toolId, t.createdAt.desc()),
   ]
 )
