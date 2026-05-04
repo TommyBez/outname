@@ -24,7 +24,13 @@ export interface ToolSandboxRunner {
     manifestId?: string
     stderrLimit?: number
     stdoutLimit?: number
-  }): Promise<{ exitCode: number; stderr: string; stdout: string }>
+    timeoutMs?: number
+  }): Promise<{
+    exitCode: number
+    stderr: string
+    stdout: string
+    timedOut?: true
+  }>
 }
 
 export interface ToolAuditSink {
@@ -177,6 +183,7 @@ function createRuntimeContext(input: {
           args: args.args,
           stdoutLimit: args.stdoutLimit ?? 64 * 1024,
           stderrLimit: args.stderrLimit ?? 8 * 1024,
+          timeoutMs: args.timeoutMs,
         })
       },
     },

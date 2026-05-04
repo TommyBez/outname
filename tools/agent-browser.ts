@@ -108,48 +108,36 @@ async function runAgentBrowser(input: {
     cmd: string
     stderrLimit?: number
     stdoutLimit?: number
-  }) => Promise<{ exitCode: number; stderr: string; stdout: string }>
+    timeoutMs?: number
+  }) => Promise<{
+    exitCode: number
+    stderr: string
+    stdout: string
+    timedOut?: true
+  }>
   value: RunAgentBrowserInput
 }): Promise<RunAgentBrowserResult> {
-  // The Vercel Sandbox SDK doesn't expose a per-command wall-clock
-  // budget directly, so we race the run against a JS-side timeout.
-  // The runaway command keeps running inside the sandbox until the
-  // sandbox itself is stopped at end-of-event — that's acceptable
-  // because tool sandboxes are scoped to one workflow run.
-  const exec = (async () => {
-    const result = await input.run({
-      cmd: 'agent-browser',
-      args: [input.value.command, ...input.value.args],
-      stdoutLimit: MAX_STDOUT_BYTES,
-      stderrLimit: MAX_STDERR_BYTES,
-    })
+  const result = await input.run({
+    cmd: 'agent-browser',
+    args: [input.value.command, ...input.value.args],
+    stdoutLimit: MAX_STDOUT_BYTES,
+    stderrLimit: MAX_STDERR_BYTES,
+    timeoutMs: input.value.timeoutMs,
+  })
+  if (result.timedOut) {
     return {
-      ok: result.exitCode === 0,
+      ok: false,
       exitCode: result.exitCode,
       stdout: result.stdout,
-      stderr: result.stderr,
-    } satisfies RunAgentBrowserResult
-  })()
-
-  let timer: ReturnType<typeof setTimeout> | null = null
-  const timeout = new Promise<RunAgentBrowserResult>((resolve) => {
-    timer = setTimeout(() => {
-      resolve({
-        ok: false,
-        exitCode: -1,
-        stdout: '',
-        stderr: `agent-browser ${input.value.command} timed out after ${input.value.timeoutMs}ms`,
-        timedOut: true,
-      })
-    }, input.value.timeoutMs)
-  })
-
-  try {
-    return await Promise.race([exec, timeout])
-  } finally {
-    if (timer) {
-      clearTimeout(timer)
+      stderr: `agent-browser ${input.value.command} timed out after ${input.value.timeoutMs}ms`,
+      timedOut: true,
     }
+  }
+  return {
+    ok: result.exitCode === 0,
+    exitCode: result.exitCode,
+    stdout: result.stdout,
+    stderr: result.stderr,
   }
 }
 
