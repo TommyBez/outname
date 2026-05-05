@@ -13,6 +13,7 @@ import {
 export interface AgentToolHandle {
   /** Child agent's row data, already vetted by resolveToolPlan. */
   childAgentId: string
+  childCapabilitySummary: string | null
   childName: string
   childUserId: string
   /** Agent currently executing the tool. */
@@ -245,8 +246,10 @@ function subAgentOutput(input: {
 }
 
 function composeDescription(handle: AgentToolHandle): string {
+  const summary = handle.childCapabilitySummary?.trim()
   return (
     `Delegate a task to your sub-agent "${handle.childName}". ` +
+    (summary ? `Capability summary: ${summary} ` : '') +
     'Provide a fully self-contained instruction; the sub-agent does ' +
     'not see your conversation, memory, or files unless you include ' +
     "them in the instruction. Returns the sub-agent's final text reply."

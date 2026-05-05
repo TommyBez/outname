@@ -122,6 +122,7 @@ function buildSubAgentEntry(args: {
       id: sub.toolId,
       tool: buildAgentTool({
         childAgentId: sub.childAgentId,
+        childCapabilitySummary: sub.childCapabilitySummary,
         childName: sub.childName,
         childUserId: sub.childUserId,
         parentAgentId,

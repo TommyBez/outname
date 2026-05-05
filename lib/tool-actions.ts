@@ -2,8 +2,9 @@
 
 import { and, eq } from 'drizzle-orm'
 import { revalidateTag } from 'next/cache'
+import { refreshAgentCapabilitySummary } from '@/lib/agent-capability-summary'
 import { requireUserId } from '@/lib/auth-guard'
-import { agentToolsTag } from '@/lib/cache-tags'
+import { agentTag, agentToolsTag, userAgentsTag } from '@/lib/cache-tags'
 import { db } from '@/lib/db'
 import { type AgentToolKind, agent, agentTools } from '@/lib/db/schema'
 import { ensureToolSandboxBuild } from '@/lib/tool-sandbox-build'
@@ -129,7 +130,8 @@ export async function attachToolAction(
       },
     })
 
-  revalidateTag(agentToolsTag(agentId), 'max')
+  await refreshAgentCapabilitySummary({ agentId })
+  revalidateAgentToolSurfaces(agentId, userId)
   return { ok: true, pendingBuildId }
 }
 
@@ -229,7 +231,8 @@ export async function attachSubAgentAction(
       },
     })
 
-  revalidateTag(agentToolsTag(parentAgentId), 'max')
+  await refreshAgentCapabilitySummary({ agentId: parentAgentId })
+  revalidateAgentToolSurfaces(parentAgentId, userId)
   return { ok: true }
 }
 
@@ -258,6 +261,13 @@ export async function detachToolAction(
       )
     )
 
-  revalidateTag(agentToolsTag(agentId), 'max')
+  await refreshAgentCapabilitySummary({ agentId })
+  revalidateAgentToolSurfaces(agentId, userId)
   return { ok: true }
+}
+
+function revalidateAgentToolSurfaces(agentId: string, userId: string): void {
+  revalidateTag(agentToolsTag(agentId), 'max')
+  revalidateTag(agentTag(agentId), 'max')
+  revalidateTag(userAgentsTag(userId), 'max')
 }

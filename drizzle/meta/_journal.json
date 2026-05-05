@@ -99,6 +99,13 @@
       "when": 1792425600000,
       "tag": "0013_agent_step_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792512000000,
+      "tag": "0014_agent_capability_summary",
+      "breakpoints": true
     }
   ]
 }

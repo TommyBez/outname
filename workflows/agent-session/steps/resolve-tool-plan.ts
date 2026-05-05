@@ -51,6 +51,7 @@ export interface PlannedTool {
 
 export interface PlannedSubAgent {
   childAgentId: string
+  childCapabilitySummary: string | null
   childName: string
   childUserId: string
   /** Stored `agent_tools.tool_id`, kept for detach/reconnect compatibility. */
@@ -76,6 +77,14 @@ export const MAX_SUB_AGENT_DEPTH = 3
 interface SubAgentRow {
   childAgentId: string
   rowToolId: string
+}
+
+interface SubAgentChild {
+  capabilitySummary: string | null
+  enabled: boolean
+  id: string
+  name: string
+  userId: string
 }
 
 interface MaintainerRow {
@@ -340,6 +349,7 @@ async function resolveSubAgentRows(input: {
   const childRows = await db
     .select({
       id: agent.id,
+      capabilitySummary: agent.capabilitySummary,
       name: agent.name,
       userId: agent.userId,
       enabled: agent.enabled,
@@ -399,9 +409,7 @@ function runtimeSubAgentToolId(input: {
 
 function validateSubAgentChild(input: {
   sub: SubAgentRow
-  child:
-    | { id: string; name: string; userId: string; enabled: boolean }
-    | undefined
+  child: SubAgentChild | undefined
   userId: string
   agentId: string
   callStack: string[]
@@ -457,6 +465,7 @@ function validateSubAgentChild(input: {
     kind: 'planned',
     planned: {
       childAgentId: child.id,
+      childCapabilitySummary: child.capabilitySummary,
       childName: child.name,
       childUserId: child.userId,
       rowToolId: sub.rowToolId,

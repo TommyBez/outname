@@ -3,6 +3,7 @@
 import { and, eq } from 'drizzle-orm'
 import { revalidatePath, updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { refreshAgentCapabilitySummary } from '@/lib/agent-capability-summary'
 import { enqueuePendingFileWrite } from '@/lib/agent-pending-writes'
 import { destroyAgentSandboxes } from '@/lib/agent-sandbox'
 import {
@@ -166,6 +167,13 @@ export async function createAgentAction(
     })
   }
 
+  await refreshAgentCapabilitySummary({
+    agentId: id,
+    bootstrap: {
+      'AGENTS.md': instructions,
+    },
+  })
+
   // Boot the long-lived session immediately so a (possibly enabled)
   // heartbeat ticker can start work without forcing the user to chat or
   // wait for the cron sweeper.
@@ -303,6 +311,13 @@ export async function updateAgentAction(input: UpdateInput): Promise<void> {
       content: userProfileNorm,
     })
   }
+
+  await refreshAgentCapabilitySummary({
+    agentId: input.id,
+    bootstrap: {
+      'AGENTS.md': instructionsNorm,
+    },
+  })
 
   // The ticker re-reads schedules on every loop. Poking a heartbeat
   // gives immediate feedback when users change the normal proactive
