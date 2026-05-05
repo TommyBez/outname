@@ -1,8 +1,5 @@
 import { after, type NextRequest } from 'next/server'
-import { slackBot } from '@/lib/channels/slack/bot'
-
-export const runtime = 'nodejs'
-export const dynamic = 'force-dynamic'
+import { getSlackBot } from '@/lib/channels/slack/bot'
 
 /**
  * POST /api/channels/slack/events
@@ -22,7 +19,7 @@ export const dynamic = 'force-dynamic'
  * to retry the same event five times.
  */
 export function POST(request: NextRequest): Promise<Response> {
-  return slackBot.webhooks.slack(request, {
+  return getSlackBot().webhooks.slack(request, {
     waitUntil: (task) => after(() => task),
   })
 }

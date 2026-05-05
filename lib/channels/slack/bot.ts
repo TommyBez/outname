@@ -1,5 +1,5 @@
 import 'server-only'
-import { createSlackAdapter } from '@chat-adapter/slack'
+import { createSlackAdapter, type SlackAdapter } from '@chat-adapter/slack'
 import { Chat } from 'chat'
 import { runChannelChatTurn } from '../dispatch'
 import type { IncomingChannelMessage } from '../types'
@@ -39,45 +39,83 @@ import { SlackHybridState } from './state'
  * workflow dispatch — lives in `lib/channels/dispatch.ts` so the same
  * pipeline can be reused for Teams / Discord / Telegram by adding a
  * new adapter file.
+ *
+ * Construction is lazy via `getSlackBot()` / `getSlackAdapter()` so the
+ * bundle can be analysed at build time without `SLACK_SIGNING_SECRET`
+ * available in the environment. The adapter's `createSlackAdapter`
+ * call validates secrets at construction time, which would throw
+ * during Next.js's "collect page data" step if it ran at module load.
  */
 
-const userName = process.env.SLACK_BOT_USERNAME ?? 'assistant'
+type SlackChat = Chat<{ slack: SlackAdapter }>
+type SlackThread = Parameters<Parameters<SlackChat['onNewMention']>[0]>[0]
+type SlackMessage = Parameters<Parameters<SlackChat['onNewMention']>[0]>[1]
 
-const clientId = process.env.SLACK_CLIENT_ID
-const clientSecret = process.env.SLACK_CLIENT_SECRET
-const isMultiWorkspace = Boolean(clientId && clientSecret)
+interface SlackBotBundle {
+  bot: SlackChat
+  adapter: SlackAdapter
+  isMultiWorkspace: boolean
+}
 
-export const slackAdapter = createSlackAdapter(
-  isMultiWorkspace
-    ? {
-        userName,
-        clientId,
-        clientSecret,
-      }
-    : { userName }
-)
+let cachedBundle: SlackBotBundle | null = null
 
-export const slackBot = new Chat({
-  userName,
-  adapters: { slack: slackAdapter },
-  /**
-   * `SlackHybridState` keeps locks/subscriptions in the inner backing
-   * adapter (Redis when `REDIS_URL` is set — see
-   * `lib/channels/slack/backing-state.ts` — memory otherwise) and
-   * routes Slack installation reads/writes into `channel_installations`
-   * for per-user owner scoping. Set `REDIS_URL` for multi-instance
-   * deployments so concurrency locks and thread subscriptions are
-   * shared across processes.
-   */
-  state: new SlackHybridState(),
-  /**
-   * Drop overlapping messages on the same thread instead of queueing
-   * them. Each turn already reserves the agent session workflow, so
-   * concurrent processing of the same thread would just race the same
-   * agent against itself.
-   */
-  concurrency: 'drop',
-})
+function buildBundle(): SlackBotBundle {
+  const userName = process.env.SLACK_BOT_USERNAME ?? 'assistant'
+  const clientId = process.env.SLACK_CLIENT_ID
+  const clientSecret = process.env.SLACK_CLIENT_SECRET
+  const isMultiWorkspace = Boolean(clientId && clientSecret)
+
+  const adapter = createSlackAdapter(
+    isMultiWorkspace
+      ? {
+          userName,
+          clientId,
+          clientSecret,
+        }
+      : { userName }
+  )
+
+  const bot: SlackChat = new Chat({
+    userName,
+    adapters: { slack: adapter },
+    /**
+     * `SlackHybridState` keeps locks/subscriptions in the inner backing
+     * adapter (Redis when `REDIS_URL` is set — see
+     * `lib/channels/slack/backing-state.ts` — memory otherwise) and
+     * routes Slack installation reads/writes into `channel_installations`
+     * for per-user owner scoping. Set `REDIS_URL` for multi-instance
+     * deployments so concurrency locks and thread subscriptions are
+     * shared across processes.
+     */
+    state: new SlackHybridState(),
+    /**
+     * Drop overlapping messages on the same thread instead of queueing
+     * them. Each turn already reserves the agent session workflow, so
+     * concurrent processing of the same thread would just race the same
+     * agent against itself.
+     */
+    concurrency: 'drop',
+  })
+
+  registerHandlers(bot, isMultiWorkspace)
+
+  return { bot, adapter, isMultiWorkspace }
+}
+
+function ensureBundle(): SlackBotBundle {
+  if (!cachedBundle) {
+    cachedBundle = buildBundle()
+  }
+  return cachedBundle
+}
+
+export function getSlackBot(): SlackChat {
+  return ensureBundle().bot
+}
+
+export function getSlackAdapter(): SlackAdapter {
+  return ensureBundle().adapter
+}
 
 /**
  * Build a stable thread key for `channel_thread_conversations`. Slack
@@ -89,29 +127,39 @@ function slackThreadKey(channel: string, threadTs: string): string {
   return `${channel}:${threadTs}`
 }
 
-slackBot.onNewMention(async (thread, message) => {
-  await thread.subscribe()
-  await handleSlackMessage({ thread, message, kind: 'channel' })
-})
-
-slackBot.onDirectMessage(async (thread, message) => {
-  await thread.subscribe()
-  await handleSlackMessage({ thread, message, kind: 'dm' })
-})
-
-slackBot.onSubscribedMessage(async (thread, message) => {
-  // Inside a subscribed thread Slack will deliver every human message.
-  // Decide which routing kind to use from the channel hint set when we
-  // first subscribed.
-  await handleSlackMessage({
-    thread,
-    message,
-    kind: thread.isDM ? 'dm' : 'channel',
+function registerHandlers(bot: SlackChat, isMultiWorkspace: boolean): void {
+  bot.onNewMention(async (thread, message) => {
+    await thread.subscribe()
+    await handleSlackMessage({
+      thread,
+      message,
+      kind: 'channel',
+      isMultiWorkspace,
+    })
   })
-})
 
-type SlackThread = Parameters<Parameters<typeof slackBot.onNewMention>[0]>[0]
-type SlackMessage = Parameters<Parameters<typeof slackBot.onNewMention>[0]>[1]
+  bot.onDirectMessage(async (thread, message) => {
+    await thread.subscribe()
+    await handleSlackMessage({
+      thread,
+      message,
+      kind: 'dm',
+      isMultiWorkspace,
+    })
+  })
+
+  bot.onSubscribedMessage(async (thread, message) => {
+    // Inside a subscribed thread Slack will deliver every human message.
+    // Decide which routing kind to use from the channel hint set when we
+    // first subscribed.
+    await handleSlackMessage({
+      thread,
+      message,
+      kind: thread.isDM ? 'dm' : 'channel',
+      isMultiWorkspace,
+    })
+  })
+}
 
 interface SlackRawMessage {
   team?: string
@@ -127,8 +175,9 @@ async function handleSlackMessage(input: {
   thread: SlackThread
   message: SlackMessage
   kind: 'channel' | 'dm'
+  isMultiWorkspace: boolean
 }): Promise<void> {
-  const { thread, message, kind } = input
+  const { thread, message, kind, isMultiWorkspace } = input
   const text = message.text?.trim()
   if (!text) {
     return

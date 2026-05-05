@@ -1,11 +1,8 @@
 import { headers } from 'next/headers'
 import { type NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { slackAdapter } from '@/lib/channels/slack/bot'
+import { getSlackAdapter } from '@/lib/channels/slack/bot'
 import { withInstallContext } from '@/lib/channels/slack/state'
-
-export const runtime = 'nodejs'
-export const dynamic = 'force-dynamic'
 
 const TRAILING_SLASH = /\/$/
 
@@ -70,7 +67,7 @@ export async function GET(request: NextRequest): Promise<Response> {
   try {
     const { teamId } = await withInstallContext(
       { userId: session.user.id },
-      () => slackAdapter.handleOAuthCallback(request, { redirectUri })
+      () => getSlackAdapter().handleOAuthCallback(request, { redirectUri })
     )
     return NextResponse.json({
       ok: true,
