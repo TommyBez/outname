@@ -2,6 +2,7 @@ import 'server-only'
 import { calcomConnector } from './calcom'
 import { parallelConnector } from './parallel'
 import { resendConnector } from './resend'
+import { typefullyConnector } from './typefully'
 import type { Connector } from './types'
 import { xConnector } from './x'
 
@@ -15,6 +16,7 @@ const CONNECTORS: Connector[] = [
   calcomConnector,
   parallelConnector,
   xConnector,
+  typefullyConnector,
 ]
 const CONNECTOR_BY_PROVIDER = new Map<string, Connector>()
 

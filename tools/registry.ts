@@ -5,6 +5,7 @@ import { calcomRequestTool } from './calcom'
 import { parallelSearchTool } from './parallel'
 import { resendSendTool } from './resend'
 import { getToolSandboxManifest } from './sandboxes/registry'
+import { typefullyRequestTool } from './typefully'
 import type { MaintainerTool } from './types'
 import { xApiRequestTool } from './x-api'
 
@@ -26,6 +27,7 @@ const TOOLS: MaintainerTool[] = [
   parallelSearchTool,
   agentBrowserTool,
   xApiRequestTool,
+  typefullyRequestTool,
 ]
 const TOOL_BY_ID = new Map<string, MaintainerTool>()
 

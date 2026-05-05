@@ -113,11 +113,19 @@ function normalizeHeaders(
   return normalized
 }
 
+type BrokerRequestAuthMode = 'authenticated' | 'unauthenticated'
+
+interface BrokerValidatedUrl {
+  mode: BrokerRequestAuthMode
+  url: URL
+}
+
 function validateUrl(
   provider: string,
+  method: string,
   rawUrl: string,
-  allowedHosts: readonly string[]
-) {
+  connector: NonNullable<ReturnType<typeof getConnector>>
+): BrokerValidatedUrl {
   let url: URL
   try {
     url = new URL(rawUrl)
@@ -129,12 +137,20 @@ function validateUrl(
       `${provider}: brokered requests must use HTTPS.`
     )
   }
-  if (!allowedHosts.includes(url.hostname)) {
+  if (url.username !== '' || url.password !== '') {
     throw new BrokeredHttpError(
-      `${provider}: host "${url.hostname}" is not allowed for this connector.`
+      `${provider}: request URL must not include credentials.`
     )
   }
-  return url
+  if (connector.broker.allowedHosts.includes(url.hostname)) {
+    return { mode: 'authenticated', url }
+  }
+  if (connector.broker.allowUnauthenticatedRequest?.({ method, url })) {
+    return { mode: 'unauthenticated', url }
+  }
+  throw new BrokeredHttpError(
+    `${provider}: host "${url.hostname}" is not allowed for this connector.`
+  )
 }
 
 function responseLimit(
@@ -182,7 +198,8 @@ function validateInjectedHeaders(
 
 function createNetworkPolicy(
   allowedHosts: readonly string[],
-  injectedHeaders: Record<string, string>
+  injectedHeaders: Record<string, string>,
+  unauthenticatedHosts: readonly string[] = []
 ): NetworkPolicy {
   const allow: Record<
     string,
@@ -190,6 +207,9 @@ function createNetworkPolicy(
   > = {}
   for (const host of allowedHosts) {
     allow[host] = [{ transform: [{ headers: injectedHeaders }] }]
+  }
+  for (const host of unauthenticatedHosts) {
+    allow[host] = []
   }
   return { allow } as NetworkPolicy
 }
@@ -224,6 +244,7 @@ async function getOrCreateBrokerSandbox(input: {
 async function createBrokerSandbox(input: {
   connector: NonNullable<ReturnType<typeof getConnector>>
   provider: string
+  unauthenticatedHosts?: readonly string[]
   userId: string
 }): Promise<Sandbox> {
   const credential = await readBrokeredCredential({
@@ -237,7 +258,8 @@ async function createBrokerSandbox(input: {
   )
   const networkPolicy = createNetworkPolicy(
     input.connector.broker.allowedHosts,
-    injectedHeaders
+    injectedHeaders,
+    input.unauthenticatedHosts
   )
   return await Sandbox.create({
     runtime: 'node24',
@@ -260,10 +282,12 @@ export async function brokeredHttpRequest(input: {
     throw new BrokeredHttpError(`Unknown provider: ${input.provider}`)
   }
 
-  const url = validateUrl(
+  const method = input.request.method.toUpperCase()
+  const { mode, url } = validateUrl(
     input.provider,
+    method,
     input.request.url,
-    connector.broker.allowedHosts
+    connector
   )
   const headers = normalizeHeaders(
     input.request.headers,
@@ -271,7 +295,7 @@ export async function brokeredHttpRequest(input: {
   )
   const runnerInput = {
     url: url.toString(),
-    method: input.request.method.toUpperCase(),
+    method,
     headers,
     bodyText: bodyTextFor(input.request.body),
     timeoutMs: input.request.timeoutMs ?? DEFAULT_TIMEOUT_MS,
@@ -283,11 +307,15 @@ export async function brokeredHttpRequest(input: {
 
   const sandbox = await getOrCreateBrokerSandbox({
     runId: currentRunId(),
-    provider: input.provider,
+    provider:
+      mode === 'authenticated'
+        ? input.provider
+        : `${input.provider}:unauthenticated:${url.hostname}`,
     createSandbox: () =>
       createBrokerSandbox({
         connector,
         provider: input.provider,
+        unauthenticatedHosts: mode === 'authenticated' ? [] : [url.hostname],
         userId: input.userId,
       }),
   })
