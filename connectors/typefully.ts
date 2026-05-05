@@ -1,5 +1,6 @@
 import 'server-only'
 import { z } from 'zod'
+import { isTypefullyPresignedUploadRequest } from '@/lib/typefully-upload-url'
 import { defineConnector } from './define-connector'
 
 const typefullyCredentialSchema = z.object({
@@ -44,6 +45,7 @@ export const typefullyConnector = defineConnector('typefully', {
     injectedHeaders: (credential: TypefullyCredential) => ({
       authorization: `Bearer ${credential.apiKey}`,
     }),
+    allowUnauthenticatedRequest: isTypefullyPresignedUploadRequest,
   },
   async validate(values) {
     const response = await fetch('https://api.typefully.com/v2/me', {
