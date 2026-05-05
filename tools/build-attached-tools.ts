@@ -42,6 +42,8 @@ export interface BuildAttachedToolsArgs {
   /** Phase 4: parent's nesting depth. 0 for top-level. */
   depth?: number
   plan: ResolveToolPlanResult
+  /** Stream namespace for live tool UI updates, when visible. */
+  streamNamespace?: string | null
   /** Owner of the agent — used to thread parentUserId into sub-agent tools. */
   userId: string
 }
@@ -96,6 +98,7 @@ function buildOne(args: {
 function buildSubAgentEntry(args: {
   parentAgentId: string
   parentRunId: string | null
+  streamNamespace: string | null
   parentToolId: string
   parentUserId: string
   callStack: string[]
@@ -106,6 +109,7 @@ function buildSubAgentEntry(args: {
   const {
     parentAgentId,
     parentRunId,
+    streamNamespace,
     parentToolId,
     parentUserId,
     callStack,
@@ -123,6 +127,7 @@ function buildSubAgentEntry(args: {
         parentAgentId,
         parentUserId,
         parentRunId,
+        streamNamespace,
         parentToolId,
         parentCallStack: callStack,
         parentDepth: depth,
@@ -146,6 +151,7 @@ export function buildAttachedTools(
   const currentRunId = args.currentRunId ?? null
   const conversationId = args.conversationId ?? null
   const depth = args.depth ?? 0
+  const streamNamespace = args.streamNamespace ?? null
 
   // Start from the reconnects the plan step already produced; this
   // function only adds `build_failed` entries.
@@ -170,6 +176,7 @@ export function buildAttachedTools(
     const built = buildSubAgentEntry({
       parentAgentId: agentId,
       parentRunId: currentRunId,
+      streamNamespace,
       parentToolId: sub.toolId,
       parentUserId: userId,
       callStack,

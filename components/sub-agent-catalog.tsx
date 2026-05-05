@@ -4,16 +4,16 @@ import { useRouter } from 'next/navigation'
 import { useTransition } from 'react'
 import { toast } from 'sonner'
 import { attachSubAgentAction, detachToolAction } from '@/lib/tool-actions'
-import { AGENT_TOOL_PREFIX } from '@/tools/agent-tool-prefix'
 
 export interface SubAgentCatalogEntry {
   agentId: string
+  attachedToolId: string | null
+  displayToolId: string
   enabled: boolean
   name: string
 }
 
 interface Props {
-  attachedChildIds: Set<string>
   candidates: SubAgentCatalogEntry[]
   parentAgentId: string
 }
@@ -27,11 +27,7 @@ interface Props {
  * same affordance ("attach/detach a callable") just on a different
  * resource.
  */
-export function SubAgentCatalog({
-  parentAgentId,
-  candidates,
-  attachedChildIds,
-}: Props) {
+export function SubAgentCatalog({ parentAgentId, candidates }: Props) {
   if (candidates.length === 0) {
     return (
       <p className="text-muted-foreground text-sm">
@@ -45,11 +41,7 @@ export function SubAgentCatalog({
     <ul className="flex flex-col divide-y-2 divide-foreground border-foreground border-y-2">
       {candidates.map((c) => (
         <li className="py-6" key={c.agentId}>
-          <SubAgentRow
-            attached={attachedChildIds.has(c.agentId)}
-            entry={c}
-            parentAgentId={parentAgentId}
-          />
+          <SubAgentRow entry={c} parentAgentId={parentAgentId} />
         </li>
       ))}
     </ul>
@@ -59,14 +51,13 @@ export function SubAgentCatalog({
 function SubAgentRow({
   parentAgentId,
   entry,
-  attached,
 }: {
   parentAgentId: string
   entry: SubAgentCatalogEntry
-  attached: boolean
 }) {
   const [pending, startTransition] = useTransition()
   const router = useRouter()
+  const attached = entry.attachedToolId !== null
 
   function handleAttach() {
     startTransition(async () => {
@@ -84,7 +75,7 @@ function SubAgentRow({
     startTransition(async () => {
       const res = await detachToolAction(
         parentAgentId,
-        `${AGENT_TOOL_PREFIX}${entry.agentId}`,
+        entry.attachedToolId ?? entry.displayToolId,
         'sub_agent'
       )
       if (!res.ok) {
@@ -96,14 +87,12 @@ function SubAgentRow({
     })
   }
 
-  const toolKey = `${AGENT_TOOL_PREFIX}${entry.agentId}`
-
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="min-w-0">
           <p className="font-black font-mono text-sm uppercase tracking-[0.04em]">
-            {toolKey}
+            {entry.displayToolId}
           </p>
           <p className="mt-1 font-black font-serif text-xl uppercase tracking-[-0.04em]">
             {entry.name}

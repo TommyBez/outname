@@ -187,16 +187,16 @@ async function dispatchInvocationEvent(input: {
   event: Extract<SessionEvent, { type: 'invocation' }>
 }): Promise<EventDispatchResult> {
   const { agentId, event } = input
-  // The handler always replies on `event.replyTo` (success or failure)
-  // so the parent's tool call is unblocked even if this turn aborts.
   const result = await handleInvocation({
     agentId,
     callStack: event.callStack,
     depth: event.depth,
     input: event.input,
+    parentStream: event.parentStream,
+    parentToolCallId: event.parentToolCallId,
     parentRunId: event.parentRunId,
     parentToolId: event.parentToolId,
-    replyTo: event.replyTo,
+    streamToken: event.streamToken,
   })
   return {
     pending: result.pending,
