@@ -115,6 +115,8 @@ function resolveModelOptions(
       id: defaultModel,
       name: defaultModel,
       ownedBy: 'gateway',
+      inputUsdPerToken: null,
+      outputUsdPerToken: null,
     },
   ]
 }

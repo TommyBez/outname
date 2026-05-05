@@ -2,10 +2,12 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { AgentForm } from '@/components/agent-form'
+import { BudgetRules, type BudgetRuleView } from '@/components/budget-rules'
 import { deleteAgentAction } from '@/lib/agent-actions'
 import { readLatestPendingFileWrite } from '@/lib/agent-pending-writes'
 import { DEFAULT_MODEL_ID, getAvailableModels } from '@/lib/ai-gateway-models'
 import { requireSession } from '@/lib/auth-guard'
+import { listAgentBudgetRules, sumSpendUsd } from '@/lib/budget'
 import { getCachedAgentByIdForUser, getCachedAgentMemoryFile } from '@/lib/data'
 
 type Params = Promise<{ agentId: string }>
@@ -83,6 +85,17 @@ async function AgentEdit({ params }: { params: Params }) {
       </header>
 
       <section className="border-foreground border-t-2 py-10">
+        <h2 className="swiss-label mb-6 text-accent">Budget</h2>
+        <Suspense fallback={<div className="h-32" />}>
+          <AgentBudgetSection
+            agentId={agentRow.id}
+            agentName={agentRow.name}
+            userId={session.user.id}
+          />
+        </Suspense>
+      </section>
+
+      <section className="border-foreground border-t-2 py-10">
         <AgentForm
           defaultModel={DEFAULT_MODEL_ID}
           initial={{
@@ -128,6 +141,36 @@ async function AgentEdit({ params }: { params: Params }) {
         </form>
       </section>
     </>
+  )
+}
+
+async function AgentBudgetSection({
+  agentId,
+  agentName,
+  userId,
+}: {
+  agentId: string
+  agentName: string
+  userId: string
+}) {
+  const rules = await listAgentBudgetRules({ userId, agentId })
+  const views: BudgetRuleView[] = await Promise.all(
+    rules.map(async (r) => ({
+      id: r.id,
+      agentId,
+      agentName,
+      period: r.period,
+      limitUsd: Number(r.limitUsd),
+      enabled: r.enabled,
+      spentUsd: await sumSpendUsd({
+        userId,
+        scope: { type: 'agent', agentId },
+        period: r.period,
+      }),
+    }))
+  )
+  return (
+    <BudgetRules rules={views} scope={{ type: 'agent', agentId, agentName }} />
   )
 }
 

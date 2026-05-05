@@ -10,6 +10,7 @@ import { getWorkflowMetadata, getWritable } from 'workflow'
 import { getRun } from 'workflow/api'
 import type { AgentChatChunk, AgentChatMessage } from '@/lib/agent-chat-status'
 import { startupExecSandbox, startupSystemSandbox } from '@/lib/agent-sandbox'
+import { formatBudgetExceededMessage } from '@/lib/budget'
 import { emitActivity, emitRun, emitStep } from '@/lib/run-events'
 import type { SubAgentToolOutput } from '@/lib/sub-agent-tool-output'
 import { buildAgent } from '../agent-factory'
@@ -19,6 +20,11 @@ import {
   resolveStepLimit,
   resolveStepLimitCount,
 } from '../step-limit'
+import {
+  extractTotalUsage,
+  preflightBudget,
+  recordTokenUsageStep,
+} from '../steps/budget'
 import { drainPendingWrites } from '../steps/drain-pending-writes'
 import {
   createPendingWrites,
@@ -106,6 +112,32 @@ export async function handleInvocation(input: {
       streamNamespace,
     })
     pending = built.pending
+    // Sub-agent spend is attributed to the **root** of the call stack
+    // — the agent the operator originally invoked — so per-agent
+    // budgets cap a tree of sub-agents, not just the leaf.
+    const rootAgentId = callStack[0] ?? agentId
+
+    const exceeded = await preflightBudget({
+      userId: built.meta.userId,
+      rootAgentId,
+    })
+    if (exceeded) {
+      const message = formatBudgetExceededMessage(exceeded)
+      await emitActivity(runId, 'Sub-agent: Budget exceeded, refusing', {
+        period: exceeded.period,
+        scope: exceeded.scope.type,
+      })
+      await emitStep(runId, 'read', 'error', message)
+      await emitRun(runId, 'failed', message)
+      await writeUiMessageStreamError(streamNamespace, message).catch(() => {
+        // Best-effort signal so the parent-side collector doesn't hang.
+      })
+      await finishUiMessageStream(streamNamespace).catch(() => {
+        // Best-effort close.
+      })
+      return { pending, runId }
+    }
+
     await emitActivity(runId, 'Sub-agent: Streaming model work', {
       model: built.meta.model,
     })
@@ -138,6 +170,15 @@ export async function handleInvocation(input: {
       collectUIMessages: true,
       preventClose: true,
       sendFinish: false,
+    })
+    await recordTokenUsageStep({
+      userId: built.meta.userId,
+      agentId,
+      rootAgentId,
+      sourceType: 'invocation',
+      sourceId: runId,
+      model: built.meta.model,
+      usage: extractTotalUsage(result),
     })
     await finishSuccessfulInvocation({
       result,
