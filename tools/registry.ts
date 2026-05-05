@@ -6,6 +6,7 @@ import { parallelSearchTool } from './parallel'
 import { resendSendTool } from './resend'
 import { getToolSandboxManifest } from './sandboxes/registry'
 import type { MaintainerTool } from './types'
+import { xApiRequestTool } from './x-api'
 
 /**
  * Maintainer-shipped tool catalog. Order is the order the catalog UI
@@ -24,6 +25,7 @@ const TOOLS: MaintainerTool[] = [
   calcomRequestTool,
   parallelSearchTool,
   agentBrowserTool,
+  xApiRequestTool,
 ]
 const TOOL_BY_ID = new Map<string, MaintainerTool>()
 
@@ -59,4 +61,9 @@ export function getMaintainerTool(toolId: string): MaintainerTool | undefined {
  * Coarse category ordering for the catalog UI. Tools with categories
  * not in this list fall to the end alphabetically.
  */
-export const TOOL_CATEGORY_ORDER = ['email', 'scheduling', 'browser'] as const
+export const TOOL_CATEGORY_ORDER = [
+  'email',
+  'scheduling',
+  'social',
+  'browser',
+] as const

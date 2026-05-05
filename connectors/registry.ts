@@ -3,6 +3,7 @@ import { calcomConnector } from './calcom'
 import { parallelConnector } from './parallel'
 import { resendConnector } from './resend'
 import type { Connector } from './types'
+import { xConnector } from './x'
 
 /**
  * Central connector registry. Add a connector here and the runtime,
@@ -13,6 +14,7 @@ const CONNECTORS: Connector[] = [
   resendConnector,
   calcomConnector,
   parallelConnector,
+  xConnector,
 ]
 const CONNECTOR_BY_PROVIDER = new Map<string, Connector>()
 
