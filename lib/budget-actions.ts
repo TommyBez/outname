@@ -1,8 +1,9 @@
 'use server'
 
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { revalidatePath, updateTag } from 'next/cache'
 import { requireSession } from '@/lib/auth-guard'
+import { upsertBudgetRule } from '@/lib/budget'
 import { userBudgetTag } from '@/lib/cache-tags'
 import { db } from '@/lib/db'
 import {
@@ -12,23 +13,6 @@ import {
 } from '@/lib/db/schema'
 
 const ALLOWED_PERIODS = new Set<BudgetPeriod>(['daily', 'weekly', 'monthly'])
-
-function ruleId() {
-  return (
-    'br_' +
-    Math.random().toString(36).slice(2) +
-    Date.now().toString(36).slice(-4)
-  )
-}
-
-function normalizeLimit(value: unknown): string {
-  const n = typeof value === 'number' ? value : Number(value)
-  if (!Number.isFinite(n) || n <= 0) {
-    throw new Error('Limit must be a positive number')
-  }
-  // Round to 6 decimals to match the column scale.
-  return n.toFixed(6)
-}
 
 function normalizePeriod(value: unknown): BudgetPeriod {
   if (
@@ -66,10 +50,10 @@ export interface UpsertBudgetRuleInput {
 }
 
 /**
- * Idempotent upsert: at most one rule per (user, scope, period). Calling
- * with the same scope/period twice updates the existing row instead of
- * creating a duplicate (the unique partial indexes on `budget_rule`
- * also enforce this at the DB level).
+ * Server Action shim around `upsertBudgetRule`. Adds session-bound
+ * ownership and cache revalidation; the heavy lifting lives in
+ * `lib/budget.ts` so non-action callers (e.g. agent-creation chat)
+ * can share the same logic.
  */
 export async function upsertBudgetRuleAction(
   input: UpsertBudgetRuleInput
@@ -77,51 +61,19 @@ export async function upsertBudgetRuleAction(
   const session = await requireSession()
   const userId = session.user.id
   const period = normalizePeriod(input.period)
-  const limit = normalizeLimit(input.limitUsd)
-  const enabled = input.enabled !== false
   const agentId = input.agentId ?? null
 
   if (agentId) {
     await assertAgentOwnership({ agentId, userId })
   }
 
-  const existingFilter = agentId
-    ? and(
-        eq(budgetRule.userId, userId),
-        eq(budgetRule.agentId, agentId),
-        eq(budgetRule.period, period)
-      )
-    : and(
-        eq(budgetRule.userId, userId),
-        isNull(budgetRule.agentId),
-        eq(budgetRule.period, period)
-      )
-
-  const [existing] = await db
-    .select()
-    .from(budgetRule)
-    .where(existingFilter)
-    .limit(1)
-
-  if (existing) {
-    await db
-      .update(budgetRule)
-      .set({
-        limitUsd: limit,
-        enabled,
-        updatedAt: new Date(),
-      })
-      .where(eq(budgetRule.id, existing.id))
-  } else {
-    await db.insert(budgetRule).values({
-      id: ruleId(),
-      userId,
-      agentId,
-      period,
-      limitUsd: limit,
-      enabled,
-    })
-  }
+  await upsertBudgetRule({
+    userId,
+    agentId,
+    period,
+    limitUsd: input.limitUsd,
+    enabled: input.enabled,
+  })
 
   updateTag(userBudgetTag(userId))
   revalidatePath('/settings')

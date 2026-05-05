@@ -26,8 +26,18 @@ export interface AgentCreationToolSet {
   subAgents: AgentCreationSubAgentTool[]
 }
 
+export interface AgentCreationBudget {
+  /** USD per UTC day. `null` skips the cap. */
+  daily: number | null
+  /** USD per calendar month. `null` skips the cap. */
+  monthly: number | null
+  /** USD per ISO week. `null` skips the cap. */
+  weekly: number | null
+}
+
 export interface AgentCreationRequest {
   behavior: string
+  budget: AgentCreationBudget
   heartbeat: AgentCreationSchedule
   identityCard?: string
   instructions?: string
@@ -40,6 +50,17 @@ export interface AgentCreationRequest {
   stepLimit: AgentCreationStepLimit
   tools: AgentCreationToolSet
   userProfile?: string
+}
+
+export interface AgentCreationProposedBudget {
+  daily: number | null
+  monthly: number | null
+  weekly: number | null
+}
+
+export interface AgentCreationProposedBudgetOutput {
+  proposed: AgentCreationProposedBudget
+  rationale: string
 }
 
 export interface AgentCreationAttachmentResult {

@@ -4,12 +4,10 @@ import type { LanguageModelUsage } from 'ai'
 import { and, eq, gte, isNull, sql } from 'drizzle-orm'
 import { getModelPricing } from '@/lib/ai-gateway-models'
 import { db } from '@/lib/db'
-import {
-  agentTokenUsage,
-  type BudgetPeriod,
-  type BudgetRule,
-  budgetRule,
-} from '@/lib/db/schema'
+import type { BudgetPeriod, BudgetRule } from '@/lib/db/schema'
+import { agentTokenUsage, budgetRule } from '@/lib/db/schema'
+
+export type { BudgetPeriod } from '@/lib/db/schema'
 
 export const BUDGET_PERIODS: readonly BudgetPeriod[] = [
   'daily',
@@ -323,6 +321,83 @@ export async function listAgentBudgetRules(input: {
         eq(budgetRule.agentId, input.agentId)
       )
     )
+}
+
+export interface UpsertBudgetRuleArgs {
+  /** NULL = general rule covering every agent. */
+  agentId: string | null
+  enabled?: boolean
+  /** USD limit. Must be > 0. */
+  limitUsd: number
+  period: BudgetPeriod
+  userId: string
+}
+
+function ruleId(): string {
+  return (
+    'br_' +
+    Math.random().toString(36).slice(2) +
+    Date.now().toString(36).slice(-4)
+  )
+}
+
+/**
+ * Idempotent upsert of a budget rule. At most one row per
+ * `(user, scope, period)` thanks to the unique partial indexes; calling
+ * this twice with the same scope/period updates the existing row.
+ *
+ * Server-side helper for non-action callers (route handlers, agent
+ * creation flow). The Server Action wrapper in `lib/budget-actions.ts`
+ * adds session resolution + cache revalidation on top.
+ */
+export async function upsertBudgetRule(
+  input: UpsertBudgetRuleArgs
+): Promise<BudgetRule> {
+  if (!Number.isFinite(input.limitUsd) || input.limitUsd <= 0) {
+    throw new Error('limitUsd must be a positive number')
+  }
+  const enabled = input.enabled !== false
+  const limit = input.limitUsd.toFixed(6)
+
+  const existingFilter = input.agentId
+    ? and(
+        eq(budgetRule.userId, input.userId),
+        eq(budgetRule.agentId, input.agentId),
+        eq(budgetRule.period, input.period)
+      )
+    : and(
+        eq(budgetRule.userId, input.userId),
+        isNull(budgetRule.agentId),
+        eq(budgetRule.period, input.period)
+      )
+
+  const [existing] = await db
+    .select()
+    .from(budgetRule)
+    .where(existingFilter)
+    .limit(1)
+
+  if (existing) {
+    const [updated] = await db
+      .update(budgetRule)
+      .set({ limitUsd: limit, enabled, updatedAt: new Date() })
+      .where(eq(budgetRule.id, existing.id))
+      .returning()
+    return updated
+  }
+
+  const [inserted] = await db
+    .insert(budgetRule)
+    .values({
+      id: ruleId(),
+      userId: input.userId,
+      agentId: input.agentId,
+      period: input.period,
+      limitUsd: limit,
+      enabled,
+    })
+    .returning()
+  return inserted
 }
 
 export interface BudgetSummaryEntry {

@@ -24,7 +24,13 @@ import {
 } from '@/lib/agent-tool-attachment-service'
 import { DEFAULT_MODEL_ID } from '@/lib/ai-gateway-models'
 import { auth } from '@/lib/auth'
-import { agentTag, agentToolsTag, userAgentsTag } from '@/lib/cache-tags'
+import { type BudgetPeriod, upsertBudgetRule } from '@/lib/budget'
+import {
+  agentTag,
+  agentToolsTag,
+  userAgentsTag,
+  userBudgetTag,
+} from '@/lib/cache-tags'
 import { getAgentsForUser, getUserConnections } from '@/lib/data'
 import { describeConfigSchema } from '@/lib/zod-config-fields'
 import { listMaintainerTools } from '@/tools/registry'
@@ -78,6 +84,34 @@ const subAgentSelectionSchema = z.object({
     .describe('Short reason this sub-agent should be available.'),
 })
 
+const budgetLimitSchema = z
+  .number()
+  .positive()
+  .max(100_000)
+  .nullable()
+  .describe('USD limit for this period, or null to skip.')
+
+const budgetSchema = z
+  .object({
+    daily: budgetLimitSchema.default(null),
+    weekly: budgetLimitSchema.default(null),
+    monthly: budgetLimitSchema.default(null),
+  })
+  .default({ daily: null, weekly: null, monthly: null })
+  .describe(
+    'Per-agent USD spend caps. Sub-agent invocations roll into this budget too. Tool external-service costs are not counted.'
+  )
+
+const proposeBudgetInputSchema = z.object({
+  daily: budgetLimitSchema.default(null),
+  weekly: budgetLimitSchema.default(null),
+  monthly: budgetLimitSchema.default(null),
+  rationale: z
+    .string()
+    .default('')
+    .describe('One short sentence explaining the suggested budget.'),
+})
+
 const createAgentInputSchema = z.object({
   requestId: z
     .string()
@@ -128,6 +162,7 @@ const createAgentInputSchema = z.object({
       subAgents: z.array(subAgentSelectionSchema).default([]),
     })
     .default(DEFAULT_TOOLS),
+  budget: budgetSchema,
 })
 
 export async function POST(req: Request) {
@@ -157,9 +192,22 @@ export async function POST(req: Request) {
         inputSchema: z.object({}),
         execute: async () => listAvailableTools(session.user.id),
       }),
+      propose_agent_budget: tool({
+        description:
+          'Propose USD spend caps for the new agent across daily/weekly/monthly windows. The UI renders an editable widget with these defaults and the user submits the values they want. After this returns, use the values from the resulting tool message (echoed in proposed.*) and any user follow-up message as the budget for create_requested_agent.',
+        inputSchema: proposeBudgetInputSchema,
+        execute: async (input) => ({
+          proposed: {
+            daily: input.daily,
+            weekly: input.weekly,
+            monthly: input.monthly,
+          },
+          rationale: input.rationale,
+        }),
+      }),
       create_requested_agent: tool({
         description:
-          'Create the reviewed agent after the user approves the final configuration. This mutates the database and attaches selected tools.',
+          'Create the reviewed agent after the user approves the final configuration. This mutates the database, attaches selected tools, and persists the per-agent budget rules.',
         inputSchema: createAgentInputSchema,
         needsApproval: true,
         execute: async (input, options) =>
@@ -190,7 +238,8 @@ function creatorInstructions(): string {
     'If a tool requires configuration, gather the required fields before final creation.',
     'If a tool requires a provider connection that is missing, say it can be attached now but may need connection setup later.',
     '',
-    'When the configuration is complete, call create_requested_agent with the complete final config. The app will render an approval UI from the tool call; do not ask the user to type a magic confirmation phrase.',
+    'Before final creation, call propose_agent_budget exactly once with sensible suggested USD caps for daily/weekly/monthly windows (any of them can be null). The UI renders an inline editor with those defaults; the user adjusts the values and confirms. Wait for the user follow-up message before calling create_requested_agent. The user-confirmed numbers MUST become the `budget` field on create_requested_agent.',
+    'When the configuration is complete, call create_requested_agent with the complete final config including the confirmed budget. The app will render an approval UI from the tool call; do not ask the user to type a magic confirmation phrase.',
     'If the user denies the approval, do not retry the same create_requested_agent call. Ask what they want changed.',
     '',
     'For bootstrap files, write practical markdown. Keep IDENTITY.md compact, SOUL.md behavioral, and USER.md only for stable facts the user provided.',
@@ -312,6 +361,13 @@ async function createRequestedAgent(input: {
     agentId: created.id,
     bootstrap: { 'AGENTS.md': instructions },
   })
+
+  await applyAgentBudget({
+    agentId: created.id,
+    userId: input.userId,
+    budget: input.input.budget,
+  })
+
   revalidateCreationSurfaces({ agentId: created.id, userId: input.userId })
 
   return {
@@ -322,6 +378,46 @@ async function createRequestedAgent(input: {
     editUrl: `/agents/${created.id}/edit`,
     toolsUrl: `/agents/${created.id}/tools`,
     attachments,
+  }
+}
+
+/**
+ * Persist per-agent budget rules from the approved configuration. Each
+ * non-null period upserts a rule; null periods are skipped (and any
+ * pre-existing rule for that period is left intact, since the user may
+ * have set one earlier on the same agent during a replay).
+ */
+async function applyAgentBudget(input: {
+  agentId: string
+  userId: string
+  budget: AgentCreationRequest['budget']
+}): Promise<void> {
+  const periods: Array<{
+    key: 'daily' | 'weekly' | 'monthly'
+    period: BudgetPeriod
+  }> = [
+    { key: 'daily', period: 'daily' },
+    { key: 'weekly', period: 'weekly' },
+    { key: 'monthly', period: 'monthly' },
+  ]
+  for (const { key, period } of periods) {
+    const limit = input.budget?.[key]
+    if (typeof limit !== 'number' || limit <= 0) {
+      continue
+    }
+    try {
+      await upsertBudgetRule({
+        userId: input.userId,
+        agentId: input.agentId,
+        period,
+        limitUsd: limit,
+      })
+    } catch (err) {
+      console.error('[v0] applyAgentBudget: failed to persist rule', {
+        period,
+        err,
+      })
+    }
   }
 }
 
@@ -420,6 +516,7 @@ function revalidateCreationSurfaces(input: {
   revalidateTag(userAgentsTag(input.userId), 'max')
   revalidateTag(agentTag(input.agentId), 'max')
   revalidateTag(agentToolsTag(input.agentId), 'max')
+  revalidateTag(userBudgetTag(input.userId), 'max')
   revalidatePath('/agents')
   revalidatePath(`/agents/${input.agentId}`)
   revalidatePath('/')
