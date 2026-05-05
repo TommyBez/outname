@@ -54,6 +54,7 @@ export async function runChannelChatTurn(input: {
     parts: [{ type: 'text', text: message.text }],
     metadata: {
       source: message.channel,
+      teamId: message.teamId || null,
       externalUserId: message.externalUserId,
       externalUserDisplayName: message.externalUserDisplayName ?? null,
       externalThreadKey: message.externalThreadKey,

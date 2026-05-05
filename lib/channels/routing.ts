@@ -12,25 +12,56 @@ import {
   agentChannelBindings,
   channelThreadConversations,
 } from '@/lib/db/schema'
+import { getChannelInstallationByTeam } from './installations'
 import type { ChannelId, ChannelRoute, IncomingChannelMessage } from './types'
 
 /**
  * Resolve which agent owns this thread.
  *
- * Lookup order:
- *   1. Existing `channel_thread_conversations` row — the thread already
- *      mapped to a specific agent on a previous turn, so we always
- *      route back to the same agent.
+ * Multi-user safety contract — the resolver returns null unless ALL of:
+ *   - the workspace has a matching `channel_installations` row
+ *     (otherwise this isn't an installed workspace and we never reply);
+ *   - the matched binding (or sticky thread mapping) points at an
+ *     agent whose `agent.userId` equals the installation's `userId`
+ *     (otherwise a misconfigured binding cannot leak across users).
+ *
+ * Lookup order — each step still requires the owner check above:
+ *   1. Existing `channel_thread_conversations` row keyed by
+ *      `(channel, teamId, externalThreadKey)`.
  *   2. `agent_channel_bindings` row matching the routing key (Slack
  *      channel id for channel posts, Slack user id for DMs).
  *   3. `agent_channel_bindings` row with `kind='default'` — the
- *      single-operator fallback so a fresh deployment can answer
- *      messages with no per-channel binding work.
- *
- * Returns `null` when nothing matches; the adapter should silently drop
- * the event in that case so the bot doesn't reply to unrelated chatter.
+ *      per-workspace fallback, scoped to the same team.
  */
 export async function resolveAgentForIncomingMessage(
+  msg: IncomingChannelMessage
+): Promise<Agent | null> {
+  const installation = await getChannelInstallationByTeam(
+    msg.channel,
+    msg.teamId
+  )
+  if (!installation) {
+    return null
+  }
+
+  const candidate = await findCandidateAgent(msg)
+  if (!candidate) {
+    return null
+  }
+  if (candidate.userId !== installation.userId) {
+    console.warn('[channels] dropping cross-user routing attempt', {
+      channel: msg.channel,
+      teamId: msg.teamId,
+      installationUserId: installation.userId,
+      agentId: candidate.id,
+      agentUserId: candidate.userId,
+    })
+    return null
+  }
+  return candidate
+}
+
+async function findCandidateAgent(
   msg: IncomingChannelMessage
 ): Promise<Agent | null> {
   const existingMapping = await db
@@ -39,6 +70,7 @@ export async function resolveAgentForIncomingMessage(
     .where(
       and(
         eq(channelThreadConversations.channel, msg.channel),
+        eq(channelThreadConversations.teamId, msg.teamId),
         eq(channelThreadConversations.externalThreadKey, msg.externalThreadKey)
       )
     )
@@ -47,35 +79,43 @@ export async function resolveAgentForIncomingMessage(
     return await loadAgent(existingMapping[0].agentId)
   }
 
-  const direct = await findBinding(
-    msg.channel,
-    msg.externalRoutingKey,
-    msg.externalRoutingKind
-  )
+  const direct = await findBinding({
+    channel: msg.channel,
+    teamId: msg.teamId,
+    externalKey: msg.externalRoutingKey,
+    kind: msg.externalRoutingKind,
+  })
   if (direct) {
     return await loadAgent(direct.agentId)
   }
 
-  const fallback = await findBinding(msg.channel, '', 'default')
+  const fallback = await findBinding({
+    channel: msg.channel,
+    teamId: msg.teamId,
+    externalKey: '',
+    kind: 'default',
+  })
   if (fallback) {
     return await loadAgent(fallback.agentId)
   }
   return null
 }
 
-async function findBinding(
-  channel: ChannelId,
-  externalKey: string,
+async function findBinding(input: {
+  channel: ChannelId
+  teamId: string
+  externalKey: string
   kind: 'channel' | 'dm' | 'default'
-) {
+}) {
   const [row] = await db
     .select({ agentId: agentChannelBindings.agentId })
     .from(agentChannelBindings)
     .where(
       and(
-        eq(agentChannelBindings.channel, channel),
-        eq(agentChannelBindings.externalKey, externalKey),
-        eq(agentChannelBindings.kind, kind)
+        eq(agentChannelBindings.channel, input.channel),
+        eq(agentChannelBindings.teamId, input.teamId),
+        eq(agentChannelBindings.externalKey, input.externalKey),
+        eq(agentChannelBindings.kind, input.kind)
       )
     )
     .limit(1)
@@ -93,9 +133,10 @@ async function loadAgent(agentId: string): Promise<Agent | null> {
 
 /**
  * Find or create the `chat_conversation` row that backs this external
- * thread. The mapping in `channel_thread_conversations` is a unique
- * index on `(channel, externalThreadKey)` so concurrent webhooks for
- * the same Slack thread converge on the same conversation row.
+ * thread. The mapping in `channel_thread_conversations` is unique on
+ * `(channel, teamId, externalThreadKey)` so concurrent webhooks for the
+ * same Slack thread converge on the same conversation row even across
+ * workspaces that happen to share a thread key string.
  */
 export async function ensureConversationForThread(input: {
   agent: Agent
@@ -109,6 +150,7 @@ export async function ensureConversationForThread(input: {
     .where(
       and(
         eq(channelThreadConversations.channel, message.channel),
+        eq(channelThreadConversations.teamId, message.teamId),
         eq(
           channelThreadConversations.externalThreadKey,
           message.externalThreadKey
@@ -136,6 +178,7 @@ export async function ensureConversationForThread(input: {
     .values({
       id: `ctc_${nanoid(12)}`,
       channel: message.channel,
+      teamId: message.teamId,
       externalThreadKey: message.externalThreadKey,
       conversationId: conversation.id,
       agentId: agentRow.id,
@@ -144,6 +187,7 @@ export async function ensureConversationForThread(input: {
     .onConflictDoNothing({
       target: [
         channelThreadConversations.channel,
+        channelThreadConversations.teamId,
         channelThreadConversations.externalThreadKey,
       ],
     })

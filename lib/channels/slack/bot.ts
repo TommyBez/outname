@@ -1,9 +1,9 @@
 import 'server-only'
 import { createSlackAdapter } from '@chat-adapter/slack'
-import { createMemoryState } from '@chat-adapter/state-memory'
 import { Chat } from 'chat'
 import { runChannelChatTurn } from '../dispatch'
 import type { IncomingChannelMessage } from '../types'
+import { SlackHybridState } from './state'
 
 /**
  * Slack chat bot built on the Vercel Chat SDK.
@@ -16,35 +16,58 @@ import type { IncomingChannelMessage } from '../types'
  *   - Optional streaming-edit posting (so the agent's response appears
  *     to "type" in the Slack thread)
  *
+ * Two operating modes are supported, picked at boot from environment
+ * variables:
+ *
+ *   - **Multi-workspace** (recommended for multi-user deployments):
+ *     `SLACK_CLIENT_ID` + `SLACK_CLIENT_SECRET` are set. The bot is
+ *     installed per-user via `/api/channels/slack/oauth/callback`,
+ *     bot tokens are stored encrypted in `channel_installations`, and
+ *     the SDK resolves them per-team via the `SlackHybridState`
+ *     adapter. The webhook verifies signatures using
+ *     `SLACK_SIGNING_SECRET` (one Slack app, many workspaces) and the
+ *     dispatcher cross-checks `installation.userId` against
+ *     `agent.userId` so cross-user routing is rejected.
+ *
+ *   - **Single-workspace** (the legacy / single-operator mode): only
+ *     `SLACK_BOT_TOKEN` + `SLACK_SIGNING_SECRET` are set. There is one
+ *     workspace, one user, and bindings live with `teamId = ''`. This
+ *     mode does not pass the multi-user safety contract — only use it
+ *     for personal deployments.
+ *
  * Channel-agnostic logic — agent routing, conversation persistence,
  * workflow dispatch — lives in `lib/channels/dispatch.ts` so the same
- * pipeline can be reused for Teams / Discord / Telegram by adding a new
- * adapter file.
- *
- * Notes:
- *   - The SDK requires a `StateAdapter` for thread subscriptions and
- *     concurrency locks. We use `createMemoryState()` so the integration
- *     ships without a Redis dependency. State is best-effort — we
- *     persist the canonical thread → conversation mapping in Postgres,
- *     so a cold start that drops in-memory state at most loses the
- *     "auto-reply to follow-ups" optimisation, not the conversation
- *     itself. Swap in `@chat-adapter/state-redis` to harden this for
- *     multi-instance deployments.
- *   - We deliberately do NOT call `bot.registerSingleton()` —
- *     deserialisation of Slack threads inside Vercel Workflow steps is
- *     not used today and would require an `initialize()` call before
- *     anything that touches `Chat.getSingleton()`.
+ * pipeline can be reused for Teams / Discord / Telegram by adding a
+ * new adapter file.
  */
+
 const userName = process.env.SLACK_BOT_USERNAME ?? 'assistant'
 
-const slackAdapter = createSlackAdapter({
-  userName,
-})
+const clientId = process.env.SLACK_CLIENT_ID
+const clientSecret = process.env.SLACK_CLIENT_SECRET
+const isMultiWorkspace = Boolean(clientId && clientSecret)
+
+export const slackAdapter = createSlackAdapter(
+  isMultiWorkspace
+    ? {
+        userName,
+        clientId,
+        clientSecret,
+      }
+    : { userName }
+)
 
 export const slackBot = new Chat({
   userName,
   adapters: { slack: slackAdapter },
-  state: createMemoryState(),
+  /**
+   * `SlackHybridState` keeps locks/subscriptions in-memory but routes
+   * Slack installation reads/writes into `channel_installations`. That
+   * gives us per-user owner scoping without forcing a Redis dependency.
+   * For multi-instance deployments swap the inner adapter to
+   * `@chat-adapter/state-redis` later — the install bridge is unchanged.
+   */
+  state: new SlackHybridState(),
   /**
    * Drop overlapping messages on the same thread instead of queueing
    * them. Each turn already reserves the agent session workflow, so
@@ -88,6 +111,16 @@ slackBot.onSubscribedMessage(async (thread, message) => {
 type SlackThread = Parameters<Parameters<typeof slackBot.onNewMention>[0]>[0]
 type SlackMessage = Parameters<Parameters<typeof slackBot.onNewMention>[0]>[1]
 
+interface SlackRawMessage {
+  team?: string
+  team_id?: string
+}
+
+function extractTeamId(message: SlackMessage): string {
+  const raw = message.raw as SlackRawMessage | undefined
+  return raw?.team_id ?? raw?.team ?? ''
+}
+
 async function handleSlackMessage(input: {
   thread: SlackThread
   message: SlackMessage
@@ -113,11 +146,22 @@ async function handleSlackMessage(input: {
     return
   }
 
+  const teamId = extractTeamId(message)
+  if (isMultiWorkspace && !teamId) {
+    console.warn(
+      '[slack] dropping multi-workspace event with no team id; ' +
+        'cannot owner-scope to an installation',
+      { channelId, kind }
+    )
+    return
+  }
+
   const externalRoutingKey =
     kind === 'dm' ? (message.author?.userId ?? channelId) : channelId
 
   const incoming: IncomingChannelMessage = {
     channel: 'slack',
+    teamId,
     externalThreadKey: slackThreadKey(channelId, threadTs),
     externalRoutingKey,
     externalRoutingKind: kind,
@@ -128,8 +172,7 @@ async function handleSlackMessage(input: {
     threadMetadata: {
       slackChannel: channelId,
       slackThreadTs: threadTs,
-      slackTeamId: (message.raw as { team_id?: string; team?: string })
-        ?.team_id,
+      slackTeamId: teamId || undefined,
     },
   }
 
@@ -137,10 +180,6 @@ async function handleSlackMessage(input: {
     message: incoming,
     sink: {
       postReply: async (content) => {
-        if (typeof content === 'string') {
-          await thread.post(content)
-          return
-        }
         // The Slack adapter uses `chat.update` between deltas to give
         // the impression of a streaming response — the SDK throttles
         // updates internally so we don't need to manage rate limits
@@ -159,6 +198,7 @@ async function handleSlackMessage(input: {
   if (!handled) {
     console.warn('[slack] no agent binding for incoming message', {
       channelId,
+      teamId,
       kind,
       routingKey: externalRoutingKey,
     })

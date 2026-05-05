@@ -12,13 +12,22 @@ type BindingKind = 'channel' | 'dm' | 'default'
  * server-side scripts and the docs walkthrough; a settings UI can call
  * the same helper later.
  *
- * The unique index on `(channel, externalKey, kind)` enforces that one
- * Slack channel cannot be bound to two agents simultaneously — the
- * second call updates the existing row in-place.
+ * The unique index on `(channel, teamId, externalKey, kind)` enforces
+ * that a single Slack workspace cannot bind two agents to the same
+ * channel/DM at once — the second call updates the existing row in
+ * place. Different workspaces (`teamId`) routing the same channel id
+ * to different agents is allowed because each user owns their own
+ * workspace install.
+ *
+ * Pass `teamId: ''` only for channels that have no workspace concept
+ * (legacy single-tenant deployments). Multi-user deployments must pass
+ * the Slack team id (or equivalent) so owner-scope checks in
+ * `resolveAgentForIncomingMessage` succeed.
  */
 export async function upsertAgentChannelBinding(input: {
   agentId: string
   channel: ChannelId
+  teamId: string
   externalKey: string
   kind: BindingKind
   metadata?: Record<string, unknown>
@@ -32,6 +41,7 @@ export async function upsertAgentChannelBinding(input: {
       id,
       agentId: input.agentId,
       channel: input.channel,
+      teamId: input.teamId,
       externalKey: input.externalKey,
       kind: input.kind,
       metadata,
@@ -39,6 +49,7 @@ export async function upsertAgentChannelBinding(input: {
     .onConflictDoUpdate({
       target: [
         agentChannelBindings.channel,
+        agentChannelBindings.teamId,
         agentChannelBindings.externalKey,
         agentChannelBindings.kind,
       ],
@@ -55,6 +66,7 @@ export async function upsertAgentChannelBinding(input: {
     .where(
       and(
         eq(agentChannelBindings.channel, input.channel),
+        eq(agentChannelBindings.teamId, input.teamId),
         eq(agentChannelBindings.externalKey, input.externalKey),
         eq(agentChannelBindings.kind, input.kind)
       )
@@ -62,7 +74,7 @@ export async function upsertAgentChannelBinding(input: {
     .limit(1)
   if (!row) {
     throw new Error(
-      `upsertAgentChannelBinding: row missing after upsert (${input.channel}/${input.kind}/${input.externalKey})`
+      `upsertAgentChannelBinding: row missing after upsert (${input.channel}/${input.teamId}/${input.kind}/${input.externalKey})`
     )
   }
   return row
@@ -70,6 +82,7 @@ export async function upsertAgentChannelBinding(input: {
 
 export async function deleteAgentChannelBinding(input: {
   channel: ChannelId
+  teamId: string
   externalKey: string
   kind: BindingKind
 }): Promise<void> {
@@ -78,6 +91,7 @@ export async function deleteAgentChannelBinding(input: {
     .where(
       and(
         eq(agentChannelBindings.channel, input.channel),
+        eq(agentChannelBindings.teamId, input.teamId),
         eq(agentChannelBindings.externalKey, input.externalKey),
         eq(agentChannelBindings.kind, input.kind)
       )

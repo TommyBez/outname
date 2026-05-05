@@ -29,10 +29,18 @@ export interface IncomingChannelMessage {
    */
   externalRoutingKey: string
   externalRoutingKind: 'channel' | 'dm'
-  /** Stable per-thread key, unique within `channel`. */
+  /** Stable per-thread key, unique within `(channel, teamId)`. */
   externalThreadKey: string
   externalUserDisplayName?: string
   externalUserId: string
+  /**
+   * Workspace dimension (Slack team id, Teams tenant id, Discord guild
+   * id). Required for owner scoping in multi-user deployments — the
+   * dispatcher rejects messages whose workspace install belongs to a
+   * different user than the matched agent. Use `''` only for channels
+   * that have no workspace concept.
+   */
+  teamId: string
   text: string
   /** Free-form metadata stored on `channel_thread_conversations`. */
   threadMetadata?: Record<string, unknown>

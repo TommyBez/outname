@@ -545,12 +545,16 @@ export const channelInstallations = pgTable(
 
 /**
  * Routes incoming external messages to a specific agent. Resolved at
- * webhook time by `(channel, externalKey, kind)`.
+ * webhook time by `(channel, teamId, externalKey, kind)`.
  *
+ * - `teamId`            — workspace dimension (Slack team id, Teams
+ *                         tenant id, Discord guild id). Required even
+ *                         for channels that don't have a workspace
+ *                         concept; use `''` as a sentinel in that case.
  * - `kind = 'channel'`  — a Slack channel id, Teams channel id, …
  * - `kind = 'dm'`       — a Slack user id (when DMing the bot)
- * - `kind = 'default'`  — fallback for any unbound thread (single
- *                         operator deployment); externalKey is ''
+ * - `kind = 'default'`  — fallback for any unbound thread within this
+ *                         workspace; externalKey is ''
  */
 export const agentChannelBindings = pgTable(
   'agent_channel_bindings',
@@ -560,6 +564,7 @@ export const agentChannelBindings = pgTable(
       .notNull()
       .references(() => agent.id, { onDelete: 'cascade' }),
     channel: text('channel').notNull(),
+    teamId: text('team_id').notNull().default(''),
     externalKey: text('external_key').notNull(),
     kind: text('kind').$type<'channel' | 'dm' | 'default'>().notNull(),
     metadata: jsonb('metadata').notNull().default({}),
@@ -573,6 +578,7 @@ export const agentChannelBindings = pgTable(
   (t) => [
     uniqueIndex('agent_channel_bindings_lookup_idx').on(
       t.channel,
+      t.teamId,
       t.externalKey,
       t.kind
     ),
@@ -584,15 +590,17 @@ export const agentChannelBindings = pgTable(
  * Maps an external thread (Slack channel+thread_ts, Teams reply chain,
  * Discord thread) to a `chat_conversation` row owned by an agent.
  *
- * One external thread maps to exactly one conversation, so the agent's
- * existing chat history, memory, and tool runtime are reused regardless
- * of which surface (web UI, Slack, …) the message arrived from.
+ * One external thread within a single workspace maps to exactly one
+ * conversation, so the agent's existing chat history, memory, and tool
+ * runtime are reused regardless of which surface (web UI, Slack, …)
+ * the message arrived from.
  */
 export const channelThreadConversations = pgTable(
   'channel_thread_conversations',
   {
     id: text('id').primaryKey(),
     channel: text('channel').notNull(),
+    teamId: text('team_id').notNull().default(''),
     externalThreadKey: text('external_thread_key').notNull(),
     conversationId: text('conversation_id')
       .notNull()
@@ -608,6 +616,7 @@ export const channelThreadConversations = pgTable(
   (t) => [
     uniqueIndex('channel_thread_conversations_external_idx').on(
       t.channel,
+      t.teamId,
       t.externalThreadKey
     ),
     index('channel_thread_conversations_conversation_idx').on(t.conversationId),
