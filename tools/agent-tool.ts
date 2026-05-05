@@ -1,12 +1,19 @@
-import { tool } from 'ai'
-import { createHook } from 'workflow'
+import { readUIMessageStream, tool, type UIMessageChunk } from 'ai'
+import { getWritable } from 'workflow'
+import { getRun } from 'workflow/api'
 import { z } from 'zod'
+import type { AgentChatChunk, AgentChatMessage } from '@/lib/agent-chat-status'
 import { dispatchInvocation } from '@/lib/agent-session'
-import type { SubAgentReply } from '@/workflows/agent-session/events'
+import {
+  isSubAgentToolOutput,
+  type SubAgentToolOutput,
+  subAgentModelText,
+} from '@/lib/sub-agent-tool-output'
 
 export interface AgentToolHandle {
   /** Child agent's row data, already vetted by resolveToolPlan. */
   childAgentId: string
+  childCapabilitySummary: string | null
   childName: string
   childUserId: string
   /** Agent currently executing the tool. */
@@ -25,6 +32,8 @@ export interface AgentToolHandle {
   parentToolId: string
   /** Parent user — must equal childUserId; resolveToolPlan enforces. */
   parentUserId: string
+  /** Stream namespace for live tool updates, when visible. */
+  streamNamespace?: string | null
 }
 
 /**
@@ -33,20 +42,11 @@ export interface AgentToolHandle {
  *
  * The model sees a tool named `agent_<childId>` (or rather, the
  * AI-SDK key we register it under) with one input — `instruction` —
- * and a string return. From the model's perspective this is just
- * another awaited tool call; behind the scenes:
- *
- *   1. We allocate a unique `replyTo` token.
- *   2. We open a one-shot `createHook` on that token. This blocks the
- *      parent's `execute()` durably inside the workflow VM — no
- *      busy-waiting, no polling, survives platform-level resumes.
- *   3. We dispatch an `invocation` SessionEvent to the child agent's
- *      session workflow via `dispatchInvocation`.
- *   4. The child's `handleInvocation` calls `resumeHook(replyTo, ...)`
- *      with the reply payload.
- *   5. Our hook iterator yields the reply and we either return its
- *      `output` to the model or throw its `error` so the SDK can
- *      surface it as a tool error.
+ * and a structured return. From the model's perspective this is just
+ * another awaited tool call; behind the scenes we dispatch an invocation
+ * event to the child and then read the child's namespaced UI stream until
+ * it closes. The child also mirrors that same stream into the parent tool
+ * card for live UI updates.
  *
  * Cycle and depth enforcement happens earlier (resolveToolPlan); this
  * function trusts its caller.
@@ -70,70 +70,229 @@ export function buildAgentTool(handle: AgentToolHandle) {
           ].join(' ')
         ),
     }),
-    execute: async ({ instruction }) => {
-      const replyTo = newReplyToken()
-
-      // IMPORTANT: open the hook BEFORE dispatching, otherwise the
-      // child's resumeHook can race ahead of us and the reply is lost.
-      const hook = createHook<SubAgentReply>({ token: replyTo })
-
-      await dispatchSubAgentInvocation({
-        handle,
-        instruction,
-        replyTo,
+    async execute({ instruction }, { toolCallId }) {
+      const streamToken = newInvocationStreamToken()
+      const messages: AgentChatMessage[] = []
+      await emitPreliminarySubAgentOutput({
+        output: subAgentOutput({
+          handle,
+          messages,
+          status: 'running',
+        }),
+        streamNamespace: handle.streamNamespace ?? null,
+        toolCallId,
       })
 
-      // One-shot consumption: take the first event off the hook, then
-      // we're done. The hook's lifecycle ends with the iteration —
-      // workflow GC reclaims the token automatically.
-      for await (const reply of hook) {
-        if (reply.type !== 'reply') {
-          continue
+      try {
+        const { sessionRunId } = await dispatchSubAgentInvocation({
+          handle,
+          instruction,
+          streamToken,
+          toolCallId,
+        })
+        const { error, messages: childMessages } =
+          await collectSubAgentMessages({
+            sessionRunId,
+            streamToken,
+          })
+        if (error) {
+          return subAgentOutput({
+            error,
+            handle,
+            messages: childMessages,
+            status: 'failed',
+          })
         }
-        if (reply.ok) {
-          return reply.output
+        const finalText = extractFinalText(childMessages)
+        if (!finalText) {
+          return subAgentOutput({
+            error: 'sub-agent finished without a final text reply',
+            handle,
+            messages: childMessages,
+            status: 'failed',
+          })
         }
-        throw new Error(`sub-agent failed: ${reply.error}`)
+        return subAgentOutput({
+          finalText,
+          handle,
+          messages: childMessages,
+          status: 'completed',
+        })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        return subAgentOutput({
+          error: message,
+          handle,
+          messages,
+          status: 'failed',
+        })
       }
-
-      throw new Error('sub-agent reply hook closed without a reply')
     },
+    toModelOutput: ({ output }) => ({
+      type: 'text',
+      value: modelOutputText(output),
+    }),
   })
+}
+
+function modelOutputText(output: unknown): string {
+  if (typeof output === 'string') {
+    return output
+  }
+  if (isSubAgentToolOutput(output)) {
+    return subAgentModelText(output)
+  }
+  return String(output)
 }
 
 async function dispatchSubAgentInvocation(input: {
   handle: AgentToolHandle
   instruction: string
-  replyTo: string
-}): Promise<void> {
+  streamToken: string
+  toolCallId: string
+}): Promise<{ sessionRunId: string }> {
   'use step'
-  const { handle, instruction, replyTo } = input
-  await dispatchInvocation({
+  const { handle, instruction, streamToken, toolCallId } = input
+  const parentStream = handle.streamNamespace
+    ? getWritable<UIMessageChunk>({ namespace: handle.streamNamespace })
+    : null
+  return await dispatchInvocation({
     childAgentId: handle.childAgentId,
     childUserId: handle.childUserId,
     parentUserId: handle.parentUserId,
     parentRunId: handle.parentRunId,
     parentToolId: handle.parentToolId,
+    parentToolCallId: toolCallId,
+    parentStream,
     instruction,
-    replyTo,
+    streamToken,
     callStack: [...handle.parentCallStack, handle.parentAgentId],
     depth: handle.parentDepth + 1,
   })
 }
 
+async function collectSubAgentMessages(input: {
+  sessionRunId: string
+  streamToken: string
+}): Promise<{ error: string | null; messages: AgentChatMessage[] }> {
+  'use step'
+  const messages: AgentChatMessage[] = []
+  let streamError: string | null = null
+  const readable = getRun(input.sessionRunId).getReadable<AgentChatChunk>({
+    namespace: input.streamToken,
+    startIndex: 0,
+  })
+
+  for await (const message of readUIMessageStream<AgentChatMessage>({
+    onError(error) {
+      streamError = error instanceof Error ? error.message : String(error)
+    },
+    stream: readable,
+    terminateOnError: false,
+  })) {
+    upsertMessage(messages, message)
+  }
+
+  return { error: streamError, messages }
+}
+
+async function emitPreliminarySubAgentOutput(input: {
+  output: SubAgentToolOutput
+  streamNamespace: string | null
+  toolCallId: string
+}): Promise<void> {
+  'use step'
+  if (!input.streamNamespace) {
+    return
+  }
+
+  try {
+    const writable = getWritable<UIMessageChunk>({
+      namespace: input.streamNamespace,
+    })
+    const writer = writable.getWriter()
+    try {
+      await writer.write({
+        type: 'tool-output-available',
+        output: input.output,
+        preliminary: true,
+        toolCallId: input.toolCallId,
+      })
+    } finally {
+      writer.releaseLock()
+    }
+  } catch {
+    // Live tool updates are UX hints. Never fail the tool call for them.
+  }
+}
+
+function subAgentOutput(input: {
+  error?: string
+  finalText?: string
+  handle: AgentToolHandle
+  messages: AgentChatMessage[]
+  status: SubAgentToolOutput['status']
+}): SubAgentToolOutput {
+  return {
+    childAgentId: input.handle.childAgentId,
+    childName: input.handle.childName,
+    error: input.error,
+    finalText: input.finalText,
+    kind: 'sub_agent',
+    messages: input.messages.slice(),
+    status: input.status,
+    toolName: input.handle.parentToolId,
+  }
+}
+
 function composeDescription(handle: AgentToolHandle): string {
+  const summary = handle.childCapabilitySummary?.trim()
   return (
     `Delegate a task to your sub-agent "${handle.childName}". ` +
+    (summary ? `Capability summary: ${summary} ` : '') +
     'Provide a fully self-contained instruction; the sub-agent does ' +
     'not see your conversation, memory, or files unless you include ' +
     "them in the instruction. Returns the sub-agent's final text reply."
   )
 }
 
-function newReplyToken(): string {
+function newInvocationStreamToken(): string {
   return (
-    'inv_reply_' +
+    'inv_stream_' +
     Math.random().toString(36).slice(2, 10) +
     Date.now().toString(36).slice(-4)
   )
+}
+
+function upsertMessage(
+  messages: AgentChatMessage[],
+  message: AgentChatMessage
+): void {
+  const index = messages.findIndex((item) => item.id === message.id)
+  if (index < 0) {
+    messages.push(message)
+    return
+  }
+  messages[index] = message
+}
+
+function extractFinalText(
+  messages: readonly AgentChatMessage[]
+): string | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i]
+    if (message.role !== 'assistant') {
+      continue
+    }
+    const chunks: string[] = []
+    for (const part of message.parts ?? []) {
+      if (part.type === 'text' && typeof part.text === 'string') {
+        chunks.push(part.text)
+      }
+    }
+    if (chunks.length > 0) {
+      return chunks.join('').trim()
+    }
+  }
+  return null
 }

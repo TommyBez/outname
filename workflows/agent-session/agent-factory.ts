@@ -1,4 +1,5 @@
 import { DurableAgent } from '@workflow/ai/agent'
+import type { Tool } from 'ai'
 import { getAgentById } from '@/lib/start-agent-run'
 import { buildAttachedTools } from '@/tools/build-attached-tools'
 import { composeSystemPrompt } from './compose-system-prompt'
@@ -37,6 +38,8 @@ export interface BuildAgentArgs {
   nowIso?: string
   /** Heartbeat/invocation: workflow runtime id; chat: conversation id. */
   runId: string
+  /** UI stream namespace for this event, when live tool updates are visible. */
+  streamNamespace?: string | null
 }
 
 export interface BuildAgentResult {
@@ -50,6 +53,8 @@ export interface BuildAgentResult {
   }
   /** Per-event memory mutation buffer. Pass to `endOfEvent`. */
   pending: PendingWrites
+  /** Complete tool set used for model-message conversion. */
+  tools: Record<string, Tool>
 }
 
 export async function buildAgent(
@@ -85,6 +90,7 @@ export async function buildAgent(
     currentRunId: args.currentRunId,
     conversationId: args.conversationId,
     depth,
+    streamNamespace: args.streamNamespace,
   })
 
   const systemPrompt = await composeSystemPrompt({
@@ -98,20 +104,22 @@ export async function buildAgent(
 
   const memoryTools = createMemoryTools({ agentId, pending })
   const execTools = createExecTools({ agentId, pending })
+  const tools = {
+    ...memoryTools,
+    ...execTools,
+    ...attached.tools,
+  }
 
   const durableAgent = new DurableAgent({
     model: row.model,
     system: systemPrompt,
-    tools: {
-      ...memoryTools,
-      ...execTools,
-      ...attached.tools,
-    },
+    tools,
   })
 
   return {
     agent: durableAgent,
     pending,
+    tools,
     meta: {
       name: row.name,
       model: row.model,

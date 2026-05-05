@@ -16,8 +16,12 @@ import {
 } from '@/lib/data'
 import { getLatestBuildForManifest } from '@/lib/tool-sandbox-build'
 import { describeConfigSchema } from '@/lib/zod-config-fields'
-import { AGENT_TOOL_PREFIX } from '@/tools/agent-tool-prefix'
 import { listMaintainerTools } from '@/tools/registry'
+import {
+  childAgentIdFromSubAgentRow,
+  isLegacySubAgentToolId,
+  uniqueSubAgentToolId,
+} from '@/tools/sub-agent-tool-name'
 
 type Params = Promise<{ agentId: string }>
 
@@ -65,11 +69,47 @@ async function Resolved({ params }: { params: Params }) {
   const maintainerAttachedRows = attachedRows.filter(
     (r) => r.kind === 'maintainer'
   )
-  const attachedChildIds = new Set(
-    attachedRows
-      .filter((r) => r.kind === 'sub_agent')
-      .map((r) => r.toolId.slice(AGENT_TOOL_PREFIX.length))
+  const subAgentAttachedRows = attachedRows.filter(
+    (r) => r.kind === 'sub_agent'
   )
+  const attachedByChildId = new Map(
+    subAgentAttachedRows.map((r) => [
+      childAgentIdFromSubAgentRow({
+        config: r.config,
+        toolId: r.toolId,
+      }),
+      r.toolId,
+    ])
+  )
+  const childById = new Map(allUserAgents.map((a) => [a.id, a]))
+  const usedSubAgentToolIds = new Set(
+    maintainerAttachedRows.map((row) => row.toolId)
+  )
+  const displayToolIdByChildId = new Map<string, string>()
+
+  for (const row of subAgentAttachedRows) {
+    const childAgentId = childAgentIdFromSubAgentRow({
+      config: row.config,
+      toolId: row.toolId,
+    })
+    const child = childById.get(childAgentId)
+    if (!child) {
+      continue
+    }
+    const displayToolId =
+      isLegacySubAgentToolId({
+        childAgentId,
+        toolId: row.toolId,
+      }) || usedSubAgentToolIds.has(row.toolId)
+        ? uniqueSubAgentToolId({
+            childAgentId,
+            childName: child.name,
+            usedToolIds: usedSubAgentToolIds,
+          })
+        : row.toolId
+    displayToolIdByChildId.set(childAgentId, displayToolId)
+    usedSubAgentToolIds.add(displayToolId)
+  }
 
   // Look up the most recent in-flight build for every pending row,
   // grouped by manifest so we hit the DB once per distinct manifest.
@@ -124,11 +164,25 @@ async function Resolved({ params }: { params: Params }) {
   // on.
   const subAgentCandidates: SubAgentCatalogEntry[] = allUserAgents
     .filter((a) => a.id !== agentId)
-    .map((a) => ({
-      agentId: a.id,
-      name: a.name,
-      enabled: a.enabled,
-    }))
+    .map((a) => {
+      const displayToolId =
+        displayToolIdByChildId.get(a.id) ??
+        uniqueSubAgentToolId({
+          childAgentId: a.id,
+          childName: a.name,
+          usedToolIds: usedSubAgentToolIds,
+        })
+      if (!displayToolIdByChildId.has(a.id)) {
+        usedSubAgentToolIds.add(displayToolId)
+      }
+      return {
+        agentId: a.id,
+        attachedToolId: attachedByChildId.get(a.id) ?? null,
+        displayToolId,
+        name: a.name,
+        enabled: a.enabled,
+      }
+    })
 
   return (
     <>
@@ -181,13 +235,12 @@ async function Resolved({ params }: { params: Params }) {
           </h2>
           <p className="text-muted-foreground text-sm">
             Attach another one of your agents as a callable. This parent will
-            see it as an <code className="font-mono">agent_&lt;id&gt;</code>{' '}
+            see it as a readable <code className="font-mono">agent_*</code>{' '}
             tool, hand it a self-contained instruction, and receive its final
-            text reply.
+            text reply with the child trace visible inline.
           </p>
         </div>
         <SubAgentCatalog
-          attachedChildIds={attachedChildIds}
           candidates={subAgentCandidates}
           parentAgentId={agentId}
         />

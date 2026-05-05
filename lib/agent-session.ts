@@ -1,5 +1,5 @@
 import 'server-only'
-import type { UIMessage } from 'ai'
+import type { UIMessage, UIMessageChunk } from 'ai'
 import { eq } from 'drizzle-orm'
 import { getHookByToken, getRun, resumeHook, start } from 'workflow/api'
 import { db } from '@/lib/db'
@@ -279,9 +279,9 @@ export async function dispatchChatTurn(opts: {
  *
  * Used by the synthesised `agent_<child>` tool inside a parent's
  * workflow run. Wakes (or starts) the child agent's session and
- * pushes an `invocation` event. The reply will arrive on
- * `replyTo` (an ephemeral hook token the parent is awaiting via
- * `createHook` inside its tool's `execute()`).
+ * pushes an `invocation` event. The child writes its UI stream into
+ * `streamToken`; the parent tool reads that stream to produce its final
+ * tool output.
  *
  * Throws if the child agent does not exist or does not belong to the
  * same user as the parent — the resolveToolPlan step is supposed to
@@ -294,8 +294,10 @@ export async function dispatchInvocation(input: {
   parentUserId: string
   parentRunId: string | null
   parentToolId: string
+  parentToolCallId?: string | null
+  parentStream?: WritableStream<UIMessageChunk> | null
   instruction: string
-  replyTo: string
+  streamToken: string
   callStack: string[]
   depth: number
 }): Promise<{ sessionRunId: string }> {
@@ -322,9 +324,11 @@ export async function dispatchInvocation(input: {
   const { sessionRunId } = await resumeSessionEvent(child, {
     type: 'invocation',
     input: input.instruction,
-    replyTo: input.replyTo,
+    streamToken: input.streamToken,
     parentRunId: input.parentRunId,
     parentToolId: input.parentToolId,
+    parentToolCallId: input.parentToolCallId ?? null,
+    parentStream: input.parentStream ?? null,
     callStack: input.callStack,
     depth: input.depth,
   })

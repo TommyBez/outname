@@ -102,6 +102,60 @@ function uniqueModelsById(options: ModelOption[]) {
   return unique
 }
 
+function resolveModelOptions(
+  models: ModelOption[],
+  defaultModel: string
+): ModelOption[] {
+  if (models.length > 0) {
+    return models
+  }
+  return [
+    {
+      contextWindow: 0,
+      id: defaultModel,
+      name: defaultModel,
+      ownedBy: 'gateway',
+    },
+  ]
+}
+
+function groupModelsByProvider(
+  options: ModelOption[],
+  selectedProvider: string | undefined
+) {
+  const grouped = options.reduce<Record<string, ModelOption[]>>(
+    (acc, option) => {
+      const key = option.ownedBy
+      let group = acc[key]
+      if (!group) {
+        group = []
+        acc[key] = group
+      }
+      group.push(option)
+      return acc
+    },
+    {}
+  )
+  const ownedByKeys = Object.keys(grouped).sort((a, b) =>
+    compareProviders(a, b, selectedProvider)
+  )
+  return { grouped, ownedByKeys }
+}
+
+function compareProviders(
+  a: string,
+  b: string,
+  selectedProvider: string | undefined
+) {
+  if (a === selectedProvider) {
+    return -1
+  }
+  if (b === selectedProvider) {
+    return 1
+  }
+  return a.localeCompare(b)
+}
+
 interface AgentFormProps {
   defaultModel: string
   /**
@@ -175,16 +229,7 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
   const submitLabel = isEdit ? 'Save changes' : 'Create agent'
 
   const availableModels = uniqueModelsById(
-    models.length > 0
-      ? models
-      : [
-          {
-            contextWindow: 0,
-            id: defaultModel,
-            name: defaultModel,
-            ownedBy: 'gateway',
-          },
-        ]
+    resolveModelOptions(models, defaultModel)
   )
   const selectedModel =
     availableModels.find((option) => option.id === model) ?? availableModels[0]
@@ -200,28 +245,10 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
   )
 
   // Group models by provider so a searchable command menu stays scannable.
-  const grouped = visibleModels.reduce<Record<string, ModelOption[]>>(
-    (acc, option) => {
-      const key = option.ownedBy
-      let group = acc[key]
-      if (!group) {
-        group = []
-        acc[key] = group
-      }
-      group.push(option)
-      return acc
-    },
-    {}
+  const { grouped, ownedByKeys } = groupModelsByProvider(
+    visibleModels,
+    selectedModel?.ownedBy
   )
-  const ownedByKeys = Object.keys(grouped).sort((a, b) => {
-    if (a === selectedModel?.ownedBy) {
-      return -1
-    }
-    if (b === selectedModel?.ownedBy) {
-      return 1
-    }
-    return a.localeCompare(b)
-  })
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()

@@ -1,32 +1,35 @@
-import { AgentForm } from '@/components/agent-form'
+import { Suspense } from 'react'
+import { AgentCreationChat } from '@/components/agent-creation-chat'
 import { AppShell } from '@/components/app-shell'
-import { DEFAULT_MODEL_ID, getAvailableModels } from '@/lib/ai-gateway-models'
 import { createPrivatePageMetadata } from '@/lib/site-metadata'
 
 export const metadata = createPrivatePageMetadata(
   'New agent',
-  'Configure a new OUTNA.ME agent with a model, schedule, memory, and tools.'
+  'Create a new OUTNA.ME agent through a guided chat.'
 )
 
-// Cache Components is enabled in next.config, so a route-level
-// `dynamic = "force-dynamic"` is forbidden. The model catalog is
-// served from `unstable_cache` inside `getAvailableModels`, which
-// shares the AI gateway request across visitors; the page itself
-// just renders on demand under Cache Components defaults.
-export default async function NewAgentPage() {
-  const models = await getAvailableModels()
-
+export default function NewAgentPage() {
   return (
     <AppShell>
-      <header className="mb-12 border-foreground border-t-4 pt-6">
+      <header className="mb-8 border-foreground border-t-4 pt-6">
         <p className="swiss-label mb-4 text-accent">03. New agent</p>
         <h1 className="max-w-4xl font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter md:text-7xl">
-          Configure a new agent
+          Create a new agent
         </h1>
+        <p className="mt-4 max-w-2xl text-muted-foreground text-sm leading-relaxed">
+          Shape the role, behavior, schedule, memory seeds, and tools in chat.
+          The final creation step opens a review panel before anything is saved.
+        </p>
       </header>
 
-      <section className="border-foreground border-t-2 pt-8">
-        <AgentForm defaultModel={DEFAULT_MODEL_ID} models={models} />
+      <section className="border-foreground border-t-2 pt-6">
+        <Suspense
+          fallback={
+            <div className="min-h-[min(720px,calc(100vh-18rem))] border-2 border-foreground bg-muted" />
+          }
+        >
+          <AgentCreationChat />
+        </Suspense>
       </section>
     </AppShell>
   )

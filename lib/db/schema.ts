@@ -93,6 +93,7 @@ export const agent = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
+    capabilitySummary: text('capability_summary'),
     // Soft-delete / disable flag. Phase 1 used `enabled` as the
     // heartbeat toggle; Phase 2 splits the heartbeat opt-in into its
     // own `heartbeatEnabled` column so this can return to its

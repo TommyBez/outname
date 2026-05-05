@@ -12,6 +12,10 @@ import {
 } from '@/lib/db/schema'
 import { getMaintainerTool } from '@/tools/registry'
 import { getToolSandboxManifest, manifestHash } from '@/tools/sandboxes'
+import {
+  isLegacySubAgentToolId,
+  uniqueSubAgentToolId,
+} from '@/tools/sub-agent-tool-name'
 import { resolveToolKindRows } from '@/tools/tool-kind-plugins'
 import type { MaintainerTool, Reconnect } from '@/tools/types'
 
@@ -47,9 +51,12 @@ export interface PlannedTool {
 
 export interface PlannedSubAgent {
   childAgentId: string
+  childCapabilitySummary: string | null
   childName: string
   childUserId: string
-  /** Composite tool key the AI SDK will see (e.g. `agent_<childId>`). */
+  /** Stored `agent_tools.tool_id`, kept for detach/reconnect compatibility. */
+  rowToolId: string
+  /** Runtime tool key the AI SDK will see (e.g. `agent_calendar_researcher`). */
   toolId: string
 }
 
@@ -69,7 +76,15 @@ export const MAX_SUB_AGENT_DEPTH = 3
 
 interface SubAgentRow {
   childAgentId: string
-  toolId: string
+  rowToolId: string
+}
+
+interface SubAgentChild {
+  capabilitySummary: string | null
+  enabled: boolean
+  id: string
+  name: string
+  userId: string
 }
 
 interface MaintainerRow {
@@ -138,6 +153,7 @@ export async function resolveToolPlan(args: {
       callStack,
       depth,
       subAgentRows,
+      usedToolIds: new Set(planned.map((p) => p.toolId)),
     })
     reconnects.push(...subResult.reconnects)
     subAgents.push(...subResult.subAgents)
@@ -323,8 +339,9 @@ async function resolveSubAgentRows(input: {
   callStack: string[]
   depth: number
   subAgentRows: SubAgentRow[]
+  usedToolIds: Set<string>
 }): Promise<SubAgentResolution> {
-  const { agentId, userId, callStack, depth, subAgentRows } = input
+  const { agentId, userId, callStack, depth, subAgentRows, usedToolIds } = input
   const reconnects: Reconnect[] = []
   const subAgents: PlannedSubAgent[] = []
 
@@ -332,6 +349,7 @@ async function resolveSubAgentRows(input: {
   const childRows = await db
     .select({
       id: agent.id,
+      capabilitySummary: agent.capabilitySummary,
       name: agent.name,
       userId: agent.userId,
       enabled: agent.enabled,
@@ -354,18 +372,44 @@ async function resolveSubAgentRows(input: {
     if (validated.kind === 'reconnect') {
       reconnects.push(validated.reconnect)
     } else {
-      subAgents.push(validated.planned)
+      const toolId = runtimeSubAgentToolId({
+        childAgentId: validated.planned.childAgentId,
+        childName: validated.planned.childName,
+        rowToolId: validated.planned.rowToolId,
+        usedToolIds,
+      })
+      usedToolIds.add(toolId)
+      subAgents.push({ ...validated.planned, toolId })
     }
   }
 
   return { reconnects, subAgents }
 }
 
+function runtimeSubAgentToolId(input: {
+  childAgentId: string
+  childName: string
+  rowToolId: string
+  usedToolIds: Set<string>
+}): string {
+  const shouldRenameStoredToolId =
+    isLegacySubAgentToolId({
+      childAgentId: input.childAgentId,
+      toolId: input.rowToolId,
+    }) || input.usedToolIds.has(input.rowToolId)
+  if (!shouldRenameStoredToolId) {
+    return input.rowToolId
+  }
+  return uniqueSubAgentToolId({
+    childAgentId: input.childAgentId,
+    childName: input.childName,
+    usedToolIds: input.usedToolIds,
+  })
+}
+
 function validateSubAgentChild(input: {
   sub: SubAgentRow
-  child:
-    | { id: string; name: string; userId: string; enabled: boolean }
-    | undefined
+  child: SubAgentChild | undefined
   userId: string
   agentId: string
   callStack: string[]
@@ -379,7 +423,7 @@ function validateSubAgentChild(input: {
     return {
       kind: 'reconnect',
       reconnect: {
-        toolId: sub.toolId,
+        toolId: sub.rowToolId,
         reason: 'sub_agent_unavailable',
         message: 'Sub-agent has been deleted',
       },
@@ -389,7 +433,7 @@ function validateSubAgentChild(input: {
     return {
       kind: 'reconnect',
       reconnect: {
-        toolId: sub.toolId,
+        toolId: sub.rowToolId,
         reason: 'sub_agent_unavailable',
         message: 'Sub-agent is not owned by the current user',
       },
@@ -399,7 +443,7 @@ function validateSubAgentChild(input: {
     return {
       kind: 'reconnect',
       reconnect: {
-        toolId: sub.toolId,
+        toolId: sub.rowToolId,
         reason: 'sub_agent_unavailable',
         message: 'Sub-agent is disabled',
       },
@@ -408,22 +452,24 @@ function validateSubAgentChild(input: {
   if (callStack.includes(child.id) || child.id === agentId) {
     return {
       kind: 'reconnect',
-      reconnect: { toolId: sub.toolId, reason: 'sub_agent_cycle' },
+      reconnect: { toolId: sub.rowToolId, reason: 'sub_agent_cycle' },
     }
   }
   if (depth + 1 > MAX_SUB_AGENT_DEPTH) {
     return {
       kind: 'reconnect',
-      reconnect: { toolId: sub.toolId, reason: 'sub_agent_depth' },
+      reconnect: { toolId: sub.rowToolId, reason: 'sub_agent_depth' },
     }
   }
   return {
     kind: 'planned',
     planned: {
-      toolId: sub.toolId,
       childAgentId: child.id,
+      childCapabilitySummary: child.capabilitySummary,
       childName: child.name,
       childUserId: child.userId,
+      rowToolId: sub.rowToolId,
+      toolId: sub.rowToolId,
     },
   }
 }

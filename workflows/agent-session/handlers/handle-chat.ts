@@ -1,5 +1,6 @@
 import { convertToModelMessages, type UIMessage, type UIMessageChunk } from 'ai'
 import { getWorkflowMetadata, getWritable } from 'workflow'
+import { compactSubAgentToolOutputsForModel } from '@/lib/agent-chat-model'
 import { startupExecSandbox, startupSystemSandbox } from '@/lib/agent-sandbox'
 import { emitActivity } from '@/lib/run-events'
 import { maybeGenerateConversationTitle } from '@/workflows/chat/steps/generate-conversation-title'
@@ -82,14 +83,18 @@ export async function handleChat(input: {
   await emitActivity(sessionRunId, 'Chat: Syncing memory edits')
   await drainPendingWrites({ agentId })
 
-  const { agent, meta, pending } = await buildAgent({
+  const { agent, meta, pending, tools } = await buildAgent({
     agentId,
     runId: conversationId,
     currentRunId: sessionRunId,
     conversationId,
+    streamNamespace: replyToken,
   })
 
-  const modelMessages = await convertToModelMessages(uiMessages)
+  const modelMessages = await convertToModelMessages(
+    compactSubAgentToolOutputsForModel(uiMessages),
+    { tools }
+  )
   await emitActivity(sessionRunId, 'Chat: Streaming model response', {
     model: meta.model,
   })
