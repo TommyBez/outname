@@ -3,6 +3,7 @@
     "@ai-sdk/react": "^3.0.170",
     "@chat-adapter/slack": "^4.27.0",
     "@chat-adapter/state-memory": "^4.27.0",
+    "@chat-adapter/state-redis": "^4.27.0",
     "@hookform/resolvers": "^3.9.1",
     "@neondatabase/serverless": "^1.0.2",
     "@radix-ui/react-accordion": "1.2.12",

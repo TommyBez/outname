@@ -158,6 +158,16 @@ SLACK_SIGNING_SECRET=…
 SLACK_BOT_USERNAME=assistant
 ```
 
+**Optional (any mode):**
+
+```bash
+# When set, the Slack chat surface uses Redis for concurrency locks,
+# thread subscriptions, and ephemeral caches. Required for any
+# multi-instance deployment. Without it, those state items are
+# kept in-process memory.
+REDIS_URL=redis://…
+```
+
 `CONNECTION_ENCRYPTION_KEY` (already required by the rest of the app)
 is reused to encrypt Slack bot tokens at rest, so no extra key is
 needed.
@@ -235,12 +245,21 @@ workflow code paths.
 
 ## Operational notes
 
-- **State**: the Slack route uses `SlackHybridState`, which keeps
-  concurrency locks and thread subscriptions in-memory and routes
-  `slack:installation:*` reads/writes to Postgres. Locks are
-  per-instance, which is fine on Vercel Functions for a single user
-  (each invocation handles one Slack thread). For multi-instance
-  hardening, swap the inner adapter to `@chat-adapter/state-redis`.
+- **State**: the Slack route uses `SlackHybridState`, which routes
+  `slack:installation:*` reads/writes to Postgres (encrypted) and
+  delegates everything else (concurrency locks, thread subscriptions,
+  ephemeral caches) to an inner adapter chosen at boot:
+
+  - When `REDIS_URL` is set, `@chat-adapter/state-redis` is used.
+    Locks become distributed across processes and thread
+    subscriptions survive cold starts — this is the correct setting
+    for any multi-instance deployment.
+  - Otherwise `@chat-adapter/state-memory` is used and a one-time
+    warning is logged. Fine for local development and single-instance
+    deployments.
+
+  Switching is a deployment-time toggle — set or unset `REDIS_URL`
+  and redeploy.
 - **Slack 3-second ack**: the route uses Next.js's `after()` so the
   agent run continues after the webhook response is on the wire. Slack
   will not retry a long-running model turn.

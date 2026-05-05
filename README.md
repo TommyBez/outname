@@ -288,6 +288,10 @@ SLACK_BOT_TOKEN=xoxb-...
 SLACK_SIGNING_SECRET=...
 
 SLACK_BOT_USERNAME=assistant
+
+# Optional. Use Redis for concurrency locks/thread subscriptions
+# (required for multi-instance deployments).
+REDIS_URL=redis://...
 ```
 
 Generate a local encryption key with:

@@ -61,11 +61,13 @@ export const slackBot = new Chat({
   userName,
   adapters: { slack: slackAdapter },
   /**
-   * `SlackHybridState` keeps locks/subscriptions in-memory but routes
-   * Slack installation reads/writes into `channel_installations`. That
-   * gives us per-user owner scoping without forcing a Redis dependency.
-   * For multi-instance deployments swap the inner adapter to
-   * `@chat-adapter/state-redis` later — the install bridge is unchanged.
+   * `SlackHybridState` keeps locks/subscriptions in the inner backing
+   * adapter (Redis when `REDIS_URL` is set — see
+   * `lib/channels/slack/backing-state.ts` — memory otherwise) and
+   * routes Slack installation reads/writes into `channel_installations`
+   * for per-user owner scoping. Set `REDIS_URL` for multi-instance
+   * deployments so concurrency locks and thread subscriptions are
+   * shared across processes.
    */
   state: new SlackHybridState(),
   /**

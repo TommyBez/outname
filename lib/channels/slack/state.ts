@@ -1,7 +1,7 @@
 import 'server-only'
 import { AsyncLocalStorage } from 'node:async_hooks'
-import { MemoryStateAdapter } from '@chat-adapter/state-memory'
 import type { Lock, QueueEntry, StateAdapter } from 'chat'
+import { createSlackBackingState } from './backing-state'
 import {
   deleteSlackInstallation,
   loadSlackInstallationByTeam,
@@ -63,13 +63,17 @@ function teamIdFromKey(key: string): string {
 
 /**
  * Drop-in `StateAdapter` that intercepts Slack installation keys.
- * Implements the interface explicitly (rather than extending
- * `MemoryStateAdapter`) because the SDK reaches into the adapter
- * through the public interface only.
+ * Implements the interface explicitly (rather than extending an
+ * existing adapter) because the SDK reaches into the adapter through
+ * the public interface only — the inner backing can be memory, redis,
+ * or anything else that satisfies `StateAdapter`.
+ *
+ * The default inner is chosen by `createSlackBackingState()`: redis
+ * when `REDIS_URL` is set, in-memory otherwise.
  */
 export class SlackHybridState implements StateAdapter {
-  private readonly inner: MemoryStateAdapter
-  constructor(inner: MemoryStateAdapter = new MemoryStateAdapter()) {
+  private readonly inner: StateAdapter
+  constructor(inner: StateAdapter = createSlackBackingState()) {
     this.inner = inner
   }
 
