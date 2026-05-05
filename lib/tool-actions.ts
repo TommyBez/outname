@@ -2,14 +2,18 @@
 
 import { and, eq } from 'drizzle-orm'
 import { revalidateTag } from 'next/cache'
+import { refreshAgentCapabilitySummary } from '@/lib/agent-capability-summary'
 import { requireUserId } from '@/lib/auth-guard'
-import { agentToolsTag } from '@/lib/cache-tags'
+import { agentTag, agentToolsTag, userAgentsTag } from '@/lib/cache-tags'
 import { db } from '@/lib/db'
 import { type AgentToolKind, agent, agentTools } from '@/lib/db/schema'
 import { ensureToolSandboxBuild } from '@/lib/tool-sandbox-build'
-import { AGENT_TOOL_PREFIX } from '@/tools/agent-tool-prefix'
 import { getMaintainerTool } from '@/tools/registry'
 import { manifestHash } from '@/tools/sandboxes'
+import {
+  childAgentIdFromSubAgentRow,
+  uniqueSubAgentToolId,
+} from '@/tools/sub-agent-tool-name'
 
 interface AttachResult {
   error?: string
@@ -126,7 +130,8 @@ export async function attachToolAction(
       },
     })
 
-  revalidateTag(agentToolsTag(agentId), 'max')
+  await refreshAgentCapabilitySummary({ agentId })
+  revalidateAgentToolSurfaces(agentId, userId)
   return { ok: true, pendingBuildId }
 }
 
@@ -167,7 +172,7 @@ export async function attachSubAgentAction(
   // Verify the child belongs to the same user. We don't reveal a
   // not-found vs not-yours distinction.
   const [child] = await db
-    .select({ userId: agent.userId, enabled: agent.enabled })
+    .select({ userId: agent.userId, enabled: agent.enabled, name: agent.name })
     .from(agent)
     .where(eq(agent.id, childAgentId))
     .limit(1)
@@ -175,14 +180,41 @@ export async function attachSubAgentAction(
     return { ok: false, error: 'Sub-agent not found.' }
   }
 
-  const toolId = `${AGENT_TOOL_PREFIX}${childAgentId}`
+  const rows = await db
+    .select({
+      config: agentTools.config,
+      kind: agentTools.kind,
+      toolId: agentTools.toolId,
+    })
+    .from(agentTools)
+    .where(eq(agentTools.agentId, parentAgentId))
+
+  const existingSubAgent = rows.find(
+    (row) =>
+      row.kind === 'sub_agent' &&
+      childAgentIdFromSubAgentRow({
+        config: row.config,
+        toolId: row.toolId,
+      }) === childAgentId
+  )
+  if (existingSubAgent) {
+    revalidateTag(agentToolsTag(parentAgentId), 'max')
+    return { ok: true }
+  }
+
+  const usedToolIds = new Set(rows.map((row) => row.toolId))
+  const toolId = uniqueSubAgentToolId({
+    childAgentId,
+    childName: child.name,
+    usedToolIds,
+  })
   await db
     .insert(agentTools)
     .values({
       agentId: parentAgentId,
       toolId,
       kind: 'sub_agent',
-      config: {},
+      config: { childAgentId },
       status: 'connected',
       toolSandboxManifest: null,
       toolSandboxManifestHash: null,
@@ -190,6 +222,7 @@ export async function attachSubAgentAction(
     .onConflictDoUpdate({
       target: [agentTools.agentId, agentTools.kind, agentTools.toolId],
       set: {
+        config: { childAgentId },
         kind: 'sub_agent',
         status: 'connected',
         toolSandboxManifest: null,
@@ -198,7 +231,8 @@ export async function attachSubAgentAction(
       },
     })
 
-  revalidateTag(agentToolsTag(parentAgentId), 'max')
+  await refreshAgentCapabilitySummary({ agentId: parentAgentId })
+  revalidateAgentToolSurfaces(parentAgentId, userId)
   return { ok: true }
 }
 
@@ -227,6 +261,13 @@ export async function detachToolAction(
       )
     )
 
-  revalidateTag(agentToolsTag(agentId), 'max')
+  await refreshAgentCapabilitySummary({ agentId })
+  revalidateAgentToolSurfaces(agentId, userId)
   return { ok: true }
+}
+
+function revalidateAgentToolSurfaces(agentId: string, userId: string): void {
+  revalidateTag(agentToolsTag(agentId), 'max')
+  revalidateTag(agentTag(agentId), 'max')
+  revalidateTag(userAgentsTag(userId), 'max')
 }

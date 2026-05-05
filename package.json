@@ -99,6 +99,7 @@
   "name": "my-project",
   "scripts": {
     "dev": "next dev",
+    "dev:fresh": "pnpm run reset:workflow && next dev",
     "build": "next build",
     "start": "next start",
     "db:generate": "drizzle-kit generate",
@@ -106,6 +107,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "vercel:sandboxes:destroy-all": "tsx scripts/destroy-vercel-sandboxes.ts",
+    "reset:workflow": "rm -rf .swc .next app/.well-known",
     "check": "ultracite check",
     "fix": "ultracite fix"
   },

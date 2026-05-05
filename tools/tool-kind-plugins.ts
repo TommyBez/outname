@@ -1,10 +1,10 @@
 import 'server-only'
 import type { AgentTool, AgentToolKind } from '@/lib/db/schema'
-import { AGENT_TOOL_PREFIX } from './agent-tool-prefix'
+import { childAgentIdFromSubAgentRow } from './sub-agent-tool-name'
 
 export type ToolKindResolvedRow =
   | { kind: 'maintainer'; config: unknown; toolId: string }
-  | { kind: 'sub_agent'; childAgentId: string; toolId: string }
+  | { kind: 'sub_agent'; childAgentId: string; rowToolId: string }
 
 export interface ToolKindPlugin {
   kind: AgentToolKind
@@ -17,12 +17,6 @@ export interface ToolKindPlugin {
    * assuming the substrate is already a full execution plugin system.
    */
   resolveRow(row: AgentTool): ToolKindResolvedRow
-}
-
-function childAgentIdForToolId(toolId: string): string {
-  return toolId.startsWith(AGENT_TOOL_PREFIX)
-    ? toolId.slice(AGENT_TOOL_PREFIX.length)
-    : toolId
 }
 
 const TOOL_KIND_PLUGINS: ToolKindPlugin[] = [
@@ -39,8 +33,11 @@ const TOOL_KIND_PLUGINS: ToolKindPlugin[] = [
     resolveRow(row) {
       return {
         kind: 'sub_agent',
-        toolId: row.toolId,
-        childAgentId: childAgentIdForToolId(row.toolId),
+        rowToolId: row.toolId,
+        childAgentId: childAgentIdFromSubAgentRow({
+          config: row.config,
+          toolId: row.toolId,
+        }),
       }
     },
   },

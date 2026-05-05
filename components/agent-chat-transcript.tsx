@@ -29,6 +29,10 @@ import type {
   AgentChatMessage,
   WorkflowStatusData,
 } from '@/lib/agent-chat-status'
+import {
+  isSubAgentToolOutput,
+  type SubAgentToolOutput,
+} from '@/lib/sub-agent-tool-output'
 import { cn } from '@/lib/utils'
 
 interface AgentChatTranscriptProps {
@@ -111,10 +115,13 @@ function ChatMessage({ message }: { message: UIMessage }) {
           // ToolHeader takes a discriminated union on `type` so we branch.
           if (part.type === 'dynamic-tool') {
             const toolPart = part as ToolPart
+            const subAgentOutput = getSubAgentOutput(toolPart)
             return (
               <Tool key={key}>
                 <ToolHeader
+                  preliminary={readPreliminary(toolPart)}
                   state={toolPart.state}
+                  title={subAgentOutput?.childName}
                   toolName={
                     // `DynamicToolUIPart` exposes the runtime tool name.
                     (toolPart as { toolName: string }).toolName
@@ -128,10 +135,13 @@ function ChatMessage({ message }: { message: UIMessage }) {
 
           if (typeof part.type === 'string' && part.type.startsWith('tool-')) {
             const toolPart = part as ToolPart
+            const subAgentOutput = getSubAgentOutput(toolPart)
             return (
               <Tool key={key}>
                 <ToolHeader
+                  preliminary={readPreliminary(toolPart)}
                   state={toolPart.state}
+                  title={subAgentOutput?.childName}
                   type={
                     toolPart.type as Exclude<ToolPart['type'], 'dynamic-tool'>
                   }
@@ -183,10 +193,15 @@ function hasVisibleAssistantContent(message: AgentChatMessage) {
 }
 
 function ToolBody({ part }: { part: ToolPart }) {
+  const subAgentOutput = getSubAgentOutput(part)
+
   return (
     <ToolContent>
       <ToolInput input={part.input} />
-      {part.state === 'output-available' && (
+      {part.state === 'output-available' && subAgentOutput && (
+        <SubAgentToolTrace output={subAgentOutput} />
+      )}
+      {part.state === 'output-available' && !subAgentOutput && (
         <ToolOutput errorText={undefined} output={part.output} />
       )}
       {part.state === 'output-error' && (
@@ -194,4 +209,66 @@ function ToolBody({ part }: { part: ToolPart }) {
       )}
     </ToolContent>
   )
+}
+
+function SubAgentToolTrace({ output }: { output: SubAgentToolOutput }) {
+  const hasMessages = output.messages.length > 0
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-border border-b pb-2">
+        <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+          Sub-agent trace
+        </h4>
+        <span className="font-medium text-muted-foreground text-xs">
+          {formatSubAgentStatus(output)}
+        </span>
+      </div>
+      {hasMessages ? (
+        <div className="space-y-3 border-border border-l-2 pl-3">
+          {output.messages.map((message) => (
+            <ChatMessage key={message.id} message={message} />
+          ))}
+        </div>
+      ) : (
+        <p className="text-muted-foreground text-sm">
+          {getSubAgentEmptyText(output)}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function getSubAgentEmptyText(output: SubAgentToolOutput): string {
+  if (output.status !== 'running') {
+    return output.finalText ?? output.error ?? 'No trace was captured.'
+  }
+  return 'Waiting for the sub-agent stream...'
+}
+
+function getSubAgentOutput(part: ToolPart): SubAgentToolOutput | null {
+  return part.state === 'output-available' && isSubAgentToolOutput(part.output)
+    ? part.output
+    : null
+}
+
+function readPreliminary(part: ToolPart): boolean {
+  return (
+    part.state === 'output-available' &&
+    'preliminary' in part &&
+    part.preliminary === true
+  )
+}
+
+function formatSubAgentStatus(output: SubAgentToolOutput): string {
+  switch (output.status) {
+    case 'completed':
+      return 'completed'
+    case 'failed':
+      return 'failed'
+    case 'running':
+      return 'running'
+    default:
+      return 'running'
+  }
 }
