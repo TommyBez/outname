@@ -2,6 +2,7 @@ import 'server-only'
 import { generateText } from 'ai'
 import { and, eq } from 'drizzle-orm'
 import { readLatestPendingFileWrite } from '@/lib/agent-pending-writes'
+import { buildAgentsMdContent } from '@/lib/agents-md-template'
 import { db } from '@/lib/db'
 import { agent, agentFiles, agentTools } from '@/lib/db/schema'
 import { getMaintainerTool } from '@/tools/registry'
@@ -129,18 +130,18 @@ async function loadAgentsMdContent(
   overrides?: BootstrapContent
 ): Promise<string> {
   if (overrides && SUMMARY_BOOTSTRAP_PATH in overrides) {
-    return overrides[SUMMARY_BOOTSTRAP_PATH] ?? ''
+    return buildEffectiveAgentsMd(overrides[SUMMARY_BOOTSTRAP_PATH])
   }
-  return await readStoredBootstrapContent(agentId)
+  return await readStoredAgentsMdContent(agentId)
 }
 
-async function readStoredBootstrapContent(agentId: string): Promise<string> {
+async function readStoredAgentsMdContent(agentId: string): Promise<string> {
   const pending = await readLatestPendingFileWrite({
     agentId,
     path: SUMMARY_BOOTSTRAP_PATH,
   })
   if (pending) {
-    return pending.content
+    return buildEffectiveAgentsMd(pending.content)
   }
 
   const [file] = await db
@@ -154,6 +155,12 @@ async function readStoredBootstrapContent(agentId: string): Promise<string> {
     )
     .limit(1)
   return file?.content ?? ''
+}
+
+function buildEffectiveAgentsMd(
+  customInstructions: string | null | undefined
+): string {
+  return buildAgentsMdContent({ customInstructions })
 }
 
 async function loadAttachedCapabilities(

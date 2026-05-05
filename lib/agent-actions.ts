@@ -4,6 +4,11 @@ import { and, eq } from 'drizzle-orm'
 import { revalidatePath, updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { refreshAgentCapabilitySummary } from '@/lib/agent-capability-summary'
+import {
+  clampInterval,
+  createAgentForUser,
+  normalizeNewlines,
+} from '@/lib/agent-creation-service'
 import { enqueuePendingFileWrite } from '@/lib/agent-pending-writes'
 import { destroyAgentSandboxes } from '@/lib/agent-sandbox'
 import {
@@ -11,49 +16,11 @@ import {
   startAgentSession,
   stopAgentSession,
 } from '@/lib/agent-session'
-import { DEFAULT_MODEL_ID, isModelIdValid } from '@/lib/ai-gateway-models'
+import { isModelIdValid } from '@/lib/ai-gateway-models'
 import { requireSession } from '@/lib/auth-guard'
 import { agentTag, conversationListTag, userAgentsTag } from '@/lib/cache-tags'
 import { db } from '@/lib/db'
 import { agent } from '@/lib/db/schema'
-
-function nanoid() {
-  return (
-    'ag_' +
-    Math.random().toString(36).slice(2) +
-    Date.now().toString(36).slice(-4)
-  )
-}
-
-const HEARTBEAT_MIN = 5
-const HEARTBEAT_MAX = 1440 // 24h
-
-/**
- * Normalize CRLF / CR line endings to LF. The Windows clipboard, OS
- * file-drag, and certain browsers will hand `<Textarea>` content
- * back with `\r\n` separators, while files we ourselves write to
- * disk via `Buffer.from(..., 'utf8')` keep whatever was passed in.
- * Without this normalization, the update action's exact-string
- * change check thinks every save is a real edit and the queue
- * fills with no-op rows.
- */
-function normalizeNewlines(s: string): string {
-  return s.replace(/\r\n?/g, '\n')
-}
-
-/** Clamp a heartbeat-interval choice into the accepted [5, 1440] range. */
-function clampInterval(n: number): number {
-  if (!Number.isFinite(n)) {
-    return 30
-  }
-  if (n < HEARTBEAT_MIN) {
-    return HEARTBEAT_MIN
-  }
-  if (n > HEARTBEAT_MAX) {
-    return HEARTBEAT_MAX
-  }
-  return Math.floor(n)
-}
 
 interface CreateInput {
   heartbeatEnabled: boolean
@@ -94,100 +61,16 @@ export async function createAgentAction(
   input: CreateInput
 ): Promise<{ id: string }> {
   const session = await requireSession()
-
-  const name = input.name.trim() || 'New agent'
-  const model = (await isModelIdValid(input.model))
-    ? input.model
-    : DEFAULT_MODEL_ID
-  const heartbeatIntervalMinutes = clampInterval(input.heartbeatIntervalMinutes)
-  const reflectionIntervalMinutes = clampInterval(
-    input.reflectionIntervalMinutes
-  )
-
-  const id = nanoid()
-  const [created] = await db
-    .insert(agent)
-    .values({
-      id,
-      userId: session.user.id,
-      name,
-      model,
-      enabled: true,
-      heartbeatEnabled: input.heartbeatEnabled,
-      heartbeatIntervalMinutes,
-      reflectionEnabled: input.reflectionEnabled,
-      reflectionIntervalMinutes,
-      stepLimitMode: input.stepLimitMode,
-      stepLimitCustom:
-        input.stepLimitMode === 'custom'
-          ? Math.max(1, Math.floor(input.stepLimitCustom ?? 30))
-          : null,
-    })
-    .returning()
-
-  // Queue the persona-file content authored in the form, if any. The
-  // first session event will run `drainPendingWrites` which applies
-  // them to the system sandbox after `seedAgentsMd` writes the
-  // default AGENTS.md template. Empty strings are intentionally
-  // skipped so a brand-new agent that hits Save without filling
-  // either tab gets the default template untouched.
-  //
-  // Normalize newlines on the way in so the first thing on disk
-  // matches the convention used by the update path's no-op diff.
-  const identityCard = normalizeNewlines(input.identityCard).trim()
-  if (identityCard.length > 0) {
-    await enqueuePendingFileWrite({
-      agentId: id,
-      path: 'IDENTITY.md',
-      content: identityCard,
-    })
-  }
-  const soul = normalizeNewlines(input.soul).trim()
-  if (soul.length > 0) {
-    await enqueuePendingFileWrite({
-      agentId: id,
-      path: 'SOUL.md',
-      content: soul,
-    })
-  }
-  const instructions = normalizeNewlines(input.instructions).trim()
-  if (instructions.length > 0) {
-    await enqueuePendingFileWrite({
-      agentId: id,
-      path: 'AGENTS.md',
-      content: instructions,
-    })
-  }
-  const userProfile = normalizeNewlines(input.userProfile).trim()
-  if (userProfile.length > 0) {
-    await enqueuePendingFileWrite({
-      agentId: id,
-      path: 'USER.md',
-      content: userProfile,
-    })
-  }
-
-  await refreshAgentCapabilitySummary({
-    agentId: id,
-    bootstrap: {
-      'AGENTS.md': instructions,
-    },
+  const result = await createAgentForUser({
+    ...input,
+    userId: session.user.id,
   })
 
-  // Boot the long-lived session immediately so a (possibly enabled)
-  // heartbeat ticker can start work without forcing the user to chat or
-  // wait for the cron sweeper.
-  try {
-    await startAgentSession(created)
-  } catch (err) {
-    console.error('[v0] createAgentAction: startAgentSession failed', err)
-  }
-
   updateTag(userAgentsTag(session.user.id))
-  updateTag(agentTag(id))
+  updateTag(agentTag(result.id))
   revalidatePath('/agents')
   revalidatePath('/')
-  return { id }
+  return { id: result.id }
 }
 
 interface UpdateInput {
