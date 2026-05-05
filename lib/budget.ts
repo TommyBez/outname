@@ -324,3 +324,52 @@ export async function listAgentBudgetRules(input: {
       )
     )
 }
+
+export interface BudgetSummaryEntry {
+  enabled: boolean
+  limitUsd: number
+  period: BudgetPeriod
+  spentUsd: number
+}
+
+/**
+ * Resolve current spend for every rule in a scope. Returns one entry
+ * per configured rule, ordered daily → weekly → monthly. Used by the
+ * dashboard to render compact budget meters.
+ */
+export async function loadBudgetSummary(input: {
+  userId: string
+  scope: BudgetScope
+  now?: Date
+}): Promise<BudgetSummaryEntry[]> {
+  const rules =
+    input.scope.type === 'general'
+      ? await listGeneralBudgetRulesForUser(input.userId)
+      : await listAgentBudgetRules({
+          userId: input.userId,
+          agentId: input.scope.agentId,
+        })
+  if (rules.length === 0) {
+    return []
+  }
+  const order: Record<BudgetPeriod, number> = {
+    daily: 0,
+    weekly: 1,
+    monthly: 2,
+  }
+  const entries = await Promise.all(
+    rules.map(async (rule) => ({
+      period: rule.period,
+      limitUsd: Number(rule.limitUsd),
+      enabled: rule.enabled,
+      spentUsd: await sumSpendUsd({
+        userId: input.userId,
+        scope: input.scope,
+        period: rule.period,
+        now: input.now,
+      }),
+    }))
+  )
+  entries.sort((a, b) => order[a.period] - order[b.period])
+  return entries
+}

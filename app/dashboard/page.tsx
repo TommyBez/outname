@@ -5,9 +5,11 @@ import {
   type DashboardAgent,
 } from '@/components/agent-dashboard-card'
 import { AppShell } from '@/components/app-shell'
+import { BudgetIndicator } from '@/components/budget-indicator'
 import { AgentCardSkeleton, RunResultSkeleton } from '@/components/skeletons'
 import { TodayDate } from '@/components/today-date'
 import { requireSession } from '@/lib/auth-guard'
+import { type BudgetSummaryEntry, loadBudgetSummary } from '@/lib/budget'
 import { getCachedAgentsForUser } from '@/lib/data'
 import type { Agent } from '@/lib/db/schema'
 import { createPrivatePageMetadata } from '@/lib/site-metadata'
@@ -63,7 +65,10 @@ async function DashboardContent() {
 }
 
 async function AgentsList({ userId }: { userId: string }) {
-  const agents = await getCachedAgentsForUser(userId)
+  const [agents, generalBudget] = await Promise.all([
+    getCachedAgentsForUser(userId),
+    loadBudgetSummary({ userId, scope: { type: 'general' } }),
+  ])
 
   if (agents.length === 0) {
     return (
@@ -86,6 +91,18 @@ async function AgentsList({ userId }: { userId: string }) {
 
   const enabledCount = agents.filter((agent) => agent.enabled).length
   const sessionCount = agents.filter((agent) => agent.lastSessionRunId).length
+  const agentBudgets = await Promise.all(
+    agents.map(async (a) => ({
+      agentId: a.id,
+      entries: await loadBudgetSummary({
+        userId,
+        scope: { type: 'agent', agentId: a.id },
+      }),
+    }))
+  )
+  const agentBudgetMap = new Map<string, BudgetSummaryEntry[]>(
+    agentBudgets.map((b) => [b.agentId, b.entries])
+  )
 
   return (
     <section aria-labelledby="agent-dashboard-heading">
@@ -94,6 +111,25 @@ async function AgentsList({ userId }: { userId: string }) {
         <DashboardMetric label="Enabled" value={enabledCount} />
         <DashboardMetric label="Sessions" value={sessionCount} />
       </div>
+      <div className="mb-8 border-foreground border-b-2 pb-5">
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <p className="font-bold text-[10px] uppercase tracking-[0.2em]">
+            General budget
+          </p>
+          <Link
+            className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.18em] hover:text-foreground"
+            href="/settings"
+          >
+            Manage →
+          </Link>
+        </div>
+        <BudgetIndicator
+          emptyHref="/settings"
+          emptyLabel="No general budget set · configure →"
+          entries={generalBudget}
+          variant="general"
+        />
+      </div>
       <h2 className="sr-only" id="agent-dashboard-heading">
         Agent activity dashboard
       </h2>
@@ -101,7 +137,10 @@ async function AgentsList({ userId }: { userId: string }) {
         {agents.map((agent) => (
           <li key={agent.id}>
             <Suspense fallback={<AgentCardSkeleton />}>
-              <AgentDashboardCard agent={toDashboardAgent(agent)} />
+              <AgentDashboardCard
+                agent={toDashboardAgent(agent)}
+                budgetEntries={agentBudgetMap.get(agent.id) ?? []}
+              />
             </Suspense>
           </li>
         ))}
