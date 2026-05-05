@@ -1,5 +1,6 @@
 import 'server-only'
 import { calcomConnector } from './calcom'
+import { parallelConnector } from './parallel'
 import { resendConnector } from './resend'
 import type { Connector } from './types'
 
@@ -8,7 +9,11 @@ import type { Connector } from './types'
  * the HTTP layer, and the catalog UI pick it up automatically.
  */
 
-const CONNECTORS: Connector[] = [resendConnector, calcomConnector]
+const CONNECTORS: Connector[] = [
+  resendConnector,
+  calcomConnector,
+  parallelConnector,
+]
 const CONNECTOR_BY_PROVIDER = new Map<string, Connector>()
 
 for (const connector of CONNECTORS) {

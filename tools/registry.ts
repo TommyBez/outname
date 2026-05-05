@@ -2,6 +2,7 @@ import 'server-only'
 import { getConnector } from '@/connectors/registry'
 import { agentBrowserTool } from './agent-browser'
 import { calcomRequestTool } from './calcom'
+import { parallelSearchTool } from './parallel'
 import { resendSendTool } from './resend'
 import { getToolSandboxManifest } from './sandboxes/registry'
 import type { MaintainerTool } from './types'
@@ -21,6 +22,7 @@ import type { MaintainerTool } from './types'
 const TOOLS: MaintainerTool[] = [
   resendSendTool,
   calcomRequestTool,
+  parallelSearchTool,
   agentBrowserTool,
 ]
 const TOOL_BY_ID = new Map<string, MaintainerTool>()
