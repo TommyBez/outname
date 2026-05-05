@@ -11,6 +11,7 @@ import {
   agent,
   agentChannelBindings,
   channelThreadConversations,
+  chatConversation,
 } from '@/lib/db/schema'
 import { getChannelInstallationByTeam } from './installations'
 import type { ChannelId, ChannelRoute, IncomingChannelMessage } from './types'
@@ -137,6 +138,16 @@ async function loadAgent(agentId: string): Promise<Agent | null> {
  * `(channel, teamId, externalThreadKey)` so concurrent webhooks for the
  * same Slack thread converge on the same conversation row even across
  * workspaces that happen to share a thread key string.
+ *
+ * Race-condition contract: two simultaneous webhooks for the same brand
+ * new Slack thread will each call `getOrCreateConversationForAgent` with
+ * a freshly generated `chat_conversation` id, so each side ends up
+ * having created a distinct row. Only one wins the
+ * `channel_thread_conversations` unique-index race; we always re-read
+ * the canonical mapping after the insert and return its
+ * `conversationId`. The losing side's `chat_conversation` row would
+ * otherwise leak — we drop it in a best-effort cleanup so the only
+ * persisted artefact is the winner's conversation.
  */
 export async function ensureConversationForThread(input: {
   agent: Agent
@@ -173,7 +184,7 @@ export async function ensureConversationForThread(input: {
     )
   }
 
-  await db
+  const inserted = await db
     .insert(channelThreadConversations)
     .values({
       id: `ctc_${nanoid(12)}`,
@@ -191,6 +202,51 @@ export async function ensureConversationForThread(input: {
         channelThreadConversations.externalThreadKey,
       ],
     })
+    .returning({
+      conversationId: channelThreadConversations.conversationId,
+    })
 
-  return { agent: agentRow, conversationId: conversation.id }
+  if (inserted[0]) {
+    return { agent: agentRow, conversationId: inserted[0].conversationId }
+  }
+
+  // Lost the race: another concurrent webhook already wrote the canonical
+  // mapping for this thread. Re-read it so the caller persists its user
+  // message against the winning conversation, and drop our orphan
+  // chat_conversation row (cascade FKs handle anything that might have
+  // landed in it).
+  const [canonical] = await db
+    .select({
+      conversationId: channelThreadConversations.conversationId,
+    })
+    .from(channelThreadConversations)
+    .where(
+      and(
+        eq(channelThreadConversations.channel, message.channel),
+        eq(channelThreadConversations.teamId, message.teamId),
+        eq(
+          channelThreadConversations.externalThreadKey,
+          message.externalThreadKey
+        )
+      )
+    )
+    .limit(1)
+  if (!canonical) {
+    throw new Error(
+      `channel_thread_conversations row missing after conflict (${message.channel}/${message.teamId}/${message.externalThreadKey})`
+    )
+  }
+
+  try {
+    await db
+      .delete(chatConversation)
+      .where(eq(chatConversation.id, conversation.id))
+  } catch (err) {
+    console.warn(
+      '[channels] failed to clean up orphan chat_conversation after thread race',
+      { conversationId: conversation.id, err }
+    )
+  }
+
+  return { agent: agentRow, conversationId: canonical.conversationId }
 }

@@ -52,8 +52,8 @@ type SlackThread = Parameters<Parameters<SlackChat['onNewMention']>[0]>[0]
 type SlackMessage = Parameters<Parameters<SlackChat['onNewMention']>[0]>[1]
 
 interface SlackBotBundle {
-  bot: SlackChat
   adapter: SlackAdapter
+  bot: SlackChat
   isMultiWorkspace: boolean
 }
 
