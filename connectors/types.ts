@@ -49,6 +49,11 @@ export interface ConnectorBroker<TCredential> {
    */
   allowedHosts: readonly string[]
   /**
+   * Optional provider-owned escape hatch for temporary presigned URLs.
+   * Matching requests are allowed without injected credential headers.
+   */
+  allowUnauthenticatedRequest?(request: { method: string; url: URL }): boolean
+  /**
    * Header names the broker owns for this connector. Tool-supplied
    * requests may not set these, even if the header is provider-specific
    * and absent from the global forbidden-header backstop.

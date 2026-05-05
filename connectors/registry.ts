@@ -1,14 +1,23 @@
 import 'server-only'
 import { calcomConnector } from './calcom'
+import { parallelConnector } from './parallel'
 import { resendConnector } from './resend'
+import { typefullyConnector } from './typefully'
 import type { Connector } from './types'
+import { xConnector } from './x'
 
 /**
  * Central connector registry. Add a connector here and the runtime,
  * the HTTP layer, and the catalog UI pick it up automatically.
  */
 
-const CONNECTORS: Connector[] = [resendConnector, calcomConnector]
+const CONNECTORS: Connector[] = [
+  resendConnector,
+  calcomConnector,
+  parallelConnector,
+  xConnector,
+  typefullyConnector,
+]
 const CONNECTOR_BY_PROVIDER = new Map<string, Connector>()
 
 for (const connector of CONNECTORS) {
