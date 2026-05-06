@@ -14,14 +14,16 @@ import type { ChannelId } from './types'
  * also resolve to an installation, otherwise it's rejected — that
  * prevents one user's Slack workspace from triggering another user's
  * agent even if a misconfigured binding exists.
+ *
+ * Callers may intentionally pass `teamId = ''` for single-workspace or
+ * no-workspace channels. We still perform the exact lookup rather than
+ * short-circuiting so the helper matches the schema contract for
+ * `channel_installations.external_id`.
  */
 export async function getChannelInstallationByTeam(
   channel: ChannelId,
   teamId: string
 ): Promise<ChannelInstallation | null> {
-  if (!teamId) {
-    return null
-  }
   const [row] = await db
     .select()
     .from(channelInstallations)

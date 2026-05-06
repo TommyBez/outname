@@ -213,8 +213,8 @@ async function handleSlackMessage(input: {
     return
   }
 
-  const teamId = extractTeamId(message)
-  if (isMultiWorkspace && !teamId) {
+  const slackTeamId = extractTeamId(message)
+  if (isMultiWorkspace && !slackTeamId) {
     console.warn(
       '[slack] dropping multi-workspace event with no team id; ' +
         'cannot owner-scope to an installation',
@@ -222,6 +222,7 @@ async function handleSlackMessage(input: {
     )
     return
   }
+  const teamId = isMultiWorkspace ? slackTeamId : ''
 
   const externalRoutingKey =
     kind === 'dm' ? (message.author?.userId ?? channelId) : channelId
@@ -239,7 +240,7 @@ async function handleSlackMessage(input: {
     threadMetadata: {
       slackChannel: channelId,
       slackThreadTs: threadTs,
-      slackTeamId: teamId || undefined,
+      slackTeamId: slackTeamId || undefined,
     },
   }
 

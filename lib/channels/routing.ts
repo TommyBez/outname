@@ -19,12 +19,18 @@ import type { ChannelId, ChannelRoute, IncomingChannelMessage } from './types'
 /**
  * Resolve which agent owns this thread.
  *
- * Multi-user safety contract — the resolver returns null unless ALL of:
+ * Multi-user safety contract — for owner-scoped channels, the resolver
+ * returns null unless ALL of:
  *   - the workspace has a matching `channel_installations` row
  *     (otherwise this isn't an installed workspace and we never reply);
  *   - the matched binding (or sticky thread mapping) points at an
  *     agent whose `agent.userId` equals the installation's `userId`
  *     (otherwise a misconfigured binding cannot leak across users).
+ *
+ * Channels that intentionally route with `teamId = ''` (Slack
+ * single-workspace mode, or future channels with no workspace concept)
+ * bypass the installation lookup entirely. In that sentinel mode there
+ * is no per-workspace install row and no cross-user owner check.
  *
  * Lookup order — each step still requires the owner check above:
  *   1. Existing `channel_thread_conversations` row keyed by
@@ -37,16 +43,20 @@ import type { ChannelId, ChannelRoute, IncomingChannelMessage } from './types'
 export async function resolveAgentForIncomingMessage(
   msg: IncomingChannelMessage
 ): Promise<Agent | null> {
+  const candidate = await findCandidateAgent(msg)
+  if (!candidate) {
+    return null
+  }
+
+  if (!msg.teamId) {
+    return candidate
+  }
+
   const installation = await getChannelInstallationByTeam(
     msg.channel,
     msg.teamId
   )
   if (!installation) {
-    return null
-  }
-
-  const candidate = await findCandidateAgent(msg)
-  if (!candidate) {
     return null
   }
   if (candidate.userId !== installation.userId) {
