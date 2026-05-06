@@ -78,37 +78,9 @@ export function AgentEditChat({ agentId }: AgentEditChatProps) {
                 key={message.id}
               >
                 <MessageContent>
-                  {message.parts.map((part, index) => {
-                    const key = `${message.id}-${index}`
-                    if (part.type === 'text') {
-                      return (
-                        <MessageResponse key={key}>{part.text}</MessageResponse>
-                      )
-                    }
-                    if (
-                      part.type === 'dynamic-tool' ||
-                      part.type.startsWith('tool-')
-                    ) {
-                      const toolPart = part as ToolPart
-                      return (
-                        <Tool key={key}>
-                          <ToolHeader
-                            state={toolPart.state}
-                            type={toolPart.type as ToolPart['type']}
-                          />
-                          <ToolContent>
-                            {toolPart.input ? (
-                              <ToolInput input={toolPart.input} />
-                            ) : null}
-                            {toolPart.output ? (
-                              <ToolOutput output={toolPart.output} />
-                            ) : null}
-                          </ToolContent>
-                        </Tool>
-                      )
-                    }
-                    return null
-                  })}
+                  {message.parts.map((part, index) =>
+                    renderMessagePart(part, `${message.id}-${index}`)
+                  )}
                 </MessageContent>
               </Message>
             ))
@@ -137,5 +109,46 @@ export function AgentEditChat({ agentId }: AgentEditChatProps) {
         </PromptInput>
       </div>
     </div>
+  )
+}
+
+function renderMessagePart(part: UIMessage['parts'][number], key: string) {
+  if (part.type === 'text') {
+    return <MessageResponse key={key}>{part.text}</MessageResponse>
+  }
+  if (part.type === 'dynamic-tool') {
+    return <ToolCard key={key} part={part as ToolPart} />
+  }
+  if (typeof part.type === 'string' && part.type.startsWith('tool-')) {
+    return <ToolCard key={key} part={part as ToolPart} />
+  }
+  return null
+}
+
+function ToolCard({ part }: { part: ToolPart }) {
+  return (
+    <Tool>
+      {part.type === 'dynamic-tool' ? (
+        <ToolHeader
+          state={part.state}
+          toolName={(part as { toolName: string }).toolName}
+          type="dynamic-tool"
+        />
+      ) : (
+        <ToolHeader
+          state={part.state}
+          type={part.type as Exclude<ToolPart['type'], 'dynamic-tool'>}
+        />
+      )}
+      <ToolContent>
+        <ToolInput input={part.input} />
+        {part.state === 'output-available' ? (
+          <ToolOutput errorText={undefined} output={part.output} />
+        ) : null}
+        {part.state === 'output-error' ? (
+          <ToolOutput errorText={part.errorText} output={undefined} />
+        ) : null}
+      </ToolContent>
+    </Tool>
   )
 }
