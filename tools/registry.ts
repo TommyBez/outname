@@ -7,6 +7,7 @@ import { resendSendTool } from './resend'
 import { getToolSandboxManifest } from './sandboxes/registry'
 import { typefullyRequestTool } from './typefully'
 import type { MaintainerTool } from './types'
+import { vercelRequestTool } from './vercel'
 import { xApiRequestTool } from './x-api'
 
 /**
@@ -28,6 +29,7 @@ const TOOLS: MaintainerTool[] = [
   agentBrowserTool,
   xApiRequestTool,
   typefullyRequestTool,
+  vercelRequestTool,
 ]
 const TOOL_BY_ID = new Map<string, MaintainerTool>()
 
@@ -68,4 +70,5 @@ export const TOOL_CATEGORY_ORDER = [
   'scheduling',
   'social',
   'browser',
+  'deployment',
 ] as const
