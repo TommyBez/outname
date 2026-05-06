@@ -43,7 +43,9 @@ const vercelRequestInputSchema = z.object({
   confirmIrreversible: z
     .boolean()
     .default(false)
-    .describe('Required true for DELETE requests when readOnly is disabled.'),
+    .describe(
+      'Required true for any non-GET request when readOnly is disabled.'
+    ),
 })
 
 type VercelRequestInput = z.infer<typeof vercelRequestInputSchema>
@@ -78,13 +80,14 @@ const vercelSafetyPolicy: ToolPolicy<VercelRequestInput, VercelConfig> = ({
     }
   }
   if (
-    input.method === 'DELETE' &&
+    input.method !== 'GET' &&
     !config.readOnly &&
     !input.confirmIrreversible
   ) {
     return {
       ok: false,
-      message: 'DELETE requests require confirmIrreversible=true.',
+      message:
+        'Non-GET requests require confirmIrreversible=true when readOnly is disabled.',
     }
   }
   try {
