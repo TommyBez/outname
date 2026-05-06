@@ -120,6 +120,13 @@
       "when": 1793116800000,
       "tag": "0015_channel_team_id",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793203200000,
+      "tag": "0015_budget_rules",
+      "breakpoints": true
     }
   ]
 }

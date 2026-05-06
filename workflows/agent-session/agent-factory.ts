@@ -48,6 +48,8 @@ export interface BuildAgentResult {
   meta: {
     name: string
     model: string
+    /** Owning user — needed for budget rollups + ledger writes. */
+    userId: string
     stepLimitCustom: number | null
     stepLimitMode: 'custom' | 'grind' | 'high' | 'low' | 'medium'
   }
@@ -123,6 +125,7 @@ export async function buildAgent(
     meta: {
       name: row.name,
       model: row.model,
+      userId: row.userId,
       stepLimitCustom: row.stepLimitCustom,
       stepLimitMode: row.stepLimitMode as
         | 'custom'

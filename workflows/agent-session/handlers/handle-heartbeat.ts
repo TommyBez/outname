@@ -2,9 +2,11 @@ import type { UIMessageChunk } from 'ai'
 import { eq } from 'drizzle-orm'
 import { getWritable } from 'workflow'
 import { startupExecSandbox, startupSystemSandbox } from '@/lib/agent-sandbox'
+import { formatBudgetExceededMessage } from '@/lib/budget'
 import { db } from '@/lib/db'
 import { agent as agentTable } from '@/lib/db/schema'
 import { emitActivity } from '@/lib/run-events'
+import { getAgentById } from '@/lib/start-agent-run'
 import {
   buildAgent,
   buildHeartbeatKickoff,
@@ -16,10 +18,18 @@ import {
   resolveStepLimitCount,
 } from '../step-limit'
 import { beginHeartbeatRun } from '../steps/begin-heartbeat-run'
+import {
+  extractTotalUsage,
+  preflightBudget,
+  recordTokenUsageStep,
+} from '../steps/budget'
 import { drainPendingWrites } from '../steps/drain-pending-writes'
 import { finalizeRun } from '../steps/finalize-run'
 import { initRun } from '../steps/init-run'
-import type { PendingWrites } from '../tools/pending-writes'
+import {
+  createPendingWrites,
+  type PendingWrites,
+} from '../tools/pending-writes'
 
 /**
  * Heartbeat event handler — runs inside the long-lived session
@@ -57,6 +67,8 @@ export async function handleHeartbeat(input: {
 }): Promise<{ pending: PendingWrites; runId: string }> {
   const { agentId } = input
   const mode = input.mode ?? 'normal'
+  const nowIso = input.scheduledAt ?? new Date().toISOString()
+  const reflectionLocalDate = input.localDate ?? nowIso.slice(0, 10)
 
   const { runId } = await beginHeartbeatRun({ agentId })
 
@@ -76,6 +88,20 @@ export async function handleHeartbeat(input: {
         manual: input.manual ?? false,
       }
     )
+
+    const userId = await checkBudgetOrFinalize({
+      agentId,
+      mode,
+      runId,
+    })
+    if (userId === BUDGET_EXCEEDED) {
+      await markBudgetSkippedRunCompleted({
+        agentId,
+        localDate: reflectionLocalDate,
+        mode,
+      })
+      return { pending: createPendingWrites(), runId }
+    }
 
     const previousIso =
       mode === 'reflection'
@@ -115,11 +141,10 @@ export async function handleHeartbeat(input: {
       mode: meta.stepLimitMode,
       custom: meta.stepLimitCustom,
     } as const
-    const nowIso = input.scheduledAt ?? new Date().toISOString()
     const kickoff =
       mode === 'reflection'
         ? buildReflectionKickoff({
-            localDate: input.localDate ?? nowIso.slice(0, 10),
+            localDate: reflectionLocalDate,
             manual: input.manual ?? false,
             nowIso,
             previousIso,
@@ -134,6 +159,17 @@ export async function handleHeartbeat(input: {
       writable,
       stopWhen: resolveStepLimit(stepLimitInput),
     })
+    if (userId) {
+      await recordTokenUsageStep({
+        userId,
+        agentId,
+        rootAgentId: agentId,
+        sourceType: mode === 'reflection' ? 'reflection' : 'heartbeat',
+        sourceId: runId,
+        model: meta.model,
+        usage: extractTotalUsage(result),
+      })
+    }
     const hitStepLimit = didReachStepLimit({
       ...stepLimitInput,
       steps: result.steps,
@@ -157,14 +193,11 @@ export async function handleHeartbeat(input: {
         ? activityMessage(mode, 'Completed after reaching the step limit')
         : undefined
     )
-    if (mode === 'reflection') {
-      await markReflectionCompleted({
-        agentId,
-        localDate: input.localDate ?? nowIso.slice(0, 10),
-      })
-    } else {
-      await markHeartbeatCompleted(agentId)
-    }
+    await markRunCompleted({
+      agentId,
+      localDate: reflectionLocalDate,
+      mode,
+    })
 
     return { pending, runId }
   } catch (err) {
@@ -180,6 +213,44 @@ function activityMessage(
   message: string
 ): string {
   return mode === 'reflection' ? `Reflection: ${message}` : message
+}
+
+const BUDGET_EXCEEDED = Symbol('budget-exceeded')
+
+/**
+ * Resolve the owning user and pre-flight the budget. Returns the
+ * `userId` when the run can proceed, `null` when ownership is
+ * unresolved (still proceed with no-op accounting), or
+ * `BUDGET_EXCEEDED` when the caller must short-circuit.
+ */
+async function checkBudgetOrFinalize(input: {
+  agentId: string
+  mode: 'normal' | 'reflection'
+  runId: string
+}): Promise<string | null | typeof BUDGET_EXCEEDED> {
+  const { agentId, mode, runId } = input
+  const agentRow = await getAgentById(agentId)
+  const userId = agentRow?.userId ?? null
+  if (!userId) {
+    return null
+  }
+  const exceeded = await preflightBudget({
+    userId,
+    rootAgentId: agentId,
+  })
+  if (!exceeded) {
+    return userId
+  }
+  await emitActivity(
+    runId,
+    activityMessage(mode, 'Budget exceeded, skipping run'),
+    {
+      period: exceeded.period,
+      scope: exceeded.scope.type,
+    }
+  )
+  await finalizeRun(runId, 'completed', formatBudgetExceededMessage(exceeded))
+  return BUDGET_EXCEEDED
 }
 
 /**
@@ -220,6 +291,37 @@ async function markHeartbeatCompleted(agentId: string): Promise<void> {
       updatedAt: new Date(),
     })
     .where(eq(agentTable.id, agentId))
+}
+
+async function markBudgetSkippedRunCompleted(input: {
+  agentId: string
+  localDate: string
+  mode: 'normal' | 'reflection'
+}): Promise<void> {
+  if (input.mode !== 'reflection') {
+    return
+  }
+  // Reflection due checks key off these fields, so a budget-skipped
+  // reflection still needs to count as today's completed attempt.
+  await markReflectionCompleted({
+    agentId: input.agentId,
+    localDate: input.localDate,
+  })
+}
+
+async function markRunCompleted(input: {
+  agentId: string
+  localDate: string
+  mode: 'normal' | 'reflection'
+}): Promise<void> {
+  if (input.mode === 'reflection') {
+    await markReflectionCompleted({
+      agentId: input.agentId,
+      localDate: input.localDate,
+    })
+    return
+  }
+  await markHeartbeatCompleted(input.agentId)
 }
 
 async function markReflectionCompleted(input: {

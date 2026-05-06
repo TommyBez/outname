@@ -17,3 +17,7 @@ export function agentToolsTag(agentId: string) {
 export function conversationListTag(agentId: string) {
   return `conversation-list-${agentId}`
 }
+
+export function userBudgetTag(userId: string) {
+  return `user-budget-${userId}`
+}

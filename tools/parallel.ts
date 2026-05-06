@@ -22,6 +22,10 @@ const domainSchema = z
     'Use a bare domain such as example.com or a bare domain extension such as .gov.'
   )
 
+const afterDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD format.')
+
 const sourcePolicySchema = z
   .object({
     include_domains: z
@@ -40,9 +44,7 @@ const sourcePolicySchema = z
       .describe(
         'Optional blocklist of bare domains or domain extensions to exclude from results.'
       ),
-    after_date: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD format.')
+    after_date: afterDateSchema
       .optional()
       .describe(
         'Optional freshness floor in YYYY-MM-DD format. Results should be published on or after this date.'
@@ -100,12 +102,71 @@ const excerptSettingsSchema = z
   })
   .strict()
 
+interface AdvancedSettingsInput {
+  after_date?: string
+  excerpt_settings?: z.infer<typeof excerptSettingsSchema>
+  exclude_domains?: string[]
+  fetch_policy?: z.infer<typeof fetchPolicySchema>
+  include_domains?: string[]
+  location?: string
+  max_results?: number
+  source_policy?: z.infer<typeof sourcePolicySchema>
+}
+
+function normalizeAdvancedSettings(
+  value: AdvancedSettingsInput
+): Omit<
+  AdvancedSettingsInput,
+  'after_date' | 'exclude_domains' | 'include_domains'
+> {
+  const normalizedSourcePolicy = {
+    include_domains:
+      value.source_policy?.include_domains ?? value.include_domains,
+    exclude_domains:
+      value.source_policy?.exclude_domains ?? value.exclude_domains,
+    after_date: value.source_policy?.after_date ?? value.after_date,
+  }
+  const hasSourcePolicy =
+    normalizedSourcePolicy.include_domains !== undefined ||
+    normalizedSourcePolicy.exclude_domains !== undefined ||
+    normalizedSourcePolicy.after_date !== undefined
+
+  return {
+    fetch_policy: value.fetch_policy,
+    excerpt_settings: value.excerpt_settings,
+    location: value.location,
+    max_results: value.max_results,
+    source_policy: hasSourcePolicy ? normalizedSourcePolicy : undefined,
+  }
+}
+
 const advancedSettingsSchema = z
   .object({
     source_policy: sourcePolicySchema
       .optional()
       .describe(
         'Optional source filtering and freshness rules. Use sparingly because restrictive policies can reduce result quality.'
+      ),
+    include_domains: z
+      .array(domainSchema)
+      .min(1)
+      .max(200)
+      .optional()
+      .describe(
+        'Compatibility alias for source_policy.include_domains. Prefer nesting it under source_policy.'
+      ),
+    exclude_domains: z
+      .array(domainSchema)
+      .min(1)
+      .max(200)
+      .optional()
+      .describe(
+        'Compatibility alias for source_policy.exclude_domains. Prefer nesting it under source_policy.'
+      ),
+    after_date: afterDateSchema
+      .optional()
+      .describe(
+        'Compatibility alias for source_policy.after_date. Prefer nesting it under source_policy.'
       ),
     fetch_policy: fetchPolicySchema
       .optional()
@@ -133,6 +194,30 @@ const advancedSettingsSchema = z
       ),
   })
   .strict()
+  .superRefine((value, ctx) => {
+    const hasSourcePolicyAliases =
+      value.include_domains !== undefined ||
+      value.exclude_domains !== undefined ||
+      value.after_date !== undefined
+
+    if (!hasSourcePolicyAliases) {
+      return
+    }
+
+    const normalized = normalizeAdvancedSettings(value)
+    const total =
+      (normalized.source_policy?.include_domains?.length ?? 0) +
+      (normalized.source_policy?.exclude_domains?.length ?? 0)
+
+    if (total > 200) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'Combined include_domains and exclude_domains entries cannot exceed 200.',
+        path: ['exclude_domains'],
+      })
+    }
+  })
 
 const parallelSearchInputSchema = z.object({
   objective: z
@@ -276,6 +361,10 @@ export const parallelSearchTool = defineApiPassthroughTool({
   provider: 'parallel',
   inputSchema: parallelSearchInputSchema,
   toRequest({ input }) {
+    const advancedSettings = input.advanced_settings
+      ? normalizeAdvancedSettings(input.advanced_settings)
+      : undefined
+
     return {
       method: 'POST',
       url: PARALLEL_SEARCH_URL,
@@ -288,7 +377,7 @@ export const parallelSearchTool = defineApiPassthroughTool({
         max_chars_total: input.max_chars_total,
         session_id: input.session_id,
         client_model: input.client_model,
-        advanced_settings: input.advanced_settings,
+        advanced_settings: advancedSettings,
       },
     }
   },

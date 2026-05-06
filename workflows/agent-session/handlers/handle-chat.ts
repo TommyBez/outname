@@ -2,7 +2,9 @@ import { convertToModelMessages, type UIMessage, type UIMessageChunk } from 'ai'
 import { getWorkflowMetadata, getWritable } from 'workflow'
 import { compactSubAgentToolOutputsForModel } from '@/lib/agent-chat-model'
 import { startupExecSandbox, startupSystemSandbox } from '@/lib/agent-sandbox'
+import { formatBudgetExceededMessage } from '@/lib/budget'
 import { emitActivity } from '@/lib/run-events'
+import { getAgentById } from '@/lib/start-agent-run'
 import { maybeGenerateConversationTitle } from '@/workflows/chat/steps/generate-conversation-title'
 import { persistAssistantTurn } from '@/workflows/chat/steps/persist-assistant-turn'
 import { buildAgent } from '../agent-factory'
@@ -13,9 +15,17 @@ import {
   resolveStepLimit,
   resolveStepLimitCount,
 } from '../step-limit'
+import {
+  extractTotalUsage,
+  preflightBudget,
+  recordTokenUsageStep,
+} from '../steps/budget'
 import { drainPendingWrites } from '../steps/drain-pending-writes'
 import { emitChatStatus } from '../steps/emit-chat-status'
-import type { PendingWrites } from '../tools/pending-writes'
+import {
+  createPendingWrites,
+  type PendingWrites,
+} from '../tools/pending-writes'
 
 /**
  * Chat event handler — runs inside the long-lived session workflow.
@@ -59,6 +69,45 @@ export async function handleChat(input: {
   const writable = getWritable<UIMessageChunk>({
     namespace: replyToken,
   })
+
+  // Resolve the owning user before any expensive boot work so a
+  // budget-exceeded turn can fail fast without spinning sandboxes.
+  const agentRow = await getAgentById(agentId)
+  const userId = agentRow?.userId ?? null
+  if (userId) {
+    const exceeded = await preflightBudget({
+      userId,
+      rootAgentId: agentId,
+    })
+    if (exceeded) {
+      const message = formatBudgetExceededMessage(exceeded)
+      await emitActivity(sessionRunId, 'Chat: Budget exceeded, refusing turn', {
+        conversationId,
+        period: exceeded.period,
+        scope: exceeded.scope.type,
+      })
+      await emitChatStatus({
+        message,
+        phase: 'agent-stream',
+        replyToken,
+      })
+      await writeAssistantNotice(replyToken, message)
+      await finishUiMessageStream(replyToken).catch(() => {
+        // Best-effort: closing the stream is informational here.
+      })
+      await persistAssistantTurn({
+        agentId,
+        conversationId,
+        uiMessages: [
+          createAssistantNoticeMessage(`budget_refusal_${replyToken}`, message),
+        ],
+      })
+      await emitActivity(sessionRunId, 'Chat: Budget refusal saved', {
+        conversationId,
+      })
+      return { pending: createPendingWrites() }
+    }
+  }
 
   await emitActivity(sessionRunId, 'Chat: Preparing response', {
     conversationId,
@@ -124,6 +173,18 @@ export async function handleChat(input: {
   let streamClosed = false
   try {
     const [, result] = await Promise.all([titlePromise, streamPromise])
+
+    if (userId) {
+      await recordTokenUsageStep({
+        userId,
+        agentId,
+        rootAgentId: agentId,
+        sourceType: 'chat',
+        sourceId: conversationId,
+        model: meta.model,
+        usage: extractTotalUsage(result),
+      })
+    }
 
     let persistedMessages = result.uiMessages ?? []
     if (
@@ -206,6 +267,14 @@ function formatStepLimitStreamText(
       (part) => part.type === 'text' && part.text.trim().length > 0
     )
   return `${hasAssistantText ? '\n\n' : ''}${notice}`
+}
+
+function createAssistantNoticeMessage(id: string, notice: string): UIMessage {
+  return {
+    id,
+    role: 'assistant',
+    parts: [{ type: 'text', text: notice }],
+  }
 }
 
 async function writeAssistantNotice(

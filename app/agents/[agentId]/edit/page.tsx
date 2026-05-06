@@ -1,11 +1,15 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
+import type { AgentBudgetValues } from '@/components/agent-budget-widget'
+import { AgentEditChat } from '@/components/agent-edit-chat'
 import { AgentForm } from '@/components/agent-form'
+import { BudgetRules, type BudgetRuleView } from '@/components/budget-rules'
 import { deleteAgentAction } from '@/lib/agent-actions'
 import { readLatestPendingFileWrite } from '@/lib/agent-pending-writes'
 import { DEFAULT_MODEL_ID, getAvailableModels } from '@/lib/ai-gateway-models'
 import { requireSession } from '@/lib/auth-guard'
+import { listAgentBudgetRules, sumSpendUsd } from '@/lib/budget'
 import { getCachedAgentByIdForUser, getCachedAgentMemoryFile } from '@/lib/data'
 
 type Params = Promise<{ agentId: string }>
@@ -44,6 +48,7 @@ async function AgentEdit({ params }: { params: Params }) {
     agentsMdRow,
     userMdRow,
     userMdFile,
+    budgetRules,
   ] = await Promise.all([
     getCachedAgentByIdForUser(agentId, session.user.id),
     getAvailableModels(),
@@ -52,6 +57,7 @@ async function AgentEdit({ params }: { params: Params }) {
     readLatestPendingFileWrite({ agentId, path: 'AGENTS.md' }),
     readLatestPendingFileWrite({ agentId, path: 'USER.md' }),
     getCachedAgentMemoryFile({ agentId, path: 'USER.md' }),
+    listAgentBudgetRules({ userId: session.user.id, agentId }),
   ])
   if (!agentRow) {
     notFound()
@@ -60,6 +66,8 @@ async function AgentEdit({ params }: { params: Params }) {
     userMdRow && (!userMdFile || userMdRow.enqueuedAt >= userMdFile.updatedAt)
       ? userMdRow.content
       : (userMdFile?.content ?? '')
+
+  const currentBudget = summarizeBudgetRules(budgetRules)
 
   async function remove() {
     'use server'
@@ -83,6 +91,20 @@ async function AgentEdit({ params }: { params: Params }) {
       </header>
 
       <section className="border-foreground border-t-2 py-10">
+        <h2 className="swiss-label mb-6 text-accent">Budget</h2>
+        <Suspense fallback={<div className="h-32" />}>
+          <AgentBudgetSection
+            agentId={agentRow.id}
+            agentName={agentRow.name}
+            userId={session.user.id}
+          />
+        </Suspense>
+      </section>
+
+      <section className="border-foreground border-t-2 py-10">
+        <p className="mb-3 font-bold text-xs uppercase tracking-[0.14em]">
+          Manual editing
+        </p>
         <AgentForm
           defaultModel={DEFAULT_MODEL_ID}
           initial={{
@@ -109,6 +131,41 @@ async function AgentEdit({ params }: { params: Params }) {
         />
       </section>
 
+      <section className="border-foreground border-t-2 py-10">
+        <p className="mb-3 font-bold text-xs uppercase tracking-[0.14em]">
+          Chat editing
+        </p>
+        <p className="mb-4 max-w-2xl text-muted-foreground text-sm">
+          Use chat to describe changes. Review the proposed update, then approve
+          to apply. Manual editing remains available above.
+        </p>
+        <AgentEditChat
+          agentId={agentRow.id}
+          currentBudget={currentBudget}
+          currentMarkdownFiles={{
+            identityCard: identityRow?.content ?? '',
+            instructions: agentsMdRow?.content ?? '',
+            soul: soulRow?.content ?? '',
+            userProfile,
+          }}
+          currentSettings={{
+            heartbeatEnabled: agentRow.heartbeatEnabled,
+            heartbeatIntervalMinutes: agentRow.heartbeatIntervalMinutes,
+            model: agentRow.model,
+            name: agentRow.name,
+            reflectionEnabled: agentRow.reflectionEnabled,
+            reflectionIntervalMinutes: agentRow.reflectionIntervalMinutes,
+            stepLimitCustom: agentRow.stepLimitCustom,
+            stepLimitMode: (agentRow.stepLimitMode ?? 'medium') as
+              | 'custom'
+              | 'grind'
+              | 'high'
+              | 'low'
+              | 'medium',
+          }}
+        />
+      </section>
+
       <section className="flex flex-col gap-3 border-destructive border-t-2 pt-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div>
           <p className="font-bold text-destructive text-xs uppercase tracking-[0.2em]">
@@ -128,6 +185,63 @@ async function AgentEdit({ params }: { params: Params }) {
         </form>
       </section>
     </>
+  )
+}
+
+function summarizeBudgetRules(
+  rules: Awaited<ReturnType<typeof listAgentBudgetRules>>
+): AgentBudgetValues {
+  const result: AgentBudgetValues = {
+    daily: null,
+    weekly: null,
+    monthly: null,
+  }
+  for (const rule of rules) {
+    if (!rule.enabled) {
+      continue
+    }
+    const limit = Number(rule.limitUsd)
+    if (!Number.isFinite(limit) || limit <= 0) {
+      continue
+    }
+    if (rule.period === 'daily') {
+      result.daily = limit
+    } else if (rule.period === 'weekly') {
+      result.weekly = limit
+    } else if (rule.period === 'monthly') {
+      result.monthly = limit
+    }
+  }
+  return result
+}
+
+async function AgentBudgetSection({
+  agentId,
+  agentName,
+  userId,
+}: {
+  agentId: string
+  agentName: string
+  userId: string
+}) {
+  const rules = await listAgentBudgetRules({ userId, agentId })
+  const views: BudgetRuleView[] = await Promise.all(
+    rules.map(async (r) => ({
+      id: r.id,
+      agentId,
+      agentName,
+      period: r.period,
+      limitUsd: Number(r.limitUsd),
+      enabled: r.enabled,
+      spentUsd: await sumSpendUsd({
+        userId,
+        scope: { type: 'agent', agentId },
+        period: r.period,
+      }),
+    }))
+  )
+  return (
+    <BudgetRules rules={views} scope={{ type: 'agent', agentId, agentName }} />
   )
 }
 
