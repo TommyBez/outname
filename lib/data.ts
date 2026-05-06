@@ -2,6 +2,7 @@ import 'server-only'
 import { and, desc, eq } from 'drizzle-orm'
 import { cacheLife, cacheTag } from 'next/cache'
 import {
+  agentSkillsTag,
   agentTag,
   agentToolsTag,
   userAgentsTag,
@@ -12,10 +13,14 @@ import {
   type Agent,
   type AgentFile,
   type AgentFileChange,
+  type AgentSkill,
+  type AgentSkillFile,
   type AgentTool,
   agent,
   agentFileChanges,
   agentFiles,
+  agentSkillFiles,
+  agentSkills,
   agentTools,
   type UserConnection,
   userConnections,
@@ -176,4 +181,42 @@ export async function getCachedAgentTools(
   cacheLife('minutes')
   cacheTag(agentToolsTag(agentId))
   return await getAgentTools(agentId)
+}
+
+export interface AgentSkillSummary extends AgentSkill {
+  fileCount: number
+}
+
+export async function getAgentSkillSummaries(
+  agentId: string
+): Promise<AgentSkillSummary[]> {
+  const [skills, files] = await Promise.all([
+    db
+      .select()
+      .from(agentSkills)
+      .where(eq(agentSkills.agentId, agentId))
+      .orderBy(desc(agentSkills.updatedAt)),
+    db
+      .select({
+        skillName: agentSkillFiles.skillName,
+        path: agentSkillFiles.path,
+      })
+      .from(agentSkillFiles)
+      .where(eq(agentSkillFiles.agentId, agentId)),
+  ])
+  const counts = new Map<string, number>()
+  for (const f of files as Pick<AgentSkillFile, 'skillName' | 'path'>[]) {
+    counts.set(f.skillName, (counts.get(f.skillName) ?? 0) + 1)
+  }
+  return skills.map((s) => ({ ...s, fileCount: counts.get(s.name) ?? 0 }))
+}
+
+export async function getCachedAgentSkillSummaries(
+  agentId: string
+): Promise<AgentSkillSummary[]> {
+  'use cache'
+
+  cacheLife('minutes')
+  cacheTag(agentSkillsTag(agentId))
+  return await getAgentSkillSummaries(agentId)
 }

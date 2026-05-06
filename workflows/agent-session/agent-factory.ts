@@ -4,9 +4,11 @@ import { getAgentById } from '@/lib/start-agent-run'
 import { buildAttachedTools } from '@/tools/build-attached-tools'
 import { composeSystemPrompt } from './compose-system-prompt'
 import { resolveToolPlan } from './steps/resolve-tool-plan'
+import { syncAgentSkills } from './steps/sync-agent-skills'
 import { createExecTools } from './tools/exec-tools'
 import { createMemoryTools } from './tools/memory-tools'
 import { createPendingWrites, type PendingWrites } from './tools/pending-writes'
+import { createSkillTools } from './tools/skill-tools'
 
 /**
  * One event's agent: DB load, composed system prompt from sandbox persona
@@ -95,11 +97,22 @@ export async function buildAgent(
     streamNamespace: args.streamNamespace,
   })
 
+  // Mirror DB-backed agent skills (markdown / zip / github sources) into
+  // the exec sandbox so the AI-SDK skill tool and bash tool see them
+  // as ordinary files at /workspace/skills/<name>/.
+  const synced = await syncAgentSkills({ agentId })
+  const skillToolBundle = createSkillTools({
+    agentId,
+    destination: synced.destination,
+    skills: synced.skills,
+  })
+
   const systemPrompt = await composeSystemPrompt({
     agentId,
     agentName: row.name,
     nowIso: args.nowIso ?? new Date().toISOString(),
     reconnects: attached.reconnects,
+    skillInstructions: skillToolBundle.instructions,
   })
 
   const pending = createPendingWrites()
@@ -110,6 +123,7 @@ export async function buildAgent(
     ...memoryTools,
     ...execTools,
     ...attached.tools,
+    ...skillToolBundle.tools,
   }
 
   const durableAgent = new DurableAgent({

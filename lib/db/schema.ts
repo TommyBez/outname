@@ -766,6 +766,90 @@ export const agentTokenUsage = pgTable(
   ]
 )
 
+/**
+ * Per-agent skills, modeled after Anthropic / agentskills.io "Agent Skills".
+ * A skill is a directory with a `SKILL.md` (YAML frontmatter: `name`,
+ * `description`) plus optional scripts and resources. Skills are added
+ * by the user via three sources:
+ *
+ *   - `markdown` — paste a single `SKILL.md` document.
+ *   - `zip`      — upload a zip whose root holds `SKILL.md` (or a single
+ *                  subdirectory containing one — that subdirectory is
+ *                  unwrapped at ingest).
+ *   - `github`   — point at `owner/repo[/path]`. The path may target a
+ *                  skill directory directly, or a parent directory whose
+ *                  immediate child is a `SKILL.md` file.
+ *
+ * Files are stored in `agent_skill_files` keyed by `(agent_id, skill_name,
+ * path)`. The runtime mirrors them into the exec sandbox at
+ * `${EXEC_SANDBOX_WORKSPACE}/skills/<name>/...` at session boot so the
+ * AI-SDK skill tool can read `SKILL.md` and bash scripts via the same
+ * sandbox the bash tool uses (the Vercel Sandbox replacement for
+ * bash-tool's local-filesystem reads).
+ */
+export const agentSkills = pgTable(
+  'agent_skills',
+  {
+    agentId: text('agent_id')
+      .notNull()
+      .references(() => agent.id, { onDelete: 'cascade' }),
+    /** Slug — derived from SKILL.md frontmatter `name`. Lowercase + hyphens. */
+    name: text('name').notNull(),
+    description: text('description').notNull(),
+    sourceType: text('source_type')
+      .$type<'markdown' | 'zip' | 'github'>()
+      .notNull(),
+    /**
+     * Free-form provenance string. For `github` it's the canonical
+     * `owner/repo[/path][@ref]` we resolved against the API. For
+     * `markdown` and `zip` it's NULL (or a filename when supplied).
+     */
+    sourceRef: text('source_ref'),
+    status: text('status')
+      .$type<'ready' | 'failed'>()
+      .notNull()
+      .default('ready'),
+    error: text('error'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.agentId, t.name] }),
+    index('agent_skills_agent_idx').on(t.agentId),
+  ]
+)
+
+export const agentSkillFiles = pgTable(
+  'agent_skill_files',
+  {
+    agentId: text('agent_id')
+      .notNull()
+      .references(() => agent.id, { onDelete: 'cascade' }),
+    skillName: text('skill_name').notNull(),
+    /** Posix path relative to the skill root, e.g. `SKILL.md` or `scripts/run.sh`. */
+    path: text('path').notNull(),
+    content: text('content').notNull(),
+    sha256: text('sha256').notNull(),
+    /** True if the file is executable in the sandbox (chmod +x). */
+    executable: boolean('executable').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.agentId, t.skillName, t.path] }),
+    index('agent_skill_files_skill_idx').on(t.agentId, t.skillName),
+  ]
+)
+export type AgentSkill = typeof agentSkills.$inferSelect
+export type AgentSkillFile = typeof agentSkillFiles.$inferSelect
+export type AgentSkillSourceType = 'markdown' | 'zip' | 'github'
+export type AgentSkillStatus = 'ready' | 'failed'
+
 export type BudgetRule = typeof budgetRule.$inferSelect
 export type BudgetPeriod = 'daily' | 'weekly' | 'monthly'
 export type AgentTokenUsage = typeof agentTokenUsage.$inferSelect

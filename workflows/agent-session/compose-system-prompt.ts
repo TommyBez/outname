@@ -27,6 +27,12 @@ export interface ComposeSystemPromptArgs {
    * reconnect.
    */
   reconnects?: readonly Reconnect[]
+  /**
+   * Optional `SKILL DIRECTORIES` block produced by `createSkillTools`.
+   * Inlined into the prompt so the model can see what skill paths are
+   * available before it chooses to call the `skill` tool.
+   */
+  skillInstructions?: string
 }
 
 const FOOTER = `## Platform invariants
@@ -160,6 +166,11 @@ export async function composeSystemPrompt(
   const reconnectsBlock = renderReconnects(args.reconnects ?? [])
   if (reconnectsBlock) {
     sections.push(reconnectsBlock)
+  }
+
+  const skillBlock = args.skillInstructions?.trim()
+  if (skillBlock) {
+    sections.push(`## Agent skills\n\n${skillBlock}`)
   }
 
   sections.push(FOOTER)
