@@ -18,7 +18,13 @@ import {
 } from '@/lib/agent-tool-attachment-service'
 import { updateAgentForUser } from '@/lib/agent-update-service'
 import { auth } from '@/lib/auth'
-import { agentTag, userAgentsTag } from '@/lib/cache-tags'
+import {
+  type BudgetPeriod,
+  deleteBudgetRuleForScope,
+  listAgentBudgetRules,
+  upsertBudgetRule,
+} from '@/lib/budget'
+import { agentTag, userAgentsTag, userBudgetTag } from '@/lib/cache-tags'
 import {
   getAgentByIdForUser,
   getAgentMemoryFile,
@@ -61,6 +67,29 @@ const attachSubAgentToolSchema = z.object({
 const detachToolSchema = z.object({
   toolId: z.string().min(1),
   kind: z.enum(['maintainer', 'sub_agent']).default('maintainer'),
+})
+
+const budgetLimitSchema = z
+  .number()
+  .positive()
+  .max(100_000)
+  .nullable()
+  .describe('USD cap for this period, or null to clear it.')
+
+const proposeBudgetInputSchema = z.object({
+  daily: budgetLimitSchema.default(null),
+  weekly: budgetLimitSchema.default(null),
+  monthly: budgetLimitSchema.default(null),
+  rationale: z
+    .string()
+    .default('')
+    .describe('Short explanation of the suggested budget.'),
+})
+
+const setBudgetSchema = z.object({
+  daily: budgetLimitSchema.default(null),
+  weekly: budgetLimitSchema.default(null),
+  monthly: budgetLimitSchema.default(null),
 })
 
 export async function POST(
@@ -168,6 +197,42 @@ export async function POST(
             userId: session.user.id,
           }),
       }),
+      get_agent_budget: tool({
+        description:
+          'Read the current per-agent USD spend caps before proposing a change.',
+        inputSchema: z.object({}),
+        execute: async () => loadAgentBudget(agentId, session.user.id),
+      }),
+      propose_agent_budget: tool({
+        description:
+          'Propose USD spend caps for this agent. The UI renders an editable widget with these values; the operator adjusts and submits. Wait for the user follow-up message before calling set_agent_budget.',
+        inputSchema: proposeBudgetInputSchema,
+        execute: async (input) => ({
+          proposed: {
+            daily: input.daily,
+            weekly: input.weekly,
+            monthly: input.monthly,
+          },
+          rationale: input.rationale,
+        }),
+      }),
+      set_agent_budget: tool({
+        description:
+          'Persist the per-agent USD spend caps after user approval. Pass `null` for any period to clear that cap. Use the values the user confirmed via propose_agent_budget.',
+        inputSchema: setBudgetSchema,
+        needsApproval: true,
+        execute: async (input) => {
+          const result = await applyAgentBudget({
+            agentId,
+            userId: session.user.id,
+            daily: input.daily,
+            weekly: input.weekly,
+            monthly: input.monthly,
+          })
+          revalidateAgentEditSurfaces(agentId, session.user.id)
+          return result
+        },
+      }),
     },
   })
 
@@ -177,10 +242,95 @@ export async function POST(
 function revalidateAgentEditSurfaces(agentId: string, userId: string): void {
   revalidateTag(userAgentsTag(userId), 'max')
   revalidateTag(agentTag(agentId), 'max')
+  revalidateTag(userBudgetTag(userId), 'max')
   revalidatePath('/agents')
   revalidatePath(`/agents/${agentId}`)
   revalidatePath(`/agents/${agentId}/edit`)
   revalidatePath('/')
+}
+
+const BUDGET_PERIOD_KEYS: Array<{
+  key: 'daily' | 'weekly' | 'monthly'
+  period: BudgetPeriod
+}> = [
+  { key: 'daily', period: 'daily' },
+  { key: 'weekly', period: 'weekly' },
+  { key: 'monthly', period: 'monthly' },
+]
+
+async function loadAgentBudget(
+  agentId: string,
+  userId: string
+): Promise<{
+  daily: number | null
+  weekly: number | null
+  monthly: number | null
+}> {
+  const rules = await listAgentBudgetRules({ userId, agentId })
+  const result: {
+    daily: number | null
+    weekly: number | null
+    monthly: number | null
+  } = {
+    daily: null,
+    weekly: null,
+    monthly: null,
+  }
+  for (const rule of rules) {
+    if (!rule.enabled) {
+      continue
+    }
+    const limit = Number(rule.limitUsd)
+    if (!Number.isFinite(limit) || limit <= 0) {
+      continue
+    }
+    if (rule.period === 'daily') {
+      result.daily = limit
+    } else if (rule.period === 'weekly') {
+      result.weekly = limit
+    } else if (rule.period === 'monthly') {
+      result.monthly = limit
+    }
+  }
+  return result
+}
+
+async function applyAgentBudget(input: {
+  agentId: string
+  userId: string
+  daily: number | null
+  weekly: number | null
+  monthly: number | null
+}): Promise<{
+  ok: true
+  applied: Array<{ period: BudgetPeriod; limitUsd: number | null }>
+}> {
+  const applied: Array<{ period: BudgetPeriod; limitUsd: number | null }> = []
+  for (const { key, period } of BUDGET_PERIOD_KEYS) {
+    const value = input[key]
+    if (value === null) {
+      const removed = await deleteBudgetRuleForScope({
+        userId: input.userId,
+        agentId: input.agentId,
+        period,
+      })
+      if (removed) {
+        applied.push({ period, limitUsd: null })
+      }
+      continue
+    }
+    if (!Number.isFinite(value) || value <= 0) {
+      continue
+    }
+    await upsertBudgetRule({
+      userId: input.userId,
+      agentId: input.agentId,
+      period,
+      limitUsd: value,
+    })
+    applied.push({ period, limitUsd: value })
+  }
+  return { ok: true, applied }
 }
 
 type ToolVisibility = Awaited<ReturnType<typeof getAvailableAgentTools>>
@@ -193,6 +343,7 @@ function buildEditInstructions(toolVisibility: ToolVisibility): string {
     'Before any attach or detach operation, inspect get_available_agent_tools if the current conversation does not already include the exact current tool state. Never invent tool ids, config fields, or sub-agent ids.',
     'Attach and detach operations automatically request user approval. Do not ask the user to type a magic confirmation phrase; explain the operation and let the app approval UI handle approval.',
     'If a required provider connection is missing or invalid, mention that the user may need to connect it in Settings. Attaching is still allowed if the user explicitly wants to pre-wire the tool.',
+    'For per-agent budget changes (daily / weekly / monthly USD caps), first call get_agent_budget if you do not already know the current values, then call propose_agent_budget exactly once with sensible suggested defaults. The UI renders an inline editor with those values; the operator adjusts and submits, sending a follow-up message with the chosen values. Use those user-confirmed numbers to call set_agent_budget — pass `null` for any period the user wants cleared.',
     `Current tool snapshot: ${formatToolVisibilitySummary(toolVisibility)}`,
   ].join('\n')
 }

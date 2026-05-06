@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { AgentChatTranscript } from '@/components/agent-chat-transcript'
+import { BudgetIndicator } from '@/components/budget-indicator'
 import {
   Collapsible,
   CollapsibleContent,
@@ -13,6 +14,7 @@ import {
   useAgentRunTranscript,
   useAgentRunTranscriptPreview,
 } from '@/hooks/use-agent-run-transcript'
+import type { BudgetSummaryEntry } from '@/lib/budget'
 import { cn } from '@/lib/utils'
 
 export interface DashboardAgent {
@@ -28,7 +30,13 @@ export interface DashboardAgent {
   reflectionEnabled: boolean
 }
 
-export function AgentDashboardCard({ agent }: { agent: DashboardAgent }) {
+export function AgentDashboardCard({
+  agent,
+  budgetEntries,
+}: {
+  agent: DashboardAgent
+  budgetEntries?: BudgetSummaryEntry[]
+}) {
   const [open, setOpen] = useState(false)
   const transcript = useAgentRunTranscript({
     agentId: agent.id,
@@ -43,6 +51,7 @@ export function AgentDashboardCard({ agent }: { agent: DashboardAgent }) {
     streamState: transcript,
   })
   const status = getStatusLabel(agent, transcript.kind)
+  const entries = budgetEntries ?? []
 
   return (
     <Collapsible onOpenChange={setOpen} open={open}>
@@ -71,6 +80,11 @@ export function AgentDashboardCard({ agent }: { agent: DashboardAgent }) {
               <h2 className="mt-2 text-pretty font-black font-serif text-4xl uppercase leading-[0.95] tracking-tighter md:text-5xl">
                 {agent.name}
               </h2>
+              {entries.length > 0 && (
+                <div className="mt-4">
+                  <BudgetIndicator entries={entries} variant="agent" />
+                </div>
+              )}
             </div>
 
             <div className="flex items-end justify-between gap-6 border-foreground border-t-2 pt-5 md:border-t-0 md:border-l-2 md:pl-6">

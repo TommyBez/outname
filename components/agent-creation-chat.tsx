@@ -17,6 +17,11 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import {
+  type AgentBudgetValues,
+  AgentBudgetWidget,
+  formatBudgetSummary,
+} from '@/components/agent-budget-widget'
+import {
   Conversation,
   ConversationContent,
   ConversationEmptyState,
@@ -49,6 +54,7 @@ import {
 } from '@/components/ai-elements/tool'
 import { Button } from '@/components/ui/button'
 import type {
+  AgentCreationProposedBudgetOutput,
   AgentCreationRequest,
   AgentCreationResult,
 } from '@/lib/agent-creation-types'
@@ -68,6 +74,22 @@ interface CreateAgentToolPart {
   state: ToolPart['state']
   toolCallId: string
   type: 'tool-create_requested_agent'
+}
+
+interface ProposeBudgetToolPart {
+  errorText?: string
+  input:
+    | {
+        daily: number | null
+        weekly: number | null
+        monthly: number | null
+        rationale?: string
+      }
+    | undefined
+  output?: AgentCreationProposedBudgetOutput
+  state: ToolPart['state']
+  toolCallId: string
+  type: 'tool-propose_agent_budget'
 }
 
 interface AgentCreationChatProps {
@@ -116,6 +138,7 @@ export function AgentCreationChat({ className }: AgentCreationChatProps) {
       <AgentCreationTranscript
         addToolApprovalResponse={addToolApprovalResponse}
         messages={messages}
+        sendMessage={sendMessage}
       />
 
       {error && (
@@ -149,9 +172,12 @@ export function AgentCreationChat({ className }: AgentCreationChatProps) {
   )
 }
 
+type SendMessageFn = (input: { text: string }) => void | PromiseLike<void>
+
 function AgentCreationTranscript({
   messages,
   addToolApprovalResponse,
+  sendMessage,
 }: {
   addToolApprovalResponse: (input: {
     approved: boolean
@@ -159,6 +185,7 @@ function AgentCreationTranscript({
     reason?: string
   }) => void | PromiseLike<void>
   messages: AgentCreationMessage[]
+  sendMessage: SendMessageFn
 }) {
   return (
     <Conversation className="min-h-0 flex-1">
@@ -175,6 +202,7 @@ function AgentCreationTranscript({
               addToolApprovalResponse={addToolApprovalResponse}
               key={message.id}
               message={message}
+              sendMessage={sendMessage}
             />
           ))
         )}
@@ -187,6 +215,7 @@ function AgentCreationTranscript({
 function AgentCreationMessageView({
   message,
   addToolApprovalResponse,
+  sendMessage,
 }: {
   addToolApprovalResponse: (input: {
     approved: boolean
@@ -194,6 +223,7 @@ function AgentCreationMessageView({
     reason?: string
   }) => void | PromiseLike<void>
   message: UIMessage
+  sendMessage: SendMessageFn
 }) {
   return (
     <Message from={message.role === 'user' ? 'user' : 'assistant'}>
@@ -220,6 +250,16 @@ function AgentCreationMessageView({
                 addToolApprovalResponse={addToolApprovalResponse}
                 key={key}
                 part={part as CreateAgentToolPart}
+              />
+            )
+          }
+
+          if (isProposeBudgetToolPart(part)) {
+            return (
+              <ProposeBudgetCard
+                key={key}
+                part={part as ProposeBudgetToolPart}
+                sendMessage={sendMessage}
               />
             )
           }
@@ -406,6 +446,10 @@ function FinalConfigurationCard({
               .filter(Boolean)
               .join('\n')}
           />
+          <ReviewBlock
+            label="Budget"
+            value={budgetReviewLines(config.budget).join('\n')}
+          />
         </div>
 
         <aside className="space-y-4 border-foreground border-t-2 pt-4 md:border-t-0 md:border-l-2 md:pt-0 md:pl-4">
@@ -545,6 +589,74 @@ function isCreateAgentToolPart(part: UIMessage['parts'][number]): boolean {
   return part.type === 'tool-create_requested_agent'
 }
 
+function isProposeBudgetToolPart(part: UIMessage['parts'][number]): boolean {
+  return part.type === 'tool-propose_agent_budget'
+}
+
+function ProposeBudgetCard({
+  part,
+  sendMessage,
+}: {
+  part: ProposeBudgetToolPart
+  sendMessage: SendMessageFn
+}) {
+  const proposed: AgentBudgetValues = {
+    daily: part.output?.proposed.daily ?? part.input?.daily ?? null,
+    weekly: part.output?.proposed.weekly ?? part.input?.weekly ?? null,
+    monthly: part.output?.proposed.monthly ?? part.input?.monthly ?? null,
+  }
+  const rationale = part.output?.rationale ?? part.input?.rationale ?? ''
+  const [submitted, setSubmitted] = useState(false)
+
+  if (part.state === 'input-streaming' || part.state === 'input-available') {
+    return (
+      <div className="w-full border-2 border-foreground bg-muted p-4">
+        <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-[0.16em]">
+          <CircleDashedIcon className="size-4 animate-spin" />
+          Drafting budget suggestion
+        </div>
+      </div>
+    )
+  }
+
+  if (part.state === 'output-error') {
+    return (
+      <div className="w-full border-2 border-destructive bg-destructive/5 p-4 text-destructive text-sm">
+        <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-[0.16em]">
+          <AlertTriangleIcon className="size-4" />
+          Budget proposal failed
+        </div>
+        <p className="mt-2">{part.errorText ?? 'Unknown error.'}</p>
+      </div>
+    )
+  }
+
+  if (part.state !== 'output-available') {
+    return null
+  }
+
+  function submit(values: AgentBudgetValues) {
+    if (submitted) {
+      return
+    }
+    setSubmitted(true)
+    const summary = formatBudgetSummary(values)
+    sendMessage({
+      text: `Use this per-agent budget when creating the agent:\n${summary}\nNow proceed to call create_requested_agent with the full configuration including this budget.`,
+    })
+  }
+
+  return (
+    <AgentBudgetWidget
+      onApply={submit}
+      onSkip={() => submit({ daily: null, weekly: null, monthly: null })}
+      proposed={proposed}
+      rationale={rationale}
+      submitted={submitted}
+    />
+  )
+}
+
 function scheduleLabel(schedule: AgentCreationRequest['heartbeat']): string {
   if (!schedule.enabled) {
     return 'off'
@@ -557,4 +669,26 @@ function stepLimitLabel(stepLimit: AgentCreationRequest['stepLimit']): string {
     return stepLimit.mode
   }
   return `custom (${stepLimit.custom ?? 30})`
+}
+
+function budgetReviewLines(
+  budget: AgentCreationRequest['budget'] | undefined
+): string[] {
+  if (!budget) {
+    return ['No budget set']
+  }
+  const lines: string[] = []
+  if (budget.daily && budget.daily > 0) {
+    lines.push(`Daily: $${budget.daily.toFixed(2)}`)
+  }
+  if (budget.weekly && budget.weekly > 0) {
+    lines.push(`Weekly: $${budget.weekly.toFixed(2)}`)
+  }
+  if (budget.monthly && budget.monthly > 0) {
+    lines.push(`Monthly: $${budget.monthly.toFixed(2)}`)
+  }
+  if (lines.length === 0) {
+    return ['No budget set']
+  }
+  return lines
 }

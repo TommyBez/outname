@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { AppShell } from '@/components/app-shell'
+import { BudgetRules, type BudgetRuleView } from '@/components/budget-rules'
 import { ConnectionsList } from '@/components/connections-list'
 import {
   AccountSkeleton,
@@ -9,6 +10,7 @@ import {
 } from '@/components/skeletons'
 import { listConnectors } from '@/connectors/registry'
 import { getSession, requireSession } from '@/lib/auth-guard'
+import { listGeneralBudgetRulesForUser, sumSpendUsd } from '@/lib/budget'
 import { getCachedAgentsForUser, getCachedUserConnections } from '@/lib/data'
 import { createPrivatePageMetadata } from '@/lib/site-metadata'
 
@@ -39,6 +41,12 @@ export default function SettingsPage({
         <Section title="Connections">
           <Suspense fallback={<ConnectionsSectionSkeleton />}>
             <ConnectionsSection />
+          </Suspense>
+        </Section>
+
+        <Section title="Budget">
+          <Suspense fallback={<div className="h-32" />}>
+            <BudgetSection />
           </Suspense>
         </Section>
 
@@ -109,6 +117,27 @@ async function ConnectionsSection() {
   }))
 
   return <ConnectionsList connections={connections} connectors={connectors} />
+}
+
+async function BudgetSection() {
+  const session = await requireSession()
+  const rules = await listGeneralBudgetRulesForUser(session.user.id)
+  const views: BudgetRuleView[] = await Promise.all(
+    rules.map(async (r) => ({
+      id: r.id,
+      agentId: null,
+      agentName: null,
+      period: r.period,
+      limitUsd: Number(r.limitUsd),
+      enabled: r.enabled,
+      spentUsd: await sumSpendUsd({
+        userId: session.user.id,
+        scope: { type: 'general' },
+        period: r.period,
+      }),
+    }))
+  )
+  return <BudgetRules rules={views} scope={{ type: 'general' }} />
 }
 
 async function AgentsSummarySection() {

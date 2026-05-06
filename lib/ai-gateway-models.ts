@@ -33,10 +33,19 @@ export interface ModelOption {
   contextWindow: number
   /** Stored verbatim on `agent.model`, e.g. "openai/gpt-5-mini". */
   id: string
+  /** USD per input token. `null` when the gateway didn't report pricing. */
+  inputUsdPerToken: number | null
   /** Display label, e.g. "GPT-5 Mini". Falls back to id if missing. */
   name: string
+  /** USD per output token. `null` when the gateway didn't report pricing. */
+  outputUsdPerToken: number | null
   /** Used to group the <select>, e.g. "openai". */
   ownedBy: string
+}
+
+export interface ModelPricing {
+  inputUsdPerToken: number
+  outputUsdPerToken: number
 }
 
 const ENDPOINT = 'https://ai-gateway.vercel.sh/v1/models'
@@ -50,12 +59,16 @@ const FALLBACK: readonly ModelOption[] = [
     name: 'GPT-5 Mini',
     ownedBy: 'openai',
     contextWindow: 128_000,
+    inputUsdPerToken: null,
+    outputUsdPerToken: null,
   },
   {
     id: 'anthropic/claude-sonnet-4-5',
     name: 'Claude Sonnet 4.5',
     ownedBy: 'anthropic',
     contextWindow: 200_000,
+    inputUsdPerToken: null,
+    outputUsdPerToken: null,
   },
 ]
 
@@ -64,6 +77,12 @@ interface RawModel {
   id?: string
   name?: string
   owned_by?: string
+  pricing?: {
+    input?: number | string
+    output?: number | string
+    cached_input?: number | string
+    cache_creation_input?: number | string
+  }
   tags?: string[]
   type?: string
 }
@@ -83,6 +102,17 @@ function isLanguageToolModel(m: RawModel): m is RawModel & { id: string } {
   return Boolean(Array.isArray(m.tags) && m.tags.includes('tool-use'))
 }
 
+function parseRate(value: number | string | undefined): number | null {
+  if (value === undefined || value === null) {
+    return null
+  }
+  const n = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(n) || n < 0) {
+    return null
+  }
+  return n
+}
+
 function rawModelToOption(m: RawModel & { id: string }): ModelOption {
   return {
     id: m.id,
@@ -95,6 +125,8 @@ function rawModelToOption(m: RawModel & { id: string }): ModelOption {
       typeof m.context_window === 'number' && m.context_window > 0
         ? m.context_window
         : 0,
+    inputUsdPerToken: parseRate(m.pricing?.input),
+    outputUsdPerToken: parseRate(m.pricing?.output),
   }
 }
 
@@ -170,3 +202,26 @@ export async function isModelIdValid(modelId: string): Promise<boolean> {
 
 /** Default model used when seeding fresh agents. */
 export const DEFAULT_MODEL_ID = 'openai/gpt-5-mini'
+
+/**
+ * Per-token pricing for a single model. Returns `null` when the
+ * gateway didn't advertise pricing (e.g. catalog fallback in dev) so
+ * callers can decide whether to cost the call as zero or skip
+ * persistence entirely.
+ */
+export async function getModelPricing(
+  modelId: string
+): Promise<ModelPricing | null> {
+  const list = await getAvailableModels()
+  const hit = list.find((m) => m.id === modelId)
+  if (!hit) {
+    return null
+  }
+  if (hit.inputUsdPerToken === null || hit.outputUsdPerToken === null) {
+    return null
+  }
+  return {
+    inputUsdPerToken: hit.inputUsdPerToken,
+    outputUsdPerToken: hit.outputUsdPerToken,
+  }
+}

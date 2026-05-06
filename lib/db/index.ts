@@ -4,7 +4,9 @@ import {
   account,
   agent,
   agentFiles,
+  agentTokenUsage,
   agentTools,
+  budgetRule,
   chatConversation,
   chatMessage,
   pendingFileWrites,
@@ -26,6 +28,8 @@ const schema = {
   pendingFileWrites,
   userConnections,
   agentTools,
+  budgetRule,
+  agentTokenUsage,
 }
 
 type DB = ReturnType<typeof drizzle<typeof schema>>
