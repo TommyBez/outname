@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
+import { AgentEditChat } from '@/components/agent-edit-chat'
 import { AgentForm } from '@/components/agent-form'
 import { deleteAgentAction } from '@/lib/agent-actions'
 import { readLatestPendingFileWrite } from '@/lib/agent-pending-writes'
@@ -83,6 +84,9 @@ async function AgentEdit({ params }: { params: Params }) {
       </header>
 
       <section className="border-foreground border-t-2 py-10">
+        <p className="mb-3 font-bold text-xs uppercase tracking-[0.14em]">
+          Manual editing
+        </p>
         <AgentForm
           defaultModel={DEFAULT_MODEL_ID}
           initial={{
@@ -107,6 +111,17 @@ async function AgentEdit({ params }: { params: Params }) {
           }}
           models={models}
         />
+      </section>
+
+      <section className="border-foreground border-t-2 py-10">
+        <p className="mb-3 font-bold text-xs uppercase tracking-[0.14em]">
+          Chat editing
+        </p>
+        <p className="mb-4 max-w-2xl text-muted-foreground text-sm">
+          Use chat to describe changes. Review the proposed update, then approve
+          to apply. Manual editing remains available above.
+        </p>
+        <AgentEditChat agentId={agentRow.id} />
       </section>
 
       <section className="flex flex-col gap-3 border-destructive border-t-2 pt-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
