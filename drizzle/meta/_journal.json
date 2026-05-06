@@ -110,7 +110,21 @@
     {
       "idx": 15,
       "version": "7",
+      "when": 1793030400000,
+      "tag": "0014_channel_bindings",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
       "when": 1793116800000,
+      "tag": "0015_channel_team_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793203200000,
       "tag": "0015_budget_rules",
       "breakpoints": true
     }
