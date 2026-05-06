@@ -13,6 +13,11 @@ export type ChannelId = 'slack'
  * adapters translate the raw webhook payload into this shape before
  * handing it to `runChannelChatTurn`.
  *
+ * Contract: adapters should emit provider-native ids here, not SDK
+ * serialization artifacts. If an SDK prefixes or encodes thread/channel
+ * ids internally, strip that in the adapter layer before filling
+ * `externalRoutingKey` / `externalThreadKey`.
+ *
  * `externalThreadKey` is the canonical thread identifier for this
  * channel (Slack uses `channel:thread_ts`, Teams uses
  * `tenant/team/channel/replyChain`, …). The shape is opaque to the

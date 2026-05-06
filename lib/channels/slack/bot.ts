@@ -4,6 +4,11 @@ import { Chat } from 'chat'
 import { runChannelChatTurn } from '../dispatch'
 import type { IncomingChannelMessage } from '../types'
 import { SlackHybridState } from './state'
+import {
+  extractSlackTeamId,
+  extractSlackThread,
+  type SlackRawMessage,
+} from './thread-ids'
 
 /**
  * Slack chat bot built on the Vercel Chat SDK.
@@ -177,14 +182,9 @@ function registerHandlers(bot: SlackChat, isMultiWorkspace: boolean): void {
   })
 }
 
-interface SlackRawMessage {
-  team?: string
-  team_id?: string
-}
-
 function extractTeamId(message: SlackMessage): string {
   const raw = message.raw as SlackRawMessage | undefined
-  return raw?.team_id ?? raw?.team ?? ''
+  return extractSlackTeamId(raw)
 }
 
 async function handleSlackMessage(input: {
@@ -199,19 +199,22 @@ async function handleSlackMessage(input: {
     return
   }
 
-  // The Slack adapter packs `(channel, thread_ts)` into the serialized
-  // thread payload but `thread.channelId` / `thread.id` always expose
-  // them as plain strings, which is what we use as the canonical thread
-  // key in `channel_thread_conversations`.
-  const channelId = thread.channelId
-  const threadTs = thread.id
-  if (!(channelId && threadTs)) {
+  // Emit provider-native Slack ids into the shared routing layer. The
+  // fallback keeps existing behavior if the SDK ever omits raw payload
+  // fields, but we do not want `slack:`-prefixed SDK ids to leak into
+  // `agent_channel_bindings`.
+  const slackThread = extractSlackThread(
+    thread,
+    message.raw as SlackRawMessage | undefined
+  )
+  if (!slackThread) {
     console.warn('[slack] thread missing slack ids; skipping', {
-      channelId,
-      threadTs,
+      channelId: thread.channelId,
+      threadId: thread.id,
     })
     return
   }
+  const { channelId, threadTs } = slackThread
 
   const slackTeamId = extractTeamId(message)
   if (isMultiWorkspace && !slackTeamId) {
