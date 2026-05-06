@@ -67,6 +67,8 @@ export async function handleHeartbeat(input: {
 }): Promise<{ pending: PendingWrites; runId: string }> {
   const { agentId } = input
   const mode = input.mode ?? 'normal'
+  const nowIso = input.scheduledAt ?? new Date().toISOString()
+  const reflectionLocalDate = input.localDate ?? nowIso.slice(0, 10)
 
   const { runId } = await beginHeartbeatRun({ agentId })
 
@@ -93,6 +95,11 @@ export async function handleHeartbeat(input: {
       runId,
     })
     if (userId === BUDGET_EXCEEDED) {
+      await markBudgetSkippedRunCompleted({
+        agentId,
+        localDate: reflectionLocalDate,
+        mode,
+      })
       return { pending: createPendingWrites(), runId }
     }
 
@@ -134,11 +141,10 @@ export async function handleHeartbeat(input: {
       mode: meta.stepLimitMode,
       custom: meta.stepLimitCustom,
     } as const
-    const nowIso = input.scheduledAt ?? new Date().toISOString()
     const kickoff =
       mode === 'reflection'
         ? buildReflectionKickoff({
-            localDate: input.localDate ?? nowIso.slice(0, 10),
+            localDate: reflectionLocalDate,
             manual: input.manual ?? false,
             nowIso,
             previousIso,
@@ -187,14 +193,11 @@ export async function handleHeartbeat(input: {
         ? activityMessage(mode, 'Completed after reaching the step limit')
         : undefined
     )
-    if (mode === 'reflection') {
-      await markReflectionCompleted({
-        agentId,
-        localDate: input.localDate ?? nowIso.slice(0, 10),
-      })
-    } else {
-      await markHeartbeatCompleted(agentId)
-    }
+    await markRunCompleted({
+      agentId,
+      localDate: reflectionLocalDate,
+      mode,
+    })
 
     return { pending, runId }
   } catch (err) {
@@ -288,6 +291,37 @@ async function markHeartbeatCompleted(agentId: string): Promise<void> {
       updatedAt: new Date(),
     })
     .where(eq(agentTable.id, agentId))
+}
+
+async function markBudgetSkippedRunCompleted(input: {
+  agentId: string
+  localDate: string
+  mode: 'normal' | 'reflection'
+}): Promise<void> {
+  if (input.mode !== 'reflection') {
+    return
+  }
+  // Reflection due checks key off these fields, so a budget-skipped
+  // reflection still needs to count as today's completed attempt.
+  await markReflectionCompleted({
+    agentId: input.agentId,
+    localDate: input.localDate,
+  })
+}
+
+async function markRunCompleted(input: {
+  agentId: string
+  localDate: string
+  mode: 'normal' | 'reflection'
+}): Promise<void> {
+  if (input.mode === 'reflection') {
+    await markReflectionCompleted({
+      agentId: input.agentId,
+      localDate: input.localDate,
+    })
+    return
+  }
+  await markHeartbeatCompleted(input.agentId)
 }
 
 async function markReflectionCompleted(input: {
