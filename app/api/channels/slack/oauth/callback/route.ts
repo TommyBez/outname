@@ -1,7 +1,7 @@
 import { headers } from 'next/headers'
 import { type NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { getSlackAdapter } from '@/lib/channels/slack/bot'
+import { getSlackAdapter, getSlackBot } from '@/lib/channels/slack/bot'
 import { withInstallContext } from '@/lib/channels/slack/state'
 
 const TRAILING_SLASH = /\/$/
@@ -74,6 +74,9 @@ export async function GET(request: NextRequest): Promise<Response> {
   const redirectUri = `${baseUrl.replace(TRAILING_SLASH, '')}/api/channels/slack/oauth/callback`
 
   try {
+    // OAuth uses the adapter directly, so we must initialize the Chat
+    // bundle first. Webhook entrypoints do this automatically.
+    await getSlackBot().initialize()
     await withInstallContext({ userId: session.user.id }, () =>
       getSlackAdapter().handleOAuthCallback(request, { redirectUri })
     )
