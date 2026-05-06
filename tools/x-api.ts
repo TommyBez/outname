@@ -17,6 +17,14 @@ const X_ENDPOINT_GUIDE =
   'Use relative X API v2 paths such as /2/users/by/username/xdevelopers, /2/tweets/search/recent, /2/tweets, or /2/dm_conversations. Mutating calls require confirmMutation=true. Long-lived streaming response endpoints are not supported.'
 
 const xApiMethodSchema = z.enum(['GET', 'POST', 'PATCH', 'PUT', 'DELETE'])
+const xApiConfigSchema = z.object({
+  readOnly: z
+    .boolean()
+    .default(false)
+    .describe(
+      'When true, only read operations are allowed. Non-GET methods are blocked.'
+    ),
+})
 
 const xApiQueryValueSchema = z.union([z.string(), z.number(), z.boolean()])
 
@@ -56,6 +64,7 @@ const xApiRequestInputSchema = z.object({
 
 type XApiHttpMethod = z.infer<typeof xApiMethodSchema>
 type XApiRequestInput = z.infer<typeof xApiRequestInputSchema>
+type XApiConfig = z.infer<typeof xApiConfigSchema>
 
 function normalizeXApiPath(path: string): string {
   const trimmed = path.trim()
@@ -87,7 +96,8 @@ function isMutationMethod(method: XApiHttpMethod): boolean {
   return method !== 'GET'
 }
 
-const xApiSafetyPolicy: ToolPolicy<XApiRequestInput, Record<string, never>> = ({
+const xApiSafetyPolicy: ToolPolicy<XApiRequestInput, XApiConfig> = ({
+  config,
   input,
 }) => {
   if (input.method === 'GET' && input.body !== undefined) {
@@ -124,6 +134,13 @@ const xApiSafetyPolicy: ToolPolicy<XApiRequestInput, Record<string, never>> = ({
       ok: false,
       message:
         'This X API call can mutate X state and requires confirmMutation=true.',
+    }
+  }
+  if (config.readOnly && isMutationMethod(input.method)) {
+    return {
+      ok: false,
+      message:
+        'This tool attachment is configured as read-only. Only GET requests are allowed.',
     }
   }
 
@@ -184,6 +201,7 @@ export const xApiRequestTool = defineApiPassthroughTool({
   displayName: 'X API · Request',
   description: `Call authenticated X API v2 endpoints on api.x.com for posts, users, DMs, lists, trends, spaces, communities, media metadata, and related resources. ${X_ENDPOINT_GUIDE}`,
   provider: 'x',
+  configSchema: xApiConfigSchema,
   inputSchema: xApiRequestInputSchema,
   policies: [xApiSafetyPolicy],
   toRequest({ input }) {
