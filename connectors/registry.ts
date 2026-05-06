@@ -1,6 +1,7 @@
 import 'server-only'
 import { calcomConnector } from './calcom'
 import { parallelConnector } from './parallel'
+import { posthogConnector } from './posthog'
 import { resendConnector } from './resend'
 import { typefullyConnector } from './typefully'
 import type { Connector } from './types'
@@ -16,6 +17,7 @@ const CONNECTORS: Connector[] = [
   resendConnector,
   calcomConnector,
   parallelConnector,
+  posthogConnector,
   xConnector,
   typefullyConnector,
   vercelConnector,
