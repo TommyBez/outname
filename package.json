@@ -105,6 +105,7 @@
     "dev": "next dev",
     "dev:fresh": "pnpm run reset:workflow && next dev",
     "build": "next build",
+    "build:vercel": "pnpm db:migrate && pnpm build",
     "start": "next start",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
