@@ -65,6 +65,9 @@ function buildBundle(): SlackBotBundle {
   const clientSecret = process.env.SLACK_CLIENT_SECRET
   const isMultiWorkspace = Boolean(clientId && clientSecret)
 
+  // Passing any config object disables the adapter's zero-config auth
+  // fallback, so single-workspace mode must wire the env bot token
+  // explicitly instead of relying on `SLACK_BOT_TOKEN` auto-detection.
   const adapter = createSlackAdapter(
     isMultiWorkspace
       ? {
@@ -72,7 +75,10 @@ function buildBundle(): SlackBotBundle {
           clientId,
           clientSecret,
         }
-      : { userName }
+      : {
+          userName,
+          botToken: getSingleWorkspaceBotToken(),
+        }
   )
 
   const bot: SlackChat = new Chat({
@@ -100,6 +106,16 @@ function buildBundle(): SlackBotBundle {
   registerHandlers(bot, isMultiWorkspace)
 
   return { bot, adapter, isMultiWorkspace }
+}
+
+function getSingleWorkspaceBotToken(): string {
+  const botToken = process.env.SLACK_BOT_TOKEN
+  if (!botToken) {
+    throw new Error(
+      'SLACK_BOT_TOKEN must be set when Slack is configured in single-workspace mode.'
+    )
+  }
+  return botToken
 }
 
 function ensureBundle(): SlackBotBundle {
