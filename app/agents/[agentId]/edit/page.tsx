@@ -5,11 +5,13 @@ import type { AgentBudgetValues } from '@/components/agent-budget-widget'
 import { AgentEditChat } from '@/components/agent-edit-chat'
 import { AgentForm } from '@/components/agent-form'
 import { BudgetRules, type BudgetRuleView } from '@/components/budget-rules'
+import { SlackBindingsPanel } from '@/components/slack-bindings-panel'
 import { deleteAgentAction } from '@/lib/agent-actions'
 import { readLatestPendingFileWrite } from '@/lib/agent-pending-writes'
 import { DEFAULT_MODEL_ID, getAvailableModels } from '@/lib/ai-gateway-models'
 import { requireSession } from '@/lib/auth-guard'
 import { listAgentBudgetRules, sumSpendUsd } from '@/lib/budget'
+import { listSlackBindingsForAgent } from '@/lib/channels/slack-bindings-query'
 import { getCachedAgentByIdForUser, getCachedAgentMemoryFile } from '@/lib/data'
 
 type Params = Promise<{ agentId: string }>
@@ -98,6 +100,17 @@ async function AgentEdit({ params }: { params: Params }) {
             agentName={agentRow.name}
             userId={session.user.id}
           />
+        </Suspense>
+      </section>
+
+      <section className="border-foreground border-t-2 py-10">
+        <h2 className="swiss-label mb-6 text-accent">Slack</h2>
+        <p className="mb-6 max-w-2xl text-muted-foreground text-sm">
+          Route incoming Slack messages to this agent. Install the app once per
+          workspace, then bind a channel, DM, or workspace fallback.
+        </p>
+        <Suspense fallback={<div className="h-32" />}>
+          <AgentSlackSection agentId={agentRow.id} userId={session.user.id} />
         </Suspense>
       </section>
 
@@ -213,6 +226,34 @@ function summarizeBudgetRules(
     }
   }
   return result
+}
+
+async function AgentSlackSection({
+  agentId,
+  userId,
+}: {
+  agentId: string
+  userId: string
+}) {
+  const { bindings, installations } = await listSlackBindingsForAgent(
+    agentId,
+    userId
+  )
+  const isMultiWorkspace = Boolean(
+    process.env.SLACK_CLIENT_ID && process.env.SLACK_CLIENT_SECRET
+  )
+  const isSingleWorkspace = Boolean(
+    process.env.SLACK_BOT_TOKEN && process.env.SLACK_SIGNING_SECRET
+  )
+  return (
+    <SlackBindingsPanel
+      agentId={agentId}
+      bindings={bindings}
+      installations={installations}
+      isConfigured={isMultiWorkspace || isSingleWorkspace}
+      isMultiWorkspace={isMultiWorkspace}
+    />
+  )
 }
 
 async function AgentBudgetSection({

@@ -1,5 +1,5 @@
 import { headers } from 'next/headers'
-import { NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 
 const SLACK_AUTHORIZE_URL = 'https://slack.com/oauth/v2/authorize'
@@ -29,21 +29,22 @@ const DEFAULT_BOT_SCOPES = [
  * we sign it with the Better Auth session so a leaked install link
  * can't be replayed against a different account.
  */
-export async function GET(): Promise<Response> {
+export async function GET(request: NextRequest): Promise<Response> {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+    const target = new URL('/login', request.url)
+    return NextResponse.redirect(target)
   }
 
   const clientId = process.env.SLACK_CLIENT_ID
   if (!clientId) {
-    return NextResponse.json(
-      {
-        error:
-          'SLACK_CLIENT_ID is not configured. Multi-workspace install is disabled.',
-      },
-      { status: 412 }
+    const target = new URL('/settings', request.url)
+    target.searchParams.set('connection', 'error')
+    target.searchParams.set(
+      'reason',
+      'Slack multi-workspace install is not configured on this deployment.'
     )
+    return NextResponse.redirect(target)
   }
 
   const baseUrl = process.env.BETTER_AUTH_URL
