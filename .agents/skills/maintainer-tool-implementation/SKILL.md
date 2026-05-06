@@ -84,6 +84,8 @@ Every important input and config field should have a `describe(...)` string. The
 
 If the tool can create, cancel, delete, send, mutate, or otherwise do something irreversible, add an explicit safety policy or confirmation flag instead of trusting the model to be cautious.
 
+When a provider tool can be used for both read and write operations, prefer a `configSchema` boolean like `readOnly` (default `true`) and enforce it in tool policies so attachments can opt into safe read-only mode by default.
+
 ### 6. Keep failures crisp
 
 - Use `toolError(...)` for expected failures
