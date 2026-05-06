@@ -400,6 +400,31 @@ export async function upsertBudgetRule(
   return inserted
 }
 
+/**
+ * Remove the budget rule for the given `(user, scope, period)`, if any.
+ * Used by the chat-driven editor when the operator clears a previously
+ * configured cap. Returns `true` if a row was deleted.
+ */
+export async function deleteBudgetRuleForScope(input: {
+  userId: string
+  agentId: string | null
+  period: BudgetPeriod
+}): Promise<boolean> {
+  const filter = input.agentId
+    ? and(
+        eq(budgetRule.userId, input.userId),
+        eq(budgetRule.agentId, input.agentId),
+        eq(budgetRule.period, input.period)
+      )
+    : and(
+        eq(budgetRule.userId, input.userId),
+        isNull(budgetRule.agentId),
+        eq(budgetRule.period, input.period)
+      )
+  const deleted = await db.delete(budgetRule).where(filter).returning()
+  return deleted.length > 0
+}
+
 export interface BudgetSummaryEntry {
   enabled: boolean
   limitUsd: number

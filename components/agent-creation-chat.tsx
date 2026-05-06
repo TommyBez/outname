@@ -11,12 +11,16 @@ import {
   BotIcon,
   CheckIcon,
   CircleDashedIcon,
-  WalletIcon,
   XIcon,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import {
+  type AgentBudgetValues,
+  AgentBudgetWidget,
+  formatBudgetSummary,
+} from '@/components/agent-budget-widget'
 import {
   Conversation,
   ConversationContent,
@@ -589,31 +593,6 @@ function isProposeBudgetToolPart(part: UIMessage['parts'][number]): boolean {
   return part.type === 'tool-propose_agent_budget'
 }
 
-interface BudgetDraft {
-  daily: string
-  monthly: string
-  weekly: string
-}
-
-function toDraft(value: number | null | undefined): string {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
-    return ''
-  }
-  return value.toString()
-}
-
-function parseDraft(value: string): number | null {
-  const trimmed = value.trim()
-  if (!trimmed) {
-    return null
-  }
-  const n = Number(trimmed)
-  if (!Number.isFinite(n) || n <= 0) {
-    return null
-  }
-  return n
-}
-
 function ProposeBudgetCard({
   part,
   sendMessage,
@@ -621,13 +600,12 @@ function ProposeBudgetCard({
   part: ProposeBudgetToolPart
   sendMessage: SendMessageFn
 }) {
-  const proposed = part.output?.proposed ?? part.input ?? null
+  const proposed: AgentBudgetValues = {
+    daily: part.output?.proposed.daily ?? part.input?.daily ?? null,
+    weekly: part.output?.proposed.weekly ?? part.input?.weekly ?? null,
+    monthly: part.output?.proposed.monthly ?? part.input?.monthly ?? null,
+  }
   const rationale = part.output?.rationale ?? part.input?.rationale ?? ''
-  const [draft, setDraft] = useState<BudgetDraft>(() => ({
-    daily: toDraft(proposed?.daily ?? null),
-    weekly: toDraft(proposed?.weekly ?? null),
-    monthly: toDraft(proposed?.monthly ?? null),
-  }))
   const [submitted, setSubmitted] = useState(false)
 
   if (part.state === 'input-streaming' || part.state === 'input-available') {
@@ -657,11 +635,7 @@ function ProposeBudgetCard({
     return null
   }
 
-  function submit(values: {
-    daily: number | null
-    weekly: number | null
-    monthly: number | null
-  }) {
+  function submit(values: AgentBudgetValues) {
     if (submitted) {
       return
     }
@@ -672,135 +646,15 @@ function ProposeBudgetCard({
     })
   }
 
-  function onApply() {
-    submit({
-      daily: parseDraft(draft.daily),
-      weekly: parseDraft(draft.weekly),
-      monthly: parseDraft(draft.monthly),
-    })
-  }
-
-  function onSkip() {
-    submit({ daily: null, weekly: null, monthly: null })
-  }
-
-  const dailyValue = parseDraft(draft.daily)
-  const weeklyValue = parseDraft(draft.weekly)
-  const monthlyValue = parseDraft(draft.monthly)
-  const allEmpty =
-    dailyValue === null && weeklyValue === null && monthlyValue === null
-
   return (
-    <section className="w-full border-2 border-foreground bg-background">
-      <div className="flex items-center gap-2 border-foreground border-b-2 bg-accent px-4 py-3">
-        <WalletIcon className="size-4" />
-        <p className="font-bold text-xs uppercase tracking-[0.18em]">
-          Set agent budget
-        </p>
-      </div>
-      <div className="space-y-4 p-4">
-        {rationale && (
-          <p className="text-muted-foreground text-sm">{rationale}</p>
-        )}
-        <p className="text-muted-foreground text-xs">
-          USD spend caps for this agent. Sub-agent invocations roll into these
-          numbers. External-service tool costs are not counted. Leave a field
-          empty to skip that period.
-        </p>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <BudgetField
-            disabled={submitted}
-            label="Daily"
-            onChange={(value) => setDraft((d) => ({ ...d, daily: value }))}
-            value={draft.daily}
-          />
-          <BudgetField
-            disabled={submitted}
-            label="Weekly"
-            onChange={(value) => setDraft((d) => ({ ...d, weekly: value }))}
-            value={draft.weekly}
-          />
-          <BudgetField
-            disabled={submitted}
-            label="Monthly"
-            onChange={(value) => setDraft((d) => ({ ...d, monthly: value }))}
-            value={draft.monthly}
-          />
-        </div>
-        {submitted ? (
-          <p className="font-bold text-[11px] text-muted-foreground uppercase tracking-[0.16em]">
-            Submitted ✓
-          </p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            <Button disabled={allEmpty} onClick={onApply} type="button">
-              <CheckIcon className="size-4" />
-              Apply budget
-            </Button>
-            <Button onClick={onSkip} type="button" variant="outline">
-              <XIcon className="size-4" />
-              Skip budget
-            </Button>
-          </div>
-        )}
-      </div>
-    </section>
+    <AgentBudgetWidget
+      onApply={submit}
+      onSkip={() => submit({ daily: null, weekly: null, monthly: null })}
+      proposed={proposed}
+      rationale={rationale}
+      submitted={submitted}
+    />
   )
-}
-
-function BudgetField({
-  disabled,
-  label,
-  onChange,
-  value,
-}: {
-  disabled?: boolean
-  label: string
-  onChange: (value: string) => void
-  value: string
-}) {
-  return (
-    <label className="flex flex-col gap-1">
-      <span className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
-        {label} (USD)
-      </span>
-      <input
-        className="h-10 border-2 border-foreground bg-background px-2 font-mono text-sm outline-none focus:border-accent disabled:opacity-60"
-        disabled={disabled}
-        inputMode="decimal"
-        min="0"
-        onChange={(event) => onChange(event.target.value)}
-        placeholder="—"
-        step="0.01"
-        type="number"
-        value={value}
-      />
-    </label>
-  )
-}
-
-function formatBudgetSummary(values: {
-  daily: number | null
-  weekly: number | null
-  monthly: number | null
-}): string {
-  const lines: string[] = []
-  if (values.daily) {
-    lines.push(`- daily: $${values.daily.toFixed(2)}`)
-  } else {
-    lines.push('- daily: none')
-  }
-  if (values.weekly) {
-    lines.push(`- weekly: $${values.weekly.toFixed(2)}`)
-  } else {
-    lines.push('- weekly: none')
-  }
-  if (values.monthly) {
-    lines.push(`- monthly: $${values.monthly.toFixed(2)}`)
-  } else {
-    lines.push('- monthly: none')
-  }
-  return lines.join('\n')
 }
 
 function scheduleLabel(schedule: AgentCreationRequest['heartbeat']): string {

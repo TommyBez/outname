@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
+import type { AgentBudgetValues } from '@/components/agent-budget-widget'
 import { AgentEditChat } from '@/components/agent-edit-chat'
 import { AgentForm } from '@/components/agent-form'
 import { BudgetRules, type BudgetRuleView } from '@/components/budget-rules'
@@ -47,6 +48,7 @@ async function AgentEdit({ params }: { params: Params }) {
     agentsMdRow,
     userMdRow,
     userMdFile,
+    budgetRules,
   ] = await Promise.all([
     getCachedAgentByIdForUser(agentId, session.user.id),
     getAvailableModels(),
@@ -55,6 +57,7 @@ async function AgentEdit({ params }: { params: Params }) {
     readLatestPendingFileWrite({ agentId, path: 'AGENTS.md' }),
     readLatestPendingFileWrite({ agentId, path: 'USER.md' }),
     getCachedAgentMemoryFile({ agentId, path: 'USER.md' }),
+    listAgentBudgetRules({ userId: session.user.id, agentId }),
   ])
   if (!agentRow) {
     notFound()
@@ -63,6 +66,8 @@ async function AgentEdit({ params }: { params: Params }) {
     userMdRow && (!userMdFile || userMdRow.enqueuedAt >= userMdFile.updatedAt)
       ? userMdRow.content
       : (userMdFile?.content ?? '')
+
+  const currentBudget = summarizeBudgetRules(budgetRules)
 
   async function remove() {
     'use server'
@@ -136,6 +141,7 @@ async function AgentEdit({ params }: { params: Params }) {
         </p>
         <AgentEditChat
           agentId={agentRow.id}
+          currentBudget={currentBudget}
           currentMarkdownFiles={{
             identityCard: identityRow?.content ?? '',
             instructions: agentsMdRow?.content ?? '',
@@ -180,6 +186,33 @@ async function AgentEdit({ params }: { params: Params }) {
       </section>
     </>
   )
+}
+
+function summarizeBudgetRules(
+  rules: Awaited<ReturnType<typeof listAgentBudgetRules>>
+): AgentBudgetValues {
+  const result: AgentBudgetValues = {
+    daily: null,
+    weekly: null,
+    monthly: null,
+  }
+  for (const rule of rules) {
+    if (!rule.enabled) {
+      continue
+    }
+    const limit = Number(rule.limitUsd)
+    if (!Number.isFinite(limit) || limit <= 0) {
+      continue
+    }
+    if (rule.period === 'daily') {
+      result.daily = limit
+    } else if (rule.period === 'weekly') {
+      result.weekly = limit
+    } else if (rule.period === 'monthly') {
+      result.monthly = limit
+    }
+  }
+  return result
 }
 
 async function AgentBudgetSection({
