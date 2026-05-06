@@ -1,0 +1,35 @@
+name: Cleanup Neon preview branch
+
+on:
+  pull_request:
+    types: [closed]
+  delete:
+
+jobs:
+  cleanup_on_merge:
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete merged preview branch
+        uses: neondatabase/delete-branch-action@v3
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch: preview/${{ github.event.pull_request.head.ref }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+
+  cleanup_on_branch_delete:
+    if: >
+      github.event_name == 'delete' &&
+      github.event.ref_type == 'branch' &&
+      github.event.ref != 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete deleted-branch preview branch
+        uses: neondatabase/delete-branch-action@v3
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch: preview/${{ github.event.ref }}
+          api_key: ${{ secrets.NEON_API_KEY }}

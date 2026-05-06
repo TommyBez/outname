@@ -324,11 +324,13 @@ These values are used as credentials in the login UI; they are not required by t
 ```bash
 pnpm dev          # Start the Next.js dev server
 pnpm build        # Create a production build
+pnpm build:vercel # Run Drizzle migrations, then create the Vercel build
 pnpm start        # Start the production server after building
 pnpm check        # Run Ultracite/Biome checks
 pnpm fix          # Auto-fix formatting and lint issues
 pnpm db:generate  # Generate Drizzle migrations from schema changes
 pnpm db:migrate   # Apply generated migrations
+pnpm db:migrate:deploy # Baseline-aware deploy migration runner
 pnpm db:push      # Push schema changes directly to the database
 pnpm db:studio    # Open Drizzle Studio
 ```
@@ -338,9 +340,67 @@ pnpm db:studio    # Open Drizzle Studio
 1. Update `lib/db/schema.ts`.
 2. Generate a migration with `pnpm db:generate`.
 3. Review the generated SQL in `drizzle/`.
-4. Apply it with `pnpm db:migrate`.
+4. Apply it locally with `pnpm db:migrate`.
+
+This repository uses a clean Drizzle baseline:
+
+- `drizzle/0000_baseline.sql` captures the current schema as the first checked-in
+  migration.
+- Existing databases that already match that schema should **not** run the
+  baseline DDL again.
+- The deploy runner `pnpm db:migrate:deploy` detects that case, records the
+  baseline as already adopted in `drizzle.__drizzle_migrations`, and then runs
+  normal Drizzle migrations for every later change.
 
 For short-lived development databases, `pnpm db:push` can apply schema changes directly. If Drizzle Kit prompts for confirmation in a non-interactive shell, run `pnpm drizzle-kit push --force` or use an interactive terminal.
+
+## Vercel + Neon preview branching
+
+This project is designed to run Drizzle migrations during Vercel builds against
+the branch-specific `DATABASE_URL` injected by the Neon integration:
+
+- Preview deployments use the matching Neon preview branch (`preview/<git-branch>`).
+- Production deployments use the Neon `main` branch.
+- Vercel should use `pnpm build:vercel` as the project Build Command so every
+  deploy runs `pnpm db:migrate:deploy` before `next build`.
+- On the very first deploy to an already-populated database, the deploy runner
+  adopts `0000_baseline.sql` into `drizzle.__drizzle_migrations` instead of
+  replaying that baseline DDL. All later migrations run normally through
+  Drizzle.
+
+### Required Vercel project settings
+
+In Vercel, confirm the linked Neon storage resource is configured like this:
+
+1. Neon Postgres is connected to `Development`, `Preview`, and `Production`.
+2. Preview Branching is enabled.
+3. Resource readiness is enabled so Vercel waits for the preview branch before
+   building.
+4. Under `Settings -> Security -> Deployment Retention Policy`, lower the
+   `Preview deployments` retention window from the long default so orphaned
+   preview deployments do not keep Neon branches around for months.
+
+### Required GitHub Actions configuration
+
+The cleanup workflow in `.github/workflows/neon-preview-cleanup.yml` deletes the
+matching Neon preview branch after a PR is merged to `main`, and also when a
+remote branch is deleted manually. It requires:
+
+- A repository Actions variable named `NEON_PROJECT_ID`
+- A repository Actions secret named `NEON_API_KEY`
+
+`NEON_API_KEY` can be created manually in the Neon console or provisioned via
+the Neon GitHub integration.
+
+### Deployment and cutover notes
+
+- Use `pnpm db:migrate:deploy` for deployed environments. Do not use
+  `pnpm db:push` in Vercel builds.
+- If production is being moved from an older Neon or non-Vercel-managed
+  database, verify the production `DATABASE_URL` already points at the
+  Vercel-managed Neon project before relying on preview branching and cleanup.
+- Deleting a Neon preview branch intentionally breaks old preview deployments
+  for that branch, which is expected after the PR is closed or merged.
 
 ## Development notes
 
