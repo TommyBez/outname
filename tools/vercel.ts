@@ -44,7 +44,7 @@ const vercelRequestInputSchema = z.object({
     .boolean()
     .default(false)
     .describe(
-      'Required true for any non-GET request when readOnly is disabled.'
+      'Local safety confirmation flag (not sent to Vercel). Required true for any non-GET request when readOnly is disabled.'
     ),
 })
 
@@ -138,7 +138,7 @@ export const vercelRequestTool = defineApiPassthroughTool({
   category: 'deployment',
   displayName: 'Vercel · Request',
   description:
-    'Call authenticated Vercel REST API endpoints. Supports read-only attachment mode for safe inspection workflows.',
+    'Call authenticated Vercel REST API endpoints. Supports read-only attachment mode and explicit local safety confirmation for write operations.',
   provider: 'vercel',
   configSchema: vercelConfigSchema,
   inputSchema: vercelRequestInputSchema,
@@ -165,6 +165,7 @@ export const vercelRequestTool = defineApiPassthroughTool({
     return toolSuccess({
       status: response.status,
       readOnlyEnforced: config.readOnly,
+      confirmIrreversibleChecked: input.method !== 'GET',
       method: input.method,
       path: normalizeVercelPath(input.path),
       body: parseResponseBody(
