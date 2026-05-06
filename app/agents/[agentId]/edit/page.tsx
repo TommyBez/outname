@@ -121,7 +121,30 @@ async function AgentEdit({ params }: { params: Params }) {
           Use chat to describe changes. Review the proposed update, then approve
           to apply. Manual editing remains available above.
         </p>
-        <AgentEditChat agentId={agentRow.id} />
+        <AgentEditChat
+          agentId={agentRow.id}
+          currentMarkdownFiles={{
+            identityCard: identityRow?.content ?? '',
+            instructions: agentsMdRow?.content ?? '',
+            soul: soulRow?.content ?? '',
+            userProfile,
+          }}
+          currentSettings={{
+            heartbeatEnabled: agentRow.heartbeatEnabled,
+            heartbeatIntervalMinutes: agentRow.heartbeatIntervalMinutes,
+            model: agentRow.model,
+            name: agentRow.name,
+            reflectionEnabled: agentRow.reflectionEnabled,
+            reflectionIntervalMinutes: agentRow.reflectionIntervalMinutes,
+            stepLimitCustom: agentRow.stepLimitCustom,
+            stepLimitMode: (agentRow.stepLimitMode ?? 'medium') as
+              | 'custom'
+              | 'grind'
+              | 'high'
+              | 'low'
+              | 'medium',
+          }}
+        />
       </section>
 
       <section className="flex flex-col gap-3 border-destructive border-t-2 pt-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
