@@ -7,6 +7,7 @@ import { resolveToolPlan } from './steps/resolve-tool-plan'
 import { createExecTools } from './tools/exec-tools'
 import { createMemoryTools } from './tools/memory-tools'
 import { createPendingWrites, type PendingWrites } from './tools/pending-writes'
+import { createSkillTools } from './tools/skill-tools'
 
 /**
  * One event's agent: DB load, composed system prompt from sandbox persona
@@ -106,9 +107,11 @@ export async function buildAgent(
 
   const memoryTools = createMemoryTools({ agentId, pending })
   const execTools = createExecTools({ agentId, pending })
+  const skillTools = createSkillTools(agentId)
   const tools = {
     ...memoryTools,
     ...execTools,
+    ...skillTools,
     ...attached.tools,
   }
 
