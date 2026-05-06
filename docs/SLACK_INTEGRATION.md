@@ -174,16 +174,35 @@ needed.
 
 ## Installing a workspace
 
-In multi-workspace mode the operator visits
+In multi-workspace mode the operator opens any agent's **Configure →
+Slack** section in the dashboard and clicks **Install Slack app** (or
+**Add workspace** if a workspace is already installed). They are
+redirected through the Slack consent screen, and the callback persists
+the encrypted bot token under their user id before redirecting back to
+the dashboard with a success notice.
+
+The same flow can be triggered directly via
 `https://<your-deployment>/api/channels/slack/install` while logged
-into the dashboard. They are redirected through the Slack consent
-screen, and the callback persists the encrypted bot token under their
-user id.
+into the dashboard.
 
 ## Binding an agent to Slack
 
-Run a one-off script (e.g. via `tsx`) to create a routing binding. The
-helper is exported from `lib/channels/bindings.ts`:
+The dashboard exposes the binding UI on every agent at **Configure →
+Slack**. From there you can:
+
+- pick a workspace from the workspaces you have installed (the dropdown
+  is read-only for single-workspace deployments — it always uses the
+  empty `teamId`);
+- choose a routing kind — `channel`, `dm`, or `default` (the
+  workspace-wide fallback);
+- paste the Slack channel id (`C…`) or user id (`U…`).
+
+Existing bindings are listed alongside their workspace and can be
+removed with one click. Bindings whose workspace was uninstalled are
+marked **Workspace not installed** so they can be cleaned up.
+
+The same operations are still available programmatically through
+`lib/channels/bindings.ts` for scripting:
 
 ```ts
 import { upsertAgentChannelBinding } from '@/lib/channels/bindings'

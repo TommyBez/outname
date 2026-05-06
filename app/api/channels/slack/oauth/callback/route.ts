@@ -32,27 +32,36 @@ export async function GET(request: NextRequest): Promise<Response> {
   const stateParam = url.searchParams.get('state')
   const error = url.searchParams.get('error')
   if (error) {
-    return NextResponse.json({ error: `slack: ${error}` }, { status: 400 })
+    return redirectToSettings(request, {
+      connection: 'error',
+      reason: `slack: ${error}`,
+    })
   }
   if (!stateParam) {
-    return NextResponse.json({ error: 'missing state' }, { status: 400 })
+    return redirectToSettings(request, {
+      connection: 'error',
+      reason: 'missing state',
+    })
   }
 
   const decoded = decodeOAuthState(stateParam)
   if (!decoded) {
-    return NextResponse.json({ error: 'invalid state' }, { status: 400 })
+    return redirectToSettings(request, {
+      connection: 'error',
+      reason: 'invalid state',
+    })
   }
   if (decoded.userId !== session.user.id) {
-    return NextResponse.json(
-      { error: 'state does not match session user' },
-      { status: 401 }
-    )
+    return redirectToSettings(request, {
+      connection: 'error',
+      reason: 'state does not match session user',
+    })
   }
   if (decoded.sessionToken !== session.session.token) {
-    return NextResponse.json(
-      { error: 'state does not match active session' },
-      { status: 401 }
-    )
+    return redirectToSettings(request, {
+      connection: 'error',
+      reason: 'state does not match active session',
+    })
   }
 
   const baseUrl = process.env.BETTER_AUTH_URL
@@ -65,22 +74,31 @@ export async function GET(request: NextRequest): Promise<Response> {
   const redirectUri = `${baseUrl.replace(TRAILING_SLASH, '')}/api/channels/slack/oauth/callback`
 
   try {
-    const { teamId } = await withInstallContext(
-      { userId: session.user.id },
-      () => getSlackAdapter().handleOAuthCallback(request, { redirectUri })
+    await withInstallContext({ userId: session.user.id }, () =>
+      getSlackAdapter().handleOAuthCallback(request, { redirectUri })
     )
-    return NextResponse.json({
-      ok: true,
-      teamId,
-      message: `Slack workspace ${teamId} installed for user ${session.user.id}.`,
+    return redirectToSettings(request, {
+      connection: 'connected',
+      provider: 'slack',
     })
   } catch (err) {
     console.error('[slack-oauth] handleOAuthCallback failed', err)
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'oauth failed' },
-      { status: 500 }
-    )
+    return redirectToSettings(request, {
+      connection: 'error',
+      reason: err instanceof Error ? err.message : 'oauth failed',
+    })
   }
+}
+
+function redirectToSettings(
+  request: NextRequest,
+  params: Record<string, string>
+): Response {
+  const target = new URL('/settings', request.url)
+  for (const [key, value] of Object.entries(params)) {
+    target.searchParams.set(key, value)
+  }
+  return NextResponse.redirect(target)
 }
 
 function decodeOAuthState(
