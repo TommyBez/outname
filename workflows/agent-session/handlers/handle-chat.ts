@@ -95,6 +95,16 @@ export async function handleChat(input: {
       await finishUiMessageStream(replyToken).catch(() => {
         // Best-effort: closing the stream is informational here.
       })
+      await persistAssistantTurn({
+        agentId,
+        conversationId,
+        uiMessages: [
+          createAssistantNoticeMessage(`budget_refusal_${replyToken}`, message),
+        ],
+      })
+      await emitActivity(sessionRunId, 'Chat: Budget refusal saved', {
+        conversationId,
+      })
       return { pending: createPendingWrites() }
     }
   }
@@ -257,6 +267,14 @@ function formatStepLimitStreamText(
       (part) => part.type === 'text' && part.text.trim().length > 0
     )
   return `${hasAssistantText ? '\n\n' : ''}${notice}`
+}
+
+function createAssistantNoticeMessage(id: string, notice: string): UIMessage {
+  return {
+    id,
+    role: 'assistant',
+    parts: [{ type: 'text', text: notice }],
+  }
 }
 
 async function writeAssistantNotice(
