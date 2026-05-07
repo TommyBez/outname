@@ -4,12 +4,14 @@ import {
   Brain,
   Check,
   FileText,
+  Folder,
   Info,
   MessageSquarePlus,
   MoreHorizontal,
   Pencil,
   Settings as SettingsIcon,
   Trash2,
+  Wrench,
   X,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -148,83 +150,117 @@ export function AgentSidebarWorkspace({
 
       <SidebarGroupContent>
         {isChatCapable ? (
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname === `/agents/${agentId}/about`}
-                tooltip="About"
-              >
-                <Link href={`/agents/${agentId}/about`}>
-                  <Info aria-hidden />
-                  <span>About</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname === `/agents/${agentId}/edit`}
-                tooltip="Configure"
-              >
-                <Link href={`/agents/${agentId}/edit`}>
-                  <SettingsIcon aria-hidden />
-                  <span>Configure</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname === `/agents/${agentId}/timeline`}
-                tooltip="Timeline"
-              >
-                <Link href={`/agents/${agentId}/timeline`}>
-                  <FileText aria-hidden />
-                  <span>Timeline</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname === `/agents/${agentId}/dreams`}
-                tooltip="DREAMS"
-              >
-                <Link href={`/agents/${agentId}/dreams`}>
-                  <Brain aria-hidden />
-                  <span>DREAMS</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                className="text-muted-foreground hover:text-foreground"
-                tooltip="New chat"
-              >
-                <Link href={`/agents/${agentId}/chat/new`}>
-                  <MessageSquarePlus aria-hidden />
-                  <span>New chat</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+          <>
+            <SectionLabel>Workspace</SectionLabel>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  className="text-muted-foreground hover:text-foreground"
+                  tooltip="New chat"
+                >
+                  <Link href={`/agents/${agentId}/chat/new`}>
+                    <MessageSquarePlus aria-hidden />
+                    <span>New chat</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
 
-            {conversations.length === 0 ? (
-              <li className="px-2 py-3 text-center font-mono text-[10px] text-muted-foreground/70 uppercase tracking-[0.15em]">
-                No conversations yet
-              </li>
-            ) : (
-              conversations.map((conversation) => (
-                <ConversationRow
-                  agentId={agentId}
-                  conversation={conversation}
-                  isActive={isActive(pathname, agentId, conversation.id)}
-                  key={conversation.id}
-                />
-              ))
-            )}
-          </SidebarMenu>
+            <SectionLabel>Manage</SectionLabel>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === `/agents/${agentId}/about`}
+                  tooltip="Overview"
+                >
+                  <Link href={`/agents/${agentId}/about`}>
+                    <Info aria-hidden />
+                    <span>Overview</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === `/agents/${agentId}/edit`}
+                  tooltip="Settings"
+                >
+                  <Link href={`/agents/${agentId}/edit`}>
+                    <SettingsIcon aria-hidden />
+                    <span>Settings</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === `/agents/${agentId}/tools`}
+                  tooltip="Tools"
+                >
+                  <Link href={`/agents/${agentId}/tools`}>
+                    <Wrench aria-hidden />
+                    <span>Tools</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === `/agents/${agentId}/files`}
+                  tooltip="Files"
+                >
+                  <Link href={`/agents/${agentId}/files`}>
+                    <Folder aria-hidden />
+                    <span>Files</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === `/agents/${agentId}/timeline`}
+                  tooltip="Timeline"
+                >
+                  <Link href={`/agents/${agentId}/timeline`}>
+                    <FileText aria-hidden />
+                    <span>Timeline</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === `/agents/${agentId}/dreams`}
+                  tooltip="DREAMS"
+                >
+                  <Link href={`/agents/${agentId}/dreams`}>
+                    <Brain aria-hidden />
+                    <span>DREAMS</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+
+            <SectionLabel>Conversations</SectionLabel>
+            <SidebarMenu>
+              {conversations.length === 0 ? (
+                <li className="px-2 py-3 text-center font-mono text-[10px] text-muted-foreground/70 uppercase tracking-[0.15em]">
+                  No conversations yet
+                </li>
+              ) : (
+                conversations.map((conversation) => (
+                  <ConversationRow
+                    agentId={agentId}
+                    conversation={conversation}
+                    isActive={isActive(pathname, agentId, conversation.id)}
+                    key={conversation.id}
+                  />
+                ))
+              )}
+            </SidebarMenu>
+          </>
         ) : (
           <SidebarMenu>
             <SidebarMenuItem>
@@ -255,6 +291,14 @@ export function AgentSidebarWorkspace({
         )}
       </SidebarGroupContent>
     </SidebarGroup>
+  )
+}
+
+function SectionLabel({ children }: { children: string }) {
+  return (
+    <p className="px-2 pt-3 pb-1 font-bold text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
+      {children}
+    </p>
   )
 }
 
