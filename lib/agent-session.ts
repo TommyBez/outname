@@ -1,6 +1,6 @@
 import 'server-only'
 import type { UIMessage, UIMessageChunk } from 'ai'
-import { eq } from 'drizzle-orm'
+import { and, eq, isNull, lt, or } from 'drizzle-orm'
 import { getHookByToken, getRun, resumeHook, start } from 'workflow/api'
 import { db } from '@/lib/db'
 import { type Agent, agent } from '@/lib/db/schema'
@@ -29,12 +29,23 @@ import { agentSessionWorkflow } from '@/workflows/agent-session/workflow'
  */
 
 const TERMINAL_STATUSES = new Set(['completed', 'failed', 'cancelled'])
+const SESSION_START_LEASE_TTL_MS = 30_000
+const SESSION_START_WAIT_TIMEOUT_MS = 35_000
+const SESSION_START_WAIT_POLL_MS = 250
 const SESSION_HOOK_READY_TIMEOUT_MS = 5000
 const SESSION_HOOK_POLL_MS = 100
 
 function newReplyToken() {
   return (
     'rep_' +
+    Math.random().toString(36).slice(2, 10) +
+    Date.now().toString(36).slice(-4)
+  )
+}
+
+function newSessionStartToken(): string {
+  return (
+    'sst_' +
     Math.random().toString(36).slice(2, 10) +
     Date.now().toString(36).slice(-4)
   )
@@ -50,12 +61,7 @@ function newReplyToken() {
 export async function startAgentSession(
   a: Agent
 ): Promise<{ sessionRunId: string; started: boolean }> {
-  const existing = await getRunningSessionRunId(a)
-  if (existing) {
-    return { sessionRunId: existing, started: false }
-  }
-
-  return doStart(a)
+  return await ensureSessionStarted({ agentId: a.id, force: false })
 }
 
 /**
@@ -65,21 +71,257 @@ export async function startAgentSession(
 export async function restartAgentSession(
   a: Agent
 ): Promise<{ sessionRunId: string }> {
-  const { sessionRunId } = await doStart(a)
+  const { sessionRunId } = await ensureSessionStarted({
+    agentId: a.id,
+    force: true,
+  })
   return { sessionRunId }
 }
 
-async function doStart(
-  a: Agent
-): Promise<{ sessionRunId: string; started: true }> {
-  const run = await start(agentSessionWorkflow, [{ agentId: a.id }])
+async function ensureSessionStarted(input: {
+  agentId: string
+  force: boolean
+}): Promise<{ sessionRunId: string; started: boolean }> {
+  const hookOwner = await readLiveSessionHookOwner(input.agentId)
+  if (hookOwner) {
+    await adoptSessionRunId(input.agentId, hookOwner)
+    return { sessionRunId: hookOwner, started: false }
+  }
 
+  if (!input.force) {
+    const existing = await readRunningSessionRunId(input.agentId)
+    if (existing) {
+      return { sessionRunId: existing, started: false }
+    }
+  }
+
+  const deadlineMs = Date.now() + SESSION_START_WAIT_TIMEOUT_MS
+  while (Date.now() < deadlineMs) {
+    const token = newSessionStartToken()
+    if (await tryAcquireSessionStartLease(input.agentId, token)) {
+      return await doStartWithLease({ agentId: input.agentId, token })
+    }
+
+    const winner = await waitForSessionStartWinner({
+      agentId: input.agentId,
+      deadlineMs,
+    })
+    if (winner) {
+      return { sessionRunId: winner, started: false }
+    }
+  }
+
+  throw new Error(
+    `Timed out waiting to start session for agent ${input.agentId}`
+  )
+}
+
+async function doStartWithLease(input: {
+  agentId: string
+  token: string
+}): Promise<{ sessionRunId: string; started: boolean }> {
+  try {
+    const run = await start(agentSessionWorkflow, [{ agentId: input.agentId }])
+    const stored = await storeStartedSessionRunId({
+      agentId: input.agentId,
+      sessionRunId: run.runId,
+      token: input.token,
+    })
+    if (stored) {
+      return { sessionRunId: run.runId, started: true }
+    }
+
+    const winner = await waitForSessionStartWinner({
+      agentId: input.agentId,
+      deadlineMs: Date.now() + SESSION_START_WAIT_TIMEOUT_MS,
+    })
+    if (winner) {
+      return { sessionRunId: winner, started: false }
+    }
+
+    throw new Error(
+      `Session start lease for agent ${input.agentId} was lost before ${run.runId} could be stored.`
+    )
+  } catch (err) {
+    await clearSessionStartLease({
+      agentId: input.agentId,
+      token: input.token,
+    })
+    throw err
+  }
+}
+
+interface SessionStartState {
+  lastSessionRunId: string | null
+  sessionStartExpiresAt: Date | null
+  sessionStartToken: string | null
+}
+
+async function readSessionStartState(
+  agentId: string
+): Promise<SessionStartState | null> {
+  const [row] = await db
+    .select({
+      lastSessionRunId: agent.lastSessionRunId,
+      sessionStartExpiresAt: agent.sessionStartExpiresAt,
+      sessionStartToken: agent.sessionStartToken,
+    })
+    .from(agent)
+    .where(eq(agent.id, agentId))
+    .limit(1)
+  return row ?? null
+}
+
+async function readRunningSessionRunId(
+  agentId: string
+): Promise<string | null> {
+  const state = await readSessionStartState(agentId)
+  if (!state?.lastSessionRunId) {
+    return null
+  }
+  return (await isWorkflowRunAlive(state.lastSessionRunId))
+    ? state.lastSessionRunId
+    : null
+}
+
+async function readLiveSessionHookOwner(
+  agentId: string
+): Promise<string | null> {
+  try {
+    const hook = await getHookByToken(sessionToken(agentId))
+    return (await isWorkflowRunAlive(hook.runId)) ? hook.runId : null
+  } catch (err) {
+    if (isHookNotFoundError(err)) {
+      return null
+    }
+    throw err
+  }
+}
+
+async function tryAcquireSessionStartLease(
+  agentId: string,
+  token: string
+): Promise<boolean> {
+  const now = new Date()
+  const expiresAt = new Date(now.getTime() + SESSION_START_LEASE_TTL_MS)
+  const rows = await db
+    .update(agent)
+    .set({
+      sessionStartExpiresAt: expiresAt,
+      sessionStartToken: token,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(agent.id, agentId),
+        or(
+          isNull(agent.sessionStartToken),
+          isNull(agent.sessionStartExpiresAt),
+          lt(agent.sessionStartExpiresAt, now)
+        )
+      )
+    )
+    .returning({ id: agent.id })
+
+  return rows.length > 0
+}
+
+async function storeStartedSessionRunId(input: {
+  agentId: string
+  sessionRunId: string
+  token: string
+}): Promise<boolean> {
+  const rows = await db
+    .update(agent)
+    .set({
+      lastSessionRunId: input.sessionRunId,
+      sessionStartExpiresAt: null,
+      sessionStartToken: null,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(eq(agent.id, input.agentId), eq(agent.sessionStartToken, input.token))
+    )
+    .returning({ id: agent.id })
+  return rows.length > 0
+}
+
+async function clearSessionStartLease(input: {
+  agentId: string
+  token: string
+}): Promise<void> {
   await db
     .update(agent)
-    .set({ lastSessionRunId: run.runId, updatedAt: new Date() })
-    .where(eq(agent.id, a.id))
+    .set({
+      sessionStartExpiresAt: null,
+      sessionStartToken: null,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(eq(agent.id, input.agentId), eq(agent.sessionStartToken, input.token))
+    )
+}
 
-  return { sessionRunId: run.runId, started: true }
+async function adoptSessionRunId(
+  agentId: string,
+  sessionRunId: string
+): Promise<void> {
+  await db
+    .update(agent)
+    .set({
+      lastSessionRunId: sessionRunId,
+      sessionStartExpiresAt: null,
+      sessionStartToken: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(agent.id, agentId))
+}
+
+function isSessionStartLeaseActive(
+  state: SessionStartState,
+  now: Date
+): boolean {
+  return (
+    state.sessionStartToken !== null &&
+    state.sessionStartExpiresAt !== null &&
+    state.sessionStartExpiresAt.getTime() > now.getTime()
+  )
+}
+
+async function waitForSessionStartWinner(input: {
+  agentId: string
+  deadlineMs: number
+}): Promise<string | null> {
+  while (Date.now() < input.deadlineMs) {
+    const hookOwner = await readLiveSessionHookOwner(input.agentId)
+    if (hookOwner) {
+      await adoptSessionRunId(input.agentId, hookOwner)
+      return hookOwner
+    }
+
+    const state = await readSessionStartState(input.agentId)
+    if (!state) {
+      throw new Error(
+        `Agent ${input.agentId} not found while starting session.`
+      )
+    }
+
+    const leaseActive = isSessionStartLeaseActive(state, new Date())
+    if (
+      !leaseActive &&
+      state.lastSessionRunId &&
+      (await isWorkflowRunAlive(state.lastSessionRunId))
+    ) {
+      return state.lastSessionRunId
+    }
+    if (!leaseActive) {
+      return null
+    }
+
+    await sleep(SESSION_START_WAIT_POLL_MS)
+  }
+
+  return null
 }
 
 /**
@@ -145,52 +387,88 @@ function isHookNotFoundError(err: unknown): boolean {
   return err instanceof Error && err.name === 'HookNotFoundError'
 }
 
+type SessionHookReadiness =
+  | { kind: 'current' }
+  | { kind: 'dead'; sessionRunId: string }
+  | { kind: 'missing' }
+  | { kind: 'other_live'; sessionRunId: string }
+
+async function inspectSessionHook(
+  agentId: string,
+  expectedRunId: string
+): Promise<SessionHookReadiness> {
+  try {
+    const hook = await getHookByToken(sessionToken(agentId))
+    if (hook.runId === expectedRunId) {
+      return (await isWorkflowRunAlive(expectedRunId))
+        ? { kind: 'current' }
+        : { kind: 'dead', sessionRunId: expectedRunId }
+    }
+
+    return (await isWorkflowRunAlive(hook.runId))
+      ? { kind: 'other_live', sessionRunId: hook.runId }
+      : { kind: 'dead', sessionRunId: hook.runId }
+  } catch (err) {
+    if (isHookNotFoundError(err)) {
+      return { kind: 'missing' }
+    }
+    throw err
+  }
+}
+
 async function waitForSessionHook(
   agentId: string,
   sessionRunId: string
-): Promise<boolean> {
-  const token = sessionToken(agentId)
+): Promise<SessionHookReadiness> {
   const deadlineMs = Date.now() + SESSION_HOOK_READY_TIMEOUT_MS
 
   while (Date.now() < deadlineMs) {
-    try {
-      const hook = await getHookByToken(token)
-      if (hook.runId === sessionRunId) {
-        return true
-      }
-    } catch (err) {
-      if (!isHookNotFoundError(err)) {
-        throw err
-      }
+    const readiness = await inspectSessionHook(agentId, sessionRunId)
+    if (readiness.kind === 'current' || readiness.kind === 'other_live') {
+      return readiness
+    }
+    if (readiness.kind === 'dead') {
+      return readiness
     }
 
     if (!(await isWorkflowRunAlive(sessionRunId))) {
-      return false
+      return { kind: 'dead', sessionRunId }
     }
     await sleep(SESSION_HOOK_POLL_MS)
   }
 
-  return false
+  return { kind: 'missing' }
 }
 
 async function readySessionRunId(a: Agent): Promise<string> {
   let { sessionRunId } = await startAgentSession(a)
-  if (await waitForSessionHook(a.id, sessionRunId)) {
+  let readiness = await waitForSessionHook(a.id, sessionRunId)
+  if (readiness.kind === 'current') {
     return sessionRunId
+  }
+  if (readiness.kind === 'other_live') {
+    await adoptSessionRunId(a.id, readiness.sessionRunId)
+    return readiness.sessionRunId
   }
 
   console.warn('[v0] agent session hook was not ready; restarting session', {
     agentId: a.id,
     sessionRunId,
+    readiness,
   })
 
   ;({ sessionRunId } = await restartAgentSession(a))
-  if (await waitForSessionHook(a.id, sessionRunId)) {
+  readiness = await waitForSessionHook(a.id, sessionRunId)
+  if (readiness.kind === 'current') {
     return sessionRunId
+  }
+  if (readiness.kind === 'other_live') {
+    await adoptSessionRunId(a.id, readiness.sessionRunId)
+    return readiness.sessionRunId
   }
 
   throw new Error(
-    `Session hook for agent ${a.id} was not ready after restart (${sessionRunId}).`
+    `Session hook for agent ${a.id} was not ready after restart (${sessionRunId}, ${readiness.kind}).`
   )
 }
 
@@ -214,9 +492,13 @@ async function resumeSessionEvent(
   })
 
   sessionRunId = (await restartAgentSession(a)).sessionRunId
-  if (!(await waitForSessionHook(a.id, sessionRunId))) {
+  const readiness = await waitForSessionHook(a.id, sessionRunId)
+  if (readiness.kind === 'other_live') {
+    await adoptSessionRunId(a.id, readiness.sessionRunId)
+    sessionRunId = readiness.sessionRunId
+  } else if (readiness.kind !== 'current') {
     throw new Error(
-      `Session hook for agent ${a.id} was not ready after recovery restart (${sessionRunId}).`
+      `Session hook for agent ${a.id} was not ready after recovery restart (${sessionRunId}, ${readiness.kind}).`
     )
   }
 
@@ -340,12 +622,7 @@ export async function dispatchInvocation(input: {
  * `last_session_run_id` is unset or points at a terminated workflow.
  */
 export async function getRunningSessionRunId(a: Agent): Promise<string | null> {
-  if (!a.lastSessionRunId) {
-    return null
-  }
-  return (await isWorkflowRunAlive(a.lastSessionRunId))
-    ? a.lastSessionRunId
-    : null
+  return await readRunningSessionRunId(a.id)
 }
 
 /**

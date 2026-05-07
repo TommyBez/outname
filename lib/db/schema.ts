@@ -142,6 +142,13 @@ export const agent = pgTable(
     // NULL before the very first session start; afterwards always points
     // at the latest run, even if it has since terminated.
     lastSessionRunId: text('last_session_run_id'),
+    // Short-lived compare-and-swap lease used while starting/restarting
+    // the session workflow. Prevents simultaneous chat/heartbeat
+    // callers from starting duplicate runs for the same agent.
+    sessionStartToken: text('session_start_token'),
+    sessionStartExpiresAt: timestamp('session_start_expires_at', {
+      withTimezone: true,
+    }),
     // Workflow runtime id for the sibling ticker workflow that drives
     // this agent's heartbeat loop. Persisted alongside `lastSessionRunId`
     // so a session that crashes mid-handler (skipping its `finally`

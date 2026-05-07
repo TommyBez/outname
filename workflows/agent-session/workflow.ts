@@ -1,9 +1,10 @@
-import { createHook } from 'workflow'
+import { createHook, getWorkflowMetadata } from 'workflow'
 import { type SessionEvent, sessionToken } from './events'
 import { handleChat } from './handlers/handle-chat'
 import { handleHeartbeat } from './handlers/handle-heartbeat'
 import { handleInvocation } from './handlers/handle-invocation'
 import { endOfEvent } from './steps/end-of-event'
+import { isCurrentSessionOwner } from './steps/session-ownership'
 import {
   ackHeartbeat,
   reapOrphanTicker,
@@ -32,8 +33,9 @@ const FALLBACK_SOURCE: EventSource = {
  * Long-lived "session" workflow — one running run per `enabled = true`
  * agent.
  *
- *   1. Boot a sibling ticker workflow that drives heartbeat events.
- *   2. Open the session hook and spin a for-await loop pulling
+ *   1. Open the session hook, verify this run owns the agent row, then
+ *      boot a sibling ticker workflow that drives heartbeat events.
+ *   2. Spin a for-await loop pulling
  *      `SessionEvent`s.
  *   3. Dispatch each event to its handler (`chat` / `heartbeat`),
  *      acking the ticker after each heartbeat completes so the next
@@ -56,6 +58,18 @@ export async function agentSessionWorkflow(input: {
 }): Promise<void> {
   'use workflow'
   const { agentId } = input
+  const sessionRunId = currentSessionRunId()
+  const hook = createHook<SessionEvent>({
+    token: sessionToken(agentId),
+  })
+
+  if (!(await isCurrentSessionOwner({ agentId, sessionRunId }))) {
+    console.warn('[v0] agentSessionWorkflow: stale session exiting', {
+      agentId,
+      sessionRunId,
+    })
+    return
+  }
 
   // Defend against the "previous session crashed mid-handler and left
   // its ticker hanging on its ackHook" failure mode before we start a
@@ -65,11 +79,15 @@ export async function agentSessionWorkflow(input: {
   const { tickerRunId } = await startTicker({ agentId })
 
   try {
-    const hook = createHook<SessionEvent>({
-      token: sessionToken(agentId),
-    })
-
     for await (const event of hook) {
+      if (!(await isCurrentSessionOwner({ agentId, sessionRunId }))) {
+        console.warn('[v0] agentSessionWorkflow: owner changed, exiting', {
+          agentId,
+          sessionRunId,
+        })
+        break
+      }
+
       if (event.type === 'shutdown') {
         break
       }
@@ -88,15 +106,50 @@ export async function agentSessionWorkflow(input: {
         console.error('[v0] agentSessionWorkflow: handler failed', err)
       }
 
+      if (!(await isCurrentSessionOwner({ agentId, sessionRunId }))) {
+        console.warn(
+          '[v0] agentSessionWorkflow: owner changed before finalization',
+          {
+            agentId,
+            sessionRunId,
+          }
+        )
+        break
+      }
+
       await endOfEvent({
         agentId,
         pending: result.pending,
+        sessionRunId,
         source: result.source,
       })
+
+      if (!(await isCurrentSessionOwner({ agentId, sessionRunId }))) {
+        console.warn(
+          '[v0] agentSessionWorkflow: owner changed after finalization',
+          {
+            agentId,
+            sessionRunId,
+          }
+        )
+        break
+      }
     }
   } finally {
     await stopTicker({ agentId, tickerRunId })
   }
+}
+
+function currentSessionRunId(): string {
+  const metadata = getWorkflowMetadata() as {
+    runId?: string
+    workflowRunId?: string
+  }
+  const runId = metadata.runId ?? metadata.workflowRunId
+  if (!runId) {
+    throw new Error('agentSessionWorkflow: missing workflow run id')
+  }
+  return runId
 }
 
 async function dispatchSessionEvent(input: {

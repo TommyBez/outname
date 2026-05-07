@@ -1,4 +1,5 @@
 import type { Sandbox } from '@vercel/sandbox'
+import { isSandboxStoppedError } from '@/lib/agent-sandbox'
 import { SYSTEM_SANDBOX_ROOT } from '@/lib/agent-sandbox-registry'
 
 /**
@@ -194,7 +195,10 @@ export async function readLiveMemory(
 ): Promise<string | null> {
   const buf = await sandbox
     .readFileToBuffer({ path: `${SYSTEM_SANDBOX_ROOT}/${path}` })
-    .catch(() => null)
+    .catch((err) => {
+      rethrowIfSandboxStopped(err)
+      return null
+    })
   return buf ? buf.toString('utf8') : null
 }
 
@@ -230,9 +234,9 @@ export async function listLiveMemory(sandbox: Sandbox): Promise<string[]> {
  * mutated in memory, then written back. Deletes use `rm -f` (no-op if
  * the file is already gone). Writes overwrite unconditionally.
  *
- * Returns silently on error per individual op so one bad mutation
- * doesn't block the rest. The caller logs failures via `console.error`
- * already at the step level.
+ * Returns silently on non-lifecycle errors per individual op so one bad
+ * mutation doesn't block the rest. Stopped-sandbox errors bubble up so
+ * `endOfEvent` can reacquire the sandbox and retry once.
  */
 export async function flushPendingWrites(
   sandbox: Sandbox,
@@ -264,7 +268,10 @@ export async function flushPendingWrites(
         // the file.
         const prev = await sandbox
           .readFileToBuffer({ path: abs })
-          .catch(() => null)
+          .catch((err) => {
+            rethrowIfSandboxStopped(err)
+            return null
+          })
         const next = (prev?.toString('utf8') ?? '') + op.content
         await sandbox.writeFiles([
           { path: abs, content: Buffer.from(next, 'utf8') },
@@ -273,9 +280,10 @@ export async function flushPendingWrites(
       }
 
       // edit
-      const buf = await sandbox
-        .readFileToBuffer({ path: abs })
-        .catch(() => null)
+      const buf = await sandbox.readFileToBuffer({ path: abs }).catch((err) => {
+        rethrowIfSandboxStopped(err)
+        return null
+      })
       if (!buf) {
         // Edit-on-missing — skip silently. The model already received
         // an error from the tool; flushing it would create a dangling
@@ -294,8 +302,15 @@ export async function flushPendingWrites(
         { path: abs, content: Buffer.from(after, 'utf8') },
       ])
     } catch (err) {
+      rethrowIfSandboxStopped(err)
       console.error('[v0] flushPendingWrites: op failed', op.kind, op.path, err)
     }
+  }
+}
+
+function rethrowIfSandboxStopped(err: unknown): void {
+  if (isSandboxStoppedError(err)) {
+    throw err
   }
 }
 

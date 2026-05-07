@@ -67,6 +67,34 @@ export interface EnsureResult {
   sandbox: Sandbox
 }
 
+export function isSandboxStoppedError(err: unknown): boolean {
+  if (typeof err !== 'object' || err === null) {
+    return false
+  }
+
+  const maybe = err as {
+    json?: { error?: { code?: unknown } }
+    message?: unknown
+    response?: { status?: unknown }
+    status?: unknown
+    text?: unknown
+  }
+  const status = maybe.response?.status ?? maybe.status
+  if (status === 410) {
+    return true
+  }
+
+  const code = maybe.json?.error?.code
+  if (code === 'sandbox_stopped') {
+    return true
+  }
+
+  return (
+    typeof maybe.message === 'string' &&
+    maybe.message.includes('Status code 410')
+  )
+}
+
 // Lifecycle internals
 
 async function ensureRoleSandbox(

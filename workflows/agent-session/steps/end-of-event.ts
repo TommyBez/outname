@@ -5,6 +5,7 @@ import { revalidateTag } from 'next/cache'
 import {
   getExecSandbox,
   getSystemSandbox,
+  isSandboxStoppedError,
   releaseSandbox,
 } from '@/lib/agent-sandbox'
 import { SYSTEM_SANDBOX_ROOT } from '@/lib/agent-sandbox-registry'
@@ -18,6 +19,7 @@ import {
   type PendingWrites,
   readLiveMemory,
 } from '@/workflows/agent-session/tools/pending-writes'
+import { isCurrentSessionOwner } from './session-ownership'
 
 type EndOfEventSource =
   | { sourceType: 'chat'; sourceId: string | null }
@@ -49,72 +51,148 @@ type EndOfEventSource =
 export async function endOfEvent(input: {
   agentId: string
   pending: PendingWrites
+  sessionRunId: string
   source: EndOfEventSource
 }): Promise<void> {
   'use step'
 
-  let systemSandbox: Sandbox | null = null
-  let execSandbox: Sandbox | null = null
-
   try {
-    systemSandbox = await getSystemSandbox(input.agentId)
+    if (!(await isCurrentSessionOwner(input))) {
+      console.warn('[v0] endOfEvent: stale session skipped finalization', {
+        agentId: input.agentId,
+        sessionRunId: input.sessionRunId,
+      })
+      return
+    }
+
+    const systemSandbox = await finalizeSystemSandboxWithRetry(input)
+
+    if (!(await isCurrentSessionOwner(input))) {
+      console.warn('[v0] endOfEvent: owner changed before release', {
+        agentId: input.agentId,
+        sessionRunId: input.sessionRunId,
+      })
+      return
+    }
+
+    const execSandbox = await getOptionalExecSandbox(input.agentId)
+    await Promise.all(
+      [systemSandbox, execSandbox]
+        .filter((s): s is Sandbox => s !== null)
+        .map((s) => releaseSandbox(s))
+    )
   } catch (err) {
-    // No system sandbox means startup never ran for this event — the
-    // session loop will boot one on the next event. Nothing to flush.
-    console.error('[v0] endOfEvent: getSystemSandbox failed', err)
-    return
+    console.error('[v0] endOfEvent: finalization failed', err)
+  } finally {
+    // Tear down maintainer-tool sandboxes spawned during this event so
+    // the next event boots fresh. Errors are logged-and-swallowed inside
+    // the helpers; this catch is a final guard for the session loop.
+    await Promise.all([
+      stopAllToolSandboxesForRun(),
+      stopAllBrokeredHttpSandboxesForRun(),
+    ]).catch((err) => {
+      console.error('[v0] endOfEvent: tool sandbox cleanup failed', err)
+    })
+  }
+}
+
+async function finalizeSystemSandboxWithRetry(input: {
+  agentId: string
+  pending: PendingWrites
+  sessionRunId: string
+  source: EndOfEventSource
+}): Promise<Sandbox | null> {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    let sandbox: Sandbox | null = null
+    try {
+      sandbox = await getSystemSandbox(input.agentId)
+      await finalizeSystemSandbox({ ...input, sandbox })
+      return sandbox
+    } catch (err) {
+      if (
+        attempt === 0 &&
+        isSandboxStoppedError(err) &&
+        (await isCurrentSessionOwner(input))
+      ) {
+        console.warn('[v0] endOfEvent: sandbox stopped, reacquiring once', {
+          agentId: input.agentId,
+          sessionRunId: input.sessionRunId,
+        })
+        continue
+      }
+
+      console.error('[v0] endOfEvent: system sandbox finalization failed', err)
+      return sandbox
+    }
   }
 
+  return null
+}
+
+async function finalizeSystemSandbox(input: {
+  agentId: string
+  pending: PendingWrites
+  sandbox: Sandbox
+  source: EndOfEventSource
+}): Promise<void> {
   const reviewPaths = collectReviewPaths(input.pending)
-  const beforeReviewContent = await readReviewFiles(systemSandbox, reviewPaths)
+  let beforeReviewContent: Map<string, string | null> | null = null
 
   try {
-    await flushPendingWrites(systemSandbox, input.pending)
+    beforeReviewContent = await readReviewFiles(input.sandbox, reviewPaths)
   } catch (err) {
+    rethrowIfSandboxStopped(err)
+    console.error('[v0] endOfEvent: readReviewFiles failed', err)
+  }
+
+  try {
+    await flushPendingWrites(input.sandbox, input.pending)
+  } catch (err) {
+    rethrowIfSandboxStopped(err)
     console.error('[v0] endOfEvent: flushPendingWrites failed', err)
   }
 
-  try {
-    await persistReviewChanges({
-      agentId: input.agentId,
-      beforeByPath: beforeReviewContent,
-      paths: reviewPaths,
-      sandbox: systemSandbox,
-      source: input.source,
-    })
-  } catch (err) {
-    console.error('[v0] endOfEvent: persistReviewChanges failed', err)
+  if (beforeReviewContent) {
+    try {
+      await persistReviewChanges({
+        agentId: input.agentId,
+        beforeByPath: beforeReviewContent,
+        paths: reviewPaths,
+        sandbox: input.sandbox,
+        source: input.source,
+      })
+    } catch (err) {
+      rethrowIfSandboxStopped(err)
+      console.error('[v0] endOfEvent: persistReviewChanges failed', err)
+    }
   }
 
   try {
-    await mirrorMemoryToDb(systemSandbox, input.agentId)
+    await mirrorMemoryToDb(input.sandbox, input.agentId)
     revalidateTag(agentTag(input.agentId), 'max')
   } catch (err) {
+    rethrowIfSandboxStopped(err)
     console.error('[v0] endOfEvent: mirrorMemoryToDb failed', err)
   }
+}
 
+async function getOptionalExecSandbox(
+  agentId: string
+): Promise<Sandbox | null> {
   // Best-effort exec snapshot: not every event touches it, but if the
   // agent shelled into it during the turn we want the filesystem
   // checkpointed.
   try {
-    execSandbox = await getExecSandbox(input.agentId)
+    return await getExecSandbox(agentId)
   } catch {
-    /* no exec sandbox booted — fine */
+    return null
   }
+}
 
-  await Promise.all(
-    [systemSandbox, execSandbox]
-      .filter((s): s is Sandbox => s !== null)
-      .map((s) => releaseSandbox(s))
-  )
-
-  // Tear down maintainer-tool sandboxes spawned during this event so
-  // the next event boots fresh. Errors are logged-and-swallowed inside
-  // the helpers.
-  await Promise.all([
-    stopAllToolSandboxesForRun(),
-    stopAllBrokeredHttpSandboxesForRun(),
-  ])
+function rethrowIfSandboxStopped(err: unknown): void {
+  if (isSandboxStoppedError(err)) {
+    throw err
+  }
 }
 
 function collectReviewPaths(pending: PendingWrites): string[] {
@@ -227,7 +305,10 @@ async function mirrorMemoryToDb(
     const absPath = `${SYSTEM_SANDBOX_ROOT}/${relPath}`
     const buf = await sandbox
       .readFileToBuffer({ path: absPath })
-      .catch(() => null)
+      .catch((err) => {
+        rethrowIfSandboxStopped(err)
+        return null
+      })
     if (!buf) {
       continue
     }
