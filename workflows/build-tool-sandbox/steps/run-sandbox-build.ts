@@ -70,7 +70,7 @@ export async function runSandboxBuild(input: {
       const stderr = (await result.stderr()).slice(0, 4000)
       const stdout = (await result.stdout()).slice(0, 1000)
       throw new Error(
-        `setup.sh exited with code ${result.exitCode}\n--- stderr ---\n${stderr}\n--- stdout (tail) ---\n${stdout}`
+        `setup script exited with code ${result.exitCode}\n--- stderr ---\n${stderr}\n--- stdout (tail) ---\n${stdout}`
       )
     }
 
