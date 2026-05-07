@@ -3,11 +3,10 @@ import type { Sandbox } from '@vercel/sandbox'
 import { and, eq } from 'drizzle-orm'
 import { revalidateTag } from 'next/cache'
 import {
-  getExecSandbox,
   getSystemSandbox,
   releaseSandbox,
+  SYSTEM_SANDBOX_ROOT,
 } from '@/lib/agent-sandbox'
-import { SYSTEM_SANDBOX_ROOT } from '@/lib/agent-sandbox-registry'
 import { agentTag } from '@/lib/cache-tags'
 import { db } from '@/lib/db'
 import { agentFileChanges, agentFiles } from '@/lib/db/schema'
@@ -38,8 +37,8 @@ type EndOfEventSource =
  *      skipped to keep DB churn low. Deletes the rows for files no
  *      longer in the sandbox so `/agents/:id/files` doesn't show
  *      ghost entries.
- *   4. Stop BOTH the system and exec sandboxes so Vercel snapshots
- *      their filesystems ready for the next event's resume.
+ *   4. Stop the system sandbox so Vercel snapshots its filesystem
+ *      ready for the next event's resume.
  *
  * Failures inside this step never crash the session loop — they're
  * swallowed (with a log) so a transient sandbox or DB hiccup doesn't
@@ -53,9 +52,7 @@ export async function endOfEvent(input: {
 }): Promise<void> {
   'use step'
 
-  let systemSandbox: Sandbox | null = null
-  let execSandbox: Sandbox | null = null
-
+  let systemSandbox: Sandbox
   try {
     systemSandbox = await getSystemSandbox(input.agentId)
   } catch (err) {
@@ -93,20 +90,7 @@ export async function endOfEvent(input: {
     console.error('[v0] endOfEvent: mirrorMemoryToDb failed', err)
   }
 
-  // Best-effort exec snapshot: not every event touches it, but if the
-  // agent shelled into it during the turn we want the filesystem
-  // checkpointed.
-  try {
-    execSandbox = await getExecSandbox(input.agentId)
-  } catch {
-    /* no exec sandbox booted — fine */
-  }
-
-  await Promise.all(
-    [systemSandbox, execSandbox]
-      .filter((s): s is Sandbox => s !== null)
-      .map((s) => releaseSandbox(s))
-  )
+  await releaseSandbox(systemSandbox)
 
   // Tear down maintainer-tool sandboxes spawned during this event so
   // the next event boots fresh. Errors are logged-and-swallowed inside

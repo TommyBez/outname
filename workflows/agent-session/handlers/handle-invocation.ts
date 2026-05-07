@@ -9,7 +9,7 @@ import {
 import { getWorkflowMetadata, getWritable } from 'workflow'
 import { getRun } from 'workflow/api'
 import type { AgentChatChunk, AgentChatMessage } from '@/lib/agent-chat-status'
-import { startupExecSandbox, startupSystemSandbox } from '@/lib/agent-sandbox'
+import { startupSystemSandbox } from '@/lib/agent-sandbox'
 import { formatBudgetExceededMessage } from '@/lib/budget'
 import { emitActivity, emitRun, emitStep } from '@/lib/run-events'
 import type { SubAgentToolOutput } from '@/lib/sub-agent-tool-output'
@@ -97,9 +97,6 @@ export async function handleInvocation(input: {
       parentRunId: parentRunId ?? null,
     })
     await startupSystemSandbox({ agentId })
-    await startupExecSandbox({ agentId }).catch((err) => {
-      console.error('[v0] handleInvocation: startupExecSandbox failed', err)
-    })
     await emitActivity(runId, 'Sub-agent: Syncing memory edits')
     await drainPendingWrites({ agentId })
 

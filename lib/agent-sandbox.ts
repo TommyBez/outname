@@ -1,65 +1,80 @@
 import { Sandbox } from '@vercel/sandbox'
 import { eq } from 'drizzle-orm'
-import {
-  EXEC_SANDBOX_WORKSPACE,
-  SANDBOX_CONFIGS,
-  type SandboxRole,
-} from '@/lib/agent-sandbox-registry'
-import type { CreateOptions } from '@/lib/agent-sandbox-types'
 import { db } from '@/lib/db'
 import { agent } from '@/lib/db/schema'
 
-// Role <-> DB column mapping
+/**
+ * Subset of `Sandbox.create` parameters that we surface here. Defined
+ * explicitly (not via `Omit<CreateSandboxParams,...>`) so we don't pick
+ * up the snapshot-source variant of the SDK union, which is irrelevant
+ * to callers of this helper.
+ */
+export interface CreateOptions {
+  env?: Record<string, string>
+  ports?: number[]
+  resources?: { vcpus: number }
+  runtime?: string
+  snapshotExpiration?: number
+  tags?: Record<string, string>
+  timeout?: number
+}
 
 /**
- * Stable suffix added to the sandbox name. Sandbox names are scoped per
- * Vercel project, so the `${agentId}-${role}` shape is collision-free
- * across agents and roles within the same project.
+ * Persistent sandbox root inside the agent's system sandbox.
+ * `AGENTS.md`, `IDENTITY.md`, `SOUL.md`, `USER.md`, and every memory
+ * file the agent writes via the `memory_*` tools live directly under
+ * this prefix (e.g. `/vercel/sandbox/journal.md`).
  */
-const ROLE_SUFFIX: Record<SandboxRole, string> = {
-  system: 'system',
-  exec: 'exec',
+export const SYSTEM_SANDBOX_ROOT = '/vercel/sandbox'
+
+/**
+ * Boot parameters for the agent's persistent system sandbox. The
+ * sandbox holds the markdown memory volume — `AGENTS.md`,
+ * `IDENTITY.md`, `SOUL.md`, and the rest of the memory `*.md` files —
+ * read on every event by `composeSystemPrompt` and written by the
+ * memory tool's pending-writes queue at end-of-event.
+ */
+const SYSTEM_SANDBOX_CREATE_OPTIONS: CreateOptions = {
+  runtime: 'node22',
+  // Memory ops are tiny — read/write a handful of small markdown
+  // files. 60s is plenty of headroom for the longest realistic
+  // composeSystemPrompt + flush cycle.
+  timeout: 60_000,
+  resources: { vcpus: 1 },
 }
 
-function nameFor(agentId: string, role: SandboxRole): string {
-  return `agent-${agentId}-${ROLE_SUFFIX[role]}`
+/**
+ * Stable name used to address the persistent sandbox. Sandbox names
+ * are scoped per Vercel project, so `agent-${agentId}-system` is
+ * collision-free across agents within the same project.
+ */
+function nameFor(agentId: string): string {
+  return `agent-${agentId}-system`
 }
 
-async function readSandboxId(
-  agentId: string,
-  role: SandboxRole
-): Promise<string | null> {
+async function readSandboxId(agentId: string): Promise<string | null> {
   const [row] = await db
     .select({
       systemId: agent.sandboxSystemId,
-      execId: agent.sandboxExecId,
     })
     .from(agent)
     .where(eq(agent.id, agentId))
     .limit(1)
-  if (!row) {
-    return null
-  }
-  return role === 'system' ? row.systemId : row.execId
+  return row?.systemId ?? null
 }
 
 async function writeSandboxId(
   agentId: string,
-  role: SandboxRole,
   sandboxId: string
 ): Promise<void> {
   await db
     .update(agent)
     .set({
-      ...(role === 'system'
-        ? { sandboxSystemId: sandboxId }
-        : { sandboxExecId: sandboxId }),
+      sandboxSystemId: sandboxId,
       updatedAt: new Date(),
     })
     .where(eq(agent.id, agentId))
 }
-
-// Public types
 
 export interface EnsureResult {
   /** True iff this call created a brand-new sandbox (vs. resumed by id). */
@@ -67,21 +82,15 @@ export interface EnsureResult {
   sandbox: Sandbox
 }
 
-// Lifecycle internals
-
-async function ensureRoleSandbox(
-  agentId: string,
-  role: SandboxRole,
-  createOptions: CreateOptions | undefined
-): Promise<EnsureResult> {
+async function ensureSystemSandbox(agentId: string): Promise<EnsureResult> {
   // The persistent sandbox SDK addresses sandboxes by `name`, not by an
-  // internal id. The columns are named `sandbox_*_id` for parity with
-  // `last_session_run_id` etc.; the value stored in them is the
-  // sandbox's name (`agent-${agentId}-${role}`). On the very first boot
+  // internal id. The column is named `sandbox_system_id` for parity
+  // with `last_session_run_id` etc.; the value stored in it is the
+  // sandbox's name (`agent-${agentId}-system`). On the very first boot
   // we both compute and persist that name; after that we reuse it
   // verbatim so an out-of-band rename would force a fresh sandbox.
-  const persistedName = await readSandboxId(agentId, role)
-  const desiredName = nameFor(agentId, role)
+  const persistedName = await readSandboxId(agentId)
+  const desiredName = nameFor(agentId)
   let sandbox: Sandbox | null = null
 
   if (persistedName) {
@@ -95,20 +104,18 @@ async function ensureRoleSandbox(
   let created = false
   if (!sandbox) {
     sandbox = await Sandbox.create({
-      ...createOptions,
+      ...SYSTEM_SANDBOX_CREATE_OPTIONS,
       name: desiredName,
       persistent: true,
     })
     created = true
     if (persistedName !== desiredName) {
-      await writeSandboxId(agentId, role, desiredName)
+      await writeSandboxId(agentId, desiredName)
     }
   }
 
   return { sandbox, created }
 }
-
-// Marker helpers (setup hooks)
 
 /**
  * Read a small UTF-8 marker file from a sandbox (e.g. a "/workspace
@@ -134,10 +141,8 @@ export async function writeMarker(
   await sandbox.writeFiles([{ path, content: Buffer.from(value, 'utf8') }])
 }
 
-// Step primitives — workflow-facing (Neon / Sandbox; not inside `"use workflow"` VM)
-
 /**
- * Ensure the agent's **system** sandbox is booted. The system sandbox
+ * Ensure the agent's system sandbox is booted. The system sandbox
  * holds AGENTS.md, IDENTITY.md, SOUL.md, and the agent's memory `*.md`
  * files. After the sandbox is ready we delegate to `seedAgentsMd` to
  * install (or upgrade) the AGENTS.md baseline and bootstrap IDENTITY.md.
@@ -149,11 +154,7 @@ export async function startupSystemSandbox(input: {
 }): Promise<void> {
   'use step'
   const { agentId } = input
-  const { created } = await ensureRoleSandbox(
-    agentId,
-    'system',
-    SANDBOX_CONFIGS.system.createOptions
-  )
+  const { created } = await ensureSystemSandbox(agentId)
 
   // Lazily import the seed step so this module doesn't pull workflow
   // primitives (used inside seed-agents-md.ts) when loaded outside a
@@ -165,57 +166,15 @@ export async function startupSystemSandbox(input: {
 }
 
 /**
- * Ensure the agent's **exec** sandbox is booted and `/workspace`
- * exists. Exec is the sandbox the bash / file-edit tools shell into;
- * its filesystem persists across events via snapshot-on-stop.
- */
-export async function startupExecSandbox(input: {
-  agentId: string
-}): Promise<void> {
-  'use step'
-  const { agentId } = input
-  const { sandbox, created } = await ensureRoleSandbox(
-    agentId,
-    'exec',
-    SANDBOX_CONFIGS.exec.createOptions
-  )
-
-  if (created) {
-    // Provision the workspace directory once. Subsequent resumes pick
-    // it up from the snapshot.
-    await sandbox.runCommand({
-      cmd: 'sh',
-      args: ['-ec', `mkdir -p ${EXEC_SANDBOX_WORKSPACE}`],
-    })
-  }
-}
-
-// Resume handles for tools / end-of-event
-
-/**
  * Resume the agent's system sandbox by name. Throws if startup hasn't
  * run yet (no name persisted). Callers MUST treat this as a Sandbox
  * SDK boundary and run inside a `"use step"` body.
  */
 export async function getSystemSandbox(agentId: string): Promise<Sandbox> {
-  const name = await readSandboxId(agentId, 'system')
+  const name = await readSandboxId(agentId)
   if (!name) {
     throw new Error(
       `Agent ${agentId} has no system sandbox yet — startupSystemSandbox must run first.`
-    )
-  }
-  return Sandbox.get({ name, resume: true })
-}
-
-/**
- * Resume the agent's exec sandbox by name. Same contract as
- * `getSystemSandbox` — startup must have run.
- */
-export async function getExecSandbox(agentId: string): Promise<Sandbox> {
-  const name = await readSandboxId(agentId, 'exec')
-  if (!name) {
-    throw new Error(
-      `Agent ${agentId} has no exec sandbox yet — startupExecSandbox must run first.`
     )
   }
   return Sandbox.get({ name, resume: true })
@@ -234,79 +193,20 @@ export async function releaseSandbox(sandbox: Sandbox): Promise<void> {
   }
 }
 
-// Reset exec sandbox
-
 /**
- * Throw away the agent's *exec* sandbox and its persisted snapshot,
- * then re-provision a fresh one. Used by the `reset_exec` tool when
- * the model decides its workspace is wedged (broken \`node_modules\`,
- * leftover daemons, half-cloned repos, etc.).
- *
- * The system sandbox is intentionally left alone — memory files
- * survive a reset. After this returns, the next call to
- * `getExecSandbox(agentId)` boots a clean sandbox with an empty
- * `/vercel/sandbox/workspace`.
- */
-export async function resetExecSandbox(input: {
-  agentId: string
-}): Promise<{ destroyed: boolean }> {
-  'use step'
-  const { agentId } = input
-  const previousName = await readSandboxId(agentId, 'exec')
-
-  let destroyed = false
-  if (previousName) {
-    try {
-      const sb = await Sandbox.get({ name: previousName, resume: false })
-      await sb.delete()
-      destroyed = true
-    } catch {
-      // Already gone or unreachable. We still proceed — the goal is a
-      // clean slate, not a guaranteed prior-state assertion.
-    }
-  }
-
-  // Re-provision immediately so the next tool call doesn't pay a
-  // cold-boot tax in the middle of the agent's reasoning loop. The
-  // shared `ensureRoleSandbox` path also persists the (unchanged)
-  // sandbox name back, which is a no-op when it already matches.
-  const { sandbox } = await ensureRoleSandbox(
-    agentId,
-    'exec',
-    SANDBOX_CONFIGS.exec.createOptions
-  )
-  await sandbox.runCommand({
-    cmd: 'sh',
-    args: ['-ec', `mkdir -p ${EXEC_SANDBOX_WORKSPACE}`],
-  })
-
-  return { destroyed }
-}
-
-// Teardown
-
-/**
- * Permanently delete both of an agent's sandboxes (system + exec) if
- * they exist. Called by `deleteAgentAction` before removing the agent
- * row so we don't leak persistent sandboxes.
+ * Permanently delete the agent's system sandbox if it exists. Called
+ * by `deleteAgentAction` before removing the agent row so we don't
+ * leak a persistent sandbox.
  */
 export async function destroyAgentSandboxes(agentId: string): Promise<void> {
-  const [systemName, execName] = await Promise.all([
-    readSandboxId(agentId, 'system'),
-    readSandboxId(agentId, 'exec'),
-  ])
-
-  await Promise.all(
-    [systemName, execName].map(async (name) => {
-      if (!name) {
-        return
-      }
-      try {
-        const sb = await Sandbox.get({ name, resume: false })
-        await sb.delete()
-      } catch {
-        /* already gone or unreachable */
-      }
-    })
-  )
+  const name = await readSandboxId(agentId)
+  if (!name) {
+    return
+  }
+  try {
+    const sb = await Sandbox.get({ name, resume: false })
+    await sb.delete()
+  } catch {
+    /* already gone or unreachable */
+  }
 }
