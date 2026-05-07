@@ -1,65 +1,81 @@
-# UX Flow Map and Information Architecture Redesign
+# UX Flow Map and Consistency Redesign
 
-## Goal
-Make every core workflow clear, discoverable, and consistent without changing the visual design system.
+## Objective
+Create a clear, discoverable, and consistent UX across the **entire application flow**, without changing the visual design system.
 
-## Current UX Flow Map
+## Complete UX Flow Map (Current)
 
-### Global flows
-1. **Login** → `/login`
-2. **Dashboard** → `/dashboard` (high-level status and agent list)
-3. **Agents index** → `/agents` (browse/select agents)
-4. **Settings** → `/settings` (global config)
+### 1) Access and session
+1. Login (`/login`)
+2. Redirect to private surfaces after auth (`/dashboard`)
 
-### Agent workspace flows
-1. **Agent entry**: `/agents/[agentId]` redirects to `/agents/[agentId]/chat`
-2. **Chat entry**: `/agents/[agentId]/chat` redirects to latest conversation or `/chat/new`
-3. **Conversation detail**: `/agents/[agentId]/chat/[conversationId]`
-4. **Agent overview**: `/agents/[agentId]/about`
-5. **Agent configuration**: `/agents/[agentId]/edit`
-6. **Agent timeline**: `/agents/[agentId]/timeline`
-7. **Agent dreams**: `/agents/[agentId]/dreams`
-8. **Agent tools**: `/agents/[agentId]/tools`
-9. **Agent files**: `/agents/[agentId]/files`
+### 2) Global app navigation
+1. Dashboard (`/dashboard`) — system summary and activity
+2. Agents (`/agents`) — list and browse agents
+3. Settings (`/settings`) — account, connections, budgets
 
-## UX Issues Identified
+### 3) Agent lifecycle
+1. Create agent (`/agents/new`)
+2. Return path to list (`/agents`)
+3. Open specific agent (`/agents/[agentId]`)
 
-1. **Scattered configuration paths**: some management pages existed but were not consistently surfaced from the primary navigation.
-2. **Mixed intent in one list**: action items (new chat), management pages, and conversation history were blended together.
-3. **Inconsistent naming**: “About” and “Configure” labels were less explicit than “Overview” and “Settings”.
-4. **Low discoverability for non-chat pages**: Tools and Files were hidden paths for many users.
+### 4) Agent workspace entry flow
+1. Agent root (`/agents/[agentId]`) redirects to chat entry
+2. Chat entry (`/agents/[agentId]/chat`) resolves to:
+   - most recent conversation (`/agents/[agentId]/chat/[conversationId]`) or
+   - new conversation draft (`/agents/[agentId]/chat/new`)
 
-## Redesign Decisions
+### 5) Agent workspace destinations
+1. Overview (`/agents/[agentId]/about`)
+2. Settings (`/agents/[agentId]/edit`)
+3. Tools (`/agents/[agentId]/tools`)
+4. Files (`/agents/[agentId]/files`)
+5. Timeline (`/agents/[agentId]/timeline`)
+6. DREAMS (`/agents/[agentId]/dreams`)
+7. Conversations list and per-conversation routes
 
-### Remove (from primary decision complexity)
-- Removed ambiguous top-level wording in agent workspace nav:
-  - “About” → replaced with **Overview**
-  - “Configure” → replaced with **Settings**
-- Removed ungrouped mixed navigation pattern that combined creation, management, and history without separation.
+### 6) Settings subflows
+1. Connections (OAuth/API-key integration state)
+2. Budget rules
+3. Agent summary and handoff back to `/agents`
+4. Account identity status
 
-### Improve
-- **Structured sidebar IA** into three explicit sections:
-  1. **Workspace** (immediate action)
-  2. **Manage** (agent-level configuration and diagnostics)
-  3. **Conversations** (history and switching)
-- Promoted missing-but-important pages (Tools, Files) into the **Manage** section.
-- Kept existing route architecture and visual styling intact.
+## Evaluation
 
-### Add
-- Added explicit section labels for mental-model clarity.
-- Added direct navigation entries for:
-  - Tools
-  - Files
+### What to remove
+1. **Remove mixed-intent nav blocks** where creation, management, and history are merged in one undifferentiated list.
+2. **Remove ambiguous labels** that hide intent:
+   - About → Overview
+   - Configure → Settings
+3. **Remove hidden-path dependency** where users must discover core surfaces by route guessing.
 
-## Consistency Rules Enforced
+### What to improve
+1. **Global discoverability**: provide a direct “New agent” path from the global sidebar.
+2. **Local discoverability**: ensure every durable agent surface is visible inside the agent sidebar.
+3. **Flow consistency**: enforce a stable order:
+   - create/work action
+   - management destinations
+   - historical artifacts
+4. **Terminology consistency**: destination names should be nouns and match page intent.
 
-1. **Action first, configuration second, history third** in sidebar order.
-2. **Noun-based labels** for destination pages (Overview, Settings, Tools, Files, Timeline, DREAMS).
-3. **All durable agent-level destinations discoverable from one place** (agent sidebar).
-4. **No visual redesign**: only information architecture and labeling updates.
+### What to add
+1. Add a global quick action to create agents.
+2. Add explicit sectioning in agent sidebar:
+   - Workspace
+   - Manage
+   - Conversations
+3. Add direct links for Tools and Files in primary in-context nav.
 
-## Expected UX Outcomes
+## Implemented changes
 
-- Faster orientation for first-time users entering an agent workspace.
-- Reduced “where is X?” path-hunting for files/tools/config.
-- Clear separation between starting work (new chat), managing agent behavior, and navigating prior conversations.
+1. **Application sidebar** now includes a first-class **New agent** action to reduce path friction from anywhere in the app.
+2. **Agent workspace sidebar IA** reorganized into explicit sections to separate action, management, and history.
+3. **Label normalization** implemented for better findability and scanability.
+4. **Tools/Files surfaced** as first-class destinations in the manage section.
+
+## Consistency rules enforced
+
+1. One global source of truth for top-level app destinations.
+2. One contextual source of truth for all agent-level destinations.
+3. Stable ordering of flows across agents.
+4. No visual redesign; only information architecture and wayfinding updates.

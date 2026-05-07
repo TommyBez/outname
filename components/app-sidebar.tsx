@@ -4,6 +4,7 @@ import {
   Bot,
   LayoutDashboard,
   LogOut,
+  Plus,
   Settings as SettingsIcon,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -77,6 +78,25 @@ export function AppSidebar({ sidebarExtras }: AppSidebarProps = {}) {
       </SidebarHeader>
 
       <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  className="font-bold text-muted-foreground uppercase tracking-[0.12em] hover:bg-accent hover:text-foreground"
+                  tooltip="New agent"
+                >
+                  <Link href="/agents/new">
+                    <Plus aria-hidden />
+                    <span>New agent</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
