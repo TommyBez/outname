@@ -2,6 +2,7 @@ import 'server-only'
 import { getConnector } from '@/connectors/registry'
 import { agentBrowserTool } from './agent-browser'
 import { calcomRequestTool } from './calcom'
+import { firecrawlScrapeTool } from './firecrawl-scrape'
 import { parallelSearchTool } from './parallel'
 import { resendSendTool } from './resend'
 import { getToolSandboxManifest } from './sandboxes/registry'
@@ -25,6 +26,7 @@ import { xApiRequestTool } from './x-api'
 const TOOLS: MaintainerTool[] = [
   resendSendTool,
   calcomRequestTool,
+  firecrawlScrapeTool,
   parallelSearchTool,
   agentBrowserTool,
   xApiRequestTool,
