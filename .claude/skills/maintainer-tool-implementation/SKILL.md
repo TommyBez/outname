@@ -2,7 +2,7 @@
 name: maintainer-tool-implementation
 description: Implement a new maintainer tool in this codebase's tool catalog. Use when adding a tool under `tools/`, wiring a provider-backed integration, creating a `tool_sandbox` tool, updating `tools/registry.ts`, or when the user mentions maintainer tools, `define-maintainer-tool`, `defineActionTool`, `defineApiPassthroughTool`, `defineSandboxTool`, brokered HTTP, or catalog tool attachments.
 metadata:
-  version: 1.1.0
+  version: 1.1.1
 ---
 
 # Maintainer Tool Implementation
@@ -65,6 +65,7 @@ If a field is secret, it does not belong in `configSchema`.
 - Use `defineActionTool` for custom multi-step logic or when you need to mix policies, brokered HTTP, parsing, and custom result shaping
 - Use `defineApiPassthroughTool` when the tool is mostly "validated input -> authenticated HTTP request -> normalized response"
 - Use `defineSandboxTool` when the tool runs a CLI or process inside a tool sandbox snapshot
+- For sandbox manifests in this repo, keep installer bytes in `tools/sandboxes/<id>/setup.ts` and expose them through `tools/sandboxes/registry.ts`; do not rely on runtime reads of repo-relative `.sh` files
 
 ### 3. Enforce Secret Injection for authenticated tools
 
@@ -136,7 +137,7 @@ Only add a new category ordering entry if the category is actually new.
 ### Step 4: Wire dependencies only when needed
 
 - New provider-backed tool: ensure the connector/provider exists, the capability provider name matches it exactly, and authenticated requests use Secret Injection rather than in-tool secret handling
-- New sandbox tool: ensure the manifest exists in `tools/sandboxes/...`, the manifest id matches exactly, and any authenticated egress uses a restricted network policy plus Secret Injection
+- New sandbox tool: ensure the manifest exists in `tools/sandboxes/<id>/{manifest.ts, setup.ts}`, the manifest id matches exactly, the registry exposes bundled setup-script bytes, and any authenticated egress uses a restricted network policy plus Secret Injection
 - New runtime behavior: only then inspect `tools/build-attached-tools.ts`, `resolve-tool-plan`, or other runtime files
 
 Do not edit `buildAttachedTools`, `agent-factory`, or `lib/agent-capability-summary.ts` just to "hook up" a normal tool. Registry wiring is enough for standard tools.
