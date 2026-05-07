@@ -187,35 +187,24 @@ async function Resolved({ params }: { params: Params }) {
   return (
     <>
       <header className="mb-12 border-foreground border-t-4 pt-6">
-        <div className="grid gap-8 md:grid-cols-[minmax(0,7fr)_minmax(16rem,3fr)]">
-          <div className="flex flex-col gap-4">
-            <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
-              {agent.name}
-            </p>
-            <h1 className="font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter md:text-7xl">
-              Tools
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              Maintainer tools the agent may call. Attach the ones you want this
-              agent to use; configure their per-attachment settings; connect any
-              required provider once on the settings page.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-start gap-3 border-foreground border-l-2 pl-4 md:justify-end">
-            <Link
-              className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
-              href={`/agents/${agentId}`}
-            >
-              ← Overview
-            </Link>
-            <Link
-              className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
-              href="/settings"
-            >
-              Connections →
-            </Link>
-          </div>
-        </div>
+        <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
+          {agent.name}
+        </p>
+        <h1 className="mt-2 font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter md:text-7xl">
+          Tools
+        </h1>
+        <p className="mt-4 max-w-2xl text-muted-foreground text-sm">
+          Capabilities this agent can call. Attach a tool, then configure its
+          per-attachment settings. Tools that need a credential will tell you
+          inline — set it up once in{' '}
+          <Link
+            className="underline decoration-2 underline-offset-2 hover:text-foreground"
+            href="/settings#connections"
+          >
+            Settings → Connections
+          </Link>
+          .
+        </p>
       </header>
 
       <ToolCatalog

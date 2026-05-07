@@ -85,39 +85,27 @@ async function AgentEdit({ params }: { params: Params }) {
         ← {agentRow.name}
       </Link>
 
-      <header className="mb-12 border-foreground border-t-4 pt-6">
+      <header className="mb-10 border-foreground border-t-4 pt-6">
         <p className="swiss-label mb-4 text-accent">04. Configure</p>
         <h1 className="max-w-4xl font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter md:text-7xl">
           {agentRow.name}
         </h1>
+        <p className="mt-4 max-w-2xl text-muted-foreground text-sm">
+          Edit by form, or describe changes in the chat panel and approve the
+          diff. Both modes touch the same source of truth.
+        </p>
       </header>
 
-      <section className="border-foreground border-t-2 py-10">
-        <h2 className="swiss-label mb-6 text-accent">Budget</h2>
-        <Suspense fallback={<div className="h-32" />}>
-          <AgentBudgetSection
-            agentId={agentRow.id}
-            agentName={agentRow.name}
-            userId={session.user.id}
-          />
-        </Suspense>
-      </section>
+      <ConfigureSectionNav />
 
-      <section className="border-foreground border-t-2 py-10">
-        <h2 className="swiss-label mb-6 text-accent">Slack</h2>
-        <p className="mb-6 max-w-2xl text-muted-foreground text-sm">
-          Route incoming Slack messages to this agent. Install the app once per
-          workspace, then bind a channel, DM, or workspace fallback.
-        </p>
-        <Suspense fallback={<div className="h-32" />}>
-          <AgentSlackSection agentId={agentRow.id} userId={session.user.id} />
-        </Suspense>
-      </section>
-
-      <section className="border-foreground border-t-2 py-10">
-        <p className="mb-3 font-bold text-xs uppercase tracking-[0.14em]">
-          Manual editing
-        </p>
+      <section
+        className="scroll-mt-24 border-foreground border-t-2 py-10"
+        id="identity"
+      >
+        <SectionHeading
+          description="Name, model, identity card, instructions, schedule, and step limits."
+          eyebrow="Identity & behavior"
+        />
         <AgentForm
           defaultModel={DEFAULT_MODEL_ID}
           initial={{
@@ -144,14 +132,14 @@ async function AgentEdit({ params }: { params: Params }) {
         />
       </section>
 
-      <section className="border-foreground border-t-2 py-10">
-        <p className="mb-3 font-bold text-xs uppercase tracking-[0.14em]">
-          Chat editing
-        </p>
-        <p className="mb-4 max-w-2xl text-muted-foreground text-sm">
-          Use chat to describe changes. Review the proposed update, then approve
-          to apply. Manual editing remains available above.
-        </p>
+      <section
+        className="scroll-mt-24 border-foreground border-t-2 py-10"
+        id="chat-editor"
+      >
+        <SectionHeading
+          description="Describe changes in plain English. Review the proposed diff, then approve to apply."
+          eyebrow="Chat editor"
+        />
         <AgentEditChat
           agentId={agentRow.id}
           currentBudget={currentBudget}
@@ -179,25 +167,106 @@ async function AgentEdit({ params }: { params: Params }) {
         />
       </section>
 
-      <section className="flex flex-col gap-3 border-destructive border-t-2 pt-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <div>
-          <p className="font-bold text-destructive text-xs uppercase tracking-[0.2em]">
-            Danger zone
-          </p>
-          <p className="mt-1 text-muted-foreground text-xs">
-            Deleting this agent removes all of its run history and results.
-          </p>
+      <section
+        className="scroll-mt-24 border-foreground border-t-2 py-10"
+        id="channels"
+      >
+        <SectionHeading
+          description="Route incoming Slack messages to this agent. Install the app once per workspace, then bind a channel, DM, or workspace fallback."
+          eyebrow="Channels"
+        />
+        <Suspense fallback={<div className="h-32" />}>
+          <AgentSlackSection agentId={agentRow.id} userId={session.user.id} />
+        </Suspense>
+      </section>
+
+      <section
+        className="scroll-mt-24 border-foreground border-t-2 py-10"
+        id="budget"
+      >
+        <SectionHeading
+          description="Per-agent spend limits. Stack on top of the general budget set in Settings."
+          eyebrow="Budget"
+        />
+        <Suspense fallback={<div className="h-32" />}>
+          <AgentBudgetSection
+            agentId={agentRow.id}
+            agentName={agentRow.name}
+            userId={session.user.id}
+          />
+        </Suspense>
+      </section>
+
+      <section
+        className="scroll-mt-24 border-destructive border-t-2 py-10"
+        id="danger"
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div>
+            <p className="font-bold text-destructive text-xs uppercase tracking-[0.2em]">
+              Danger zone
+            </p>
+            <p className="mt-1 text-muted-foreground text-xs">
+              Deleting this agent removes all of its run history and results.
+            </p>
+          </div>
+          <form action={remove} className="self-start sm:self-auto">
+            <button
+              className="h-11 border-2 border-destructive px-4 font-bold text-destructive text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-destructive-foreground"
+              type="submit"
+            >
+              Delete agent
+            </button>
+          </form>
         </div>
-        <form action={remove} className="self-start sm:self-auto">
-          <button
-            className="h-11 border-2 border-destructive px-4 font-bold text-destructive text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-destructive-foreground"
-            type="submit"
-          >
-            Delete agent
-          </button>
-        </form>
       </section>
     </>
+  )
+}
+
+function SectionHeading({
+  eyebrow,
+  description,
+}: {
+  eyebrow: string
+  description?: string
+}) {
+  return (
+    <div className="mb-6 flex flex-col gap-2">
+      <h2 className="swiss-label text-accent">{eyebrow}</h2>
+      {description ? (
+        <p className="max-w-2xl text-muted-foreground text-sm leading-relaxed">
+          {description}
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+const CONFIGURE_NAV_ITEMS = [
+  { href: '#identity', label: 'Identity & behavior' },
+  { href: '#chat-editor', label: 'Chat editor' },
+  { href: '#channels', label: 'Channels' },
+  { href: '#budget', label: 'Budget' },
+  { href: '#danger', label: 'Danger zone' },
+] as const
+
+function ConfigureSectionNav() {
+  return (
+    <nav
+      aria-label="Configure sections"
+      className="mb-2 flex flex-wrap gap-2 border-foreground border-y-2 py-3"
+    >
+      {CONFIGURE_NAV_ITEMS.map((item) => (
+        <a
+          className="inline-flex h-8 items-center px-3 font-bold text-[10px] text-muted-foreground uppercase tracking-[0.18em] transition-colors hover:bg-foreground hover:text-background"
+          href={item.href}
+          key={item.href}
+        >
+          {item.label}
+        </a>
+      ))}
+    </nav>
   )
 }
 

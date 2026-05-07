@@ -56,32 +56,7 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
     notFound()
   }
 
-  return (
-    <>
-      <AgentOverviewHeader agent={agent} />
-
-      <section className="py-12">
-        <h2 className="swiss-label mb-6 text-accent">05. Memory surfaces</h2>
-        <div className="grid gap-4 md:grid-cols-3">
-          <SurfaceCard
-            description="Read daily logs mirrored from the agent's memory volume."
-            href={`/agents/${agent.id}/timeline`}
-            title="Timeline"
-          />
-          <SurfaceCard
-            description="Review DREAMS.md and goal/task diffs from reflection."
-            href={`/agents/${agent.id}/dreams`}
-            title="DREAMS"
-          />
-          <SurfaceCard
-            description="Inspect every markdown file currently cached for the agent."
-            href={`/agents/${agent.id}/files`}
-            title="Files"
-          />
-        </div>
-      </section>
-    </>
-  )
+  return <AgentOverviewHeader agent={agent} />
 }
 
 function AgentOverviewHeader({ agent }: { agent: Agent }) {
@@ -118,64 +93,22 @@ function AgentOverviewHeader({ agent }: { agent: Agent }) {
           </h1>
         </div>
         <div className="flex flex-wrap items-start gap-3 border-foreground border-l-2 pl-4 md:justify-end">
-          <TriggerButton agentId={agent.id} label="Heartbeat" />
+          <TriggerButton agentId={agent.id} label="Run heartbeat" />
           <TriggerButton
             agentId={agent.id}
-            label="Reflect"
+            label="Run reflection"
             mode="reflection"
             variant="outline"
           />
           <Link
             className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
-            href={`/agents/${agent.id}/tools`}
+            href={`/agents/${agent.id}/edit`}
           >
-            Tools
-          </Link>
-          <Link
-            className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
-            href={`/agents/${agent.id}/files`}
-          >
-            Files
-          </Link>
-          <Link
-            className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
-            href={`/agents/${agent.id}/timeline`}
-          >
-            Timeline
-          </Link>
-          <Link
-            className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
-            href={`/agents/${agent.id}/dreams`}
-          >
-            Dreams
+            Configure →
           </Link>
         </div>
       </div>
     </header>
-  )
-}
-
-function SurfaceCard({
-  description,
-  href,
-  title,
-}: {
-  description: string
-  href: string
-  title: string
-}) {
-  return (
-    <Link
-      className="group border-2 border-foreground p-5 transition-colors hover:bg-accent"
-      href={href}
-    >
-      <p className="font-black font-serif text-2xl uppercase leading-none tracking-tighter">
-        {title}
-      </p>
-      <p className="mt-3 text-muted-foreground text-sm leading-relaxed group-hover:text-foreground">
-        {description}
-      </p>
-    </Link>
   )
 }
 

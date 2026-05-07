@@ -34,15 +34,23 @@ export default function DashboardPage() {
           </div>
           <div className="flex flex-col items-start gap-6 xl:items-stretch xl:justify-self-end">
             <p className="max-w-xs border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
-              Every agent, current session state, and live activity in one
-              operator view.
+              At-a-glance: live activity, current session state, and budget
+              health. Use Agents to manage and configure them.
             </p>
-            <Link
-              className="inline-flex h-14 shrink-0 items-center justify-center border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground"
-              href="/agents/new"
-            >
-              + New agent
-            </Link>
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                className="inline-flex h-14 shrink-0 items-center justify-center border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground"
+                href="/agents/new"
+              >
+                + New agent
+              </Link>
+              <Link
+                className="inline-flex h-14 shrink-0 items-center justify-center border-2 border-foreground px-6 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+                href="/agents"
+              >
+                Manage all →
+              </Link>
+            </div>
           </div>
         </div>
       </header>

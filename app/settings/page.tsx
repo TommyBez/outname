@@ -26,43 +26,88 @@ export default function SettingsPage({
 }) {
   return (
     <AppShell>
-      <header className="mb-12 border-foreground border-t-4 pt-6 md:mb-16">
+      <header className="mb-10 border-foreground border-t-4 pt-6 md:mb-12">
         <p className="swiss-label mb-4 text-accent">08. Settings</p>
         <h1 className="font-black font-serif text-6xl uppercase leading-[0.9] tracking-tighter md:text-8xl">
-          Your assistant
+          Workspace
         </h1>
+        <p className="mt-4 max-w-2xl text-muted-foreground text-sm">
+          Account-wide setup. Provider connections and the general budget apply
+          to every agent. Per-agent overrides — Slack channels, budget caps,
+          tools — live on each agent&apos;s Configure page.
+        </p>
       </header>
 
       <Suspense fallback={null}>
         <FlashNotice searchParams={searchParams} />
       </Suspense>
 
+      <SettingsSectionNav />
+
       <div className="border-foreground border-y-2">
-        <Section title="Connections">
+        <Section
+          description="OAuth and API key credentials your agents share. Connect once, then enable the matching tool on any agent."
+          id="connections"
+          title="Connections"
+        >
           <Suspense fallback={<ConnectionsSectionSkeleton />}>
             <ConnectionsSection />
           </Suspense>
         </Section>
 
-        <Section title="Budget">
+        <Section
+          description="Default daily, weekly, and monthly caps that apply to every agent unless an agent sets its own override."
+          id="budget"
+          title="General budget"
+        >
           <Suspense fallback={<div className="h-32" />}>
             <BudgetSection />
           </Suspense>
         </Section>
 
-        <Section title="Agents">
+        <Section
+          description="Slack workspace install plus the agents you have. Channel bindings live on each agent's Configure → Channels."
+          id="channels"
+          title="Channels & agents"
+        >
           <Suspense fallback={<div className="h-10" />}>
             <AgentsSummarySection />
           </Suspense>
         </Section>
 
-        <Section title="Account">
+        <Section id="account" title="Account">
           <Suspense fallback={<AccountSkeleton />}>
             <AccountSection />
           </Suspense>
         </Section>
       </div>
     </AppShell>
+  )
+}
+
+const SETTINGS_NAV_ITEMS = [
+  { href: '#connections', label: 'Connections' },
+  { href: '#budget', label: 'General budget' },
+  { href: '#channels', label: 'Channels & agents' },
+  { href: '#account', label: 'Account' },
+] as const
+
+function SettingsSectionNav() {
+  return (
+    <nav
+      aria-label="Settings sections"
+      className="mb-8 flex flex-wrap gap-2 border-foreground border-y-2 py-3"
+    >
+      {SETTINGS_NAV_ITEMS.map((item) => (
+        <a
+          className="inline-flex h-8 items-center px-3 font-bold text-[10px] text-muted-foreground uppercase tracking-[0.18em] transition-colors hover:bg-foreground hover:text-background"
+          href={item.href}
+          key={item.href}
+        >
+          {item.label}
+        </a>
+      ))}
+    </nav>
   )
 }
 
@@ -177,15 +222,29 @@ async function AccountSection() {
 }
 
 function Section({
+  id,
   title,
+  description,
   children,
 }: {
+  id: string
   title: string
+  description?: string
   children: React.ReactNode
 }) {
   return (
-    <section className="grid grid-cols-1 gap-6 border-foreground border-b-2 py-10 last:border-b-0 lg:grid-cols-[160px_1fr] lg:gap-10">
-      <h2 className="swiss-label text-accent">{title}</h2>
+    <section
+      className="scroll-mt-24 grid grid-cols-1 gap-6 border-foreground border-b-2 py-10 last:border-b-0 lg:grid-cols-[200px_1fr] lg:gap-10"
+      id={id}
+    >
+      <div className="flex flex-col gap-3">
+        <h2 className="swiss-label text-accent">{title}</h2>
+        {description ? (
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            {description}
+          </p>
+        ) : null}
+      </div>
       <div className="min-w-0">{children}</div>
     </section>
   )

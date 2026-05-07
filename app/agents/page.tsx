@@ -24,8 +24,8 @@ export default function AgentsListPage() {
             </h1>
           </div>
           <p className="max-w-xs border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
-            Each worker has its own model, schedules, memory, and reflection
-            stream.
+            The full roster. Open an agent to chat, configure, attach tools, or
+            review its memory.
           </p>
           <Link
             className="inline-flex h-14 shrink-0 items-center justify-center self-start border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground md:self-auto"
