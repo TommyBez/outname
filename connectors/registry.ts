@@ -2,7 +2,9 @@ import 'server-only'
 import { calcomConnector } from './calcom'
 import { firecrawlConnector } from './firecrawl'
 import { parallelConnector } from './parallel'
+import { posthogConnector } from './posthog'
 import { resendConnector } from './resend'
+import { supabaseConnector } from './supabase'
 import { typefullyConnector } from './typefully'
 import type { Connector } from './types'
 import { vercelConnector } from './vercel'
@@ -18,8 +20,10 @@ const CONNECTORS: Connector[] = [
   calcomConnector,
   firecrawlConnector,
   parallelConnector,
+  posthogConnector,
   xConnector,
   typefullyConnector,
+  supabaseConnector,
   vercelConnector,
 ]
 const CONNECTOR_BY_PROVIDER = new Map<string, Connector>()

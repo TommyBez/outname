@@ -4,8 +4,10 @@ import { agentBrowserTool } from './agent-browser'
 import { calcomRequestTool } from './calcom'
 import { firecrawlScrapeTool } from './firecrawl-scrape'
 import { parallelSearchTool } from './parallel'
+import { posthogRequestTool } from './posthog'
 import { resendSendTool } from './resend'
 import { getToolSandboxManifest } from './sandboxes/registry'
+import { supabaseRequestTool } from './supabase'
 import { typefullyRequestTool } from './typefully'
 import type { MaintainerTool } from './types'
 import { vercelRequestTool } from './vercel'
@@ -28,10 +30,12 @@ const TOOLS: MaintainerTool[] = [
   calcomRequestTool,
   firecrawlScrapeTool,
   parallelSearchTool,
+  posthogRequestTool,
   agentBrowserTool,
   xApiRequestTool,
   typefullyRequestTool,
   vercelRequestTool,
+  supabaseRequestTool,
 ]
 const TOOL_BY_ID = new Map<string, MaintainerTool>()
 
@@ -70,7 +74,9 @@ export function getMaintainerTool(toolId: string): MaintainerTool | undefined {
 export const TOOL_CATEGORY_ORDER = [
   'email',
   'scheduling',
+  'analytics',
   'social',
   'browser',
   'deployment',
+  'database',
 ] as const
