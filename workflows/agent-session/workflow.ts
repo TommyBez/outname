@@ -55,15 +55,22 @@ const FALLBACK_SOURCE: EventSource = {
  */
 export async function agentSessionWorkflow(input: {
   agentId: string
+  sessionStartToken?: string
 }): Promise<void> {
   'use workflow'
-  const { agentId } = input
+  const { agentId, sessionStartToken } = input
   const sessionRunId = currentSessionRunId()
   const hook = createHook<SessionEvent>({
     token: sessionToken(agentId),
   })
 
-  if (!(await isCurrentSessionOwner({ agentId, sessionRunId }))) {
+  if (
+    !(await isCurrentSessionOwner({
+      agentId,
+      sessionRunId,
+      sessionStartToken,
+    }))
+  ) {
     console.warn('[v0] agentSessionWorkflow: stale session exiting', {
       agentId,
       sessionRunId,
@@ -80,7 +87,13 @@ export async function agentSessionWorkflow(input: {
 
   try {
     for await (const event of hook) {
-      if (!(await isCurrentSessionOwner({ agentId, sessionRunId }))) {
+      if (
+        !(await isCurrentSessionOwner({
+          agentId,
+          sessionRunId,
+          sessionStartToken,
+        }))
+      ) {
         console.warn('[v0] agentSessionWorkflow: owner changed, exiting', {
           agentId,
           sessionRunId,
@@ -106,7 +119,13 @@ export async function agentSessionWorkflow(input: {
         console.error('[v0] agentSessionWorkflow: handler failed', err)
       }
 
-      if (!(await isCurrentSessionOwner({ agentId, sessionRunId }))) {
+      if (
+        !(await isCurrentSessionOwner({
+          agentId,
+          sessionRunId,
+          sessionStartToken,
+        }))
+      ) {
         console.warn(
           '[v0] agentSessionWorkflow: owner changed before finalization',
           {
@@ -124,7 +143,13 @@ export async function agentSessionWorkflow(input: {
         source: result.source,
       })
 
-      if (!(await isCurrentSessionOwner({ agentId, sessionRunId }))) {
+      if (
+        !(await isCurrentSessionOwner({
+          agentId,
+          sessionRunId,
+          sessionStartToken,
+        }))
+      ) {
         console.warn(
           '[v0] agentSessionWorkflow: owner changed after finalization',
           {

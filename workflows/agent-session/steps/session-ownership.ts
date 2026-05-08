@@ -9,15 +9,31 @@ const TERMINAL_STATUSES = new Set(['completed', 'failed', 'cancelled'])
 export async function isCurrentSessionOwner(input: {
   agentId: string
   sessionRunId: string
+  sessionStartToken?: string
 }): Promise<boolean> {
   'use step'
   const [row] = await db
-    .select({ lastSessionRunId: agent.lastSessionRunId })
+    .select({
+      lastSessionRunId: agent.lastSessionRunId,
+      sessionStartExpiresAt: agent.sessionStartExpiresAt,
+      sessionStartToken: agent.sessionStartToken,
+    })
     .from(agent)
     .where(eq(agent.id, input.agentId))
     .limit(1)
 
-  if (row?.lastSessionRunId !== input.sessionRunId) {
+  if (!row) {
+    return false
+  }
+
+  const ownsPersistedRun = row.lastSessionRunId === input.sessionRunId
+  const ownsStartupLease =
+    input.sessionStartToken !== undefined &&
+    row.sessionStartToken === input.sessionStartToken &&
+    row.sessionStartExpiresAt !== null &&
+    row.sessionStartExpiresAt.getTime() > Date.now()
+
+  if (!(ownsPersistedRun || ownsStartupLease)) {
     return false
   }
 

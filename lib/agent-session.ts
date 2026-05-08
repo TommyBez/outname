@@ -2,6 +2,7 @@ import 'server-only'
 import type { UIMessage, UIMessageChunk } from 'ai'
 import { and, eq, isNull, lt, or } from 'drizzle-orm'
 import { getHookByToken, getRun, resumeHook, start } from 'workflow/api'
+import { getWorld } from 'workflow/runtime'
 import { db } from '@/lib/db'
 import { type Agent, agent } from '@/lib/db/schema'
 import {
@@ -32,6 +33,8 @@ const TERMINAL_STATUSES = new Set(['completed', 'failed', 'cancelled'])
 const SESSION_START_LEASE_TTL_MS = 30_000
 const SESSION_START_WAIT_TIMEOUT_MS = 35_000
 const SESSION_START_WAIT_POLL_MS = 250
+const SESSION_RESTART_GRACEFUL_STOP_TIMEOUT_MS = 2000
+const SESSION_RESTART_CANCEL_TIMEOUT_MS = 3000
 const SESSION_HOOK_READY_TIMEOUT_MS = 5000
 const SESSION_HOOK_POLL_MS = 100
 
@@ -82,24 +85,50 @@ async function ensureSessionStarted(input: {
   agentId: string
   force: boolean
 }): Promise<{ sessionRunId: string; started: boolean }> {
-  const hookOwner = await readLiveSessionHookOwner(input.agentId)
-  if (hookOwner) {
-    await adoptSessionRunId(input.agentId, hookOwner)
-    return { sessionRunId: hookOwner, started: false }
-  }
+  const deadlineMs = Date.now() + SESSION_START_WAIT_TIMEOUT_MS
 
   if (!input.force) {
+    const state = await readSessionStartState(input.agentId)
+    if (!state) {
+      throw new Error(
+        `Agent ${input.agentId} not found while starting session.`
+      )
+    }
+    if (isSessionStartLeaseActive(state, new Date())) {
+      const winner = await waitForSessionStartWinner({
+        agentId: input.agentId,
+        deadlineMs,
+      })
+      if (winner) {
+        return { sessionRunId: winner, started: false }
+      }
+    }
+
+    const hookOwner = await readLiveSessionHookOwner(input.agentId)
+    if (hookOwner) {
+      await adoptSessionRunId(input.agentId, hookOwner)
+      return { sessionRunId: hookOwner, started: false }
+    }
+
     const existing = await readRunningSessionRunId(input.agentId)
     if (existing) {
       return { sessionRunId: existing, started: false }
     }
   }
 
-  const deadlineMs = Date.now() + SESSION_START_WAIT_TIMEOUT_MS
   while (Date.now() < deadlineMs) {
     const token = newSessionStartToken()
     if (await tryAcquireSessionStartLease(input.agentId, token)) {
-      return await doStartWithLease({ agentId: input.agentId, token })
+      return await doStartWithLease({
+        agentId: input.agentId,
+        replaceExisting: input.force,
+        token,
+      })
+    }
+
+    if (input.force) {
+      await sleep(SESSION_START_WAIT_POLL_MS)
+      continue
     }
 
     const winner = await waitForSessionStartWinner({
@@ -118,10 +147,17 @@ async function ensureSessionStarted(input: {
 
 async function doStartWithLease(input: {
   agentId: string
+  replaceExisting: boolean
   token: string
 }): Promise<{ sessionRunId: string; started: boolean }> {
   try {
-    const run = await start(agentSessionWorkflow, [{ agentId: input.agentId }])
+    if (input.replaceExisting) {
+      await stopLiveSessionOwnerForRestart(input.agentId)
+    }
+
+    const run = await start(agentSessionWorkflow, [
+      { agentId: input.agentId, sessionStartToken: input.token },
+    ])
     const stored = await storeStartedSessionRunId({
       agentId: input.agentId,
       sessionRunId: run.runId,
@@ -196,6 +232,81 @@ async function readLiveSessionHookOwner(
     }
     throw err
   }
+}
+
+async function stopLiveSessionOwnerForRestart(agentId: string): Promise<void> {
+  const hookOwner = await readLiveSessionHookOwner(agentId)
+  if (!hookOwner) {
+    return
+  }
+
+  try {
+    await resumeHook(sessionToken(agentId), { type: 'shutdown' })
+  } catch (err) {
+    if (!isHookNotFoundError(err)) {
+      console.warn(
+        '[v0] restartAgentSession: graceful shutdown request failed',
+        { agentId, hookOwner, err }
+      )
+    }
+  }
+
+  if (
+    await waitForSessionOwnerToClear({
+      agentId,
+      sessionRunId: hookOwner,
+      timeoutMs: SESSION_RESTART_GRACEFUL_STOP_TIMEOUT_MS,
+    })
+  ) {
+    return
+  }
+
+  try {
+    const world = await getWorld()
+    await world.events.create(hookOwner, { eventType: 'run_cancelled' })
+  } catch (err) {
+    console.warn('[v0] restartAgentSession: force cancel failed', {
+      agentId,
+      hookOwner,
+      err,
+    })
+  }
+
+  if (
+    await waitForSessionOwnerToClear({
+      agentId,
+      sessionRunId: hookOwner,
+      timeoutMs: SESSION_RESTART_CANCEL_TIMEOUT_MS,
+    })
+  ) {
+    return
+  }
+
+  throw new Error(
+    `Timed out waiting for live session ${hookOwner} to stop before restarting agent ${agentId}.`
+  )
+}
+
+async function waitForSessionOwnerToClear(input: {
+  agentId: string
+  sessionRunId: string
+  timeoutMs: number
+}): Promise<boolean> {
+  const deadlineMs = Date.now() + input.timeoutMs
+  while (Date.now() < deadlineMs) {
+    if (!(await isWorkflowRunAlive(input.sessionRunId))) {
+      return true
+    }
+
+    const hookOwner = await readLiveSessionHookOwner(input.agentId)
+    if (hookOwner !== input.sessionRunId) {
+      return true
+    }
+
+    await sleep(SESSION_START_WAIT_POLL_MS)
+  }
+
+  return false
 }
 
 async function tryAcquireSessionStartLease(
@@ -293,12 +404,6 @@ async function waitForSessionStartWinner(input: {
   deadlineMs: number
 }): Promise<string | null> {
   while (Date.now() < input.deadlineMs) {
-    const hookOwner = await readLiveSessionHookOwner(input.agentId)
-    if (hookOwner) {
-      await adoptSessionRunId(input.agentId, hookOwner)
-      return hookOwner
-    }
-
     const state = await readSessionStartState(input.agentId)
     if (!state) {
       throw new Error(
@@ -307,18 +412,25 @@ async function waitForSessionStartWinner(input: {
     }
 
     const leaseActive = isSessionStartLeaseActive(state, new Date())
+    if (leaseActive) {
+      await sleep(SESSION_START_WAIT_POLL_MS)
+      continue
+    }
+
     if (
-      !leaseActive &&
       state.lastSessionRunId &&
       (await isWorkflowRunAlive(state.lastSessionRunId))
     ) {
       return state.lastSessionRunId
     }
-    if (!leaseActive) {
-      return null
+
+    const hookOwner = await readLiveSessionHookOwner(input.agentId)
+    if (hookOwner) {
+      await adoptSessionRunId(input.agentId, hookOwner)
+      return hookOwner
     }
 
-    await sleep(SESSION_START_WAIT_POLL_MS)
+    return null
   }
 
   return null
