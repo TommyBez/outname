@@ -144,13 +144,13 @@ The heartbeat design avoids a common automation failure mode: overlapping schedu
 
 ### Memory and files
 
-Agent memory lives primarily as markdown files in the agent's persistent system sandbox. The database stores a mirrored view of those files so the UI can render logs, memory, and file-change history without reopening the sandbox for every page load. Pending writes created from forms are queued in Postgres and drained by the next workflow event, which keeps file mutations ordered with model activity.
+Agent memory lives primarily as files in the agent's persistent system sandbox. The database stores a mirrored view of architecture-defined files so the UI can render logs, memory, and file-change history without reopening the sandbox for every page load. Pending writes created from forms are queued in Postgres and drained by the next workflow event, which keeps protected bootstrap-file mutations ordered with model activity.
 
 There are three memory views:
 
-- **Sandbox files** are the working memory the model and memory tools interact with during an event.
+- **Sandbox files** are the working memory the model-facing file tools interact with during an event.
 - **Pending writes** are database rows created by UI edits before the next workflow event applies them to the sandbox.
-- **Mirrored files** are database rows copied from the sandbox after an event so the UI can read memory without booting a sandbox.
+- **Mirrored files** are architecture-defined database rows copied from the sandbox after an event so the UI can read memory without booting a sandbox.
 
 This means the UI remains fast and database-driven, while the agent still gets a filesystem-native memory model during workflow execution.
 

@@ -14,7 +14,7 @@ import { type PendingFileWrite, pendingFileWrites } from '@/lib/db/schema'
  *      runs at the top of every session event picks rows up and
  *      applies them to the system sandbox, then stamps `applied_at`.
  *      SOUL.md / AGENTS.md use this as their only mutation path;
- *      USER.md can also be edited by the agent through memory tools.
+ *      USER.md can also be edited by the agent through writeFile.
  *
  *   2. **Read latest** — the create / edit form prefills its tabs
  *      from the most recent row per path (applied or not) so the
@@ -43,7 +43,7 @@ function isPendingBootstrapPath(path: string): path is PendingBootstrapPath {
  * up on the next session event. Returns the row id so callers can
  * thread it into telemetry if they want.
  *
- * Defense-in-depth: this path bypasses normal memory-tool writes for
+ * Defense-in-depth: this path bypasses normal writeFile writes for
  * the protected bootstrap files, so the queue MUST stay locked to the
  * small settings-managed surface. USER.md is included so the operator
  * can seed or correct the agent-maintained profile.

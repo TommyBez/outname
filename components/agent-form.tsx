@@ -333,7 +333,7 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
         <div>
           <p className="mb-4 max-w-2xl text-muted-foreground text-xs leading-relaxed">
             {
-              "These four files are inlined into the agent's system prompt on every event when present. IDENTITY.md is the quick persona card, SOUL.md is the deeper personality layer, AGENTS.md is the operating manual, and USER.md is the user profile. The agent can read them via read_memory, but only USER.md remains agent-maintained."
+              "These four files are inlined into the agent's system prompt on every event when present. IDENTITY.md is the quick persona card, SOUL.md is the deeper personality layer, AGENTS.md is the operating manual, and USER.md is the user profile. The agent can read them via readFile, but only USER.md remains agent-maintained."
             }
           </p>
           <div className="mb-3 flex flex-col gap-2 md:hidden">

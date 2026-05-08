@@ -16,7 +16,7 @@
  *
  * The agent itself MUST NOT modify `AGENTS.md`, `IDENTITY.md`, or
  * `SOUL.md` at runtime. Centralising the sets in one module guarantees
- * `write_memory`, `edit_memory`, and `delete_memory` cannot drift.
+ * the model-facing file tools and DB mirroring policy cannot drift.
  */
 export const EAGER_CONTEXT_PATHS = [
   'AGENTS.md',
@@ -36,9 +36,7 @@ export const PROTECTED_CONTEXT_PATHS = [
 export type ProtectedContextPath = (typeof PROTECTED_CONTEXT_PATHS)[number]
 
 /**
- * Set of paths the agent's memory tools MUST refuse to mutate. The
- * tool returns a structured `{ error: "read_only", ... }` result so
- * the model can react in its reply rather than crash mid-stream.
+ * Set of paths the agent's file tools MUST refuse to mutate.
  */
 export const READ_ONLY_FOR_AGENT: ReadonlySet<string> = new Set(
   PROTECTED_CONTEXT_PATHS
@@ -49,13 +47,7 @@ export function isReadOnlyForAgent(path: string): boolean {
 }
 
 /**
- * Stable structured error every memory tool returns when asked to
- * mutate a protected context file. Structured rather than thrown so:
- *   1. The model receives a tool result it can quote / react to in
- *      the same turn (a thrown step error would surface as a generic
- *      stream failure).
- *   2. Downstream observers (chat UI, future audit log) can recognise
- *      the canonical reason without parsing prose.
+ * Stable structured error kept for older callers and UI copy.
  */
 export const READ_ONLY_TOOL_ERROR = {
   error: 'read_only' as const,

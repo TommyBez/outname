@@ -30,8 +30,8 @@ import {
 /**
  * Chat event handler — runs inside the long-lived session workflow.
  *
- *   1. Boot the system sandbox (memory volume + bootstrap files) used by
- *      `composeSystemPrompt` and the memory_* tools. `endOfEvent`
+ *   1. Boot the system sandbox (persistent files + bootstrap files) used by
+ *      `composeSystemPrompt` and the built-in file tools. `endOfEvent`
  *      snapshots it at turn end.
  *   2. Build the per-event `DurableAgent` via `buildAgent`. The same
  *      factory is used by `handleHeartbeat`.
@@ -44,10 +44,8 @@ import {
  *      with the agent stream so user-visible latency is never gated by
  *      titling.
  *   5. Persist the assistant turn.
- *   6. Return the per-event `pending` queue so the session workflow
- *      can hand it to `endOfEvent` for flushing. If we threw before
- *      reaching this return, the queue is dropped — atomicity at the
- *      turn boundary, not the tool-call boundary.
+ *   6. Return the per-event architecture-file tracker so the session
+ *      workflow can hand it to `endOfEvent` for review/mirroring.
  *
  * No `"use step"` here — the body uses workflow primitives
  * (`getWritable`, `DurableAgent.stream`) and lives in the workflow
@@ -115,7 +113,7 @@ export async function handleChat(input: {
   // system prompt. composeSystemPrompt inlines AGENTS.md / IDENTITY.md /
   // SOUL.md verbatim, so this guarantees the operator's latest save is
   // what the model sees this turn.
-  await emitActivity(sessionRunId, 'Chat: Syncing memory edits')
+  await emitActivity(sessionRunId, 'Chat: Syncing bootstrap edits')
   await drainPendingWrites({ agentId })
 
   const { agent, meta, pending, tools } = await buildAgent({

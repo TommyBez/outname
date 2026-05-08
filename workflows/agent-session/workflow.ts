@@ -38,10 +38,10 @@ const FALLBACK_SOURCE: EventSource = {
  *   3. Dispatch each event to its handler (`chat` / `heartbeat`),
  *      acking the ticker after each heartbeat completes so the next
  *      tick is gated on this one. Each handler returns the per-event
- *      `pending` queue of memory mutations.
+ *      tracker for immediate file writes.
  *   4. After every event, run `endOfEvent` to:
- *        - flush the queued memory mutations into the system sandbox,
- *        - mirror every `*.md` into `agent_files`,
+ *        - persist review rows for tracked architecture-file writes,
+ *        - mirror tracked architecture files into `agent_files`,
  *        - shut both sandboxes so Vercel snapshots their filesystems.
  *      If a handler threw, we still call `endOfEvent` with a fresh
  *      empty queue so the sandboxes get released cleanly.

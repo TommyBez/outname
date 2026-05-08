@@ -4,13 +4,13 @@ import { getAgentById } from '@/lib/start-agent-run'
 import { buildAttachedTools } from '@/tools/build-attached-tools'
 import { composeSystemPrompt } from './compose-system-prompt'
 import { resolveToolPlan } from './steps/resolve-tool-plan'
-import { createMemoryTools } from './tools/memory-tools'
+import { createFileTools } from './tools/file-tools'
 import { createPendingWrites, type PendingWrites } from './tools/pending-writes'
 
 /**
  * One event's agent: DB load, composed system prompt from sandbox persona
- * files, memory + maintainer tools (Phase 3) + sub-agent tools (Phase 4),
- * and a `pending` buffer the caller must flush via `endOfEvent`.
+ * files, built-in file tools + maintainer tools (Phase 3) + sub-agent tools
+ * (Phase 4), and a per-event tracker for reviewable architecture-file writes.
  */
 export interface BuildAgentArgs {
   agentId: string
@@ -51,7 +51,7 @@ export interface BuildAgentResult {
     stepLimitCustom: number | null
     stepLimitMode: 'custom' | 'grind' | 'high' | 'low' | 'medium'
   }
-  /** Per-event memory mutation buffer. Pass to `endOfEvent`. */
+  /** Per-event architecture-file change tracker. Pass to `endOfEvent`. */
   pending: PendingWrites
   /** Complete tool set used for model-message conversion. */
   tools: Record<string, Tool>
@@ -102,9 +102,9 @@ export async function buildAgent(
 
   const pending = createPendingWrites()
 
-  const memoryTools = createMemoryTools({ agentId, pending })
+  const fileTools = await createFileTools({ agentId, pending })
   const tools = {
-    ...memoryTools,
+    ...fileTools,
     ...attached.tools,
   }
 
@@ -157,7 +157,7 @@ export function buildHeartbeatKickoff(args: {
     'Follow your operational directives from AGENTS.md, your identity',
     'card from IDENTITY.md, and your deeper persona from SOUL.md.',
     'Perform one small, useful heartbeat-sized action,',
-    'update memory as your directives require, append a brief bullet to',
+    'update sandbox files as your directives require, append a brief bullet to',
     "today's log, then stop.",
   ].join('\n')
 }
@@ -182,15 +182,15 @@ export function buildReflectionKickoff(args: {
     '',
     'Run a focused DREAMS / reflection pass:',
     '',
-    '1. Use list_memory/search_memory to inspect recent logs under logs/.',
+    '1. Use listFiles/grepFiles to inspect recent logs under logs/.',
     '   Prefer today and recent days, but do not read huge files blindly.',
     '2. Read DREAMS.md, GOALS.md, and TASKS.md if they exist.',
-    '3. Append a dated entry to DREAMS.md. Cite specific evidence using',
-    '   memory paths and line numbers returned by search_memory, e.g.',
+    '3. Read DREAMS.md, then write back a dated entry. Cite specific evidence using',
+    '   sandbox paths and line numbers returned by grepFiles, e.g.',
     '   `logs/2026-04-30.md:12`.',
     '4. Edit GOALS.md and TASKS.md only when the evidence supports a',
     '   concrete change. Avoid speculative churn.',
-    "5. Append one concise bullet to today's log summarizing the reflection.",
+    "5. Read today's log if it exists, then write it back with one concise reflection bullet.",
     '',
     'Stop after the reflection. Do not start an open-ended work session.',
   ].join('\n')

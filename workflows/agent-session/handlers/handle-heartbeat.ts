@@ -44,19 +44,19 @@ import {
  *   3. Look up `agent.lastHeartbeatAt` (best effort, just for the
  *      kickoff prompt).
  *   4. Boot the system sandbox required by the system prompt and
- *      memory tools.
+ *      built-in file tools.
  *   5. Build the agent via `buildAgent` and stream it against the
  *      generic `buildHeartbeatKickoff` user message. The agent
  *      decides what to do based on its inlined AGENTS.md /
- *      IDENTITY.md / SOUL.md and current memory inventory.
+ *      IDENTITY.md / SOUL.md and current tracked file inventory.
  *   6. `finalizeRun` — emit terminal progress breadcrumbs.
  *
  * Errors are caught and converted to failed breadcrumbs before
  * re-throwing so the session loop can surface them via its outer
  * try/catch without losing the workflow-level breadcrumb.
  *
- * Like `handleChat`, returns the per-event `pending` queue so
- * `agentSessionWorkflow` can flush it via `endOfEvent`.
+ * Like `handleChat`, returns the per-event architecture-file tracker
+ * so `agentSessionWorkflow` can mirror/review it via `endOfEvent`.
  */
 export async function handleHeartbeat(input: {
   agentId: string
@@ -113,7 +113,7 @@ export async function handleHeartbeat(input: {
     })
     await startupSystemSandbox({ agentId })
 
-    await emitActivity(runId, activityMessage(mode, 'Syncing memory edits'))
+    await emitActivity(runId, activityMessage(mode, 'Syncing bootstrap edits'))
     // Drain UI-authored persona-file edits before composeSystemPrompt
     // reads them inside buildAgent.
     await drainPendingWrites({ agentId })

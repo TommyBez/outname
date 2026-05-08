@@ -12,6 +12,10 @@ const IDENTITY_MD_PATH = `${SYSTEM_SANDBOX_ROOT}/IDENTITY.md`
 const SOUL_MD_PATH = `${SYSTEM_SANDBOX_ROOT}/SOUL.md`
 const USER_MD_PATH = `${SYSTEM_SANDBOX_ROOT}/USER.md`
 const SEED_MARKER_PATH = `${SYSTEM_SANDBOX_ROOT}/.agents-md-seeded`
+// Bumped to "v12" when the model-facing memory tools were replaced by
+// bash-tool backed readFile/writeFile plus listFiles/grepFiles. Writes
+// are immediate; only architecture-defined files mirror to the DB/UI.
+//
 // Bumped to "v11" when the exec sandbox was removed: the template no
 // longer documents `bash` / `file_read` / `file_write` / `reset_exec`
 // or the bash audit log, since those tools no longer exist.
@@ -32,7 +36,7 @@ const SEED_MARKER_PATH = `${SYSTEM_SANDBOX_ROOT}/.agents-md-seeded`
 // Bumped to "v5" alongside the architect-driven memory-tool rename
 // from `memory_*` to `<verb>_memory`. Existing dev agents pick up the
 // new template on their next event after deploy.
-const SEED_MARKER_VALUE = 'v11'
+const SEED_MARKER_VALUE = 'v12'
 
 /**
  * Process-local cache of agent ids whose `.agents-md-seeded` marker we

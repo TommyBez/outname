@@ -23,24 +23,21 @@ export interface CreateOptions {
 
 /**
  * Persistent sandbox root inside the agent's system sandbox.
- * `AGENTS.md`, `IDENTITY.md`, `SOUL.md`, `USER.md`, and every memory
- * file the agent writes via the `memory_*` tools live directly under
+ * `AGENTS.md`, `IDENTITY.md`, `SOUL.md`, `USER.md`, canonical memory
+ * files, logs, and arbitrary agent-created files live directly under
  * this prefix (e.g. `/vercel/sandbox/journal.md`).
  */
 export const SYSTEM_SANDBOX_ROOT = '/vercel/sandbox'
 
 /**
  * Boot parameters for the agent's persistent system sandbox. The
- * sandbox holds the markdown memory volume — `AGENTS.md`,
- * `IDENTITY.md`, `SOUL.md`, and the rest of the memory `*.md` files —
- * read on every event by `composeSystemPrompt` and written by the
- * memory tool's pending-writes queue at end-of-event.
+ * sandbox holds the persistent file volume read by `composeSystemPrompt`
+ * and the model-facing file tools.
  */
 const SYSTEM_SANDBOX_CREATE_OPTIONS: CreateOptions = {
   runtime: 'node22',
-  // Memory ops are tiny — read/write a handful of small markdown
-  // files. 60s is plenty of headroom for the longest realistic
-  // composeSystemPrompt + flush cycle.
+  // File ops are small and bounded. 60s is plenty of headroom for the
+  // longest realistic composeSystemPrompt + mirror cycle.
   timeout: 60_000,
   resources: { vcpus: 1 },
   networkPolicy: 'deny-all',
@@ -146,8 +143,8 @@ export async function writeMarker(
 
 /**
  * Ensure the agent's system sandbox is booted. The system sandbox
- * holds AGENTS.md, IDENTITY.md, SOUL.md, and the agent's memory `*.md`
- * files. After the sandbox is ready we delegate to `seedAgentsMd` to
+ * holds AGENTS.md, IDENTITY.md, SOUL.md, and the agent's persistent
+ * sandbox files. After the sandbox is ready we delegate to `seedAgentsMd` to
  * install (or upgrade) the AGENTS.md baseline and bootstrap IDENTITY.md.
  *
  * Idempotent — safe to call from every event handler.
