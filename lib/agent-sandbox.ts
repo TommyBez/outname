@@ -95,7 +95,7 @@ async function ensureSystemSandbox(agentId: string): Promise<EnsureResult> {
 
   if (persistedName) {
     try {
-      sandbox = await Sandbox.get({ name: persistedName, resume: true })
+      sandbox = await Sandbox.get({ name: persistedName })
     } catch {
       sandbox = null
     }
