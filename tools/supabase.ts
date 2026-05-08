@@ -17,6 +17,24 @@ const SUPABASE_ENDPOINT_GUIDE =
 const supabaseMethodSchema = z.enum(['GET', 'POST', 'PATCH', 'PUT', 'DELETE'])
 
 const supabaseQueryValueSchema = z.union([z.string(), z.number(), z.boolean()])
+type SupabaseJsonValue =
+  | boolean
+  | null
+  | number
+  | string
+  | SupabaseJsonValue[]
+  | { [key: string]: SupabaseJsonValue }
+
+const supabaseJsonBodySchema: z.ZodType<SupabaseJsonValue> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number().finite(),
+    z.boolean(),
+    z.null(),
+    z.array(supabaseJsonBodySchema),
+    z.record(supabaseJsonBodySchema),
+  ])
+)
 
 const supabaseRequestInputSchema = z.object({
   method: supabaseMethodSchema
@@ -34,10 +52,11 @@ const supabaseRequestInputSchema = z.object({
     .record(supabaseQueryValueSchema)
     .optional()
     .describe('Optional query parameters appended to the request URL.'),
-  body: z
-    .record(z.unknown())
+  body: supabaseJsonBodySchema
     .optional()
-    .describe('Optional JSON request body for non-GET requests.'),
+    .describe(
+      'Optional JSON request body for non-GET requests. Accepts objects, arrays, strings, numbers, booleans, and null.'
+    ),
   confirmMutation: z
     .boolean()
     .default(false)
@@ -159,6 +178,10 @@ function appendQueryParams(
   }
 }
 
+function serializeSupabaseJsonBody(body: SupabaseJsonValue): string {
+  return JSON.stringify(body)
+}
+
 export const supabaseRequestTool = defineApiPassthroughTool({
   id: 'supabase_request',
   category: 'database',
@@ -181,7 +204,10 @@ export const supabaseRequestTool = defineApiPassthroughTool({
       method: input.method,
       url: url.toString(),
       headers,
-      body: input.body,
+      body:
+        input.body === undefined
+          ? undefined
+          : serializeSupabaseJsonBody(input.body),
     }
   },
   handleResponse(response, { input }) {
