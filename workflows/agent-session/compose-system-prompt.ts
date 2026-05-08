@@ -2,18 +2,19 @@ import { getSystemSandbox } from '@/lib/agent-sandbox'
 import { reconnectPromptLine } from '@/tools/reconnect-renderer'
 import type { Reconnect } from '@/tools/types'
 import {
-  listLiveMemory,
-  readLiveMemory,
-} from '@/workflows/agent-session/tools/pending-writes'
-import {
   EAGER_CONTEXT_PATHS,
   READ_ONLY_FOR_AGENT,
 } from '@/workflows/agent-session/tools/persona-paths'
+import {
+  listTrackedArchitectureFiles,
+  readLiveMemory,
+} from '@/workflows/agent-session/tools/sandbox-file-helpers'
 
 /**
  * Build the system prompt: inline eager context files from the system
- * sandbox, list other memory paths, append platform invariants. Computed
- * once per event; on-disk writes from this turn show up after `endOfEvent`.
+ * sandbox, list other tracked architecture paths, append platform invariants.
+ * Computed once per event; `writeFile` changes are immediate in the sandbox
+ * and mirrored to the UI after `endOfEvent`.
  */
 
 export interface ComposeSystemPromptArgs {
@@ -31,23 +32,25 @@ export interface ComposeSystemPromptArgs {
 
 const FOOTER = `## Platform invariants
 
-- Your memory volume persists across every event. Use the memory_*
-  tools to take notes; anything you produce outside the memory volume
-  (e.g. transient maintainer-tool side effects) does NOT show up in
-  your context next time.
-- AGENTS.md and SOUL.md are user-owned bootstrap files. Your memory_*
-  tools will refuse to write or delete them and return a structured
-  read_only error. If a change is needed, ask the user to make it
+- Your persistent system sandbox is rooted at /vercel/sandbox. Use
+  readFile, writeFile, listFiles, and grepFiles for durable file work.
+  Direct bash execution is not available.
+- AGENTS.md and SOUL.md are user-owned bootstrap files. writeFile will
+  refuse to modify them. If a change is needed, ask the user to make it
   through the agent settings UI.
-- IDENTITY.md is also a user-owned bootstrap file. Your memory_* tools
-  will refuse to write or delete it; ask the user to edit it through
-  the agent settings UI.
+- IDENTITY.md is also a user-owned bootstrap file. writeFile will
+  refuse to modify it; ask the user to edit it through the agent
+  settings UI.
 - USER.md is an eager user profile file when present. You may create
-  or update it with memory tools when conversations reveal durable
+  or update it with writeFile when conversations reveal durable
   user preferences, identity, goals, or hard boundaries.
-- Reads in the same turn see your queued memory writes. Writes are
-  flushed to disk at end-of-event, then mirrored into the agent files
-  UI.
+- writeFile writes immediately. Same-turn readFile, listFiles, and
+  grepFiles naturally see the new content.
+- End-of-event mirrors only architecture-defined files to the agent
+  files UI: AGENTS.md, IDENTITY.md, SOUL.md, USER.md, MEMORY.md,
+  TASKS.md, CALENDAR.md, GOALS.md, DREAMS.md, and logs/*.md.
+  Arbitrary sandbox files persist but are not inserted into the UI DB
+  mirrors or review-change table.
 - Prefer doing the smallest correct thing and stopping. Long tool
   loops cost the user money and latency.
 - When unsure of a fact about the user, check your memory files
@@ -109,7 +112,7 @@ export async function composeSystemPrompt(
     readLiveMemory(systemSandbox, 'IDENTITY.md'),
     readLiveMemory(systemSandbox, 'SOUL.md'),
     readLiveMemory(systemSandbox, 'USER.md'),
-    listLiveMemory(systemSandbox),
+    listTrackedArchitectureFiles(systemSandbox),
   ])
 
   const sections: string[] = []
@@ -138,7 +141,7 @@ export async function composeSystemPrompt(
     renderEagerContext({
       content: userMd,
       heading:
-        'USER.md (user profile — agent-maintained, update with memory tools)',
+        'USER.md (user profile — agent-maintained, update with writeFile)',
       path: 'USER.md',
     }),
   ].filter((section): section is string => section !== null)
@@ -149,11 +152,11 @@ export async function composeSystemPrompt(
     .sort()
   if (otherPaths.length > 0) {
     const lines = otherPaths.map((p) => `- ${p}`).join('\n')
-    sections.push(`## Memory files available\n\n${lines}`)
+    sections.push(`## Tracked sandbox files available\n\n${lines}`)
   } else {
     const protectedPaths = Array.from(READ_ONLY_FOR_AGENT).sort().join(', ')
     sections.push(
-      `## Memory files available\n\n_(none yet — author files with write_memory as you accumulate notes; eager files ${EAGER_CONTEXT_PATHS.join(', ')} are inlined above when present. Protected files ${protectedPaths} cannot be modified by the agent; USER.md can be created or updated with memory tools.)_`
+      `## Tracked sandbox files available\n\n_(none yet — author files with writeFile as you accumulate notes; eager files ${EAGER_CONTEXT_PATHS.join(', ')} are inlined above when present. Protected files ${protectedPaths} cannot be modified by the agent; USER.md can be created or updated with writeFile.)_`
     )
   }
 

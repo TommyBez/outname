@@ -40,15 +40,14 @@ export async function drainPendingWrites(input: {
 
   const sandbox = await getSystemSandbox(agentId)
 
-  // The queue stores paths relative to the memory volume root
+  // The queue stores paths relative to the system sandbox root
   // (e.g. "AGENTS.md", "SOUL.md") to match how the rest of the
   // codebase talks about memory files. The Vercel Sandbox SDK
   // expects absolute paths, so we prefix every entry with
-  // `SYSTEM_SANDBOX_ROOT` here — same pattern as
-  // `flushPendingWrites` in `tools/pending-writes.ts` and
-  // `seed-agents-md.ts`. Without this prefix the writes land at
+  // `SYSTEM_SANDBOX_ROOT` here, matching `seed-agents-md.ts`.
+  // Without this prefix the writes land at
   // the sandbox FS root and `composeSystemPrompt`'s
-  // `readLiveMemory` (which reads from `${SYSTEM_SANDBOX_ROOT}/...`)
+  // eager file reads (from `${SYSTEM_SANDBOX_ROOT}/...`)
   // never sees them, breaking the bootstrap-file settings UI.
   await sandbox.writeFiles(
     queued.map((row) => ({

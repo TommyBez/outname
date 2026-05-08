@@ -13,10 +13,10 @@ import { agentFileChanges, agentFiles } from '@/lib/db/schema'
 import { stopAllToolSandboxesForRun } from '@/lib/tool-sandbox-runtime'
 import { stopAllBrokeredHttpSandboxesForRun } from '@/tools/brokered-http'
 import {
-  flushPendingWrites,
   type PendingWrites,
-  readLiveMemory,
+  reviewPathsFromPending,
 } from '@/workflows/agent-session/tools/pending-writes'
+import { listTrackedArchitectureFiles } from '@/workflows/agent-session/tools/sandbox-file-helpers'
 
 type EndOfEventSource =
   | { sourceType: 'chat'; sourceId: string | null }
@@ -27,23 +27,17 @@ type EndOfEventSource =
 /**
  * End-of-event handler.
  *
- *   1. Flush the per-event `PendingWrites` overlay into the system
- *      sandbox so memory tool writes/edits/deletes the model performed
- *      this turn become durable.
- *   2. Enumerate every `*.md` file under `SYSTEM_SANDBOX_ROOT`,
- *      excluding hidden + node_modules trees.
- *   3. Read each file, hash it, and upsert into `agent_files` keyed by
- *      `(agent_id, path)`. Unchanged files (matching sha256) are
- *      skipped to keep DB churn low. Deletes the rows for files no
- *      longer in the sandbox so `/agents/:id/files` doesn't show
- *      ghost entries.
- *   4. Stop the system sandbox so Vercel snapshots its filesystem
+ *   1. Persist before/after review rows for tracked architecture files
+ *      touched by immediate `writeFile` calls during this event.
+ *   2. Mirror only architecture-defined files from the system sandbox
+ *      into `agent_files`: bootstrap/profile files, canonical memory
+ *      files, and `logs/*.md`.
+ *   3. Stop the system sandbox so Vercel snapshots its filesystem
  *      ready for the next event's resume.
  *
  * Failures inside this step never crash the session loop — they're
  * swallowed (with a log) so a transient sandbox or DB hiccup doesn't
- * prevent the agent from receiving the next event. The next event
- * will reflush the changed files anyway.
+ * prevent the agent from receiving the next event.
  */
 export async function endOfEvent(input: {
   agentId: string
@@ -62,14 +56,10 @@ export async function endOfEvent(input: {
     return
   }
 
-  const reviewPaths = collectReviewPaths(input.pending)
-  const beforeReviewContent = await readReviewFiles(systemSandbox, reviewPaths)
-
-  try {
-    await flushPendingWrites(systemSandbox, input.pending)
-  } catch (err) {
-    console.error('[v0] endOfEvent: flushPendingWrites failed', err)
-  }
+  const reviewPaths = reviewPathsFromPending(input.pending)
+  const beforeReviewContent = new Map(
+    Object.entries(input.pending.beforeByPath)
+  )
 
   try {
     await persistReviewChanges({
@@ -84,10 +74,10 @@ export async function endOfEvent(input: {
   }
 
   try {
-    await mirrorMemoryToDb(systemSandbox, input.agentId)
+    await mirrorTrackedFilesToDb(systemSandbox, input.agentId)
     revalidateTag(agentTag(input.agentId), 'max')
   } catch (err) {
-    console.error('[v0] endOfEvent: mirrorMemoryToDb failed', err)
+    console.error('[v0] endOfEvent: mirrorTrackedFilesToDb failed', err)
   }
 
   await releaseSandbox(systemSandbox)
@@ -101,37 +91,6 @@ export async function endOfEvent(input: {
   ])
 }
 
-function collectReviewPaths(pending: PendingWrites): string[] {
-  const paths = new Set<string>()
-  for (const op of pending.ops) {
-    if (isReviewPath(op.path)) {
-      paths.add(op.path)
-    }
-  }
-  return Array.from(paths).sort()
-}
-
-function isReviewPath(path: string): boolean {
-  return (
-    path === 'DREAMS.md' ||
-    path === 'GOALS.md' ||
-    path === 'TASKS.md' ||
-    path.startsWith('logs/')
-  )
-}
-
-async function readReviewFiles(
-  sandbox: Sandbox,
-  paths: readonly string[]
-): Promise<Map<string, string | null>> {
-  const entries = await Promise.all(
-    paths.map(
-      async (path) => [path, await readLiveMemory(sandbox, path)] as const
-    )
-  )
-  return new Map(entries)
-}
-
 async function persistReviewChanges(input: {
   agentId: string
   beforeByPath: Map<string, string | null>
@@ -141,7 +100,7 @@ async function persistReviewChanges(input: {
 }): Promise<void> {
   for (const path of input.paths) {
     const before = input.beforeByPath.get(path) ?? null
-    const after = await readLiveMemory(input.sandbox, path)
+    const after = await readTrackedContent(input.sandbox, path)
     if (before === after) {
       continue
     }
@@ -173,29 +132,11 @@ function sha256(content: string): string {
   return createHash('sha256').update(content).digest('hex')
 }
 
-async function mirrorMemoryToDb(
+async function mirrorTrackedFilesToDb(
   sandbox: Sandbox,
   agentId: string
 ): Promise<void> {
-  // Enumerate markdown files. `find` is GNU-compatible inside the
-  // node22 sandbox image; we filter out hidden trees and node_modules
-  // up front so we don't spend bytes on noise.
-  const list = await sandbox.runCommand({
-    cmd: 'sh',
-    args: [
-      '-ec',
-      `cd ${SYSTEM_SANDBOX_ROOT} && find . -type f -name '*.md' \
-        -not -path './.*' \
-        -not -path './node_modules/*' \
-        -print 2>/dev/null || true`,
-    ],
-  })
-  const stdout = await list.stdout()
-  const relPaths = stdout
-    .split('\n')
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .map((p) => (p.startsWith('./') ? p.slice(2) : p))
+  const relPaths = await listTrackedArchitectureFiles(sandbox)
 
   // Read existing rows so we can (a) skip unchanged hashes and (b)
   // delete rows whose sandbox file is gone.
@@ -208,15 +149,11 @@ async function mirrorMemoryToDb(
 
   for (const relPath of relPaths) {
     seen.add(relPath)
-    const absPath = `${SYSTEM_SANDBOX_ROOT}/${relPath}`
-    const buf = await sandbox
-      .readFileToBuffer({ path: absPath })
-      .catch(() => null)
-    if (!buf) {
+    const content = await readTrackedContent(sandbox, relPath)
+    if (content === null) {
       continue
     }
 
-    const content = buf.toString('utf8')
     const sha = createHash('sha256').update(content).digest('hex')
     if (existingByPath.get(relPath) === sha) {
       continue
@@ -241,7 +178,7 @@ async function mirrorMemoryToDb(
       })
   }
 
-  // Delete rows for memory files that no longer exist on disk. Uses
+  // Delete rows for tracked files that no longer exist on disk. Uses
   // a per-row delete to keep the WHERE clause small; the typical
   // delete count is 0–1 per turn.
   for (const path of existingByPath.keys()) {
@@ -252,4 +189,14 @@ async function mirrorMemoryToDb(
       .delete(agentFiles)
       .where(and(eq(agentFiles.agentId, agentId), eq(agentFiles.path, path)))
   }
+}
+
+async function readTrackedContent(
+  sandbox: Sandbox,
+  relPath: string
+): Promise<string | null> {
+  const buf = await sandbox
+    .readFileToBuffer({ path: `${SYSTEM_SANDBOX_ROOT}/${relPath}` })
+    .catch(() => null)
+  return buf ? buf.toString('utf8') : null
 }

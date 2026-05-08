@@ -236,14 +236,14 @@ export const agentFiles = pgTable(
  * Queue of UI-driven file writes that the next session event drains
  * into the agent's system sandbox before any handler runs.
  *
- * The memory tools refuse to write to `AGENTS.md`, `IDENTITY.md`, and
+ * writeFile refuses to write to `AGENTS.md`, `IDENTITY.md`, and
  * `SOUL.md` — those protected bootstrap files are user-owned. Edits
  * made via the agent settings UI (Identity card / Persona /
  * Instructions / User profile tabs) land here as a row, and the
  * `drainPendingWrites` step at the top of `agentSessionWorkflow`
  * applies them via `sandbox.writeFiles`, bypassing the tool-layer
  * block for protected files. `USER.md` is included as a manual
- * seed/correction path, while agent memory tools may also update it.
+ * seed/correction path, while the agent may also update it with writeFile.
  *
  * Rows are not deleted after application — `applied_at` is set so the
  * UI can show audit history later. The partial index narrows the
@@ -271,12 +271,12 @@ export const pendingFileWrites = pgTable(
 )
 
 /**
- * Reviewable memory-file deltas captured at the end of an event.
+ * Reviewable architecture-file deltas captured at the end of an event.
  *
- * The agent writes `DREAMS.md`, `GOALS.md`, `TASKS.md`, and logs directly
- * through memory tools. This table keeps a post-event before/after record
- * so the UI can show what changed without introducing a blocking approval
- * gate into the single-threaded session loop.
+ * The agent writes tracked architecture files directly through writeFile.
+ * This table keeps a post-event before/after record so the UI can show
+ * what changed without introducing a blocking approval gate into the
+ * single-threaded session loop.
  */
 export const agentFileChanges = pgTable(
   'agent_file_changes',

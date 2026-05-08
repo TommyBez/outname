@@ -39,7 +39,7 @@ async function AgentEdit({ params }: { params: Params }) {
   // across all visitors. The file prefills come from
   // for operator-authored seeds/corrections. `IDENTITY.md`, `SOUL.md`,
   // and `AGENTS.md` are settings-managed bootstrap files. `USER.md` may
-  // also evolve through the agent's own memory tools, so fall back to
+  // also evolve through the agent's own writeFile tool, so fall back to
   // the mirrored `agent_files` content when no newer settings edit
   // exists.
   const [

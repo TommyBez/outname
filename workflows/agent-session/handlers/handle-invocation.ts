@@ -46,8 +46,8 @@ import {
  *     waits on that same stream and derives its final tool result from
  *     the collected UI messages.
  *
- * Returns the per-event `pending` queue so the session loop can pass
- * it to `endOfEvent`, exactly like `handleChat`.
+ * Returns the per-event architecture-file tracker so the session loop
+ * can pass it to `endOfEvent`, exactly like `handleChat`.
  */
 export async function handleInvocation(input: {
   agentId: string
@@ -97,7 +97,7 @@ export async function handleInvocation(input: {
       parentRunId: parentRunId ?? null,
     })
     await startupSystemSandbox({ agentId })
-    await emitActivity(runId, 'Sub-agent: Syncing memory edits')
+    await emitActivity(runId, 'Sub-agent: Syncing bootstrap edits')
     await drainPendingWrites({ agentId })
 
     const built = await buildAgent({
