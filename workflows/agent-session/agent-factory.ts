@@ -4,15 +4,13 @@ import { getAgentById } from '@/lib/start-agent-run'
 import { buildAttachedTools } from '@/tools/build-attached-tools'
 import { composeSystemPrompt } from './compose-system-prompt'
 import { resolveToolPlan } from './steps/resolve-tool-plan'
-import { createExecTools } from './tools/exec-tools'
 import { createMemoryTools } from './tools/memory-tools'
 import { createPendingWrites, type PendingWrites } from './tools/pending-writes'
 
 /**
  * One event's agent: DB load, composed system prompt from sandbox persona
- * files, memory + exec tools + maintainer tools (Phase 3) + sub-agent
- * tools (Phase 4), and a `pending` buffer the caller must flush via
- * `endOfEvent`.
+ * files, memory + maintainer tools (Phase 3) + sub-agent tools (Phase 4),
+ * and a `pending` buffer the caller must flush via `endOfEvent`.
  */
 export interface BuildAgentArgs {
   agentId: string
@@ -105,10 +103,8 @@ export async function buildAgent(
   const pending = createPendingWrites()
 
   const memoryTools = createMemoryTools({ agentId, pending })
-  const execTools = createExecTools({ agentId, pending })
   const tools = {
     ...memoryTools,
-    ...execTools,
     ...attached.tools,
   }
 

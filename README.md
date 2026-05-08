@@ -10,7 +10,7 @@ This is a single-tenant personal assistant workspace. The Next.js application is
 
 Agents are not stateless chat completions. Each agent has:
 
-- a Postgres row that stores configuration, scheduling settings, model choice, sandbox ids, and latest workflow run ids;
+- a Postgres row that stores configuration, scheduling settings, model choice, the system-sandbox id, and latest workflow run ids;
 - persisted chat conversations and UI message parts;
 - markdown memory files in a persistent sandbox;
 - a mirrored database view of those memory files for fast UI rendering;
@@ -36,7 +36,6 @@ flowchart LR
   Workflow --> DB
 
   Sandbox --> SystemSandbox[Persistent system sandbox]
-  Sandbox --> ExecSandbox[Clean execution sandbox]
 
   Workflow --> Tools[Maintainer tools]
   Tools --> Connections[Encrypted connections]
@@ -53,7 +52,7 @@ flowchart LR
 | Next.js control plane | Authenticate, authorize, validate input, run Server Actions, serve route handlers, revalidate cache tags, and dispatch workflow events. | Request context, Better Auth session, Next cache tags. | Request failure does not corrupt agent memory because writes are persisted or queued before workflow work begins. |
 | Neon and Drizzle | Store auth rows, agents, conversations, messages, memory mirrors, pending writes, tools, connections, and sandbox build records. | Postgres tables and generated migrations. | Database is the source of truth for operator-visible state and recovery metadata. |
 | Vercel Workflow | Run long-lived agent sessions, ticker workflows, heartbeat/reflection handlers, chat handlers, sub-agent invocations, and tool sandbox builds. | Workflow run ids, hooks, streamed namespaces, durable step state. | Failed sessions can be detected and restarted by liveness checks. |
-| Vercel Sandbox | Provide persistent agent memory and isolated execution/tool-build environments. | Snapshot-backed filesystems and sandbox ids. | Sandboxes are released after workflow events so filesystem state can be snapshotted. |
+| Vercel Sandbox | Provide each agent's named persistent memory sandbox plus explicit non-persistent tool-build and tool-runtime environments. | Named sandboxes, resumable sessions, and tool sandbox snapshots. | System sandboxes are stopped after workflow events and transparently resume on the next SDK operation. |
 | Tool and connector runtime | Resolve attached tools, decrypt connection credentials, run maintainer tools, and expose sub-agents as callable tools. | `agent_tools`, `user_connections`, tool sandbox snapshots. | Broken tools are surfaced to the model as unavailable instead of crashing the whole session. |
 
 ### Request and session flow
@@ -97,7 +96,7 @@ sequenceDiagram
   R->>S: Resume session hook with chat event and reply token
   R-->>B: Open AI SDK UI message stream
   S->>D: Load agent config, messages, tools, connections, pending writes
-  S->>X: Resume system and execution sandboxes
+  S->>X: Resume system sandbox
   S->>G: Stream model response with memory and tool context
   G-->>S: Model chunks and tool calls
   S-->>R: Write chunks to run namespace keyed by reply token
@@ -105,7 +104,7 @@ sequenceDiagram
   S->>D: Persist assistant message and activity
   S->>X: Apply memory writes and read markdown files
   S->>D: Mirror memory files and file changes
-  S->>X: Release sandboxes for snapshotting
+  S->>X: Stop named sandbox; SDK persists state for resume
 ```
 
 The persistence order is deliberate:
@@ -238,11 +237,11 @@ Local development uses the same Next.js app, Better Auth configuration, Drizzle 
 Production-like autonomous behavior depends on Vercel-hosted services:
 
 - Vercel Workflow runs long-lived agent sessions, ticker workflows, sub-agent invocations, and tool sandbox builds.
-- Vercel Sandbox provides persistent memory sandboxes and clean execution sandboxes.
+- Vercel Sandbox provides each agent's named persistent memory sandbox, resumable sessions, and explicit non-persistent tool-build/tool-runtime sandboxes.
 - Vercel AI Gateway routes model calls and provides the model catalog.
 - Vercel Cron drives the liveness sweeper.
 
-Because of those dependencies, local development can render the UI and exercise normal data paths, but autonomous agent execution, sandbox snapshotting, and scheduled heartbeat behavior are only fully representative in a Vercel deployment.
+Because of those dependencies, local development can render the UI and exercise normal data paths, but autonomous agent execution, sandbox session persistence, and scheduled heartbeat behavior are only fully representative in a Vercel deployment.
 
 ## Local development
 

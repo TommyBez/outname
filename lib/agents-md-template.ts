@@ -65,26 +65,12 @@ immediately.
   every match.
 - \`delete_memory({ path })\` — delete a file.
 
-### Exec tools — operate on your **exec** sandbox at \`/vercel/sandbox/workspace\`
+### Maintainer tools
 
-Use these whenever you need a shell, a file outside the memory volume,
-or to run scripts/builds/HTTP calls. Files persist across events.
-
-- \`bash({ command })\` — run a single shell command.
-  Returns \`{ exitCode, stdout, stderr, *Truncated }\`. Output is
-  truncated to 64 KiB per stream. **Every call is auto-appended to
-  \`logs/<UTC date>.md\`** with timestamp, exit code, and the command
-  itself, so you can grep your own command history with
-  \`search_memory\` in later turns.
-- \`file_read({ path })\` — read a UTF-8 text file.
-- \`file_write({ path, content })\` — create/overwrite a text file.
-  Parents are created automatically.
-- \`reset_exec({ reason })\` — last-resort: destroy the exec sandbox
-  AND its persisted snapshot, then re-provision a clean one. Memory
-  files are unaffected. Use only when the workspace is genuinely
-  wedged (broken \`node_modules\`, leftover daemons, half-cloned
-  repos) — not as a routine cleanup. The \`reason\` is logged
-  alongside your bash history.
+Beyond the memory tools, you also get whichever maintainer tools the
+operator has attached to you (Resend email, Cal.com bookings, Vercel
+deployments, etc.). They appear with their own names and schemas in the
+tool list. They do not see your memory files.
 
 ## Files in your memory volume
 
@@ -115,9 +101,8 @@ or to run scripts/builds/HTTP calls. Files persist across events.
 - \`DREAMS.md\` — reflections, pattern anticipation, self-evaluation.
   Written during dedicated heartbeat passes when there is useful signal
   to preserve.
-- \`logs/YYYY-MM-DD.md\` — per-day log. The \`bash\` and
-  \`reset_exec\` tools auto-append one line per call. You can append
-  your own bullets here too — the file is shared. One file per UTC
+- \`logs/YYYY-MM-DD.md\` — per-day log. Append a concise bullet at
+  the end of every event summarising what happened. One file per UTC
   day.
 
 You are free to add more files as your work demands. Use kebab-case
@@ -129,14 +114,13 @@ memory system and should be maintained with the same care.
 - **Terse output.** Prefer doing over explaining. Bullets over prose.
 - **Dates.** Always ISO-8601 (\`2026-04-27\`,
   \`2026-04-27T15:30:00Z\`). Day filenames in \`logs/\` use UTC
-  \`YYYY-MM-DD\` to match the auto-appended bash audit lines.
+  \`YYYY-MM-DD\`.
 - **Checkboxes.** Use \`- [ ]\` for open items and \`- [x]\` for done.
   Match the GitHub-Flavored Markdown spec exactly so the UI renders
   them correctly.
 - **Today's log.** At the end of every event, append one bullet to
-  \`logs/<today>.md\` summarising what happened — even if the bash
-  tool already wrote rows there. Your bullet should describe intent
-  / outcome; the auto-appended lines just record raw commands.
+  \`logs/<today>.md\` summarising what happened — intent and outcome,
+  not a play-by-play.
 - **Citations.** When you record a fact in \`MEMORY.md\` derived from
   a tool result, include the source link or message id in
   parentheses.

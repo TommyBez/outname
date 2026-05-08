@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm'
 import { getWorkflowMetadata } from 'workflow'
 import { db } from '@/lib/db'
 import { toolSandboxSnapshots } from '@/lib/db/schema'
+import { toolRuntimeSandboxTags } from '@/lib/vercel-sandbox-config'
 import { getToolSandboxManifest } from '@/tools/sandboxes'
 
 /**
@@ -105,6 +106,8 @@ export async function getOrStartToolSandbox(
   // snapshot itself).
   const sandbox = await Sandbox.create({
     source: { type: 'snapshot', snapshotId },
+    persistent: false,
+    tags: toolRuntimeSandboxTags({ manifestId, runId }),
     timeout: 600_000,
   })
 
@@ -120,7 +123,7 @@ export async function getOrStartToolSandbox(
 /**
  * Stop every cached tool sandbox for the current workflow run. Called
  * by `endOfEvent` so each event boots fresh sandboxes (matches the
- * lifecycle of the system + exec sandboxes).
+ * lifecycle of the system sandbox).
  *
  * Errors are logged and swallowed — a failed stop must never fail an
  * otherwise-successful event.

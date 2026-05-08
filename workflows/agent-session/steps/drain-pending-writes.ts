@@ -2,8 +2,7 @@ import {
   listUnappliedPendingFileWrites,
   markPendingFileWritesApplied,
 } from '@/lib/agent-pending-writes'
-import { getSystemSandbox } from '@/lib/agent-sandbox'
-import { SYSTEM_SANDBOX_ROOT } from '@/lib/agent-sandbox-registry'
+import { getSystemSandbox, SYSTEM_SANDBOX_ROOT } from '@/lib/agent-sandbox'
 import { buildAgentsMdContent } from '@/lib/agents-md-template'
 
 /**

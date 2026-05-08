@@ -32,8 +32,8 @@ export interface ComposeSystemPromptArgs {
 const FOOTER = `## Platform invariants
 
 - Your memory volume persists across every event. Use the memory_*
-  tools to take notes; anything you write outside the memory volume
-  (e.g. via bash/file_write in the exec sandbox) does NOT show up in
+  tools to take notes; anything you produce outside the memory volume
+  (e.g. transient maintainer-tool side effects) does NOT show up in
   your context next time.
 - AGENTS.md and SOUL.md are user-owned bootstrap files. Your memory_*
   tools will refuse to write or delete them and return a structured

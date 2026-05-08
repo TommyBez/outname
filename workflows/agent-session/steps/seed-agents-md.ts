@@ -1,6 +1,10 @@
 import { readLatestPendingFileWrite } from '@/lib/agent-pending-writes'
-import { getSystemSandbox, readMarker, writeMarker } from '@/lib/agent-sandbox'
-import { SYSTEM_SANDBOX_ROOT } from '@/lib/agent-sandbox-registry'
+import {
+  getSystemSandbox,
+  readMarker,
+  SYSTEM_SANDBOX_ROOT,
+  writeMarker,
+} from '@/lib/agent-sandbox'
 import { buildAgentsMdContent } from '@/lib/agents-md-template'
 
 const AGENTS_MD_PATH = `${SYSTEM_SANDBOX_ROOT}/AGENTS.md`
@@ -8,6 +12,10 @@ const IDENTITY_MD_PATH = `${SYSTEM_SANDBOX_ROOT}/IDENTITY.md`
 const SOUL_MD_PATH = `${SYSTEM_SANDBOX_ROOT}/SOUL.md`
 const USER_MD_PATH = `${SYSTEM_SANDBOX_ROOT}/USER.md`
 const SEED_MARKER_PATH = `${SYSTEM_SANDBOX_ROOT}/.agents-md-seeded`
+// Bumped to "v11" when the exec sandbox was removed: the template no
+// longer documents `bash` / `file_read` / `file_write` / `reset_exec`
+// or the bash audit log, since those tools no longer exist.
+//
 // Bumped to "v10" to keep the upstream eager USER.md profile support
 // while also bootstrapping `IDENTITY.md` as a stable compact identity
 // card path on every fresh system sandbox.
@@ -22,18 +30,9 @@ const SEED_MARKER_PATH = `${SYSTEM_SANDBOX_ROOT}/.agents-md-seeded`
 // replacement semantics to "append below the platform base template".
 //
 // Bumped to "v5" alongside the architect-driven memory-tool rename
-// from `memory_*` to `<verb>_memory`. The template body now refers
-// to `list_memory`, `read_memory`, `search_memory`, `write_memory`,
-// `edit_memory`, and `delete_memory`, so dev agents that already
-// have a v4 seed need to re-seed once for the body of AGENTS.md to
-// match the actual tool names the model gets handed at construction
-// time. The earlier v4 changes (architect rev: documents
-// `search_memory` + `reset_exec`, clarifies user ownership of
-// AGENTS.md / IDENTITY.md / SOUL.md via the UI tabs,
-// documents the automatic bash audit log at `logs/<UTC date>.md`)
-// are still in place. Existing dev agents pick up the new template
-// on their next event after deploy.
-const SEED_MARKER_VALUE = 'v10'
+// from `memory_*` to `<verb>_memory`. Existing dev agents pick up the
+// new template on their next event after deploy.
+const SEED_MARKER_VALUE = 'v11'
 
 /**
  * Process-local cache of agent ids whose `.agents-md-seeded` marker we
@@ -53,6 +52,10 @@ const verifiedThisProcess = new Set<string>()
  *
  * Sentinel-guarded by `.agents-md-seeded`. Once the marker matches the
  * current value, the step never overwrites the agent's evolved notes.
+ *
+ * Re-seeding only rewrites the user-owned bootstrap files; the agent's
+ * own memory (`MEMORY.md`, `TASKS.md`, `logs/*.md`, etc.) is left
+ * untouched.
  *
  * `created`-aware fast paths:
  *   - `created === true`  → fresh sandbox; always seed.

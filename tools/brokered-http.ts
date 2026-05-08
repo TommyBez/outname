@@ -4,6 +4,7 @@ import { type NetworkPolicy, Sandbox } from '@vercel/sandbox'
 import { getWorkflowMetadata } from 'workflow'
 import { getConnector } from '@/connectors/registry'
 import { readBrokeredCredential } from '@/connectors/runtime'
+import { brokeredHttpSandboxTags } from '@/lib/vercel-sandbox-config'
 
 const DEFAULT_TIMEOUT_MS = 30_000
 const DEFAULT_MAX_RESPONSE_BYTES = 12_000
@@ -245,6 +246,7 @@ async function getOrCreateBrokerSandbox(input: {
 async function createBrokerSandbox(input: {
   connector: NonNullable<ReturnType<typeof getConnector>>
   provider: string
+  runId: string
   unauthenticatedHosts?: readonly string[]
   userId: string
 }): Promise<Sandbox> {
@@ -266,7 +268,12 @@ async function createBrokerSandbox(input: {
     runtime: 'node24',
     timeout: 600_000,
     networkPolicy,
+    persistent: false,
     resources: { vcpus: 1 },
+    tags: brokeredHttpSandboxTags({
+      provider: input.provider,
+      runId: input.runId,
+    }),
   })
 }
 
@@ -306,8 +313,9 @@ export async function brokeredHttpRequest(input: {
     ),
   }
 
+  const runId = currentRunId()
   const sandbox = await getOrCreateBrokerSandbox({
-    runId: currentRunId(),
+    runId,
     provider:
       mode === 'authenticated'
         ? input.provider
@@ -316,6 +324,7 @@ export async function brokeredHttpRequest(input: {
       createBrokerSandbox({
         connector,
         provider: input.provider,
+        runId,
         unauthenticatedHosts: mode === 'authenticated' ? [] : [url.hostname],
         userId: input.userId,
       }),

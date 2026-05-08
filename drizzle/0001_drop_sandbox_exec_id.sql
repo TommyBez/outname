@@ -1,0 +1,1 @@
+ALTER TABLE "agent" DROP COLUMN "sandbox_exec_id";

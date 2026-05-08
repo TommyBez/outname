@@ -1,5 +1,5 @@
 import type { Sandbox } from '@vercel/sandbox'
-import { SYSTEM_SANDBOX_ROOT } from '@/lib/agent-sandbox-registry'
+import { SYSTEM_SANDBOX_ROOT } from '@/lib/agent-sandbox'
 
 /**
  * Queued memory mutations for one event. Tools push ops here; `endOfEvent`
@@ -11,7 +11,6 @@ import { SYSTEM_SANDBOX_ROOT } from '@/lib/agent-sandbox-registry'
 
 export type PendingOp =
   | { kind: 'write'; path: string; content: string }
-  | { kind: 'append'; path: string; content: string }
   | {
       kind: 'edit'
       path: string
@@ -80,21 +79,6 @@ export function enqueueWrite(
   pending.ops.push({ kind: 'write', path, content })
 }
 
-/**
- * Append `content` to the tail of `path`. Used by the bash-tool audit
- * log and any other system-driven append surface.
- *
- * Sequencing: later ops on the same path stack on prior queued state; the
- * overlay helpers replay in order.
- */
-export function enqueueAppend(
-  pending: PendingWrites,
-  path: string,
-  content: string
-): void {
-  pending.ops.push({ kind: 'append', path, content })
-}
-
 export function enqueueEdit(
   pending: PendingWrites,
   path: string,
@@ -144,11 +128,6 @@ export function resolveEffectiveContent(
       content = op.content
       continue
     }
-    if (op.kind === 'append') {
-      // Append-on-missing creates the file with the appended chunk.
-      content = (content ?? '') + op.content
-      continue
-    }
     // edit
     if (content === null) {
       // Edit-on-missing — leave content null; the tool execute should
@@ -175,7 +154,7 @@ export function resolveEffectiveListing(
   for (const op of pending.ops) {
     if (op.kind === 'delete') {
       present.delete(op.path)
-    } else if (op.kind === 'write' || op.kind === 'append') {
+    } else if (op.kind === 'write') {
       present.add(op.path)
     }
   }
@@ -252,22 +231,6 @@ export async function flushPendingWrites(
       if (op.kind === 'write') {
         await sandbox.writeFiles([
           { path: abs, content: Buffer.from(op.content, 'utf8') },
-        ])
-        continue
-      }
-
-      if (op.kind === 'append') {
-        // Read-modify-write. Two simultaneous appends to the same
-        // path within one event are queued in order, so the second
-        // one sees the first one's bytes from the just-written file
-        // (we re-read on each iteration). Append-on-missing creates
-        // the file.
-        const prev = await sandbox
-          .readFileToBuffer({ path: abs })
-          .catch(() => null)
-        const next = (prev?.toString('utf8') ?? '') + op.content
-        await sandbox.writeFiles([
-          { path: abs, content: Buffer.from(next, 'utf8') },
         ])
         continue
       }

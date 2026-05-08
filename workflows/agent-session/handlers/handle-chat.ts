@@ -1,7 +1,7 @@
 import { convertToModelMessages, type UIMessage, type UIMessageChunk } from 'ai'
 import { getWorkflowMetadata, getWritable } from 'workflow'
 import { compactSubAgentToolOutputsForModel } from '@/lib/agent-chat-model'
-import { startupExecSandbox, startupSystemSandbox } from '@/lib/agent-sandbox'
+import { startupSystemSandbox } from '@/lib/agent-sandbox'
 import { formatBudgetExceededMessage } from '@/lib/budget'
 import { emitActivity } from '@/lib/run-events'
 import { getAgentById } from '@/lib/start-agent-run'
@@ -30,12 +30,9 @@ import {
 /**
  * Chat event handler — runs inside the long-lived session workflow.
  *
- *   1. Boot both sandboxes for this event:
- *        - system (memory volume + bootstrap files) — required, used by
- *          composeSystemPrompt and the memory_* tools.
- *        - exec   (clean /workspace) — best-effort; if it fails we log
- *          and proceed so the agent can still answer text-only turns.
- *      `endOfEvent` snapshots both at turn end.
+ *   1. Boot the system sandbox (memory volume + bootstrap files) used by
+ *      `composeSystemPrompt` and the memory_* tools. `endOfEvent`
+ *      snapshots it at turn end.
  *   2. Build the per-event `DurableAgent` via `buildAgent`. The same
  *      factory is used by `handleHeartbeat`.
  *   3. Stream the turn into a per-turn namespaced sub-stream of the
@@ -113,17 +110,6 @@ export async function handleChat(input: {
     conversationId,
   })
   await startupSystemSandbox({ agentId })
-  await emitChatStatus({
-    message: 'Starting execution sandbox...',
-    phase: 'exec-sandbox',
-    replyToken,
-  })
-  await startupExecSandbox({ agentId }).catch((err) => {
-    // Don't kill the chat turn if the exec sandbox can't boot — the
-    // agent can still answer text-only turns. The exec_* tools will
-    // surface clearer errors per-call when they try to use it.
-    console.error('[v0] handleChat: startupExecSandbox failed', err)
-  })
 
   // Apply any UI-authored bootstrap-file edits before composing the
   // system prompt. composeSystemPrompt inlines AGENTS.md / IDENTITY.md /

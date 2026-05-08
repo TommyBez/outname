@@ -132,8 +132,8 @@ export async function deleteAgentAction(agentId: string): Promise<void> {
   // sandbox or a deleted agent row mid-event.
   await stopAgentSession(agentId)
 
-  // Best-effort: tear down both persistent sandboxes (system + exec)
-  // before removing the row so we don't leak them. Any failure is
+  // Best-effort: tear down the agent's persistent system sandbox
+  // before removing the row so we don't leak it. Any failure is
   // swallowed inside the helper.
   await destroyAgentSandboxes(agentId)
 

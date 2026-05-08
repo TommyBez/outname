@@ -1,7 +1,7 @@
 import type { UIMessageChunk } from 'ai'
 import { eq } from 'drizzle-orm'
 import { getWritable } from 'workflow'
-import { startupExecSandbox, startupSystemSandbox } from '@/lib/agent-sandbox'
+import { startupSystemSandbox } from '@/lib/agent-sandbox'
 import { formatBudgetExceededMessage } from '@/lib/budget'
 import { db } from '@/lib/db'
 import { agent as agentTable } from '@/lib/db/schema'
@@ -43,8 +43,8 @@ import {
  *      `events:${runId}` for workflow-level observability.
  *   3. Look up `agent.lastHeartbeatAt` (best effort, just for the
  *      kickoff prompt).
- *   4. Boot both sandboxes — system is required (system prompt),
- *      exec is best-effort.
+ *   4. Boot the system sandbox required by the system prompt and
+ *      memory tools.
  *   5. Build the agent via `buildAgent` and stream it against the
  *      generic `buildHeartbeatKickoff` user message. The agent
  *      decides what to do based on its inlined AGENTS.md /
@@ -108,16 +108,10 @@ export async function handleHeartbeat(input: {
         ? await readPreviousReflectionCompletion(agentId)
         : await readPreviousHeartbeatCompletion(agentId)
 
-    await emitActivity(runId, activityMessage(mode, 'Starting sandboxes'), {
+    await emitActivity(runId, activityMessage(mode, 'Starting sandbox'), {
       previousIso,
     })
     await startupSystemSandbox({ agentId })
-    await startupExecSandbox({ agentId }).catch((err) => {
-      // Don't fail the heartbeat just because exec didn't boot — the
-      // agent can still touch memory files. exec_* tools surface their
-      // own errors per call.
-      console.error('[v0] handleHeartbeat: startupExecSandbox failed', err)
-    })
 
     await emitActivity(runId, activityMessage(mode, 'Syncing memory edits'))
     // Drain UI-authored persona-file edits before composeSystemPrompt

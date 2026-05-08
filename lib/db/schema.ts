@@ -128,14 +128,11 @@ export const agent = pgTable(
     // Local date in the owning user's timezone for the last completed
     // reflection. Used to make "daily" mean once per local day.
     lastReflectionLocalDate: text('last_reflection_local_date'),
-    // Persistent Vercel Sandbox ids. The system sandbox holds the
-    // agent's memory volume + eager bootstrap files;
-    // the exec sandbox is a clean `/workspace` for ad-hoc bash and
-    // file ops driven by exec tools. Both are NULL before the first
-    // session boot; once set, subsequent boots resume the same
-    // sandbox by id (Phase 1 contract preserved per role).
+    // Persistent Vercel Sandbox id for the agent's system sandbox —
+    // the memory volume + eager bootstrap files. NULL before the
+    // first session boot; once set, subsequent boots resume the same
+    // sandbox by name.
     sandboxSystemId: text('sandbox_system_id'),
-    sandboxExecId: text('sandbox_exec_id'),
     // Workflow runtime id for the most recently started session workflow.
     // Used by the chat route (to subscribe to per-turn reply streams) and
     // by the liveness sweeper (to detect dead sessions and restart them).
