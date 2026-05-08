@@ -1,3 +1,4 @@
+import { createHmac, randomBytes } from 'node:crypto'
 import { headers } from 'next/headers'
 import { type NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
@@ -25,9 +26,8 @@ const DEFAULT_BOT_SCOPES = [
  * which app user owns the resulting workspace install — that ownership
  * is the foundation of multi-user safety.
  *
- * The Slack `state` parameter carries the user id back to the callback;
- * we sign it with the Better Auth session so a leaked install link
- * can't be replayed against a different account.
+ * The Slack `state` parameter carries a short-lived, signed value that
+ * identifies the originating user without exposing bearer credentials.
  */
 export async function GET(request: NextRequest): Promise<Response> {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest): Promise<Response> {
   }
 
   const redirectUri = `${baseUrl.replace(TRAILING_SLASH, '')}/api/channels/slack/oauth/callback`
-  const state = encodeOAuthState(session.user.id, session.session.token)
+  const state = encodeOAuthState(session.user.id)
   const params = new URLSearchParams({
     client_id: clientId,
     scope: DEFAULT_BOT_SCOPES.join(','),
@@ -67,6 +67,25 @@ export async function GET(request: NextRequest): Promise<Response> {
   return NextResponse.redirect(`${SLACK_AUTHORIZE_URL}?${params.toString()}`)
 }
 
-function encodeOAuthState(userId: string, sessionToken: string): string {
-  return Buffer.from(`${userId}:${sessionToken}`, 'utf8').toString('base64url')
+const OAUTH_STATE_TTL_SECONDS = 60 * 10
+
+function encodeOAuthState(userId: string): string {
+  const secret = process.env.BETTER_AUTH_SECRET
+  if (!secret) {
+    throw new Error('BETTER_AUTH_SECRET must be set to sign OAuth state.')
+  }
+
+  const payload = {
+    userId,
+    nonce: randomBytes(16).toString('hex'),
+    exp: Math.floor(Date.now() / 1000) + OAUTH_STATE_TTL_SECONDS,
+  }
+  const encodedPayload = Buffer.from(JSON.stringify(payload), 'utf8').toString(
+    'base64url'
+  )
+  const signature = createHmac('sha256', secret)
+    .update(encodedPayload)
+    .digest('base64url')
+
+  return `${encodedPayload}.${signature}`
 }

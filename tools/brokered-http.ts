@@ -7,6 +7,7 @@ import { readBrokeredCredential } from '@/connectors/runtime'
 
 const DEFAULT_TIMEOUT_MS = 30_000
 const DEFAULT_MAX_RESPONSE_BYTES = 12_000
+const MAX_RESPONSE_BYTES = 256 * 1024
 const MAX_STDERR_BYTES = 2000
 const FORBIDDEN_REQUEST_HEADERS = new Set([
   'authorization',
@@ -158,7 +159,7 @@ function responseLimit(
   requestLimit: number | undefined
 ): number {
   const raw = requestLimit ?? connectorLimit ?? DEFAULT_MAX_RESPONSE_BYTES
-  return Math.max(1, Math.min(raw, 64 * 1024))
+  return Math.max(1, Math.min(raw, MAX_RESPONSE_BYTES))
 }
 
 function bodyTextFor(body: unknown): string | undefined {

@@ -7,7 +7,7 @@ import {
 } from './define-maintainer-tool'
 
 const PARALLEL_SEARCH_URL = 'https://api.parallel.ai/v1/search'
-const PARALLEL_MAX_RESPONSE_BYTES = 64 * 1024
+const PARALLEL_MAX_RESPONSE_BYTES = 128 * 1024
 const PROVIDER_ERROR_BODY_LIMIT = 1000
 const DOMAIN_OR_TLD_PATTERN =
   /^(?:\.[a-z0-9-]+(?:\.[a-z0-9-]+)*|[a-z0-9-]+(?:\.[a-z0-9-]+)+)$/i
