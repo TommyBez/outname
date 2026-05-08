@@ -2,9 +2,9 @@ import { Suspense } from 'react'
 import {
   AgentSidebarSection,
   AgentSidebarSectionSkeleton,
-} from '@/components/agent-sidebar-section'
-import { AppShell } from '@/components/app-shell'
-import { createPrivatePageMetadata } from '@/lib/site-metadata'
+} from '@/chat/components/agent-sidebar-section'
+import { AppShell } from '@/shared/components/layout/app-shell'
+import { createPrivatePageMetadata } from '@/shared/server/site-metadata'
 
 type Params = Promise<{ agentId: string }>
 

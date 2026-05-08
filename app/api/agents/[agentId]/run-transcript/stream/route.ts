@@ -1,7 +1,7 @@
 import { getRun } from 'workflow/api'
-import type { AgentChatChunk } from '@/lib/agent-chat-status'
-import { getSession } from '@/lib/auth-guard'
-import { getAgentByIdForUser } from '@/lib/data'
+import type { AgentChatChunk } from '@/agent-runtime/server/chat-status'
+import { getSession } from '@/auth/server/auth-guard'
+import { getAgentByIdForUser } from '@/shared/server/data'
 
 export async function GET(
   _request: Request,

@@ -205,7 +205,7 @@ The same operations are still available programmatically through
 `lib/channels/bindings.ts` for scripting:
 
 ```ts
-import { upsertAgentChannelBinding } from '@/lib/channels/bindings'
+import { upsertAgentChannelBinding } from '@/channels/server/bindings'
 
 // Route every Slack message in #general (multi-workspace mode)
 await upsertAgentChannelBinding({

@@ -1,8 +1,8 @@
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
-import { ChatFrame } from '@/components/chat-frame'
-import { requireSession } from '@/lib/auth-guard'
-import { getCachedAgentByIdForUser } from '@/lib/data'
+import { requireSession } from '@/auth/server/auth-guard'
+import { ChatFrame } from '@/chat/components/chat-frame'
+import { getCachedAgentByIdForUser } from '@/shared/server/data'
 
 type Params = Promise<{ agentId: string }>
 

@@ -1,5 +1,5 @@
-import { LandingHomePage } from '@/components/landing-home-page'
-import { siteConfig } from '@/lib/site-metadata'
+import { LandingHomePage } from '@/marketing/components/landing-home-page'
+import { siteConfig } from '@/shared/server/site-metadata'
 
 export const metadata = {
   title: {

@@ -2,12 +2,15 @@ import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 import { type NextRequest, NextResponse } from 'next/server'
-import { pokeHeartbeat, pokeReflection } from '@/lib/agent-session'
-import { auth } from '@/lib/auth'
-import { db } from '@/lib/db'
-import { user } from '@/lib/db/schema'
-import { getAgentById } from '@/lib/start-agent-run'
-import { localDateKey } from '@/lib/timezone'
+import {
+  pokeHeartbeat,
+  pokeReflection,
+} from '@/agent-runtime/server/session-events'
+import { getAgentById } from '@/agent-runtime/server/start-agent-run'
+import { auth } from '@/auth/server/auth'
+import { db } from '@/shared/db'
+import { user } from '@/shared/db/schema'
+import { localDateKey } from '@/shared/server/timezone'
 
 type TriggerMode = 'heartbeat' | 'reflection'
 

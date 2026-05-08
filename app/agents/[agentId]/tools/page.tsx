@@ -1,27 +1,28 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
-import {
-  SubAgentCatalog,
-  type SubAgentCatalogEntry,
-} from '@/components/sub-agent-catalog'
-import { ToolCatalog, type ToolCatalogEntry } from '@/components/tool-catalog'
-import { getConnector } from '@/connectors/registry'
-import { requireSession } from '@/lib/auth-guard'
+import { requireSession } from '@/auth/server/auth-guard'
+import { getConnector } from '@/connections/registry'
 import {
   getCachedAgentByIdForUser,
   getCachedAgentsForUser,
   getCachedAgentTools,
   getCachedUserConnections,
-} from '@/lib/data'
-import { getLatestBuildForManifest } from '@/lib/tool-sandbox-build'
-import { describeConfigSchema } from '@/lib/zod-config-fields'
-import { listMaintainerTools } from '@/tools/registry'
+} from '@/shared/server/data'
+import { describeConfigSchema } from '@/shared/server/zod-config-fields'
+import { listMaintainerTools } from '@/tools/catalog/registry'
+import {
+  SubAgentCatalog,
+  type SubAgentCatalogEntry,
+} from '@/tools/components/sub-agent-catalog'
+import { ToolCatalog } from '@/tools/components/tool-catalog'
+import type { ToolCatalogEntry } from '@/tools/components/tool-catalog/types'
+import { getLatestBuildForManifest } from '@/tools/sandbox-runtime/build'
 import {
   childAgentIdFromSubAgentRow,
   isLegacySubAgentToolId,
   uniqueSubAgentToolId,
-} from '@/tools/sub-agent-tool-name'
+} from '@/tools/sub-agents/sub-agent-tool-name'
 
 type Params = Promise<{ agentId: string }>
 

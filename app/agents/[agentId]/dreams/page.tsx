@@ -1,16 +1,16 @@
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
-import { FileChangeReviewButton } from '@/components/file-change-review-button'
-import { RunResultView } from '@/components/run-result-view'
-import { TriggerButton } from '@/components/trigger-button'
-import { requireSession } from '@/lib/auth-guard'
+import { RunResultView } from '@/agent-runtime/components/run-result-view'
+import { FileChangeReviewButton } from '@/agents/components/file-change-review-button'
+import { TriggerButton } from '@/agents/components/trigger-button'
+import { requireSession } from '@/auth/server/auth-guard'
+import type { AgentFileChange } from '@/shared/db/schema'
 import {
   getCachedAgentByIdForUser,
   getCachedAgentFileChanges,
   getCachedAgentMemoryFile,
-} from '@/lib/data'
-import type { AgentFileChange } from '@/lib/db/schema'
-import { formatDateTime } from '@/lib/format'
+} from '@/shared/server/data'
+import { formatDateTime } from '@/shared/server/format'
 
 type Params = Promise<{ agentId: string }>
 
