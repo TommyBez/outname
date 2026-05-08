@@ -1,5 +1,6 @@
 import { Sandbox } from '@vercel/sandbox'
 import { getWritable } from 'workflow'
+import { toolBuildSandboxTags } from '@/lib/vercel-sandbox-config'
 import { getToolSandboxManifest } from '@/tools/sandboxes'
 import {
   buildToolSandboxNamespace,
@@ -54,7 +55,12 @@ export async function runSandboxBuild(input: {
     sandbox = await Sandbox.create({
       runtime: manifest.build.runtime,
       timeout: manifest.build.timeout,
+      persistent: false,
       resources: { vcpus: 2 },
+      tags: toolBuildSandboxTags({
+        buildId: input.buildId,
+        manifestId: input.manifestId,
+      }),
     })
 
     // Heuristic phase markers so the UI can show progress even though

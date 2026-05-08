@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm'
 import { getWorkflowMetadata } from 'workflow'
 import { db } from '@/lib/db'
 import { toolSandboxSnapshots } from '@/lib/db/schema'
+import { toolRuntimeSandboxTags } from '@/lib/vercel-sandbox-config'
 import { getToolSandboxManifest } from '@/tools/sandboxes'
 
 /**
@@ -105,6 +106,8 @@ export async function getOrStartToolSandbox(
   // snapshot itself).
   const sandbox = await Sandbox.create({
     source: { type: 'snapshot', snapshotId },
+    persistent: false,
+    tags: toolRuntimeSandboxTags({ manifestId, runId }),
     timeout: 600_000,
   })
 

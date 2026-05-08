@@ -67,7 +67,7 @@ Vercel Sandbox microVMs. Every agent has **one persistent system sandbox** — s
 Tools with heavy runtime needs (Chromium, Python, ffmpeg) still get **on-demand tool sandboxes**, spun up per invocation from pre-built base snapshots — separate from the persistent system sandbox.
 
 ### Session workflow
-A single long-lived Vercel Workflow run per agent. It parks on an iterable `createHook()` and is fed by a sibling "ticker" workflow that drives the heartbeat. All events in the agent's life — chat messages, heartbeat ticks, sub-agent invocations, sub-agent replies — arrive on this hook and are processed sequentially. The system sandbox is snapshotted at the end of every event.
+A single long-lived Vercel Workflow run per agent. It parks on an iterable `createHook()` and is fed by a sibling "ticker" workflow that drives the heartbeat. All events in the agent's life — chat messages, heartbeat ticks, sub-agent invocations, sub-agent replies — arrive on this hook and are processed sequentially. The named system sandbox is stopped at the end of every event and resumed by the SDK on the next operation.
 
 ---
 
@@ -88,7 +88,7 @@ A single long-lived Vercel Workflow run per agent. It parks on an iterable `crea
 │       case "invocation":  await handleSubAgentCall(event)          │
 │       case "reply":       await resolvePendingSubCall(event)       │
 │       case "shutdown":    break                                    │
-│     await snapshotSandbox()                                        │
+│     await stopSystemSandbox()                                      │
 │     await flushFilesToCache()                                      │
 │                                                                    │
 │   await ticker.stop()                                              │
@@ -97,7 +97,7 @@ A single long-lived Vercel Workflow run per agent. It parks on an iterable `crea
 ```
 
 **Why this shape.**
-- **Single-threaded by construction.** The hook's iterable guarantees events are processed one at a time. No locks; no race between chat and heartbeat; snapshot-after-every-event is safe.
+- **Single-threaded by construction.** The hook's iterable guarantees events are processed one at a time. No locks; no race between chat and heartbeat; stop-after-every-event is safe.
 - **Heartbeat as a sibling ticker workflow, with ack-handshake to prevent pile-up.** A single workflow can't trivially race `sleep()` against `createHook()`. The heartbeat is fired by a small child workflow that waits for session-side completion before starting the next sleep:
   ```ts
   // ticker
@@ -114,14 +114,14 @@ A single long-lived Vercel Workflow run per agent. It parks on an iterable `crea
   ```
   Net cadence = `max(interval, runtime_of_previous_heartbeat)`. Without this handshake, a heartbeat run that exceeds the interval causes wall-clock ticks to pile up behind it: the agent runs heartbeats back-to-back forever, never idles, starves chat, and wastes tokens. The handshake gives "at least `interval` of rest between completions" semantics, which is what "every 30 min" should actually mean.
 - **Chat latency under long events — accepted tradeoff.** The single-threaded mind means a chat message arriving mid-heartbeat is queued and only processed when the heartbeat completes. A 45-min heartbeat = 45-min chat delay. UI surfaces an "agent busy" state with the in-flight event type. Preserving the invariant is worth this cost; fixes (preempting heartbeats, forking the sandbox, non-durable fast-path chat) each compromise the single-source-of-truth guarantee and are deferred past v1.
-- **Safety valve: per-agent `max_event_duration_mins`.** Bounds worst-case chat-starvation. If a single event exceeds it, the session aborts that event (logs to today's `logs/…md`, snapshots, moves on). Default generous (e.g. 30); tunable per agent.
-- **Graceful restart.** No single workflow run lives forever. After N events or T hours, the session hands off: it snapshots, ends the run, and its very last step kicks off a fresh session run. State continuity is provided by the sandbox snapshot + `agents.last_session_run_id`.
-- **Crash recovery.** Workflows resume from their own snapshot automatically. A low-frequency liveness sweeper (Vercel Cron every ~15 min) scans for `enabled = true` agents with no live session run and restarts them.
+- **Safety valve: per-agent `max_event_duration_mins`.** Bounds worst-case chat-starvation. If a single event exceeds it, the session aborts that event (logs to today's `logs/…md`, stops the system sandbox, moves on). Default generous (e.g. 30); tunable per agent.
+- **Graceful restart.** No single workflow run lives forever. After N events or T hours, the session hands off: it stops the system sandbox, ends the run, and its very last step kicks off a fresh session run. State continuity is provided by the named persistent sandbox + `agents.last_session_run_id`.
+- **Crash recovery.** Workflows resume from durable workflow state automatically. A low-frequency liveness sweeper (Vercel Cron every ~15 min) scans for `enabled = true` agents with no live session run and restarts them.
 - **Observability.** `agents.last_session_run_id` + `npx workflow inspect run` give a 1:1 view of "what this agent is doing right now."
 
 #### Enable / disable
 - **Enable** → `start(agentSessionWorkflow, [agentId])`, store `last_session_run_id`.
-- **Disable** → `resumeHook(sessionToken, { type: 'shutdown' })`; session drains its current event, snapshots, and returns cleanly.
+- **Disable** → `resumeHook(sessionToken, { type: 'shutdown' })`; session drains its current event, stops the system sandbox, and returns cleanly.
 
 ### 4.2 Sandbox model
 
@@ -134,25 +134,27 @@ This satisfies the hard guarantee that agent action cannot corrupt `SOUL.md` / `
 
 #### Lifecycle
 
-The system sandbox follows a snapshot/rehydrate pattern; it is persistent in identity, ephemeral in physical instance.
+The system sandbox is a named Vercel Sandbox. Persistence is the SDK default for named sandboxes; stopped sessions transparently resume on the next file or command operation.
 
 ```
 agents.sandbox_system_id ─┐
                           │
-   Sandbox.create  ◀──────┤  on session event
+   Sandbox.create({ name }) ◀┤ first session event
                           ▼
    [ running system sandbox ]
                           │
-   sandbox.stop()  ───────┤  at end of event (snapshot)
+   sandbox.stop()  ───────┤  at end of event
                           ▼
-   resumed by name on the next event
+   SDK resumes by name on next operation
 ```
 
 Rules:
-- The sandbox snapshots at the **end of every event** via `sandbox.stop()`. The next event resumes by name.
-- The system snapshot is sacred. If the system snapshot fails, the event fails.
+- The sandbox is stopped at the **end of every event**. The next event calls SDK operations on the named sandbox and lets the SDK resume the session.
+- `persistent: true` is intentionally omitted for system sandboxes because it is the beta SDK default.
+- System sandbox network egress is `deny-all`; it is a markdown memory volume, not a tool runtime.
 - The sandbox name on the agent row is authoritative. Any cached copy elsewhere is advisory.
 - The system base image is minimal: just enough to host markdown files and the memory-tool implementations. Heavy runtimes (Chromium, Python ML, …) live in tool sandboxes, not here.
+- Chat, manual triggers, scheduled heartbeat, reflection, and invocation events are serialized by the workflow hook. Additional session split-brain locking is intentionally out of scope while the app is pre-production.
 
 #### Tool sandboxes (second tier)
 
@@ -197,7 +199,7 @@ base system prompt + AGENTS.md + IDENTITY.md + SOUL.md + USER.md (when present)
 The setup step reads all eager files via `read_memory` from the system sandbox. All other MD files (`MEMORY.md`, `TASKS.md`, `CALENDAR.md`, `GOALS.md`, `DREAMS.md`, `logs/*.md`) are **read lazily** by the agent via memory tools when it decides they are relevant. `AGENTS.md` tells the agent what exists, when to consult each file, and which memory tool to use; per-agent instructions in `AGENTS.md` (e.g. *"always read MEMORY.md before replying to chat"*) can force eager-style behavior for files the agent's owner deems load-bearing. `USER.md` is not listed again as lazy memory because it is already in the prologue. Keeps prompts compact as memory files grow; matches how a coding agent navigates a codebase, but routed through a strict tool surface rather than free bash.
 
 #### UI read path — the flat file cache
-The UI cannot read the system sandbox directly (it is stopped most of the time). At the end of every event (after snapshotting), a step pulls every `.md` under `/home/agent/` and upserts rows into:
+The UI cannot read the system sandbox directly (it is stopped most of the time). At the end of every event, before stopping it, a step pulls every `.md` under `/home/agent/` and upserts rows into:
 ```
 agent_files(agent_id, path, content, sha256, updated_at)
 ```
@@ -323,7 +325,7 @@ export const chromiumSetupScript = String.raw`...`; // bundled setup script byte
 ```
 
 **Build pipeline (v1 — lazy first-attach).**
-1. The first time a user attaches a tool whose `tool_sandbox` manifest has no current snapshot, the attach handler kicks off a one-time build: `Sandbox.create({ image: baseImage })` → run the bundled setup script → `sandbox.snapshot()` → persist `(manifest_id, snapshot_id, manifest_hash, built_at)` into `tool_sandbox_snapshots`.
+1. The first time a user attaches a tool whose `tool_sandbox` manifest has no current snapshot, the attach handler kicks off a one-time build: `Sandbox.create({ persistent: false, ...buildOptions })` → run the bundled setup script → `sandbox.snapshot()` → persist `(manifest_id, snapshot_id, manifest_hash, built_at)` into `tool_sandbox_snapshots`.
 2. Subsequent attaches by any user reuse the snapshot — the table is global, not per-user.
 3. `manifest_hash` (content hash of the setup script + `manifest.ts`) drives rebuilds. On deploy with a changed manifest, the next attach triggering that manifest does a fresh build and updates the row.
 4. UI shows a "preparing tool environment" state on first attach to keep the latency visible.
@@ -331,7 +333,7 @@ export const chromiumSetupScript = String.raw`...`; // bundled setup script byte
 **Deploy-time pre-build** (CI step that snapshots all manifests before traffic) is a §8 follow-up — cleaner ops, faster first-attach UX, but more deploy machinery than v1 needs.
 
 **Invocation lifecycle.**
-- Ephemeral per call. `spawnToolSandbox(manifestId)` resolves to the current snapshot id from `tool_sandbox_snapshots`, calls `Sandbox.create({ snapshotId })`, hands back an `EphemeralSandbox` handle.
+- Ephemeral per call. `spawnToolSandbox(manifestId)` resolves to the current snapshot id from `tool_sandbox_snapshots`, calls `Sandbox.create({ source: { type: "snapshot", snapshotId }, persistent: false })`, hands back an `EphemeralSandbox` handle.
 - Auto-disposed when the tool's `execute()` resolves or throws. No snapshot taken at the end — these sandboxes carry no agent state.
 - **No FS access to the system sandbox.** Inputs cross via `execute()` arguments; outputs cross via the return value. Re-stated from §4.2 because it is the load-bearing rule.
 
@@ -396,8 +398,8 @@ resumeHook(agent.sessionToken, { type: "chat", message, replyStreamToken })
 session workflow consumes event → DurableAgent streams UIMessageChunks
   to getWritable({ namespace: replyStreamToken }) → HTTP handler pipes
   run.getReadable({ namespace: replyStreamToken }) to the client.
-End of event: persist assistant message(s), snapshot system sandbox,
-  flush file cache from system sandbox.
+End of event: persist assistant message(s), flush file cache from system sandbox,
+  then stop the named sandbox.
 ```
 
 **Heartbeat tick.**
@@ -408,8 +410,8 @@ ticker workflow (sleep → resume) ──► session hook { type: "heartbeat" }
 session workflow runs DurableAgent with a heartbeat prompt
   ("consult GOALS, TASKS, CALENDAR, DREAMS — decide and act").
 Memory writes (via memory tools) and tool calls are the work product; a summary
-is appended to today's log via append_memory. End of event: snapshot the system
-sandbox + cache flush from system sandbox.
+is appended to today's log via append_memory. End of event: cache flush from
+system sandbox, then stop the named sandbox.
 ```
 
 **Sub-agent call.** See §4.5.
@@ -419,7 +421,7 @@ sandbox + cache flush from system sandbox.
 | Concern | Primitive |
 |---|---|
 | Session durability, hook-driven event loop, heartbeat sleep | Vercel Workflow (`workflow`, `@workflow/ai`, `@workflow/next`) |
-| Per-agent durable VM + snapshot (system sandbox) | Vercel Sandbox (`@vercel/sandbox`) — one persistent instance per agent, plus ephemeral tool sandboxes on demand |
+| Per-agent named persistent memory sandbox | Vercel Sandbox (`@vercel/sandbox`) — one persistent instance per agent, plus ephemeral tool sandboxes on demand |
 | Model calls | AI Gateway via AI SDK |
 | Agent config, file cache, pending writes, connections, chat persistence | Neon Postgres via Drizzle |
 | User auth | Better Auth (unchanged) |
@@ -448,7 +450,7 @@ agents (
   heartbeat_enabled          boolean,
   heartbeat_interval_mins    int,
   max_event_duration_mins    int,              -- safety valve; aborts runaway events
-  system_sandbox_snapshot_id text null,        -- memory files; null until first snapshot
+  sandbox_system_id          text null,        -- named system sandbox, e.g. agent-<id>-system
   last_session_run_id        text null,
   created_at                 timestamptz
 )
@@ -539,8 +541,8 @@ Every phase ends in a state where the app runs, passes tests, and can be demoed.
 ### Phase 2 — Generalise the agent model + system sandbox + memory tools
 *The agent becomes a user-editable row, and the persistent system sandbox lands.*
 
-- Replace the hard-coded `kind` with the full `agents` table from §5 (with `system_sandbox_snapshot_id`). Delete `lib/agent-runtime-registry.ts` and the `agents/daily-email-brief` directory.
-- **Provision the persistent system sandbox.** Base image hosts memory files + memory-tool implementations. Snapshot at end of every event (sacred — failure fails the event).
+- Replace the hard-coded `kind` with the full `agents` table from §5 (with `sandbox_system_id`). Delete `lib/agent-runtime-registry.ts` and the `agents/daily-email-brief` directory.
+- **Provision the named persistent system sandbox.** Base image hosts memory files + memory-tool implementations. Stop it at the end of every event and let the SDK resume it by name on the next operation.
 - **Ship the built-in memory tools** (`read_memory`, `write_memory`, `append_memory`, `list_memory`, `search_memory`, `delete_memory`, `move_memory`) bound to the system sandbox. Tool-layer write block on `SOUL.md` and `AGENTS.md`.
 - Update `agent_files` cache flush to read from the system sandbox.
 - Implement the pending-writes queue, drained into the system sandbox at boot **before** the agent is handed control (queue carries user authority, bypasses the tool-layer write block on SOUL/AGENTS, and lets users seed/correct USER).

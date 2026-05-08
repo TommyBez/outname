@@ -110,6 +110,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
+    "vercel:sandboxes:audit": "tsx scripts/audit-vercel-sandboxes.ts",
     "vercel:sandboxes:destroy-all": "tsx scripts/destroy-vercel-sandboxes.ts",
     "reset:workflow": "rm -rf .swc .next app/.well-known",
     "check": "ultracite check",

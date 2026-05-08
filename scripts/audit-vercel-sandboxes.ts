@@ -1,7 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
-import readline from 'node:readline/promises'
 import { Sandbox } from '@vercel/sandbox'
 
 const VERCEL_PAGE_LIMIT = 50
@@ -13,11 +12,9 @@ interface ParsedEnvLine {
 }
 
 interface ScriptOptions {
-  execute: boolean
   help: boolean
   project: string
   teamId: string
-  yes: boolean
 }
 
 interface ProjectRef {
@@ -37,42 +34,22 @@ interface VercelContext {
   token: string
 }
 
-interface CleanupFailure {
-  error: unknown
-  target: string
-}
-
 type ListedSandbox = Awaited<
   ReturnType<typeof Sandbox.list>
 >['sandboxes'][number]
 
 function printUsage(): void {
-  console.log(`Destroy Vercel sandboxes for the current Vercel project.
+  console.log(`Audit Vercel sandboxes for the current Vercel project.
 
 Usage:
-  pnpm vercel:sandboxes:destroy-all [options]
-  pnpm exec tsx scripts/destroy-vercel-sandboxes.ts [options]
+  pnpm vercel:sandboxes:audit [options]
+  pnpm exec tsx scripts/audit-vercel-sandboxes.ts [options]
 
 Options:
-  --execute               Actually delete the sandboxes. Without this flag the
-                          script only prints a dry-run plan.
-  --yes                   Skip the interactive confirmation prompt.
   --project <id-or-name>  Fallback project id/name when .vercel/project.json
                           and VERCEL_PROJECT_ID are unavailable.
   --team-id <team_id>     Optional Vercel team id for the project.
   --help                  Show this help text.
-
-Environment:
-  VERCEL_TOKEN            Preferred auth token.
-  VERCEL_ACCESS_TOKEN     Fallback auth token.
-  VERCEL_OIDC_TOKEN       Final fallback.
-  VERCEL_PROJECT_ID       Fallback current project id.
-  VERCEL_TEAM_ID          Optional default for --team-id.
-
-Examples:
-  VERCEL_TOKEN=... pnpm vercel:sandboxes:destroy-all
-  VERCEL_TOKEN=... pnpm vercel:sandboxes:destroy-all --project prj_...
-  VERCEL_TOKEN=... pnpm vercel:sandboxes:destroy-all --execute
 `)
 }
 
@@ -127,8 +104,6 @@ function parseEnvLine(rawLine: string): ParsedEnvLine | null {
 
 function parseArgs(argv: string[]): ScriptOptions {
   const options: ScriptOptions = {
-    execute: false,
-    yes: false,
     help: false,
     project: '',
     teamId: process.env.VERCEL_TEAM_ID ?? '',
@@ -138,12 +113,6 @@ function parseArgs(argv: string[]): ScriptOptions {
     const arg = argv[index]
 
     switch (arg) {
-      case '--execute':
-        options.execute = true
-        break
-      case '--yes':
-        options.yes = true
-        break
       case '--help':
       case '-h':
         options.help = true
@@ -238,12 +207,6 @@ function resolveToken(): string {
     )
   }
 
-  if (!process.env.VERCEL_TOKEN && process.env.VERCEL_OIDC_TOKEN) {
-    console.warn(
-      'Using VERCEL_OIDC_TOKEN. If cleanup fails, retry with VERCEL_TOKEN.'
-    )
-  }
-
   return token
 }
 
@@ -280,116 +243,57 @@ async function listSandboxes(
   return sandboxes
 }
 
-function printPlan(
-  project: ProjectRef,
-  sandboxes: readonly ListedSandbox[]
-): void {
+function renderValue(value: string | number | boolean | undefined): string {
+  if (value === undefined || value === '') {
+    return '-'
+  }
+
+  return String(value)
+}
+
+function renderResources(sandbox: ListedSandbox): string {
+  if (!(sandbox.vcpus || sandbox.memory)) {
+    return '-'
+  }
+
+  return `${sandbox.vcpus ?? '?'} vCPU / ${sandbox.memory ?? '?'} MB`
+}
+
+function renderStorageAllocation(): string {
+  return 'not exposed by SDK metadata'
+}
+
+function renderTags(tags: Record<string, string> | undefined): string[] {
+  if (!tags || Object.keys(tags).length === 0) {
+    return ['    -']
+  }
+
+  return Object.entries(tags)
+    .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
+    .map(([key, value]) => `    ${key.padEnd(14)} ${value}`)
+}
+
+function renderField(label: string, value: string): string {
+  return `  ${label.padEnd(16)} ${value}`
+}
+
+function printSandbox(sandbox: ListedSandbox, index: number): void {
+  console.log(`\n${index + 1}. ${sandbox.name}`)
+  console.log(renderField('status', sandbox.status))
+  console.log(renderField('persistent', sandbox.persistent ? 'yes' : 'no'))
+  console.log(renderField('runtime', renderValue(sandbox.runtime)))
+  console.log(renderField('resources', renderResources(sandbox)))
+  console.log(renderField('storage', renderStorageAllocation()))
   console.log(
-    `Found ${sandboxes.length} named sandboxes to delete in ${project.name} (${project.id}).`
+    renderField('current session', renderValue(sandbox.currentSessionId))
   )
-
-  if (sandboxes.length === 0) {
-    return
+  console.log(
+    renderField('current snapshot', renderValue(sandbox.currentSnapshotId))
+  )
+  console.log('  tags')
+  for (const line of renderTags(sandbox.tags)) {
+    console.log(line)
   }
-
-  console.log('\nNamed sandboxes')
-  for (const sandbox of sandboxes) {
-    console.log(`  - ${sandbox.name} [${sandbox.status}]`)
-  }
-}
-
-async function confirmExecution(count: number): Promise<boolean> {
-  const prompt = `Type DESTROY ${count} to continue: `
-  const expectedAnswer = `DESTROY ${count}`
-
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  })
-
-  try {
-    const answer = await rl.question(prompt)
-    return answer.trim() === expectedAnswer
-  } finally {
-    rl.close()
-  }
-}
-
-async function ensureExecutionAllowed(
-  options: ScriptOptions,
-  sandboxes: readonly ListedSandbox[]
-): Promise<boolean> {
-  if (!options.execute) {
-    console.log('\nDry run only. Re-run with --execute to apply the cleanup.')
-    return false
-  }
-
-  if (options.yes) {
-    return true
-  }
-
-  if (!process.stdin.isTTY) {
-    throw new Error(
-      'Interactive confirmation requires a TTY. Re-run with --yes.'
-    )
-  }
-
-  const confirmed = await confirmExecution(sandboxes.length)
-  if (confirmed) {
-    return true
-  }
-
-  console.log('Confirmation did not match. Aborting.')
-  process.exitCode = 1
-  return false
-}
-
-function printFailures(failures: readonly CleanupFailure[]): void {
-  console.error('\nCompleted with failures:')
-  for (const failure of failures) {
-    const message =
-      failure.error instanceof Error
-        ? failure.error.message
-        : String(failure.error)
-    console.error(`  - ${failure.target}: ${message}`)
-  }
-}
-
-async function deleteSandbox(input: {
-  context: VercelContext
-  project: ProjectRef
-  sandbox: ListedSandbox
-}): Promise<void> {
-  const sandbox = await Sandbox.get({
-    name: input.sandbox.name,
-    projectId: input.project.id,
-    resume: false,
-    teamId: input.context.teamId,
-    token: input.context.token,
-  })
-  await sandbox.delete()
-}
-
-async function applyCleanup(
-  project: ProjectRef,
-  sandboxes: readonly ListedSandbox[],
-  context: VercelContext
-): Promise<CleanupFailure[]> {
-  const failures: CleanupFailure[] = []
-
-  for (const sandbox of sandboxes) {
-    try {
-      await deleteSandbox({ context, project, sandbox })
-      console.log(`[deleted] ${sandbox.name} (${project.id})`)
-    } catch (error) {
-      failures.push({
-        target: `${project.name}: ${sandbox.name}`,
-        error,
-      })
-    }
-  }
-
-  return failures
 }
 
 async function main(): Promise<void> {
@@ -409,30 +313,18 @@ async function main(): Promise<void> {
   }
 
   console.log(
-    `Scanning current Vercel project for sandboxes: ${project.name} (${project.id})`
+    `Auditing current Vercel project sandboxes: ${project.name} (${project.id})`
   )
-
   const sandboxes = await listSandboxes(project, context)
-  printPlan(project, sandboxes)
-
   if (sandboxes.length === 0) {
-    console.log('\nNothing to do.')
+    console.log('No named sandboxes found.')
     return
   }
 
-  const shouldExecute = await ensureExecutionAllowed(options, sandboxes)
-  if (!shouldExecute) {
-    return
+  console.log(`Found ${sandboxes.length} named sandbox(es).`)
+  for (let index = 0; index < sandboxes.length; index += 1) {
+    printSandbox(sandboxes[index], index)
   }
-
-  const failures = await applyCleanup(project, sandboxes, context)
-  if (failures.length > 0) {
-    printFailures(failures)
-    process.exitCode = 1
-    return
-  }
-
-  console.log(`\nCleanup complete for ${sandboxes.length} named sandboxes.`)
 }
 
 main().catch((error: unknown) => {

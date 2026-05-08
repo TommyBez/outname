@@ -1,7 +1,8 @@
-import { Sandbox } from '@vercel/sandbox'
+import { type NetworkPolicy, Sandbox } from '@vercel/sandbox'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { agent } from '@/lib/db/schema'
+import { systemSandboxTags } from '@/lib/vercel-sandbox-config'
 
 /**
  * Subset of `Sandbox.create` parameters that we surface here. Defined
@@ -11,6 +12,7 @@ import { agent } from '@/lib/db/schema'
  */
 export interface CreateOptions {
   env?: Record<string, string>
+  networkPolicy?: NetworkPolicy
   ports?: number[]
   resources?: { vcpus: number }
   runtime?: string
@@ -41,6 +43,7 @@ const SYSTEM_SANDBOX_CREATE_OPTIONS: CreateOptions = {
   // composeSystemPrompt + flush cycle.
   timeout: 60_000,
   resources: { vcpus: 1 },
+  networkPolicy: 'deny-all',
 }
 
 /**
@@ -77,7 +80,7 @@ async function writeSandboxId(
 }
 
 export interface EnsureResult {
-  /** True iff this call created a brand-new sandbox (vs. resumed by id). */
+  /** True iff this call created a brand-new sandbox (vs. reused by name). */
   created: boolean
   sandbox: Sandbox
 }
@@ -106,7 +109,7 @@ async function ensureSystemSandbox(agentId: string): Promise<EnsureResult> {
     sandbox = await Sandbox.create({
       ...SYSTEM_SANDBOX_CREATE_OPTIONS,
       name: desiredName,
-      persistent: true,
+      tags: systemSandboxTags(agentId),
     })
     created = true
     if (persistedName !== desiredName) {
@@ -181,9 +184,9 @@ export async function getSystemSandbox(agentId: string): Promise<Sandbox> {
 }
 
 /**
- * Best-effort soft release: stop the sandbox so Vercel snapshots its
- * filesystem for the next resume. Swallows errors — a failed release
- * never fails an otherwise-successful event.
+ * Best-effort soft release: stop the named sandbox so the SDK can
+ * resume a fresh session on the next operation. Swallows errors — a
+ * failed release never fails an otherwise-successful event.
  */
 export async function releaseSandbox(sandbox: Sandbox): Promise<void> {
   try {

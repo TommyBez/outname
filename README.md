@@ -52,7 +52,7 @@ flowchart LR
 | Next.js control plane | Authenticate, authorize, validate input, run Server Actions, serve route handlers, revalidate cache tags, and dispatch workflow events. | Request context, Better Auth session, Next cache tags. | Request failure does not corrupt agent memory because writes are persisted or queued before workflow work begins. |
 | Neon and Drizzle | Store auth rows, agents, conversations, messages, memory mirrors, pending writes, tools, connections, and sandbox build records. | Postgres tables and generated migrations. | Database is the source of truth for operator-visible state and recovery metadata. |
 | Vercel Workflow | Run long-lived agent sessions, ticker workflows, heartbeat/reflection handlers, chat handlers, sub-agent invocations, and tool sandbox builds. | Workflow run ids, hooks, streamed namespaces, durable step state. | Failed sessions can be detected and restarted by liveness checks. |
-| Vercel Sandbox | Provide each agent's persistent memory volume plus the ephemeral tool-build environments used by maintainer tools that need their own runtime. | Snapshot-backed filesystems and sandbox ids. | Sandboxes are released after workflow events so filesystem state can be snapshotted. |
+| Vercel Sandbox | Provide each agent's named persistent memory sandbox plus explicit non-persistent tool-build and tool-runtime environments. | Named sandboxes, resumable sessions, and tool sandbox snapshots. | System sandboxes are stopped after workflow events and transparently resume on the next SDK operation. |
 | Tool and connector runtime | Resolve attached tools, decrypt connection credentials, run maintainer tools, and expose sub-agents as callable tools. | `agent_tools`, `user_connections`, tool sandbox snapshots. | Broken tools are surfaced to the model as unavailable instead of crashing the whole session. |
 
 ### Request and session flow
@@ -104,7 +104,7 @@ sequenceDiagram
   S->>D: Persist assistant message and activity
   S->>X: Apply memory writes and read markdown files
   S->>D: Mirror memory files and file changes
-  S->>X: Release sandbox for snapshotting
+  S->>X: Stop named sandbox; SDK persists state for resume
 ```
 
 The persistence order is deliberate:
@@ -237,11 +237,11 @@ Local development uses the same Next.js app, Better Auth configuration, Drizzle 
 Production-like autonomous behavior depends on Vercel-hosted services:
 
 - Vercel Workflow runs long-lived agent sessions, ticker workflows, sub-agent invocations, and tool sandbox builds.
-- Vercel Sandbox provides each agent's persistent memory sandbox and the ephemeral, snapshot-backed tool-build sandboxes used by maintainer tools.
+- Vercel Sandbox provides each agent's named persistent memory sandbox, resumable sessions, and explicit non-persistent tool-build/tool-runtime sandboxes.
 - Vercel AI Gateway routes model calls and provides the model catalog.
 - Vercel Cron drives the liveness sweeper.
 
-Because of those dependencies, local development can render the UI and exercise normal data paths, but autonomous agent execution, sandbox snapshotting, and scheduled heartbeat behavior are only fully representative in a Vercel deployment.
+Because of those dependencies, local development can render the UI and exercise normal data paths, but autonomous agent execution, sandbox session persistence, and scheduled heartbeat behavior are only fully representative in a Vercel deployment.
 
 ## Local development
 
