@@ -28,6 +28,7 @@ Use this checklist before closing a maintainer-tool task.
 - [ ] `TOOL_CATEGORY_ORDER` is updated only if a new category was introduced
 - [ ] `brokered_http` provider names exactly match the connector runtime, if used
 - [ ] `tool_sandbox` manifest ids exactly match the sandbox manifest, if used
+- [ ] sandbox manifests bundle setup-script bytes from `tools/sandboxes/<id>/setup.ts` through the registry, rather than reading repo-relative `.sh` files at runtime
 - [ ] authenticated connectors or sandbox manifests enforce Secret Injection and restricted network policy where applicable
 
 ## Know What Is Automatic

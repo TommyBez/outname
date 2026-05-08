@@ -21,7 +21,7 @@ import { runSandboxBuild } from './steps/run-sandbox-build'
  *   1. Mark the build row `running`.
  *   2. Read manifest id + hash off the row (so any future replay sees
  *      a deterministic input).
- *   3. Read `setup.sh` bytes for the manifest.
+ *   3. Read the bundled setup-script bytes for the manifest.
  *   4. Spawn a sandbox, run the script, snapshot. Emits coarse-grained
  *      `progress` events into the per-build stream the entire time.
  *   5. Atomically: upsert the snapshots row, mark this build `ready`,

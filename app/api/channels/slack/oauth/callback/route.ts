@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from 'node:crypto'
 import { headers } from 'next/headers'
 import { type NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
@@ -11,9 +12,8 @@ const TRAILING_SLASH = /\/$/
  *
  * Slack redirects here after the user authorises the app. We:
  *
- *   1. Verify the session — the `state` param carries the originating
- *      user id and session token so a leaked callback URL can't be
- *      replayed against a different account.
+ *   1. Verify the session and signed short-lived `state` payload so a
+ *      leaked callback URL can't be replayed against a different account.
  *   2. Run `slackAdapter.handleOAuthCallback` inside an
  *      `installContext` scope so the bridging state adapter
  *      (`SlackHybridState`) knows which user owns the resulting bot
@@ -57,13 +57,6 @@ export async function GET(request: NextRequest): Promise<Response> {
       reason: 'state does not match session user',
     })
   }
-  if (decoded.sessionToken !== session.session.token) {
-    return redirectToSettings(request, {
-      connection: 'error',
-      reason: 'state does not match active session',
-    })
-  }
-
   const baseUrl = process.env.BETTER_AUTH_URL
   if (!baseUrl) {
     return NextResponse.json(
@@ -104,18 +97,48 @@ function redirectToSettings(
   return NextResponse.redirect(target)
 }
 
-function decodeOAuthState(
-  raw: string
-): { userId: string; sessionToken: string } | null {
+function decodeOAuthState(raw: string): { userId: string } | null {
   try {
-    const decoded = Buffer.from(raw, 'base64url').toString('utf8')
-    const sep = decoded.indexOf(':')
-    if (sep <= 0) {
+    const secret = process.env.BETTER_AUTH_SECRET
+    if (!secret) {
       return null
     }
+
+    const [encodedPayload, signature] = raw.split('.')
+    if (!(encodedPayload && signature)) {
+      return null
+    }
+
+    const expectedSignature = createHmac('sha256', secret)
+      .update(encodedPayload)
+      .digest('base64url')
+
+    const expectedBuffer = Buffer.from(expectedSignature, 'utf8')
+    const signatureBuffer = Buffer.from(signature, 'utf8')
+    if (
+      expectedBuffer.length !== signatureBuffer.length ||
+      !timingSafeEqual(expectedBuffer, signatureBuffer)
+    ) {
+      return null
+    }
+
+    const payloadText = Buffer.from(encodedPayload, 'base64url').toString(
+      'utf8'
+    )
+    const payload = JSON.parse(payloadText) as {
+      userId?: unknown
+      exp?: unknown
+    }
+    if (typeof payload.userId !== 'string' || typeof payload.exp !== 'number') {
+      return null
+    }
+
+    if (Math.floor(Date.now() / 1000) > payload.exp) {
+      return null
+    }
+
     return {
-      userId: decoded.slice(0, sep),
-      sessionToken: decoded.slice(sep + 1),
+      userId: payload.userId,
     }
   } catch {
     return null

@@ -8,13 +8,14 @@
  *
  * The manifest itself is a static description (id, build params,
  * version). The shell script that actually installs system deps and
- * tool binaries lives next to it as `setup.sh` and is loaded as a
- * string at runtime so its bytes can contribute to `manifestHash`.
+ * tool binaries is kept alongside the manifest in a TS module so its
+ * bytes are bundled into the server runtime and can contribute to
+ * `manifestHash` without any runtime FS reads.
  *
  * Naming convention: manifests are named after the **tool** they
  * enable, not after a system dependency. E.g. `agent-browser` rather
  * than `chromium` — the fact that the manifest installs Chromium libs
- * is an implementation detail of `setup.sh`.
+ * is an implementation detail of the manifest's setup script.
  */
 export interface ToolSandboxManifest {
   /** `Sandbox.create` parameters used during the build. */
@@ -33,13 +34,8 @@ export interface ToolSandboxManifest {
    */
   id: string
   /**
-   * Repo-relative setup script path. Keeping this in the manifest makes
-   * new sandbox folders self-contained and removes central path switches.
-   */
-  setupScript: string
-  /**
    * Bumped whenever the manifest's intent changes. The full descriptor
-   * plus `setup.sh` bytes drive rebuilds, so runtime/resource changes
+   * plus setup-script bytes drive rebuilds, so runtime/resource changes
    * also invalidate stale snapshots.
    */
   version: number

@@ -18,6 +18,14 @@ const TYPEFULLY_ENDPOINT_GUIDE =
   'Use relative Typefully API v2 paths such as /v2/me, /v2/social-sets/{social_set_id}/drafts, /v2/drafts/{id}, /v2/media, and /v2/tags. For media uploads, PUT to the presigned HTTPS upload_url returned by /v2/social-sets/{social_set_id}/media/upload. Mutating calls require confirmMutation=true.'
 
 const typefullyMethodSchema = z.enum(['GET', 'POST', 'PATCH', 'PUT', 'DELETE'])
+const typefullyConfigSchema = z.object({
+  readOnly: z
+    .boolean()
+    .default(false)
+    .describe(
+      'When true, only read operations are allowed. Non-GET methods are blocked.'
+    ),
+})
 const typefullyQueryValueSchema = z.union([z.string(), z.number(), z.boolean()])
 
 const typefullyRequestInputSchema = z.object({
@@ -57,6 +65,7 @@ const typefullyRequestInputSchema = z.object({
 
 type TypefullyHttpMethod = z.infer<typeof typefullyMethodSchema>
 type TypefullyRequestInput = z.infer<typeof typefullyRequestInputSchema>
+type TypefullyConfig = z.infer<typeof typefullyConfigSchema>
 
 function normalizeTypefullyTarget(path: string): string {
   const trimmed = path.trim()
@@ -121,10 +130,17 @@ function isMutationMethod(method: TypefullyHttpMethod): boolean {
 
 const typefullySafetyPolicy: ToolPolicy<
   TypefullyRequestInput,
-  Record<string, never>
-> = ({ input }) => {
+  TypefullyConfig
+> = ({ config, input }) => {
   if (input.method === 'GET' && input.body !== undefined) {
     return { ok: false, message: 'GET requests cannot include a body.' }
+  }
+  if (config.readOnly && isMutationMethod(input.method)) {
+    return {
+      ok: false,
+      message:
+        'This tool attachment is configured as read-only. Only GET requests are allowed.',
+    }
   }
 
   let pathname: string
@@ -229,6 +245,7 @@ export const typefullyRequestTool = defineApiPassthroughTool({
   description:
     'Call authenticated Typefully API v2 endpoints for drafts, social sets, media, tags, scheduling, and publishing workflows.',
   provider: 'typefully',
+  configSchema: typefullyConfigSchema,
   inputSchema: typefullyRequestInputSchema,
   policies: [typefullySafetyPolicy],
   toRequest({ input }) {

@@ -1,19 +1,19 @@
 import 'server-only'
 import { createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
-import path from 'node:path'
 import {
   getToolSandboxManifest as readToolSandboxManifest,
   listToolSandboxManifests as readToolSandboxManifests,
+  getToolSandboxSetupScript as readToolSandboxSetupScript,
 } from './registry'
 
 /**
  * Tool-sandbox manifest registry.
  *
- * Each entry pairs a manifest descriptor with the path to the `setup.sh`
+ * Each entry pairs a manifest descriptor with the bundled setup script
  * that bootstraps a sandbox for that manifest. The script bytes are
  * loaded lazily (and cached) so attach-time hash checks are cheap and
- * the workflow build step has the script to run.
+ * the workflow build step has the script to run, without relying on
+ * runtime FS access inside a deployed function bundle.
  */
 const setupScriptCache = new Map<string, string>()
 const manifestHashCache = new Map<string, string>()
@@ -27,26 +27,22 @@ export function listToolSandboxManifests() {
 }
 
 /**
- * Read the manifest's `setup.sh` from disk as a UTF-8 string. Cached so
- * the attach-time hash check doesn't re-stat once per render.
+ * Read the manifest's setup script from the registry. Cached so the
+ * attach-time hash check doesn't rebuild the string once per render.
  */
 export function manifestSetupScript(manifestId: string): string {
   const cached = setupScriptCache.get(manifestId)
   if (cached !== undefined) {
     return cached
   }
-  const manifest = readToolSandboxManifest(manifestId)
-  const bytes = readFileSync(
-    path.join(/*turbopackIgnore: true*/ process.cwd(), manifest.setupScript),
-    'utf8'
-  )
+  const bytes = readToolSandboxSetupScript(manifestId)
   setupScriptCache.set(manifestId, bytes)
   return bytes
 }
 
 /**
  * Stable hash that drives rebuilds. Combines the manifest descriptor
- * with the bytes of its `setup.sh` so changing runtime/resources,
+ * with the bytes of its setup script so changing runtime/resources,
  * version, or the install script invalidates the snapshot on the next
  * attach.
  */
