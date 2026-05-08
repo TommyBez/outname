@@ -2,6 +2,8 @@ import 'server-only'
 import { z } from 'zod'
 import { defineConnector } from './define-connector'
 
+const FIRECRAWL_MAX_RESPONSE_BYTES = 256 * 1024
+
 const firecrawlCredentialSchema = z.object({
   apiKey: z.string().min(1, 'Required'),
 })
@@ -29,5 +31,6 @@ export const firecrawlConnector = defineConnector('firecrawl', {
     injectedHeaders: (credential: FirecrawlCredential) => ({
       authorization: `Bearer ${credential.apiKey}`,
     }),
+    maxResponseBytes: FIRECRAWL_MAX_RESPONSE_BYTES,
   },
 })

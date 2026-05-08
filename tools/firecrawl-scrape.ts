@@ -118,6 +118,13 @@ export const firecrawlScrapeTool = defineApiPassthroughTool({
       return toolError('provider_error', clippedProviderError(response))
     }
 
+    if (response.truncated) {
+      return toolError(
+        'provider_error',
+        'Firecrawl scrape response exceeded the tool response limit. Retry with fewer formats, narrower includeTags or excludeTags filters, or main-content-only output.'
+      )
+    }
+
     return toolSuccess({
       status: response.status,
       body: parseResponseBody(

@@ -2,7 +2,7 @@
 name: maintainer-tool-implementation
 description: Implement a new maintainer tool in this codebase's tool catalog. Use when adding a tool under `tools/`, wiring a provider-backed integration, creating a `tool_sandbox` tool, updating `tools/registry.ts`, or when the user mentions maintainer tools, `define-maintainer-tool`, `defineActionTool`, `defineApiPassthroughTool`, `defineSandboxTool`, brokered HTTP, or catalog tool attachments.
 metadata:
-  version: 1.1.1
+  version: 1.1.3
 ---
 
 # Maintainer Tool Implementation
@@ -93,6 +93,9 @@ When a provider tool can be used for both read and write operations, prefer a `c
 - Map provider failures to `provider_error`
 - Prefer short, actionable messages
 - Clip or summarize noisy provider errors instead of dumping huge payloads
+- Investigate the actual tool's expected response shape and size before choosing `maxResponseBytes`. Use provider docs, analogous tools, and payload controls such as formats, result counts, or excerpt limits instead of guessing
+- For brokered HTTP tools, choose `connector.broker.maxResponseBytes` or `request.maxResponseBytes` intentionally when provider payloads can exceed the broker default
+- Do not return success for clipped payloads unless partial output is explicitly safe. If `response.truncated` would make JSON, markdown, or HTML incomplete, raise the cap and still return `toolError(...)` when truncation happens
 
 ## Implementation Workflow
 
@@ -104,6 +107,8 @@ Implementation checklist:
 - [ ] Decide capability needs (`brokered_http`, `tool_sandbox`, or `none`)
 - [ ] Separate credentials vs attachment config vs per-call args
 - [ ] For authenticated tools, enforce Secret Injection pattern and restricted network policy
+- [ ] Investigate the expected response size and truncation risk for the actual tool
+- [ ] Decide whether brokered HTTP responses need a connector-level or request-level `maxResponseBytes` override
 - [ ] Implement `tools/<tool-name>.ts`
 - [ ] Register the export in `tools/registry.ts`
 - [ ] Update `TOOL_CATEGORY_ORDER` only if introducing a new category
@@ -127,6 +132,7 @@ In `tools/<tool-name>.ts`:
 
 - define `configSchema` if the attachment needs saved defaults
 - define `inputSchema`
+- if brokered HTTP is involved, investigate the expected payload size for this tool and then size `maxResponseBytes` deliberately instead of relying on the small broker default
 - implement execution with the chosen helper
 - return compact structured data that is useful to the model
 
@@ -151,6 +157,8 @@ At minimum:
 - read the finished tool file and registry entry once
 - confirm ids, category, provider, and manifest names are consistent
 - confirm any authenticated flow uses Secret Injection and a restricted network policy
+- confirm the chosen `maxResponseBytes` matches the tool's expected payload shape and size
+- confirm `response.truncated` is handled intentionally for brokered HTTP tools
 - run `pnpm check` if the change is substantial or touches shared runtime types
 - mention any unimplemented prerequisite such as a missing connector, missing sandbox manifest, or missing product rule instead of guessing
 
