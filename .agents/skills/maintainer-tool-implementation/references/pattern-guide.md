@@ -135,6 +135,13 @@ Typical cases:
 
 If the CLI talks to an authenticated service, the sandbox must use restricted egress plus Secret Injection. If that is not possible for the CLI, call it out as a blocker instead of passing secrets into env vars or args.
 
+Repo convention for sandbox manifests:
+
+- keep the descriptor in `tools/sandboxes/<id>/manifest.ts`
+- keep the installer bytes in `tools/sandboxes/<id>/setup.ts` as a bundled string export
+- register both the manifest and setup script through `tools/sandboxes/registry.ts`
+- do not depend on runtime `readFileSync(process.cwd() + ...)` lookups for repo-relative `.sh` files inside deployed server code
+
 Skeleton:
 
 ```ts
@@ -174,7 +181,7 @@ Always touch:
 Touch only when required:
 
 - connector/provider code for a brand new `brokered_http` provider
-- `tools/sandboxes/...` for a brand new sandbox manifest
+- `tools/sandboxes/<id>/manifest.ts`, `tools/sandboxes/<id>/setup.ts`, and `tools/sandboxes/registry.ts` for a brand new sandbox manifest
 - sandbox network policy/auth injection setup when an authenticated CLI or runtime is introduced
 - `tools/types.ts` only if the new tool truly requires a new shared runtime concept
 - runtime boot files only if the normal registry-driven flow is insufficient

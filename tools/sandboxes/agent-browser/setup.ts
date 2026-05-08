@@ -1,5 +1,5 @@
-#!/usr/bin/env bash
-# Tool sandbox setup script for the `agent-browser` manifest.
+export const agentBrowserSetupScript = String.raw`#!/usr/bin/env bash
+# Tool sandbox setup script for the \`agent-browser\` manifest.
 #
 # Runs once inside a fresh Vercel Sandbox at build time; the resulting
 # filesystem is captured as a snapshot and reused at every tool call.
@@ -21,3 +21,4 @@ sudo ldconfig
 # 2. agent-browser CLI itself + its bundled Chromium.
 npm install -g agent-browser
 npx --yes agent-browser install
+`

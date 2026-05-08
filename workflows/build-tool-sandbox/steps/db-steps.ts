@@ -220,10 +220,10 @@ export async function markBuildFailed(input: {
 }
 
 /**
- * Read the manifest's `setup.sh` script bytes.
+ * Read the manifest's bundled setup-script bytes.
  *
  * Wrapped as a step so the workflow runtime treats the FS read as a
- * checkpointable boundary even though it's just a synchronous file
+ * checkpointable boundary even though it's just a synchronous module
  * read in practice.
  */
 export async function readManifestSetupScript(input: {

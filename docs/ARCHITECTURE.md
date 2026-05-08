@@ -329,10 +329,10 @@ tools/
 ├── registry.ts
 ├── sandboxes/
 │   ├── chromium/
-│   │   ├── setup.sh                # commands run once during snapshot build
-│   │   └── manifest.ts             # { id, baseImage, setup, resources }
+│   │   ├── setup.ts                # bundled shell script bytes for snapshot build
+│   │   └── manifest.ts             # { id, build, version, ... }
 │   └── python-data/
-│       ├── setup.sh
+│       ├── setup.ts
 │       └── manifest.ts
 └── browser/
     └── tool.ts                     # references "chromium" via { kind: "tool_sandbox", manifest: "chromium" }
@@ -343,15 +343,16 @@ tools/
 export const chromium: ToolSandboxManifest = {
   id: "chromium",                    // logical name, stable across deploys
   baseImage: "node:24",              // Vercel Sandbox base image
-  setup: "./setup.sh",               // installs chromium, fonts, deps; runs at snapshot-build time only
   resources: { memoryMb: 2048, timeoutSec: 60 },
 };
+
+export const chromiumSetupScript = String.raw`...`; // bundled setup script bytes
 ```
 
 **Build pipeline (v1 — lazy first-attach).**
-1. The first time a user attaches a tool whose `tool_sandbox` manifest has no current snapshot, the attach handler kicks off a one-time build: `Sandbox.create({ image: baseImage })` → run `setup.sh` → `sandbox.snapshot()` → persist `(manifest_id, snapshot_id, manifest_hash, built_at)` into `tool_sandbox_snapshots`.
+1. The first time a user attaches a tool whose `tool_sandbox` manifest has no current snapshot, the attach handler kicks off a one-time build: `Sandbox.create({ image: baseImage })` → run the bundled setup script → `sandbox.snapshot()` → persist `(manifest_id, snapshot_id, manifest_hash, built_at)` into `tool_sandbox_snapshots`.
 2. Subsequent attaches by any user reuse the snapshot — the table is global, not per-user.
-3. `manifest_hash` (content hash of `setup.sh` + `manifest.ts`) drives rebuilds. On deploy with a changed manifest, the next attach triggering that manifest does a fresh build and updates the row.
+3. `manifest_hash` (content hash of the setup script + `manifest.ts`) drives rebuilds. On deploy with a changed manifest, the next attach triggering that manifest does a fresh build and updates the row.
 4. UI shows a "preparing tool environment" state on first attach to keep the latency visible.
 
 **Deploy-time pre-build** (CI step that snapshots all manifests before traffic) is a §8 follow-up — cleaner ops, faster first-attach UX, but more deploy machinery than v1 needs.
@@ -595,7 +596,7 @@ In this phase the agent's `ToolSet` is just memory tools + exec tools (`bash` + 
 *Agents can call each other; tools can have heavy runtimes.*
 
 - Agent-as-tool synthesiser and the cross-workflow invocation protocol from §4.5, with depth and cycle guards.
-- Ship the **tool-sandbox build pipeline** (§4.4b, lazy first-attach variant) with `tools/sandboxes/<id>/{manifest.ts, setup.sh}` convention and the `tool_sandbox_snapshots` table.
+- Ship the **tool-sandbox build pipeline** (§4.4b, lazy first-attach variant) with `tools/sandboxes/<id>/{manifest.ts, setup.ts}` convention and the `tool_sandbox_snapshots` table.
 - First manifest: `chromium`. First tool that uses it: a browser-open tool. UI shows a "preparing tool environment" state during the one-time snapshot build. Validates the `spawnToolSandbox` path and the "no cross-sandbox FS" data-flow rule end-to-end.
 - Depth/cycle guard tests.
 
