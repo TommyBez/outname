@@ -6,6 +6,7 @@ import { parallelSearchTool } from './parallel'
 import { posthogRequestTool } from './posthog'
 import { resendSendTool } from './resend'
 import { getToolSandboxManifest } from './sandboxes/registry'
+import { supabaseRequestTool } from './supabase'
 import { typefullyRequestTool } from './typefully'
 import type { MaintainerTool } from './types'
 import { vercelRequestTool } from './vercel'
@@ -32,6 +33,7 @@ const TOOLS: MaintainerTool[] = [
   xApiRequestTool,
   typefullyRequestTool,
   vercelRequestTool,
+  supabaseRequestTool,
 ]
 const TOOL_BY_ID = new Map<string, MaintainerTool>()
 
@@ -74,4 +76,5 @@ export const TOOL_CATEGORY_ORDER = [
   'social',
   'browser',
   'deployment',
+  'database',
 ] as const
