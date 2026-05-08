@@ -51,10 +51,11 @@ const upsertSchema = z
  *   2. For multi-workspace deployments the (channel, teamId) install
  *      must also belong to the active user — otherwise we'd let one
  *      operator route messages from a workspace they don't own.
- *   3. Single-workspace deployments (`teamId === ''`) skip the install
- *      check because there is no `channel_installations` row in that
- *      mode — the dispatcher handles single-tenant routing without
- *      one.
+ *   3. Dev-only single-workspace deployments (`teamId === ''`) skip
+ *      the install check because there is no `channel_installations`
+ *      row in that mode. The Slack bot refuses to boot in this mode
+ *      when `NODE_ENV === 'production'` (see
+ *      `channels/slack/server/bot.ts`).
  */
 async function assertOwnsAgentAndWorkspace(input: {
   userId: string
@@ -148,6 +149,7 @@ export async function deleteSlackBindingAction(input: {
   }
 
   await deleteAgentChannelBinding({
+    userId,
     channel: 'slack',
     teamId: row.teamId,
     externalKey: row.externalKey,

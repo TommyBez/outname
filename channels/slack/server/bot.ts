@@ -24,21 +24,21 @@ import {
  * Two operating modes are supported, picked at boot from environment
  * variables:
  *
- *   - **Multi-workspace** (recommended for multi-user deployments):
+ *   - **Multi-workspace** (the only mode allowed in production):
  *     `SLACK_CLIENT_ID` + `SLACK_CLIENT_SECRET` are set. The bot is
  *     installed per-user via `/api/channels/slack/oauth/callback`,
  *     bot tokens are stored encrypted in `channel_installations`, and
  *     the SDK resolves them per-team via the `SlackHybridState`
  *     adapter. The webhook verifies signatures using
- *     `SLACK_SIGNING_SECRET` (one Slack app, many workspaces) and the
- *     dispatcher cross-checks `installation.userId` against
- *     `agent.userId` so cross-user routing is rejected.
+ *     `SLACK_SIGNING_SECRET` (one Slack app, many workspaces).
+ *     Multiple platform users may install the same Slack workspace;
+ *     each user owns their own `agent_channel_bindings` rows so an
+ *     incoming message fans out to every user whose binding matches.
  *
- *   - **Single-workspace** (the legacy / single-operator mode): only
- *     `SLACK_BOT_TOKEN` + `SLACK_SIGNING_SECRET` are set. There is one
- *     workspace, one user, and bindings live with `teamId = ''`. This
- *     mode does not pass the multi-user safety contract — only use it
- *     for personal deployments.
+ *   - **Single-workspace** (dev-only): only `SLACK_BOT_TOKEN` +
+ *     `SLACK_SIGNING_SECRET` are set. There is one workspace, one
+ *     user, and bindings live with `teamId = ''`. The constructor
+ *     refuses to boot in this mode when `NODE_ENV === 'production'`.
  *
  * Channel-agnostic logic — agent routing, conversation persistence,
  * workflow dispatch — lives in `lib/channels/dispatch.ts` so the same
@@ -69,6 +69,13 @@ function buildBundle(): SlackBotBundle {
   const clientId = process.env.SLACK_CLIENT_ID
   const clientSecret = process.env.SLACK_CLIENT_SECRET
   const isMultiWorkspace = Boolean(clientId && clientSecret)
+
+  if (!isMultiWorkspace && process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'Slack single-workspace mode is not allowed in production. ' +
+        'Set SLACK_CLIENT_ID and SLACK_CLIENT_SECRET to run in multi-workspace mode.'
+    )
+  }
 
   // Passing any config object disables the adapter's zero-config auth
   // fallback, so single-workspace mode must wire the env bot token

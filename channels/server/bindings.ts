@@ -4,6 +4,7 @@ import { nanoid } from 'nanoid'
 import { db } from '@/shared/db'
 import {
   type AgentChannelBinding,
+  agent,
   agentChannelBindings,
 } from '@/shared/db/schema'
 import type { ChannelId } from './types'
@@ -11,21 +12,16 @@ import type { ChannelId } from './types'
 type BindingKind = 'channel' | 'dm' | 'default'
 
 /**
- * Idempotent upsert for agent ⇄ channel routing rows. Used today by
- * server-side scripts and the docs walkthrough; a settings UI can call
- * the same helper later.
+ * Idempotent upsert for agent ⇄ channel routing rows.
  *
- * The unique index on `(channel, teamId, externalKey, kind)` enforces
- * that a single Slack workspace cannot bind two agents to the same
- * channel/DM at once — the second call updates the existing row in
- * place. Different workspaces (`teamId`) routing the same channel id
- * to different agents is allowed because each user owns their own
- * workspace install.
+ * The unique index on `(channel, teamId, externalKey, kind, userId)`
+ * enforces that within a single platform user, a workspace cannot
+ * bind two agents to the same channel/DM at once. Different users may
+ * each have their own binding for the same channel; the resolver fans
+ * out to all of them at webhook time.
  *
  * Pass `teamId: ''` only for channels that have no workspace concept
- * (legacy single-tenant deployments). Multi-user deployments must pass
- * the Slack team id (or equivalent) so owner-scope checks in
- * `resolveAgentForIncomingMessage` succeed.
+ * (dev-only single-workspace mode).
  */
 export async function upsertAgentChannelBinding(input: {
   agentId: string
@@ -38,10 +34,23 @@ export async function upsertAgentChannelBinding(input: {
   const id = `acb_${nanoid(12)}`
   const metadata = input.metadata ?? {}
 
+  const [agentRow] = await db
+    .select({ userId: agent.userId })
+    .from(agent)
+    .where(eq(agent.id, input.agentId))
+    .limit(1)
+  if (!agentRow) {
+    throw new Error(
+      `upsertAgentChannelBinding: agent ${input.agentId} not found`
+    )
+  }
+  const userId = agentRow.userId
+
   await db
     .insert(agentChannelBindings)
     .values({
       id,
+      userId,
       agentId: input.agentId,
       channel: input.channel,
       teamId: input.teamId,
@@ -55,6 +64,7 @@ export async function upsertAgentChannelBinding(input: {
         agentChannelBindings.teamId,
         agentChannelBindings.externalKey,
         agentChannelBindings.kind,
+        agentChannelBindings.userId,
       ],
       set: {
         agentId: input.agentId,
@@ -71,7 +81,8 @@ export async function upsertAgentChannelBinding(input: {
         eq(agentChannelBindings.channel, input.channel),
         eq(agentChannelBindings.teamId, input.teamId),
         eq(agentChannelBindings.externalKey, input.externalKey),
-        eq(agentChannelBindings.kind, input.kind)
+        eq(agentChannelBindings.kind, input.kind),
+        eq(agentChannelBindings.userId, userId)
       )
     )
     .limit(1)
@@ -84,6 +95,7 @@ export async function upsertAgentChannelBinding(input: {
 }
 
 export async function deleteAgentChannelBinding(input: {
+  userId: string
   channel: ChannelId
   teamId: string
   externalKey: string
@@ -93,6 +105,7 @@ export async function deleteAgentChannelBinding(input: {
     .delete(agentChannelBindings)
     .where(
       and(
+        eq(agentChannelBindings.userId, input.userId),
         eq(agentChannelBindings.channel, input.channel),
         eq(agentChannelBindings.teamId, input.teamId),
         eq(agentChannelBindings.externalKey, input.externalKey),

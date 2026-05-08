@@ -149,7 +149,7 @@ AI_GATEWAY_API_KEY=<from env>
 
 ### Known caveats
 
-- **Auth is single-user** with sign-up disabled. The test user is pre-seeded in the database. Use `TEST_USER_EMAIL` and `TEST_USER_PASSWORD` env vars to log in.
+- **Sign-up is disabled** at the Better Auth level (`auth/server/auth.ts`); new users are provisioned via a seed script. The data model is multi-user — every user-owned table is scoped by `user_id` and routes verify ownership. Use `TEST_USER_EMAIL` and `TEST_USER_PASSWORD` env vars to log in as the seeded user in dev.
 - **`drizzle-kit push`** requires a TTY for confirmation prompts. Use `drizzle-kit push --force` or run interactively if schema changes are needed.
 - **Do not commit `pnpm-workspace.yaml` allow-build overrides.** They make the production build fail in this app.
 - **No automated test suite** exists in this repo currently. Testing is manual via the UI.
