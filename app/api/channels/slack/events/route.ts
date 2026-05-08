@@ -1,5 +1,5 @@
 import { after, type NextRequest } from 'next/server'
-import { getSlackBot } from '@/lib/channels/slack/bot'
+import { getSlackBot } from '@/channels/slack/server/bot'
 
 /**
  * POST /api/channels/slack/events

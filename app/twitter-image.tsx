@@ -1,5 +1,8 @@
-import { siteConfig } from '@/lib/site-metadata'
-import { createSocialImageResponse, socialImageSize } from '@/lib/social-image'
+import {
+  createSocialImageResponse,
+  socialImageSize,
+} from '@/shared/components/social/social-image'
+import { siteConfig } from '@/shared/server/site-metadata'
 
 export const alt = siteConfig.ogImageAlt
 

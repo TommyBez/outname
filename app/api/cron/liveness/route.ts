@@ -1,9 +1,12 @@
 import { eq } from 'drizzle-orm'
 import { connection, type NextRequest, NextResponse } from 'next/server'
 import { getWorld } from 'workflow/runtime'
-import { isWorkflowRunAlive, restartAgentSession } from '@/lib/agent-session'
-import { db } from '@/lib/db'
-import { type Agent, agent } from '@/lib/db/schema'
+import {
+  isWorkflowRunAlive,
+  restartAgentSession,
+} from '@/agent-runtime/server/session-lifecycle'
+import { db } from '@/shared/db'
+import { type Agent, agent } from '@/shared/db/schema'
 
 /**
  * Cron-driven liveness sweeper.

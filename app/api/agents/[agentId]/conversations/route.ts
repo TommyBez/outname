@@ -1,8 +1,8 @@
 import 'server-only'
 import { NextResponse } from 'next/server'
-import { listConversationsForAgent } from '@/lib/agent-chat'
-import { requireSession } from '@/lib/auth-guard'
-import { getAgentByIdForUser } from '@/lib/data'
+import { requireSession } from '@/auth/server/auth-guard'
+import { listConversationsForAgent } from '@/chat/server/chat'
+import { getAgentByIdForUser } from '@/shared/server/data'
 
 /**
  * Client-facing conversation list endpoint. Feeds the sidebar's SWR

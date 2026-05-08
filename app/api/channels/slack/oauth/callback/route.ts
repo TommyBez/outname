@@ -1,9 +1,9 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { headers } from 'next/headers'
 import { type NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
-import { getSlackAdapter, getSlackBot } from '@/lib/channels/slack/bot'
-import { withInstallContext } from '@/lib/channels/slack/state'
+import { auth } from '@/auth/server/auth'
+import { getSlackAdapter, getSlackBot } from '@/channels/slack/server/bot'
+import { withInstallContext } from '@/channels/slack/server/state'
 
 const TRAILING_SLASH = /\/$/
 

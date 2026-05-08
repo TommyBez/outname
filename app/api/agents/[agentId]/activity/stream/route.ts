@@ -1,7 +1,10 @@
 import { getRun } from 'workflow/api'
-import { getSession } from '@/lib/auth-guard'
-import { getAgentByIdForUser } from '@/lib/data'
-import { type RunEvent, runEventsNamespace } from '@/lib/run-events'
+import {
+  type RunEvent,
+  runEventsNamespace,
+} from '@/agent-runtime/server/run-events'
+import { getSession } from '@/auth/server/auth-guard'
+import { getAgentByIdForUser } from '@/shared/server/data'
 
 export async function GET(
   _request: Request,

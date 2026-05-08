@@ -1,12 +1,12 @@
 import { and, eq } from 'drizzle-orm'
 import { getRun } from 'workflow/api'
-import { getSession } from '@/lib/auth-guard'
-import { db } from '@/lib/db'
-import { agent, agentTools, toolSandboxBuilds } from '@/lib/db/schema'
+import { getSession } from '@/auth/server/auth-guard'
+import { db } from '@/shared/db'
+import { agent, agentTools, toolSandboxBuilds } from '@/shared/db/schema'
 import {
   buildToolSandboxNamespace,
   type ToolSandboxBuildEvent,
-} from '@/workflows/build-tool-sandbox/events'
+} from '@/tools/sandbox-runtime/workflow/events'
 
 /**
  * Phase 4: stream tool-sandbox build progress events as NDJSON.

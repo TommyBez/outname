@@ -1,7 +1,7 @@
 import { createHmac, randomBytes } from 'node:crypto'
 import { headers } from 'next/headers'
 import { type NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
+import { auth } from '@/auth/server/auth'
 
 const SLACK_AUTHORIZE_URL = 'https://slack.com/oauth/v2/authorize'
 const TRAILING_SLASH = /\/$/

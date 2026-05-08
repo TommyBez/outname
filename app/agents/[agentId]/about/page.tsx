@@ -1,4 +1,4 @@
-import { AgentOverview } from '@/components/agent-overview'
+import { AgentOverview } from '@/agents/components/agent-overview'
 
 type Params = Promise<{ agentId: string }>
 

@@ -1,18 +1,25 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Suspense } from 'react'
-import { AppShell } from '@/components/app-shell'
-import { BudgetRules, type BudgetRuleView } from '@/components/budget-rules'
-import { ConnectionsList } from '@/components/connections-list'
+import { getSession, requireSession } from '@/auth/server/auth-guard'
+import {
+  BudgetRules,
+  type BudgetRuleView,
+} from '@/budgets/components/budget-rules'
+import { listGeneralBudgetRulesForUser } from '@/budgets/server/rules'
+import { sumSpendUsd } from '@/budgets/server/spend'
+import { ConnectionsList } from '@/connections/components/connections-list'
+import { listConnectors } from '@/connections/registry'
+import { AppShell } from '@/shared/components/layout/app-shell'
 import {
   AccountSkeleton,
   ConnectionsSectionSkeleton,
-} from '@/components/skeletons'
-import { listConnectors } from '@/connectors/registry'
-import { getSession, requireSession } from '@/lib/auth-guard'
-import { listGeneralBudgetRulesForUser, sumSpendUsd } from '@/lib/budget'
-import { getCachedAgentsForUser, getCachedUserConnections } from '@/lib/data'
-import { createPrivatePageMetadata } from '@/lib/site-metadata'
+} from '@/shared/components/skeletons'
+import {
+  getCachedAgentsForUser,
+  getCachedUserConnections,
+} from '@/shared/server/data'
+import { createPrivatePageMetadata } from '@/shared/server/site-metadata'
 
 export const metadata: Metadata = createPrivatePageMetadata(
   'Settings',

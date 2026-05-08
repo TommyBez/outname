@@ -1,0 +1,38 @@
+import { emitActivity } from '@/agent-runtime/server/run-events'
+import { getAgentById } from '@/agent-runtime/server/start-agent-run'
+import { formatBudgetExceededMessage } from '@/budgets/server/errors'
+import { preflightBudget } from '../../steps/budget'
+import { finalizeRun } from '../../steps/finalize-run'
+import { activityMessage, type HeartbeatMode } from './messages'
+
+export const BUDGET_EXCEEDED = Symbol('budget-exceeded')
+
+export async function checkBudgetOrFinalize(input: {
+  agentId: string
+  mode: HeartbeatMode
+  runId: string
+}): Promise<string | null | typeof BUDGET_EXCEEDED> {
+  const { agentId, mode, runId } = input
+  const agentRow = await getAgentById(agentId)
+  const userId = agentRow?.userId ?? null
+  if (!userId) {
+    return null
+  }
+  const exceeded = await preflightBudget({
+    userId,
+    rootAgentId: agentId,
+  })
+  if (!exceeded) {
+    return userId
+  }
+  await emitActivity(
+    runId,
+    activityMessage(mode, 'Budget exceeded, skipping run'),
+    {
+      period: exceeded.period,
+      scope: exceeded.scope.type,
+    }
+  )
+  await finalizeRun(runId, 'completed', formatBudgetExceededMessage(exceeded))
+  return BUDGET_EXCEEDED
+}
