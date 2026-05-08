@@ -1,8 +1,8 @@
 ---
 name: maintainer-tool-implementation
-description: Implement a new maintainer tool in this codebase's tool catalog. Use when adding a tool under `tools/`, wiring a provider-backed integration, creating a `tool_sandbox` tool, updating `tools/registry.ts`, or when the user mentions maintainer tools, `define-maintainer-tool`, `defineActionTool`, `defineApiPassthroughTool`, `defineSandboxTool`, brokered HTTP, or catalog tool attachments.
+description: Implement a new maintainer tool in this codebase's tool catalog. Use when adding a tool under `tools/providers/`, wiring a provider-backed integration, creating a `tool_sandbox` tool, updating `tools/catalog/registry.ts`, or when the user mentions maintainer tools, `define-maintainer-tool`, `defineActionTool`, `defineApiPassthroughTool`, `defineSandboxTool`, brokered HTTP, or catalog tool attachments.
 metadata:
-  version: 1.1.3
+  version: 1.1.4
 ---
 
 # Maintainer Tool Implementation
@@ -13,18 +13,18 @@ Use this skill to ship a new maintainer-owned tool that agents can attach from t
 
 Before making changes, read:
 
-- `tools/define-maintainer-tool.ts`
-- `tools/types.ts`
-- `tools/registry.ts`
-- one analogous tool file in `tools/` that matches the new tool shape
+- `tools/runtime/define-maintainer-tool`
+- `tools/catalog/types.ts`
+- `tools/catalog/registry.ts`
+- one analogous tool file in `tools/providers/` that matches the new tool shape
 
 Default references:
 
-- `tools/resend.ts` for a custom action tool using brokered HTTP
-- `tools/calcom.ts` for an API passthrough tool with policies
-- `tools/agent-browser.ts` for a sandbox-backed CLI tool
+- `tools/providers/resend.ts` for a custom action tool using brokered HTTP
+- `tools/providers/calcom.ts` for an API passthrough tool with policies
+- `tools/providers/agent-browser.ts` for a sandbox-backed CLI tool
 
-Read `tools/build-attached-tools.ts` only if the new tool needs special runtime behavior. Most tools do not.
+Read `tools/runtime/build-attached-tools.ts` only if the new tool needs special runtime behavior. Most tools do not.
 
 ## Ask Only for Missing Details
 
@@ -46,13 +46,13 @@ Deliver a tool that:
 - uses the correct capability surface: `brokered_http`, `tool_sandbox`, or `none`
 - keeps authenticated credentials outside tool code and the sandbox VM boundary
 - returns structured `toolSuccess(...)` / `toolError(...)` results
-- is registered in `tools/registry.ts` so it becomes attachable automatically
+- is registered in `tools/catalog/registry.ts` so it becomes attachable automatically
 
 ## Core Rules
 
 ### 1. Put data in the right layer
 
-Follow the three-layer rule from `tools/types.ts`:
+Follow the three-layer rule from `tools/catalog/types.ts`:
 
 - **Credentials**: provider secret/API key lives in the connector runtime, never in tool config or tool code
 - **Attachment config**: saved defaults like sender address, workspace id, calendar id
@@ -109,8 +109,8 @@ Implementation checklist:
 - [ ] For authenticated tools, enforce Secret Injection pattern and restricted network policy
 - [ ] Investigate the expected response size and truncation risk for the actual tool
 - [ ] Decide whether brokered HTTP responses need a connector-level or request-level `maxResponseBytes` override
-- [ ] Implement `tools/<tool-name>.ts`
-- [ ] Register the export in `tools/registry.ts`
+- [ ] Implement `tools/providers/<tool-name>.ts`
+- [ ] Register the export in `tools/catalog/registry.ts`
 - [ ] Update `TOOL_CATEGORY_ORDER` only if introducing a new category
 - [ ] Add or reuse connector / sandbox manifest dependencies if required
 - [ ] Run targeted verification
@@ -128,7 +128,7 @@ Lock down:
 
 ### Step 2: Implement the tool file
 
-In `tools/<tool-name>.ts`:
+In `tools/providers/<tool-name>.ts`:
 
 - define `configSchema` if the attachment needs saved defaults
 - define `inputSchema`
@@ -138,17 +138,17 @@ In `tools/<tool-name>.ts`:
 
 ### Step 3: Register it
 
-Add the new export to `tools/registry.ts` and include it in `TOOLS`.
+Add the new export to `tools/catalog/registry.ts` and include it in `TOOLS`.
 
 Only add a new category ordering entry if the category is actually new.
 
 ### Step 4: Wire dependencies only when needed
 
-- New provider-backed tool: ensure the connector/provider exists, the capability provider name matches it exactly, and authenticated requests use Secret Injection rather than in-tool secret handling
+- New provider-backed tool: ensure the connector/provider exists in `connections/registry.ts`, the capability provider name matches it exactly, and authenticated requests use Secret Injection rather than in-tool secret handling
 - New sandbox tool: ensure the manifest exists in `tools/sandboxes/<id>/{manifest.ts, setup.ts}`, the manifest id matches exactly, the registry exposes bundled setup-script bytes, and any authenticated egress uses a restricted network policy plus Secret Injection
-- New runtime behavior: only then inspect `tools/build-attached-tools.ts`, `resolve-tool-plan`, or other runtime files
+- New runtime behavior: only then inspect `tools/runtime/build-attached-tools.ts`, `agent-runtime/workflows/session/steps/resolve-tool-plan`, or other runtime files
 
-Do not edit `buildAttachedTools`, `agent-factory`, or `lib/agent-capability-summary.ts` just to "hook up" a normal tool. Registry wiring is enough for standard tools.
+Do not edit `buildAttachedTools`, `agent-factory`, or `agents/server/capability-summary.ts` just to "hook up" a normal tool. Registry wiring is enough for standard tools.
 
 ### Step 5: Verify
 
