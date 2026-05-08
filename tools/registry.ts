@@ -3,6 +3,7 @@ import { getConnector } from '@/connectors/registry'
 import { agentBrowserTool } from './agent-browser'
 import { calcomRequestTool } from './calcom'
 import { parallelSearchTool } from './parallel'
+import { posthogRequestTool } from './posthog'
 import { resendSendTool } from './resend'
 import { getToolSandboxManifest } from './sandboxes/registry'
 import { typefullyRequestTool } from './typefully'
@@ -26,6 +27,7 @@ const TOOLS: MaintainerTool[] = [
   resendSendTool,
   calcomRequestTool,
   parallelSearchTool,
+  posthogRequestTool,
   agentBrowserTool,
   xApiRequestTool,
   typefullyRequestTool,
@@ -68,6 +70,7 @@ export function getMaintainerTool(toolId: string): MaintainerTool | undefined {
 export const TOOL_CATEGORY_ORDER = [
   'email',
   'scheduling',
+  'analytics',
   'social',
   'browser',
   'deployment',
