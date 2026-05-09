@@ -69,9 +69,7 @@ export async function listSlackBindingsForAgent(
       externalKey: row.externalKey,
       kind: row.kind,
       workspaceName: meta.teamName ?? null,
-      // teamId === '' = single-workspace mode; treat as installed when
-      // there is no install row at all.
-      installed: row.teamId === '' ? true : Boolean(install),
+      installed: Boolean(install),
       createdAt: row.createdAt.toISOString(),
     }
   })

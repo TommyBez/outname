@@ -11,13 +11,11 @@ export function BindingsBlock({
   agentId,
   bindings,
   installations,
-  isMultiWorkspace,
   onChanged,
 }: {
   agentId: string
   bindings: SlackBindingView[]
   installations: InstallationView[]
-  isMultiWorkspace: boolean
   onChanged: () => void
 }) {
   const [pendingId, setPendingId] = useState<string | null>(null)
@@ -62,14 +60,12 @@ export function BindingsBlock({
           ))}
         </ul>
       )}
-      {bindings.length > 0 &&
-        installations.length === 0 &&
-        isMultiWorkspace && (
-          <p className="text-destructive text-xs">
-            One or more bindings reference a workspace you no longer have
-            installed — they will be ignored until you reinstall.
-          </p>
-        )}
+      {bindings.length > 0 && installations.length === 0 && (
+        <p className="text-destructive text-xs">
+          One or more bindings reference a workspace you no longer have
+          installed — they will be ignored until you reinstall.
+        </p>
+      )}
     </div>
   )
 }

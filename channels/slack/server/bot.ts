@@ -21,24 +21,15 @@ import {
  *   - Optional streaming-edit posting (so the agent's response appears
  *     to "type" in the Slack thread)
  *
- * Two operating modes are supported, picked at boot from environment
- * variables:
- *
- *   - **Multi-workspace** (the only mode allowed in production):
- *     `SLACK_CLIENT_ID` + `SLACK_CLIENT_SECRET` are set. The bot is
- *     installed per-user via `/api/channels/slack/oauth/callback`,
- *     bot tokens are stored encrypted in `channel_installations`, and
- *     the SDK resolves them per-team via the `SlackHybridState`
- *     adapter. The webhook verifies signatures using
- *     `SLACK_SIGNING_SECRET` (one Slack app, many workspaces).
- *     Multiple platform users may install the same Slack workspace;
- *     each user owns their own `agent_channel_bindings` rows so an
- *     incoming message fans out to every user whose binding matches.
- *
- *   - **Single-workspace** (dev-only): only `SLACK_BOT_TOKEN` +
- *     `SLACK_SIGNING_SECRET` are set. There is one workspace, one
- *     user, and bindings live with `teamId = ''`. The constructor
- *     refuses to boot in this mode when `NODE_ENV === 'production'`.
+ * Boot requires `SLACK_CLIENT_ID` + `SLACK_CLIENT_SECRET` (multi-
+ * workspace OAuth). The bot is installed per-user via
+ * `/api/channels/slack/oauth/callback`, bot tokens are stored
+ * encrypted in `channel_installations`, and the SDK resolves them
+ * per-team via the `SlackHybridState` adapter. The webhook verifies
+ * signatures using `SLACK_SIGNING_SECRET` (one Slack app, many
+ * workspaces). Multiple platform users may install the same Slack
+ * workspace; each user owns their own `agent_channel_bindings` rows
+ * so an incoming message fans out to every user whose binding matches.
  *
  * Channel-agnostic logic — agent routing, conversation persistence,
  * workflow dispatch — lives in `lib/channels/dispatch.ts` so the same
@@ -59,7 +50,6 @@ type SlackMessage = Parameters<Parameters<SlackChat['onNewMention']>[0]>[1]
 interface SlackBotBundle {
   adapter: SlackAdapter
   bot: SlackChat
-  isMultiWorkspace: boolean
 }
 
 let cachedBundle: SlackBotBundle | null = null
@@ -68,30 +58,17 @@ function buildBundle(): SlackBotBundle {
   const userName = process.env.SLACK_BOT_USERNAME ?? 'assistant'
   const clientId = process.env.SLACK_CLIENT_ID
   const clientSecret = process.env.SLACK_CLIENT_SECRET
-  const isMultiWorkspace = Boolean(clientId && clientSecret)
-
-  if (!isMultiWorkspace && process.env.NODE_ENV === 'production') {
+  if (!(clientId && clientSecret)) {
     throw new Error(
-      'Slack single-workspace mode is not allowed in production. ' +
-        'Set SLACK_CLIENT_ID and SLACK_CLIENT_SECRET to run in multi-workspace mode.'
+      'SLACK_CLIENT_ID and SLACK_CLIENT_SECRET are required to run the Slack bot.'
     )
   }
 
-  // Passing any config object disables the adapter's zero-config auth
-  // fallback, so single-workspace mode must wire the env bot token
-  // explicitly instead of relying on `SLACK_BOT_TOKEN` auto-detection.
-  const adapter = createSlackAdapter(
-    isMultiWorkspace
-      ? {
-          userName,
-          clientId,
-          clientSecret,
-        }
-      : {
-          userName,
-          botToken: getSingleWorkspaceBotToken(),
-        }
-  )
+  const adapter = createSlackAdapter({
+    userName,
+    clientId,
+    clientSecret,
+  })
 
   const bot: SlackChat = new Chat({
     userName,
@@ -115,19 +92,9 @@ function buildBundle(): SlackBotBundle {
     concurrency: 'drop',
   })
 
-  registerHandlers(bot, isMultiWorkspace)
+  registerHandlers(bot)
 
-  return { bot, adapter, isMultiWorkspace }
-}
-
-function getSingleWorkspaceBotToken(): string {
-  const botToken = process.env.SLACK_BOT_TOKEN
-  if (!botToken) {
-    throw new Error(
-      'SLACK_BOT_TOKEN must be set when Slack is configured in single-workspace mode.'
-    )
-  }
-  return botToken
+  return { bot, adapter }
 }
 
 function ensureBundle(): SlackBotBundle {
@@ -155,25 +122,15 @@ function slackThreadKey(channel: string, threadTs: string): string {
   return `${channel}:${threadTs}`
 }
 
-function registerHandlers(bot: SlackChat, isMultiWorkspace: boolean): void {
+function registerHandlers(bot: SlackChat): void {
   bot.onNewMention(async (thread, message) => {
     await thread.subscribe()
-    await handleSlackMessage({
-      thread,
-      message,
-      kind: 'channel',
-      isMultiWorkspace,
-    })
+    await handleSlackMessage({ thread, message, kind: 'channel' })
   })
 
   bot.onDirectMessage(async (thread, message) => {
     await thread.subscribe()
-    await handleSlackMessage({
-      thread,
-      message,
-      kind: 'dm',
-      isMultiWorkspace,
-    })
+    await handleSlackMessage({ thread, message, kind: 'dm' })
   })
 
   bot.onSubscribedMessage(async (thread, message) => {
@@ -184,7 +141,6 @@ function registerHandlers(bot: SlackChat, isMultiWorkspace: boolean): void {
       thread,
       message,
       kind: thread.isDM ? 'dm' : 'channel',
-      isMultiWorkspace,
     })
   })
 }
@@ -198,9 +154,8 @@ async function handleSlackMessage(input: {
   thread: SlackThread
   message: SlackMessage
   kind: 'channel' | 'dm'
-  isMultiWorkspace: boolean
 }): Promise<void> {
-  const { thread, message, kind, isMultiWorkspace } = input
+  const { thread, message, kind } = input
   const text = message.text?.trim()
   if (!text) {
     return
@@ -223,16 +178,14 @@ async function handleSlackMessage(input: {
   }
   const { channelId, threadTs } = slackThread
 
-  const slackTeamId = extractTeamId(message)
-  if (isMultiWorkspace && !slackTeamId) {
+  const teamId = extractTeamId(message)
+  if (!teamId) {
     console.warn(
-      '[slack] dropping multi-workspace event with no team id; ' +
-        'cannot owner-scope to an installation',
+      '[slack] dropping event with no team id; cannot owner-scope to an installation',
       { channelId, kind }
     )
     return
   }
-  const teamId = isMultiWorkspace ? slackTeamId : ''
 
   const externalRoutingKey =
     kind === 'dm' ? (message.author?.userId ?? channelId) : channelId
@@ -250,7 +203,7 @@ async function handleSlackMessage(input: {
     threadMetadata: {
       slackChannel: channelId,
       slackThreadTs: threadTs,
-      slackTeamId: slackTeamId || undefined,
+      slackTeamId: teamId,
     },
   }
 

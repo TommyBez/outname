@@ -18,10 +18,8 @@ type BindingKind = 'channel' | 'dm' | 'default'
  * enforces that within a single platform user, a workspace cannot
  * bind two agents to the same channel/DM at once. Different users may
  * each have their own binding for the same channel; the resolver fans
- * out to all of them at webhook time.
- *
- * Pass `teamId: ''` only for channels that have no workspace concept
- * (dev-only single-workspace mode).
+ * out to all of them at webhook time. `teamId` is required — every
+ * supported adapter delivers messages scoped to a workspace.
  */
 export async function upsertAgentChannelBinding(input: {
   agentId: string

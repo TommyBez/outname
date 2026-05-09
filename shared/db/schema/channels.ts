@@ -56,9 +56,10 @@ export const channelInstallations = pgTable(
  * webhook time by `(channel, teamId, externalKey, kind, userId)`.
  *
  * - `teamId`            — workspace dimension (Slack team id, Teams
- *                         tenant id, Discord guild id). Required even
- *                         for channels that don't have a workspace
- *                         concept; use `''` as a sentinel in that case.
+ *                         tenant id, Discord guild id). Always set —
+ *                         every supported adapter delivers messages
+ *                         scoped to a workspace and routing requires
+ *                         it to find the matching install.
  * - `kind = 'channel'`  — a Slack channel id, Teams channel id, …
  * - `kind = 'dm'`       — a Slack user id (when DMing the bot)
  * - `kind = 'default'`  — fallback for any unbound thread within this

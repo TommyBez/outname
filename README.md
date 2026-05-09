@@ -277,15 +277,11 @@ LIVENESS_CRON_ENABLED=false
 Optional Slack integration (see [docs/SLACK_INTEGRATION.md](docs/SLACK_INTEGRATION.md)):
 
 ```bash
-# Multi-workspace OAuth (multi-user safe — recommended)
+# Slack OAuth — required to run the bot. Each platform user installs
+# the app per workspace via /api/channels/slack/install.
 SLACK_CLIENT_ID=...
 SLACK_CLIENT_SECRET=...
 SLACK_SIGNING_SECRET=...
-
-# Single-workspace fallback (single operator only)
-SLACK_BOT_TOKEN=xoxb-...
-SLACK_SIGNING_SECRET=...
-
 SLACK_BOT_USERNAME=assistant
 
 # Optional. Use Redis for concurrency locks/thread subscriptions

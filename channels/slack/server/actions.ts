@@ -25,7 +25,7 @@ const bindingKindSchema = z.enum(['channel', 'dm', 'default'])
 const upsertSchema = z
   .object({
     agentId: z.string().min(1),
-    teamId: z.string(),
+    teamId: z.string().min(1),
     kind: bindingKindSchema,
     externalKey: z.string().trim(),
   })
@@ -48,14 +48,9 @@ const upsertSchema = z
 /**
  * Owner-scoped checks for binding mutations:
  *   1. The target agent must belong to the active user.
- *   2. For multi-workspace deployments the (channel, teamId) install
- *      must also belong to the active user — otherwise we'd let one
- *      operator route messages from a workspace they don't own.
- *   3. Dev-only single-workspace deployments (`teamId === ''`) skip
- *      the install check because there is no `channel_installations`
- *      row in that mode. The Slack bot refuses to boot in this mode
- *      when `NODE_ENV === 'production'` (see
- *      `channels/slack/server/bot.ts`).
+ *   2. The (channel, teamId) install must also belong to the active
+ *      user — otherwise we'd let one operator route messages from a
+ *      workspace they don't own.
  */
 async function assertOwnsAgentAndWorkspace(input: {
   userId: string
@@ -66,8 +61,11 @@ async function assertOwnsAgentAndWorkspace(input: {
   if (!agent) {
     return { ok: false, error: 'Agent not found.' }
   }
-  if (input.teamId === '') {
-    return null
+  if (!input.teamId) {
+    return {
+      ok: false,
+      error: 'A Slack workspace is required.',
+    }
   }
   const installs = await getChannelInstallationsForUser(input.userId, 'slack')
   const owns = installs.some((row) => row.externalId === input.teamId)

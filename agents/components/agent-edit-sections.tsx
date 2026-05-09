@@ -46,19 +46,15 @@ export async function AgentSlackSection({
     agentId,
     userId
   )
-  const isMultiWorkspace = Boolean(
+  const isConfigured = Boolean(
     process.env.SLACK_CLIENT_ID && process.env.SLACK_CLIENT_SECRET
-  )
-  const isSingleWorkspace = Boolean(
-    process.env.SLACK_BOT_TOKEN && process.env.SLACK_SIGNING_SECRET
   )
   return (
     <SlackBindingsPanel
       agentId={agentId}
       bindings={bindings}
       installations={installations}
-      isConfigured={isMultiWorkspace || isSingleWorkspace}
-      isMultiWorkspace={isMultiWorkspace}
+      isConfigured={isConfigured}
     />
   )
 }

@@ -19,7 +19,7 @@ import type { ChannelId, ChannelRoute, IncomingChannelMessage } from './types'
 /**
  * Resolve which agents should handle this thread.
  *
- * Multi-user contract — for owner-scoped channels, the resolver:
+ * Multi-user contract — the resolver:
  *   1. Reads every `channel_installations` row for the workspace.
  *      Several platform users may have installed the same Slack
  *      workspace; each one is a candidate for fan-out.
@@ -29,17 +29,15 @@ import type { ChannelId, ChannelRoute, IncomingChannelMessage } from './types'
  *   3. Returns every (user, agent) pair that matched. Callers run a
  *      chat turn per agent.
  *
- * Channels that intentionally route with `teamId = ''` (dev-only
- * single-workspace mode) skip the installation lookup and return at
- * most one agent. The Slack bot refuses to boot in this mode in
- * production (see `channels/slack/server/bot.ts`).
+ * Returns `[]` when the workspace has no installations or no user has
+ * a matching binding; channel adapters drop the event silently in that
+ * case.
  */
 export async function resolveAgentsForIncomingMessage(
   msg: IncomingChannelMessage
 ): Promise<Agent[]> {
   if (!msg.teamId) {
-    const single = await findCandidateAgentForUser(msg, null)
-    return single ? [single] : []
+    return []
   }
 
   const installations = await getChannelInstallationsByTeam(
@@ -64,26 +62,25 @@ export async function resolveAgentsForIncomingMessage(
 
 async function findCandidateAgentForUser(
   msg: IncomingChannelMessage,
-  userId: string | null
+  userId: string
 ): Promise<Agent | null> {
   // Sticky thread mapping wins if the user already has a conversation
   // for this external thread.
-  const mappingFilters = [
-    eq(channelThreadConversations.channel, msg.channel),
-    eq(channelThreadConversations.teamId, msg.teamId),
-    eq(channelThreadConversations.externalThreadKey, msg.externalThreadKey),
-  ]
-  if (userId) {
-    mappingFilters.push(eq(channelThreadConversations.userId, userId))
-  }
   const existingMapping = await db
     .select({ agentId: channelThreadConversations.agentId })
     .from(channelThreadConversations)
-    .where(and(...mappingFilters))
+    .where(
+      and(
+        eq(channelThreadConversations.channel, msg.channel),
+        eq(channelThreadConversations.teamId, msg.teamId),
+        eq(channelThreadConversations.externalThreadKey, msg.externalThreadKey),
+        eq(channelThreadConversations.userId, userId)
+      )
+    )
     .limit(1)
   if (existingMapping[0]) {
     const candidate = await loadAgent(existingMapping[0].agentId)
-    if (candidate && (!userId || candidate.userId === userId)) {
+    if (candidate && candidate.userId === userId) {
       return candidate
     }
   }
@@ -117,21 +114,20 @@ async function findBinding(input: {
   teamId: string
   externalKey: string
   kind: 'channel' | 'dm' | 'default'
-  userId: string | null
+  userId: string
 }) {
-  const filters = [
-    eq(agentChannelBindings.channel, input.channel),
-    eq(agentChannelBindings.teamId, input.teamId),
-    eq(agentChannelBindings.externalKey, input.externalKey),
-    eq(agentChannelBindings.kind, input.kind),
-  ]
-  if (input.userId) {
-    filters.push(eq(agentChannelBindings.userId, input.userId))
-  }
   const [row] = await db
     .select({ agentId: agentChannelBindings.agentId })
     .from(agentChannelBindings)
-    .where(and(...filters))
+    .where(
+      and(
+        eq(agentChannelBindings.channel, input.channel),
+        eq(agentChannelBindings.teamId, input.teamId),
+        eq(agentChannelBindings.externalKey, input.externalKey),
+        eq(agentChannelBindings.kind, input.kind),
+        eq(agentChannelBindings.userId, input.userId)
+      )
+    )
     .limit(1)
   return row ?? null
 }
