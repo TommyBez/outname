@@ -102,10 +102,11 @@ export async function saveSlackInstallation(input: {
 }
 
 /**
- * Webhook-time lookup. We don't include the userId in the WHERE clause
- * because the webhook only knows the team_id; the caller verifies
- * ownership against the matched agent in
- * `resolveAgentForIncomingMessage`.
+ * Webhook-time lookup. The webhook only knows the team_id, and every
+ * install of the same Slack workspace shares one bot token, so this
+ * helper returns the first row regardless of which platform user
+ * owns it. Routing fan-out reads installs separately via
+ * `getChannelInstallationsByTeam`.
  */
 export async function loadSlackInstallationByTeam(teamId: string): Promise<{
   row: ChannelInstallation

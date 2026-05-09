@@ -17,17 +17,14 @@ export function SlackBindingsPanel({
   agentId,
   bindings,
   installations,
-  isMultiWorkspace,
   isConfigured,
 }: SlackBindingsPanelPropsType) {
   const router = useRouter()
   const [showForm, setShowForm] = useState(false)
-  const workspaceOptions = useMemo<InstallationView[]>(() => {
-    if (isMultiWorkspace) {
-      return installations
-    }
-    return [{ teamId: '', workspaceName: null }]
-  }, [installations, isMultiWorkspace])
+  const workspaceOptions = useMemo<InstallationView[]>(
+    () => installations,
+    [installations]
+  )
   const canBind = workspaceOptions.length > 0
 
   return (
@@ -37,7 +34,6 @@ export function SlackBindingsPanel({
       {isConfigured && (
         <InstallationsBlock
           installations={installations}
-          isMultiWorkspace={isMultiWorkspace}
           onChanged={() => router.refresh()}
         />
       )}
@@ -46,7 +42,6 @@ export function SlackBindingsPanel({
         agentId={agentId}
         bindings={bindings}
         installations={installations}
-        isMultiWorkspace={isMultiWorkspace}
         onChanged={() => router.refresh()}
       />
 
@@ -55,7 +50,6 @@ export function SlackBindingsPanel({
           {showForm ? (
             <AddBindingForm
               agentId={agentId}
-              isMultiWorkspace={isMultiWorkspace}
               onCancel={() => setShowForm(false)}
               onSaved={() => {
                 setShowForm(false)
@@ -89,8 +83,7 @@ function SlackNotConfiguredNotice() {
       Slack is not configured on this deployment. Set{' '}
       <code className="font-mono">SLACK_CLIENT_ID</code>,{' '}
       <code className="font-mono">SLACK_CLIENT_SECRET</code>, and{' '}
-      <code className="font-mono">SLACK_SIGNING_SECRET</code> (or the
-      single-workspace token pair) and redeploy.
+      <code className="font-mono">SLACK_SIGNING_SECRET</code>, then redeploy.
     </p>
   )
 }

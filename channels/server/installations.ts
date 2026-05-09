@@ -8,20 +8,15 @@ import {
 import type { ChannelId } from './types'
 
 /**
- * Owner-scoping lookup: returns the `channel_installations` row for a
- * given workspace, regardless of which user installed it. The caller
- * uses `installation.userId` to decide whether the matched agent
- * actually belongs to the workspace owner.
+ * Returns the first `channel_installations` row for a given workspace.
  *
- * Multi-user deployments: every webhook that resolves to an agent must
- * also resolve to an installation, otherwise it's rejected — that
- * prevents one user's Slack workspace from triggering another user's
- * agent even if a misconfigured binding exists.
+ * Used by the chat SDK adapter (`SlackHybridState.get`) to load a bot
+ * token: every install of the same Slack workspace shares the same
+ * bot token (one Slack app), so picking any active row is correct.
  *
- * Callers may intentionally pass `teamId = ''` for single-workspace or
- * no-workspace channels. We still perform the exact lookup rather than
- * short-circuiting so the helper matches the schema contract for
- * `channel_installations.external_id`.
+ * Routing should not use this helper — it needs every install for the
+ * workspace so that all subscribed users are dispatched to. Use
+ * `getChannelInstallationsByTeam` instead.
  */
 export async function getChannelInstallationByTeam(
   channel: ChannelId,
@@ -38,6 +33,27 @@ export async function getChannelInstallationByTeam(
     )
     .limit(1)
   return row ?? null
+}
+
+/**
+ * All `channel_installations` rows for a given workspace. In a
+ * multi-user deployment several platform users can each install the
+ * same Slack workspace; the resolver iterates these rows so an
+ * incoming message fans out to every user with a matching binding.
+ */
+export async function getChannelInstallationsByTeam(
+  channel: ChannelId,
+  teamId: string
+): Promise<ChannelInstallation[]> {
+  return await db
+    .select()
+    .from(channelInstallations)
+    .where(
+      and(
+        eq(channelInstallations.channel, channel),
+        eq(channelInstallations.externalId, teamId)
+      )
+    )
 }
 
 export async function getChannelInstallationsForUser(

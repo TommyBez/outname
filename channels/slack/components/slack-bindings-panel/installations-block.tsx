@@ -8,30 +8,13 @@ import type { InstallationView } from './types'
 
 export function InstallationsBlock({
   installations,
-  isMultiWorkspace,
   onChanged,
 }: {
   installations: InstallationView[]
-  isMultiWorkspace: boolean
   onChanged: () => void
 }) {
   const [pending, startTransition] = useTransition()
   const [pendingTeamId, setPendingTeamId] = useState<string | null>(null)
-
-  if (!isMultiWorkspace) {
-    return (
-      <div className="border-2 border-foreground bg-muted px-4 py-3">
-        <p className="font-bold text-xs uppercase tracking-[0.16em]">
-          Single-workspace mode
-        </p>
-        <p className="mt-1 text-muted-foreground text-sm">
-          The bot uses the workspace bot token from{' '}
-          <code className="font-mono">SLACK_BOT_TOKEN</code>. Bindings are
-          created with workspace id <code className="font-mono">""</code>.
-        </p>
-      </div>
-    )
-  }
 
   function disconnect(teamId: string) {
     setPendingTeamId(teamId)

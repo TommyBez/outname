@@ -17,9 +17,6 @@ export function workspaceLabel(input: {
   teamId: string
   workspaceName: string | null
 }): string {
-  if (input.teamId === '') {
-    return 'Single-workspace install'
-  }
   if (input.workspaceName) {
     return `${input.workspaceName} (${input.teamId})`
   }

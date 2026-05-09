@@ -10,13 +10,11 @@ import { workspaceLabel } from './utils'
 
 export function AddBindingForm({
   agentId,
-  isMultiWorkspace,
   onCancel,
   onSaved,
   workspaces,
 }: {
   agentId: string
-  isMultiWorkspace: boolean
   onCancel: () => void
   onSaved: () => void
   workspaces: InstallationView[]
@@ -68,7 +66,6 @@ export function AddBindingForm({
       </div>
 
       <WorkspaceSelect
-        disabled={!isMultiWorkspace}
         onChange={setTeamId}
         teamId={teamId}
         workspaces={workspaces}
@@ -107,12 +104,10 @@ export function AddBindingForm({
 }
 
 function WorkspaceSelect({
-  disabled,
   onChange,
   teamId,
   workspaces,
 }: {
-  disabled: boolean
   onChange: (teamId: string) => void
   teamId: string
   workspaces: InstallationView[]
@@ -124,7 +119,6 @@ function WorkspaceSelect({
       </span>
       <select
         className="h-10 w-full border-2 border-foreground bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-        disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         value={teamId}
       >
