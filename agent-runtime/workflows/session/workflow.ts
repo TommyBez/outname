@@ -61,7 +61,7 @@ export async function agentSessionWorkflow(input: {
 }): Promise<void> {
   'use workflow'
   const { agentId, sessionEpoch } = input
-  const sessionRunId = currentWorkflowRunId(agentId)
+  const sessionRunId = await currentWorkflowRunId()
 
   // Defend against the "previous session crashed mid-handler and left
   // its ticker hanging on its ackHook" failure mode before we start a
@@ -236,18 +236,24 @@ async function ackIfNeeded(input: {
   })
 }
 
-function currentWorkflowRunId(agentId: string): string {
-  try {
-    const metadata = getWorkflowMetadata() as {
-      runId?: string
-      workflowRunId?: string
-    }
-    const runId = metadata.runId ?? metadata.workflowRunId
-    if (runId) {
-      return runId
-    }
-  } catch {
-    // Outside a workflow context (e.g. tests), keep a stable fallback.
+async function currentWorkflowRunId(): Promise<string> {
+  'use step'
+  await Promise.resolve()
+
+  const metadata = getWorkflowMetadata() as {
+    runId?: unknown
+    workflowRunId?: unknown
   }
-  return agentId
+  const runId =
+    nonEmptyString(metadata.runId) ?? nonEmptyString(metadata.workflowRunId)
+
+  if (!runId) {
+    throw new Error('currentWorkflowRunId: workflow metadata has no run id')
+  }
+
+  return runId
+}
+
+function nonEmptyString(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null
 }

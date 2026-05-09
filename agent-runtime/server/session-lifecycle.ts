@@ -19,15 +19,6 @@ const SESSION_START_LEASE_POLL_MS = 250
 export async function startAgentSession(
   a: Agent
 ): Promise<{ sessionEpoch: number; sessionRunId: string; started: boolean }> {
-  const existing = await getRunningSession(a)
-  if (existing) {
-    return {
-      sessionEpoch: existing.sessionEpoch,
-      sessionRunId: existing.sessionRunId,
-      started: false,
-    }
-  }
-
   const lease = await acquireSessionControlLease(a.id)
   if (!lease) {
     const startedByOtherCaller = await waitForRunningSession(a.id)
@@ -189,6 +180,13 @@ async function getRunningSession(
     : null
 }
 
+function hasActiveSessionControlLease(a: Agent, now = new Date()): boolean {
+  return (
+    a.sessionControlLeaseUntil != null &&
+    a.sessionControlLeaseUntil.getTime() > now.getTime()
+  )
+}
+
 export async function isWorkflowRunAlive(
   workflowRunId: string
 ): Promise<boolean> {
@@ -228,6 +226,11 @@ async function waitForRunningSession(
     const current = await readAgentForSessionControl(agentId)
     if (!current) {
       return null
+    }
+
+    if (hasActiveSessionControlLease(current)) {
+      await sleep(SESSION_START_LEASE_POLL_MS)
+      continue
     }
 
     const running = await getRunningSession(current)

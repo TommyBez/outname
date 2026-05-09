@@ -133,7 +133,7 @@ async function recoverDeadSession(
     return
   }
 
-  countRecoveryFailure(recovery.reason, counters)
+  countUnrecoveredSession(recovery.reason, counters)
 }
 
 async function recoverStalledSession(
@@ -152,8 +152,7 @@ async function recoverStalledSession(
     return
   }
 
-  counters.recoverySkipped += 1
-  countRecoveryFailure(recovery.reason, counters)
+  countUnrecoveredSession(recovery.reason, counters)
 }
 
 function countTickerReap(
@@ -165,13 +164,16 @@ function countTickerReap(
   }
 }
 
-function countRecoveryFailure(
+function countUnrecoveredSession(
   reason: string,
   counters: LivenessCounters
 ): void {
-  if (reason !== 'recovery_already_in_progress') {
-    counters.recoveryErrors += 1
+  if (reason === 'recovery_already_in_progress') {
+    counters.recoverySkipped += 1
+    return
   }
+
+  counters.recoveryErrors += 1
 }
 
 function shouldRecoverStalledSession(a: Agent, now: Date): boolean {
