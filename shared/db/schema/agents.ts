@@ -63,6 +63,10 @@ export const agent = pgTable(
     // NULL before the very first session start; afterwards always points
     // at the latest run, even if it has since terminated.
     lastSessionRunId: text('last_session_run_id'),
+    // Monotonic control-plane generation for session hook tokens. Force
+    // recovery increments this value so new sessions stop sharing a hook token
+    // with a stuck old workflow run.
+    sessionEpoch: integer('session_epoch').notNull().default(0),
     // Workflow runtime id for the sibling ticker workflow that drives
     // this agent's heartbeat loop. Persisted alongside `lastSessionRunId`
     // so a session that crashes mid-handler (skipping its `finally`
@@ -70,6 +74,24 @@ export const agent = pgTable(
     // start and via the liveness sweeper. Cleared back to NULL when the
     // session shuts down cleanly.
     lastTickerRunId: text('last_ticker_run_id'),
+    // Marker for the event currently being handled by the session workflow.
+    // The liveness sweeper treats an old marker on the current session run as
+    // a conservative signal that the session is wedged mid-event.
+    sessionEventRunId: text('session_event_run_id'),
+    sessionEventType: text('session_event_type'),
+    sessionEventStartedAt: timestamp('session_event_started_at', {
+      withTimezone: true,
+    }),
+    // Short-lived lease used by starts/restarts/recovery so multiple
+    // interfaces do not start competing session generations.
+    sessionControlLeaseId: text('session_control_lease_id'),
+    sessionControlLeaseUntil: timestamp('session_control_lease_until', {
+      withTimezone: true,
+    }),
+    lastRecoveryAt: timestamp('last_recovery_at', { withTimezone: true }),
+    lastRecoveryMode: text('last_recovery_mode'),
+    lastRecoveryReason: text('last_recovery_reason'),
+    lastRecoveryError: text('last_recovery_error'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

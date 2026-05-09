@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { getRun, resumeHook, start } from 'workflow/api'
 import { getWorld } from 'workflow/runtime'
 import { db } from '@/shared/db'
@@ -43,13 +43,21 @@ async function isWorkflowRunAlive(workflowRunId: string): Promise<boolean> {
  */
 export async function startTicker(input: {
   agentId: string
+  sessionEpoch: number
 }): Promise<{ tickerRunId: string }> {
   'use step'
-  const run = await start(agentTickerWorkflow, [{ agentId: input.agentId }])
+  const run = await start(agentTickerWorkflow, [
+    { agentId: input.agentId, sessionEpoch: input.sessionEpoch },
+  ])
   await db
     .update(agent)
     .set({ lastTickerRunId: run.runId, updatedAt: new Date() })
-    .where(eq(agent.id, input.agentId))
+    .where(
+      and(
+        eq(agent.id, input.agentId),
+        eq(agent.sessionEpoch, input.sessionEpoch)
+      )
+    )
   return { tickerRunId: run.runId }
 }
 
@@ -98,12 +106,18 @@ export async function stopTicker(input: {
  */
 export async function reapOrphanTicker(input: {
   agentId: string
+  sessionEpoch: number
 }): Promise<{ cancelled: string | null }> {
   'use step'
   const rows = await db
     .select({ tickerRunId: agent.lastTickerRunId })
     .from(agent)
-    .where(eq(agent.id, input.agentId))
+    .where(
+      and(
+        eq(agent.id, input.agentId),
+        eq(agent.sessionEpoch, input.sessionEpoch)
+      )
+    )
     .limit(1)
 
   const prev = rows[0]?.tickerRunId ?? null
@@ -128,7 +142,12 @@ export async function reapOrphanTicker(input: {
     await db
       .update(agent)
       .set({ lastTickerRunId: null, updatedAt: new Date() })
-      .where(eq(agent.id, input.agentId))
+      .where(
+        and(
+          eq(agent.id, input.agentId),
+          eq(agent.sessionEpoch, input.sessionEpoch)
+        )
+      )
   } catch (err) {
     console.error('[v0] reapOrphanTicker: clear column failed', err)
   }
@@ -163,6 +182,7 @@ export interface AgentTickerSchedule {
 
 export async function readHeartbeatSchedule(input: {
   agentId: string
+  sessionEpoch: number
 }): Promise<AgentTickerSchedule> {
   'use step'
   const now = new Date()
@@ -174,6 +194,7 @@ export async function readHeartbeatSchedule(input: {
       reflectionIntervalMinutes: agent.reflectionIntervalMinutes,
       lastReflectionAt: agent.lastReflectionAt,
       lastReflectionLocalDate: agent.lastReflectionLocalDate,
+      sessionEpoch: agent.sessionEpoch,
       timezone: user.timezone,
     })
     .from(agent)
@@ -182,17 +203,8 @@ export async function readHeartbeatSchedule(input: {
     .limit(1)
 
   const row = rows[0]
-  if (!row) {
-    return {
-      heartbeat: { enabled: false, intervalMs: 0 },
-      reflection: {
-        due: false,
-        enabled: false,
-        intervalMs: 0,
-        localDate: localDateKey(now),
-        timezone: 'UTC',
-      },
-    }
+  if (!row || row.sessionEpoch !== input.sessionEpoch) {
+    return disabledSchedule(now)
   }
 
   const localDate = localDateKey(now, row.timezone)
@@ -223,6 +235,19 @@ export async function readHeartbeatSchedule(input: {
   }
 }
 
+function disabledSchedule(now: Date): AgentTickerSchedule {
+  return {
+    heartbeat: { enabled: false, intervalMs: 0 },
+    reflection: {
+      due: false,
+      enabled: false,
+      intervalMs: 0,
+      localDate: localDateKey(now),
+      timezone: 'UTC',
+    },
+  }
+}
+
 /**
  * Push a heartbeat event into the session's hook. Called by
  * `agentTickerWorkflow` once per tick; the `ack` token is used by the
@@ -231,9 +256,10 @@ export async function readHeartbeatSchedule(input: {
 export async function pokeSessionHeartbeat(input: {
   agentId: string
   ack: string
+  sessionEpoch: number
 }): Promise<void> {
   'use step'
-  await resumeHook(sessionToken(input.agentId), {
+  await resumeHook(sessionToken(input.agentId, input.sessionEpoch), {
     type: 'heartbeat',
     ack: input.ack,
     mode: 'normal',
@@ -245,9 +271,10 @@ export async function pokeSessionReflection(input: {
   agentId: string
   ack: string
   localDate: string
+  sessionEpoch: number
 }): Promise<void> {
   'use step'
-  await resumeHook(sessionToken(input.agentId), {
+  await resumeHook(sessionToken(input.agentId, input.sessionEpoch), {
     type: 'reflection',
     ack: input.ack,
     localDate: input.localDate,
@@ -267,12 +294,14 @@ export async function pokeSessionReflection(input: {
 export async function ackHeartbeat(input: {
   agentId: string
   ack: string
+  sessionEpoch: number
 }): Promise<void> {
   'use step'
   try {
-    await resumeHook(heartbeatAckToken(input.agentId, input.ack), {
-      done: true,
-    })
+    await resumeHook(
+      heartbeatAckToken(input.agentId, input.sessionEpoch, input.ack),
+      { done: true }
+    )
   } catch (err) {
     console.error('[v0] ackHeartbeat: resume failed', err)
   }

@@ -1,9 +1,13 @@
-import { createHook } from 'workflow'
+import { createHook, getWorkflowMetadata } from 'workflow'
 import { type SessionEvent, sessionToken } from './events'
 import { handleChat } from './handlers/handle-chat'
 import { handleHeartbeat } from './handlers/handle-heartbeat'
 import { handleInvocation } from './handlers/handle-invocation'
 import { endOfEvent } from './steps/end-of-event'
+import {
+  clearSessionEventMarker,
+  markSessionEventStarted,
+} from './steps/session-progress'
 import {
   ackHeartbeat,
   reapOrphanTicker,
@@ -53,20 +57,22 @@ const FALLBACK_SOURCE: EventSource = {
  */
 export async function agentSessionWorkflow(input: {
   agentId: string
+  sessionEpoch: number
 }): Promise<void> {
   'use workflow'
-  const { agentId } = input
+  const { agentId, sessionEpoch } = input
+  const sessionRunId = currentWorkflowRunId(agentId)
 
   // Defend against the "previous session crashed mid-handler and left
   // its ticker hanging on its ackHook" failure mode before we start a
   // fresh ticker on top of it.
-  await reapOrphanTicker({ agentId })
+  await reapOrphanTicker({ agentId, sessionEpoch })
 
-  const { tickerRunId } = await startTicker({ agentId })
+  const { tickerRunId } = await startTicker({ agentId, sessionEpoch })
 
   try {
     const hook = createHook<SessionEvent>({
-      token: sessionToken(agentId),
+      token: sessionToken(agentId, sessionEpoch),
     })
 
     for await (const event of hook) {
@@ -74,13 +80,20 @@ export async function agentSessionWorkflow(input: {
         break
       }
 
+      await markSessionEventStarted({
+        agentId,
+        eventType: event.type,
+        sessionEpoch,
+        sessionRunId,
+      })
+
       let result: EventDispatchResult = {
         pending: createPendingWrites(),
         source: FALLBACK_SOURCE,
       }
 
       try {
-        result = await dispatchSessionEvent({ agentId, event })
+        result = await dispatchSessionEvent({ agentId, event, sessionEpoch })
       } catch (err) {
         // Handlers own their own workflow-level breadcrumbs. We log here for
         // observability and continue the loop — one bad event must not
@@ -93,6 +106,7 @@ export async function agentSessionWorkflow(input: {
         pending: result.pending,
         source: result.source,
       })
+      await clearSessionEventMarker({ agentId, sessionEpoch, sessionRunId })
     }
   } finally {
     await stopTicker({ agentId, tickerRunId })
@@ -102,15 +116,16 @@ export async function agentSessionWorkflow(input: {
 async function dispatchSessionEvent(input: {
   agentId: string
   event: Exclude<SessionEvent, { type: 'shutdown' }>
+  sessionEpoch: number
 }): Promise<EventDispatchResult> {
-  const { agentId, event } = input
+  const { agentId, event, sessionEpoch } = input
   switch (event.type) {
     case 'chat':
       return await dispatchChatEvent({ agentId, event })
     case 'heartbeat':
-      return await dispatchHeartbeatEvent({ agentId, event })
+      return await dispatchHeartbeatEvent({ agentId, event, sessionEpoch })
     case 'reflection':
-      return await dispatchReflectionEvent({ agentId, event })
+      return await dispatchReflectionEvent({ agentId, event, sessionEpoch })
     case 'invocation':
       return await dispatchInvocationEvent({ agentId, event })
     default: {
@@ -142,8 +157,9 @@ async function dispatchChatEvent(input: {
 async function dispatchHeartbeatEvent(input: {
   agentId: string
   event: Extract<SessionEvent, { type: 'heartbeat' }>
+  sessionEpoch: number
 }): Promise<EventDispatchResult> {
-  const { agentId, event } = input
+  const { agentId, event, sessionEpoch } = input
   try {
     const result = await handleHeartbeat({
       agentId,
@@ -156,15 +172,16 @@ async function dispatchHeartbeatEvent(input: {
       source: { sourceType: 'heartbeat', sourceId: result.runId },
     }
   } finally {
-    await ackIfNeeded({ agentId, ack: event.ack })
+    await ackIfNeeded({ agentId, ack: event.ack, sessionEpoch })
   }
 }
 
 async function dispatchReflectionEvent(input: {
   agentId: string
   event: Extract<SessionEvent, { type: 'reflection' }>
+  sessionEpoch: number
 }): Promise<EventDispatchResult> {
-  const { agentId, event } = input
+  const { agentId, event, sessionEpoch } = input
   try {
     const result = await handleHeartbeat({
       agentId,
@@ -178,7 +195,7 @@ async function dispatchReflectionEvent(input: {
       source: { sourceType: 'reflection', sourceId: result.runId },
     }
   } finally {
-    await ackIfNeeded({ agentId, ack: event.ack })
+    await ackIfNeeded({ agentId, ack: event.ack, sessionEpoch })
   }
 }
 
@@ -207,9 +224,30 @@ async function dispatchInvocationEvent(input: {
 async function ackIfNeeded(input: {
   ack?: string
   agentId: string
+  sessionEpoch: number
 }): Promise<void> {
   if (!input.ack) {
     return
   }
-  await ackHeartbeat({ agentId: input.agentId, ack: input.ack })
+  await ackHeartbeat({
+    agentId: input.agentId,
+    ack: input.ack,
+    sessionEpoch: input.sessionEpoch,
+  })
+}
+
+function currentWorkflowRunId(agentId: string): string {
+  try {
+    const metadata = getWorkflowMetadata() as {
+      runId?: string
+      workflowRunId?: string
+    }
+    const runId = metadata.runId ?? metadata.workflowRunId
+    if (runId) {
+      return runId
+    }
+  } catch {
+    // Outside a workflow context (e.g. tests), keep a stable fallback.
+  }
+  return agentId
 }

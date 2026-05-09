@@ -117,9 +117,10 @@ function isHookNotFoundError(err: unknown): boolean {
 
 async function waitForSessionHook(
   agentId: string,
+  sessionEpoch: number,
   sessionRunId: string
 ): Promise<boolean> {
-  const token = sessionToken(agentId)
+  const token = sessionToken(agentId, sessionEpoch)
   const deadlineMs = Date.now() + SESSION_HOOK_READY_TIMEOUT_MS
 
   while (Date.now() < deadlineMs) {
@@ -143,34 +144,13 @@ async function waitForSessionHook(
   return false
 }
 
-async function readySessionRunId(a: Agent): Promise<string> {
-  let { sessionRunId } = await startAgentSession(a)
-  if (await waitForSessionHook(a.id, sessionRunId)) {
-    return sessionRunId
-  }
-
-  console.warn('[v0] agent session hook was not ready; restarting session', {
-    agentId: a.id,
-    sessionRunId,
-  })
-
-  ;({ sessionRunId } = await restartAgentSession(a))
-  if (await waitForSessionHook(a.id, sessionRunId)) {
-    return sessionRunId
-  }
-
-  throw new Error(
-    `Session hook for agent ${a.id} was not ready after restart (${sessionRunId}).`
-  )
-}
-
 async function resumeSessionEvent(
   a: Agent,
   event: SessionEvent
 ): Promise<{ sessionRunId: string }> {
-  let sessionRunId = await readySessionRunId(a)
+  let { sessionEpoch, sessionRunId } = await readySession(a)
   try {
-    await resumeHook(sessionToken(a.id), event)
+    await resumeHook(sessionToken(a.id, sessionEpoch), event)
     return { sessionRunId }
   } catch (err) {
     if (!isHookNotFoundError(err)) {
@@ -183,13 +163,36 @@ async function resumeSessionEvent(
     sessionRunId,
   })
 
-  sessionRunId = (await restartAgentSession(a)).sessionRunId
-  if (!(await waitForSessionHook(a.id, sessionRunId))) {
+  ;({ sessionEpoch, sessionRunId } = await restartAgentSession(a))
+  if (!(await waitForSessionHook(a.id, sessionEpoch, sessionRunId))) {
     throw new Error(
       `Session hook for agent ${a.id} was not ready after recovery restart (${sessionRunId}).`
     )
   }
 
-  await resumeHook(sessionToken(a.id), event)
+  await resumeHook(sessionToken(a.id, sessionEpoch), event)
   return { sessionRunId }
+}
+
+async function readySession(
+  a: Agent
+): Promise<{ sessionEpoch: number; sessionRunId: string }> {
+  let { sessionEpoch, sessionRunId } = await startAgentSession(a)
+  if (await waitForSessionHook(a.id, sessionEpoch, sessionRunId)) {
+    return { sessionEpoch, sessionRunId }
+  }
+
+  console.warn('[v0] agent session hook was not ready; restarting session', {
+    agentId: a.id,
+    sessionRunId,
+  })
+
+  ;({ sessionEpoch, sessionRunId } = await restartAgentSession(a))
+  if (await waitForSessionHook(a.id, sessionEpoch, sessionRunId)) {
+    return { sessionEpoch, sessionRunId }
+  }
+
+  throw new Error(
+    `Session hook for agent ${a.id} was not ready after restart (${sessionRunId}).`
+  )
 }

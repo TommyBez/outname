@@ -43,12 +43,13 @@ const DISABLED_POLL_MS = 5 * 60 * 1000
  */
 export async function agentTickerWorkflow(input: {
   agentId: string
+  sessionEpoch: number
 }): Promise<void> {
   'use workflow'
-  const { agentId } = input
+  const { agentId, sessionEpoch } = input
 
   while (true) {
-    const schedule = await readHeartbeatSchedule({ agentId })
+    const schedule = await readHeartbeatSchedule({ agentId, sessionEpoch })
     const now = new Date().toISOString()
 
     if (!(schedule.heartbeat.enabled || schedule.reflection.enabled)) {
@@ -60,6 +61,7 @@ export async function agentTickerWorkflow(input: {
       await dispatchReflection({
         agentId,
         localDate: schedule.reflection.localDate,
+        sessionEpoch,
       })
     }
 
@@ -68,7 +70,7 @@ export async function agentTickerWorkflow(input: {
       continue
     }
 
-    await dispatchHeartbeat({ agentId })
+    await dispatchHeartbeat({ agentId, sessionEpoch })
 
     // Preserve the pre-Phase-5 normal heartbeat semantics: the rest
     // interval starts after the previous proactive event finishes.
@@ -77,15 +79,18 @@ export async function agentTickerWorkflow(input: {
   }
 }
 
-async function dispatchHeartbeat(input: { agentId: string }): Promise<void> {
-  const { agentId } = input
+async function dispatchHeartbeat(input: {
+  agentId: string
+  sessionEpoch: number
+}): Promise<void> {
+  const { agentId, sessionEpoch } = input
   const ack = await generateAckId({ agentId })
 
   const ackHook = createHook<{ done: true }>({
-    token: heartbeatAckToken(agentId, ack),
+    token: heartbeatAckToken(agentId, sessionEpoch, ack),
   })
 
-  await pokeSessionHeartbeat({ agentId, ack })
+  await pokeSessionHeartbeat({ agentId, ack, sessionEpoch })
 
   // Block until the session signals "handler returned".
   // If the session run dies mid-handler, the ack never arrives and
@@ -97,15 +102,16 @@ async function dispatchHeartbeat(input: { agentId: string }): Promise<void> {
 async function dispatchReflection(input: {
   agentId: string
   localDate: string
+  sessionEpoch: number
 }): Promise<void> {
-  const { agentId, localDate } = input
+  const { agentId, localDate, sessionEpoch } = input
   const ack = await generateAckId({ agentId })
 
   const ackHook = createHook<{ done: true }>({
-    token: heartbeatAckToken(agentId, ack),
+    token: heartbeatAckToken(agentId, sessionEpoch, ack),
   })
 
-  await pokeSessionReflection({ agentId, ack, localDate })
+  await pokeSessionReflection({ agentId, ack, localDate, sessionEpoch })
 
   await ackHook
 }
