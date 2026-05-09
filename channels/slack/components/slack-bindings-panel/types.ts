@@ -11,5 +11,4 @@ export interface SlackBindingsPanelProps {
   bindings: SlackBindingViewType[]
   installations: InstallationView[]
   isConfigured: boolean
-  isMultiWorkspace: boolean
 }

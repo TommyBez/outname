@@ -13,68 +13,59 @@ import {
   channelThreadConversations,
   chatConversation,
 } from '@/shared/db/schema'
-import { getChannelInstallationByTeam } from './installations'
+import { getChannelInstallationsByTeam } from './installations'
 import type { ChannelId, ChannelRoute, IncomingChannelMessage } from './types'
 
 /**
- * Resolve which agent owns this thread.
+ * Resolve which agents should handle this thread.
  *
- * Multi-user safety contract — for owner-scoped channels, the resolver
- * returns null unless ALL of:
- *   - the workspace has a matching `channel_installations` row
- *     (otherwise this isn't an installed workspace and we never reply);
- *   - the matched binding (or sticky thread mapping) points at an
- *     agent whose `agent.userId` equals the installation's `userId`
- *     (otherwise a misconfigured binding cannot leak across users).
+ * Multi-user contract — the resolver:
+ *   1. Reads every `channel_installations` row for the workspace.
+ *      Several platform users may have installed the same Slack
+ *      workspace; each one is a candidate for fan-out.
+ *   2. For each installing user, looks up a binding (by sticky thread
+ *      mapping → direct binding → workspace-default binding) scoped
+ *      by `userId`.
+ *   3. Returns every (user, agent) pair that matched. Callers run a
+ *      chat turn per agent.
  *
- * Channels that intentionally route with `teamId = ''` (Slack
- * single-workspace mode, or future channels with no workspace concept)
- * bypass the installation lookup entirely. In that sentinel mode there
- * is no per-workspace install row and no cross-user owner check.
- *
- * Lookup order — each step still requires the owner check above:
- *   1. Existing `channel_thread_conversations` row keyed by
- *      `(channel, teamId, externalThreadKey)`.
- *   2. `agent_channel_bindings` row matching the routing key (Slack
- *      channel id for channel posts, Slack user id for DMs).
- *   3. `agent_channel_bindings` row with `kind='default'` — the
- *      per-workspace fallback, scoped to the same team.
+ * Returns `[]` when the workspace has no installations or no user has
+ * a matching binding; channel adapters drop the event silently in that
+ * case.
  */
-export async function resolveAgentForIncomingMessage(
+export async function resolveAgentsForIncomingMessage(
   msg: IncomingChannelMessage
-): Promise<Agent | null> {
-  const candidate = await findCandidateAgent(msg)
-  if (!candidate) {
-    return null
-  }
-
+): Promise<Agent[]> {
   if (!msg.teamId) {
-    return candidate
+    return []
   }
 
-  const installation = await getChannelInstallationByTeam(
+  const installations = await getChannelInstallationsByTeam(
     msg.channel,
     msg.teamId
   )
-  if (!installation) {
-    return null
+  if (installations.length === 0) {
+    return []
   }
-  if (candidate.userId !== installation.userId) {
-    console.warn('[channels] dropping cross-user routing attempt', {
-      channel: msg.channel,
-      teamId: msg.teamId,
-      installationUserId: installation.userId,
-      agentId: candidate.id,
-      agentUserId: candidate.userId,
-    })
-    return null
+
+  const agents: Agent[] = []
+  const seen = new Set<string>()
+  for (const install of installations) {
+    const candidate = await findCandidateAgentForUser(msg, install.userId)
+    if (candidate && !seen.has(candidate.id)) {
+      seen.add(candidate.id)
+      agents.push(candidate)
+    }
   }
-  return candidate
+  return agents
 }
 
-async function findCandidateAgent(
-  msg: IncomingChannelMessage
+async function findCandidateAgentForUser(
+  msg: IncomingChannelMessage,
+  userId: string
 ): Promise<Agent | null> {
+  // Sticky thread mapping wins if the user already has a conversation
+  // for this external thread.
   const existingMapping = await db
     .select({ agentId: channelThreadConversations.agentId })
     .from(channelThreadConversations)
@@ -82,12 +73,16 @@ async function findCandidateAgent(
       and(
         eq(channelThreadConversations.channel, msg.channel),
         eq(channelThreadConversations.teamId, msg.teamId),
-        eq(channelThreadConversations.externalThreadKey, msg.externalThreadKey)
+        eq(channelThreadConversations.externalThreadKey, msg.externalThreadKey),
+        eq(channelThreadConversations.userId, userId)
       )
     )
     .limit(1)
   if (existingMapping[0]) {
-    return await loadAgent(existingMapping[0].agentId)
+    const candidate = await loadAgent(existingMapping[0].agentId)
+    if (candidate && candidate.userId === userId) {
+      return candidate
+    }
   }
 
   const direct = await findBinding({
@@ -95,6 +90,7 @@ async function findCandidateAgent(
     teamId: msg.teamId,
     externalKey: msg.externalRoutingKey,
     kind: msg.externalRoutingKind,
+    userId,
   })
   if (direct) {
     return await loadAgent(direct.agentId)
@@ -105,6 +101,7 @@ async function findCandidateAgent(
     teamId: msg.teamId,
     externalKey: '',
     kind: 'default',
+    userId,
   })
   if (fallback) {
     return await loadAgent(fallback.agentId)
@@ -117,6 +114,7 @@ async function findBinding(input: {
   teamId: string
   externalKey: string
   kind: 'channel' | 'dm' | 'default'
+  userId: string
 }) {
   const [row] = await db
     .select({ agentId: agentChannelBindings.agentId })
@@ -126,7 +124,8 @@ async function findBinding(input: {
         eq(agentChannelBindings.channel, input.channel),
         eq(agentChannelBindings.teamId, input.teamId),
         eq(agentChannelBindings.externalKey, input.externalKey),
-        eq(agentChannelBindings.kind, input.kind)
+        eq(agentChannelBindings.kind, input.kind),
+        eq(agentChannelBindings.userId, input.userId)
       )
     )
     .limit(1)
@@ -144,15 +143,16 @@ async function loadAgent(agentId: string): Promise<Agent | null> {
 
 /**
  * Find or create the `chat_conversation` row that backs this external
- * thread. The mapping in `channel_thread_conversations` is unique on
- * `(channel, teamId, externalThreadKey)` so concurrent webhooks for the
- * same Slack thread converge on the same conversation row even across
- * workspaces that happen to share a thread key string.
+ * thread for a specific agent. The mapping in
+ * `channel_thread_conversations` is unique on
+ * `(channel, teamId, externalThreadKey, agentId)` so each agent owns
+ * its own conversation for the thread, and concurrent webhooks for
+ * the same Slack thread converge on the same conversation row.
  *
- * Race-condition contract: two simultaneous webhooks for the same brand
- * new Slack thread will each call `getOrCreateConversationForAgent` with
- * a freshly generated `chat_conversation` id, so each side ends up
- * having created a distinct row. Only one wins the
+ * Race-condition contract: two simultaneous webhooks for the same
+ * brand new thread will each call `getOrCreateConversationForAgent`
+ * with a freshly generated `chat_conversation` id, so each side ends
+ * up having created a distinct row. Only one wins the
  * `channel_thread_conversations` unique-index race; we always re-read
  * the canonical mapping after the insert and return its
  * `conversationId`. The losing side's `chat_conversation` row would
@@ -175,7 +175,8 @@ export async function ensureConversationForThread(input: {
         eq(
           channelThreadConversations.externalThreadKey,
           message.externalThreadKey
-        )
+        ),
+        eq(channelThreadConversations.agentId, agentRow.id)
       )
     )
     .limit(1)
@@ -198,6 +199,7 @@ export async function ensureConversationForThread(input: {
     .insert(channelThreadConversations)
     .values({
       id: `ctc_${nanoid(12)}`,
+      userId: agentRow.userId,
       channel: message.channel,
       teamId: message.teamId,
       externalThreadKey: message.externalThreadKey,
@@ -210,6 +212,7 @@ export async function ensureConversationForThread(input: {
         channelThreadConversations.channel,
         channelThreadConversations.teamId,
         channelThreadConversations.externalThreadKey,
+        channelThreadConversations.agentId,
       ],
     })
     .returning({
@@ -221,10 +224,10 @@ export async function ensureConversationForThread(input: {
   }
 
   // Lost the race: another concurrent webhook already wrote the canonical
-  // mapping for this thread. Re-read it so the caller persists its user
-  // message against the winning conversation, and drop our orphan
-  // chat_conversation row (cascade FKs handle anything that might have
-  // landed in it).
+  // mapping for this thread + agent. Re-read it so the caller persists
+  // its user message against the winning conversation, and drop our
+  // orphan chat_conversation row (cascade FKs handle anything that might
+  // have landed in it).
   const [canonical] = await db
     .select({
       conversationId: channelThreadConversations.conversationId,
@@ -237,13 +240,14 @@ export async function ensureConversationForThread(input: {
         eq(
           channelThreadConversations.externalThreadKey,
           message.externalThreadKey
-        )
+        ),
+        eq(channelThreadConversations.agentId, agentRow.id)
       )
     )
     .limit(1)
   if (!canonical) {
     throw new Error(
-      `channel_thread_conversations row missing after conflict (${message.channel}/${message.teamId}/${message.externalThreadKey})`
+      `channel_thread_conversations row missing after conflict (${message.channel}/${message.teamId}/${message.externalThreadKey}/${agentRow.id})`
     )
   }
 

@@ -8,25 +8,16 @@ The integration is built on the [Vercel Chat SDK](https://github.com/vercel/chat
 (`chat` + `@chat-adapter/slack`) so adding more surfaces (Microsoft
 Teams, Discord, Telegram, …) is a matter of dropping in another adapter.
 
-## Operating modes
+## How it works
 
-The Slack route boots in one of two modes, picked at startup from
-environment variables:
+Each platform user installs the Slack app per workspace via OAuth.
+Encrypted bot tokens land in `channel_installations`. Bindings are
+scoped per user, and an incoming Slack event fans out to every user
+whose binding matches — so two users can install the same Slack
+workspace and each route their own agents independently.
 
-| Mode               | When                                                         | Multi-user safe? |
-| ------------------ | ------------------------------------------------------------ | ---------------- |
-| Multi-workspace    | `SLACK_CLIENT_ID` + `SLACK_CLIENT_SECRET` + `SLACK_SIGNING_SECRET` | yes              |
-| Single-workspace   | only `SLACK_BOT_TOKEN` + `SLACK_SIGNING_SECRET`              | no — single operator only |
-
-In multi-workspace mode every install is performed via OAuth, encrypted
-bot tokens land in `channel_installations`, and the dispatcher cross-checks
-that the installation owner equals the matched agent's owner before
-running the turn.
-
-In single-workspace mode there is one global bot token from the
-environment, all bindings carry `teamId = ''`, and there is no
-cross-user owner check (because there is no second user). Use it only
-for personal deployments.
+Boot requires `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, and
+`SLACK_SIGNING_SECRET`; the bot refuses to start without all three.
 
 ## Architecture
 
@@ -42,18 +33,18 @@ slackBot (Vercel Chat SDK)        ◄─ lib/channels/slack/bot.ts
    │  extracts (channel, thread_ts, team_id) from each event
    ▼
 runChannelChatTurn                ◄─ lib/channels/dispatch.ts
-   │  1. resolveAgentForIncomingMessage
-   │     - load channel_installations by (channel, teamId)
-   │       (drop event if the workspace is not installed)
-   │     - find candidate agent via:
-   │         · existing channel_thread_conversations row
-   │         · agent_channel_bindings (channel|dm) for this teamId
-   │         · agent_channel_bindings ('default') for this teamId
-   │     - reject if agent.userId !== installation.userId
-   │  2. ensureConversationForThread
-   │  3. insertChatMessage (user turn)
-   │  4. dispatchChatTurn ──► agent session workflow
-   │  5. stream UIMessageChunks back to thread.post()
+   │  1. resolveAgentsForIncomingMessage
+   │     - load all channel_installations for (channel, teamId)
+   │       (drop event if the workspace has no installs)
+   │     - for each installing user, find a candidate agent via:
+   │         · existing channel_thread_conversations row (per user)
+   │         · agent_channel_bindings (channel|dm) scoped by userId
+   │         · agent_channel_bindings ('default') scoped by userId
+   │  2. for each matched agent:
+   │       a. ensureConversationForThread (per agent)
+   │       b. insertChatMessage (user turn)
+   │       c. dispatchChatTurn ──► agent session workflow
+   │       d. stream UIMessageChunks back to thread.post()
    ▼
 Slack thread (streaming reply)
 ```
@@ -65,7 +56,7 @@ Slack thread (streaming reply)
 | `app/api/channels/slack/events`      | yes          | HTTP entry point, `waitUntil` for the 3-second Slack ack                    |
 | `app/api/channels/slack/install`     | yes          | Authenticated redirect to the Slack OAuth consent screen                    |
 | `app/api/channels/slack/oauth/callback` | yes       | Receives the OAuth code, runs `handleOAuthCallback` inside an install scope |
-| `lib/channels/slack/bot.ts`          | yes          | Chat SDK bot, mention/DM handlers, single-vs-multi-workspace switch         |
+| `lib/channels/slack/bot.ts`          | yes          | Chat SDK bot, mention/DM handlers, OAuth boot wiring                        |
 | `lib/channels/slack/state.ts`        | yes          | `SlackHybridState` — bridges `slack:installation:*` keys to Postgres        |
 | `lib/channels/slack/installations.ts`| yes          | Encrypt/decrypt bot tokens via `connection-crypto.ts`                       |
 | `lib/channels/dispatch.ts`           | no           | Generic event → agent → workflow → reply pipeline (reused by every channel) |
@@ -82,25 +73,24 @@ Three tables back the integration (migrations
   `connection-crypto.ts`) and platform metadata
   (`{ botUserId, teamName }`) in `metadata`.
 - **`agent_channel_bindings`** — routes incoming messages to an agent.
-  Lookup is `(channel, teamId, externalKey, kind)` and is unique on
-  that quadruple, so two users with separate Slack workspaces can each
-  bind the same channel id to their own agent without colliding.
+  Lookup is `(channel, teamId, externalKey, kind, userId)` and is
+  unique on that quintuple, so two platform users can each bind the
+  same Slack channel to one of their own agents in the same workspace
+  without colliding.
 - **`channel_thread_conversations`** — maps a Slack
   `(team, channel, thread_ts)` to a `chat_conversation` row owned by an
-  agent. Once a thread has exchanged one message, every follow-up
-  routes back to the same agent regardless of binding changes.
+  agent. Unique on `(channel, teamId, externalThreadKey, agentId)` so
+  each agent owns its own conversation for the thread.
 
 ## Multi-user safety contract
 
 The dispatcher guarantees, on every Slack event:
 
-1. The event's `team_id` matches a `channel_installations` row, **or**
-   the event is dropped.
-2. The matched agent's `userId` equals
-   `channel_installations.userId`, **or** the event is dropped and
-   logged. This holds whether the agent was found via
-   `channel_thread_conversations`, a `(channel|dm)` binding, or the
-   `'default'` binding.
+1. The event's `team_id` matches at least one `channel_installations`
+   row, **or** the event is dropped.
+2. Each candidate agent is resolved under the `userId` of an installing
+   user — bindings and thread mappings are unique per user, so an
+   agent can only run for the user who owns the install.
 3. Bot tokens are decrypted in-process — `channel_installations.credentials`
    only contains the AES-256-GCM envelope.
 4. The OAuth callback verifies the originating user against the active
@@ -141,8 +131,6 @@ The dispatcher guarantees, on every Slack event:
 
 Add to `.env.local` (and your Vercel project settings).
 
-**Multi-workspace (recommended):**
-
 ```bash
 SLACK_CLIENT_ID=…
 SLACK_CLIENT_SECRET=…
@@ -150,15 +138,7 @@ SLACK_SIGNING_SECRET=…
 SLACK_BOT_USERNAME=assistant   # optional, used for mention matching
 ```
 
-**Single-workspace (single operator only):**
-
-```bash
-SLACK_BOT_TOKEN=xoxb-…
-SLACK_SIGNING_SECRET=…
-SLACK_BOT_USERNAME=assistant
-```
-
-**Optional (any mode):**
+**Optional:**
 
 ```bash
 # When set, the Slack chat surface uses Redis for concurrency locks,
@@ -174,12 +154,12 @@ needed.
 
 ## Installing a workspace
 
-In multi-workspace mode the operator opens any agent's **Configure →
-Slack** section in the dashboard and clicks **Install Slack app** (or
-**Add workspace** if a workspace is already installed). They are
-redirected through the Slack consent screen, and the callback persists
-the encrypted bot token under their user id before redirecting back to
-the dashboard with a success notice.
+The user opens any agent's **Configure → Slack** section in the
+dashboard and clicks **Install Slack app** (or **Add workspace** if a
+workspace is already installed). They are redirected through the Slack
+consent screen, and the callback persists the encrypted bot token
+under their user id before redirecting back to the dashboard with a
+success notice.
 
 The same flow can be triggered directly via
 `https://<your-deployment>/api/channels/slack/install` while logged
@@ -190,9 +170,7 @@ into the dashboard.
 The dashboard exposes the binding UI on every agent at **Configure →
 Slack**. From there you can:
 
-- pick a workspace from the workspaces you have installed (the dropdown
-  is read-only for single-workspace deployments — it always uses the
-  empty `teamId`);
+- pick a workspace from the workspaces you have installed;
 - choose a routing kind — `channel`, `dm`, or `default` (the
   workspace-wide fallback);
 - paste the Slack channel id (`C…`) or user id (`U…`).
@@ -207,7 +185,7 @@ The same operations are still available programmatically through
 ```ts
 import { upsertAgentChannelBinding } from '@/channels/server/bindings'
 
-// Route every Slack message in #general (multi-workspace mode)
+// Route every Slack message in #general
 await upsertAgentChannelBinding({
   agentId: 'agent_…',
   channel: 'slack',
@@ -235,13 +213,13 @@ await upsertAgentChannelBinding({
 })
 ```
 
-For single-workspace mode, set `teamId: ''`.
+The helper looks up the agent's `userId` from the agent row, so the
+binding it writes is automatically scoped to the agent's owner.
 
 Without any binding the bot will silently drop incoming events — this
 is intentional so installing the app in a busy workspace doesn't cause
-the agent to reply to unrelated chatter. Bindings whose agent is owned
-by a different user than the workspace install are also dropped, with a
-warning logged.
+the agent to reply to unrelated chatter. Events that target a workspace
+with no `channel_installations` row are likewise dropped.
 
 ## Adding another channel
 

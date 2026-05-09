@@ -18,8 +18,8 @@ WHERE NOT EXISTS (
   WHERE a.user_id = u.id AND a.kind = 'daily-email-brief'
 );
 
--- Backfill runs.agent_id to the user's daily-email-brief agent.
--- We infer the user from the gmail_connection table (single-user singleton today).
+-- Backfill runs.agent_id to each user's daily-email-brief agent.
+-- We infer the user from the gmail_connection table.
 -- This only touches rows where agent_id IS NULL.
 UPDATE runs r
 SET agent_id = a.id
