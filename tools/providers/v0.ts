@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { v0Tools } from '@v0-sdk/ai-tools'
+import { v0ToolsByCategory } from '@v0-sdk/ai-tools'
 import { z } from 'zod'
 import {
   defineActionTool,
@@ -13,6 +13,9 @@ const V0_API_KEY_ENV_NAME = 'V0_API_KEY'
 const V0_CONFIGURED_API_KEY_PLACEHOLDER = 'schema-only-v0-api-key'
 const PROVIDER_ERROR_MESSAGE_LIMIT = 1000
 
+type V0MutationLevel = 'read' | 'write' | 'destructive'
+type V0ToolCategory = 'chat' | 'project' | 'deployment' | 'user' | 'hook'
+
 const v0ConfigSchema = z.object({
   readOnly: z
     .boolean()
@@ -24,135 +27,63 @@ const v0ConfigSchema = z.object({
 
 type V0ToolConfig = z.infer<typeof v0ConfigSchema>
 
-type V0OperationCategory = 'chat' | 'project' | 'deployment' | 'user' | 'hook'
-
-type V0MutationLevel = 'read' | 'write' | 'destructive'
-
 interface V0SdkTool {
-  description?: string
   execute?: (input: unknown) => Promise<unknown> | unknown
   inputSchema: z.ZodTypeAny
 }
 
-interface V0ExecutableTool extends V0SdkTool {
-  execute: (input: unknown) => Promise<unknown> | unknown
-}
-
 interface V0OperationDefinition {
-  category: V0OperationCategory
+  category: V0ToolCategory
   mutation: V0MutationLevel
   operation: string
+  sdkTool: V0SdkTool
 }
 
-const V0_OPERATION_DEFINITIONS = [
-  { operation: 'createChat', category: 'chat', mutation: 'write' },
-  { operation: 'sendMessage', category: 'chat', mutation: 'write' },
-  { operation: 'getChat', category: 'chat', mutation: 'read' },
-  { operation: 'updateChat', category: 'chat', mutation: 'write' },
-  { operation: 'deleteChat', category: 'chat', mutation: 'destructive' },
-  { operation: 'favoriteChat', category: 'chat', mutation: 'write' },
-  { operation: 'forkChat', category: 'chat', mutation: 'write' },
-  { operation: 'listChats', category: 'chat', mutation: 'read' },
-  { operation: 'createProject', category: 'project', mutation: 'write' },
-  { operation: 'getProject', category: 'project', mutation: 'read' },
-  { operation: 'updateProject', category: 'project', mutation: 'write' },
-  { operation: 'listProjects', category: 'project', mutation: 'read' },
-  {
-    operation: 'assignChatToProject',
-    category: 'project',
-    mutation: 'write',
-  },
-  { operation: 'getProjectByChat', category: 'project', mutation: 'read' },
-  {
-    operation: 'createEnvironmentVariables',
-    category: 'project',
-    mutation: 'write',
-  },
-  {
-    operation: 'listEnvironmentVariables',
-    category: 'project',
-    mutation: 'read',
-  },
-  {
-    operation: 'updateEnvironmentVariables',
-    category: 'project',
-    mutation: 'write',
-  },
-  {
-    operation: 'deleteEnvironmentVariables',
-    category: 'project',
-    mutation: 'destructive',
-  },
-  {
-    operation: 'createDeployment',
-    category: 'deployment',
-    mutation: 'write',
-  },
-  { operation: 'getDeployment', category: 'deployment', mutation: 'read' },
-  { operation: 'listDeployments', category: 'deployment', mutation: 'read' },
-  {
-    operation: 'deleteDeployment',
-    category: 'deployment',
-    mutation: 'destructive',
-  },
-  {
-    operation: 'getDeploymentLogs',
-    category: 'deployment',
-    mutation: 'read',
-  },
-  {
-    operation: 'getDeploymentErrors',
-    category: 'deployment',
-    mutation: 'read',
-  },
-  { operation: 'getCurrentUser', category: 'user', mutation: 'read' },
-  { operation: 'getUserBilling', category: 'user', mutation: 'read' },
-  { operation: 'getUserPlan', category: 'user', mutation: 'read' },
-  { operation: 'getUserScopes', category: 'user', mutation: 'read' },
-  { operation: 'getRateLimits', category: 'user', mutation: 'read' },
-  { operation: 'createHook', category: 'hook', mutation: 'write' },
-  { operation: 'getHook', category: 'hook', mutation: 'read' },
-  { operation: 'updateHook', category: 'hook', mutation: 'write' },
-  { operation: 'deleteHook', category: 'hook', mutation: 'destructive' },
-  { operation: 'listHooks', category: 'hook', mutation: 'read' },
-] as const satisfies readonly V0OperationDefinition[]
+type V0RequestInput = Record<string, unknown> & { operation: string }
 
-type V0OperationName = (typeof V0_OPERATION_DEFINITIONS)[number]['operation']
-
-type V0RequestInput = Record<string, unknown> & {
-  confirmIrreversible: boolean
-  operation: V0OperationName
+function inferMutation(operation: string): V0MutationLevel {
+  if (operation.startsWith('get') || operation.startsWith('list')) {
+    return 'read'
+  }
+  if (operation.startsWith('delete')) {
+    return 'destructive'
+  }
+  return 'write'
 }
+
+function flattenV0Tools(
+  toolGroups: Record<V0ToolCategory, Record<string, V0SdkTool>>
+): V0OperationDefinition[] {
+  const definitions: V0OperationDefinition[] = []
+  for (const [category, group] of Object.entries(toolGroups)) {
+    for (const [operation, sdkTool] of Object.entries(group)) {
+      definitions.push({
+        category: category as V0ToolCategory,
+        mutation: inferMutation(operation),
+        operation,
+        sdkTool,
+      })
+    }
+  }
+  return definitions
+}
+
+const v0SchemaDefinitions = flattenV0Tools(
+  v0ToolsByCategory({
+    apiKey: V0_CONFIGURED_API_KEY_PLACEHOLDER,
+  }) as Record<V0ToolCategory, Record<string, V0SdkTool>>
+)
 
 let cachedRuntimeTools: Record<string, V0SdkTool> | null = null
 
-function createV0SdkToolBundle(apiKey: string): Record<string, V0SdkTool> {
-  return v0Tools({ apiKey }) as unknown as Record<string, V0SdkTool>
-}
-
-const v0SchemaTools = createV0SdkToolBundle(V0_CONFIGURED_API_KEY_PLACEHOLDER)
-
-function getOperationDefinition(
-  operation: V0OperationName
-): V0OperationDefinition {
-  const definition = V0_OPERATION_DEFINITIONS.find(
-    (candidate) => candidate.operation === operation
+function getOperationDefinition(operation: string): V0OperationDefinition {
+  const schemaDefinition = v0SchemaDefinitions.find(
+    (definition) => definition.operation === operation
   )
-  if (!definition) {
+  if (!schemaDefinition) {
     throw new Error(`Unknown v0 operation: ${operation}`)
   }
-  return definition
-}
-
-function getSdkTool(
-  tools: Record<string, V0SdkTool>,
-  operation: V0OperationName
-): V0ExecutableTool {
-  const tool = tools[operation]
-  if (!tool || typeof tool.execute !== 'function') {
-    throw new Error(`The v0 SDK does not expose the "${operation}" tool.`)
-  }
-  return tool as V0ExecutableTool
+  return schemaDefinition
 }
 
 function asObjectSchema(
@@ -167,11 +98,8 @@ function asObjectSchema(
 
 const v0RequestInputSchema = z.discriminatedUnion(
   'operation',
-  V0_OPERATION_DEFINITIONS.map(({ operation }) =>
-    asObjectSchema(
-      getSdkTool(v0SchemaTools, operation).inputSchema,
-      operation
-    ).extend({
+  v0SchemaDefinitions.map(({ operation, sdkTool }) =>
+    asObjectSchema(sdkTool.inputSchema, operation).extend({
       operation: z.literal(operation),
       confirmIrreversible: z
         .boolean()
@@ -216,7 +144,18 @@ function getRuntimeTools(): Record<string, V0SdkTool> | null {
   if (!apiKey) {
     return null
   }
-  cachedRuntimeTools = createV0SdkToolBundle(apiKey)
+  const runtimeDefinitions = flattenV0Tools(
+    v0ToolsByCategory({ apiKey }) as Record<
+      V0ToolCategory,
+      Record<string, V0SdkTool>
+    >
+  )
+  cachedRuntimeTools = Object.fromEntries(
+    runtimeDefinitions.map((definition) => [
+      definition.operation,
+      definition.sdkTool,
+    ])
+  ) as Record<string, V0SdkTool>
   return cachedRuntimeTools
 }
 
@@ -260,7 +199,13 @@ export const v0RequestTool = defineActionTool({
     }
 
     const definition = getOperationDefinition(input.operation)
-    const tool = getSdkTool(tools, input.operation)
+    const tool = tools[input.operation]
+    if (typeof tool?.execute !== 'function') {
+      return toolError(
+        'unavailable',
+        `The v0 SDK tool "${input.operation}" is unavailable.`
+      )
+    }
 
     try {
       const result = await tool.execute(stripLocalFields(input))
