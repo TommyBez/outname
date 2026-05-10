@@ -15,9 +15,13 @@ export async function runToolSandboxCommand(input: {
   stderrLimit: number
   stdoutLimit: number
   timeoutMs?: number
+  userId: string
 }): Promise<ToolSandboxRunResult> {
   'use step'
-  const sandbox = await getOrStartToolSandbox(input.manifestId)
+  const sandbox = await getOrStartToolSandbox({
+    manifestId: input.manifestId,
+    userId: input.userId,
+  })
   const controller = new AbortController()
   const timeoutMs = input.timeoutMs
   let timer: ReturnType<typeof setTimeout> | null = null

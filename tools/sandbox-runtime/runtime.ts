@@ -1,10 +1,13 @@
 import 'server-only'
-import { Sandbox } from '@vercel/sandbox'
+import { type NetworkPolicy, Sandbox } from '@vercel/sandbox'
 import { eq } from 'drizzle-orm'
 import { getWorkflowMetadata } from 'workflow'
+import { getConnector } from '@/connections/registry'
+import { readBrokeredCredential } from '@/connections/runtime/credential'
 import { db } from '@/shared/db'
 import { toolSandboxSnapshots } from '@/shared/db/schema'
 import { toolRuntimeSandboxTags } from '@/shared/server/vercel-sandbox-config'
+import { validateInjectedHeaders } from '@/tools/runtime/brokered-http/validation'
 import { getToolSandboxManifest } from '@/tools/sandboxes'
 
 /**
@@ -34,6 +37,7 @@ export interface ToolSandboxHandle {
 }
 
 interface CachedSandbox {
+  cacheKey: string
   manifestId: string
   sandbox: Sandbox
 }
@@ -76,14 +80,21 @@ async function readSnapshotId(manifestId: string): Promise<string | null> {
  * Must be called from inside a workflow step (`'use step'` body) so
  * `getWorkflowMetadata` works.
  */
-export async function getOrStartToolSandbox(
+export async function getOrStartToolSandbox(input: {
   manifestId: string
-): Promise<ToolSandboxHandle> {
+  userId: string
+}): Promise<ToolSandboxHandle> {
   const runId = currentRunId()
+  const manifest = getToolSandboxManifest(input.manifestId)
+  const cacheKey = sandboxCacheKey({
+    manifestId: input.manifestId,
+    userId: input.userId,
+    manifest,
+  })
 
   let perRun = cache.get(runId)
   if (perRun) {
-    const cached = perRun.get(manifestId)
+    const cached = perRun.get(cacheKey)
     if (cached) {
       return cached.sandbox
     }
@@ -92,14 +103,17 @@ export async function getOrStartToolSandbox(
   // Reading the manifest also asserts it's still registered — a
   // tool whose manifest was removed from the registry shouldn't be
   // spawnable even if a stale snapshot row exists.
-  getToolSandboxManifest(manifestId)
-  const snapshotId = await readSnapshotId(manifestId)
+  const snapshotId = await readSnapshotId(input.manifestId)
   if (!snapshotId) {
     throw new ToolSandboxUnavailableError(
-      manifestId,
-      `Tool sandbox snapshot for manifest "${manifestId}" is not built yet.`
+      input.manifestId,
+      `Tool sandbox snapshot for manifest "${input.manifestId}" is not built yet.`
     )
   }
+  const networkPolicy = await resolveRuntimeNetworkPolicy({
+    manifest,
+    userId: input.userId,
+  })
 
   // `runtime` is intentionally not passed: when sourcing from a
   // snapshot, the SDK rejects `runtime` (it's already encoded in the
@@ -107,15 +121,16 @@ export async function getOrStartToolSandbox(
   const sandbox = await Sandbox.create({
     source: { type: 'snapshot', snapshotId },
     persistent: false,
-    tags: toolRuntimeSandboxTags({ manifestId, runId }),
+    tags: toolRuntimeSandboxTags({ manifestId: input.manifestId, runId }),
     timeout: 600_000,
+    ...(networkPolicy ? { networkPolicy } : {}),
   })
 
   if (!perRun) {
     perRun = new Map()
     cache.set(runId, perRun)
   }
-  perRun.set(manifestId, { manifestId, sandbox })
+  perRun.set(cacheKey, { cacheKey, manifestId: input.manifestId, sandbox })
 
   return sandbox
 }
@@ -157,4 +172,120 @@ export async function stopAllToolSandboxesForRun(): Promise<void> {
     })
   )
   cache.delete(runId)
+}
+
+function sandboxCacheKey(input: {
+  manifest: ReturnType<typeof getToolSandboxManifest>
+  manifestId: string
+  userId: string
+}): string {
+  const providerCount =
+    input.manifest.runtimeNetwork?.brokeredProviders?.length ?? 0
+  if (providerCount === 0) {
+    return input.manifestId
+  }
+  return `${input.manifestId}:${input.userId}`
+}
+
+async function resolveRuntimeNetworkPolicy(input: {
+  manifest: ReturnType<typeof getToolSandboxManifest>
+  userId: string
+}): Promise<NetworkPolicy | undefined> {
+  const brokeredProviders =
+    input.manifest.runtimeNetwork?.brokeredProviders ?? []
+  const unauthenticatedHosts =
+    input.manifest.runtimeNetwork?.unauthenticatedHosts ?? []
+  if (brokeredProviders.length === 0 && unauthenticatedHosts.length === 0) {
+    return
+  }
+
+  const allow: Record<
+    string,
+    { transform: { headers: Record<string, string> }[] }[]
+  > = {}
+
+  for (const provider of brokeredProviders) {
+    const connector = getConnector(provider)
+    if (!connector) {
+      throw new ToolSandboxUnavailableError(
+        input.manifest.id,
+        `Tool sandbox manifest "${input.manifest.id}" references unknown provider "${provider}".`
+      )
+    }
+    const credential = await readBrokeredCredential({
+      provider,
+      userId: input.userId,
+    })
+    const injectedHeaders = validateInjectedHeaders(
+      provider,
+      connector.broker.injectedHeaderNames,
+      connector.broker.injectedHeaders(credential)
+    )
+    for (const host of connector.broker.allowedHosts) {
+      mergeAuthenticatedHost({
+        allow,
+        host,
+        headers: injectedHeaders,
+        manifestId: input.manifest.id,
+      })
+    }
+  }
+
+  for (const host of unauthenticatedHosts) {
+    if (host in allow) {
+      throw new ToolSandboxUnavailableError(
+        input.manifest.id,
+        `Tool sandbox manifest "${input.manifest.id}" declares host "${host}" as both authenticated and unauthenticated.`
+      )
+    }
+    allow[host] = []
+  }
+
+  return { allow } as NetworkPolicy
+}
+
+function mergeAuthenticatedHost(input: {
+  allow: Record<string, { transform: { headers: Record<string, string> }[] }[]>
+  headers: Record<string, string>
+  host: string
+  manifestId: string
+}): void {
+  const existing = input.allow[input.host]
+  if (!existing) {
+    input.allow[input.host] = [{ transform: [{ headers: input.headers }] }]
+    return
+  }
+  if (existing.length === 0) {
+    throw new ToolSandboxUnavailableError(
+      input.manifestId,
+      `Tool sandbox manifest "${input.manifestId}" declares host "${input.host}" as both authenticated and unauthenticated.`
+    )
+  }
+  const currentHeaders = existing[0]?.transform[0]?.headers ?? {}
+  if (!sameHeaders(currentHeaders, input.headers)) {
+    throw new ToolSandboxUnavailableError(
+      input.manifestId,
+      `Tool sandbox manifest "${input.manifestId}" resolved conflicting injected headers for host "${input.host}".`
+    )
+  }
+}
+
+function sameHeaders(
+  left: Record<string, string>,
+  right: Record<string, string>
+): boolean {
+  const leftKeys = Object.keys(left).sort()
+  const rightKeys = Object.keys(right).sort()
+  if (leftKeys.length !== rightKeys.length) {
+    return false
+  }
+  for (const [index, key] of leftKeys.entries()) {
+    if (key !== rightKeys[index]) {
+      return false
+    }
+    if (left[key] !== right[key]) {
+      return false
+    }
+  }
+  return true
 }

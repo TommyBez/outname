@@ -84,6 +84,7 @@ export function createRuntimeContext(input: {
         const { runToolSandboxCommand } = await import('../tool-sandbox-runner')
         return await runToolSandboxCommand({
           manifestId,
+          userId,
           cmd: args.cmd,
           args: args.args,
           stdoutLimit: args.stdoutLimit ?? 64 * 1024,

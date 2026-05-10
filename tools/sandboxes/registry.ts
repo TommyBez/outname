@@ -2,6 +2,8 @@ import 'server-only'
 import { agentBrowserManifest } from './agent-browser/manifest'
 import { agentBrowserSetupScript } from './agent-browser/setup'
 import type { ToolSandboxManifest } from './types'
+import { v0AiToolsManifest } from './v0-ai-tools/manifest'
+import { v0AiToolsSetupScript } from './v0-ai-tools/setup'
 
 interface RegistryEntry {
   manifest: ToolSandboxManifest
@@ -12,6 +14,10 @@ const REGISTRY: Record<string, RegistryEntry> = {
   [agentBrowserManifest.id]: {
     manifest: agentBrowserManifest,
     setupScript: agentBrowserSetupScript,
+  },
+  [v0AiToolsManifest.id]: {
+    manifest: v0AiToolsManifest,
+    setupScript: v0AiToolsSetupScript,
   },
 }
 

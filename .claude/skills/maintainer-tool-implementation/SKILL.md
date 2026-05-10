@@ -1,6 +1,6 @@
 ---
 name: maintainer-tool-implementation
-description: Implement a new maintainer tool in this codebase's tool catalog. Use when adding a tool under `tools/providers/`, wiring a provider-backed integration, creating a `tool_sandbox` tool, updating `tools/catalog/registry.ts`, or when the user mentions maintainer tools, `define-maintainer-tool`, `defineActionTool`, `defineApiPassthroughTool`, `defineSandboxTool`, brokered HTTP, or catalog tool attachments.
+description: Implement a new maintainer tool in this codebase's tool catalog. Use when adding a tool under `tools/providers/`, wiring a provider-backed integration, adapting an official SDK or SDK-provided AI tools into the maintainer-tool system, creating a `tool_sandbox` tool, updating `tools/catalog/registry.ts`, or when the user mentions maintainer tools, `define-maintainer-tool`, `defineActionTool`, `defineApiPassthroughTool`, `defineSandboxTool`, brokered HTTP, SDK adapters, or catalog tool attachments.
 metadata:
   version: 1.1.4
 ---
@@ -17,6 +17,7 @@ Before making changes, read:
 - `tools/catalog/types.ts`
 - `tools/catalog/registry.ts`
 - one analogous tool file in `tools/providers/` that matches the new tool shape
+- if the request mentions an SDK or SDK-generated AI tools, inspect the SDK docs/source to confirm whether it can run through brokered HTTP directly, needs a custom transport, or must execute inside a sandbox
 
 Default references:
 
@@ -65,6 +66,7 @@ If a field is secret, it does not belong in `configSchema`.
 - Use `defineActionTool` for custom multi-step logic or when you need to mix policies, brokered HTTP, parsing, and custom result shaping
 - Use `defineApiPassthroughTool` when the tool is mostly "validated input -> authenticated HTTP request -> normalized response"
 - Use `defineSandboxTool` when the tool runs a CLI or process inside a tool sandbox snapshot
+- If you are adapting an official SDK or SDK-generated AI tools, prefer reusing the SDK's published schemas/descriptions where practical, but do **not** weaken the secret-injection rules just to call the SDK in-process
 - For sandbox manifests in this repo, keep installer bytes in `tools/sandboxes/<id>/setup.ts` and expose them through `tools/sandboxes/registry.ts`; do not rely on runtime reads of repo-relative `.sh` files
 
 ### 3. Enforce Secret Injection for authenticated tools
@@ -133,6 +135,7 @@ In `tools/providers/<tool-name>.ts`:
 - if brokered HTTP is involved, investigate the expected payload size for this tool and then size `maxResponseBytes` deliberately instead of relying on the small broker default
 - implement execution with the chosen helper
 - return compact structured data that is useful to the model
+- if the tool is SDK-backed, explicitly document whether the SDK runs in-process with brokered transport or in a sandbox with injected auth
 
 ### Step 3: Register it
 
@@ -144,6 +147,7 @@ Only add a new category ordering entry if the category is actually new.
 
 - New provider-backed tool: ensure the connector/provider exists in `connections/registry.ts`, the capability provider name matches it exactly, and authenticated requests use Secret Injection rather than in-tool secret handling
 - New sandbox tool: ensure the manifest exists in `tools/sandboxes/<id>/{manifest.ts, setup.ts}`, the manifest id matches exactly, the registry exposes bundled setup-script bytes, and any authenticated egress uses a restricted network policy plus Secret Injection
+- SDK-backed tool: verify the SDK transport path. If the SDK needs raw secrets in-process and cannot be adapted to brokered HTTP safely, move it into a sandbox or report the blocker instead of smuggling credentials into tool code
 - New runtime behavior: only then inspect `tools/runtime/build-attached-tools.ts`, `agent-runtime/workflows/session/steps/resolve-tool-plan`, or other runtime files
 
 Do not edit `buildAttachedTools`, `agent-factory`, or `agents/server/capability-summary.ts` just to "hook up" a normal tool. Registry wiring is enough for standard tools.
@@ -157,6 +161,7 @@ At minimum:
 - confirm any authenticated flow uses Secret Injection and a restricted network policy
 - confirm the chosen `maxResponseBytes` matches the tool's expected payload shape and size
 - confirm `response.truncated` is handled intentionally for brokered HTTP tools
+- confirm SDK-backed integrations still keep credentials outside tool code and outside the sandbox VM boundary
 - run `pnpm check` if the change is substantial or touches shared runtime types
 - mention any unimplemented prerequisite such as a missing connector, missing sandbox manifest, or missing product rule instead of guessing
 

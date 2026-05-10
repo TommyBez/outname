@@ -34,6 +34,24 @@ export interface ToolSandboxManifest {
    */
   id: string
   /**
+   * Optional runtime egress policy for commands executed from the built
+   * snapshot. Use this when the sandbox needs brokered credentials
+   * injected into outbound requests at call time.
+   */
+  runtimeNetwork?: {
+    /**
+     * Provider ids from `connections/registry.ts` whose credentials
+     * should be injected outside the VM boundary for this sandbox.
+     */
+    brokeredProviders?: readonly string[]
+    /**
+     * Exact hosts that may be reached without injected headers.
+     * Useful for public downloads or callbacks alongside authenticated
+     * provider calls.
+     */
+    unauthenticatedHosts?: readonly string[]
+  }
+  /**
    * Bumped whenever the manifest's intent changes. The full descriptor
    * plus setup-script bytes drive rebuilds, so runtime/resource changes
    * also invalidate stale snapshots.

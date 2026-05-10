@@ -9,6 +9,7 @@ import { posthogRequestTool } from '@/tools/providers/posthog'
 import { resendSendTool } from '@/tools/providers/resend'
 import { supabaseRequestTool } from '@/tools/providers/supabase'
 import { typefullyRequestTool } from '@/tools/providers/typefully'
+import { v0AiToolsTool } from '@/tools/providers/v0'
 import { vercelRequestTool } from '@/tools/providers/vercel'
 import { xApiRequestTool } from '@/tools/providers/x-api'
 import { getToolSandboxManifest } from '@/tools/sandboxes/registry'
@@ -34,6 +35,7 @@ const TOOLS: MaintainerTool[] = [
   agentBrowserTool,
   xApiRequestTool,
   typefullyRequestTool,
+  v0AiToolsTool,
   vercelRequestTool,
   supabaseRequestTool,
 ]
