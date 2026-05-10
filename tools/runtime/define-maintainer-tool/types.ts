@@ -50,6 +50,7 @@ export interface BundleChildToolArgs<TConfig> {
   displayName: string
   execute(args: ExecuteArgs<unknown, TConfig>): ExecuteResult<unknown>
   inputSchema: z.ZodTypeAny
+  isEnabled?(config: TConfig): boolean
   policies?: ToolPolicy<unknown, TConfig>[]
 }
 

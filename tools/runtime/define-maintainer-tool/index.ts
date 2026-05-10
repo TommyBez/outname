@@ -118,18 +118,20 @@ export function defineToolBundle<TConfig = Record<string, never>>(
     build(ctx): BuiltMaintainerTool {
       const config = configSchema.parse(ctx.config)
       return Object.fromEntries(
-        Object.entries(definition.tools).map(([toolId, child]) => [
-          toolId,
-          buildChildTool({
-            attachmentToolId: ctx.toolId,
-            definition: child,
-            inputSchema: child.inputSchema,
-            config,
-            ctx,
-            description: child.description,
+        Object.entries(definition.tools)
+          .filter(([, child]) => child.isEnabled?.(config) ?? true)
+          .map(([toolId, child]) => [
             toolId,
-          }),
-        ])
+            buildChildTool({
+              attachmentToolId: ctx.toolId,
+              definition: child,
+              inputSchema: child.inputSchema,
+              config,
+              ctx,
+              description: child.description,
+              toolId,
+            }),
+          ])
       )
     },
   }
