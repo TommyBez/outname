@@ -1,8 +1,8 @@
 ---
 name: maintainer-tool-implementation
-description: Implement a new maintainer tool in this codebase's tool catalog. Use when adding a tool under `tools/providers/`, wiring a provider-backed integration, creating a `tool_sandbox` tool, updating `tools/catalog/registry.ts`, or when the user mentions maintainer tools, `define-maintainer-tool`, `defineActionTool`, `defineApiPassthroughTool`, `defineSandboxTool`, brokered HTTP, or catalog tool attachments.
+description: Implement a new maintainer tool in this codebase's tool catalog. Use when adding a tool under `tools/providers/`, wiring a provider-backed integration, wrapping an official SDK as AI tools, creating a `tool_sandbox` tool, updating `tools/catalog/registry.ts`, or when the user mentions maintainer tools, `define-maintainer-tool`, `defineActionTool`, `defineApiPassthroughTool`, `defineSandboxTool`, brokered HTTP, SDK-backed tools, or catalog tool attachments.
 metadata:
-  version: 1.1.4
+  version: 1.1.5
 ---
 
 # Maintainer Tool Implementation
@@ -23,6 +23,7 @@ Default references:
 - `tools/providers/resend.ts` for a custom action tool using brokered HTTP
 - `tools/providers/calcom.ts` for an API passthrough tool with policies
 - `tools/providers/agent-browser.ts` for a sandbox-backed CLI tool
+- `tools/providers/v0.ts` for an SDK-backed action tool with `capabilities: [{ kind: 'none' }]`
 
 Read `tools/runtime/build-attached-tools.ts` only if the new tool needs special runtime behavior. Most tools do not.
 
@@ -54,15 +55,15 @@ Deliver a tool that:
 
 Follow the three-layer rule from `tools/catalog/types.ts`:
 
-- **Credentials**: provider secret/API key lives in the connector runtime, never in tool config or tool code
+- **Credentials**: provider secret/API key usually lives in the connector runtime, never in tool config or tool code
 - **Attachment config**: saved defaults like sender address, workspace id, calendar id
 - **Per-call args**: what the agent decides at invocation time
 
-If a field is secret, it does not belong in `configSchema`.
+If a field is secret, it does not belong in `configSchema`. For SDK-backed tools that intentionally use trusted server env instead of user-attached connectors, keep the env lookup in server code and document that the tool uses `capabilities: [{ kind: 'none' }]`.
 
 ### 2. Choose the narrowest helper
 
-- Use `defineActionTool` for custom multi-step logic or when you need to mix policies, brokered HTTP, parsing, and custom result shaping
+- Use `defineActionTool` for custom multi-step logic or when you need to mix policies, brokered HTTP, parsing, SDK delegation, and custom result shaping
 - Use `defineApiPassthroughTool` when the tool is mostly "validated input -> authenticated HTTP request -> normalized response"
 - Use `defineSandboxTool` when the tool runs a CLI or process inside a tool sandbox snapshot
 - For sandbox manifests in this repo, keep installer bytes in `tools/sandboxes/<id>/setup.ts` and expose them through `tools/sandboxes/registry.ts`; do not rely on runtime reads of repo-relative `.sh` files
@@ -104,6 +105,7 @@ Implementation checklist:
 - [ ] Pick the tool pattern (`defineActionTool`, `defineApiPassthroughTool`, or `defineSandboxTool`)
 - [ ] Decide capability needs (`brokered_http`, `tool_sandbox`, or `none`)
 - [ ] Separate credentials vs attachment config vs per-call args
+- [ ] If using an SDK instead of direct HTTP, confirm whether auth comes from a connector or trusted server env
 - [ ] For authenticated tools, enforce Secret Injection pattern and restricted network policy
 - [ ] Investigate the expected response size and truncation risk for the actual tool
 - [ ] Decide whether brokered HTTP responses need a connector-level or request-level `maxResponseBytes` override
@@ -143,6 +145,7 @@ Only add a new category ordering entry if the category is actually new.
 ### Step 4: Wire dependencies only when needed
 
 - New provider-backed tool: ensure the connector/provider exists in `connections/registry.ts`, the capability provider name matches it exactly, and authenticated requests use Secret Injection rather than in-tool secret handling
+- New SDK-backed tool with no connector: ensure the SDK runs entirely in trusted server code, uses `capabilities: [{ kind: 'none' }]`, and does not push secrets into attachment config or sandbox args
 - New sandbox tool: ensure the manifest exists in `tools/sandboxes/<id>/{manifest.ts, setup.ts}`, the manifest id matches exactly, the registry exposes bundled setup-script bytes, and any authenticated egress uses a restricted network policy plus Secret Injection
 - New runtime behavior: only then inspect `tools/runtime/build-attached-tools.ts`, `agent-runtime/workflows/session/steps/resolve-tool-plan`, or other runtime files
 
