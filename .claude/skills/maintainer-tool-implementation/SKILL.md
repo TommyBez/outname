@@ -1,8 +1,8 @@
 ---
 name: maintainer-tool-implementation
-description: Implement a new maintainer tool in this codebase's tool catalog. Use when adding a tool under `tools/providers/`, wiring a provider-backed integration, wrapping an official SDK as AI tools, creating a `tool_sandbox` tool, updating `tools/catalog/registry.ts`, or when the user mentions maintainer tools, `define-maintainer-tool`, `defineActionTool`, `defineApiPassthroughTool`, `defineSandboxTool`, brokered HTTP, SDK-backed tools, or catalog tool attachments.
+description: Implement a new maintainer tool in this codebase's tool catalog. Use when adding a tool under `tools/providers/`, wiring a provider-backed integration, wrapping an official SDK as AI tools or tool bundles, creating a `tool_sandbox` tool, updating `tools/catalog/registry.ts`, or when the user mentions maintainer tools, `define-maintainer-tool`, `defineActionTool`, `defineToolBundle`, `defineApiPassthroughTool`, `defineSandboxTool`, brokered HTTP, SDK-backed tools, or catalog tool attachments.
 metadata:
-  version: 1.1.5
+  version: 1.1.6
 ---
 
 # Maintainer Tool Implementation
@@ -23,7 +23,7 @@ Default references:
 - `tools/providers/resend.ts` for a custom action tool using brokered HTTP
 - `tools/providers/calcom.ts` for an API passthrough tool with policies
 - `tools/providers/agent-browser.ts` for a sandbox-backed CLI tool
-- `tools/providers/v0.ts` for an SDK-backed action tool with `capabilities: [{ kind: 'none' }]`
+- `tools/providers/v0.ts` for an SDK-backed tool bundle with `capabilities: [{ kind: 'none' }]`
 
 Read `tools/runtime/build-attached-tools.ts` only if the new tool needs special runtime behavior. Most tools do not.
 
@@ -64,6 +64,7 @@ If a field is secret, it does not belong in `configSchema`. For SDK-backed tools
 ### 2. Choose the narrowest helper
 
 - Use `defineActionTool` for custom multi-step logic or when you need to mix policies, brokered HTTP, parsing, SDK delegation, and custom result shaping
+- Use `defineToolBundle` when one attachment should expose many AI SDK child tools directly (for example, flattening an SDK-provided tool map into namespaced child tool ids)
 - Use `defineApiPassthroughTool` when the tool is mostly "validated input -> authenticated HTTP request -> normalized response"
 - Use `defineSandboxTool` when the tool runs a CLI or process inside a tool sandbox snapshot
 - For sandbox manifests in this repo, keep installer bytes in `tools/sandboxes/<id>/setup.ts` and expose them through `tools/sandboxes/registry.ts`; do not rely on runtime reads of repo-relative `.sh` files
@@ -103,6 +104,7 @@ Copy this checklist and work through it:
 ```md
 Implementation checklist:
 - [ ] Pick the tool pattern (`defineActionTool`, `defineApiPassthroughTool`, or `defineSandboxTool`)
+- [ ] Decide whether the attachment should expose one tool or a bundle of child tools
 - [ ] Decide capability needs (`brokered_http`, `tool_sandbox`, or `none`)
 - [ ] Separate credentials vs attachment config vs per-call args
 - [ ] If using an SDK instead of direct HTTP, confirm whether auth comes from a connector or trusted server env
@@ -125,6 +127,7 @@ Lock down:
 - short catalog `description`
 - category, preferably reusing an existing one
 - whether the tool depends on a provider connection, sandbox snapshot, or neither
+- if bundling, a stable attachment id plus stable namespaced child tool ids
 
 ### Step 2: Implement the tool file
 
@@ -132,6 +135,7 @@ In `tools/providers/<tool-name>.ts`:
 
 - define `configSchema` if the attachment needs saved defaults
 - define `inputSchema`
+- if bundling, define the child tool map and make child ids stable / namespaced
 - if brokered HTTP is involved, investigate the expected payload size for this tool and then size `maxResponseBytes` deliberately instead of relying on the small broker default
 - implement execution with the chosen helper
 - return compact structured data that is useful to the model
@@ -146,6 +150,7 @@ Only add a new category ordering entry if the category is actually new.
 
 - New provider-backed tool: ensure the connector/provider exists in `connections/registry.ts`, the capability provider name matches it exactly, and authenticated requests use Secret Injection rather than in-tool secret handling
 - New SDK-backed tool with no connector: ensure the SDK runs entirely in trusted server code, uses `capabilities: [{ kind: 'none' }]`, and does not push secrets into attachment config or sandbox args
+- New bundled tool: ensure one attachment row can expose multiple child tool ids cleanly, and keep child ids namespaced to avoid collisions in the runtime tool dictionary
 - New sandbox tool: ensure the manifest exists in `tools/sandboxes/<id>/{manifest.ts, setup.ts}`, the manifest id matches exactly, the registry exposes bundled setup-script bytes, and any authenticated egress uses a restricted network policy plus Secret Injection
 - New runtime behavior: only then inspect `tools/runtime/build-attached-tools.ts`, `agent-runtime/workflows/session/steps/resolve-tool-plan`, or other runtime files
 
@@ -156,7 +161,7 @@ Do not edit `buildAttachedTools`, `agent-factory`, or `agents/server/capability-
 At minimum:
 
 - read the finished tool file and registry entry once
-- confirm ids, category, provider, and manifest names are consistent
+- confirm ids, category, provider, manifest names, and any child tool ids are consistent
 - confirm any authenticated flow uses Secret Injection and a restricted network policy
 - confirm the chosen `maxResponseBytes` matches the tool's expected payload shape and size
 - confirm `response.truncated` is handled intentionally for brokered HTTP tools
@@ -175,5 +180,6 @@ When you finish, report:
 
 - which pattern you chose and why
 - which files changed
+- whether the attachment exposes one tool or a bundle of child tools
 - whether the tool is ready immediately or still depends on a connector, sandbox, or product decision
 - what verification you ran
