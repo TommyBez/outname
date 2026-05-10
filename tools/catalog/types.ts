@@ -50,6 +50,17 @@ export type ToolResult<TData = unknown> =
   | { ok: true; data: TData }
   | { ok: false; code: ToolErrorCode; message: string }
 
+export type BuiltMaintainerTool = Tool | Record<string, Tool>
+
+export interface MaintainerExposedTool {
+  /** Short description of the child tool. */
+  description: string
+  /** Human-facing label for catalog previews or future traces. */
+  displayName: string
+  /** LLM-visible tool id exposed by this attachment. */
+  toolId: string
+}
+
 /**
  * Build context handed to `MaintainerTool.build`. Tools receive ONLY
  * what they need to produce AI SDK tool closures. Raw credentials are
@@ -115,11 +126,11 @@ export type Reconnect =
  */
 export interface MaintainerTool {
   /**
-   * Build the AI-SDK Tool the agent actually invokes. Must throw on
-   * unrecoverable misconfiguration — the runtime catches and surfaces
-   * as `reason: "build_failed"`.
+   * Build the AI-SDK tool or tool map the agent actually invokes. Must
+   * throw on unrecoverable misconfiguration — the runtime catches and
+   * surfaces as `reason: "build_failed"`.
    */
-  build(ctx: ToolBuildContext): Tool
+  build(ctx: ToolBuildContext): BuiltMaintainerTool
   /** Capabilities the tool needs at build / execute time. */
   capabilities: ToolCapability[]
   /** Coarse category for catalog grouping. */
@@ -130,6 +141,11 @@ export interface MaintainerTool {
   description: string
   /** Human label for catalog cards. */
   displayName: string
-  /** Stable id used in `agent_tools.tool_id` and as the AI-SDK tool key. */
+  /** LLM-visible child tools this attachment exposes. */
+  exposedTools: readonly MaintainerExposedTool[]
+  /**
+   * Stable attachment id used in `agent_tools.tool_id`. Single-tool
+   * attachments typically expose one child tool with the same id.
+   */
   id: string
 }

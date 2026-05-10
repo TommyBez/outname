@@ -38,6 +38,7 @@ export interface ToolAuditSink {
 
 export interface ToolRuntimeContext {
   agentId: string
+  attachmentToolId: string
   audit: ToolAuditSink
   conversationId: string | null
   http: BrokeredHttpClient
@@ -49,16 +50,25 @@ export interface ToolRuntimeContext {
 
 export function createRuntimeContext(input: {
   agentId: string
+  attachmentToolId?: string
   conversationId: string | null
   runId: string | null
   sandboxManifestId?: string
   toolId: string
   userId: string
 }): ToolRuntimeContext {
-  const { agentId, conversationId, runId, sandboxManifestId, toolId, userId } =
-    input
+  const {
+    agentId,
+    attachmentToolId,
+    conversationId,
+    runId,
+    sandboxManifestId,
+    toolId,
+    userId,
+  } = input
   return {
     agentId,
+    attachmentToolId: attachmentToolId ?? toolId,
     conversationId,
     runId,
     toolId,

@@ -3,8 +3,7 @@ import 'server-only'
 import { v0ToolsByCategory } from '@v0-sdk/ai-tools'
 import { z } from 'zod'
 import {
-  defineActionTool,
-  type ToolPolicy,
+  defineToolBundle,
   toolError,
   toolSuccess,
 } from '@/tools/runtime/define-maintainer-tool'
@@ -12,6 +11,8 @@ import {
 const V0_API_KEY_ENV_NAME = 'V0_API_KEY'
 const V0_CONFIGURED_API_KEY_PLACEHOLDER = 'schema-only-v0-api-key'
 const PROVIDER_ERROR_MESSAGE_LIMIT = 1000
+const V0_ATTACHMENT_TOOL_ID = 'v0_platform'
+const LEADING_CHARACTER_PATTERN = /^./
 
 type V0MutationLevel = 'read' | 'write' | 'destructive'
 type V0ToolCategory = 'chat' | 'project' | 'deployment' | 'user' | 'hook'
@@ -28,18 +29,18 @@ const v0ConfigSchema = z.object({
 type V0ToolConfig = z.infer<typeof v0ConfigSchema>
 
 interface V0SdkTool {
+  description?: string
   execute?: (input: unknown) => Promise<unknown> | unknown
   inputSchema: z.ZodTypeAny
 }
 
 interface V0OperationDefinition {
   category: V0ToolCategory
+  childToolId: string
   mutation: V0MutationLevel
   operation: string
   sdkTool: V0SdkTool
 }
-
-type V0RequestInput = Record<string, unknown> & { operation: string }
 
 function inferMutation(operation: string): V0MutationLevel {
   if (operation.startsWith('get') || operation.startsWith('list')) {
@@ -51,6 +52,16 @@ function inferMutation(operation: string): V0MutationLevel {
   return 'write'
 }
 
+function humanizeOperation(operation: string): string {
+  return operation
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(LEADING_CHARACTER_PATTERN, (character) => character.toUpperCase())
+}
+
+function toChildToolId(operation: string): string {
+  return `v0_${operation}`
+}
+
 function flattenV0Tools(
   toolGroups: Record<V0ToolCategory, Record<string, V0SdkTool>>
 ): V0OperationDefinition[] {
@@ -59,6 +70,7 @@ function flattenV0Tools(
     for (const [operation, sdkTool] of Object.entries(group)) {
       definitions.push({
         category: category as V0ToolCategory,
+        childToolId: toChildToolId(operation),
         mutation: inferMutation(operation),
         operation,
         sdkTool,
@@ -76,66 +88,6 @@ const v0SchemaDefinitions = flattenV0Tools(
 
 let cachedRuntimeTools: Record<string, V0SdkTool> | null = null
 
-function getOperationDefinition(operation: string): V0OperationDefinition {
-  const schemaDefinition = v0SchemaDefinitions.find(
-    (definition) => definition.operation === operation
-  )
-  if (!schemaDefinition) {
-    throw new Error(`Unknown v0 operation: ${operation}`)
-  }
-  return schemaDefinition
-}
-
-function asObjectSchema(
-  schema: z.ZodTypeAny,
-  operation: string
-): z.AnyZodObject {
-  if (!(schema instanceof z.ZodObject)) {
-    throw new Error(`The v0 "${operation}" input schema must be a Zod object.`)
-  }
-  return schema
-}
-
-const v0RequestInputSchema = z.discriminatedUnion(
-  'operation',
-  v0SchemaDefinitions.map(({ operation, sdkTool }) =>
-    asObjectSchema(sdkTool.inputSchema, operation).extend({
-      operation: z.literal(operation),
-      confirmIrreversible: z
-        .boolean()
-        .default(false)
-        .describe(
-          'Local safety confirmation flag. Required for mutating operations when the attachment is not read-only. This field is never sent to v0.'
-        ),
-    })
-  ) as unknown as [
-    z.ZodDiscriminatedUnionOption<'operation'>,
-    ...z.ZodDiscriminatedUnionOption<'operation'>[],
-  ]
-) as unknown as z.ZodType<V0RequestInput>
-
-const v0SafetyPolicy: ToolPolicy<V0RequestInput, V0ToolConfig> = ({
-  input,
-  config,
-}) => {
-  const definition = getOperationDefinition(input.operation)
-  if (config.readOnly && definition.mutation !== 'read') {
-    return {
-      ok: false,
-      message:
-        'This v0 attachment is read-only. Set readOnly=false to allow create, update, and delete operations.',
-    }
-  }
-  if (definition.mutation !== 'read' && !input.confirmIrreversible) {
-    return {
-      ok: false,
-      message:
-        'Mutating v0 operations require confirmIrreversible=true when readOnly is disabled.',
-    }
-  }
-  return { ok: true }
-}
-
 function getRuntimeTools(): Record<string, V0SdkTool> | null {
   if (cachedRuntimeTools) {
     return cachedRuntimeTools
@@ -152,7 +104,7 @@ function getRuntimeTools(): Record<string, V0SdkTool> | null {
   )
   cachedRuntimeTools = Object.fromEntries(
     runtimeDefinitions.map((definition) => [
-      definition.operation,
+      definition.childToolId,
       definition.sdkTool,
     ])
   ) as Record<string, V0SdkTool>
@@ -171,56 +123,71 @@ function clipProviderError(operation: string, error: unknown): string {
     : `v0 ${operation} failed.`
 }
 
-function stripLocalFields(input: V0RequestInput): Record<string, unknown> {
-  return Object.fromEntries(
-    Object.entries(input).filter(
-      ([key]) => key !== 'operation' && key !== 'confirmIrreversible'
-    )
-  )
-}
+const v0BundleTools = Object.fromEntries(
+  v0SchemaDefinitions.map((definition) => [
+    definition.childToolId,
+    {
+      displayName: `v0 · ${humanizeOperation(definition.operation)}`,
+      description:
+        definition.sdkTool.description ??
+        `Run the v0 ${humanizeOperation(definition.operation)} tool.`,
+      inputSchema: definition.sdkTool.inputSchema,
+      policies:
+        definition.mutation === 'read'
+          ? undefined
+          : [
+              ({ config }: { config: V0ToolConfig }) =>
+                config.readOnly
+                  ? {
+                      ok: false as const,
+                      message:
+                        'This v0 attachment is read-only. Set readOnly=false to allow create, update, and delete operations.',
+                    }
+                  : ({ ok: true } as const),
+            ],
+      async execute({
+        input,
+      }: {
+        config: V0ToolConfig
+        ctx: unknown
+        input: unknown
+      }) {
+        const tools = getRuntimeTools()
+        if (!tools) {
+          return toolError(
+            'unavailable',
+            `${V0_API_KEY_ENV_NAME} is not configured on the server.`
+          )
+        }
 
-export const v0RequestTool = defineActionTool({
-  id: 'v0_request',
+        const runtimeTool = tools[definition.childToolId]
+        if (typeof runtimeTool?.execute !== 'function') {
+          return toolError(
+            'unavailable',
+            `The v0 SDK tool "${definition.childToolId}" is unavailable.`
+          )
+        }
+
+        try {
+          return toolSuccess(await runtimeTool.execute(input))
+        } catch (error) {
+          return toolError(
+            'provider_error',
+            clipProviderError(definition.operation, error)
+          )
+        }
+      },
+    },
+  ])
+)
+
+export const v0PlatformTool = defineToolBundle({
+  id: V0_ATTACHMENT_TOOL_ID,
   category: 'deployment',
-  displayName: 'v0 · Request',
+  displayName: 'v0 · Platform',
   description:
-    'Call official v0 Platform API tools through the @v0-sdk/ai-tools SDK for chats, projects, deployments, user info, and webhooks. Defaults to read-only mode.',
+    'Attach the official v0 Platform AI SDK tools directly for chats, projects, deployments, user info, and webhooks. Defaults to read-only mode.',
   capabilities: [{ kind: 'none' }],
   configSchema: v0ConfigSchema,
-  inputSchema: v0RequestInputSchema,
-  policies: [v0SafetyPolicy],
-  async execute({ input, config }) {
-    const tools = getRuntimeTools()
-    if (!tools) {
-      return toolError(
-        'unavailable',
-        `${V0_API_KEY_ENV_NAME} is not configured on the server.`
-      )
-    }
-
-    const definition = getOperationDefinition(input.operation)
-    const tool = tools[input.operation]
-    if (typeof tool?.execute !== 'function') {
-      return toolError(
-        'unavailable',
-        `The v0 SDK tool "${input.operation}" is unavailable.`
-      )
-    }
-
-    try {
-      const result = await tool.execute(stripLocalFields(input))
-      return toolSuccess({
-        operation: definition.operation,
-        category: definition.category,
-        mutation: definition.mutation,
-        readOnly: config.readOnly,
-        result,
-      })
-    } catch (error) {
-      return toolError(
-        'provider_error',
-        clipProviderError(definition.operation, error)
-      )
-    }
-  },
+  tools: v0BundleTools,
 })

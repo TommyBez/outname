@@ -58,6 +58,7 @@ async function Resolved({ params }: { params: Params }) {
       toolId: t.id,
       displayName: t.displayName,
       description: t.description,
+      exposedTools: [...t.exposedTools],
       providers,
       toolSandboxManifest: sandboxManifest,
       configFields: describeConfigSchema(t.configSchema),
