@@ -1,3 +1,4 @@
+import { formatAgentCadenceLower } from '@/agents/format'
 import type { AgentCreationRequest } from '@/agents/server/creation-types'
 
 export function scheduleLabel(
@@ -6,7 +7,7 @@ export function scheduleLabel(
   if (!schedule.enabled) {
     return 'off'
   }
-  return `every ${schedule.intervalMinutes} minutes`
+  return formatAgentCadenceLower(schedule.intervalMinutes)
 }
 
 export function stepLimitLabel(

@@ -4,6 +4,7 @@ import {
   Bot,
   LayoutDashboard,
   LogOut,
+  Plug,
   Settings as SettingsIcon,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -27,6 +28,7 @@ import {
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/agents', label: 'Agents', icon: Bot },
+  { href: '/connections', label: 'Connections', icon: Plug },
   { href: '/settings', label: 'Settings', icon: SettingsIcon },
 ] as const
 

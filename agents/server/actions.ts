@@ -83,6 +83,7 @@ export async function updateAgentAction(
   updateTag(agentTag(input.id))
   revalidatePath('/agents')
   revalidatePath(`/agents/${input.id}`)
+  revalidatePath(`/agents/${input.id}/configure`)
   revalidatePath(`/agents/${input.id}/edit`)
   revalidatePath('/')
 }
@@ -121,6 +122,7 @@ export async function toggleAgentAction(
   updateTag(agentTag(agentId))
   revalidatePath('/agents')
   revalidatePath(`/agents/${agentId}`)
+  revalidatePath(`/agents/${agentId}/configure`)
   revalidatePath('/')
 }
 

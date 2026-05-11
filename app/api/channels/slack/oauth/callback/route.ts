@@ -32,13 +32,13 @@ export async function GET(request: NextRequest): Promise<Response> {
   const stateParam = url.searchParams.get('state')
   const error = url.searchParams.get('error')
   if (error) {
-    return redirectToSettings(request, {
+    return redirectToConnections(request, {
       connection: 'error',
       reason: `slack: ${error}`,
     })
   }
   if (!stateParam) {
-    return redirectToSettings(request, {
+    return redirectToConnections(request, {
       connection: 'error',
       reason: 'missing state',
     })
@@ -46,13 +46,13 @@ export async function GET(request: NextRequest): Promise<Response> {
 
   const decoded = decodeOAuthState(stateParam)
   if (!decoded) {
-    return redirectToSettings(request, {
+    return redirectToConnections(request, {
       connection: 'error',
       reason: 'invalid state',
     })
   }
   if (decoded.userId !== session.user.id) {
-    return redirectToSettings(request, {
+    return redirectToConnections(request, {
       connection: 'error',
       reason: 'state does not match session user',
     })
@@ -73,24 +73,24 @@ export async function GET(request: NextRequest): Promise<Response> {
     await withInstallContext({ userId: session.user.id }, () =>
       getSlackAdapter().handleOAuthCallback(request, { redirectUri })
     )
-    return redirectToSettings(request, {
+    return redirectToConnections(request, {
       connection: 'connected',
       provider: 'slack',
     })
   } catch (err) {
     console.error('[slack-oauth] handleOAuthCallback failed', err)
-    return redirectToSettings(request, {
+    return redirectToConnections(request, {
       connection: 'error',
       reason: err instanceof Error ? err.message : 'oauth failed',
     })
   }
 }
 
-function redirectToSettings(
+function redirectToConnections(
   request: NextRequest,
   params: Record<string, string>
 ): Response {
-  const target = new URL('/settings', request.url)
+  const target = new URL('/connections', request.url)
   for (const [key, value] of Object.entries(params)) {
     target.searchParams.set(key, value)
   }

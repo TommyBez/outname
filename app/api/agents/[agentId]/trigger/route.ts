@@ -56,6 +56,8 @@ export async function POST(
         : await pokeHeartbeat({ agent })
 
     revalidatePath(`/agents/${agent.id}`)
+    revalidatePath(`/agents/${agent.id}/memory/timeline`)
+    revalidatePath(`/agents/${agent.id}/memory/dreams`)
     revalidatePath(`/agents/${agent.id}/timeline`)
     revalidatePath(`/agents/${agent.id}/dreams`)
     revalidatePath('/agents')

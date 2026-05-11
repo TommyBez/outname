@@ -7,6 +7,7 @@ import {
   useAgentRunTranscript,
   useAgentRunTranscriptPreview,
 } from '@/agent-runtime/hooks/use-agent-run-transcript'
+import { formatAgentCadence } from '@/agents/format'
 import { BudgetIndicator } from '@/budgets/components/budget-indicator'
 import type { BudgetSummaryEntry } from '@/budgets/server/types'
 import { AgentChatTranscript } from '@/chat/components/agent-chat-transcript'
@@ -163,7 +164,7 @@ function AgentActivityPanel({
           className="mt-6 inline-flex h-11 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground"
           href={`/agents/${agent.id}/chat`}
         >
-          Open agent
+          Open chat
         </Link>
       </aside>
     </div>
@@ -197,7 +198,7 @@ function buildSchedule(agent: DashboardAgent) {
     {
       label: 'Heartbeat',
       value: agent.heartbeatEnabled
-        ? `Every ${agent.heartbeatIntervalMinutes} min`
+        ? formatAgentCadence(agent.heartbeatIntervalMinutes)
         : 'Off',
     },
     {

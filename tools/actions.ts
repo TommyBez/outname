@@ -1,7 +1,13 @@
 'use server'
 
+import { revalidatePath, updateTag } from 'next/cache'
 import { requireUserId } from '@/auth/server/auth-guard'
 import type { AgentToolKind } from '@/shared/db/schema'
+import {
+  agentTag,
+  agentToolsTag,
+  userAgentsTag,
+} from '@/shared/server/cache-tags'
 import { detachToolForUser } from '@/tools/server/attachment-service/detach'
 import { attachMaintainerToolForUser } from '@/tools/server/attachment-service/maintainer'
 import { attachSubAgentForUser } from '@/tools/server/attachment-service/sub-agent'
@@ -13,7 +19,16 @@ export async function attachToolAction(
   rawConfig: Record<string, unknown>
 ): Promise<AttachResult> {
   const userId = await requireUserId()
-  return attachMaintainerToolForUser({ agentId, toolId, rawConfig, userId })
+  const result = await attachMaintainerToolForUser({
+    agentId,
+    toolId,
+    rawConfig,
+    userId,
+  })
+  if (result.ok) {
+    updateAgentToolSurfaces(agentId, userId)
+  }
+  return result
 }
 
 /**
@@ -34,7 +49,15 @@ export async function attachSubAgentAction(
   childAgentId: string
 ): Promise<AttachResult> {
   const userId = await requireUserId()
-  return attachSubAgentForUser({ parentAgentId, childAgentId, userId })
+  const result = await attachSubAgentForUser({
+    parentAgentId,
+    childAgentId,
+    userId,
+  })
+  if (result.ok) {
+    updateAgentToolSurfaces(parentAgentId, userId)
+  }
+  return result
 }
 
 export async function detachToolAction(
@@ -43,5 +66,19 @@ export async function detachToolAction(
   kind: AgentToolKind = 'maintainer'
 ): Promise<AttachResult> {
   const userId = await requireUserId()
-  return detachToolForUser({ agentId, toolId, kind, userId })
+  const result = await detachToolForUser({ agentId, toolId, kind, userId })
+  if (result.ok) {
+    updateAgentToolSurfaces(agentId, userId)
+  }
+  return result
+}
+
+function updateAgentToolSurfaces(agentId: string, userId: string): void {
+  updateTag(agentToolsTag(agentId))
+  updateTag(agentTag(agentId))
+  updateTag(userAgentsTag(userId))
+  revalidatePath(`/agents/${agentId}`)
+  revalidatePath(`/agents/${agentId}/tools`)
+  revalidatePath('/agents')
+  revalidatePath('/dashboard')
 }

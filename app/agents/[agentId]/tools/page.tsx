@@ -217,7 +217,7 @@ async function Resolved({ params }: { params: Params }) {
             <p className="text-muted-foreground text-sm">
               Maintainer tools the agent may call. Attach the ones you want this
               agent to use; configure their per-attachment settings; connect any
-              required provider once on the settings page.
+              required provider once on the connections page.
             </p>
           </div>
           <div className="flex flex-wrap items-start gap-3 border-foreground border-l-2 pl-4 md:justify-end">
@@ -229,7 +229,7 @@ async function Resolved({ params }: { params: Params }) {
             </Link>
             <Link
               className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
-              href="/settings"
+              href="/connections"
             >
               Connections →
             </Link>

@@ -1,5 +1,9 @@
 import { Suspense } from 'react'
 import {
+  AgentWorkspaceFrame,
+  AgentWorkspaceSkeleton,
+} from '@/agents/components/agent-workspace'
+import {
   AgentSidebarSection,
   AgentSidebarSectionSkeleton,
 } from '@/chat/components/agent-sidebar-section'
@@ -15,9 +19,8 @@ export const metadata = createPrivatePageMetadata(
 
 /**
  * Shell for every agent route. Supplies the single app shell plus a
- * contextual "agent workspace" section in the sidebar, so Chat, About,
- * and Configure all share the same chrome without spawning a second
- * sidebar or a tab strip above the page content.
+ * contextual chat-history section in the sidebar, so Overview, Chat,
+ * Configure, Tools, and Memory share the same workspace chrome.
  *
  * The sidebar section is streamed through its own `<Suspense>` so the
  * rest of the shell (and the page content below) paint immediately even
@@ -38,7 +41,9 @@ export default function AgentLayout({
         </Suspense>
       }
     >
-      {children}
+      <Suspense fallback={<AgentWorkspaceSkeleton />}>
+        <AgentWorkspaceFrame params={params}>{children}</AgentWorkspaceFrame>
+      </Suspense>
     </AppShell>
   )
 }

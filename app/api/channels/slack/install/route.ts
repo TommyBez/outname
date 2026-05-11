@@ -38,7 +38,7 @@ export async function GET(request: NextRequest): Promise<Response> {
 
   const clientId = process.env.SLACK_CLIENT_ID
   if (!clientId) {
-    const target = new URL('/settings', request.url)
+    const target = new URL('/connections', request.url)
     target.searchParams.set('connection', 'error')
     target.searchParams.set(
       'reason',
