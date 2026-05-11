@@ -5,7 +5,7 @@ import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { deleteSlackBindingAction } from '@/channels/slack/server/actions'
 import type { InstallationView, SlackBindingView } from './types'
-import { describeBindingTarget, KIND_LABEL, workspaceLabel } from './utils'
+import { KIND_LABEL, workspaceLabel } from './utils'
 
 export function BindingsBlock({
   agentId,
@@ -46,7 +46,7 @@ export function BindingsBlock({
       {bindings.length === 0 ? (
         <p className="text-muted-foreground text-sm">
           No Slack messages route to this agent yet. Add a binding below to
-          route a channel, DM, or workspace fallback.
+          route a channel or DM.
         </p>
       ) : (
         <ul className="flex flex-col divide-y-2 divide-foreground border-foreground border-y-2">
@@ -87,7 +87,7 @@ function BindingRow({
           <p className="font-bold text-sm">
             {KIND_LABEL[binding.kind]}{' '}
             <span className="font-mono font-normal text-muted-foreground">
-              {describeBindingTarget(binding)}
+              {binding.externalKey}
             </span>
           </p>
           <p className="truncate text-muted-foreground text-xs">
@@ -120,13 +120,5 @@ function BindingIcon({ kind }: { kind: SlackBindingView['kind'] }) {
   if (kind === 'channel') {
     return <Hash aria-hidden className="size-4 shrink-0" />
   }
-  if (kind === 'dm') {
-    return <UserIcon aria-hidden className="size-4 shrink-0" />
-  }
-  return (
-    <span
-      aria-hidden
-      className="inline-block size-2 shrink-0 rounded-full bg-foreground"
-    />
-  )
+  return <UserIcon aria-hidden className="size-4 shrink-0" />
 }

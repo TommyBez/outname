@@ -38,8 +38,7 @@ runChannelChatTurn                ◄─ lib/channels/dispatch.ts
    │       (drop event if the workspace has no installs)
    │     - for each installing user, find a candidate agent via:
    │         · existing channel_thread_conversations row (per user)
-   │         · agent_channel_bindings (channel|dm) scoped by userId
-   │         · agent_channel_bindings ('default') scoped by userId
+   │         · agent_channel_bindings (channel or dm) scoped by userId
    │  2. for each matched agent:
    │       a. ensureConversationForThread (per agent)
    │       b. insertChatMessage (user turn)
@@ -171,8 +170,7 @@ The dashboard exposes the binding UI on every agent at **Configure →
 Slack**. From there you can:
 
 - pick a workspace from the workspaces you have installed;
-- choose a routing kind — `channel`, `dm`, or `default` (the
-  workspace-wide fallback);
+- choose a routing kind — `channel` or `dm`;
 - paste the Slack channel id (`C…`) or user id (`U…`).
 
 Existing bindings are listed alongside their workspace and can be
@@ -203,14 +201,6 @@ await upsertAgentChannelBinding({
   kind: 'dm',
 })
 
-// Or: a per-workspace fallback for any thread without an explicit binding
-await upsertAgentChannelBinding({
-  agentId: 'agent_…',
-  channel: 'slack',
-  teamId: 'T0123456789',
-  externalKey: '',
-  kind: 'default',
-})
 ```
 
 The helper looks up the agent's `userId` from the agent row, so the

@@ -20,7 +20,7 @@ interface ActionResult {
   ok: boolean
 }
 
-const bindingKindSchema = z.enum(['channel', 'dm', 'default'])
+const bindingKindSchema = z.enum(['channel', 'dm'])
 
 const upsertSchema = z
   .object({
@@ -30,9 +30,6 @@ const upsertSchema = z
     externalKey: z.string().trim(),
   })
   .superRefine((value, ctx) => {
-    if (value.kind === 'default') {
-      return
-    }
     if (!value.externalKey) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -81,7 +78,7 @@ async function assertOwnsAgentAndWorkspace(input: {
 export async function upsertSlackBindingAction(input: {
   agentId: string
   teamId: string
-  kind: 'channel' | 'dm' | 'default'
+  kind: 'channel' | 'dm'
   externalKey: string
 }): Promise<ActionResult> {
   const userId = await requireUserId()
@@ -107,7 +104,7 @@ export async function upsertSlackBindingAction(input: {
     agentId: parsed.data.agentId,
     channel: 'slack',
     teamId: parsed.data.teamId,
-    externalKey: parsed.data.kind === 'default' ? '' : parsed.data.externalKey,
+    externalKey: parsed.data.externalKey,
     kind: parsed.data.kind,
   })
 

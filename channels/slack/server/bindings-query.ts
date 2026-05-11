@@ -9,7 +9,7 @@ export interface SlackBindingView {
   externalKey: string
   id: string
   installed: boolean
-  kind: 'channel' | 'dm' | 'default'
+  kind: 'channel' | 'dm'
   teamId: string
   workspaceName: string | null
 }
