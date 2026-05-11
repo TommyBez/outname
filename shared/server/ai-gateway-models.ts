@@ -201,7 +201,7 @@ export async function isModelIdValid(modelId: string): Promise<boolean> {
 }
 
 /** Default model used when seeding fresh agents. */
-export const DEFAULT_MODEL_ID = 'openai/gpt-5-mini'
+export const DEFAULT_MODEL_ID = 'deepseek/deepseek-v4-flash'
 
 /**
  * Per-token pricing for a single model. Returns `null` when the
