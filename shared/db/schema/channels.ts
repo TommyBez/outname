@@ -62,8 +62,6 @@ export const channelInstallations = pgTable(
  *                         it to find the matching install.
  * - `kind = 'channel'`  — a Slack channel id, Teams channel id, …
  * - `kind = 'dm'`       — a Slack user id (when DMing the bot)
- * - `kind = 'default'`  — fallback for any unbound thread within this
- *                         workspace; externalKey is ''
  *
  * `userId` is denormalized from `agent.userId` so multiple platform
  * users can have their own bindings for the same workspace + channel.
@@ -83,7 +81,7 @@ export const agentChannelBindings = pgTable(
     channel: text('channel').notNull(),
     teamId: text('team_id').notNull().default(''),
     externalKey: text('external_key').notNull(),
-    kind: text('kind').$type<'channel' | 'dm' | 'default'>().notNull(),
+    kind: text('kind').$type<'channel' | 'dm'>().notNull(),
     metadata: jsonb('metadata').notNull().default({}),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
@@ -152,4 +150,4 @@ export type AgentChannelBinding = typeof agentChannelBindings.$inferSelect
 export type ChannelThreadConversation =
   typeof channelThreadConversations.$inferSelect
 export type ChannelInstallationStatus = 'active' | 'revoked'
-export type AgentChannelBindingKind = 'channel' | 'dm' | 'default'
+export type AgentChannelBindingKind = 'channel' | 'dm'

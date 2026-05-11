@@ -24,8 +24,7 @@ import type { ChannelId, ChannelRoute, IncomingChannelMessage } from './types'
  *      Several platform users may have installed the same Slack
  *      workspace; each one is a candidate for fan-out.
  *   2. For each installing user, looks up a binding (by sticky thread
- *      mapping → direct binding → workspace-default binding) scoped
- *      by `userId`.
+ *      mapping → direct binding) scoped by `userId`.
  *   3. Returns every (user, agent) pair that matched. Callers run a
  *      chat turn per agent.
  *
@@ -96,16 +95,6 @@ async function findCandidateAgentForUser(
     return await loadAgent(direct.agentId)
   }
 
-  const fallback = await findBinding({
-    channel: msg.channel,
-    teamId: msg.teamId,
-    externalKey: '',
-    kind: 'default',
-    userId,
-  })
-  if (fallback) {
-    return await loadAgent(fallback.agentId)
-  }
   return null
 }
 
@@ -113,7 +102,7 @@ async function findBinding(input: {
   channel: ChannelId
   teamId: string
   externalKey: string
-  kind: 'channel' | 'dm' | 'default'
+  kind: 'channel' | 'dm'
   userId: string
 }) {
   const [row] = await db

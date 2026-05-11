@@ -29,6 +29,13 @@
       "when": 1778800000000,
       "tag": "0003_multi_user_channel_routing",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779000000000,
+      "tag": "0003_remove_default_agent_channel_bindings",
+      "breakpoints": true
     }
   ]
 }

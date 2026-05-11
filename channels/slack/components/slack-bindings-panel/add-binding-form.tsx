@@ -5,8 +5,10 @@ import type { FormEvent } from 'react'
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { upsertSlackBindingAction } from '@/channels/slack/server/actions'
-import type { InstallationView, SlackBindingView } from './types'
+import type { InstallationView } from './types'
 import { workspaceLabel } from './utils'
+
+type NewBindingKind = 'channel' | 'dm'
 
 export function AddBindingForm({
   agentId,
@@ -20,7 +22,7 @@ export function AddBindingForm({
   workspaces: InstallationView[]
 }) {
   const [pending, startTransition] = useTransition()
-  const [kind, setKind] = useState<SlackBindingView['kind']>('channel')
+  const [kind, setKind] = useState<NewBindingKind>('channel')
   const [teamId, setTeamId] = useState<string>(workspaces[0]?.teamId ?? '')
   const [externalKey, setExternalKey] = useState('')
 
@@ -31,7 +33,7 @@ export function AddBindingForm({
         agentId,
         teamId,
         kind,
-        externalKey: kind === 'default' ? '' : externalKey.trim(),
+        externalKey: externalKey.trim(),
       })
       if (!result.ok) {
         toast.error(result.error ?? 'Could not save binding.')
@@ -73,15 +75,13 @@ export function AddBindingForm({
 
       <KindSelect kind={kind} onChange={setKind} />
 
-      {kind !== 'default' && (
-        <ExternalKeyField
-          kind={kind}
-          label={externalKeyLabel}
-          onChange={setExternalKey}
-          placeholder={externalKeyPlaceholder}
-          value={externalKey}
-        />
-      )}
+      <ExternalKeyField
+        kind={kind}
+        label={externalKeyLabel}
+        onChange={setExternalKey}
+        placeholder={externalKeyPlaceholder}
+        value={externalKey}
+      />
 
       <div className="flex items-center gap-2">
         <button
@@ -136,8 +136,8 @@ function KindSelect({
   kind,
   onChange,
 }: {
-  kind: SlackBindingView['kind']
-  onChange: (kind: SlackBindingView['kind']) => void
+  kind: NewBindingKind
+  onChange: (kind: NewBindingKind) => void
 }) {
   return (
     <label className="flex flex-col gap-1">
@@ -146,16 +146,13 @@ function KindSelect({
       </span>
       <select
         className="h-10 w-full border-2 border-foreground bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-        onChange={(event) =>
-          onChange(event.target.value as SlackBindingView['kind'])
-        }
+        onChange={(event) => onChange(event.target.value as NewBindingKind)}
         value={kind}
       >
         <option value="channel">
           Channel — route a public/private channel
         </option>
         <option value="dm">Direct message — route DMs from one user</option>
-        <option value="default">Workspace fallback — any unbound thread</option>
       </select>
     </label>
   )
@@ -168,7 +165,7 @@ function ExternalKeyField({
   placeholder,
   value,
 }: {
-  kind: SlackBindingView['kind']
+  kind: NewBindingKind
   label: string
   onChange: (value: string) => void
   placeholder: string

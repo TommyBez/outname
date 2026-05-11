@@ -29,8 +29,7 @@ export interface IncomingChannelMessage {
   /**
    * Routing key used to find the agent that owns this thread. Slack
    * uses the channel id for `'channel'` events and the user id for
-   * `'dm'` events. Threads with no specific binding fall back to the
-   * `'default'` binding when one exists.
+   * `'dm'` events.
    */
   externalRoutingKey: string
   externalRoutingKind: 'channel' | 'dm'

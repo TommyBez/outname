@@ -9,7 +9,7 @@ import {
 } from '@/shared/db/schema'
 import type { ChannelId } from './types'
 
-type BindingKind = 'channel' | 'dm' | 'default'
+type BindingKind = 'channel' | 'dm'
 
 /**
  * Idempotent upsert for agent ⇄ channel routing rows.
