@@ -94,6 +94,7 @@ export function revalidateAgentEditSurfaces(
   revalidateTag(userBudgetTag(userId), 'max')
   revalidatePath('/agents')
   revalidatePath(`/agents/${agentId}`)
+  revalidatePath(`/agents/${agentId}/configure`)
   revalidatePath(`/agents/${agentId}/edit`)
   revalidatePath('/')
 }

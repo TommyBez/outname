@@ -19,6 +19,10 @@ export interface SlackInstallationView {
   workspaceName: string | null
 }
 
+type SlackInstallationRow = Awaited<
+  ReturnType<typeof getChannelInstallationsForUser>
+>[number]
+
 /**
  * Aggregates the data the Slack settings UI needs for a single agent:
  *   - the user's installed Slack workspaces (so the binding form can
@@ -50,13 +54,7 @@ export async function listSlackBindingsForAgent(
       ),
   ])
 
-  const installations: SlackInstallationView[] = installs.map((row) => {
-    const meta = (row.metadata ?? {}) as { teamName?: string }
-    return {
-      teamId: row.externalId,
-      workspaceName: meta.teamName ?? null,
-    }
-  })
+  const installations = installs.map(toSlackInstallationView)
 
   const installLookup = new Map(installs.map((row) => [row.externalId, row]))
 
@@ -75,4 +73,21 @@ export async function listSlackBindingsForAgent(
   })
 
   return { bindings, installations }
+}
+
+export async function listSlackInstallationsForUser(
+  userId: string
+): Promise<SlackInstallationView[]> {
+  const installs = await getChannelInstallationsForUser(userId, 'slack')
+  return installs.map(toSlackInstallationView)
+}
+
+function toSlackInstallationView(
+  row: SlackInstallationRow
+): SlackInstallationView {
+  const meta = (row.metadata ?? {}) as { teamName?: string }
+  return {
+    teamId: row.externalId,
+    workspaceName: meta.teamName ?? null,
+  }
 }

@@ -1,3 +1,4 @@
+import { formatAgentInterval } from '@/agents/format'
 import {
   type AgentEditMarkdownFiles,
   type AgentEditSettings,
@@ -143,9 +144,17 @@ function formatSettingValue(key: SettingsKey, value: unknown): string {
     key === 'heartbeatIntervalMinutes' ||
     key === 'reflectionIntervalMinutes'
   ) {
-    return `${value} min`
+    return formatIntervalSetting(value)
   }
   return String(value)
+}
+
+function formatIntervalSetting(value: unknown): string {
+  const minutes = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(minutes)) {
+    return String(value)
+  }
+  return formatAgentInterval(minutes)
 }
 
 function normalizeMarkdown(value: string): string {

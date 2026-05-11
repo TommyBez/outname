@@ -1,14 +1,15 @@
+import { formatAgentCadence } from '@/agents/format'
 import type { ModelOption } from '@/shared/server/ai-gateway-models'
 
 export const INTERVAL_OPTIONS = [
-  { value: 5, label: 'Every 5 minutes' },
-  { value: 15, label: 'Every 15 minutes' },
-  { value: 30, label: 'Every 30 minutes' },
-  { value: 60, label: 'Every hour' },
-  { value: 180, label: 'Every 3 hours' },
-  { value: 360, label: 'Every 6 hours' },
-  { value: 720, label: 'Every 12 hours' },
-  { value: 1440, label: 'Every day' },
+  { value: 5, label: formatAgentCadence(5) },
+  { value: 15, label: formatAgentCadence(15) },
+  { value: 30, label: formatAgentCadence(30) },
+  { value: 60, label: formatAgentCadence(60) },
+  { value: 180, label: formatAgentCadence(180) },
+  { value: 360, label: formatAgentCadence(360) },
+  { value: 720, label: formatAgentCadence(720) },
+  { value: 1440, label: formatAgentCadence(1440) },
 ] as const
 
 export const BOOTSTRAP_FILE_OPTIONS = [

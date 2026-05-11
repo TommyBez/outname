@@ -37,14 +37,59 @@ export function SubAgentCatalog({ parentAgentId, candidates }: Props) {
     )
   }
 
+  const attachedCandidates = candidates.filter(
+    (candidate) => candidate.attachedToolId !== null
+  )
+  const availableCandidates = candidates.filter(
+    (candidate) => candidate.attachedToolId === null
+  )
+
   return (
-    <ul className="flex flex-col divide-y-2 divide-foreground border-foreground border-y-2">
-      {candidates.map((c) => (
-        <li className="py-6" key={c.agentId}>
-          <SubAgentRow entry={c} parentAgentId={parentAgentId} />
-        </li>
-      ))}
-    </ul>
+    <div className="flex flex-col gap-10">
+      <SubAgentSection
+        candidates={attachedCandidates}
+        emptyText="No sub-agents are attached to this agent yet."
+        parentAgentId={parentAgentId}
+        title="Attached sub-agents"
+      />
+      <SubAgentSection
+        candidates={availableCandidates}
+        emptyText="Every available sub-agent is already attached."
+        parentAgentId={parentAgentId}
+        title="Available sub-agents"
+      />
+    </div>
+  )
+}
+
+function SubAgentSection({
+  candidates,
+  emptyText,
+  parentAgentId,
+  title,
+}: {
+  candidates: SubAgentCatalogEntry[]
+  emptyText: string
+  parentAgentId: string
+  title: string
+}) {
+  return (
+    <section>
+      <h3 className="swiss-label mb-4 text-accent">{title}</h3>
+      {candidates.length === 0 ? (
+        <p className="border-foreground border-y-2 py-6 text-muted-foreground text-sm">
+          {emptyText}
+        </p>
+      ) : (
+        <ul className="flex flex-col divide-y-2 divide-foreground border-foreground border-y-2">
+          {candidates.map((candidate) => (
+            <li className="py-6" key={candidate.agentId}>
+              <SubAgentRow entry={candidate} parentAgentId={parentAgentId} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }
 

@@ -1,12 +1,12 @@
-import { AgentOverview } from '@/agents/components/agent-overview'
+import { redirect } from 'next/navigation'
 
 type Params = Promise<{ agentId: string }>
 
-/**
- * "About this agent" — the demoted overview surface, reached from the
- * agent workspace sidebar. Renders the same content the non-chat root page
- * shows so there's one canonical overview component.
- */
-export default function AgentAboutPage({ params }: { params: Params }) {
-  return <AgentOverview params={params} />
+export default async function AgentAboutRedirect({
+  params,
+}: {
+  params: Params
+}) {
+  const { agentId } = await params
+  redirect(`/agents/${agentId}`)
 }

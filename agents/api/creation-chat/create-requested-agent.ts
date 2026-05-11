@@ -1,4 +1,5 @@
 import { revalidatePath, revalidateTag } from 'next/cache'
+import { formatAgentCadenceLower } from '@/agents/format'
 import { refreshAgentCapabilitySummary } from '@/agents/server/capability-summary'
 import { createAgentForUser } from '@/agents/server/creation-service'
 import type {
@@ -65,7 +66,7 @@ export async function createRequestedAgent(input: {
     name: created.agent.name,
     created: created.created,
     overviewUrl: `/agents/${created.id}`,
-    editUrl: `/agents/${created.id}/edit`,
+    editUrl: `/agents/${created.id}/configure`,
     toolsUrl: `/agents/${created.id}/tools`,
     attachments,
   }
@@ -192,12 +193,16 @@ function resolveInstructions(input: AgentCreationRequest): string {
     '',
     '## Heartbeat',
     input.heartbeat.enabled
-      ? `Wake every ${input.heartbeat.intervalMinutes} minutes and perform one useful, bounded action aligned with the role.`
+      ? `Wake ${formatAgentCadenceLower(
+          input.heartbeat.intervalMinutes
+        )} and perform one useful, bounded action aligned with the role.`
       : 'Do not run proactive heartbeat work unless the user enables it later.',
     '',
     '## Reflection',
     input.reflection.enabled
-      ? `Review memory and recent work every ${input.reflection.intervalMinutes} minutes.`
+      ? `Review memory and recent work ${formatAgentCadenceLower(
+          input.reflection.intervalMinutes
+        )}.`
       : 'Do not run scheduled reflection unless the user enables it later.',
     '',
     '## Tool Use',

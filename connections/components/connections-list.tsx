@@ -35,8 +35,23 @@ interface Props {
   connectors: ConnectorSummary[]
 }
 
+interface ConnectorRowData {
+  connection: ConnectionView | null
+  connector: ConnectorSummary
+}
+
 function findConnection(connections: ConnectionView[], provider: string) {
   return connections.find((c) => c.provider === provider) ?? null
+}
+
+function getConnectorRows({
+  connections,
+  connectors,
+}: Props): ConnectorRowData[] {
+  return connectors.map((connector) => ({
+    connection: findConnection(connections, connector.provider),
+    connector,
+  }))
 }
 
 function describeIdentity(metadata: Record<string, unknown>): string | null {
@@ -58,17 +73,40 @@ const STATUS_COPY: Record<ConnectionStatus, string> = {
 }
 
 export function ConnectionsList({ connectors, connections }: Props) {
+  const rows = getConnectorRows({ connectors, connections })
+  const connectedRows = rows.filter((row) => row.connection)
+  const availableRows = rows.filter((row) => !row.connection)
+
   return (
-    <ul className="flex flex-col divide-y-2 divide-foreground border-foreground border-y-2">
-      {connectors.map((c) => {
-        const conn = findConnection(connections, c.provider)
-        return (
-          <li className="py-6" key={c.provider}>
-            <ConnectorRow connection={conn} connector={c} />
+    <div className="flex flex-col gap-10">
+      <ConnectorSection rows={connectedRows} title="Connected" />
+      <ConnectorSection rows={availableRows} title="Available to connect" />
+    </div>
+  )
+}
+
+function ConnectorSection({
+  rows,
+  title,
+}: {
+  rows: ConnectorRowData[]
+  title: string
+}) {
+  if (rows.length === 0) {
+    return null
+  }
+
+  return (
+    <section className="flex flex-col gap-4">
+      <h2 className="font-bold text-xs uppercase tracking-[0.18em]">{title}</h2>
+      <ul className="flex flex-col divide-y-2 divide-foreground border-foreground border-y-2">
+        {rows.map(({ connection, connector }) => (
+          <li className="py-6" key={connector.provider}>
+            <ConnectorRow connection={connection} connector={connector} />
           </li>
-        )
-      })}
-    </ul>
+        ))}
+      </ul>
+    </section>
   )
 }
 
@@ -79,6 +117,8 @@ function ConnectorRow({
   connector: ConnectorSummary
   connection: ConnectionView | null
 }) {
+  const identity = connection ? describeIdentity(connection.metadata) : null
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between md:gap-6">
@@ -95,9 +135,9 @@ function ConnectorRow({
               <span className="font-bold uppercase tracking-[0.16em]">
                 {STATUS_COPY[connection.status]}
               </span>
-              {describeIdentity(connection.metadata) && (
+              {identity && (
                 <span className="font-mono text-muted-foreground">
-                  {describeIdentity(connection.metadata)}
+                  {identity}
                 </span>
               )}
             </p>

@@ -1,15 +1,8 @@
 'use client'
 
-import {
-  Brain,
-  FileText,
-  Info,
-  MessageSquarePlus,
-  Settings as SettingsIcon,
-} from 'lucide-react'
+import { Bot, MessageSquarePlus } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import type { ReactNode } from 'react'
 import useSWR from 'swr'
 import {
   SidebarGroup,
@@ -64,23 +57,34 @@ export function AgentSidebarWorkspace({
       </SidebarGroupLabel>
 
       <SidebarGroupContent>
-        {isChatCapable ? (
-          <ChatCapableWorkspace
-            agentId={agentId}
-            conversations={conversations}
-            pathname={pathname}
-          />
-        ) : (
-          <SidebarMenu>
-            <WorkspaceLinks agentId={agentId} pathname={pathname} />
-          </SidebarMenu>
-        )}
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname === `/agents/${agentId}`}
+              tooltip="Agent overview"
+            >
+              <Link href={`/agents/${agentId}`}>
+                <Bot aria-hidden />
+                <span>Overview</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarGroupContent>
+
+      {isChatCapable ? (
+        <ChatHistoryGroup
+          agentId={agentId}
+          conversations={conversations}
+          pathname={pathname}
+        />
+      ) : null}
     </SidebarGroup>
   )
 }
 
-function ChatCapableWorkspace({
+function ChatHistoryGroup({
   agentId,
   conversations,
   pathname,
@@ -90,102 +94,39 @@ function ChatCapableWorkspace({
   pathname: string | null
 }) {
   return (
-    <SidebarMenu>
-      <WorkspaceLinks agentId={agentId} includeExtended pathname={pathname} />
-      <SidebarMenuItem>
-        <SidebarMenuButton
-          asChild
-          className="text-muted-foreground hover:text-foreground"
-          tooltip="New chat"
-        >
-          <Link href={`/agents/${agentId}/chat/new`}>
-            <MessageSquarePlus aria-hidden />
-            <span>New chat</span>
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
+    <div className="mt-4 border-sidebar-border border-t pt-3">
+      <SidebarGroupLabel>Chats</SidebarGroupLabel>
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            asChild
+            className="text-muted-foreground hover:text-foreground"
+            isActive={pathname === `/agents/${agentId}/chat/new`}
+            tooltip="New chat"
+          >
+            <Link href={`/agents/${agentId}/chat/new`}>
+              <MessageSquarePlus aria-hidden />
+              <span>New chat</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
 
-      {conversations.length === 0 ? (
-        <li className="px-2 py-3 text-center font-mono text-[10px] text-muted-foreground/70 uppercase tracking-[0.15em]">
-          No conversations yet
-        </li>
-      ) : (
-        conversations.map((conversation) => (
-          <ConversationRow
-            agentId={agentId}
-            conversation={conversation}
-            isActive={isActive(pathname, agentId, conversation.id)}
-            key={conversation.id}
-          />
-        ))
-      )}
-    </SidebarMenu>
-  )
-}
-
-function WorkspaceLinks({
-  agentId,
-  includeExtended = false,
-  pathname,
-}: {
-  agentId: string
-  includeExtended?: boolean
-  pathname: string | null
-}) {
-  return (
-    <>
-      <WorkspaceLink
-        href={`/agents/${agentId}/about`}
-        icon={<Info aria-hidden />}
-        isActive={pathname === `/agents/${agentId}/about`}
-        label="About"
-      />
-      <WorkspaceLink
-        href={`/agents/${agentId}/edit`}
-        icon={<SettingsIcon aria-hidden />}
-        isActive={pathname === `/agents/${agentId}/edit`}
-        label="Configure"
-      />
-      {includeExtended && (
-        <>
-          <WorkspaceLink
-            href={`/agents/${agentId}/timeline`}
-            icon={<FileText aria-hidden />}
-            isActive={pathname === `/agents/${agentId}/timeline`}
-            label="Timeline"
-          />
-          <WorkspaceLink
-            href={`/agents/${agentId}/dreams`}
-            icon={<Brain aria-hidden />}
-            isActive={pathname === `/agents/${agentId}/dreams`}
-            label="DREAMS"
-          />
-        </>
-      )}
-    </>
-  )
-}
-
-function WorkspaceLink({
-  href,
-  icon,
-  isActive,
-  label,
-}: {
-  href: string
-  icon: ReactNode
-  isActive: boolean
-  label: string
-}) {
-  return (
-    <SidebarMenuItem>
-      <SidebarMenuButton asChild isActive={isActive} tooltip={label}>
-        <Link href={href}>
-          {icon}
-          <span>{label}</span>
-        </Link>
-      </SidebarMenuButton>
-    </SidebarMenuItem>
+        {conversations.length === 0 ? (
+          <li className="px-2 py-3 text-center font-mono text-[10px] text-muted-foreground/70 uppercase tracking-[0.15em]">
+            No conversations yet
+          </li>
+        ) : (
+          conversations.map((conversation) => (
+            <ConversationRow
+              agentId={agentId}
+              conversation={conversation}
+              isActive={isActive(pathname, agentId, conversation.id)}
+              key={conversation.id}
+            />
+          ))
+        )}
+      </SidebarMenu>
+    </div>
   )
 }
 

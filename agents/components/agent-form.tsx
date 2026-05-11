@@ -89,60 +89,81 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
   }
 
   return (
-    <form className="flex flex-col gap-8" onSubmit={handleSubmit}>
-      <div className="grid gap-3 border-foreground border-b-2 pb-8 md:grid-cols-[12rem_minmax(0,1fr)]">
-        <Label htmlFor="agent-name">Name</Label>
-        <div className="flex flex-col gap-2">
-          <Input
-            id="agent-name"
-            maxLength={120}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Research Buddy"
-            required
-            value={name}
-          />
-          <p className="text-muted-foreground text-xs">
-            Shown in the sidebar and at the top of every chat.
-          </p>
+    <form className="flex flex-col gap-10" onSubmit={handleSubmit}>
+      <ConfigureSection
+        description="Name and high-level identity for wayfinding across the app."
+        id="profile"
+        title="Profile"
+      >
+        <div className="grid gap-3 border-foreground border-b-2 pb-8 md:grid-cols-[12rem_minmax(0,1fr)]">
+          <Label htmlFor="agent-name">Name</Label>
+          <div className="flex flex-col gap-2">
+            <Input
+              id="agent-name"
+              maxLength={120}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Research Buddy"
+              required
+              value={name}
+            />
+            <p className="text-muted-foreground text-xs">
+              Shown in the sidebar and at the top of every chat.
+            </p>
+          </div>
         </div>
-      </div>
+      </ConfigureSection>
 
-      <BootstrapFiles
-        activeBootstrapFile={activeBootstrapFile}
-        identity={identity}
-        identityCard={identityCard}
-        instructions={instructions}
-        setActiveBootstrapFile={setActiveBootstrapFile}
-        setIdentity={setIdentity}
-        setIdentityCard={setIdentityCard}
-        setInstructions={setInstructions}
-        setUserProfile={setUserProfile}
-        userProfile={userProfile}
-      />
-      <ModelSelector
-        defaultModel={defaultModel}
-        model={model}
-        models={models}
-        setModel={setModel}
-      />
-      <StepLimitSettings
-        setStepLimitCustom={setStepLimitCustom}
-        setStepLimitMode={setStepLimitMode}
-        stepLimitCustom={stepLimitCustom}
-        stepLimitMode={stepLimitMode}
-      />
-      <HeartbeatSettings
-        heartbeatEnabled={heartbeatEnabled}
-        intervalMinutes={intervalMinutes}
-        setHeartbeatEnabled={setHeartbeatEnabled}
-        setIntervalMinutes={setIntervalMinutes}
-      />
-      <ReflectionSettings
-        reflectionEnabled={reflectionEnabled}
-        reflectionIntervalMinutes={reflectionIntervalMinutes}
-        setReflectionEnabled={setReflectionEnabled}
-        setReflectionIntervalMinutes={setReflectionIntervalMinutes}
-      />
+      <ConfigureSection
+        description="Protected markdown seeds that shape the agent before each event."
+        id="memory-seeds"
+        title="Memory seeds"
+      >
+        <BootstrapFiles
+          activeBootstrapFile={activeBootstrapFile}
+          identity={identity}
+          identityCard={identityCard}
+          instructions={instructions}
+          setActiveBootstrapFile={setActiveBootstrapFile}
+          setIdentity={setIdentity}
+          setIdentityCard={setIdentityCard}
+          setInstructions={setInstructions}
+          setUserProfile={setUserProfile}
+          userProfile={userProfile}
+        />
+      </ConfigureSection>
+
+      <ConfigureSection
+        description="Model, step limit, heartbeat cadence, and reflection cadence."
+        id="runtime"
+        title="Runtime"
+      >
+        <div className="flex flex-col gap-8">
+          <ModelSelector
+            defaultModel={defaultModel}
+            model={model}
+            models={models}
+            setModel={setModel}
+          />
+          <StepLimitSettings
+            setStepLimitCustom={setStepLimitCustom}
+            setStepLimitMode={setStepLimitMode}
+            stepLimitCustom={stepLimitCustom}
+            stepLimitMode={stepLimitMode}
+          />
+          <HeartbeatSettings
+            heartbeatEnabled={heartbeatEnabled}
+            intervalMinutes={intervalMinutes}
+            setHeartbeatEnabled={setHeartbeatEnabled}
+            setIntervalMinutes={setIntervalMinutes}
+          />
+          <ReflectionSettings
+            reflectionEnabled={reflectionEnabled}
+            reflectionIntervalMinutes={reflectionIntervalMinutes}
+            setReflectionEnabled={setReflectionEnabled}
+            setReflectionIntervalMinutes={setReflectionIntervalMinutes}
+          />
+        </div>
+      </ConfigureSection>
 
       <div className="flex items-center justify-end gap-3">
         <Button
@@ -158,6 +179,30 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
         </Button>
       </div>
     </form>
+  )
+}
+
+function ConfigureSection({
+  children,
+  description,
+  id,
+  title,
+}: {
+  children: React.ReactNode
+  description: string
+  id: string
+  title: string
+}) {
+  return (
+    <section className="scroll-mt-24" id={id}>
+      <div className="mb-6 grid gap-2 md:grid-cols-[12rem_minmax(0,1fr)]">
+        <h3 className="font-bold text-xs uppercase tracking-[0.18em]">
+          {title}
+        </h3>
+        <p className="max-w-2xl text-muted-foreground text-sm">{description}</p>
+      </div>
+      {children}
+    </section>
   )
 }
 

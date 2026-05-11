@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidateTag } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
 import { requireUserId } from '@/auth/server/auth-guard'
 import { getConnector } from '@/connections/registry'
 import {
@@ -65,7 +65,7 @@ export async function saveApiKeyConnectionAction(
     })
   }
 
-  revalidateTag(userConnectionsTag(userId), 'max')
+  updateConnectionSurfaces(userId)
   return { ok: true }
 }
 
@@ -77,6 +77,11 @@ export async function disconnectConnectionAction(provider: string) {
   }
 
   await disconnectProvider({ userId, provider })
-  revalidateTag(userConnectionsTag(userId), 'max')
+  updateConnectionSurfaces(userId)
   return { ok: true }
+}
+
+function updateConnectionSurfaces(userId: string): void {
+  updateTag(userConnectionsTag(userId))
+  revalidatePath('/connections')
 }
