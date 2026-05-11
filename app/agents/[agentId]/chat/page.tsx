@@ -1,8 +1,8 @@
 import { notFound, redirect } from 'next/navigation'
 import { Suspense } from 'react'
-import { getMostRecentConversationForAgent } from '@/lib/agent-chat'
-import { requireSession } from '@/lib/auth-guard'
-import { getCachedAgentByIdForUser } from '@/lib/data'
+import { requireSession } from '@/auth/server/auth-guard'
+import { getMostRecentConversationForAgent } from '@/chat/server/chat'
+import { getCachedAgentByIdForUser } from '@/shared/server/data'
 
 type Params = Promise<{ agentId: string }>
 

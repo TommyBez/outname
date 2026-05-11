@@ -24,7 +24,7 @@ Use this checklist before closing a maintainer-tool task.
 
 ## Wiring
 
-- [ ] the new export is added to `TOOLS` in `tools/registry.ts`
+- [ ] the new export is added to `TOOLS` in `tools/catalog/registry.ts`
 - [ ] `TOOL_CATEGORY_ORDER` is updated only if a new category was introduced
 - [ ] `brokered_http` provider names exactly match the connector runtime, if used
 - [ ] `tool_sandbox` manifest ids exactly match the sandbox manifest, if used
@@ -35,9 +35,9 @@ Use this checklist before closing a maintainer-tool task.
 
 These surfaces already work from normal registry wiring:
 
-- `buildAttachedTools` builds the AI SDK tool closure from the planned attachment
+- `buildAttachedTools` in `tools/runtime/build-attached-tools.ts` builds the AI SDK tool closure from the planned attachment
 - `buildAgent` exposes attached maintainer tools alongside memory and exec tools
-- capability summaries pick up tool display names and descriptions from the registry
+- capability summaries in `agents/server/capability-summary.ts` pick up tool display names and descriptions from the registry
 
 Do not add manual plumbing for these unless the new tool truly breaks the standard pattern.
 
@@ -45,6 +45,7 @@ Do not add manual plumbing for these unless the new tool truly breaks the standa
 
 - [ ] re-read the new tool file once after editing
 - [ ] re-read the registry entry once after editing
+- [ ] re-read `connections/registry.ts` too if you introduced a new brokered HTTP provider
 - [ ] re-read any connector or sandbox network policy setup touched by the authenticated integration
 - [ ] run `pnpm check` when the change is non-trivial or shared types moved
 - [ ] clearly call out any missing prerequisite, such as a connector, sandbox manifest, or product policy

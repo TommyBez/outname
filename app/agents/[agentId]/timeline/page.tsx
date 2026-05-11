@@ -1,9 +1,12 @@
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
-import { RunResultView } from '@/components/run-result-view'
-import { requireSession } from '@/lib/auth-guard'
-import { getCachedAgentByIdForUser, getCachedAgentLogFiles } from '@/lib/data'
-import { formatRelative } from '@/lib/format'
+import { RunResultView } from '@/agent-runtime/components/run-result-view'
+import { requireSession } from '@/auth/server/auth-guard'
+import {
+  getCachedAgentByIdForUser,
+  getCachedAgentLogFiles,
+} from '@/shared/server/data'
+import { formatRelative } from '@/shared/server/format'
 
 type Params = Promise<{ agentId: string }>
 

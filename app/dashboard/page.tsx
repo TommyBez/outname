@@ -3,16 +3,20 @@ import { Suspense } from 'react'
 import {
   AgentDashboardCard,
   type DashboardAgent,
-} from '@/components/agent-dashboard-card'
-import { AppShell } from '@/components/app-shell'
-import { BudgetIndicator } from '@/components/budget-indicator'
-import { AgentCardSkeleton, RunResultSkeleton } from '@/components/skeletons'
-import { TodayDate } from '@/components/today-date'
-import { requireSession } from '@/lib/auth-guard'
-import { type BudgetSummaryEntry, loadBudgetSummary } from '@/lib/budget'
-import { getCachedAgentsForUser } from '@/lib/data'
-import type { Agent } from '@/lib/db/schema'
-import { createPrivatePageMetadata } from '@/lib/site-metadata'
+} from '@/agents/components/agent-dashboard-card'
+import { requireSession } from '@/auth/server/auth-guard'
+import { BudgetIndicator } from '@/budgets/components/budget-indicator'
+import { loadBudgetSummary } from '@/budgets/server/summary'
+import type { BudgetSummaryEntry } from '@/budgets/server/types'
+import { AppShell } from '@/shared/components/layout/app-shell'
+import {
+  AgentCardSkeleton,
+  RunResultSkeleton,
+} from '@/shared/components/skeletons'
+import { TodayDate } from '@/shared/components/today-date'
+import type { Agent } from '@/shared/db/schema'
+import { getCachedAgentsForUser } from '@/shared/server/data'
+import { createPrivatePageMetadata } from '@/shared/server/site-metadata'
 
 export const metadata = createPrivatePageMetadata(
   'Dashboard',

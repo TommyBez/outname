@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { Suspense } from 'react'
-import { requireSession } from '@/lib/auth-guard'
-import { getCachedAgentByIdForUser } from '@/lib/data'
+import { requireSession } from '@/auth/server/auth-guard'
+import { getCachedAgentByIdForUser } from '@/shared/server/data'
 
 type Params = Promise<{ agentId: string }>
 

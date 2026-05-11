@@ -2,10 +2,10 @@ import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
+import { LoginForm } from '@/auth/components/login-form'
+import { auth } from '@/auth/server/auth'
 import { Skeleton } from '@/components/ui/skeleton'
-import { auth } from '@/lib/auth'
-import { createPrivatePageMetadata } from '@/lib/site-metadata'
-import { LoginForm } from './login-form'
+import { createPrivatePageMetadata } from '@/shared/server/site-metadata'
 
 export const metadata: Metadata = createPrivatePageMetadata(
   'Sign in',

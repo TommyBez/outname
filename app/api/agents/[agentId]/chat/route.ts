@@ -4,20 +4,20 @@ import { headers } from 'next/headers'
 import { type NextRequest, NextResponse } from 'next/server'
 import { getRun } from 'workflow/api'
 import {
-  getOrCreateConversationForAgent,
-  insertChatMessage,
-} from '@/lib/agent-chat'
-import {
   type AgentChatChunk,
   type AgentChatMessage,
   CHAT_STATUS_PART_ID,
   CHAT_STATUS_PART_TYPE,
-} from '@/lib/agent-chat-status'
-import { dispatchChatTurn } from '@/lib/agent-session'
-import { auth } from '@/lib/auth'
-import { conversationListTag } from '@/lib/cache-tags'
-import type { ChatRole } from '@/lib/db/schema'
-import { getAgentById } from '@/lib/start-agent-run'
+} from '@/agent-runtime/server/chat-status'
+import { dispatchChatTurn } from '@/agent-runtime/server/session-events'
+import { getAgentById } from '@/agent-runtime/server/start-agent-run'
+import { auth } from '@/auth/server/auth'
+import {
+  getOrCreateConversationForAgent,
+  insertChatMessage,
+} from '@/chat/server/chat'
+import type { ChatRole } from '@/shared/db/schema'
+import { conversationListTag } from '@/shared/server/cache-tags'
 
 /**
  * POST /api/agents/[agentId]/chat

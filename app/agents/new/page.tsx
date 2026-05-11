@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
-import { AgentCreationChat } from '@/components/agent-creation-chat'
-import { AppShell } from '@/components/app-shell'
-import { createPrivatePageMetadata } from '@/lib/site-metadata'
+import { AgentCreationChat } from '@/agents/components/agent-creation-chat'
+import { AppShell } from '@/shared/components/layout/app-shell'
+import { createPrivatePageMetadata } from '@/shared/server/site-metadata'
 
 export const metadata = createPrivatePageMetadata(
   'New agent',

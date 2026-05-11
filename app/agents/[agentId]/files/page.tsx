@@ -1,11 +1,11 @@
 import { asc, eq } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
-import { requireSession } from '@/lib/auth-guard'
-import { getCachedAgentByIdForUser } from '@/lib/data'
-import { db } from '@/lib/db'
-import { agentFiles } from '@/lib/db/schema'
-import { formatRelative } from '@/lib/format'
+import { requireSession } from '@/auth/server/auth-guard'
+import { db } from '@/shared/db'
+import { agentFiles } from '@/shared/db/schema'
+import { getCachedAgentByIdForUser } from '@/shared/server/data'
+import { formatRelative } from '@/shared/server/format'
 
 type Params = Promise<{ agentId: string }>
 
