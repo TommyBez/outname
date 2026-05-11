@@ -3,14 +3,16 @@ import { z } from 'zod'
 import {
   defineApiPassthroughTool,
   type ToolPolicy,
-  toolError,
   toolSuccess,
 } from '@/tools/runtime/define-maintainer-tool'
+import {
+  parseProviderResponseFromHttp,
+  toolErrorFromProviderResponse,
+} from '@/tools/runtime/define-maintainer-tool/provider-response'
 
 const X_API_BASE = 'https://api.x.com'
 const X_API_DEFAULT_RESPONSE_BYTES = 12_000
 const X_API_MAX_RESPONSE_BYTES = 64 * 1024
-const PROVIDER_ERROR_BODY_LIMIT = 1000
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i
 
 const X_ENDPOINT_GUIDE =
@@ -147,38 +149,6 @@ const xApiSafetyPolicy: ToolPolicy<XApiRequestInput, XApiConfig> = ({
   return { ok: true }
 }
 
-function parseResponseBody(
-  raw: string,
-  contentType: string | undefined
-): unknown {
-  if (raw.length === 0) {
-    return null
-  }
-  if (contentType?.includes('application/json')) {
-    try {
-      return JSON.parse(raw) as unknown
-    } catch {
-      return raw
-    }
-  }
-  return raw
-}
-
-function clippedProviderError(response: {
-  bodyText: string
-  status: number
-  truncated: boolean
-}): string {
-  const body = response.bodyText.trim()
-  if (!body) {
-    return `X API request failed (HTTP ${response.status}).`
-  }
-  const truncated =
-    response.truncated || body.length > PROVIDER_ERROR_BODY_LIMIT
-  const suffix = truncated ? ' [truncated]' : ''
-  return `X API request failed (HTTP ${response.status}): ${body.slice(0, PROVIDER_ERROR_BODY_LIMIT)}${suffix}`
-}
-
 function errorCodeForStatus(status: number) {
   if (status === 429) {
     return 'rate_limited'
@@ -224,20 +194,17 @@ export const xApiRequestTool = defineApiPassthroughTool({
   },
   handleResponse(response, { input }) {
     if (!response.ok) {
-      return toolError(
-        errorCodeForStatus(response.status),
-        clippedProviderError(response)
-      )
+      return toolErrorFromProviderResponse(response, {
+        label: 'X API request',
+        errorCodeForStatus,
+      })
     }
 
     const normalizedPath = normalizeXApiPath(input.path)
     return toolSuccess({
       status: response.status,
       normalizedPath,
-      body: parseResponseBody(
-        response.bodyText,
-        response.headers['content-type']
-      ),
+      body: parseProviderResponseFromHttp(response),
       truncated: response.truncated,
     })
   },

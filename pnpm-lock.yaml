@@ -125,6 +125,9 @@ importers:
       '@streamdown/mermaid':
         specifier: ^1.0.2
         version: 1.0.2(react@19.2.5)
+      '@v0-sdk/ai-tools':
+        specifier: ^0.3.8
+        version: 0.3.8(ai@6.0.168(zod@3.25.76))
       '@vercel/analytics':
         specifier: 1.6.1
         version: 1.6.1(next@16.2.4(@opentelemetry/api@1.9.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
@@ -182,6 +185,9 @@ importers:
       input-otp:
         specifier: 1.4.2
         version: 1.4.2(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      just-bash:
+        specifier: ^2.14.5
+        version: 2.14.5
       lucide-react:
         specifier: ^0.564.0
         version: 0.564.0(react@19.2.5)
@@ -3054,6 +3060,12 @@ packages:
 
   '@upsetjs/venn.js@2.0.0':
     resolution: {integrity: sha512-WbBhLrooyePuQ1VZxrJjtLvTc4NVfpOyKx0sKqioq9bX1C1m7Jgykkn8gLrtwumBioXIqam8DLxp88Adbue6Hw==}
+
+  '@v0-sdk/ai-tools@0.3.8':
+    resolution: {integrity: sha512-Xp/4XV/fHJhJZYzulI2WGI8s84gnVCAtHFrcxaB5ya/pvK1U7E9ExSwFMFh+Q4b4Mtb4tYocKPKY+AI8VR8+og==}
+    engines: {node: '>=22', pnpm: '>=9'}
+    peerDependencies:
+      ai: ^5.0.0
 
   '@vercel/analytics@1.6.1':
     resolution: {integrity: sha512-oH9He/bEM+6oKlv3chWuOOcp8Y6fo6/PSro8hEkgCW3pu9/OiCXiUpRUogDh3Fs3LH2sosDrx8CxeOLBEE+afg==}
@@ -6325,6 +6337,10 @@ packages:
     resolution: {integrity: sha512-0/A9rDy9P7cJ+8w1c9WD9V//9Wj15Ce2MPz8Ri6032usz+NfePxx5AcN3bN+r6ZL6jEo066/yNYB3tn4pQEx+A==}
     hasBin: true
 
+  v0-sdk@0.16.4:
+    resolution: {integrity: sha512-ByYyxGbdx1Ab/sTpIK5krf/aK7ATvjWxRiBlqR3f4C4BMh+PzfRzkG/dhOe1lYDYRORQfT4a+SqWcXIGqNsF9w==}
+    engines: {node: '>=22', pnpm: '>=9'}
+
   vary@1.1.2:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
@@ -7305,28 +7321,23 @@ snapshots:
   '@img/sharp-win32-x64@0.34.5':
     optional: true
 
-  '@jitl/quickjs-ffi-types@0.32.0':
-    optional: true
+  '@jitl/quickjs-ffi-types@0.32.0': {}
 
   '@jitl/quickjs-wasmfile-debug-asyncify@0.32.0':
     dependencies:
       '@jitl/quickjs-ffi-types': 0.32.0
-    optional: true
 
   '@jitl/quickjs-wasmfile-debug-sync@0.32.0':
     dependencies:
       '@jitl/quickjs-ffi-types': 0.32.0
-    optional: true
 
   '@jitl/quickjs-wasmfile-release-asyncify@0.32.0':
     dependencies:
       '@jitl/quickjs-ffi-types': 0.32.0
-    optional: true
 
   '@jitl/quickjs-wasmfile-release-sync@0.32.0':
     dependencies:
       '@jitl/quickjs-ffi-types': 0.32.0
-    optional: true
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
@@ -7355,8 +7366,7 @@ snapshots:
     dependencies:
       langium: 4.2.2
 
-  '@mixmark-io/domino@2.2.0':
-    optional: true
+  '@mixmark-io/domino@2.2.0': {}
 
   '@mongodb-js/zstd@7.0.0':
     dependencies:
@@ -7495,8 +7505,7 @@ snapshots:
 
   '@noble/hashes@2.2.0': {}
 
-  '@nodable/entities@2.1.0':
-    optional: true
+  '@nodable/entities@2.1.0': {}
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
@@ -9197,6 +9206,12 @@ snapshots:
       d3-selection: 3.0.0
       d3-transition: 3.0.1(d3-selection@3.0.0)
 
+  '@v0-sdk/ai-tools@0.3.8(ai@6.0.168(zod@3.25.76))':
+    dependencies:
+      ai: 6.0.168(zod@3.25.76)
+      v0-sdk: 0.16.4
+      zod: 3.25.76
+
   '@vercel/analytics@1.6.1(next@16.2.4(@opentelemetry/api@1.9.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)':
     optionalDependencies:
       next: 16.2.4(@opentelemetry/api@1.9.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -10339,8 +10354,7 @@ snapshots:
     dependencies:
       dequal: 2.0.3
 
-  diff@8.0.4:
-    optional: true
+  diff@8.0.4: {}
 
   dom-helpers@5.2.1:
     dependencies:
@@ -10663,7 +10677,6 @@ snapshots:
     dependencies:
       path-expression-matcher: 1.5.0
       xml-naming: 0.1.0
-    optional: true
 
   fast-xml-parser@5.5.8:
     dependencies:
@@ -10677,7 +10690,6 @@ snapshots:
       fast-xml-builder: 1.2.0
       path-expression-matcher: 1.5.0
       strnum: 2.2.3
-    optional: true
 
   fastq@1.20.1:
     dependencies:
@@ -11035,8 +11047,7 @@ snapshots:
   ini@1.3.8:
     optional: true
 
-  ini@6.0.0:
-    optional: true
+  ini@6.0.0: {}
 
   inline-style-parser@0.2.7: {}
 
@@ -11164,7 +11175,6 @@ snapshots:
       node-liblzma: 2.2.0
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   katex@0.16.45:
     dependencies:
@@ -11792,8 +11802,7 @@ snapshots:
       pkg-types: 1.3.1
       ufo: 1.6.3
 
-  modern-tar@0.7.6:
-    optional: true
+  modern-tar@0.7.6: {}
 
   motion-dom@12.38.0:
     dependencies:
@@ -11989,8 +11998,7 @@ snapshots:
 
   package-manager-detector@1.6.0: {}
 
-  papaparse@5.5.3:
-    optional: true
+  papaparse@5.5.3: {}
 
   parse-entities@4.0.2:
     dependencies:
@@ -12152,7 +12160,6 @@ snapshots:
   quickjs-emscripten-core@0.32.0:
     dependencies:
       '@jitl/quickjs-ffi-types': 0.32.0
-    optional: true
 
   quickjs-emscripten@0.32.0:
     dependencies:
@@ -12161,7 +12168,6 @@ snapshots:
       '@jitl/quickjs-wasmfile-release-asyncify': 0.32.0
       '@jitl/quickjs-wasmfile-release-sync': 0.32.0
       quickjs-emscripten-core: 0.32.0
-    optional: true
 
   radix-ui@1.4.3(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5):
     dependencies:
@@ -12248,8 +12254,7 @@ snapshots:
       strip-json-comments: 2.0.1
     optional: true
 
-  re2js@1.3.3:
-    optional: true
+  re2js@1.3.3: {}
 
   react-day-picker@9.13.2(react@19.2.5):
     dependencies:
@@ -12672,8 +12677,7 @@ snapshots:
 
   slash@3.0.0: {}
 
-  smol-toml@1.6.1:
-    optional: true
+  smol-toml@1.6.1: {}
 
   sonner@1.7.4(react-dom@19.2.5(react@19.2.5))(react@19.2.5):
     dependencies:
@@ -12701,11 +12705,9 @@ snapshots:
 
   space-separated-tokens@2.0.2: {}
 
-  sprintf-js@1.1.3:
-    optional: true
+  sprintf-js@1.1.3: {}
 
-  sql.js@1.14.1:
-    optional: true
+  sql.js@1.14.1: {}
 
   statuses@2.0.2: {}
 
@@ -12936,7 +12938,6 @@ snapshots:
   turndown@7.2.4:
     dependencies:
       '@mixmark-io/domino': 2.2.0
-    optional: true
 
   tw-animate-css@1.3.3: {}
 
@@ -13095,6 +13096,8 @@ snapshots:
 
   uuid@11.1.0: {}
 
+  v0-sdk@0.16.4: {}
+
   vary@1.1.2: {}
 
   vaul@1.1.2(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5):
@@ -13243,8 +13246,7 @@ snapshots:
     dependencies:
       os-paths: 4.4.0
 
-  xml-naming@0.1.0:
-    optional: true
+  xml-naming@0.1.0: {}
 
   xtend@4.0.2: {}
 

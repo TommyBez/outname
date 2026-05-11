@@ -5,7 +5,7 @@ import type {
   ResolveToolPlanResult,
 } from '@/agent-runtime/workflows/session/steps/resolve-tool-plan'
 import { getMaintainerTool } from '@/tools/catalog/registry'
-import type { Reconnect } from '@/tools/catalog/types'
+import type { BuiltMaintainerTool, Reconnect } from '@/tools/catalog/types'
 import { buildAgentTool } from '@/tools/sub-agents/agent-tool'
 
 /**
@@ -55,7 +55,7 @@ function buildOne(args: {
   reconnects: Reconnect[]
   runId: string | null
   userId: string
-}): { id: string; tool: Tool } | null {
+}): Array<{ id: string; tool: Tool }> | null {
   const {
     agentId,
     conversationId,
@@ -69,17 +69,15 @@ function buildOne(args: {
     return null
   }
   try {
-    return {
-      id: p.toolId,
-      tool: tool.build({
-        agentId,
-        userId,
-        toolId: p.toolId,
-        config: p.config,
-        runId,
-        conversationId,
-      }),
-    }
+    const built = tool.build({
+      agentId,
+      userId,
+      toolId: p.toolId,
+      config: p.config,
+      runId,
+      conversationId,
+    })
+    return toBuiltToolEntries(p.toolId, built)
   } catch (err) {
     console.error('[v0] buildAttachedTools: build failed', {
       agentId,
@@ -160,7 +158,7 @@ export function buildAttachedTools(
   const tools: Record<string, Tool> = {}
 
   for (const planned of plan.planned) {
-    const built = buildOne({
+    const builtEntries = buildOne({
       agentId,
       userId,
       planned,
@@ -168,8 +166,18 @@ export function buildAttachedTools(
       runId: currentRunId,
       conversationId,
     })
-    if (built) {
-      tools[built.id] = built.tool
+    if (builtEntries) {
+      for (const built of builtEntries) {
+        if (tools[built.id]) {
+          reconnects.push({
+            toolId: planned.toolId,
+            reason: 'build_failed',
+            message: `Tool exposed duplicate runtime id: ${built.id}`,
+          })
+          continue
+        }
+        tools[built.id] = built.tool
+      }
     }
   }
 
@@ -191,4 +199,25 @@ export function buildAttachedTools(
   }
 
   return { tools, reconnects }
+}
+
+function toBuiltToolEntries(
+  defaultToolId: string,
+  built: BuiltMaintainerTool
+): Array<{ id: string; tool: Tool }> {
+  if (isBuiltToolMap(built)) {
+    return Object.entries(built).map(([id, tool]) => ({ id, tool }))
+  }
+  return [{ id: defaultToolId, tool: built }]
+}
+
+function isBuiltToolMap(
+  built: BuiltMaintainerTool
+): built is Record<string, Tool> {
+  return (
+    typeof built === 'object' &&
+    built !== null &&
+    !('execute' in built) &&
+    !('inputSchema' in built)
+  )
 }

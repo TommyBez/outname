@@ -50,7 +50,7 @@ export async function saveSlackInstallation(input: {
     throw new Error('saveSlackInstallation: teamId and botToken are required')
   }
 
-  const encrypted = encryptCredential({ botToken: installation.botToken })
+  const encrypted = await encryptCredential({ botToken: installation.botToken })
   const metadata: InstallationMetadata = {
     botUserId: installation.botUserId,
     teamName: installation.teamName,
@@ -127,7 +127,7 @@ export async function loadSlackInstallationByTeam(teamId: string): Promise<{
   }
   let creds: { botToken: string }
   try {
-    creds = decryptCredential<{ botToken: string }>(row.credentials)
+    creds = await decryptCredential<{ botToken: string }>(row.credentials)
   } catch {
     return null
   }

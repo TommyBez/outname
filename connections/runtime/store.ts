@@ -19,7 +19,7 @@ export async function persistApiKeyConnection(args: {
   raw: RawCredential
   metadata?: Record<string, unknown>
 }): Promise<void> {
-  const credentialsB64 = encryptCredential(args.raw)
+  const credentialsB64 = await encryptCredential(args.raw)
   const metadata = args.metadata ?? {}
   const existing = await hasConnectionRow(args)
   if (existing) {

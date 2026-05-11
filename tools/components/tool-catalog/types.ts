@@ -15,6 +15,11 @@ export interface ToolCatalogEntry {
   configFields: ToolConfigField[]
   description: string
   displayName: string
+  exposedTools: Array<{
+    description: string
+    displayName: string
+    toolId: string
+  }>
   /** Required providers (`resend`, ...) extracted from tool capabilities. */
   providers: string[]
   toolId: string

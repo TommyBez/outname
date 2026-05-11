@@ -3,9 +3,12 @@ import { z } from 'zod'
 import {
   defineApiPassthroughTool,
   type ToolPolicy,
-  toolError,
   toolSuccess,
 } from '@/tools/runtime/define-maintainer-tool'
+import {
+  parseProviderResponseFromHttp,
+  toolErrorFromProviderResponse,
+} from '@/tools/runtime/define-maintainer-tool/provider-response'
 
 const CALCOM_API_BASE = 'https://api.cal.com/v2'
 const CALCOM_API_VERSION = '2024-08-13'
@@ -19,7 +22,6 @@ const calcomMethodSchema = z.enum(['GET', 'POST', 'PATCH', 'PUT', 'DELETE'])
 
 const CALCOM_ENDPOINT_GUIDE =
   'Allowed Cal.com API v2 paths: /me, /event-types, /bookings, /bookings/{uid}/cancel, /bookings/{uid}/reschedule, /slots, /schedules, /webhooks, /teams. Destructive or booking-mutating calls require confirmIrreversible=true.'
-const PROVIDER_ERROR_BODY_LIMIT = 1000
 
 const calcomRequestInputSchema = z.object({
   method: calcomMethodSchema.describe('HTTP method to use. DELETE is denied.'),
@@ -158,38 +160,6 @@ const calcomSafetyPolicy: ToolPolicy<
   return { ok: true }
 }
 
-function parseResponseBody(
-  raw: string,
-  contentType: string | undefined
-): unknown {
-  if (raw.length === 0) {
-    return null
-  }
-  if (contentType?.includes('application/json')) {
-    try {
-      return JSON.parse(raw) as unknown
-    } catch {
-      return raw
-    }
-  }
-  return raw
-}
-
-function clippedProviderError(response: {
-  bodyText: string
-  status: number
-  truncated: boolean
-}): string {
-  const body = response.bodyText.trim()
-  if (!body) {
-    return `Cal.com request failed (HTTP ${response.status}).`
-  }
-  const truncated =
-    response.truncated || body.length > PROVIDER_ERROR_BODY_LIMIT
-  const suffix = truncated ? ' [truncated]' : ''
-  return `Cal.com request failed (HTTP ${response.status}): ${body.slice(0, PROVIDER_ERROR_BODY_LIMIT)}${suffix}`
-}
-
 export const calcomRequestTool = defineApiPassthroughTool({
   id: 'calcom_request',
   category: 'scheduling',
@@ -216,17 +186,16 @@ export const calcomRequestTool = defineApiPassthroughTool({
   },
   handleResponse(response, { input }) {
     if (!response.ok) {
-      return toolError('provider_error', clippedProviderError(response))
+      return toolErrorFromProviderResponse(response, {
+        label: 'Cal.com request',
+      })
     }
     const normalizedPath = normalizeCalcomPath(input.path)
     return toolSuccess({
       status: response.status,
       apiVersionUsed: defaultCalcomApiVersion(input.path, input.method),
       normalizedPath,
-      body: parseResponseBody(
-        response.bodyText,
-        response.headers['content-type']
-      ),
+      body: parseProviderResponseFromHttp(response),
       truncated: response.truncated,
     })
   },

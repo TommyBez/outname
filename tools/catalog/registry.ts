@@ -9,6 +9,7 @@ import { posthogRequestTool } from '@/tools/providers/posthog'
 import { resendSendTool } from '@/tools/providers/resend'
 import { supabaseRequestTool } from '@/tools/providers/supabase'
 import { typefullyRequestTool } from '@/tools/providers/typefully'
+import { v0PlatformTool } from '@/tools/providers/v0'
 import { vercelRequestTool } from '@/tools/providers/vercel'
 import { xApiRequestTool } from '@/tools/providers/x-api'
 import { getToolSandboxManifest } from '@/tools/sandboxes/registry'
@@ -36,6 +37,7 @@ const TOOLS: MaintainerTool[] = [
   typefullyRequestTool,
   vercelRequestTool,
   supabaseRequestTool,
+  v0PlatformTool,
 ]
 const TOOL_BY_ID = new Map<string, MaintainerTool>()
 
@@ -45,7 +47,7 @@ for (const tool of TOOLS) {
   }
   for (const capability of tool.capabilities) {
     if (
-      capability.kind === 'brokered_http' &&
+      (capability.kind === 'brokered_http' || capability.kind === 'sdk') &&
       !getConnector(capability.provider)
     ) {
       throw new Error(

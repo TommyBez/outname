@@ -45,9 +45,10 @@ export async function resolveMaintainerRow(
           (
             requirement
           ): requirement is {
-            kind: 'brokered_http'
+            kind: 'brokered_http' | 'sdk'
             provider: string
-          } => requirement.kind === 'brokered_http'
+          } =>
+            requirement.kind === 'brokered_http' || requirement.kind === 'sdk'
         )
         .map((requirement) => ({
           provider: requirement.provider,

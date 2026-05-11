@@ -11,6 +11,10 @@ export interface BrokeredHttpClient {
   ): Promise<BrokeredHttpResponse>
 }
 
+export interface CredentialReader {
+  read<T = unknown>(provider: string): Promise<T>
+}
+
 export interface ToolSandboxRunner {
   run(input: {
     args: string[]
@@ -38,8 +42,10 @@ export interface ToolAuditSink {
 
 export interface ToolRuntimeContext {
   agentId: string
+  attachmentToolId: string
   audit: ToolAuditSink
   conversationId: string | null
+  credentials: CredentialReader
   http: BrokeredHttpClient
   runId: string | null
   sandbox: ToolSandboxRunner
@@ -49,20 +55,37 @@ export interface ToolRuntimeContext {
 
 export function createRuntimeContext(input: {
   agentId: string
+  attachmentToolId?: string
   conversationId: string | null
   runId: string | null
   sandboxManifestId?: string
   toolId: string
   userId: string
 }): ToolRuntimeContext {
-  const { agentId, conversationId, runId, sandboxManifestId, toolId, userId } =
-    input
+  const {
+    agentId,
+    attachmentToolId,
+    conversationId,
+    runId,
+    sandboxManifestId,
+    toolId,
+    userId,
+  } = input
   return {
     agentId,
+    attachmentToolId: attachmentToolId ?? toolId,
     conversationId,
     runId,
     toolId,
     userId,
+    credentials: {
+      async read<T = unknown>(provider: string): Promise<T> {
+        const { readBrokeredCredential } = await import(
+          '@/connections/runtime/credential'
+        )
+        return (await readBrokeredCredential({ provider, userId })) as T
+      },
+    },
     http: {
       async request(provider, request) {
         const { brokeredHttpRequest } = await import('../brokered-http')

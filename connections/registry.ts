@@ -7,6 +7,7 @@ import { resendConnector } from './resend'
 import { supabaseConnector } from './supabase'
 import { typefullyConnector } from './typefully'
 import type { Connector } from './types'
+import { v0Connector } from './v0'
 import { vercelConnector } from './vercel'
 import { xConnector } from './x'
 
@@ -24,6 +25,7 @@ const CONNECTORS: Connector[] = [
   xConnector,
   typefullyConnector,
   supabaseConnector,
+  v0Connector,
   vercelConnector,
 ]
 const CONNECTOR_BY_PROVIDER = new Map<string, Connector>()

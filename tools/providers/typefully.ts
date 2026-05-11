@@ -4,14 +4,16 @@ import { isTypefullyPresignedUploadRequest } from '@/shared/server/typefully-upl
 import {
   defineApiPassthroughTool,
   type ToolPolicy,
-  toolError,
   toolSuccess,
 } from '@/tools/runtime/define-maintainer-tool'
+import {
+  parseProviderResponseFromHttp,
+  toolErrorFromProviderResponse,
+} from '@/tools/runtime/define-maintainer-tool/provider-response'
 
 const TYPEFULLY_API_BASE = 'https://api.typefully.com'
 const TYPEFULLY_MAX_RESPONSE_BYTES = 64 * 1024
 const TYPEFULLY_DEFAULT_RESPONSE_BYTES = 16_000
-const PROVIDER_ERROR_BODY_LIMIT = 1000
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i
 
 const TYPEFULLY_ENDPOINT_GUIDE =
@@ -197,38 +199,6 @@ const typefullySafetyPolicy: ToolPolicy<
   return { ok: true }
 }
 
-function parseResponseBody(
-  raw: string,
-  contentType: string | undefined
-): unknown {
-  if (raw.length === 0) {
-    return null
-  }
-  if (contentType?.includes('application/json')) {
-    try {
-      return JSON.parse(raw) as unknown
-    } catch {
-      return raw
-    }
-  }
-  return raw
-}
-
-function clippedProviderError(response: {
-  bodyText: string
-  status: number
-  truncated: boolean
-}): string {
-  const body = response.bodyText.trim()
-  if (!body) {
-    return `Typefully request failed (HTTP ${response.status}).`
-  }
-  const truncated =
-    response.truncated || body.length > PROVIDER_ERROR_BODY_LIMIT
-  const suffix = truncated ? ' [truncated]' : ''
-  return `Typefully request failed (HTTP ${response.status}): ${body.slice(0, PROVIDER_ERROR_BODY_LIMIT)}${suffix}`
-}
-
 function appendQueryParams(
   url: URL,
   query: Record<string, string | number | boolean> | undefined
@@ -268,7 +238,9 @@ export const typefullyRequestTool = defineApiPassthroughTool({
   },
   handleResponse(response, { input }) {
     if (!response.ok) {
-      return toolError('provider_error', clippedProviderError(response))
+      return toolErrorFromProviderResponse(response, {
+        label: 'Typefully request',
+      })
     }
 
     return toolSuccess({
@@ -276,10 +248,7 @@ export const typefullyRequestTool = defineApiPassthroughTool({
       normalizedPath: parseAbsoluteTypefullyUrl(input.path)
         ? '<typefully-media-upload-url>'
         : normalizeTypefullyPath(input.path),
-      body: parseResponseBody(
-        response.bodyText,
-        response.headers['content-type']
-      ),
+      body: parseProviderResponseFromHttp(response),
       truncated: response.truncated,
     })
   },

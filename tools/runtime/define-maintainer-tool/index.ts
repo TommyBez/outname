@@ -2,7 +2,13 @@ import 'server-only'
 
 import { tool } from 'ai'
 import { z } from 'zod'
-import type { MaintainerTool, ToolErrorCode } from '@/tools/catalog/types'
+import type {
+  BuiltMaintainerTool,
+  MaintainerExposedTool,
+  MaintainerTool,
+  ToolErrorCode,
+} from '@/tools/catalog/types'
+import { resolveBundleChildren, toBundleExposedTools } from './bundle-tools'
 import { createRuntimeContext } from './runtime-context'
 import {
   auditErrorMessage,
@@ -12,8 +18,13 @@ import {
 } from './tool-result'
 import type {
   ApiPassthroughToolArgs,
+  BundleChildToolArgs,
   DefineMaintainerToolArgs,
+  DefineToolBundleArgs,
+  ExecuteArgs,
+  ExecuteResult,
   SandboxToolArgs,
+  ToolPolicy,
   ToolRuntimeContext as ToolRuntimeContextType,
 } from './types'
 
@@ -48,6 +59,15 @@ export function defineMaintainerTool<
   const configSchema =
     definition.configSchema ??
     (emptyConfigSchema as unknown as z.ZodType<TConfig>)
+  const exposedTools =
+    definition.exposedTools ??
+    ([
+      toExposedTool({
+        toolId: definition.id,
+        displayName: definition.displayName,
+        description: definition.description,
+      }),
+    ] as const)
 
   return {
     id: definition.id,
@@ -56,33 +76,73 @@ export function defineMaintainerTool<
     description: definition.description,
     capabilities: definition.capabilities,
     configSchema,
+    exposedTools,
+    resolveExposedTools() {
+      return exposedTools
+    },
     build(ctx) {
       const config = configSchema.parse(ctx.config)
-      return tool({
-        description: definition.description,
+      return buildChildTool({
+        attachmentToolId: ctx.toolId,
+        definition,
         inputSchema: definition.inputSchema,
-        execute: async (input) => {
-          const runtime = createRuntimeContext({
-            agentId: ctx.agentId,
-            userId: ctx.userId,
-            toolId: ctx.toolId,
-            runId: ctx.runId,
-            conversationId: ctx.conversationId,
-            sandboxManifestId: definition.sandboxManifestId,
-          })
-          return await executeWithPolicies({
-            config,
-            definition,
-            input,
-            runtime,
-          })
-        },
+        config,
+        ctx,
+        description: definition.description,
+        toolId: definition.id,
       })
     },
   }
 }
 
 export const defineActionTool = defineMaintainerTool
+
+export function defineToolBundle<TConfig = Record<string, never>>(
+  definition: DefineToolBundleArgs<TConfig>
+): MaintainerTool {
+  const configSchema =
+    definition.configSchema ??
+    (emptyConfigSchema as unknown as z.ZodType<TConfig>)
+  const exposedTools = toBundleExposedTools(definition.tools)
+
+  return {
+    id: definition.id,
+    category: definition.category,
+    displayName: definition.displayName,
+    description: definition.description,
+    capabilities: definition.capabilities,
+    configSchema,
+    exposedTools,
+    resolveExposedTools(rawConfig) {
+      if (rawConfig === undefined) {
+        return exposedTools
+      }
+      const parsed = configSchema.safeParse(rawConfig)
+      return parsed.success
+        ? toBundleExposedTools(definition.tools, parsed.data)
+        : exposedTools
+    },
+    build(ctx): BuiltMaintainerTool {
+      const config = configSchema.parse(ctx.config)
+      return Object.fromEntries(
+        resolveBundleChildren(definition.tools, config).map(
+          ([toolId, child]) => [
+            toolId,
+            buildChildTool({
+              attachmentToolId: ctx.toolId,
+              definition: child,
+              inputSchema: child.inputSchema,
+              config,
+              ctx,
+              description: child.description,
+              toolId,
+            }),
+          ]
+        )
+      )
+    },
+  }
+}
 
 export function defineApiPassthroughTool<
   TInput,
@@ -116,7 +176,7 @@ export function defineSandboxTool<
 
 async function executeWithPolicies<TInput, TConfig, TData>(input: {
   config: TConfig
-  definition: DefineMaintainerToolArgs<TInput, TConfig, TData>
+  definition: ExecutableToolDefinition<TInput, TConfig, TData>
   input: TInput
   runtime: ToolRuntimeContextType
 }) {
@@ -159,4 +219,59 @@ async function executeWithPolicies<TInput, TConfig, TData>(input: {
       durationMs: Date.now() - startedAt,
     })
   }
+}
+
+interface ExecutableToolDefinition<TInput, TConfig, TData> {
+  execute(args: ExecuteArgs<TInput, TConfig>): ExecuteResult<TData>
+  policies?: ToolPolicy<TInput, TConfig>[]
+}
+
+function buildChildTool<TInput, TConfig, TData>(input: {
+  attachmentToolId: string
+  config: TConfig
+  ctx: {
+    agentId: string
+    conversationId: string | null
+    runId: string | null
+    userId: string
+  }
+  definition:
+    | DefineMaintainerToolArgs<TInput, TConfig, TData>
+    | BundleChildToolArgs<TConfig>
+  description: string
+  inputSchema: z.ZodType<TInput, z.ZodTypeDef, unknown>
+  toolId: string
+}) {
+  return tool({
+    description: input.description,
+    inputSchema: input.inputSchema,
+    execute: async (toolInput) => {
+      const runtime = createRuntimeContext({
+        agentId: input.ctx.agentId,
+        attachmentToolId: input.attachmentToolId,
+        userId: input.ctx.userId,
+        toolId: input.toolId,
+        runId: input.ctx.runId,
+        conversationId: input.ctx.conversationId,
+        sandboxManifestId:
+          'sandboxManifestId' in input.definition
+            ? input.definition.sandboxManifestId
+            : undefined,
+      })
+      return await executeWithPolicies({
+        config: input.config,
+        definition: input.definition as ExecutableToolDefinition<
+          TInput,
+          TConfig,
+          TData
+        >,
+        input: toolInput,
+        runtime,
+      })
+    },
+  })
+}
+
+function toExposedTool(input: MaintainerExposedTool): MaintainerExposedTool {
+  return input
 }

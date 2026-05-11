@@ -1,5 +1,9 @@
 import type { z } from 'zod'
-import type { ToolCapability, ToolResult } from '@/tools/catalog/types'
+import type {
+  MaintainerExposedTool,
+  ToolCapability,
+  ToolResult,
+} from '@/tools/catalog/types'
 import type {
   BrokeredHttpRequest,
   BrokeredHttpResponse,
@@ -34,10 +38,31 @@ export interface DefineMaintainerToolArgs<TInput, TConfig, TData> {
   description: string
   displayName: string
   execute(args: ExecuteArgs<TInput, TConfig>): ExecuteResult<TData>
+  exposedTools?: readonly MaintainerExposedTool[]
   id: string
   inputSchema: z.ZodType<TInput, z.ZodTypeDef, unknown>
   policies?: ToolPolicy<TInput, TConfig>[]
   sandboxManifestId?: string
+}
+
+export interface BundleChildToolArgs<TConfig> {
+  description: string
+  displayName: string
+  execute(args: ExecuteArgs<unknown, TConfig>): ExecuteResult<unknown>
+  inputSchema: z.ZodTypeAny
+  isEnabled?(config: TConfig): boolean
+  policies?: ToolPolicy<unknown, TConfig>[]
+}
+
+export interface DefineToolBundleArgs<TConfig> {
+  capabilities: ToolCapability[]
+  category: string
+  configSchema?: z.ZodType<TConfig, z.ZodTypeDef, unknown>
+  description: string
+  displayName: string
+  id: string
+  sandboxManifestId?: string
+  tools: Record<string, BundleChildToolArgs<TConfig>>
 }
 
 export type ApiPassthroughToolArgs<TInput, TConfig, TData> = Omit<

@@ -47,6 +47,20 @@ export function ToolRow({
           <p className="mt-1 text-muted-foreground text-sm">
             {entry.description}
           </p>
+          {entry.exposedTools.length > 1 && (
+            <div className="mt-2 flex flex-col gap-1">
+              <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
+                Exposes {entry.exposedTools.length} child tools
+              </p>
+              <p className="font-mono text-muted-foreground text-xs">
+                {entry.exposedTools
+                  .slice(0, 4)
+                  .map((child) => child.toolId)
+                  .join(', ')}
+                {entry.exposedTools.length > 4 ? ', ...' : ''}
+              </p>
+            </div>
+          )}
           <div className="mt-3 flex flex-wrap gap-3">
             {providerStates.length === 0 &&
               entry.toolSandboxManifest === null && (
