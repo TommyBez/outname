@@ -2,6 +2,7 @@
 
 import { ChevronRight } from 'lucide-react'
 import Link from 'next/link'
+import { RecoveryButton } from '@/agents/components/recovery-button'
 import { TriggerButton } from '@/agents/components/trigger-button'
 import { cn } from '@/lib/utils'
 
@@ -56,7 +57,14 @@ export function ChatHeader({ agentId, agentName, enabled }: ChatHeaderProps) {
         </div>
       </nav>
 
-      <TriggerButton agentId={agentId} label="Trigger now" variant="outline" />
+      <div className="flex shrink-0 items-center gap-2">
+        <RecoveryButton agentId={agentId} disabled={!enabled} />
+        <TriggerButton
+          agentId={agentId}
+          label="Trigger now"
+          variant="outline"
+        />
+      </div>
     </header>
   )
 }

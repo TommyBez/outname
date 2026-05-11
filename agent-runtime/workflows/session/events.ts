@@ -47,11 +47,13 @@ export type SessionEvent =
     }
   | { type: 'shutdown' }
 
-// Hook tokens — deterministic from `agentId` only.
+// Hook tokens — deterministic from `agentId` + session epoch. Force recovery
+// advances the epoch so a replacement session does not share hooks with a
+// stuck orphaned workflow run.
 
 /** Main session event hook — one per agent. */
-export function sessionToken(agentId: string): string {
-  return `agent:${agentId}:session`
+export function sessionToken(agentId: string, sessionEpoch: number): string {
+  return `agent:${agentId}:session:${sessionEpoch}`
 }
 
 /**
@@ -59,6 +61,10 @@ export function sessionToken(agentId: string): string {
  * once the heartbeat handler returns, releasing the ticker to sleep
  * for the next interval.
  */
-export function heartbeatAckToken(agentId: string, ack: string): string {
-  return `agent:${agentId}:hb-ack:${ack}`
+export function heartbeatAckToken(
+  agentId: string,
+  sessionEpoch: number,
+  ack: string
+): string {
+  return `agent:${agentId}:session:${sessionEpoch}:hb-ack:${ack}`
 }

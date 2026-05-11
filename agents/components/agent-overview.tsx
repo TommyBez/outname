@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
+import { RecoveryButton } from '@/agents/components/recovery-button'
 import { TriggerButton } from '@/agents/components/trigger-button'
 import { requireSession } from '@/auth/server/auth-guard'
 import type { Agent } from '@/shared/db/schema'
@@ -118,6 +119,7 @@ function AgentOverviewHeader({ agent }: { agent: Agent }) {
           </h1>
         </div>
         <div className="flex flex-wrap items-start gap-3 border-foreground border-l-2 pl-4 md:justify-end">
+          <RecoveryButton agentId={agent.id} disabled={!agent.enabled} />
           <TriggerButton agentId={agent.id} label="Heartbeat" />
           <TriggerButton
             agentId={agent.id}
