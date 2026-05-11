@@ -2,7 +2,7 @@
 name: maintainer-tool-implementation
 description: Implement a new maintainer tool in this codebase's tool catalog. Use when adding a tool under `tools/providers/`, wiring a provider-backed integration, wrapping an official SDK as AI tools or tool bundles, creating a `tool_sandbox` tool, updating `tools/catalog/registry.ts`, or when the user mentions maintainer tools, `define-maintainer-tool`, `defineActionTool`, `defineToolBundle`, `defineApiPassthroughTool`, `defineSandboxTool`, brokered HTTP, SDK-backed tools, or catalog tool attachments.
 metadata:
-  version: 1.1.6
+  version: 1.1.7
 ---
 
 # Maintainer Tool Implementation
@@ -23,7 +23,9 @@ Default references:
 - `tools/providers/resend.ts` for a custom action tool using brokered HTTP
 - `tools/providers/calcom.ts` for an API passthrough tool with policies
 - `tools/providers/agent-browser.ts` for a sandbox-backed CLI tool
-- `tools/providers/v0.ts` for an SDK-backed tool bundle with `capabilities: [{ kind: 'none' }]`
+- `tools/providers/v0.ts` for a connector-backed SDK tool bundle with `capabilities: [{ kind: 'sdk', provider: 'v0' }]`
+- `tools/runtime/define-maintainer-tool/provider-response.ts` for shared brokered HTTP response helpers
+- `tools/runtime/define-maintainer-tool/sdk-step.ts` for connector-backed SDK credential reads inside workflow steps
 
 Read `tools/runtime/build-attached-tools.ts` only if the new tool needs special runtime behavior. Most tools do not.
 
@@ -44,7 +46,7 @@ Deliver a tool that:
 
 - has a stable registry id and clear catalog label
 - exposes a model-friendly input schema with useful field descriptions
-- uses the correct capability surface: `brokered_http`, `tool_sandbox`, or `none`
+- uses the correct capability surface: `brokered_http`, `sdk`, `tool_sandbox`, or `none`
 - keeps authenticated credentials outside tool code and the sandbox VM boundary
 - returns structured `toolSuccess(...)` / `toolError(...)` results
 - is registered in `tools/catalog/registry.ts` so it becomes attachable automatically
@@ -59,7 +61,10 @@ Follow the three-layer rule from `tools/catalog/types.ts`:
 - **Attachment config**: saved defaults like sender address, workspace id, calendar id
 - **Per-call args**: what the agent decides at invocation time
 
-If a field is secret, it does not belong in `configSchema`. For SDK-backed tools that intentionally use trusted server env instead of user-attached connectors, keep the env lookup in server code and document that the tool uses `capabilities: [{ kind: 'none' }]`.
+If a field is secret, it does not belong in `configSchema`. For SDK-backed tools, choose one of two patterns:
+
+- **Connector-backed SDK tools**: use `capabilities: [{ kind: 'sdk', provider: '<connector>' }]` and read credentials only at execute time from the connector runtime
+- **Trusted-server-env SDK tools**: keep the env lookup in server code and document that the tool uses `capabilities: [{ kind: 'none' }]`
 
 ### 2. Choose the narrowest helper
 
@@ -67,6 +72,8 @@ If a field is secret, it does not belong in `configSchema`. For SDK-backed tools
 - Use `defineToolBundle` when one attachment should expose many AI SDK child tools directly (for example, flattening an SDK-provided tool map into namespaced child tool ids)
 - Use `defineApiPassthroughTool` when the tool is mostly "validated input -> authenticated HTTP request -> normalized response"
 - Use `defineSandboxTool` when the tool runs a CLI or process inside a tool sandbox snapshot
+- Prefer `tools/runtime/define-maintainer-tool/provider-response.ts` when several brokered HTTP tools need the same clipped-error / response-body plumbing
+- Prefer `tools/runtime/define-maintainer-tool/sdk-step.ts` when a workflow step needs connector-backed SDK credentials without hand-rolling `readBrokeredCredential` error mapping
 - For sandbox manifests in this repo, keep installer bytes in `tools/sandboxes/<id>/setup.ts` and expose them through `tools/sandboxes/registry.ts`; do not rely on runtime reads of repo-relative `.sh` files
 
 ### 3. Enforce Secret Injection for authenticated tools
@@ -87,8 +94,6 @@ Every important input and config field should have a `describe(...)` string. The
 
 If the tool can create, cancel, delete, send, mutate, or otherwise do something irreversible, add an explicit safety policy or confirmation flag instead of trusting the model to be cautious.
 
-When a provider tool can be used for both read and write operations, prefer a `configSchema` boolean like `readOnly` (default `true`) and enforce it in tool policies so attachments can opt into safe read-only mode by default.
-
 ### 6. Keep failures crisp
 
 - Use `toolError(...)` for expected failures
@@ -107,12 +112,14 @@ Copy this checklist and work through it:
 Implementation checklist:
 - [ ] Pick the tool pattern (`defineActionTool`, `defineApiPassthroughTool`, or `defineSandboxTool`)
 - [ ] Decide whether the attachment should expose one tool or a bundle of child tools
-- [ ] Decide capability needs (`brokered_http`, `tool_sandbox`, or `none`)
+- [ ] Decide capability needs (`brokered_http`, `sdk`, `tool_sandbox`, or `none`)
 - [ ] Separate credentials vs attachment config vs per-call args
-- [ ] If using an SDK instead of direct HTTP, confirm whether auth comes from a connector or trusted server env
+- [ ] If using an SDK instead of direct HTTP, confirm whether auth comes from a connector-backed `sdk` capability or trusted server env `none`
 - [ ] For authenticated tools, enforce Secret Injection pattern and restricted network policy
 - [ ] Investigate the expected response size and truncation risk for the actual tool
 - [ ] Decide whether brokered HTTP responses need a connector-level or request-level `maxResponseBytes` override
+- [ ] Reuse the shared brokered HTTP response helpers when the response handling is mechanical rather than provider-specific
+- [ ] Reuse the shared SDK step helper when a connector-backed SDK tool needs credentials inside a workflow step
 - [ ] Implement `tools/providers/<tool-name>.ts`
 - [ ] Register the export in `tools/catalog/registry.ts`
 - [ ] Update `TOOL_CATEGORY_ORDER` only if introducing a new category
@@ -151,6 +158,7 @@ Only add a new category ordering entry if the category is actually new.
 ### Step 4: Wire dependencies only when needed
 
 - New provider-backed tool: ensure the connector/provider exists in `connections/registry.ts`, the capability provider name matches it exactly, and authenticated requests use Secret Injection rather than in-tool secret handling
+- New SDK-backed tool with connector: ensure the connector/provider exists in `connections/registry.ts`, the tool uses `capabilities: [{ kind: 'sdk', provider: '<name>' }]`, credentials are read only at execute time from the connector runtime, and secrets never flow through attachment config or child tool ids
 - New SDK-backed tool with no connector: ensure the SDK runs entirely in trusted server code, uses `capabilities: [{ kind: 'none' }]`, and does not push secrets into attachment config or sandbox args
 - New bundled tool: ensure one attachment row can expose multiple child tool ids cleanly, and keep child ids namespaced to avoid collisions in the runtime tool dictionary
 - New sandbox tool: ensure the manifest exists in `tools/sandboxes/<id>/{manifest.ts, setup.ts}`, the manifest id matches exactly, the registry exposes bundled setup-script bytes, and any authenticated egress uses a restricted network policy plus Secret Injection
@@ -165,6 +173,7 @@ At minimum:
 - read the finished tool file and registry entry once
 - confirm ids, category, provider, manifest names, and any child tool ids are consistent
 - confirm any authenticated flow uses Secret Injection and a restricted network policy
+- confirm connector-backed SDK tools read credentials only at execute time and never during tool build
 - confirm the chosen `maxResponseBytes` matches the tool's expected payload shape and size
 - confirm `response.truncated` is handled intentionally for brokered HTTP tools
 - run `pnpm check` if the change is substantial or touches shared runtime types
