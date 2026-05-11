@@ -35,12 +35,6 @@ const NAV_ITEMS = [
 ] as const
 
 interface AppSidebarProps {
-  /**
-   * Contextual section streamed in from the route layout. Rendered
-   * beneath the global nav group so contextual workspaces (e.g. the
-   * agent's conversation list) slot into the same sidebar rather than
-   * spawning a second one.
-   */
   sidebarExtras?: ReactNode
 }
 
@@ -56,7 +50,6 @@ export function AppSidebar({ sidebarExtras }: AppSidebarProps = {}) {
     [pathname]
   )
 
-  // Auto-close the mobile drawer when the route changes.
   useEffect(() => {
     if (isMobile) {
       setOpenMobile(false)
@@ -120,12 +113,6 @@ export function AppSidebar({ sidebarExtras }: AppSidebarProps = {}) {
   )
 }
 
-/**
- * Static, non-active version of the sidebar used as a Suspense fallback.
- * Identical visual structure so the swap-in is invisible — the only
- * difference is that no item is marked active, which is fine because the
- * real sidebar streams in immediately after hydration.
- */
 export function AppSidebarFallback() {
   return (
     <Sidebar className="border-sidebar-border border-r-2" collapsible="icon">

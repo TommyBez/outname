@@ -13,12 +13,8 @@ interface UsageBearingResult {
   usage?: LanguageModelUsage
 }
 
-/**
- * Pull an aggregate `LanguageModelUsage` out of a DurableAgent stream
- * result. AI SDK v6 exposes `totalUsage`; older shapes surface a
- * per-step `usage`. Falls back to summing `result.steps[*].usage` so
- * we record something even on minor shape drift between SDK versions.
- */
+// AI SDK usage shapes drift (`totalUsage`, root `usage`, per-step `usage`), so
+// aggregate defensively instead of assuming a single result shape.
 export function extractTotalUsage(
   result: UsageBearingResult | undefined
 ): LanguageModelUsage | undefined {
@@ -63,13 +59,8 @@ export function extractTotalUsage(
   } as LanguageModelUsage
 }
 
-/**
- * Workflow-step wrappers around `lib/budget`. The lib functions touch
- * Neon and the AI Gateway pricing fetch, neither of which is available
- * inside the workflow sandbox, so handlers must call them via these
- * `"use step"` shims. Server-side UI paths (CRUD, dashboards) call the
- * lib directly.
- */
+// These budget helpers touch services that are unavailable in the workflow
+// sandbox, so session handlers must reach them through step shims.
 export async function preflightBudget(input: {
   userId: string
   rootAgentId: string
@@ -91,9 +82,7 @@ export async function recordTokenUsageStep(input: {
   try {
     await recordAgentTokenUsage(input)
   } catch (err) {
-    // Persistence failure must not poison the outer event — the run
-    // already happened. Surface the error in logs and let the loop
-    // continue.
+    // Usage persistence is best-effort because the run already happened.
     console.error('[v0] recordTokenUsageStep: failed to persist usage', err)
   }
 }

@@ -4,12 +4,8 @@ import { db } from '@/shared/db'
 import { agent } from '@/shared/db/schema'
 import { systemSandboxTags } from '@/shared/server/vercel-sandbox-config'
 
-/**
- * Subset of `Sandbox.create` parameters that we surface here. Defined
- * explicitly (not via `Omit<CreateSandboxParams,...>`) so we don't pick
- * up the snapshot-source variant of the SDK union, which is irrelevant
- * to callers of this helper.
- */
+// Keep this surface narrower than the full SDK union so callers only see the
+// create-by-runtime options that matter for system sandboxes.
 export interface CreateOptions {
   env?: Record<string, string>
   networkPolicy?: NetworkPolicy
@@ -21,33 +17,18 @@ export interface CreateOptions {
   timeout?: number
 }
 
-/**
- * Persistent sandbox root inside the agent's system sandbox.
- * `AGENTS.md`, `IDENTITY.md`, `SOUL.md`, `USER.md`, canonical memory
- * files, logs, and arbitrary agent-created files live directly under
- * this prefix (e.g. `/vercel/sandbox/journal.md`).
- */
+// Persistent root for bootstrap files, memory files, logs, and any other
+// agent-authored documents.
 export const SYSTEM_SANDBOX_ROOT = '/vercel/sandbox'
 
-/**
- * Boot parameters for the agent's persistent system sandbox. The
- * sandbox holds the persistent file volume read by `composeSystemPrompt`
- * and the model-facing file tools.
- */
 const SYSTEM_SANDBOX_CREATE_OPTIONS: CreateOptions = {
   runtime: 'node22',
-  // File ops are small and bounded. 60s is plenty of headroom for the
-  // longest realistic composeSystemPrompt + mirror cycle.
+  // File ops are small and bounded.
   timeout: 60_000,
   resources: { vcpus: 1 },
   networkPolicy: 'deny-all',
 }
 
-/**
- * Stable name used to address the persistent sandbox. Sandbox names
- * are scoped per Vercel project, so `agent-${agentId}-system` is
- * collision-free across agents within the same project.
- */
 function nameFor(agentId: string): string {
   return `agent-${agentId}-system`
 }
@@ -77,18 +58,13 @@ async function writeSandboxId(
 }
 
 export interface EnsureResult {
-  /** True iff this call created a brand-new sandbox (vs. reused by name). */
   created: boolean
   sandbox: Sandbox
 }
 
 async function ensureSystemSandbox(agentId: string): Promise<EnsureResult> {
-  // The persistent sandbox SDK addresses sandboxes by `name`, not by an
-  // internal id. The column is named `sandbox_system_id` for parity
-  // with `last_session_run_id` etc.; the value stored in it is the
-  // sandbox's name (`agent-${agentId}-system`). On the very first boot
-  // we both compute and persist that name; after that we reuse it
-  // verbatim so an out-of-band rename would force a fresh sandbox.
+  // The SDK resumes persistent sandboxes by name, so `sandbox_system_id`
+  // stores that stable name rather than an opaque SDK id.
   const persistedName = await readSandboxId(agentId)
   const desiredName = nameFor(agentId)
   let sandbox: Sandbox | null = null
@@ -117,10 +93,7 @@ async function ensureSystemSandbox(agentId: string): Promise<EnsureResult> {
   return { sandbox, created }
 }
 
-/**
- * Read a small UTF-8 marker file from a sandbox (e.g. a "/workspace
- * created" sentinel). Returns `null` if the file does not exist.
- */
+// Returns `null` when the marker file does not exist.
 export async function readMarker(
   sandbox: Sandbox,
   path: string
@@ -129,10 +102,6 @@ export async function readMarker(
   return buf ? buf.toString('utf8').trim() : null
 }
 
-/**
- * Write a small UTF-8 marker file to a sandbox. Pair with `readMarker`
- * to make setup hooks idempotent.
- */
 export async function writeMarker(
   sandbox: Sandbox,
   path: string,
@@ -141,14 +110,8 @@ export async function writeMarker(
   await sandbox.writeFiles([{ path, content: Buffer.from(value, 'utf8') }])
 }
 
-/**
- * Ensure the agent's system sandbox is booted. The system sandbox
- * holds AGENTS.md, IDENTITY.md, SOUL.md, and the agent's persistent
- * sandbox files. After the sandbox is ready we delegate to `seedAgentsMd` to
- * install (or upgrade) the AGENTS.md baseline and bootstrap IDENTITY.md.
- *
- * Idempotent — safe to call from every event handler.
- */
+// Safe to call every event: ensure the persistent sandbox exists, then seed or
+// upgrade the bootstrap files if needed.
 export async function startupSystemSandbox(input: {
   agentId: string
 }): Promise<void> {
@@ -156,20 +119,15 @@ export async function startupSystemSandbox(input: {
   const { agentId } = input
   const { created } = await ensureSystemSandbox(agentId)
 
-  // Lazily import the seed step so this module doesn't pull workflow
-  // primitives (used inside seed-agents-md.ts) when loaded outside a
-  // workflow.
+  // Avoid pulling workflow primitives into non-workflow import paths.
   const { seedAgentsMd } = await import(
     '@/agent-runtime/workflows/session/steps/seed-agents-md'
   )
   await seedAgentsMd({ agentId, created })
 }
 
-/**
- * Resume the agent's system sandbox by name. Throws if startup hasn't
- * run yet (no name persisted). Callers MUST treat this as a Sandbox
- * SDK boundary and run inside a `"use step"` body.
- */
+// Resume by name. Callers must cross this SDK boundary from inside a `"use
+// step"` body.
 export async function getSystemSandbox(agentId: string): Promise<Sandbox> {
   const name = await readSandboxId(agentId)
   if (!name) {
@@ -180,11 +138,7 @@ export async function getSystemSandbox(agentId: string): Promise<Sandbox> {
   return Sandbox.get({ name, resume: true })
 }
 
-/**
- * Best-effort soft release: stop the named sandbox so the SDK can
- * resume a fresh session on the next operation. Swallows errors — a
- * failed release never fails an otherwise-successful event.
- */
+// Best-effort stop so the next operation resumes a fresh SDK session.
 export async function releaseSandbox(sandbox: Sandbox): Promise<void> {
   try {
     await sandbox.stop()
@@ -193,11 +147,8 @@ export async function releaseSandbox(sandbox: Sandbox): Promise<void> {
   }
 }
 
-/**
- * Permanently delete the agent's system sandbox if it exists. Called
- * by `deleteAgentAction` before removing the agent row so we don't
- * leak a persistent sandbox.
- */
+// Best-effort delete before removing the agent row so we do not leak a
+// persistent sandbox.
 export async function destroyAgentSandboxes(agentId: string): Promise<void> {
   const name = await readSandboxId(agentId)
   if (!name) {

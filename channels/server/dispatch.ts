@@ -12,27 +12,7 @@ import {
 } from './routing'
 import type { ChannelReplySink, IncomingChannelMessage } from './types'
 
-/**
- * Run chat turns for a non-web channel (Slack today, Teams / Discord
- * later). The shape mirrors the web `POST /api/agents/:id/chat`
- * handler, but fans out: a single inbound message can resolve to
- * multiple agents owned by different platform users (each user has
- * their own bindings against the same workspace).
- *
- * For each matched agent we:
- *   1. Find or create the underlying `chat_conversation` (per-agent).
- *   2. Persist the inbound user message before dispatching the
- *      workflow, so the human side of the transcript survives a
- *      workflow failure.
- *   3. Dispatch the chat turn into the agent session workflow.
- *   4. Subscribe to the per-turn UIMessage namespace and stream plain
- *      text chunks to the channel adapter.
- *
- * Replies are posted sequentially in the order the agents are
- * resolved so the sink (`thread.post`, etc.) sees one stream at a
- * time. Returns `false` when no agent is bound for the message;
- * callers should silently drop the event.
- */
+// One inbound channel message can fan out to multiple user-owned agents bound to the same workspace.
 export async function runChannelChatTurn(input: {
   message: IncomingChannelMessage
   sink: ChannelReplySink
@@ -69,6 +49,7 @@ export async function runChannelChatTurn(input: {
       },
     }
 
+    // Persist the user turn before dispatch so workflow failures do not erase the inbound message.
     await insertChatMessage({
       conversationId: route.conversationId,
       id: userUiMessage.id,
@@ -97,16 +78,7 @@ export async function runChannelChatTurn(input: {
   return handled
 }
 
-/**
- * Convert the agent session's UIMessage chunk stream into a plain text
- * stream suitable for chat surfaces.
- *
- * The session writes AI SDK `UIMessageChunk`s (`text-start`,
- * `text-delta`, `text-end`, `finish`, transient status parts, …). For a
- * chat surface we only care about the visible assistant text, so we
- * concatenate `text-delta`s from the latest assistant text part and
- * ignore everything else.
- */
+// Channel adapters only want visible assistant text, so ignore non-text chunks here.
 async function* chunksToTextIterable(
   readable: ReadableStream<UIMessageChunk>
 ): AsyncGenerator<string, void, unknown> {

@@ -14,11 +14,8 @@ interface SaveApiKeyResult {
   ok: boolean
 }
 
-/**
- * Save an api_key connection. Used by the connection settings UI.
- * Server Actions get built-in CSRF (Next.js validates the action ID
- * and origin), so the api_key form does not need a separate token.
- */
+// Next.js Server Actions validate action ID and origin, so this form
+// needs no separate CSRF token.
 export async function saveApiKeyConnectionAction(
   provider: string,
   values: Record<string, string>

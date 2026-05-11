@@ -7,28 +7,9 @@ import { toolSandboxSnapshots } from '@/shared/db/schema'
 import { toolRuntimeSandboxTags } from '@/shared/server/vercel-sandbox-config'
 import { getToolSandboxManifest } from '@/tools/sandboxes'
 
-/**
- * Phase 4: per-run tool-sandbox runtime.
- *
- * The first call within a workflow run that needs manifest M lazily
- * spawns a Vercel Sandbox from M's snapshot, caches the handle keyed by
- * the current `workflowRunId`, and returns it. Subsequent calls inside
- * the same run reuse the cached handle — that's what keeps
- * agent-browser's persistent daemon alive across `open` → `snapshot` →
- * `click` etc.
- *
- * `endOfEvent` calls `stopAllToolSandboxesForRun()` which stops every
- * cached sandbox for the current run and clears the entry. The next
- * event in the same session will boot fresh.
- *
- * The cache lives in module memory. Because workflow steps may run on
- * different worker instances, the cache is best-effort: a cache miss
- * just spawns a new sandbox from the snapshot. agent-browser's daemon
- * surviving across calls is a happy-path optimisation, not a
- * correctness requirement.
- */
-
-/** Subset of `Sandbox` the maintainer tools actually use. */
+// Cache tool sandboxes per workflow run so repeated tool calls can reuse the
+// same snapshot-backed process. The cache is best-effort and is cleared at the
+// end of each event.
 export interface ToolSandboxHandle {
   runCommand: Sandbox['runCommand']
 }
@@ -67,15 +48,9 @@ async function readSnapshotId(manifestId: string): Promise<string | null> {
   return row?.snapshotId ?? null
 }
 
-/**
- * Get-or-create the sandbox for `manifestId` in the current workflow
- * run. Throws `ToolSandboxUnavailableError` if no snapshot exists yet
- * (the attach action is supposed to have built one before the tool
- * shows up to the model, so this is treated as a programming error).
- *
- * Must be called from inside a workflow step (`'use step'` body) so
- * `getWorkflowMetadata` works.
- */
+// Must run inside a `'use step'` body so `getWorkflowMetadata()` works. Missing
+// snapshots are treated as programmer error because attach should build them
+// before the tool becomes callable.
 export async function getOrStartToolSandbox(
   manifestId: string
 ): Promise<ToolSandboxHandle> {
@@ -89,9 +64,7 @@ export async function getOrStartToolSandbox(
     }
   }
 
-  // Reading the manifest also asserts it's still registered — a
-  // tool whose manifest was removed from the registry shouldn't be
-  // spawnable even if a stale snapshot row exists.
+  // Refuse to spawn snapshots for manifests that were removed from the registry.
   getToolSandboxManifest(manifestId)
   const snapshotId = await readSnapshotId(manifestId)
   if (!snapshotId) {
@@ -101,9 +74,7 @@ export async function getOrStartToolSandbox(
     )
   }
 
-  // `runtime` is intentionally not passed: when sourcing from a
-  // snapshot, the SDK rejects `runtime` (it's already encoded in the
-  // snapshot itself).
+  // Snapshot-backed sandboxes already encode their runtime in the snapshot.
   const sandbox = await Sandbox.create({
     source: { type: 'snapshot', snapshotId },
     persistent: false,
@@ -120,14 +91,8 @@ export async function getOrStartToolSandbox(
   return sandbox
 }
 
-/**
- * Stop every cached tool sandbox for the current workflow run. Called
- * by `endOfEvent` so each event boots fresh sandboxes (matches the
- * lifecycle of the system sandbox).
- *
- * Errors are logged and swallowed — a failed stop must never fail an
- * otherwise-successful event.
- */
+// `endOfEvent` calls this so each event boots fresh tool sandboxes. Failed
+// stops are logged and swallowed so cleanup never poisons a successful turn.
 export async function stopAllToolSandboxesForRun(): Promise<void> {
   let runId: string
   try {

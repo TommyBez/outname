@@ -5,18 +5,9 @@ import { requireUserId } from '@/auth/server/auth-guard'
 import { db } from '@/shared/db'
 import { agent, agentTools, toolSandboxBuilds } from '@/shared/db/schema'
 
-/**
- * Phase 4: terminal-state fallback for the catalog UI.
- *
- * The build workflow's stream is the source of truth for in-flight
- * progress messages — but the run record expires after some time and
- * the stream is no longer fetchable, while the user may still want to
- * know whether the build ultimately succeeded or failed. This action
- * fills that gap.
- *
- * Returns null for unauthorized callers (rather than throwing) so the
- * client UI can degrade gracefully.
- */
+// Fallback for when the workflow stream is gone: return only terminal build
+// state, not historical progress. Unauthorized callers get `null`/`forbidden`
+// so the client can degrade gracefully.
 export async function getToolSandboxBuildStatusAction(buildId: string): Promise<
   | {
       status: 'pending' | 'running' | 'ready' | 'failed'
@@ -40,8 +31,7 @@ export async function getToolSandboxBuildStatusAction(buildId: string): Promise<
     return null
   }
 
-  // Same owner gate as the stream route — only callers who have
-  // actually attached a tool with this manifest see the status.
+  // Match the stream route's owner gate.
   const [ownerRow] = await db
     .select({ agentId: agentTools.agentId })
     .from(agentTools)

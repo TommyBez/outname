@@ -23,28 +23,16 @@ import {
 
 interface AgentChatProps {
   agentId: string
-  /** Stable id for the conversation this chat targets. For draft chats
-   * this is a server-generated candidate id that will only be persisted
-   * on the first user message; for existing conversations it's the real
-   * row id. */
+  // Draft chats get a candidate id here; persisted chats get the real row id.
   conversationId: string
   initialMessages: AgentChatMessage[]
-  /** When true, the chat was mounted at `/chat/new` with a candidate id
-   * that the DB does not yet know about. On the first successful send
-   * we swap the URL to the canonical `/chat/:id` route so a refresh
-   * lands on the persisted conversation. */
+  // Draft chats start at `/chat/new` and swap to the canonical route on first send.
   isDraft?: boolean
 }
 
-/**
- * Client-side chat surface. Owns the `useChat` transport, the draft input,
- * and per-part rendering of assistant turns (text, tool calls, reasoning).
- *
- * The transport targets a per-agent endpoint (`/api/agents/:id/chat`) so
- * server-side identity is derived from the session, not the request body.
- * `conversationId` is forwarded in the POST body so the API route can
- * lazily create the row on first message.
- */
+// Client chat surface for one agent. Session auth stays server-side, while
+// `conversationId` in the POST body lets the route create the row lazily on the
+// first user turn.
 export function AgentChat({
   agentId,
   conversationId,
@@ -69,20 +57,14 @@ export function AgentChat({
       },
       onFinish: async () => {
         setWorkflowStatus(null)
-        // Ask the sidebar to refetch its own list so the new row + title
-        // appear. This replaces the previous `router.refresh()` call,
-        // which re-rendered the whole RSC tree under Next 16's cache
-        // components and could strand the freshly streamed assistant
-        // message out of view on soft navigation.
+        // Revalidate just the sidebar list so soft navigation does not strand
+        // the freshly streamed reply out of view.
         await revalidateConversations(agentId)
       },
     })
 
-  // Draft → persisted URL swap. We do this in `history.replaceState`
-  // instead of `router.replace` because the latter would unmount the
-  // streaming `useChat` instance and strand the in-flight turn. Running
-  // this effect the moment a message exists (before the assistant even
-  // finishes) keeps the address bar honest during the first turn.
+  // Use `history.replaceState` instead of `router.replace` so the first
+  // in-flight `useChat` stream survives the draft -> persisted URL swap.
   useEffect(() => {
     if (!isDraft) {
       return
@@ -115,10 +97,6 @@ export function AgentChat({
     }
   }, [isBusy, messages, workflowStatus])
 
-  // PromptInput's onSubmit contract: AI Elements gathers files + the
-  // textarea text and hands us a structured `PromptInputMessage`.
-  // The raw FormEvent is the second argument and we do NOT need to call
-  // preventDefault on it — the component already does.
   function handleSubmit(message: PromptInputMessage) {
     const text = (message.text ?? '').trim()
     if (!text || isBusy) {
@@ -130,11 +108,6 @@ export function AgentChat({
   }
 
   return (
-    // Full-height flex column so the composer pins to the bottom of
-    // whatever container mounts us (today: `<ChatFrame>`, which is
-    // inside AppShell's padded main column). `min-w-0` + `overflow-hidden`
-    // keep wide tool output (tables, code blocks) contained without
-    // stretching the chat column past the viewport edge.
     <div className="flex h-full min-w-0 flex-col overflow-hidden">
       <AgentChatTranscript
         emptyDescription="Ask this agent anything — it has the same tools the scheduled run does."

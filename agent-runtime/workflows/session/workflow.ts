@@ -32,29 +32,8 @@ const FALLBACK_SOURCE: EventSource = {
   sourceId: null,
 }
 
-/**
- * Long-lived "session" workflow — one running run per `enabled = true`
- * agent.
- *
- *   1. Boot a sibling ticker workflow that drives heartbeat events.
- *   2. Open the session hook and spin a for-await loop pulling
- *      `SessionEvent`s.
- *   3. Dispatch each event to its handler (`chat` / `heartbeat`),
- *      acking the ticker after each heartbeat completes so the next
- *      tick is gated on this one. Each handler returns the per-event
- *      tracker for immediate file writes.
- *   4. After every event, run `endOfEvent` to:
- *        - persist review rows for tracked architecture-file writes,
- *        - mirror tracked architecture files into `agent_files`,
- *        - shut both sandboxes so Vercel snapshots their filesystems.
- *      If a handler threw, we still call `endOfEvent` with a fresh
- *      empty queue so the sandboxes get released cleanly.
- *   5. On shutdown, cancel the ticker workflow.
- *
- * Phase 2 drops the `kind` argument: every agent is generic, the
- * handlers read whatever they need (system prompt, model, persona
- * files) from the agent row + system sandbox at event time.
- */
+// Long-lived per-agent session loop: run the ticker, dispatch hook events,
+// always call `endOfEvent`, and stop the ticker on shutdown.
 export async function agentSessionWorkflow(input: {
   agentId: string
   sessionEpoch: number
@@ -63,9 +42,7 @@ export async function agentSessionWorkflow(input: {
   const { agentId, sessionEpoch } = input
   const sessionRunId = await currentWorkflowRunId()
 
-  // Defend against the "previous session crashed mid-handler and left
-  // its ticker hanging on its ackHook" failure mode before we start a
-  // fresh ticker on top of it.
+  // Reap a ticker left behind by a previous crashed session before starting a new one.
   await reapOrphanTicker({ agentId, sessionEpoch })
 
   const { tickerRunId } = await startTicker({ agentId, sessionEpoch })
@@ -95,9 +72,7 @@ export async function agentSessionWorkflow(input: {
       try {
         result = await dispatchSessionEvent({ agentId, event, sessionEpoch })
       } catch (err) {
-        // Handlers own their own workflow-level breadcrumbs. We log here for
-        // observability and continue the loop — one bad event must not
-        // poison the long-lived session.
+        // One bad event must not poison the long-lived session loop.
         console.error('[v0] agentSessionWorkflow: handler failed', err)
       }
 

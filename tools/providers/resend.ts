@@ -6,12 +6,6 @@ import {
   toolSuccess,
 } from '@/tools/runtime/define-maintainer-tool'
 
-/**
- * Resend transactional email send. The api key is never handed to this
- * tool. The provider call runs through brokered HTTP, where Vercel
- * Sandbox injects the Authorization header outside the VM boundary.
- */
-
 const resendConfigSchema = z.object({
   fromEmail: z
     .string()

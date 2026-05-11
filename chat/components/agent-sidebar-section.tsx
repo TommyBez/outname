@@ -15,13 +15,6 @@ interface Props {
   params: Promise<{ agentId: string }>
 }
 
-/**
- * Server-side loader for the contextual agent workspace section in the
- * sidebar. Resolves the agent row, fetches its conversation list when
- * applicable, and hands everything to the client `AgentSidebarWorkspace`
- * component. Falls back silently (renders nothing) if the agent cannot
- * be resolved — the page itself will already have surfaced a 404.
- */
 export async function AgentSidebarSection({ params }: Props) {
   const { agentId } = await params
   const session = await requireSession()
@@ -30,17 +23,12 @@ export async function AgentSidebarSection({ params }: Props) {
     return null
   }
 
-  // Phase 2: every agent is chat-capable. The "isChatCapable" prop is
-  // retained on the workspace component for now so future kinds (e.g.
-  // headless schedulers) can opt out without another schema change.
   const conversations: ConversationSummary[] = (
     await getCachedConversationListForAgent(agent.id)
   ).map((c) => ({
     id: c.id,
     title: c.title,
-    // Serialise to ISO so the value is plain across the server/client
-    // boundary. The client just passes it back to `new Date()` for
-    // relative-time display.
+    // Use ISO strings so the value stays plain across the server/client boundary.
     updatedAt: c.updatedAt.toISOString(),
   }))
 
@@ -55,11 +43,6 @@ export async function AgentSidebarSection({ params }: Props) {
   )
 }
 
-/**
- * Skeleton used as a `<Suspense>` fallback so the sidebar slot doesn't
- * flicker while the agent row streams in. Matches the group's header
- * spacing so there's no layout shift on resolve.
- */
 export function AgentSidebarSectionSkeleton() {
   return (
     <SidebarGroup className="border-sidebar-border border-t pt-3 group-data-[collapsible=icon]:hidden">

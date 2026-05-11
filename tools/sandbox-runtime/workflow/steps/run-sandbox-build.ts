@@ -7,19 +7,9 @@ import {
   type ToolSandboxBuildEvent,
 } from '../events'
 
-/**
- * Phase 4: provision a fresh Vercel Sandbox, run the manifest's
- * setup script, snapshot the result, and return the snapshot id.
- *
- * Emits coarse-grained `progress` events into the build's per-run
- * stream namespace so the UI can render a live progress strip without
- * us persisting messages to the DB. The stream is replayable from
- * `startIndex: 0` for the lifetime of the workflow run, which covers
- * any client mount / refresh / reconnect during the build.
- *
- * Marked `'use step'` so it's a single durable boundary — failure
- * surfaces back to the workflow's catch which marks the build failed.
- */
+// Run the manifest setup in a fresh sandbox, emit coarse progress events into
+// the build stream, then snapshot the result. The whole build stays in one
+// `'use step'` so failures fall back to the workflow's failed-build path.
 export async function runSandboxBuild(input: {
   buildId: string
   manifestId: string
@@ -44,8 +34,7 @@ export async function runSandboxBuild(input: {
         writer.releaseLock()
       }
     } catch {
-      // Stream emit is best-effort; never fail the build for a missed
-      // progress message.
+      // Progress streaming is best-effort; missed UI updates must not fail the build.
     }
   }
 
@@ -63,9 +52,7 @@ export async function runSandboxBuild(input: {
       }),
     })
 
-    // Heuristic phase markers so the UI can show progress even though
-    // we run the setup as one bash invocation. We don't tail per-line
-    // installer output — that's noisy and rarely useful.
+    // Emit coarse phase markers instead of noisy line-by-line installer output.
     await emit('Installing system dependencies...')
     const result = await sandbox.runCommand({
       cmd: 'bash',
@@ -81,9 +68,8 @@ export async function runSandboxBuild(input: {
     }
 
     await emit('Capturing snapshot...')
-    // `sandbox.snapshot()` stops this sandbox internally as part of
-    // creating the snapshot, so the `sandbox.stop()` call in `finally`
-    // becomes a no-op (it'll throw, which we already swallow).
+    // `sandbox.snapshot()` already stops the sandbox, so the `finally` stop is
+    // just a harmless cleanup fallback.
     const snapshot = await sandbox.snapshot()
     return { snapshotId: snapshot.snapshotId }
   } finally {
@@ -91,9 +77,7 @@ export async function runSandboxBuild(input: {
       try {
         await sandbox.stop()
       } catch {
-        // `sandbox.snapshot()` already stops the sandbox; this catch
-        // also covers the early-exit failure path where no snapshot
-        // was taken. Either way, double-stop is harmless.
+        // Double-stop is harmless and also covers failures before a snapshot exists.
       }
     }
   }

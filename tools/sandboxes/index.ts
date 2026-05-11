@@ -6,15 +6,6 @@ import {
   getToolSandboxSetupScript as readToolSandboxSetupScript,
 } from './registry'
 
-/**
- * Tool-sandbox manifest registry.
- *
- * Each entry pairs a manifest descriptor with the bundled setup script
- * that bootstraps a sandbox for that manifest. The script bytes are
- * loaded lazily (and cached) so attach-time hash checks are cheap and
- * the workflow build step has the script to run, without relying on
- * runtime FS access inside a deployed function bundle.
- */
 const setupScriptCache = new Map<string, string>()
 const manifestHashCache = new Map<string, string>()
 
@@ -26,10 +17,7 @@ export function listToolSandboxManifests() {
   return readToolSandboxManifests()
 }
 
-/**
- * Read the manifest's setup script from the registry. Cached so the
- * attach-time hash check doesn't rebuild the string once per render.
- */
+// Cache setup-script bytes so attach-time hash checks stay cheap.
 export function manifestSetupScript(manifestId: string): string {
   const cached = setupScriptCache.get(manifestId)
   if (cached !== undefined) {
@@ -40,12 +28,8 @@ export function manifestSetupScript(manifestId: string): string {
   return bytes
 }
 
-/**
- * Stable hash that drives rebuilds. Combines the manifest descriptor
- * with the bytes of its setup script so changing runtime/resources,
- * version, or the install script invalidates the snapshot on the next
- * attach.
- */
+// Include both descriptor and setup-script bytes so any manifest drift
+// invalidates the cached snapshot on the next attach.
 export function manifestHash(manifestId: string): string {
   const cached = manifestHashCache.get(manifestId)
   if (cached !== undefined) {

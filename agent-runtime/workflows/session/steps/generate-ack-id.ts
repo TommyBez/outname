@@ -1,12 +1,5 @@
-/**
- * Generate a fresh, opaque ack token for one heartbeat tick.
- *
- * Lives in its own `"use step"` so the random + timestamp bits are
- * computed at most once per tick and cached across workflow replays —
- * if we generated this inline in the ticker workflow body we'd
- * repeatedly produce different values on replay and the
- * `heartbeatAckToken(...)` derived hook would never match.
- */
+// Ack ids must be generated in their own step so workflow replays reuse the
+// same token instead of desynchronizing `heartbeatAckToken(...)`.
 export async function generateAckId(_input: {
   agentId: string
 }): Promise<string> {

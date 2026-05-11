@@ -14,15 +14,7 @@ import { localDateKey } from '@/shared/server/timezone'
 
 type TriggerMode = 'heartbeat' | 'reflection'
 
-/**
- * Manually trigger an out-of-band heartbeat for a single agent.
- *
- * In the agent-session model the agent is *always* running while it is
- * enabled — the workflow is suspended on a `for await (event of hook)`
- * loop and the cron ticker delivers a `{type:"heartbeat"}` event every
- * 30 minutes. This route simply pokes that same hook so the user can
- * force a run without waiting for the next tick.
- */
+// This hits the same workflow hook the scheduler uses, so manual triggers behave like real ticks.
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ agentId: string }> }

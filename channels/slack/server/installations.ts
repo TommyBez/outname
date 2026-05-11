@@ -8,21 +8,6 @@ import {
   channelInstallations,
 } from '@/shared/db/schema'
 
-/**
- * Multi-workspace persistence for Slack OAuth installs. Bot tokens are
- * stored in `channel_installations.credentials` as an AES-256-GCM
- * envelope (same format as `user_connections`), so a DB compromise does
- * not directly leak Slack tokens.
- *
- * The plaintext shape is:
- *
- *   {
- *     botToken: string,
- *     botUserId?: string,
- *     teamName?: string,
- *   }
- */
-
 export interface SlackInstallationPlain {
   botToken: string
   botUserId?: string
@@ -34,12 +19,7 @@ interface InstallationMetadata {
   teamName?: string
 }
 
-/**
- * Idempotent upsert. The Slack adapter's `handleOAuthCallback` invokes
- * us via the custom state adapter (`lib/channels/slack/state.ts`) so
- * the `userId` in scope is always the user authenticated on the OAuth
- * callback request — never one inferred from a webhook.
- */
+// OAuth saves run inside install context, so `userId` always comes from the callback session.
 export async function saveSlackInstallation(input: {
   userId: string
   teamId: string
@@ -101,13 +81,7 @@ export async function saveSlackInstallation(input: {
   return row
 }
 
-/**
- * Webhook-time lookup. The webhook only knows the team_id, and every
- * install of the same Slack workspace shares one bot token, so this
- * helper returns the first row regardless of which platform user
- * owns it. Routing fan-out reads installs separately via
- * `getChannelInstallationsByTeam`.
- */
+// Webhooks only know `team_id`, and every install of a workspace shares the same bot token.
 export async function loadSlackInstallationByTeam(teamId: string): Promise<{
   row: ChannelInstallation
   installation: SlackInstallationPlain

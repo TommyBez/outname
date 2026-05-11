@@ -9,12 +9,6 @@ import { agentTickerWorkflow } from '../ticker'
 
 const TERMINAL_STATUSES = new Set(['completed', 'failed', 'cancelled'])
 
-/**
- * Local copy of the alive check used by `lib/agent-session.ts`. Inlined
- * here to break the circular import between `lib/agent-session` and
- * the session workflow's step modules. Kept tiny so it stays in sync
- * by inspection.
- */
 async function isWorkflowRunAlive(workflowRunId: string): Promise<boolean> {
   try {
     const run = getRun(workflowRunId)
@@ -28,19 +22,8 @@ async function isWorkflowRunAlive(workflowRunId: string): Promise<boolean> {
   }
 }
 
-/**
- * Start the sibling ticker workflow that drives this agent's heartbeat
- * loop. Returns the ticker workflow's runtime id so the session can
- * cancel it from its `finally` block.
- *
- * The runtime id is also persisted onto the agent row so a session
- * that crashes without entering its `finally` block leaves a forensic
- * record we can reap (a) at the start of the next session and (b) via
- * the cron liveness sweeper.
- *
- * Always called from inside the session workflow via a `"use step"`
- * boundary because `start()` is a step-only API.
- */
+// `start()` is step-only, and we persist the run id so later sessions or the
+// liveness sweeper can reap orphaned tickers.
 export async function startTicker(input: {
   agentId: string
   sessionEpoch: number
@@ -61,13 +44,6 @@ export async function startTicker(input: {
   return { tickerRunId: run.runId }
 }
 
-/**
- * Cancel the ticker workflow and clear the tracking column. Best-effort:
- * a missing or already-stopped ticker is not an error — we always
- * recreate one on session restart. The DB column is cleared regardless
- * of cancel outcome, since the value only exists to find orphan runs
- * and the runtime treats already-terminal runs as a no-op cancel.
- */
 export async function stopTicker(input: {
   agentId: string
   tickerRunId: string
@@ -82,9 +58,8 @@ export async function stopTicker(input: {
     console.error('[v0] stopTicker: failed to cancel ticker', err)
   }
 
-  // Clear the column only when this is still the row's current ticker —
-  // a racing newer session may have written a different id between our
-  // read and write windows, and we do not want to clobber it.
+  // Only clear the slot if it still points at this ticker so a newer session
+  // cannot be clobbered by a late stop.
   try {
     await db
       .update(agent)
@@ -95,15 +70,6 @@ export async function stopTicker(input: {
   }
 }
 
-/**
- * Reap an orphan ticker that survived a previous session crash. Called
- * from `agentSessionWorkflow` on entry, before starting a fresh ticker.
- *
- * Reads the agent row, checks whether `last_ticker_run_id` points at a
- * still-alive workflow run, and cancels it if so. The column is
- * cleared regardless so a subsequent `startTicker` writes a clean
- * value.
- */
 export async function reapOrphanTicker(input: {
   agentId: string
   sessionEpoch: number
@@ -136,8 +102,7 @@ export async function reapOrphanTicker(input: {
     console.error('[v0] reapOrphanTicker: cancel failed', err)
   }
 
-  // Clear the slot unconditionally — `startTicker` is about to write a
-  // fresh value over the top.
+  // Clear the slot even if cancel failed; `startTicker` is about to replace it.
   try {
     await db
       .update(agent)
@@ -155,17 +120,6 @@ export async function reapOrphanTicker(input: {
   return { cancelled }
 }
 
-/**
- * Read the agent's current heartbeat schedule (`heartbeat_enabled` +
- * `heartbeat_interval_minutes`). Called at the top of every ticker
- * iteration so a UI toggle / interval change is picked up without
- * restarting the session.
- *
- * Returns a fallback `{ enabled: false, intervalMs: 0 }` if the agent
- * row has been deleted underneath us — the ticker treats that as a
- * paused agent and will keep idling at the disabled-poll cadence
- * until the cron sweeper notices the row is gone.
- */
 export interface AgentTickerSchedule {
   heartbeat: {
     enabled: boolean
@@ -203,6 +157,8 @@ export async function readHeartbeatSchedule(input: {
     .limit(1)
 
   const row = rows[0]
+  // Missing rows or epoch mismatch mean this ticker is stale, so fall back to
+  // the disabled schedule instead of driving the replacement session.
   if (!row || row.sessionEpoch !== input.sessionEpoch) {
     return disabledSchedule(now)
   }
@@ -248,11 +204,6 @@ function disabledSchedule(now: Date): AgentTickerSchedule {
   }
 }
 
-/**
- * Push a heartbeat event into the session's hook. Called by
- * `agentTickerWorkflow` once per tick; the `ack` token is used by the
- * session to release the ticker after the handler completes.
- */
 export async function pokeSessionHeartbeat(input: {
   agentId: string
   ack: string
@@ -282,21 +233,14 @@ export async function pokeSessionReflection(input: {
   })
 }
 
-/**
- * Resume the per-tick ack hook so the ticker can move on to its next
- * sleep interval. Called from the session workflow's heartbeat handler
- * once `handleHeartbeat` returns.
- *
- * Tolerant of conflicts: a stale ack (ticker already moved on, or the
- * ack hook never existed because the heartbeat was a one-shot trigger
- * push without an `ack` field) is logged and swallowed.
- */
 export async function ackHeartbeat(input: {
   agentId: string
   ack: string
   sessionEpoch: number
 }): Promise<void> {
   'use step'
+  // Missing or stale ack hooks are best-effort: the ticker may already have
+  // moved on, or this event may not have been carrying an ack.
   try {
     await resumeHook(
       heartbeatAckToken(input.agentId, input.sessionEpoch, input.ack),

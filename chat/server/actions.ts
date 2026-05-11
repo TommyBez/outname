@@ -16,11 +16,6 @@ interface ActionResult {
   ok: boolean
 }
 
-/**
- * Rename a chat conversation owned by the current user's agent. Called
- * from the sidebar's inline rename UI. Returns a serialisable result so
- * the client can surface validation errors without throwing.
- */
 export async function renameConversationAction(input: {
   agentId: string
   conversationId: string
@@ -49,12 +44,6 @@ export async function renameConversationAction(input: {
   return { ok: true }
 }
 
-/**
- * Delete a chat conversation. If the deleted conversation was the one
- * the user is currently viewing, we redirect them back to the chat
- * landing route (which will redirect again to the newest remaining
- * conversation, or to `/chat/new` if none remain).
- */
 export async function deleteConversationAction(input: {
   agentId: string
   conversationId: string

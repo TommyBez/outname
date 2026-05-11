@@ -1,12 +1,5 @@
 import 'server-only'
 
-/**
- * Key source abstraction for encrypted connection credentials.
- *
- * v1 keeps the existing env-backed AES key, but all crypto callers now
- * depend on this interface so a KMS-backed or per-tenant DEK provider
- * can replace it without touching encryption call sites.
- */
 export interface KeyProvider {
   getKey(): Buffer
 }

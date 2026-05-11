@@ -4,16 +4,7 @@ import { requireSession } from '@/auth/server/auth-guard'
 import { listConversationsForAgent } from '@/chat/server/chat'
 import { getAgentByIdForUser } from '@/shared/server/data'
 
-/**
- * Client-facing conversation list endpoint. Feeds the sidebar's SWR
- * hook so it can update independently of the active chat pane — no
- * more `router.refresh()` bulldozing the RSC tree (and the active
- * `useChat` state) after every turn.
- *
- * Owner-scoped via `requireSession()` + `getAgentByIdForUser`, so the
- * shape is exactly what the sidebar renders with no extra filtering
- * on the client.
- */
+// The sidebar polls this directly so chat list refreshes do not remount the active `useChat` tree.
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ agentId: string }> }

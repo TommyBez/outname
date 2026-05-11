@@ -23,17 +23,6 @@ type SlackInstallationRow = Awaited<
   ReturnType<typeof getChannelInstallationsForUser>
 >[number]
 
-/**
- * Aggregates the data the Slack settings UI needs for a single agent:
- *   - the user's installed Slack workspaces (so the binding form can
- *     offer a workspace dropdown);
- *   - this agent's existing Slack bindings, annotated with the
- *     workspace's display name and an `installed` flag so the UI can
- *     warn about bindings whose workspace was uninstalled.
- *
- * Owner scoping is performed by the caller (the agent edit page resolves
- * the agent through `getCachedAgentByIdForUser`).
- */
 export async function listSlackBindingsForAgent(
   agentId: string,
   userId: string

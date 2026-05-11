@@ -7,12 +7,6 @@ import { getCachedAgentByIdForUser } from '@/shared/server/data'
 
 type Params = Promise<{ agentId: string; conversationId: string }>
 
-/**
- * Active chat pane for a persisted conversation. Mounted inside the
- * chat layout's `<ChatFrame>`. Ownership is double-checked here (agent
- * belongs to user, conversation belongs to agent) so a guessed URL
- * returns 404 rather than leaking somebody else's transcript.
- */
 export default function AgentConversationPage({ params }: { params: Params }) {
   return (
     <Suspense fallback={<ChatSkeleton />}>
@@ -29,6 +23,7 @@ async function ConversationShell({ params }: { params: Params }) {
     notFound()
   }
 
+  // Re-check conversation ownership here so guessed URLs 404 instead of leaking transcripts.
   const conversation = await getConversationForAgent(conversationId, agent.id)
   if (!conversation) {
     notFound()

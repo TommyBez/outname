@@ -176,11 +176,9 @@ async function Resolved({ params }: { params: Params }) {
     }
   })
 
-  // Sub-agents: every other agent the user owns is a candidate. The
-  // attach action enforces "no self-attach"; resolveToolPlan enforces
-  // cycle/depth at runtime. We deliberately allow disabled agents to
-  // be listed so users can pre-wire delegations before turning them
-  // on.
+  // Every other agent is a candidate. Self-attach is rejected at attach time,
+  // cycle/depth at runtime, and disabled agents stay listed so delegations can
+  // be pre-wired before they are turned on.
   const subAgentCandidates: SubAgentCatalogEntry[] = allUserAgents
     .filter((a) => a.id !== agentId)
     .map((a) => {

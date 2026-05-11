@@ -11,16 +11,8 @@ import type { ChannelId } from './types'
 
 type BindingKind = 'channel' | 'dm'
 
-/**
- * Idempotent upsert for agent ⇄ channel routing rows.
- *
- * The unique index on `(channel, teamId, externalKey, kind, userId)`
- * enforces that within a single platform user, a workspace cannot
- * bind two agents to the same channel/DM at once. Different users may
- * each have their own binding for the same channel; the resolver fans
- * out to all of them at webhook time. `teamId` is required — every
- * supported adapter delivers messages scoped to a workspace.
- */
+// The unique key is per user, so one operator can only bind a workspace thread once
+// while different users can still fan out from the same Slack workspace.
 export async function upsertAgentChannelBinding(input: {
   agentId: string
   channel: ChannelId

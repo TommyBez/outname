@@ -21,17 +21,6 @@ const DEFAULT_BOT_SCOPES = [
   'users:read',
 ]
 
-/**
- * GET /api/channels/slack/install
- *
- * Redirects the authenticated operator to the Slack OAuth consent
- * screen. Authentication is required so the eventual callback knows
- * which app user owns the resulting workspace install — that ownership
- * is the foundation of multi-user safety.
- *
- * The Slack `state` parameter carries a short-lived, signed value that
- * identifies the originating user without exposing bearer credentials.
- */
 export async function GET(request: NextRequest): Promise<Response> {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) {
@@ -62,6 +51,7 @@ export async function GET(request: NextRequest): Promise<Response> {
   }
 
   const redirectUri = `${baseUrl.replace(TRAILING_SLASH, '')}/api/channels/slack/oauth/callback`
+  // The signed state binds the eventual callback to the current app user.
   const state = encodeSlackOAuthState({
     userId: session.user.id,
     returnTo,

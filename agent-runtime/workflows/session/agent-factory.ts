@@ -7,53 +7,30 @@ import { resolveToolPlan } from './steps/resolve-tool-plan'
 import { createFileTools } from './tools/file-tools'
 import { createPendingWrites, type PendingWrites } from './tools/pending-writes'
 
-/**
- * One event's agent: DB load, composed system prompt from sandbox persona
- * files, built-in file tools + maintainer tools (Phase 3) + sub-agent tools
- * (Phase 4), and a per-event tracker for reviewable architecture-file writes.
- */
+// Build one event-scoped agent: prompt from sandbox files, built-in file
+// tools, attached maintainer/sub-agent tools, and a tracker for reviewable
+// file writes.
 export interface BuildAgentArgs {
   agentId: string
-  /**
-   * Phase 4: parent agent ids leading to this run. Empty for normal
-   * user-driven chat / heartbeat turns. Populated when this turn was
-   * dispatched as a sub-agent invocation. resolveToolPlan uses it to
-   * refuse cycles, and the synthesised `agent_<child>` tools append
-   * their own id before dispatching.
-   */
   callStack?: string[]
-  /** Chat conversation id for audit attribution; null for non-chat events. */
   conversationId?: string | null
-  /** Workflow runtime id for heartbeat/reflection/invocation events. */
   currentRunId?: string | null
-  /**
-   * Phase 4: nesting depth. 0 for normal turns, parentDepth + 1 for
-   * sub-agent invocations. resolveToolPlan refuses any sub-agent attach that
-   * would push depth past `MAX_SUB_AGENT_DEPTH`.
-   */
   depth?: number
-  /** Optional UTC "now" for the system prompt; defaults to `new Date()`. */
   nowIso?: string
-  /** Heartbeat/invocation: workflow runtime id; chat: conversation id. */
   runId: string
-  /** UI stream namespace for this event, when live tool updates are visible. */
   streamNamespace?: string | null
 }
 
 export interface BuildAgentResult {
   agent: DurableAgent
-  /** Name + model from the row (avoid a second read for logging). */
   meta: {
     name: string
     model: string
-    /** Owning user — needed for budget rollups + ledger writes. */
     userId: string
     stepLimitCustom: number | null
     stepLimitMode: 'custom' | 'grind' | 'high' | 'low' | 'medium'
   }
-  /** Per-event architecture-file change tracker. Pass to `endOfEvent`. */
   pending: PendingWrites
-  /** Complete tool set used for model-message conversion. */
   tools: Record<string, Tool>
 }
 
@@ -69,13 +46,8 @@ export async function buildAgent(
     throw new Error(`buildAgent: agent ${agentId} not found (run ${runId})`)
   }
 
-  // Resolve attached maintainer tools first so we know which need
-  // reconnection — those reasons get rendered into the system prompt
-  // so the model can recover gracefully.
-  //
-  // Two-stage boot keeps the workflow bundle free of `node:crypto`:
-  // (1) the step does DB + decrypt + refresh and returns plain JSON;
-  // (2) the workflow synchronously calls `tool.build()` on the result.
+  // Resolve reconnects before composing the prompt, and keep DB/decrypt work in
+  // `resolveToolPlan` so this workflow bundle stays free of `node:crypto`.
   const plan = await resolveToolPlan({
     agentId,
     userId: row.userId,
@@ -133,18 +105,10 @@ export async function buildAgent(
   }
 }
 
-/**
- * Heartbeat kickoff message — the seed user turn that triggers a
- * heartbeat run. Generic by design: every agent gets the same prompt
- * and decides what to do via its own AGENTS.md / IDENTITY.md / SOUL.md.
- */
+// Generic heartbeat kickoff: AGENTS.md / IDENTITY.md / SOUL.md decide the
+// concrete action for this agent.
 export function buildHeartbeatKickoff(args: {
-  /** ISO timestamp the run began. */
   nowIso: string
-  /**
-   * ISO timestamp of the previous successful heartbeat completion, if
-   * any. Helps the model pick a window to look at.
-   */
   previousIso: string | null
 }): string {
   const sinceClause = args.previousIso

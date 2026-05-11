@@ -7,17 +7,8 @@ import {
 } from '@/shared/db/schema'
 import type { ChannelId } from './types'
 
-/**
- * Returns the first `channel_installations` row for a given workspace.
- *
- * Used by the chat SDK adapter (`SlackHybridState.get`) to load a bot
- * token: every install of the same Slack workspace shares the same
- * bot token (one Slack app), so picking any active row is correct.
- *
- * Routing should not use this helper — it needs every install for the
- * workspace so that all subscribed users are dispatched to. Use
- * `getChannelInstallationsByTeam` instead.
- */
+// Slack bot tokens are shared per workspace, so the adapter can use any active row here.
+// Routing must use `getChannelInstallationsByTeam()` so fan-out sees every user install.
 export async function getChannelInstallationByTeam(
   channel: ChannelId,
   teamId: string
@@ -35,12 +26,6 @@ export async function getChannelInstallationByTeam(
   return row ?? null
 }
 
-/**
- * All `channel_installations` rows for a given workspace. In a
- * multi-user deployment several platform users can each install the
- * same Slack workspace; the resolver iterates these rows so an
- * incoming message fans out to every user with a matching binding.
- */
 export async function getChannelInstallationsByTeam(
   channel: ChannelId,
   teamId: string

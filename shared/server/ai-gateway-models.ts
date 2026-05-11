@@ -1,45 +1,9 @@
-/**
- * AI Gateway model catalog.
- *
- * `https://ai-gateway.vercel.sh/v1/models` is open (no auth header
- * needed). It returns the OpenAI Models API envelope shape with
- * Vercel extensions:
- *
- *   {
- *     object: "list",
- *     data: [{
- *       id: "openai/gpt-5-mini",
- *       object: "model",
- *       created: 1730000000,
- *       owned_by: "openai",
- *       name: "GPT-5 Mini",
- *       description: "...",
- *       context_window: 128000,
- *       max_tokens: 16384,
- *       type: "language" | "embedding" | "image" | ...,
- *       tags: ["tool-use", "reasoning", ...],
- *       pricing: { ... }
- *     }, ...]
- *   }
- *
- * We only need a small projection for the agent form, so we map
- * down to `ModelOption` and filter to language models that advertise
- * tool-use (every Phase 2 agent uses memory + exec tools, so a
- * non-tool-use model would silently fail).
- */
-
 export interface ModelOption {
-  /** Surfaced as a small hint in the UI; 0 if missing. */
   contextWindow: number
-  /** Stored verbatim on `agent.model`, e.g. "openai/gpt-5-mini". */
   id: string
-  /** USD per input token. `null` when the gateway didn't report pricing. */
   inputUsdPerToken: number | null
-  /** Display label, e.g. "GPT-5 Mini". Falls back to id if missing. */
   name: string
-  /** USD per output token. `null` when the gateway didn't report pricing. */
   outputUsdPerToken: number | null
-  /** Used to group the <select>, e.g. "openai". */
   ownedBy: string
 }
 
@@ -50,9 +14,7 @@ export interface ModelPricing {
 
 const ENDPOINT = 'https://ai-gateway.vercel.sh/v1/models'
 
-// Permissive fallback used only when the live fetch fails. Keeps the
-// form usable in offline / sandboxed dev so a deploy never blocks on
-// network jitter.
+// Fallback keeps the form usable when the live catalog fetch fails.
 const FALLBACK: readonly ModelOption[] = [
   {
     id: 'openai/gpt-5-mini',
@@ -130,17 +92,11 @@ function rawModelToOption(m: RawModel & { id: string }): ModelOption {
   }
 }
 
-/**
- * Server-only. Fetches the catalog with a 1h revalidate so the form
- * picks up new models within an hour without us redeploying. Result
- * is cached at the Next.js Data Cache layer; no per-request fan-out.
- */
+// Server-only cached catalog fetch for the agent form.
 export async function getAvailableModels(): Promise<ModelOption[]> {
   try {
     const res = await fetch(ENDPOINT, {
-      // No `Authorization` header — endpoint is open. Adding one
-      // would only get us rate-limited against an account we don't
-      // need to charge.
+      // The endpoint is public; sending auth would only burn an account quota.
       cache: 'force-cache',
       next: { revalidate: 3600 },
     })
@@ -179,18 +135,11 @@ export async function getAvailableModels(): Promise<ModelOption[]> {
   }
 }
 
-/**
- * Validates a model id against the live (or fallback) catalog. Used
- * by `agent-actions.ts` to reject invalid ids at write time. Returns
- * `true` if the id is in the catalog OR if we're currently serving
- * the fallback (so a transient outage doesn't trap users in a bad
- * edit; the next agent-action call will revalidate).
- */
+// Be permissive when the fallback catalog is serving so a transient catalog
+// outage does not trap users in a failed edit flow.
 export async function isModelIdValid(modelId: string): Promise<boolean> {
   const list = await getAvailableModels()
-  // If we're on the fallback (signaled by length === FALLBACK.length
-  // and id-set equality), be permissive — the user could be picking a
-  // perfectly valid id we just can't see right now.
+  // Detect fallback mode by exact list equality.
   const isFallback =
     list.length === FALLBACK.length &&
     list.every((o, i) => o.id === FALLBACK[i]?.id)
@@ -200,15 +149,10 @@ export async function isModelIdValid(modelId: string): Promise<boolean> {
   return list.some((o) => o.id === modelId)
 }
 
-/** Default model used when seeding fresh agents. */
 export const DEFAULT_MODEL_ID = 'deepseek/deepseek-v4-flash'
 
-/**
- * Per-token pricing for a single model. Returns `null` when the
- * gateway didn't advertise pricing (e.g. catalog fallback in dev) so
- * callers can decide whether to cost the call as zero or skip
- * persistence entirely.
- */
+// Return `null` when pricing is missing so callers can skip persistence or cost
+// the call as zero explicitly.
 export async function getModelPricing(
   modelId: string
 ): Promise<ModelPricing | null> {
