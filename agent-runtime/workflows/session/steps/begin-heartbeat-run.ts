@@ -1,11 +1,5 @@
 import { getWorkflowMetadata } from 'workflow'
 
-/**
- * Returns the workflow runtime id for a heartbeat/reflection event.
- * Phase 5 removed the legacy app-level `runs` row; the runtime id is
- * enough for stream namespacing, source attribution, and low-level
- * workflow observability.
- */
 export async function beginHeartbeatRun(input: {
   agentId: string
 }): Promise<{ runId: string }> {
@@ -26,8 +20,7 @@ function currentWorkflowRunId(agentId: string): string {
       return runId
     }
   } catch {
-    // Outside a workflow context (e.g. unit tests) use a stable-enough
-    // fallback instead of reintroducing an app-level run table.
+    // Outside workflow context, fall back to a stable-enough id.
   }
   return agentId
 }

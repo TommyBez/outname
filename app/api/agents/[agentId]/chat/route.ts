@@ -19,34 +19,9 @@ import {
 import type { ChatRole } from '@/shared/db/schema'
 import { conversationListTag } from '@/shared/server/cache-tags'
 
-/**
- * POST /api/agents/[agentId]/chat
- *
- * Single-turn chat endpoint. The client sends the full UIMessage history
- * (see `workflow-chat-transport`'s default shape). We:
- *
- *   1. Authenticate and authorize against the agent's owner.
- *   2. Verify the agent is enabled.
- *   3. Resolve or create the single conversation for this agent.
- *   4. Persist the just-sent user message so the history row survives
- *      even if the workflow fails mid-stream.
- *   5. Dispatch the turn into the agent's long-lived session workflow.
- *      The session writes its `UIMessageChunk` reply into a per-turn
- *      namespaced sub-stream of its run, keyed by `replyToken`. We
- *      pipe that sub-stream straight into
- *      `createUIMessageStreamResponse` so `useChat` sees the same
- *      shape it always has.
- *
- * The workflow itself persists the assistant turn after streaming
- * completes — see `workflows/chat/steps/persist-assistant-turn.ts`.
- *
- * Phase 2 dropped the per-kind chat gate (every agent is generic).
- * Phase 3 introduced `user_connections` + `agent_tools`: per-tool
- * credential resolution now happens inside the workflow's boot step
- * (`workflows/agent-session/steps/resolve-tool-plan.ts`), and tools
- * that fail to resolve are surfaced as a "Tools needing reconnection"
- * block in the system prompt rather than failing the chat round-trip.
- */
+// Authenticate, persist the newest user turn, dispatch into the long-lived
+// session workflow, then pipe the per-turn reply-token sub-stream back into
+// `useChat`.
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ agentId: string }> }
@@ -134,10 +109,7 @@ export async function POST(
         uiMessages,
       })
 
-      // Subscribe to the per-turn namespaced sub-stream of the session run.
-      // The session's `handleChat` writes `UIMessageChunk`s into this same
-      // namespace; the AI SDK helper repacks them into `useChat`'s
-      // expected shape.
+      // `handleChat` writes `UIMessageChunk`s into this reply-token namespace.
       const readable = getRun(sessionRunId).getReadable<AgentChatChunk>({
         namespace: replyToken,
       })

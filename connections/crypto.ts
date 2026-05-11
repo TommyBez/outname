@@ -1,22 +1,9 @@
 import 'server-only'
 import { getConnectionEncryptionKey } from '@/connections/key-provider'
 
-/**
- * AES-256-GCM at-rest encryption for `user_connections.credentials`.
- *
- * Envelope (base64-encoded as a single string):
- *
- *     version(1) | iv(12) | tag(16) | ciphertext(N)
- *
- * The version byte lets us migrate algorithms or rotate keys later
- * without re-reading every row in a single big-bang. Today only `0x01`
- * is defined.
- *
- * Key sourcing is delegated to `lib/key-provider.ts`. The current
- * provider still reads `CONNECTION_ENCRYPTION_KEY`; future KMS or
- * per-tenant DEK providers can slot in behind the same interface.
- */
-
+// Envelope layout: version(1) | iv(12) | tag(16) | ciphertext(N).
+// The version byte is part of the stored format, so rotations need a
+// matching decrypt path for older rows.
 const VERSION = 0x01
 const IV_LEN = 12
 const TAG_LEN = 16
@@ -64,14 +51,11 @@ function concatBytes(parts: Uint8Array[]): Uint8Array {
   return result
 }
 
-/**
- * Encrypt an arbitrary JSON-serialisable value into a base64 envelope.
- * Each call uses a fresh random IV — never reuse one with the same key.
- */
 export async function encryptCredential(value: unknown): Promise<string> {
   const webCrypto = getWebCrypto()
   const subtle = getSubtleCrypto()
   const key = await getAesKey()
+  // AES-GCM IVs must be unique per encryption under the same key.
   const iv = webCrypto.getRandomValues(new Uint8Array(IV_LEN))
   const plaintext = new TextEncoder().encode(JSON.stringify(value))
   const ciphertextWithTag = new Uint8Array(
@@ -90,10 +74,6 @@ export async function encryptCredential(value: unknown): Promise<string> {
   return Buffer.from(envelope).toString('base64')
 }
 
-/**
- * Decrypt a base64 envelope produced by `encryptCredential`. Throws on
- * any tampering, key mismatch, or unknown version byte.
- */
 export async function decryptCredential<T = unknown>(
   envelopeB64: string
 ): Promise<T> {

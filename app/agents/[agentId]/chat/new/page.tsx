@@ -7,19 +7,6 @@ import { getCachedAgentByIdForUser } from '@/shared/server/data'
 
 type Params = Promise<{ agentId: string }>
 
-/**
- * Draft chat surface. Generates a candidate conversation id server-side
- * and hands it to the chat component, but does NOT persist anything.
- *
- * The conversation row is created lazily inside the API route when the
- * first user message arrives (`getOrCreateConversationForAgent`), so a
- * user who clicks "New chat" and navigates away leaves zero rows behind.
- *
- * On first send the client component swaps the URL to the persisted
- * `/chat/[conversationId]` path via `window.history.replaceState`, which
- * keeps the streaming `useChat` instance mounted while matching the
- * canonical route shape.
- */
 export default function NewAgentChatPage({ params }: { params: Params }) {
   return (
     <Suspense fallback={<ChatSkeleton />}>
@@ -36,6 +23,8 @@ async function DraftChat({ params }: { params: Params }) {
     notFound()
   }
 
+  // Draft ids stay DB-free until the first send persists the conversation.
+  // The client then `replaceState()`s to `/chat/[conversationId]` without remounting `useChat`.
   const draftConversationId = newChatConversationId()
 
   return (

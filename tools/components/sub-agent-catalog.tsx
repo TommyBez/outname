@@ -18,15 +18,6 @@ interface Props {
   parentAgentId: string
 }
 
-/**
- * Phase 4: catalog-style listing of the user's other agents that the
- * parent agent can delegate to via the `agent_<childId>` synthesised
- * tool.
- *
- * Visual language matches `<ToolCatalog />` deliberately — it's the
- * same affordance ("attach/detach a callable") just on a different
- * resource.
- */
 export function SubAgentCatalog({ parentAgentId, candidates }: Props) {
   if (candidates.length === 0) {
     return (

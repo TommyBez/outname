@@ -12,66 +12,17 @@ const IDENTITY_MD_PATH = `${SYSTEM_SANDBOX_ROOT}/IDENTITY.md`
 const SOUL_MD_PATH = `${SYSTEM_SANDBOX_ROOT}/SOUL.md`
 const USER_MD_PATH = `${SYSTEM_SANDBOX_ROOT}/USER.md`
 const SEED_MARKER_PATH = `${SYSTEM_SANDBOX_ROOT}/.agents-md-seeded`
-// Bumped to "v12" when the model-facing memory tools were replaced by
-// bash-tool backed readFile/writeFile plus listFiles/grepFiles. Writes
-// are immediate; only architecture-defined files mirror to the DB/UI.
-//
-// Bumped to "v11" when the exec sandbox was removed: the template no
-// longer documents `bash` / `file_read` / `file_write` / `reset_exec`
-// or the bash audit log, since those tools no longer exist.
-//
-// Bumped to "v10" to keep the upstream eager USER.md profile support
-// while also bootstrapping `IDENTITY.md` as a stable compact identity
-// card path on every fresh system sandbox.
-//
-// Bumped to "v8" when the base template clarified that all memory
-// files except AGENTS.md, IDENTITY.md, and SOUL.md are agent-maintained.
-//
-// Bumped to "v7" when heartbeat behavior moved from the generic
-// kickoff prompt into the base AGENTS.md operating contract.
-//
-// Bumped to "v6" when UI-authored AGENTS.md content changed from
-// replacement semantics to "append below the platform base template".
-//
-// Bumped to "v5" alongside the architect-driven memory-tool rename
-// from `memory_*` to `<verb>_memory`. Existing dev agents pick up the
-// new template on their next event after deploy.
+// Bump this marker whenever bootstrap seed semantics change and existing
+// sandboxes must rewrite their baseline files on the next event.
 const SEED_MARKER_VALUE = 'v12'
 
-/**
- * Process-local cache of agent ids whose `.agents-md-seeded` marker we
- * have already verified equals the current `SEED_MARKER_VALUE` in this
- * process. Subsequent calls in the same long-lived session can skip
- * the `Sandbox.get` round-trip entirely. Cleared naturally on
- * cold-start / deploy, which is when a `SEED_MARKER_VALUE` bump would
- * trigger a re-seed anyway.
- */
+// Process-local cache: once this process has verified a fresh marker for an
+// agent, later events can skip reopening the sandbox just to re-read it.
 const verifiedThisProcess = new Set<string>()
 
-/**
- * Idempotent step that writes the baseline `AGENTS.md` template into
- * the agent's **system** sandbox on its very first boot — and re-seeds
- * whenever `SEED_MARKER_VALUE` is bumped to roll out a template
- * upgrade.
- *
- * Sentinel-guarded by `.agents-md-seeded`. Once the marker matches the
- * current value, the step never overwrites the agent's evolved notes.
- *
- * Re-seeding only rewrites the user-owned bootstrap files; the agent's
- * own memory (`MEMORY.md`, `TASKS.md`, `logs/*.md`, etc.) is left
- * untouched.
- *
- * `created`-aware fast paths:
- *   - `created === true`  → fresh sandbox; always seed.
- *   - `created === false` and the marker has been verified in this
- *     process → skip the sandbox handle entirely (cheap path for the
- *     long-lived session loop).
- *   - `created === false` and not yet verified → open the sandbox,
- *     read the marker, re-seed if stale, populate the in-process
- *     cache.
- *
- * Called from `startupSystemSandbox` (see `lib/agent-sandbox.ts`).
- */
+// Seed bootstrap files on first boot and re-seed only when the marker changes.
+// Once the marker matches, later events leave the agent's own notes alone and
+// skip redundant sandbox reads when this process already verified the marker.
 export async function seedAgentsMd(input: {
   agentId: string
   created?: boolean
@@ -86,8 +37,7 @@ export async function seedAgentsMd(input: {
   const sandbox = await getSystemSandbox(agentId)
 
   if (!created) {
-    // We're piggy-backing on an existing snapshot. Honor any marker
-    // already on disk from a previous deploy / process.
+    // Reuse the on-disk marker when resuming an older snapshot.
     const seeded = await readMarker(sandbox, SEED_MARKER_PATH)
     if (seeded === SEED_MARKER_VALUE) {
       verifiedThisProcess.add(agentId)

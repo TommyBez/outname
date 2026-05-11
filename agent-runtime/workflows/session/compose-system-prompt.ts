@@ -8,23 +8,10 @@ import { readLiveMemory } from '@/agent-runtime/workflows/session/tools/sandbox-
 import type { Reconnect } from '@/tools/catalog/types'
 import { reconnectPromptLine } from '@/tools/runtime/reconnect-renderer'
 
-/**
- * Build the system prompt: inline eager context files from the system
- * sandbox, list other tracked architecture paths, append platform invariants.
- * Computed once per event; `writeFile` changes are immediate in the sandbox
- * and mirrored to the UI after `endOfEvent`.
- */
-
 export interface ComposeSystemPromptArgs {
   agentId: string
   agentName: string
-  /** UTC ISO timestamp embedded so the model knows what "now" is. */
   nowIso?: string
-  /**
-   * Tools that failed to materialize this event. Surfaced verbatim so
-   * the model can either route around them or tell the user to
-   * reconnect.
-   */
   reconnects?: readonly Reconnect[]
 }
 

@@ -9,13 +9,8 @@ export type ToolKindResolvedRow =
 export interface ToolKindPlugin {
   kind: AgentToolKind
   label: string
-  /**
-   * v1 plugin seam intentionally owns only row classification. The
-   * maintainer/sub-agent validation and build paths still live in
-   * `resolve-tool-plan.ts` and `build-attached-tools.ts`; future MCP
-   * work should promote those hooks into this interface rather than
-   * assuming the substrate is already a full execution plugin system.
-   */
+  // v1 only classifies rows. Validation and build still live in
+  // `resolve-tool-plan.ts` and `build-attached-tools.ts`.
   resolveRow(row: AgentTool): ToolKindResolvedRow
 }
 

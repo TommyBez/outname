@@ -10,18 +10,6 @@ import { agent } from './agents'
 import { user } from './auth'
 import { chatConversation } from './chat'
 
-/**
- * External chat-channel installations (Slack workspace, Teams tenant,
- * Discord guild, …). One row per (user, channel, externalId).
- *
- * Credentials are encrypted with the same envelope used for
- * `user_connections`. `metadata` carries channel-specific state that is
- * safe to read in the clear (bot user id, team name, app id).
- *
- * Status lifecycle:
- *   active   ←   installation works
- *   revoked  ←   operator removed the install or token was rotated out
- */
 export const channelInstallations = pgTable(
   'channel_installations',
   {
@@ -31,7 +19,9 @@ export const channelInstallations = pgTable(
       .references(() => user.id, { onDelete: 'cascade' }),
     channel: text('channel').notNull(),
     externalId: text('external_id').notNull(),
+    // Install secrets stay encrypted at rest.
     credentials: text('credentials'),
+    // Metadata is intentionally cleartext for routing and UI state.
     metadata: jsonb('metadata').notNull().default({}),
     status: text('status').notNull().default('active'),
     createdAt: timestamp('created_at', { withTimezone: true })
@@ -51,27 +41,11 @@ export const channelInstallations = pgTable(
   ]
 )
 
-/**
- * Routes incoming external messages to a specific agent. Resolved at
- * webhook time by `(channel, teamId, externalKey, kind, userId)`.
- *
- * - `teamId`            — workspace dimension (Slack team id, Teams
- *                         tenant id, Discord guild id). Always set —
- *                         every supported adapter delivers messages
- *                         scoped to a workspace and routing requires
- *                         it to find the matching install.
- * - `kind = 'channel'`  — a Slack channel id, Teams channel id, …
- * - `kind = 'dm'`       — a Slack user id (when DMing the bot)
- *
- * `userId` is denormalized from `agent.userId` so multiple platform
- * users can have their own bindings for the same workspace + channel.
- * The resolver reads installations for the workspace and fans out to
- * every user whose binding matches.
- */
 export const agentChannelBindings = pgTable(
   'agent_channel_bindings',
   {
     id: text('id').primaryKey(),
+    // Denormalized so webhook routing can fan out per owner before loading agents.
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
@@ -91,6 +65,7 @@ export const agentChannelBindings = pgTable(
       .defaultNow(),
   },
   (t) => [
+    // Bindings are unique per user, so different users can target the same external channel.
     uniqueIndex('agent_channel_bindings_lookup_idx').on(
       t.channel,
       t.teamId,
@@ -103,14 +78,6 @@ export const agentChannelBindings = pgTable(
   ]
 )
 
-/**
- * Maps an external thread (Slack channel+thread_ts, Teams reply chain,
- * Discord thread) to a `chat_conversation` row owned by an agent.
- *
- * Uniqueness is per-agent so multiple platform users can each maintain
- * their own conversation for the same external thread when their
- * agents both happen to be bound to the source channel.
- */
 export const channelThreadConversations = pgTable(
   'channel_thread_conversations',
   {
@@ -133,6 +100,7 @@ export const channelThreadConversations = pgTable(
       .defaultNow(),
   },
   (t) => [
+    // External threads are unique per agent so different users can map the same source thread separately.
     uniqueIndex('channel_thread_conversations_external_idx').on(
       t.channel,
       t.teamId,

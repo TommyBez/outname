@@ -17,15 +17,6 @@ export const metadata = createPrivatePageMetadata(
   'Chat, memory, tools, and configuration for a private OUTNA.ME agent.'
 )
 
-/**
- * Shell for every agent route. Supplies the single app shell plus a
- * contextual chat-history section in the sidebar, so Overview, Chat,
- * Configure, Tools, and Memory share the same workspace chrome.
- *
- * The sidebar section is streamed through its own `<Suspense>` so the
- * rest of the shell (and the page content below) paint immediately even
- * while the agent row is being fetched.
- */
 export default function AgentLayout({
   children,
   params,

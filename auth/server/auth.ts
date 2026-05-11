@@ -2,18 +2,12 @@ import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { db } from '@/shared/db'
 
-// In production, the app runs at its own origin (BETTER_AUTH_URL) and is
-// NOT embedded in a cross-site iframe, so we keep Better Auth's stock
-// defaults: trustedOrigins = [BETTER_AUTH_URL] and SameSite=Lax cookies.
-//
-// In non-production (local dev + the v0 integrated preview, which embeds
-// the app in a cross-site iframe on a dynamic sandbox host), we need to:
-//   1. Trust the incoming Origin so CSRF checks don't reject sign-in.
-//   2. Issue session cookies with SameSite=None; Secure so the browser
-//      actually stores and sends them back from inside the iframe.
+// Production uses Better Auth defaults. Non-production must trust the incoming
+// origin and issue `SameSite=None` cookies so sign-in still works inside the
+// cross-site v0 preview iframe.
 const isProduction = process.env.NODE_ENV === 'production'
 
-// Dev-only static allowlist. Never used in production.
+// Dev-only static allowlist.
 const devTrustedOrigins = [
   'http://localhost:3000',
   'https://*.vercel.app',
@@ -57,8 +51,7 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     autoSignIn: true,
-    // Single-user: registration is disabled at route level via middleware.
-    // Admin is created via a seed script.
+    // Registration stays disabled; the seeded admin is created out of band.
     disableSignUp: true,
   },
   session: {
@@ -67,15 +60,12 @@ export const auth = betterAuth({
   },
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL,
-  // In production: identical to the original config — only BETTER_AUTH_URL
-  // is trusted. In dev: trust the incoming origin + a static allowlist so
-  // the v0 sandbox and local dev work without per-host configuration.
+  // Dev trusts the incoming origin plus the static allowlist for local and v0
+  // previews; production trusts only `BETTER_AUTH_URL`.
   trustedOrigins: isProduction
     ? productionTrustedOrigins()
     : (request) => devTrustedOriginsList(request),
-  // Only override cookie attributes in non-production so the session
-  // cookie works inside the v0 integrated preview's cross-site iframe.
-  // Production keeps Better Auth's defaults (SameSite=Lax, Secure, HttpOnly).
+  // Only dev/preview overrides cookie attributes for the cross-site iframe.
   ...(isProduction
     ? {}
     : {

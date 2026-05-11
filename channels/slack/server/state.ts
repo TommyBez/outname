@@ -9,35 +9,6 @@ import {
   saveSlackInstallation,
 } from './installations'
 
-/**
- * State backing for the Slack Chat SDK adapter.
- *
- * Why custom: the SDK's multi-workspace mode persists every installed
- * workspace's bot token in its `StateAdapter` under
- * `slack:installation:<teamId>`. In a multi-user deployment those bot
- * tokens are owner-scoped — they belong to whichever app user clicked
- * "Add to Slack" — so we route those keys into our `channel_installations`
- * table (encrypted via `connection-crypto.ts`) and let everything else
- * (concurrency locks, thread subscriptions, ephemeral caches) stay in
- * the in-memory adapter.
- *
- * The owning userId is not in scope when the SDK calls `state.set` from
- * inside `handleOAuthCallback`. We carry it through `AsyncLocalStorage`,
- * scoped by `withInstallContext({ userId }, () => ...)` in the OAuth
- * callback route. Reads do not require the userId — the webhook caller
- * separately verifies that `installation.userId === agent.userId`
- * before letting the turn run.
- *
- * Failure modes by design:
- *   - `state.set('slack:installation:<teamId>', ...)` outside an install
- *     context throws — this prevents the SDK from silently dropping a
- *     token write whose owner we cannot determine.
- *   - `state.get('slack:installation:<teamId>')` returns null when the
- *     row is missing or its credential cannot be decrypted, which the
- *     SDK turns into "no token for this team" → the webhook reply path
- *     surfaces that as a clean 401.
- */
-
 interface InstallContext {
   userId: string
 }
@@ -61,16 +32,9 @@ function teamIdFromKey(key: string): string {
   return key.slice(INSTALLATION_PREFIX.length)
 }
 
-/**
- * Drop-in `StateAdapter` that intercepts Slack installation keys.
- * Implements the interface explicitly (rather than extending an
- * existing adapter) because the SDK reaches into the adapter through
- * the public interface only — the inner backing can be memory, redis,
- * or anything else that satisfies `StateAdapter`.
- *
- * The default inner is chosen by `createSlackBackingState()`: redis
- * when `REDIS_URL` is set, in-memory otherwise.
- */
+// Intercept Slack installation keys so owner-scoped bot tokens live in
+// `channel_installations`, while locks and ephemeral state stay in the inner
+// adapter chosen by `createSlackBackingState()`.
 export class SlackHybridState implements StateAdapter {
   private readonly inner: StateAdapter
   constructor(inner: StateAdapter = createSlackBackingState()) {
@@ -83,8 +47,6 @@ export class SlackHybridState implements StateAdapter {
   disconnect(): Promise<void> {
     return this.inner.disconnect()
   }
-
-  // Installation read/write/delete — the only methods that diverge.
 
   async get<T = unknown>(key: string): Promise<T | null> {
     if (!isInstallationKey(key)) {
@@ -126,10 +88,7 @@ export class SlackHybridState implements StateAdapter {
     }
     const ctx = installContext.getStore()
     if (!ctx?.userId) {
-      // Best-effort delete: removing a token by team id alone is fine
-      // because the unique key is `(userId, channel, externalId)` and
-      // there is at most one row per (channel, externalId) per user. We
-      // log so an unexpected SDK-driven delete is visible.
+      // Unexpected SDK delete without owner context should stay visible.
       console.warn(
         '[slack-state] delete without install context — falling back to team-scoped delete',
         { key }
@@ -156,8 +115,6 @@ export class SlackHybridState implements StateAdapter {
     }
     return this.inner.setIfNotExists(key, value, ttlMs)
   }
-
-  // Pure pass-through for the rest of the interface.
 
   acquireLock(threadId: string, ttlMs: number): Promise<Lock | null> {
     return this.inner.acquireLock(threadId, ttlMs)

@@ -8,13 +8,6 @@ import {
 } from '@/shared/db/schema'
 import { agentToolsTag } from '@/shared/server/cache-tags'
 
-/**
- * Phase 4: durable DB mutations used by `buildToolSandboxWorkflow`.
- *
- * Each function is its own `'use step'` so the workflow runtime
- * checkpoints them — replays after a failure don't double-write.
- */
-
 export interface LoadBuildRowResult {
   manifestHash: string
   manifestId: string
@@ -53,15 +46,9 @@ export async function markBuildRunning(input: {
     )
 }
 
-/**
- * Finish-line for a successful build:
- *   1. Upsert `tool_sandbox_snapshots` (manifest -> latest snapshot id).
- *   2. Mark the build row `ready`.
- *   3. Flip every `agent_tools` row that was waiting on this manifest
- *      from `pending` to `connected` and clear any sticky error.
- *   4. Revalidate per-agent tool caches so the catalog page sees the
- *      new state on the next request.
- */
+// Each DB mutation is its own `'use step'` so workflow replays do not
+// double-write. Success publishes the snapshot, marks the build ready, updates
+// waiting attachments, and revalidates affected agent tool caches.
 export async function markBuildReady(input: {
   buildId: string
   manifestId: string
@@ -141,11 +128,8 @@ export async function markBuildReady(input: {
       )
   }
 
-  // Invalidate per-agent tool caches for every agent that just had a
-  // pending row flipped. We don't have the user-id here so we issue a
-  // single bulk-revalidate via the manifest tag — but the cache layer
-  // is keyed per agent. Easiest correct path: revalidate every agent
-  // that has a row referencing this manifest.
+  // Cache tags are per agent, so revalidate every agent that references this
+  // manifest instead of trying to fan out through one manifest-wide tag.
   const agentIds = await db
     .selectDistinct({ agentId: agentTools.agentId })
     .from(agentTools)
@@ -155,23 +139,13 @@ export async function markBuildReady(input: {
   }
 }
 
-/**
- * Mark the build row failed and stamp the error text onto every
- * `agent_tools` row waiting on this manifest so the catalog UI can
- * surface the message + a Retry button.
- *
- * `agent_tools.status` stays at `pending` — Retry re-runs
- * `attachToolAction` which calls `ensureToolSandboxBuild`; the
- * existing row is reused.
- */
+// Failure keeps `agent_tools.status` at `pending` and stamps the error onto the
+// waiting rows so Retry can reuse the same attachment and rebuild in place.
 export async function markBuildFailed(input: {
   buildId: string
   error: string
 }): Promise<void> {
   'use step'
-
-  // Read the manifest id back from the build row so we can update the
-  // matching agent_tools rows.
   const [row] = await db
     .select({
       manifestId: toolSandboxBuilds.manifestId,
@@ -219,13 +193,8 @@ export async function markBuildFailed(input: {
   }
 }
 
-/**
- * Read the manifest's bundled setup-script bytes.
- *
- * Wrapped as a step so the workflow runtime treats the FS read as a
- * checkpointable boundary even though it's just a synchronous module
- * read in practice.
- */
+// Keep the manifest setup-script read inside a step so the workflow runtime
+// checkpoints the boundary even though the module read is synchronous.
 export async function readManifestSetupScript(input: {
   manifestId: string
 }): Promise<{ setup: string }> {

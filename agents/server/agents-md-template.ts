@@ -1,21 +1,4 @@
-/**
- * Baseline `AGENTS.md` content seeded into an agent's **system**
- * sandbox. Operator-authored instructions from the UI are appended
- * below this baseline, rather than replacing the platform contract.
- * The seed step (see `workflows/agent-session/steps/seed-agents-md.ts`)
- * is guarded by a `.agents-md-seeded` sentinel that the seed step bumps
- * each time the template ships a breaking change.
- *
- * Template authoring rules:
- *     models, persona, and user profile — those live in `IDENTITY.md`,
- *     `SOUL.md`, `USER.md`, or get derived at runtime by
- *     `composeSystemPrompt`.
- *   - The operator owns this file. After the seed, every edit happens
- *     via the UI "Instructions" tab (which lands in the
- *     `pending_file_writes` queue and is applied by
- *     `drainPendingWrites`) or via the operator's manual edits.
- *     The agent's own writeFile tool refuses this path.
- */
+// Seed this into the system sandbox, then append operator-authored AGENTS.md instructions below it.
 export const AGENTS_MD_TEMPLATE = `# AGENTS.md
 
 This file is your operational manual. Read it at the start of every

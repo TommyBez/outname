@@ -100,10 +100,7 @@ function ChatMessage({ message }: { message: UIMessage }) {
 
           if (part.type === 'reasoning') {
             return (
-              // No negative horizontal margin here: on narrow viewports
-              // it was shifting the Reasoning trigger (brain icon + label)
-              // past `MessageContent`'s `overflow-hidden` clip and cutting
-              // off the icon on the left edge.
+              // Keep the trigger inside `MessageContent` on narrow viewports.
               <Reasoning isStreaming={part.state === 'streaming'} key={key}>
                 <ReasoningTrigger />
                 <ReasoningContent>{part.text}</ReasoningContent>

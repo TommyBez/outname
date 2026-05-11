@@ -8,25 +8,9 @@ import { manifestHash } from '@/tools/sandboxes'
 
 const TERMINAL_WORKFLOW_STATUSES = new Set(['completed', 'failed', 'cancelled'])
 
-/**
- * Phase 4: server-side helper used by `attachToolAction` to ensure a
- * tool-sandbox snapshot exists (or that a build is running) for a
- * given manifest.
- *
- *   - Fast path: snapshot already matches the current `manifestHash`
- *     → return `{ state: 'ready', snapshotId }`.
- *   - Coalesce: there is already an in-flight build for the same
- *     (manifest, hash) → return its `buildId` so concurrent attaches
- *     can subscribe to the same workflow run.
- *   - Otherwise: insert a fresh `tool_sandbox_builds` row, kick off
- *     `buildToolSandboxWorkflow`, persist the workflow run id back
- *     onto the row, and return the new `buildId`.
- *
- * No `'use step'` here — this runs inside a Next.js server action,
- * not a workflow execution context. Idempotency comes from the
- * manifest-hash check, so a retry after failure (the user clicking
- * the Retry button) is safe.
- */
+// Server-action helper for attach: reuse a matching snapshot, coalesce onto an
+// active build for the same `(manifest, hash)`, or start a fresh workflow. A
+// retry is safe because the manifest hash is the idempotency key.
 export type EnsureToolSandboxBuildResult =
   | { state: 'ready'; snapshotId: string }
   | { state: 'building'; buildId: string }
@@ -41,7 +25,6 @@ export async function ensureToolSandboxBuild(input: {
   const { manifestId } = input
   const desiredHash = manifestHash(manifestId)
 
-  // Fast path: snapshot already matches.
   const [snap] = await db
     .select()
     .from(toolSandboxSnapshots)
@@ -56,7 +39,6 @@ export async function ensureToolSandboxBuild(input: {
     return { state: 'building', buildId: running.id }
   }
 
-  // No fresh snapshot, no in-flight build — start one.
   const buildId = newBuildId()
   try {
     await db.insert(toolSandboxBuilds).values({
@@ -81,8 +63,7 @@ export async function ensureToolSandboxBuild(input: {
     const run = await start(buildToolSandboxWorkflow, [{ buildId }])
     workflowRunId = run.runId
   } catch (err) {
-    // If the workflow refused to start, mark the row failed so the UI
-    // doesn't spin forever.
+    // Surface a terminal failure immediately so the UI does not spin forever.
     console.error(
       '[v0] ensureToolSandboxBuild: start(buildToolSandboxWorkflow) failed',
       err
@@ -180,13 +161,8 @@ function isUniqueViolation(err: unknown): boolean {
   )
 }
 
-/**
- * Read the current terminal state of a build row. Used as the
- * polling-fallback path in the catalog UI when the workflow stream
- * isn't reachable (e.g. the run record has expired). Per-step
- * progress messages are NOT exposed here — the stream is the single
- * source of truth for in-flight progress.
- */
+// Polling fallback for the catalog UI when the workflow stream is unavailable.
+// In-flight progress stays stream-only; this exposes terminal row state only.
 export async function readToolSandboxBuildStatus(buildId: string): Promise<{
   status: 'pending' | 'running' | 'ready' | 'failed'
   errorText: string | null
@@ -202,11 +178,7 @@ export async function readToolSandboxBuildStatus(buildId: string): Promise<{
   return row ?? null
 }
 
-/**
- * Lookup the most recent build row for a manifest, used by the tools
- * page to render an in-flight progress strip alongside a `pending`
- * agent_tools row.
- */
+// Used by the tools page to pair a pending attachment row with its latest build.
 export async function getLatestBuildForManifest(
   manifestId: string,
   manifestHash?: string

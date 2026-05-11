@@ -25,35 +25,15 @@ import {
 interface CreateInput {
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
-  /**
-   * IDENTITY.md content authored via the "Identity card" tab. Empty string
-   * means "keep the default empty identity card" — the seed step still
-   * creates the file so every agent has a stable injection point.
-   */
   identityCard: string
-  /**
-   * AGENTS.md content authored via the "Instructions" tab. Empty
-   * string means "use the default seed template" — the
-   * `seedAgentsMd` step writes the platform default on first
-   * sandbox boot.
-   */
   instructions: string
   model: string
   name: string
   reflectionEnabled: boolean
   reflectionIntervalMinutes: number
-  /**
-   * SOUL.md content authored via the "Soul" tab. Empty string means
-   * "don't seed a deeper persona layer yet" — the file is left absent
-   * until the user fills it in later.
-   */
   soul: string
   stepLimitCustom?: number | null
   stepLimitMode: 'custom' | 'grind' | 'high' | 'low' | 'medium'
-  /**
-   * USER.md seed/correction content from the "User profile" tab. Empty
-   * string means "let the agent create it when it learns stable facts."
-   */
   userProfile: string
 }
 
@@ -137,13 +117,10 @@ export async function deleteAgentAction(agentId: string): Promise<void> {
     redirect('/agents')
   }
 
-  // Stop the session first so it doesn't try to write into a torn-down
-  // sandbox or a deleted agent row mid-event.
+  // Stop the session first so it cannot write into a torn-down sandbox or row.
   await stopAgentSession(agentId)
 
-  // Best-effort: tear down the agent's persistent system sandbox
-  // before removing the row so we don't leak it. Any failure is
-  // swallowed inside the helper.
+  // Best-effort delete of the persistent sandbox before removing the agent row.
   await destroyAgentSandboxes(agentId)
 
   await db

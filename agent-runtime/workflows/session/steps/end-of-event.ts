@@ -24,21 +24,9 @@ type EndOfEventSource =
   | { sourceType: 'reflection'; sourceId: string | null }
   | { sourceType: 'invocation'; sourceId: string | null }
 
-/**
- * End-of-event handler.
- *
- *   1. Persist before/after review rows for tracked architecture files
- *      touched by immediate `writeFile` calls during this event.
- *   2. Mirror only architecture-defined files from the system sandbox
- *      into `agent_files`: bootstrap/profile files, canonical memory
- *      files, and `logs/*.md`.
- *   3. Stop the system sandbox so Vercel snapshots its filesystem
- *      ready for the next event's resume.
- *
- * Failures inside this step never crash the session loop — they're
- * swallowed (with a log) so a transient sandbox or DB hiccup doesn't
- * prevent the agent from receiving the next event.
- */
+// Persist review rows, mirror tracked files into `agent_files`, then release
+// the system and tool sandboxes. Failures are logged and swallowed so one bad
+// flush never poisons the long-lived session loop.
 export async function endOfEvent(input: {
   agentId: string
   pending: PendingWrites
@@ -50,8 +38,7 @@ export async function endOfEvent(input: {
   try {
     systemSandbox = await getSystemSandbox(input.agentId)
   } catch (err) {
-    // No system sandbox means startup never ran for this event — the
-    // session loop will boot one on the next event. Nothing to flush.
+    // Nothing to flush if startup never produced a system sandbox for this turn.
     console.error('[v0] endOfEvent: getSystemSandbox failed', err)
     return
   }
@@ -82,9 +69,7 @@ export async function endOfEvent(input: {
 
   await releaseSandbox(systemSandbox)
 
-  // Tear down maintainer-tool sandboxes spawned during this event so
-  // the next event boots fresh. Errors are logged-and-swallowed inside
-  // the helpers.
+  // Release per-event tool sandboxes so the next event boots fresh ones.
   await Promise.all([
     stopAllToolSandboxesForRun(),
     stopAllBrokeredHttpSandboxesForRun(),
@@ -138,8 +123,8 @@ async function mirrorTrackedFilesToDb(
 ): Promise<void> {
   const relPaths = await listTrackedArchitectureFiles(sandbox)
 
-  // Read existing rows so we can (a) skip unchanged hashes and (b)
-  // delete rows whose sandbox file is gone.
+  // Read existing rows so unchanged hashes can be skipped and missing files
+  // can be deleted from the mirror.
   const existing = await db
     .select({ path: agentFiles.path, sha256: agentFiles.sha256 })
     .from(agentFiles)
@@ -178,9 +163,7 @@ async function mirrorTrackedFilesToDb(
       })
   }
 
-  // Delete rows for tracked files that no longer exist on disk. Uses
-  // a per-row delete to keep the WHERE clause small; the typical
-  // delete count is 0–1 per turn.
+  // Delete rows for tracked files that disappeared from disk.
   for (const path of existingByPath.keys()) {
     if (seen.has(path)) {
       continue

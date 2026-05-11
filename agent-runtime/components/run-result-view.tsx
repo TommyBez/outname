@@ -7,17 +7,6 @@ import { mermaid } from '@streamdown/mermaid'
 import { Streamdown } from 'streamdown'
 import { cn } from '@/lib/utils'
 
-/**
- * Agent-agnostic markdown result renderer.
- *
- * Used for DREAMS.md, timeline logs, and any other agent-produced
- * markdown document. It shares the same Streamdown + plugin stack used
- * by the chat transcript, wrapped in the project's serif/mono editorial
- * tone.
- *
- * It has no knowledge of Gmail, categories, or any agent-specific data
- * shape — it simply renders whatever markdown the agent produced.
- */
 const plugins = { cjk, code, math, mermaid }
 
 export function RunResultView({ content }: { content: string | null }) {

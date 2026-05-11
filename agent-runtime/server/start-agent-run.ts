@@ -3,14 +3,6 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/shared/db'
 import { type Agent, agent } from '@/shared/db/schema'
 
-/**
- * Owner-scoped agent lookup. Kept in this module (rather than co-located
- * with the bulk DB helpers in `lib/data.ts`) because callers historically
- * imported it from here alongside `startAgentRun`. The `startAgentRun`
- * dispatcher itself was removed in the agent-session refactor — runs are
- * now driven by the unified `agentSession` workflow whose lifecycle is
- * managed in `lib/agent-session.ts`.
- */
 export async function getAgentById(agentId: string): Promise<Agent | null> {
   'use step'
   const [row] = await db

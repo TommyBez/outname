@@ -11,46 +11,24 @@ import {
 import { collectSubAgentMessages } from './invocation-stream'
 
 export interface AgentToolHandle {
-  /** Child agent's row data, already vetted by resolveToolPlan. */
   childAgentId: string
   childCapabilitySummary: string | null
   childName: string
   childUserId: string
-  /** Agent currently executing the tool. */
   parentAgentId: string
-  /**
-   * Parent's call stack at build time. We append the current parent id
-   * before dispatching so the child sees the full lineage and can
-   * refuse a cycle even if our own check missed.
-   */
+  // Append the current parent id before dispatch so the child sees the full
+  // lineage and can still reject a cycle.
   parentCallStack: string[]
-  /** Parent's nesting depth. The child runs at parentDepth + 1. */
   parentDepth: number
-  /** App run id for the parent, when the parent itself is a run. */
   parentRunId: string | null
-  /** Synthesised tool key that triggered the invocation. */
   parentToolId: string
-  /** Parent user — must equal childUserId; resolveToolPlan enforces. */
   parentUserId: string
-  /** Stream namespace for live tool updates, when visible. */
   streamNamespace?: string | null
 }
 
-/**
- * Phase 4: synthesises an AI-SDK tool that lets a parent agent
- * delegate work to one of its own sub-agents.
- *
- * The model sees a tool named `agent_<childId>` (or rather, the
- * AI-SDK key we register it under) with one input — `instruction` —
- * and a structured return. From the model's perspective this is just
- * another awaited tool call; behind the scenes we dispatch an invocation
- * event to the child and then read the child's namespaced UI stream until
- * it closes. The child also mirrors that same stream into the parent tool
- * card for live UI updates.
- *
- * Cycle and depth enforcement happens earlier (resolveToolPlan); this
- * function trusts its caller.
- */
+// This tool dispatches an invocation event to a child agent and then tails the
+// child's stream until completion. Cycle and depth checks already happened in
+// `resolveToolPlan`.
 export function buildAgentTool(handle: AgentToolHandle) {
   const description = composeDescription(handle)
 
@@ -197,7 +175,7 @@ async function emitPreliminarySubAgentOutput(input: {
       writer.releaseLock()
     }
   } catch {
-    // Live tool updates are UX hints. Never fail the tool call for them.
+    // Live tool updates are UX hints and must not fail the call itself.
   }
 }
 

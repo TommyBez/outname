@@ -1,15 +1,7 @@
 import { getWritable } from 'workflow'
 
-/**
- * Typed progress events written from workflow steps to a per-run stream.
- *
- * The session workflow handles many short-lived events (chat,
- * heartbeat, reflection, invocation). Writing all breadcrumbs into a
- * shared `events` namespace would interleave unrelated progress.
- *
- * Every emit takes the workflow/runtime event id and writes to
- * `events:${runId}`.
- */
+// Use a per-run stream namespace so concurrent chat, heartbeat, reflection,
+// and invocation breadcrumbs never interleave.
 export type RunStepName = 'read' | 'classify' | 'persist' | 'finalize'
 
 export type RunEvent =
@@ -35,14 +27,11 @@ export type RunEvent =
       ts: number
     }
 
-/**
- * Stream namespace for a single workflow/runtime event.
- */
 export function runEventsNamespace(runId: string): string {
   return `events:${runId}`
 }
 
-/** Fire-and-forget-safe step event. Must only be called inside a `"use step"` function. */
+// `getWritable()` must be called from `"use step"` code.
 export async function emitStep(
   runId: string,
   step: RunStepName,
@@ -100,7 +89,6 @@ async function writeOne(runId: string, event: RunEvent): Promise<void> {
       writer.releaseLock()
     }
   } catch {
-    // Streaming is best-effort progress UI - never fail a step because we
-    // couldn't write a breadcrumb.
+    // Progress streaming is best-effort UI; never fail a step over breadcrumbs.
   }
 }

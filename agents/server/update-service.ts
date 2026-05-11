@@ -16,32 +16,19 @@ export interface UpdateAgentInput {
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
   id: string
-  /**
-   * IDENTITY.md content from the "Identity" tab. Empty string is a
-   * legal value — it means "leave whatever is on disk alone". The
-   * action only enqueues a pending write if the operator wrote
-   * something AND it differs from the prefill that was rendered.
-   */
   identityCard: string
-  /** Original IDENTITY.md content the form was rendered with. */
   identityCardOriginal: string
-  /** AGENTS.md content from the "Instructions" tab. */
   instructions: string
-  /** Original AGENTS.md content the form was rendered with. */
   instructionsOriginal: string
   model: string
   name: string
   reflectionEnabled: boolean
   reflectionIntervalMinutes: number
-  /** SOUL.md content from the "Soul" tab. */
   soul: string
-  /** Original SOUL.md content the form was rendered with. */
   soulOriginal: string
   stepLimitCustom?: number | null
   stepLimitMode: 'custom' | 'grind' | 'high' | 'low' | 'medium'
-  /** USER.md seed/correction content from the "User profile" tab. */
   userProfile: string
-  /** Original USER.md content the form was rendered with. */
   userProfileOriginal: string
 }
 
@@ -58,8 +45,7 @@ export async function updateAgentForUser(
   }
 
   const name = input.name.trim() || existing.name
-  // Skip the gateway round-trip if the model didn't change, since the
-  // catalog fetch is the slowest part of this action.
+  // Skip the catalog fetch when the model did not change.
   const model =
     input.model === existing.model || (await isModelIdValid(input.model))
       ? input.model
@@ -88,16 +74,9 @@ export async function updateAgentForUser(
     .where(eq(agent.id, input.id))
     .returning()
 
-  // Bootstrap files: only enqueue a pending write when the operator
-  // actually edited the textarea. This keeps the queue from
-  // ballooning with no-op rows when the user just changes the model
-  // or the heartbeat interval.
-  //
-  // Both sides of the diff are normalized to LF so a `<Textarea>`
-  // round-trip — which on Windows hosts can introduce or strip CRLF
-  // pairs — doesn't manufacture a phantom edit. We persist the
-  // normalized content so disk and queue agree on a single line-ending
-  // convention forever.
+  // Normalize both sides to LF so textarea round-trips do not manufacture
+  // phantom edits on Windows, and only enqueue writes when the operator really
+  // changed the file.
   const identityCardNorm = normalizeNewlines(input.identityCard)
   const identityCardOrigNorm = normalizeNewlines(input.identityCardOriginal)
   if (identityCardNorm !== identityCardOrigNorm) {
@@ -142,10 +121,8 @@ export async function updateAgentForUser(
     },
   })
 
-  // The ticker re-reads schedules on every loop. Poking a heartbeat
-  // gives immediate feedback when users change the normal proactive
-  // schedule; reflection changes wait for their own scheduler/manual
-  // trigger so they don't surprise users with a deep review run.
+  // Poke heartbeat schedule changes immediately; reflection schedule changes
+  // wait for their own scheduler/manual trigger.
   if (
     updated.enabled &&
     (existing.heartbeatEnabled !== updated.heartbeatEnabled ||

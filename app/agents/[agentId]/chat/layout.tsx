@@ -6,16 +6,6 @@ import { getCachedAgentByIdForUser } from '@/shared/server/data'
 
 type Params = Promise<{ agentId: string }>
 
-/**
- * Shared chrome for every chat URL. Resolves the agent row, enforces
- * ownership + chat capability, and wraps the active conversation in
- * the compact `<ChatFrame>` (header + full-height chat column). The
- * sidebar workspace section comes from the parent agent layout, so
- * Chat inherits contextual navigation without any extra plumbing.
- *
- * Kept fully suspended so the page below us can stream in alongside
- * the frame, matching the pattern the overview and edit surfaces use.
- */
 export default function ChatRouteLayout({
   children,
   params,

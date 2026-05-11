@@ -21,26 +21,9 @@ interface BuildStreamEvent {
 type StreamSetter = (state: ToolSandboxBuildState) => void
 type TerminalCallback = (state: 'ready' | 'failed', error?: string) => void
 
-/**
- * Phase 4: subscribe to a tool-sandbox build's NDJSON progress
- * stream.
- *
- * The build workflow publishes coarse-grained progress events (one
- * per phase: "Installing system dependencies...", "Capturing
- * snapshot...", etc.) and a single terminal `ready` or `failed`. We
- * open the stream with `startIndex: 0` so re-mounts replay the full
- * history — there is no DB-side persistence of progress messages on
- * purpose, the workflow run record is the single source of truth.
- *
- * On terminal events, we call `onTerminal` so the parent component
- * can `router.refresh()` and re-read the agent_tools row (whose
- * status flips from `pending` to `connected`).
- *
- * If the workflow run record has expired and the stream returns 404,
- * we don't try to recover progress history (we never had it on the
- * server anyway); the caller should fall back to the terminal-state
- * action and render only the final outcome.
- */
+// Stream coarse build progress from `startIndex=0` so remounts replay the
+// whole run. If the workflow stream is gone, fall back to the terminal-status
+// action instead of trying to recover non-persisted progress history.
 export function useToolSandboxBuildStream(
   buildId: string | null,
   onTerminal?: TerminalCallback

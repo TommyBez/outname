@@ -6,38 +6,10 @@ import {
   toolSuccess,
 } from '@/tools/runtime/define-maintainer-tool'
 
-/**
- * Phase 4: agent-browser tool.
- *
- * Single tool that exposes the **entire** agent-browser CLI rather
- * than wrapping a single hardcoded action. The model picks the
- * subcommand and arguments it needs (`open`, `close`, `snapshot`,
- * `click`, `screenshot`, etc., 50+ commands per agent-browser docs).
- *
- * Why one tool, not 50: each subcommand has different argument shapes
- * and flags; modelling them as separate AI-SDK tools would multiply
- * registry surface for no benefit. The model already knows
- * agent-browser's CLI, and the tool description points it at the
- * docs.
- *
- * Session continuity: agent-browser keeps a persistent daemon inside
- * the sandbox, so `open <url>` followed by `snapshot -i` followed by
- * `click @e2` share the same browser session. We deliberately do NOT
- * close the session between calls — `lib/tool-sandbox-runtime.ts`
- * caches the sandbox per workflow run and `endOfEvent` is the only
- * thing that tears it down.
- */
-
 const MAX_STDOUT_BYTES = 64 * 1024
 const MAX_STDERR_BYTES = 8 * 1024
 
-/**
- * Curated list of known agent-browser subcommands. The model is
- * encouraged to stick to these; unknown subcommands are still
- * forwarded to the CLI (the model can recover from a clean exit-code
- * + stderr error). The list is informational for the LLM, not a
- * hard whitelist.
- */
+// Informational list for the model; unknown commands still pass through to the CLI.
 const KNOWN_COMMANDS = [
   'open',
   'close',

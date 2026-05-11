@@ -8,21 +8,6 @@ import {
 } from 'drizzle-orm/pg-core'
 import { user } from './auth'
 
-/**
- * Generic per-(user, provider) API-key credential store. Replaces the
- * bespoke `gmail_connection` table from Phase 2.
- *
- * `credentials` is a base64-encoded AES-256-GCM envelope produced by
- * `lib/connection-crypto.ts`. Plaintext shape is opaque to the platform —
- * each connector defines its own.
- *
- * `metadata` is connector-defined free-form status context. API keys
- * do not get read by the UI, only decrypted inside the tool runtime.
- *
- * `status` lifecycle is owned by `connectors/runtime.ts`:
- *   active   ←   API key validates and saves
- *   invalid  ←   stored credential cannot be decrypted
- */
 export const userConnections = pgTable(
   'user_connections',
   {
@@ -30,9 +15,11 @@ export const userConnections = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
     provider: text('provider').notNull(),
+    // Connector secrets stay encrypted at rest.
     credentials: text('credentials').notNull(),
+    // Metadata is safe to read in the clear.
     metadata: jsonb('metadata').notNull().default({}),
-    status: text('status').notNull().default('active'), // active | invalid
+    status: text('status').notNull().default('active'),
     expiresAt: timestamp('expires_at', { withTimezone: true }),
     lastError: text('last_error'),
     createdAt: timestamp('created_at', { withTimezone: true })

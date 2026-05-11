@@ -2,13 +2,6 @@ import 'server-only'
 import { z } from 'zod'
 import { defineConnector } from './define-connector'
 
-/**
- * Resend api_key connector. Holds the raw API key only — the
- * `fromEmail` knob lives on the `resend.send` tool's `configSchema`
- * (attachment-config layer) so the same key can back attachments
- * sending from different addresses.
- */
-
 const resendCredentialSchema = z.object({
   apiKey: z
     .string()

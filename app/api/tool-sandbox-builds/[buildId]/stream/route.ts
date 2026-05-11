@@ -8,21 +8,8 @@ import {
   type ToolSandboxBuildEvent,
 } from '@/tools/sandbox-runtime/workflow/events'
 
-/**
- * Phase 4: stream tool-sandbox build progress events as NDJSON.
- *
- * The build workflow writes to a per-build namespace; this route relays
- * it to the client. We open
- * the readable with `startIndex: 0` so a re-mount or refresh replays
- * every progress event the workflow has emitted, which is what makes
- * persisting messages to the DB unnecessary.
- *
- * Auth: the build itself is global (one snapshot serves every user),
- * so the gate is "user is signed in AND has at least one `agent_tools`
- * row referencing the build's manifest". This avoids leaking other
- * users' build ids without making builds private (which would defeat
- * coalescing).
- */
+// Replay from `startIndex: 0` so reconnects see the full build event stream.
+// Auth gates on manifest ownership because the build snapshot itself is shared.
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ buildId: string }> }
@@ -42,10 +29,7 @@ export async function GET(
     return new Response('not found', { status: 404 })
   }
 
-  // Owner check: this user must have at least one agent_tools row
-  // referencing this manifest. Single inner join keeps it cheap and
-  // means we never reveal another user's pending build to anyone but
-  // people actively waiting on the same snapshot.
+  // Only users already referencing this manifest may watch the shared build stream.
   const [ownerRow] = await db
     .select({ agentId: agentTools.agentId })
     .from(agentTools)

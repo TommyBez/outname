@@ -18,38 +18,17 @@ export const HEARTBEAT_MAX = 1440
 export interface CreateAgentInput {
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
-  /**
-   * Optional key used by approval-based creation flows. Replaying the
-   * same approved tool call returns the same agent id instead of
-   * creating duplicates.
-   */
   idempotencyKey?: string
-  /**
-   * IDENTITY.md content. Empty string keeps the default empty identity
-   * card seeded by the sandbox bootstrap.
-   */
   identityCard: string
-  /**
-   * Custom AGENTS.md instructions. The sandbox seed/drain path appends
-   * these below the platform template from `agents-md-template.ts`.
-   * Empty string keeps only the platform template.
-   */
   instructions: string
   model: string
   name: string
   reflectionEnabled: boolean
   reflectionIntervalMinutes: number
-  /**
-   * SOUL.md content. Empty string leaves the file absent until edited.
-   */
   soul: string
   stepLimitCustom?: number | null
   stepLimitMode: StepLimitMode
   userId: string
-  /**
-   * USER.md seed/correction content. Empty string lets the agent create
-   * it later when stable facts appear.
-   */
   userProfile: string
 }
 
@@ -78,16 +57,11 @@ export function stableAgentIdForCreation(input: {
   return `ag_${hash}`
 }
 
-/**
- * Normalize CRLF / CR line endings to LF. Browser textareas and
- * clipboards can hand us CRLF; the sandbox files use LF so no-op
- * comparisons stay meaningful.
- */
+// Normalize to LF so queued bootstrap file diffs stay stable across browsers and clipboards.
 export function normalizeNewlines(s: string): string {
   return s.replace(/\r\n?/g, '\n')
 }
 
-/** Clamp a heartbeat/reflection interval into the accepted range. */
 export function clampInterval(n: number): number {
   if (!Number.isFinite(n)) {
     return 30
@@ -144,9 +118,7 @@ export async function createAgentForUser(
   const row =
     inserted[0] ?? (await readExistingAgentForCreate(id, input.userId))
 
-  // Replays of an approved tool call can arrive after the row already
-  // exists. Re-queueing identical bootstrap writes is harmless and lets
-  // retries self-heal if the first execution failed partway through.
+  // Idempotent replays may hit an existing row; re-queueing bootstrap writes lets retries self-heal.
   await enqueueBootstrapFiles({
     agentId: id,
     identityCard: input.identityCard,

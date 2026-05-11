@@ -1,8 +1,5 @@
-/**
- * Per-event tracker for immediate file writes. This module is imported by
- * workflow functions, so it must stay workflow-safe: no Node.js built-ins and
- * no sandbox SDK imports. Node/sandbox file helpers live in step-only modules.
- */
+// Imported by workflow code, so keep this module workflow-safe: no Node
+// built-ins or sandbox SDK imports.
 export interface PendingWrites {
   beforeByPath: Record<string, string | null>
 }

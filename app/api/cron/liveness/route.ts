@@ -15,45 +15,12 @@ interface LivenessCounters {
   tickersReaped: number
 }
 
-/**
- * Cron-driven liveness sweeper.
- *
- * Vercel Cron hits this endpoint every 15 minutes (see `vercel.json`).
- * For every enabled agent we:
- *   1. Check whether `last_session_run_id` points at a workflow that
- *      is still running; if not, recover it through the shared session
- *      control plane.
- *   2. If the session is alive but its current event marker has been
- *      open too long, run conservative safe recovery.
- *
- * Why is this needed even though `agentSessionWorkflow` is durable?
- *  - A run can finish abnormally (e.g. a fatal error in the
- *    `endOfEvent` step or the ticker control plane).
- *  - A previous deployment's run may not be reachable in the new
- *    deployment's world.
- *  - A user may delete + recreate an agent across deploys; the new
- *    row starts with `last_session_run_id = NULL`.
- *
- * Idempotent: if every session is healthy, the sweeper is a no-op. We
- * deliberately do not delete dead sessions' workflow runs; the runtime
- * garbage-collects them on its own schedule, and keeping them around
- * aids forensic debugging via the workflow dashboard.
- *
- * Authorization:
- *  - Vercel Cron requests carry an `Authorization: Bearer
- *    ${CRON_SECRET}` header. We require that header to match the
- *    `CRON_SECRET` env var so this endpoint isn't open to anyone
- *    on the internet. When `CRON_SECRET` is unset (local dev) we
- *    allow all callers — convenient for `curl` testing.
- *  - If `LIVENESS_CRON_ENABLED` is not `true`, returns early with
- *    `{ ok: true, skipped }` — no agent queries or restarts.
- */
+// Vercel Cron periodically checks each enabled agent and safely recovers dead
+// or stalled session runs. The sweep is idempotent, keeps workflow history for
+// forensics, and is gated by `CRON_SECRET` / `LIVENESS_CRON_ENABLED`.
 export async function GET(req: NextRequest) {
-  // Cache Components is on for this project. Calling `connection()`
-  // at the top of the handler tells Next that everything below
-  // requires the request, so the build pipeline does not try to
-  // prerender the route — which would otherwise fail because env
-  // vars like DATABASE_URL aren't populated at build time.
+  // Force request-time execution so Next does not try to prerender a route
+  // that needs runtime env vars like `DATABASE_URL`.
   await connection()
 
   const expected = process.env.CRON_SECRET

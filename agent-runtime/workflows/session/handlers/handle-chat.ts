@@ -27,31 +27,9 @@ import {
   type PendingWrites,
 } from '../tools/pending-writes'
 
-/**
- * Chat event handler — runs inside the long-lived session workflow.
- *
- *   1. Boot the system sandbox (persistent files + bootstrap files) used by
- *      `composeSystemPrompt` and the built-in file tools. `endOfEvent`
- *      snapshots it at turn end.
- *   2. Build the per-event `DurableAgent` via `buildAgent`. The same
- *      factory is used by `handleHeartbeat`.
- *   3. Stream the turn into a per-turn namespaced sub-stream of the
- *      session workflow's run, keyed by `replyToken`. The HTTP route
- *      on the other end pipes that sub-stream straight into
- *      `createUIMessageStreamResponse` so the UI never sees the
- *      session shape.
- *   4. Generate the conversation title (first turn only) in parallel
- *      with the agent stream so user-visible latency is never gated by
- *      titling.
- *   5. Persist the assistant turn.
- *   6. Return the per-event architecture-file tracker so the session
- *      workflow can hand it to `endOfEvent` for review/mirroring.
- *
- * No `"use step"` here — the body uses workflow primitives
- * (`getWritable`, `DurableAgent.stream`) and lives in the workflow
- * sandbox. Tool execute functions inside the agent are individually
- * marked `"use step"` for sandbox/Node access where they need it.
- */
+// Workflow-side chat handler: boot the system sandbox, build the event-scoped
+// agent, stream into the reply-token namespace, and return pending file writes
+// for `endOfEvent`. Tool bodies cross back into `"use step"` as needed.
 export async function handleChat(input: {
   agentId: string
   conversationId: string
@@ -65,8 +43,7 @@ export async function handleChat(input: {
     namespace: replyToken,
   })
 
-  // Resolve the owning user before any expensive boot work so a
-  // budget-exceeded turn can fail fast without spinning sandboxes.
+  // Fail fast on budget exhaustion before booting any sandboxes.
   const agentRow = await getAgentById(agentId)
   const userId = agentRow?.userId ?? null
   if (userId) {
@@ -88,7 +65,7 @@ export async function handleChat(input: {
       })
       await writeAssistantNotice(replyToken, message)
       await finishUiMessageStream(replyToken).catch(() => {
-        // Best-effort: closing the stream is informational here.
+        // Best-effort: stream close is informational here.
       })
       await persistAssistantTurn({
         agentId,
@@ -109,10 +86,8 @@ export async function handleChat(input: {
   })
   await startupSystemSandbox({ agentId })
 
-  // Apply any UI-authored bootstrap-file edits before composing the
-  // system prompt. composeSystemPrompt inlines AGENTS.md / IDENTITY.md /
-  // SOUL.md verbatim, so this guarantees the operator's latest save is
-  // what the model sees this turn.
+  // Sync operator-authored bootstrap edits before composing the prompt so the
+  // model sees the latest AGENTS.md / IDENTITY.md / SOUL.md content.
   await emitActivity(sessionRunId, 'Chat: Syncing bootstrap edits')
   await drainPendingWrites({ agentId })
 
@@ -214,13 +189,13 @@ export async function handleChat(input: {
     return { pending }
   } catch (error) {
     await streamPromise.catch(() => {
-      // Wait for the agent stream to settle before we manually finish it.
+      // Let the agent stream settle before forcing a manual close.
     })
     throw error
   } finally {
     if (!streamClosed) {
       await finishUiMessageStream(replyToken).catch(() => {
-        // Best-effort close so the client stream does not hang on failures.
+        // Best-effort close so client streams do not hang on failures.
       })
     }
   }

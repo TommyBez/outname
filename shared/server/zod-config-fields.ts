@@ -1,16 +1,6 @@
 import 'server-only'
 import type { z } from 'zod'
 
-/**
- * Best-effort introspection of a Zod object schema into UI field
- * descriptors. Supports `string`, `number`, `boolean`, with optional
- * `.describe()` annotations and `.default()`. Anything more exotic
- * (unions, nested objects) gets rendered as a generic text input.
- *
- * The maintainer tool's `configSchema` is the source of truth — this
- * is just a UX shim so the catalog can render a form without each
- * tool author writing one by hand.
- */
 export interface ConfigField {
   defaultValue?: string | number | boolean
   description?: string
@@ -21,6 +11,8 @@ export interface ConfigField {
   type: 'text' | 'number' | 'boolean'
 }
 
+// Zod exposes no stable public introspection API here, so this stays
+// best-effort and reads `_def` directly.
 function unwrap(schema: z.ZodTypeAny): {
   inner: z.ZodTypeAny
   optional: boolean
@@ -29,7 +21,6 @@ function unwrap(schema: z.ZodTypeAny): {
   let s: z.ZodTypeAny = schema
   let optional = false
   let defaultValue: unknown
-  // Peel off ZodOptional / ZodNullable / ZodDefault layers.
   for (let i = 0; i < 8; i++) {
     const def = (
       s as unknown as {

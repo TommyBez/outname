@@ -13,13 +13,6 @@ import {
 import { agent } from './agents'
 import { user } from './auth'
 
-/**
- * Agent's attached maintainer tools. One row per (agent, tool); `tool_id`
- * is the registry id (e.g. "resend_send"). `config` is validated
- * against the maintainer tool's `configSchema` at attach time and at
- * every event boot — drift surfaces as `reason: "config_invalid"` in the
- * reconnects channel rather than crashing.
- */
 export const agentTools = pgTable(
   'agent_tools',
   {
@@ -32,35 +25,9 @@ export const agentTools = pgTable(
       .notNull()
       .default('maintainer'),
     config: jsonb('config').notNull().default({}),
-    /**
-     * Phase 4: lifecycle of the attachment.
-     *
-     *   - `connected`           — usable this turn.
-     *   - `pending`             — the tool depends on a tool sandbox
-     *                             that's still being built; flipped to
-     *                             `connected` by `markBuildReady` when
-     *                             the build workflow finishes.
-     */
     status: text('status').notNull().default('connected'),
-    /**
-     * Phase 4: id of the `tool_sandbox_snapshots` manifest this
-     * attachment depends on, or NULL for tools that don't need a
-     * sandbox (e.g. resend_send).
-     *
-     * Stored on the row so:
-     *   - `markBuildReady` can flip every pending row for a manifest
-     *     in one UPDATE,
-     *   - `resolveToolPlan` can decide whether to render
-     *     `tool_sandbox_building` reconnects without re-loading the
-     *     registry.
-     */
     toolSandboxManifest: text('tool_sandbox_manifest'),
     toolSandboxManifestHash: text('tool_sandbox_manifest_hash'),
-    /**
-     * Phase 4: most recent sticky build error for this manifest, if
-     * any. Cleared on the next successful build. UI shows it next to
-     * the Retry button.
-     */
     toolSandboxError: text('tool_sandbox_error'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
@@ -77,16 +44,8 @@ export const agentTools = pgTable(
   ]
 )
 
-/**
- * Phase 4: tool-sandbox snapshots.
- *
- * One row per manifest holding the most recent READY snapshot id and
- * the manifest hash that produced it. The runtime reads this table at
- * tool-call time to spawn a sandbox from the snapshot.
- *
- * Global (not user-scoped): one snapshot per manifest serves every
- * user that has attached a tool requiring it.
- */
+// Snapshots are global per manifest, so every user shares the latest
+// compatible sandbox image for the same tool build.
 export const toolSandboxSnapshots = pgTable('tool_sandbox_snapshots', {
   manifestId: text('manifest_id').primaryKey(),
   snapshotId: text('snapshot_id').notNull(),
@@ -95,18 +54,6 @@ export const toolSandboxSnapshots = pgTable('tool_sandbox_snapshots', {
 })
 export type ToolSandboxSnapshot = typeof toolSandboxSnapshots.$inferSelect
 
-/**
- * Phase 4: in-flight + completed build attempts.
- *
- * One row per `attachToolAction` invocation that didn't hit the
- * cached-snapshot fast path. Builds for the same `(manifestId,
- * manifestHash)` are coalesced — concurrent attaches share the same
- * row so we only run one workflow per build.
- *
- * Only **terminal** state is stored here. Per-step progress messages
- * are published to the build workflow's per-run stream and read back
- * by clients via `/api/tool-sandbox-builds/[buildId]/stream`.
- */
 export const toolSandboxBuilds = pgTable(
   'tool_sandbox_builds',
   {
@@ -125,6 +72,7 @@ export const toolSandboxBuilds = pgTable(
   },
   (t) => [
     index('tool_sandbox_builds_manifest_status_idx').on(t.manifestId, t.status),
+    // Active builds coalesce per manifest hash so concurrent attaches share one workflow.
     uniqueIndex('tool_sandbox_builds_active_unique_idx')
       .on(t.manifestId, t.manifestHash)
       .where(sql`status in ('pending', 'running')`),
@@ -132,13 +80,8 @@ export const toolSandboxBuilds = pgTable(
 )
 export type ToolSandboxBuild = typeof toolSandboxBuilds.$inferSelect
 
-/**
- * PII-light maintainer tool audit trail.
- *
- * Payloads and provider responses are intentionally omitted. The row is
- * meant for forensics, debugging, and coarse product metrics without
- * persisting user/tool content.
- */
+// Invocation rows intentionally omit payloads and provider responses to
+// avoid persisting user content in the audit trail.
 export const toolInvocations = pgTable(
   'tool_invocations',
   {

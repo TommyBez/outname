@@ -42,13 +42,7 @@ const upsertSchema = z
     }
   })
 
-/**
- * Owner-scoped checks for binding mutations:
- *   1. The target agent must belong to the active user.
- *   2. The (channel, teamId) install must also belong to the active
- *      user — otherwise we'd let one operator route messages from a
- *      workspace they don't own.
- */
+// Binding writes require ownership of both the agent and the Slack workspace install.
 async function assertOwnsAgentAndWorkspace(input: {
   userId: string
   agentId: string
@@ -122,9 +116,7 @@ export async function deleteSlackBindingAction(input: {
     return { ok: false, error: 'Agent not found.' }
   }
 
-  // Look up the binding by id but require it to belong to the agent we
-  // just owner-scoped — that prevents a forged bindingId from a
-  // different user's row from being deleted via this action.
+  // Require the binding to belong to the owner-scoped agent to block forged ids.
   const [row] = await db
     .select()
     .from(agentChannelBindings)
@@ -160,9 +152,7 @@ export async function disconnectSlackInstallationAction(input: {
     return { ok: false, error: 'teamId is required.' }
   }
 
-  // Bindings for the workspace stay in place — they become inert because
-  // the dispatcher requires an active install — but we surface this in
-  // the UI so the operator knows the workspace was disconnected.
+  // Bindings remain in place but stay inert until the workspace is reinstalled.
   await deleteSlackInstallation({ userId, teamId: input.teamId })
   revalidatePath('/channels')
   return { ok: true }

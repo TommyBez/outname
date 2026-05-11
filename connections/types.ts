@@ -1,25 +1,7 @@
 import type { z } from 'zod'
 
-/**
- * Connector contract — the per-provider plumbing the platform calls to
- * obtain and broker API-key credentials. OAuth/MCP remain deferred, but
- * the discriminator is intentionally preserved so the union can widen
- * later without reshaping callers.
- *
- *   tool author    -> chooses provider + config layer
- *   connector      -> validates and describes credential form fields
- *   broker runtime -> injects headers outside the tool sandbox VM
- */
-
-/**
- * Opaque, connector-private credential payload. The runtime stores it
- * AES-256-GCM-encrypted via `lib/connection-crypto.ts` and never
- * inspects it; only the originating connector understands the shape.
- *
- * Tools never receive this value directly. The broker runtime decrypts
- * it inside a server-only step, validates it through the connector's
- * schema, and converts it into network-policy injected headers.
- */
+// Opaque connector-owned credential payload. It stays encrypted at rest and is
+// only decrypted inside the broker/runtime layer, never inside the tool VM.
 export type RawCredential = unknown
 
 export type ConnectorCredential<TConnector> =
@@ -42,29 +24,14 @@ export interface ApiKeyValidateResult {
 }
 
 export interface ConnectorBroker<TCredential> {
-  /**
-   * Exact HTTPS hosts this connector may authenticate against. v1 does
-   * not allow wildcard transforms because those make exfiltration
-   * boundaries harder to audit.
-   */
+  // Keep the allowed host list explicit; wildcard transforms weaken exfiltration auditing.
   allowedHosts: readonly string[]
-  /**
-   * Optional provider-owned escape hatch for temporary presigned URLs.
-   * Matching requests are allowed without injected credential headers.
-   */
+  // Optional escape hatch for provider-issued presigned URLs.
   allowUnauthenticatedRequest?(request: { method: string; url: URL }): boolean
-  /**
-   * Header names the broker owns for this connector. Tool-supplied
-   * requests may not set these, even if the header is provider-specific
-   * and absent from the global forbidden-header backstop.
-   */
+  // Tool code may not set broker-owned auth headers itself.
   injectedHeaderNames: readonly string[]
-  /**
-   * Convert decrypted connector credentials into HTTP headers injected
-   * by Vercel Sandbox network policy. These bytes never enter the VM.
-   */
+  // Convert decrypted credentials into headers injected outside the VM.
   injectedHeaders(credential: TCredential): Record<string, string>
-  /** Optional provider-specific response cap. Broker has a global default. */
   maxResponseBytes?: number
 }
 
@@ -73,20 +40,11 @@ export interface ApiKeyConnector<
   TProvider extends string = string,
 > {
   apiKey: {
-    /**
-     * Zod schema covering ONLY credential fields (the secret + any
-     * adjuncts strictly required to dial the API). Non-credential
-     * knobs — Resend `fromEmail`, Stripe `accountId`, ... — belong to
-     * `tool.configSchema`, not to the connector form.
-     */
+    // Only fields strictly required to authenticate belong here; per-tool
+    // defaults stay in `tool.configSchema`.
     formSchema: z.ZodType<TCredential>
     fields: ApiKeyFieldDescriptor[]
-    /**
-     * Optional cheap probe (e.g. `GET /me`) to fail invalid keys
-     * during the form submit instead of at first use. Returning
-     * `metadata` lets the connector enrich the row (account id,
-     * region, ...).
-     */
+    // Optional cheap probe to fail bad keys during form submit.
     validate?(values: Record<string, string>): Promise<ApiKeyValidateResult>
   }
   broker: ConnectorBroker<TCredential>
@@ -98,7 +56,5 @@ export interface ApiKeyConnector<
 
 export type Connector = ApiKeyConnector<unknown, string>
 
-// `Reconnect` lives in `tools/types.ts` — the system prompt and the
-// catalog UI both consume it directly from there. Connector code
-// imports it from `tools/types.ts` to avoid a circular dependency
-// loop while still sharing one canonical shape.
+// `Reconnect` stays in `tools/types.ts` so connectors and tool UI share one
+// canonical shape without creating a circular dependency.
