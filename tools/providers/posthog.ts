@@ -63,8 +63,18 @@ function normalizePosthogPath(path: string): string {
   return trimmed
 }
 
-function getCanonicalPosthogPath(path: string): string {
-  return new URL(`${POSTHOG_API_BASE}${path}`).pathname
+function resolvePosthogUrl(path: string): URL {
+  return new URL(path, POSTHOG_API_BASE)
+}
+
+function getCanonicalPosthogPathname(path: string): string {
+  return resolvePosthogUrl(path).pathname
+}
+
+/** Pathname plus embedded query string (for responses / parity with raw input.path). */
+function getCanonicalPosthogPathAndQuery(path: string): string {
+  const resolved = resolvePosthogUrl(path)
+  return `${resolved.pathname}${resolved.search}`
 }
 
 function buildExpectedProjectPrefix(projectId: string): string {
@@ -119,9 +129,9 @@ const posthogSafetyPolicy: ToolPolicy<
       message: err instanceof Error ? err.message : 'Invalid path.',
     }
   }
-  const canonicalPath = getCanonicalPosthogPath(normalizedPath)
+  const canonicalPathname = getCanonicalPosthogPathname(normalizedPath)
   const expectedProjectPrefix = buildExpectedProjectPrefix(config.projectId)
-  if (!canonicalPath.startsWith(expectedProjectPrefix)) {
+  if (!canonicalPathname.startsWith(expectedProjectPrefix)) {
     return {
       ok: false,
       message:
@@ -160,8 +170,7 @@ export const posthogRequestTool = defineApiPassthroughTool({
   policies: [posthogSafetyPolicy],
   toRequest({ input }) {
     const normalizedPath = normalizePosthogPath(input.path)
-    const canonicalPath = getCanonicalPosthogPath(normalizedPath)
-    const url = new URL(`${POSTHOG_API_BASE}${canonicalPath}`)
+    const url = resolvePosthogUrl(normalizedPath)
     for (const [key, value] of Object.entries(input.query ?? {})) {
       url.searchParams.append(key, value)
     }
@@ -180,7 +189,7 @@ export const posthogRequestTool = defineApiPassthroughTool({
     }
     return toolSuccess({
       status: response.status,
-      path: getCanonicalPosthogPath(normalizePosthogPath(input.path)),
+      path: getCanonicalPosthogPathAndQuery(normalizePosthogPath(input.path)),
       method: input.method,
       readOnly: config.readOnly,
       body: parseResponseBody(
