@@ -96,16 +96,6 @@ async function findCandidateAgentForUser(
     return await loadAgent(direct.agentId)
   }
 
-  const fallback = await findBinding({
-    channel: msg.channel,
-    teamId: msg.teamId,
-    externalKey: '',
-    kind: 'default',
-    userId,
-  })
-  if (fallback) {
-    return await loadAgent(fallback.agentId)
-  }
   return null
 }
 
