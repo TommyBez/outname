@@ -1,11 +1,10 @@
 import 'server-only'
 
+import { and, eq } from 'drizzle-orm'
+import { db } from '@/shared/db'
+import { userConnections } from '@/shared/db/schema'
 import type { Reconnect } from '@/tools/catalog/types'
 import { getConnector } from '../registry'
-import {
-  BrokerCredentialUnavailableError,
-  readBrokeredCredential,
-} from './credential'
 import type { ProviderRequirement } from './types'
 
 export interface ResolveConnectionAvailabilityResult {
@@ -69,12 +68,18 @@ async function resolveOneProvider(args: {
     return
   }
 
-  try {
-    await readBrokeredCredential({ userId, provider })
-  } catch (err) {
-    if (!(err instanceof BrokerCredentialUnavailableError)) {
-      throw err
-    }
+  const [connection] = await db
+    .select({ status: userConnections.status })
+    .from(userConnections)
+    .where(
+      and(
+        eq(userConnections.userId, userId),
+        eq(userConnections.provider, provider)
+      )
+    )
+    .limit(1)
+
+  if (!connection || connection.status === 'invalid') {
     fanOutReconnect(reconnects, provider, bucket.toolIds)
     return
   }

@@ -1,0 +1,50 @@
+import 'server-only'
+
+import { type ToolFailure, toolError } from './tool-result'
+
+interface ConnectionUnavailableError {
+  code: 'connection_unavailable'
+  message: string
+}
+
+export async function readSdkCredentialResult<T>(args: {
+  provider: string
+  userId: string
+}): Promise<
+  | { ok: true; credential: T }
+  | {
+      ok: false
+      result: ToolFailure
+    }
+> {
+  try {
+    const { readBrokeredCredential } = await import(
+      '@/connections/runtime/credential'
+    )
+    return {
+      ok: true,
+      credential: (await readBrokeredCredential(args)) as T,
+    }
+  } catch (error) {
+    if (isConnectionUnavailableError(error)) {
+      return {
+        ok: false,
+        result: toolError('unavailable', error.message),
+      }
+    }
+    throw error
+  }
+}
+
+function isConnectionUnavailableError(
+  error: unknown
+): error is ConnectionUnavailableError {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'connection_unavailable' &&
+    'message' in error &&
+    typeof error.message === 'string'
+  )
+}

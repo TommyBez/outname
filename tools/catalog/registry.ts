@@ -47,7 +47,7 @@ for (const tool of TOOLS) {
   }
   for (const capability of tool.capabilities) {
     if (
-      capability.kind === 'brokered_http' &&
+      (capability.kind === 'brokered_http' || capability.kind === 'sdk') &&
       !getConnector(capability.provider)
     ) {
       throw new Error(

@@ -2,14 +2,18 @@ import 'server-only'
 
 import { v0ToolsByCategory } from '@v0-sdk/ai-tools'
 import { z } from 'zod'
+import type { V0Credential } from '@/connections/v0'
 import {
   defineToolBundle,
+  type ToolRuntimeContext,
   toolError,
   toolSuccess,
 } from '@/tools/runtime/define-maintainer-tool'
+import { clipProviderErrorMessage } from '@/tools/runtime/define-maintainer-tool/provider-response'
+import { readSdkCredentialResult } from '@/tools/runtime/define-maintainer-tool/sdk-step'
 
-const V0_API_KEY_ENV_NAME = 'V0_API_KEY'
 const V0_CONFIGURED_API_KEY_PLACEHOLDER = 'schema-only-v0-api-key'
+const V0_PROVIDER = 'v0'
 const PROVIDER_ERROR_MESSAGE_LIMIT = 1000
 const V0_ATTACHMENT_TOOL_ID = 'v0_platform'
 const LEADING_CHARACTER_PATTERN = /^./
@@ -108,41 +112,59 @@ const v0ConfigSchema = z.object(
   ])
 ) as unknown as z.ZodType<V0ToolConfig>
 
-let cachedRuntimeTools: Record<string, V0SdkTool> | null = null
-
-function getRuntimeTools(): Record<string, V0SdkTool> | null {
-  if (cachedRuntimeTools) {
-    return cachedRuntimeTools
-  }
-  const apiKey = process.env[V0_API_KEY_ENV_NAME]
-  if (!apiKey) {
-    return null
-  }
+function buildRuntimeTools(apiKey: string): Record<string, V0SdkTool> {
   const runtimeDefinitions = flattenV0Tools(
     v0ToolsByCategory({ apiKey }) as Record<
       V0ToolCategory,
       Record<string, V0SdkTool>
     >
   )
-  cachedRuntimeTools = Object.fromEntries(
+  return Object.fromEntries(
     runtimeDefinitions.map((definition) => [
       definition.childToolId,
       definition.sdkTool,
     ])
   ) as Record<string, V0SdkTool>
-  return cachedRuntimeTools
+}
+
+export async function executeV0Operation(args: {
+  childToolId: string
+  input: unknown
+  operation: string
+  userId: string
+}) {
+  'use step'
+  // Export this step so the workflow transform registers it in the
+  // deployment's step bundle.
+  const credentialResult = await readSdkCredentialResult<V0Credential>({
+    provider: V0_PROVIDER,
+    userId: args.userId,
+  })
+  if (!credentialResult.ok) {
+    return credentialResult.result
+  }
+
+  const tools = buildRuntimeTools(credentialResult.credential.apiKey)
+  const runtimeTool = tools[args.childToolId]
+  if (typeof runtimeTool?.execute !== 'function') {
+    return toolError(
+      'unavailable',
+      `The v0 SDK tool "${args.childToolId}" is unavailable.`
+    )
+  }
+
+  try {
+    return toolSuccess(await runtimeTool.execute(args.input))
+  } catch (error) {
+    return toolError('provider_error', clipProviderError(args.operation, error))
+  }
 }
 
 function clipProviderError(operation: string, error: unknown): string {
-  const rawMessage = error instanceof Error ? error.message : String(error)
-  const normalizedMessage = rawMessage.replace(/\s+/g, ' ').trim()
-  const clippedMessage =
-    normalizedMessage.length > PROVIDER_ERROR_MESSAGE_LIMIT
-      ? `${normalizedMessage.slice(0, PROVIDER_ERROR_MESSAGE_LIMIT)}…`
-      : normalizedMessage
-  return clippedMessage
-    ? `v0 ${operation} failed: ${clippedMessage}`
-    : `v0 ${operation} failed.`
+  return clipProviderErrorMessage(error, {
+    bodyLimit: PROVIDER_ERROR_MESSAGE_LIMIT,
+    label: `v0 ${operation}`,
+  })
 }
 
 const v0BundleTools = Object.fromEntries(
@@ -171,36 +193,19 @@ const v0BundleTools = Object.fromEntries(
                   : ({ ok: true } as const),
             ],
       async execute({
+        ctx,
         input,
       }: {
         config: V0ToolConfig
-        ctx: unknown
+        ctx: ToolRuntimeContext
         input: unknown
       }) {
-        const tools = getRuntimeTools()
-        if (!tools) {
-          return toolError(
-            'unavailable',
-            `${V0_API_KEY_ENV_NAME} is not configured on the server.`
-          )
-        }
-
-        const runtimeTool = tools[definition.childToolId]
-        if (typeof runtimeTool?.execute !== 'function') {
-          return toolError(
-            'unavailable',
-            `The v0 SDK tool "${definition.childToolId}" is unavailable.`
-          )
-        }
-
-        try {
-          return toolSuccess(await runtimeTool.execute(input))
-        } catch (error) {
-          return toolError(
-            'provider_error',
-            clipProviderError(definition.operation, error)
-          )
-        }
+        return await executeV0Operation({
+          childToolId: definition.childToolId,
+          input,
+          operation: definition.operation,
+          userId: ctx.userId,
+        })
       },
     },
   ])
@@ -212,7 +217,7 @@ export const v0PlatformTool = defineToolBundle({
   displayName: 'v0 · Platform',
   description:
     'Attach the official v0 Platform AI SDK tools directly for chats, projects, deployments, user info, and webhooks. Defaults to read-only mode.',
-  capabilities: [{ kind: 'none' }],
+  capabilities: [{ kind: 'sdk', provider: V0_PROVIDER }],
   configSchema: v0ConfigSchema,
   tools: v0BundleTools,
 })

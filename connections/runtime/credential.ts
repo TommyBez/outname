@@ -78,7 +78,7 @@ async function decryptStoredCredential(input: {
   userId: string
 }): Promise<RawCredential> {
   try {
-    return decryptCredential(input.encrypted)
+    return await decryptCredential(input.encrypted)
   } catch (err) {
     const message =
       err instanceof Error

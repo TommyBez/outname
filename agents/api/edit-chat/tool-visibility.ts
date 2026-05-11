@@ -47,7 +47,14 @@ export async function getAvailableAgentTools(agentId: string, userId: string) {
     maintainerTools: listMaintainerTools().map((item) => {
       const attached = attachedByMaintainerToolId.get(item.id)
       const providerIds = item.capabilities
-        .filter((capability) => capability.kind === 'brokered_http')
+        .filter(
+          (
+            capability
+          ): capability is {
+            kind: 'brokered_http' | 'sdk'
+            provider: string
+          } => capability.kind === 'brokered_http' || capability.kind === 'sdk'
+        )
         .map((capability) => capability.provider)
       return {
         kind: 'maintainer' as const,

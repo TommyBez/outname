@@ -5,9 +5,12 @@ import {
   toolError,
   toolSuccess,
 } from '@/tools/runtime/define-maintainer-tool'
+import {
+  parseProviderResponseFromHttp,
+  toolErrorFromProviderResponse,
+} from '@/tools/runtime/define-maintainer-tool/provider-response'
 
 const FIRECRAWL_API_BASE = 'https://api.firecrawl.dev'
-const PROVIDER_ERROR_BODY_LIMIT = 1000
 
 const firecrawlScrapeInputSchema = z.object({
   url: z.string().url().describe('The page URL to scrape.'),
@@ -60,38 +63,6 @@ const firecrawlScrapeInputSchema = z.object({
     .describe('Optional cache max age in milliseconds.'),
 })
 
-function clippedProviderError(response: {
-  bodyText: string
-  status: number
-  truncated: boolean
-}): string {
-  const body = response.bodyText.trim()
-  if (!body) {
-    return `Firecrawl scrape failed (HTTP ${response.status}).`
-  }
-  const truncated =
-    response.truncated || body.length > PROVIDER_ERROR_BODY_LIMIT
-  const suffix = truncated ? ' [truncated]' : ''
-  return `Firecrawl scrape failed (HTTP ${response.status}): ${body.slice(0, PROVIDER_ERROR_BODY_LIMIT)}${suffix}`
-}
-
-function parseResponseBody(
-  raw: string,
-  contentType: string | undefined
-): unknown {
-  if (raw.length === 0) {
-    return null
-  }
-  if (contentType?.includes('application/json')) {
-    try {
-      return JSON.parse(raw) as unknown
-    } catch {
-      return raw
-    }
-  }
-  return raw
-}
-
 export const firecrawlScrapeTool = defineApiPassthroughTool({
   id: 'firecrawl_scrape',
   category: 'browser',
@@ -112,10 +83,11 @@ export const firecrawlScrapeTool = defineApiPassthroughTool({
   },
   handleResponse(response) {
     if (!response.ok) {
-      if (response.status === 429) {
-        return toolError('rate_limited', clippedProviderError(response))
-      }
-      return toolError('provider_error', clippedProviderError(response))
+      return toolErrorFromProviderResponse(response, {
+        label: 'Firecrawl scrape',
+        errorCodeForStatus: (status) =>
+          status === 429 ? 'rate_limited' : 'provider_error',
+      })
     }
 
     if (response.truncated) {
@@ -127,10 +99,7 @@ export const firecrawlScrapeTool = defineApiPassthroughTool({
 
     return toolSuccess({
       status: response.status,
-      body: parseResponseBody(
-        response.bodyText,
-        response.headers['content-type']
-      ),
+      body: parseProviderResponseFromHttp(response),
       truncated: response.truncated,
     })
   },

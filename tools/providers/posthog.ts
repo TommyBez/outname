@@ -3,13 +3,15 @@ import { z } from 'zod'
 import {
   defineApiPassthroughTool,
   type ToolPolicy,
-  toolError,
   toolSuccess,
 } from '@/tools/runtime/define-maintainer-tool'
+import {
+  parseProviderResponseFromHttp,
+  toolErrorFromProviderResponse,
+} from '@/tools/runtime/define-maintainer-tool/provider-response'
 
 const POSTHOG_API_BASE = 'https://us.i.posthog.com'
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i
-const PROVIDER_ERROR_BODY_LIMIT = 1000
 
 const posthogConfigSchema = z.object({
   projectId: z
@@ -79,38 +81,6 @@ function getCanonicalPosthogPathAndQuery(path: string): string {
 
 function buildExpectedProjectPrefix(projectId: string): string {
   return `/api/projects/${projectId.trim()}/`
-}
-
-function parseResponseBody(
-  raw: string,
-  contentType: string | undefined
-): unknown {
-  if (raw.length === 0) {
-    return null
-  }
-  if (contentType?.includes('application/json')) {
-    try {
-      return JSON.parse(raw) as unknown
-    } catch {
-      return raw
-    }
-  }
-  return raw
-}
-
-function clippedProviderError(response: {
-  bodyText: string
-  status: number
-  truncated: boolean
-}): string {
-  const body = response.bodyText.trim()
-  if (!body) {
-    return `PostHog request failed (HTTP ${response.status}).`
-  }
-  const truncated =
-    response.truncated || body.length > PROVIDER_ERROR_BODY_LIMIT
-  const suffix = truncated ? ' [truncated]' : ''
-  return `PostHog request failed (HTTP ${response.status}): ${body.slice(0, PROVIDER_ERROR_BODY_LIMIT)}${suffix}`
 }
 
 const posthogSafetyPolicy: ToolPolicy<
@@ -185,17 +155,16 @@ export const posthogRequestTool = defineApiPassthroughTool({
   },
   handleResponse(response, { input, config }) {
     if (!response.ok) {
-      return toolError('provider_error', clippedProviderError(response))
+      return toolErrorFromProviderResponse(response, {
+        label: 'PostHog request',
+      })
     }
     return toolSuccess({
       status: response.status,
       path: getCanonicalPosthogPathAndQuery(normalizePosthogPath(input.path)),
       method: input.method,
       readOnly: config.readOnly,
-      body: parseResponseBody(
-        response.bodyText,
-        response.headers['content-type']
-      ),
+      body: parseProviderResponseFromHttp(response),
       truncated: response.truncated,
     })
   },

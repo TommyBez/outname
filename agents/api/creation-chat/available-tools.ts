@@ -15,7 +15,14 @@ export async function listAvailableTools(userId: string) {
   return {
     maintainerTools: listMaintainerTools().map((tool) => {
       const providers = tool.capabilities
-        .filter((capability) => capability.kind === 'brokered_http')
+        .filter(
+          (
+            capability
+          ): capability is {
+            kind: 'brokered_http' | 'sdk'
+            provider: string
+          } => capability.kind === 'brokered_http' || capability.kind === 'sdk'
+        )
         .map((capability) => capability.provider)
       return {
         toolId: tool.id,

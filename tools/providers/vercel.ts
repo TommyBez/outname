@@ -3,13 +3,15 @@ import { z } from 'zod'
 import {
   defineApiPassthroughTool,
   type ToolPolicy,
-  toolError,
   toolSuccess,
 } from '@/tools/runtime/define-maintainer-tool'
+import {
+  parseProviderResponseFromHttp,
+  toolErrorFromProviderResponse,
+} from '@/tools/runtime/define-maintainer-tool/provider-response'
 
 const VERCEL_API_BASE = 'https://api.vercel.com'
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i
-const PROVIDER_ERROR_BODY_LIMIT = 1000
 
 const vercelMethodSchema = z.enum(['GET', 'POST', 'PATCH', 'PUT', 'DELETE'])
 
@@ -101,38 +103,6 @@ const vercelSafetyPolicy: ToolPolicy<VercelRequestInput, VercelConfig> = ({
   return { ok: true }
 }
 
-function clippedProviderError(response: {
-  bodyText: string
-  status: number
-  truncated: boolean
-}): string {
-  const body = response.bodyText.trim()
-  if (!body) {
-    return `Vercel API request failed (HTTP ${response.status}).`
-  }
-  const truncated =
-    response.truncated || body.length > PROVIDER_ERROR_BODY_LIMIT
-  const suffix = truncated ? ' [truncated]' : ''
-  return `Vercel API request failed (HTTP ${response.status}): ${body.slice(0, PROVIDER_ERROR_BODY_LIMIT)}${suffix}`
-}
-
-function parseResponseBody(
-  raw: string,
-  contentType: string | undefined
-): unknown {
-  if (raw.length === 0) {
-    return null
-  }
-  if (contentType?.includes('application/json')) {
-    try {
-      return JSON.parse(raw) as unknown
-    } catch {
-      return raw
-    }
-  }
-  return raw
-}
-
 export const vercelRequestTool = defineApiPassthroughTool({
   id: 'vercel_request',
   category: 'deployment',
@@ -160,7 +130,9 @@ export const vercelRequestTool = defineApiPassthroughTool({
   },
   handleResponse(response, { input, config }) {
     if (!response.ok) {
-      return toolError('provider_error', clippedProviderError(response))
+      return toolErrorFromProviderResponse(response, {
+        label: 'Vercel API request',
+      })
     }
     return toolSuccess({
       status: response.status,
@@ -168,10 +140,7 @@ export const vercelRequestTool = defineApiPassthroughTool({
       confirmIrreversibleChecked: input.method !== 'GET',
       method: input.method,
       path: normalizeVercelPath(input.path),
-      body: parseResponseBody(
-        response.bodyText,
-        response.headers['content-type']
-      ),
+      body: parseProviderResponseFromHttp(response),
       truncated: response.truncated,
     })
   },

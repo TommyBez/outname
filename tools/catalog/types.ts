@@ -27,6 +27,9 @@ import type { z } from 'zod'
  *   `brokered_http` — needs a stored credential at the named provider.
  *                     Authenticated calls must go through Vercel
  *                     Sandbox network-policy header injection.
+ *   `sdk`           — needs a stored credential at the named provider,
+ *                     but trusted server-side execute code may load the
+ *                     decrypted credential to initialize a vendor SDK.
  *   `tool_sandbox`  — needs a pre-built tool-sandbox snapshot for the
  *                     named manifest. The runtime spawns into the
  *                     snapshot lazily on first tool call.
@@ -35,6 +38,7 @@ import type { z } from 'zod'
  */
 export type ToolCapability =
   | { kind: 'brokered_http'; provider: string }
+  | { kind: 'sdk'; provider: string }
   | { kind: 'tool_sandbox'; manifest: string }
   | { kind: 'none' }
 
@@ -64,8 +68,9 @@ export interface MaintainerExposedTool {
 /**
  * Build context handed to `MaintainerTool.build`. Tools receive ONLY
  * what they need to produce AI SDK tool closures. Raw credentials are
- * deliberately absent; authenticated provider calls happen through the
- * broker runtime during `execute`.
+ * deliberately absent; authenticated provider calls happen during
+ * `execute` through either the broker runtime (`brokered_http`) or a
+ * trusted server-side credential read (`sdk`).
  */
 export interface ToolBuildContext {
   /** `agent.id` of the agent owning this attachment. For logging only. */
