@@ -1,12 +1,19 @@
 import { eq } from 'drizzle-orm'
 import { connection, type NextRequest, NextResponse } from 'next/server'
-import { getWorld } from 'workflow/runtime'
-import {
-  isWorkflowRunAlive,
-  restartAgentSession,
-} from '@/agent-runtime/server/session-lifecycle'
+import { isWorkflowRunAlive } from '@/agent-runtime/server/session-lifecycle'
+import { recoverAgentSession } from '@/agent-runtime/server/session-recovery'
 import { db } from '@/shared/db'
 import { type Agent, agent } from '@/shared/db/schema'
+
+interface LivenessCounters {
+  errors: number
+  healthy: number
+  recoveryErrors: number
+  recoverySkipped: number
+  restarted: number
+  stalledRecovered: number
+  tickersReaped: number
+}
 
 /**
  * Cron-driven liveness sweeper.
@@ -14,12 +21,10 @@ import { type Agent, agent } from '@/shared/db/schema'
  * Vercel Cron hits this endpoint every 15 minutes (see `vercel.json`).
  * For every enabled agent we:
  *   1. Check whether `last_session_run_id` points at a workflow that
- *      is still running; if not, start a fresh session. The fresh
- *      session reaps any orphan ticker on entry as part of its own
- *      bootstrap (see `reapOrphanTicker`).
- *   2. As a belt + suspenders, proactively cancel an orphan ticker
- *      run from this entrypoint as well, in case the new session
- *      hasn't booted yet by the time the next sweep runs.
+ *      is still running; if not, recover it through the shared session
+ *      control plane.
+ *   2. If the session is alive but its current event marker has been
+ *      open too long, run conservative safe recovery.
  *
  * Why is this needed even though `agentSessionWorkflow` is durable?
  *  - A run can finish abnormally (e.g. a fatal error in the
@@ -29,11 +34,10 @@ import { type Agent, agent } from '@/shared/db/schema'
  *  - A user may delete + recreate an agent across deploys; the new
  *    row starts with `last_session_run_id = NULL`.
  *
- * Idempotent: if every session is healthy and no orphan tickers
- * exist, the sweeper is a no-op. We deliberately do not delete dead
- * sessions' workflow runs; the runtime garbage-collects them on its
- * own schedule, and keeping them around aids forensic debugging via
- * the workflow dashboard.
+ * Idempotent: if every session is healthy, the sweeper is a no-op. We
+ * deliberately do not delete dead sessions' workflow runs; the runtime
+ * garbage-collects them on its own schedule, and keeping them around
+ * aids forensic debugging via the workflow dashboard.
  *
  * Authorization:
  *  - Vercel Cron requests carry an `Authorization: Bearer
@@ -65,33 +69,22 @@ export async function GET(req: NextRequest) {
   }
 
   const enabled = await db.select().from(agent).where(eq(agent.enabled, true))
-
-  let restarted = 0
-  let healthy = 0
-  let tickersReaped = 0
-  let errors = 0
+  const counters: LivenessCounters = {
+    errors: 0,
+    healthy: 0,
+    recoveryErrors: 0,
+    recoverySkipped: 0,
+    restarted: 0,
+    stalledRecovered: 0,
+    tickersReaped: 0,
+  }
+  const now = new Date()
 
   for (const a of enabled) {
     try {
-      const sessionAlive =
-        a.lastSessionRunId != null &&
-        (await isWorkflowRunAlive(a.lastSessionRunId))
-
-      if (!sessionAlive) {
-        // The newly-started session will reap its orphan ticker on
-        // entry, but we also reap here so a stalled boot can't keep
-        // the orphan running between sweeps.
-        if (await reapOrphanTickerForDeadSession(a)) {
-          tickersReaped += 1
-        }
-        await restartAgentSession(a)
-        restarted += 1
-        continue
-      }
-
-      healthy += 1
+      await sweepAgent(a, counters, now)
     } catch (err) {
-      errors += 1
+      counters.errors += 1
       console.error('[v0] liveness: agent failed', a.id, err)
     }
   }
@@ -99,32 +92,122 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     enabled: enabled.length,
-    healthy,
-    restarted,
-    tickersReaped,
-    errors,
+    ...counters,
   })
 }
 
-async function reapOrphanTickerForDeadSession(a: Agent): Promise<boolean> {
-  if (!a.lastTickerRunId) {
+async function sweepAgent(
+  a: Agent,
+  counters: LivenessCounters,
+  now: Date
+): Promise<void> {
+  const sessionAlive =
+    a.lastSessionRunId != null && (await isWorkflowRunAlive(a.lastSessionRunId))
+
+  if (!sessionAlive) {
+    await recoverDeadSession(a, counters)
+    return
+  }
+
+  if (shouldRecoverStalledSession(a, now)) {
+    await recoverStalledSession(a, counters)
+    return
+  }
+
+  counters.healthy += 1
+}
+
+async function recoverDeadSession(
+  a: Agent,
+  counters: LivenessCounters
+): Promise<void> {
+  const recovery = await recoverAgentSession({
+    agentId: a.id,
+    mode: 'safe',
+    reason: 'dead_session',
+  })
+
+  if (recovery.recovered) {
+    counters.restarted += 1
+    countTickerReap(recovery.previousTickerRunId, counters)
+    return
+  }
+
+  countUnrecoveredSession(recovery.reason, counters)
+}
+
+async function recoverStalledSession(
+  a: Agent,
+  counters: LivenessCounters
+): Promise<void> {
+  const recovery = await recoverAgentSession({
+    agentId: a.id,
+    mode: 'safe',
+    reason: 'session_event_stall',
+  })
+
+  if (recovery.recovered) {
+    counters.stalledRecovered += 1
+    countTickerReap(recovery.previousTickerRunId, counters)
+    return
+  }
+
+  countUnrecoveredSession(recovery.reason, counters)
+}
+
+function countTickerReap(
+  previousTickerRunId: string | null,
+  counters: LivenessCounters
+): void {
+  if (previousTickerRunId) {
+    counters.tickersReaped += 1
+  }
+}
+
+function countUnrecoveredSession(
+  reason: string,
+  counters: LivenessCounters
+): void {
+  if (reason === 'recovery_already_in_progress') {
+    counters.recoverySkipped += 1
+    return
+  }
+
+  counters.recoveryErrors += 1
+}
+
+function shouldRecoverStalledSession(a: Agent, now: Date): boolean {
+  if (process.env.LIVENESS_AUTO_RECOVERY_ENABLED === 'false') {
     return false
   }
-  if (!(await isWorkflowRunAlive(a.lastTickerRunId))) {
+
+  const lastSessionRunId = a.lastSessionRunId
+  const markerRunId = a.sessionEventRunId
+  const startedAt = a.sessionEventStartedAt
+
+  if (!(lastSessionRunId && markerRunId && startedAt)) {
     return false
   }
-  try {
-    const world = getWorld()
-    await world.events.create(a.lastTickerRunId, {
-      eventType: 'run_cancelled',
-    })
-    await db
-      .update(agent)
-      .set({ lastTickerRunId: null, updatedAt: new Date() })
-      .where(eq(agent.id, a.id))
-    return true
-  } catch (err) {
-    console.error('[v0] liveness: reap ticker failed', a.id, err)
+
+  if (markerRunId !== lastSessionRunId) {
     return false
   }
+
+  const stalledMs =
+    readNonNegativeIntegerEnv(process.env.LIVENESS_EVENT_STALL_MINUTES, 120) *
+    60_000
+
+  return now.getTime() - startedAt.getTime() > stalledMs
+}
+
+function readNonNegativeIntegerEnv(
+  value: string | undefined,
+  fallback: number
+): number {
+  if (!value) {
+    return fallback
+  }
+
+  const parsed = Number.parseInt(value, 10)
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback
 }

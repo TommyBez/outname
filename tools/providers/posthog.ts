@@ -12,6 +12,10 @@ const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i
 const PROVIDER_ERROR_BODY_LIMIT = 1000
 
 const posthogConfigSchema = z.object({
+  projectId: z
+    .string()
+    .min(1)
+    .describe('Allowed PostHog project ID for this tool attachment.'),
   readOnly: z
     .boolean()
     .default(true)
@@ -57,6 +61,24 @@ function normalizePosthogPath(path: string): string {
     throw new Error('Path must be a single line.')
   }
   return trimmed
+}
+
+function resolvePosthogUrl(path: string): URL {
+  return new URL(path, POSTHOG_API_BASE)
+}
+
+function getCanonicalPosthogPathname(path: string): string {
+  return resolvePosthogUrl(path).pathname
+}
+
+/** Pathname plus embedded query string (for responses / parity with raw input.path). */
+function getCanonicalPosthogPathAndQuery(path: string): string {
+  const resolved = resolvePosthogUrl(path)
+  return `${resolved.pathname}${resolved.search}`
+}
+
+function buildExpectedProjectPrefix(projectId: string): string {
+  return `/api/projects/${projectId.trim()}/`
 }
 
 function parseResponseBody(
@@ -107,10 +129,13 @@ const posthogSafetyPolicy: ToolPolicy<
       message: err instanceof Error ? err.message : 'Invalid path.',
     }
   }
-  if (!normalizedPath.startsWith('/api/projects/')) {
+  const canonicalPathname = getCanonicalPosthogPathname(normalizedPath)
+  const expectedProjectPrefix = buildExpectedProjectPrefix(config.projectId)
+  if (!canonicalPathname.startsWith(expectedProjectPrefix)) {
     return {
       ok: false,
-      message: 'Path must stay inside /api/projects/{projectId}/ endpoints.',
+      message:
+        'Path must stay inside /api/projects/{projectId}/ endpoints for the configured project ID.',
     }
   }
   if (config.readOnly && input.method !== 'GET') {
@@ -145,7 +170,7 @@ export const posthogRequestTool = defineApiPassthroughTool({
   policies: [posthogSafetyPolicy],
   toRequest({ input }) {
     const normalizedPath = normalizePosthogPath(input.path)
-    const url = new URL(`${POSTHOG_API_BASE}${normalizedPath}`)
+    const url = resolvePosthogUrl(normalizedPath)
     for (const [key, value] of Object.entries(input.query ?? {})) {
       url.searchParams.append(key, value)
     }
@@ -164,7 +189,7 @@ export const posthogRequestTool = defineApiPassthroughTool({
     }
     return toolSuccess({
       status: response.status,
-      path: normalizePosthogPath(input.path),
+      path: getCanonicalPosthogPathAndQuery(normalizePosthogPath(input.path)),
       method: input.method,
       readOnly: config.readOnly,
       body: parseResponseBody(
