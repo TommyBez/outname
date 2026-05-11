@@ -8,6 +8,7 @@ import type {
   MaintainerTool,
   ToolErrorCode,
 } from '@/tools/catalog/types'
+import { resolveBundleChildren, toBundleExposedTools } from './bundle-tools'
 import { createRuntimeContext } from './runtime-context'
 import {
   auditErrorMessage,
@@ -76,6 +77,9 @@ export function defineMaintainerTool<
     capabilities: definition.capabilities,
     configSchema,
     exposedTools,
+    resolveExposedTools() {
+      return exposedTools
+    },
     build(ctx) {
       const config = configSchema.parse(ctx.config)
       return buildChildTool({
@@ -99,13 +103,7 @@ export function defineToolBundle<TConfig = Record<string, never>>(
   const configSchema =
     definition.configSchema ??
     (emptyConfigSchema as unknown as z.ZodType<TConfig>)
-  const exposedTools = Object.entries(definition.tools).map(([toolId, child]) =>
-    toExposedTool({
-      toolId,
-      displayName: child.displayName,
-      description: child.description,
-    })
-  )
+  const exposedTools = toBundleExposedTools(definition.tools)
 
   return {
     id: definition.id,
@@ -115,12 +113,20 @@ export function defineToolBundle<TConfig = Record<string, never>>(
     capabilities: definition.capabilities,
     configSchema,
     exposedTools,
+    resolveExposedTools(rawConfig) {
+      if (rawConfig === undefined) {
+        return exposedTools
+      }
+      const parsed = configSchema.safeParse(rawConfig)
+      return parsed.success
+        ? toBundleExposedTools(definition.tools, parsed.data)
+        : exposedTools
+    },
     build(ctx): BuiltMaintainerTool {
       const config = configSchema.parse(ctx.config)
       return Object.fromEntries(
-        Object.entries(definition.tools)
-          .filter(([, child]) => child.isEnabled?.(config) ?? true)
-          .map(([toolId, child]) => [
+        resolveBundleChildren(definition.tools, config).map(
+          ([toolId, child]) => [
             toolId,
             buildChildTool({
               attachmentToolId: ctx.toolId,
@@ -131,7 +137,8 @@ export function defineToolBundle<TConfig = Record<string, never>>(
               description: child.description,
               toolId,
             }),
-          ])
+          ]
+        )
       )
     },
   }

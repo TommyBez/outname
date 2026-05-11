@@ -47,8 +47,18 @@ async function Resolved({ params }: { params: Params }) {
     getCachedUserConnections(session.user.id),
     getCachedAgentsForUser(session.user.id),
   ])
+  const maintainerAttachedRows = attachedRows.filter(
+    (r) => r.kind === 'maintainer'
+  )
+  const subAgentAttachedRows = attachedRows.filter(
+    (r) => r.kind === 'sub_agent'
+  )
+  const attachedByMaintainerToolId = new Map(
+    maintainerAttachedRows.map((row) => [row.toolId, row])
+  )
 
   const catalog: ToolCatalogEntry[] = listMaintainerTools().map((t) => {
+    const attachedRow = attachedByMaintainerToolId.get(t.id)
     const providers = t.capabilities
       .filter((r) => r.kind === 'brokered_http')
       .map((r) => r.provider)
@@ -58,7 +68,13 @@ async function Resolved({ params }: { params: Params }) {
       toolId: t.id,
       displayName: t.displayName,
       description: t.description,
-      exposedTools: [...t.exposedTools],
+      exposedTools: [
+        ...t.resolveExposedTools(
+          (attachedRow?.config ?? undefined) as
+            | Record<string, unknown>
+            | undefined
+        ),
+      ],
       providers,
       toolSandboxManifest: sandboxManifest,
       configFields: describeConfigSchema(t.configSchema),
@@ -68,12 +84,6 @@ async function Resolved({ params }: { params: Params }) {
   // Partition attached rows: maintainer tools render through the
   // catalog; sub-agent rows mark which children are already attached
   // for the sub-agent catalog.
-  const maintainerAttachedRows = attachedRows.filter(
-    (r) => r.kind === 'maintainer'
-  )
-  const subAgentAttachedRows = attachedRows.filter(
-    (r) => r.kind === 'sub_agent'
-  )
   const attachedByChildId = new Map(
     subAgentAttachedRows.map((r) => [
       childAgentIdFromSubAgentRow({

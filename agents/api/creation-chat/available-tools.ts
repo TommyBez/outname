@@ -22,7 +22,7 @@ export async function listAvailableTools(userId: string) {
         displayName: tool.displayName,
         category: tool.category,
         description: tool.description,
-        exposedTools: [...tool.exposedTools],
+        exposedTools: [...tool.resolveExposedTools()],
         configFields: describeConfigSchema(tool.configSchema),
         providers: providers.map((provider) => {
           const connector = getConnector(provider)

@@ -141,11 +141,22 @@ export interface MaintainerTool {
   description: string
   /** Human label for catalog cards. */
   displayName: string
-  /** LLM-visible child tools this attachment exposes. */
+  /**
+   * Default child-tool metadata when no attachment config is available.
+   * Single-tool attachments usually expose exactly one entry here.
+   */
   exposedTools: readonly MaintainerExposedTool[]
   /**
    * Stable attachment id used in `agent_tools.tool_id`. Single-tool
    * attachments typically expose one child tool with the same id.
    */
   id: string
+  /**
+   * Resolve the child tools this attachment exposes for a specific
+   * attachment config. When config is omitted, return the catalog
+   * preview list.
+   */
+  resolveExposedTools(
+    config?: Record<string, unknown>
+  ): readonly MaintainerExposedTool[]
 }
