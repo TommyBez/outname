@@ -7,9 +7,11 @@ import { disconnectSlackInstallationAction } from '@/channels/slack/server/actio
 import type { InstallationView } from './types'
 
 export function InstallationsBlock({
+  installHref = '/api/channels/slack/install',
   installations,
   onChanged,
 }: {
+  installHref?: string
   installations: InstallationView[]
   onChanged: () => void
 }) {
@@ -70,7 +72,7 @@ export function InstallationsBlock({
       )}
       <a
         className="inline-flex h-10 w-fit items-center gap-2 border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground"
-        href="/api/channels/slack/install"
+        href={installHref}
       >
         <Plus aria-hidden className="size-3.5" />
         {installations.length === 0 ? 'Install Slack app' : 'Add workspace'}

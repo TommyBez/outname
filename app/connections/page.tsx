@@ -21,7 +21,7 @@ export default function ConnectionsPage({
   return (
     <AppShell>
       <header className="mb-12 border-foreground border-t-4 pt-6 md:mb-16">
-        <p className="swiss-label mb-4 text-accent">08. Connections</p>
+        <p className="swiss-label mb-4 text-accent">09. Connections</p>
         <h1 className="font-black font-serif text-6xl uppercase leading-[0.9] tracking-tighter md:text-8xl">
           Connections
         </h1>

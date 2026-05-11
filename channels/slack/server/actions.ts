@@ -1,7 +1,7 @@
 'use server'
 
 import { and, eq } from 'drizzle-orm'
-import { revalidateTag } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import { requireUserId } from '@/auth/server/auth-guard'
 import {
@@ -170,5 +170,6 @@ export async function disconnectSlackInstallationAction(input: {
   // the dispatcher requires an active install — but we surface this in
   // the UI so the operator knows the workspace was disconnected.
   await deleteSlackInstallation({ userId, teamId: input.teamId })
+  revalidatePath('/channels')
   return { ok: true }
 }

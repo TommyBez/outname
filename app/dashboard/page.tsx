@@ -154,6 +154,7 @@ async function DashboardCockpit({ userId }: { userId: string }) {
           <div className="mt-4 grid gap-2">
             <QuickAction href="/agents/new" label="New agent" />
             <QuickAction href="/agents" label="Agent registry" />
+            <QuickAction href="/channels" label="Channels" />
             <QuickAction href="/connections" label="Connections" />
             <QuickAction href="/settings" label="Settings" />
           </div>

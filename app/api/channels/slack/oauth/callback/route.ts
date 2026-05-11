@@ -1,8 +1,8 @@
-import { createHmac, timingSafeEqual } from 'node:crypto'
 import { headers } from 'next/headers'
 import { type NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth/server/auth'
 import { getSlackAdapter, getSlackBot } from '@/channels/slack/server/bot'
+import { decodeSlackOAuthState } from '@/channels/slack/server/oauth-state'
 import { withInstallContext } from '@/channels/slack/server/state'
 
 const TRAILING_SLASH = /\/$/
@@ -30,29 +30,34 @@ export async function GET(request: NextRequest): Promise<Response> {
 
   const url = new URL(request.url)
   const stateParam = url.searchParams.get('state')
+  const decoded = stateParam ? decodeSlackOAuthState(stateParam) : null
+  const returnTo = decoded?.userId === session.user.id ? decoded.returnTo : null
   const error = url.searchParams.get('error')
   if (error) {
-    return redirectToConnections(request, {
-      connection: 'error',
-      reason: `slack: ${error}`,
-    })
+    return redirectToChannels(
+      request,
+      {
+        connection: 'error',
+        reason: `slack: ${error}`,
+      },
+      returnTo
+    )
   }
   if (!stateParam) {
-    return redirectToConnections(request, {
+    return redirectToChannels(request, {
       connection: 'error',
       reason: 'missing state',
     })
   }
 
-  const decoded = decodeOAuthState(stateParam)
   if (!decoded) {
-    return redirectToConnections(request, {
+    return redirectToChannels(request, {
       connection: 'error',
       reason: 'invalid state',
     })
   }
   if (decoded.userId !== session.user.id) {
-    return redirectToConnections(request, {
+    return redirectToChannels(request, {
       connection: 'error',
       reason: 'state does not match session user',
     })
@@ -73,74 +78,35 @@ export async function GET(request: NextRequest): Promise<Response> {
     await withInstallContext({ userId: session.user.id }, () =>
       getSlackAdapter().handleOAuthCallback(request, { redirectUri })
     )
-    return redirectToConnections(request, {
-      connection: 'connected',
-      provider: 'slack',
-    })
+    return redirectToChannels(
+      request,
+      {
+        connection: 'connected',
+        provider: 'slack',
+      },
+      returnTo
+    )
   } catch (err) {
     console.error('[slack-oauth] handleOAuthCallback failed', err)
-    return redirectToConnections(request, {
-      connection: 'error',
-      reason: err instanceof Error ? err.message : 'oauth failed',
-    })
+    return redirectToChannels(
+      request,
+      {
+        connection: 'error',
+        reason: err instanceof Error ? err.message : 'oauth failed',
+      },
+      returnTo
+    )
   }
 }
 
-function redirectToConnections(
+function redirectToChannels(
   request: NextRequest,
-  params: Record<string, string>
+  params: Record<string, string>,
+  returnTo: string | null = null
 ): Response {
-  const target = new URL('/connections', request.url)
+  const target = new URL(returnTo ?? '/channels', request.url)
   for (const [key, value] of Object.entries(params)) {
     target.searchParams.set(key, value)
   }
   return NextResponse.redirect(target)
-}
-
-function decodeOAuthState(raw: string): { userId: string } | null {
-  try {
-    const secret = process.env.BETTER_AUTH_SECRET
-    if (!secret) {
-      return null
-    }
-
-    const [encodedPayload, signature] = raw.split('.')
-    if (!(encodedPayload && signature)) {
-      return null
-    }
-
-    const expectedSignature = createHmac('sha256', secret)
-      .update(encodedPayload)
-      .digest('base64url')
-
-    const expectedBuffer = Buffer.from(expectedSignature, 'utf8')
-    const signatureBuffer = Buffer.from(signature, 'utf8')
-    if (
-      expectedBuffer.length !== signatureBuffer.length ||
-      !timingSafeEqual(expectedBuffer, signatureBuffer)
-    ) {
-      return null
-    }
-
-    const payloadText = Buffer.from(encodedPayload, 'base64url').toString(
-      'utf8'
-    )
-    const payload = JSON.parse(payloadText) as {
-      userId?: unknown
-      exp?: unknown
-    }
-    if (typeof payload.userId !== 'string' || typeof payload.exp !== 'number') {
-      return null
-    }
-
-    if (Math.floor(Date.now() / 1000) > payload.exp) {
-      return null
-    }
-
-    return {
-      userId: payload.userId,
-    }
-  } catch {
-    return null
-  }
 }

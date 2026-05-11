@@ -10,6 +10,7 @@ import type {
   InstallationView,
   SlackBindingsPanelProps as SlackBindingsPanelPropsType,
 } from './slack-bindings-panel/types'
+import { SlackNotConfiguredNotice } from './slack-not-configured-notice'
 
 export type { SlackBindingsPanelProps } from './slack-bindings-panel/types'
 
@@ -34,6 +35,9 @@ export function SlackBindingsPanel({
       {isConfigured && (
         <InstallationsBlock
           installations={installations}
+          installHref={slackInstallHref(
+            `/agents/${agentId}/configure#integrations`
+          )}
           onChanged={() => router.refresh()}
         />
       )}
@@ -77,13 +81,7 @@ export function SlackBindingsPanel({
   )
 }
 
-function SlackNotConfiguredNotice() {
-  return (
-    <p className="border-2 border-foreground bg-muted px-4 py-3 text-sm">
-      Slack is not configured on this deployment. Set{' '}
-      <code className="font-mono">SLACK_CLIENT_ID</code>,{' '}
-      <code className="font-mono">SLACK_CLIENT_SECRET</code>, and{' '}
-      <code className="font-mono">SLACK_SIGNING_SECRET</code>, then redeploy.
-    </p>
-  )
+function slackInstallHref(returnTo: string): string {
+  const params = new URLSearchParams({ returnTo })
+  return `/api/channels/slack/install?${params.toString()}`
 }
