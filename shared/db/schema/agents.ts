@@ -34,14 +34,14 @@ export const agent = pgTable(
       .notNull()
       .default(30),
     lastHeartbeatAt: timestamp('last_heartbeat_at', { withTimezone: true }),
-    // Reflection stays independent from proactive heartbeat work.
-    reflectionEnabled: boolean('reflection_enabled').notNull().default(true),
-    reflectionIntervalMinutes: integer('reflection_interval_minutes')
+    // Dreaming stays independent from proactive heartbeat work.
+    dreamingEnabled: boolean('dreaming_enabled').notNull().default(true),
+    dreamingIntervalMinutes: integer('dreaming_interval_minutes')
       .notNull()
       .default(1440),
-    lastReflectionAt: timestamp('last_reflection_at', { withTimezone: true }),
-    // Makes "daily reflection" mean once per local day in the owner's timezone.
-    lastReflectionLocalDate: text('last_reflection_local_date'),
+    lastDreamingAt: timestamp('last_dreaming_at', { withTimezone: true }),
+    // Makes "daily dreaming" mean once per local day in the owner's timezone.
+    lastDreamingLocalDate: text('last_dreaming_local_date'),
     // Persistent system sandbox name. Null before first boot; after that, the
     // same sandbox is resumed on each event.
     sandboxSystemId: text('sandbox_system_id'),
@@ -137,7 +137,7 @@ export const agentFileChanges = pgTable(
       .references(() => agent.id, { onDelete: 'cascade' }),
     path: text('path').notNull(),
     sourceType: text('source_type')
-      .$type<'chat' | 'heartbeat' | 'reflection' | 'invocation'>()
+      .$type<'chat' | 'heartbeat' | 'dreaming' | 'invocation'>()
       .notNull(),
     sourceId: text('source_id'),
     beforeContent: text('before_content'),

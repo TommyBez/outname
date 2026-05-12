@@ -121,16 +121,16 @@ export async function reapOrphanTicker(input: {
 }
 
 export interface AgentTickerSchedule {
-  heartbeat: {
-    enabled: boolean
-    intervalMs: number
-  }
-  reflection: {
+  dreaming: {
     due: boolean
     enabled: boolean
     intervalMs: number
     localDate: string
     timezone: string
+  }
+  heartbeat: {
+    enabled: boolean
+    intervalMs: number
   }
 }
 
@@ -144,10 +144,10 @@ export async function readHeartbeatSchedule(input: {
     .select({
       heartbeatEnabled: agent.heartbeatEnabled,
       heartbeatIntervalMinutes: agent.heartbeatIntervalMinutes,
-      reflectionEnabled: agent.reflectionEnabled,
-      reflectionIntervalMinutes: agent.reflectionIntervalMinutes,
-      lastReflectionAt: agent.lastReflectionAt,
-      lastReflectionLocalDate: agent.lastReflectionLocalDate,
+      dreamingEnabled: agent.dreamingEnabled,
+      dreamingIntervalMinutes: agent.dreamingIntervalMinutes,
+      lastDreamingAt: agent.lastDreamingAt,
+      lastDreamingLocalDate: agent.lastDreamingLocalDate,
       sessionEpoch: agent.sessionEpoch,
       timezone: user.timezone,
     })
@@ -164,27 +164,27 @@ export async function readHeartbeatSchedule(input: {
   }
 
   const localDate = localDateKey(now, row.timezone)
-  const reflectionIntervalMs = Math.max(
+  const dreamingIntervalMs = Math.max(
     60_000,
-    row.reflectionIntervalMinutes * 60_000
+    row.dreamingIntervalMinutes * 60_000
   )
-  const lastReflectionMs = row.lastReflectionAt?.getTime() ?? null
+  const lastDreamingMs = row.lastDreamingAt?.getTime() ?? null
   const intervalElapsed =
-    lastReflectionMs === null ||
-    now.getTime() - lastReflectionMs >= reflectionIntervalMs
-  const localDayChanged = row.lastReflectionLocalDate !== localDate
-  const reflectionDue =
-    row.reflectionEnabled && (intervalElapsed || localDayChanged)
+    lastDreamingMs === null ||
+    now.getTime() - lastDreamingMs >= dreamingIntervalMs
+  const localDayChanged = row.lastDreamingLocalDate !== localDate
+  const dreamingDue =
+    row.dreamingEnabled && (intervalElapsed || localDayChanged)
 
   return {
     heartbeat: {
       enabled: row.heartbeatEnabled,
       intervalMs: Math.max(60_000, row.heartbeatIntervalMinutes * 60_000),
     },
-    reflection: {
-      due: reflectionDue,
-      enabled: row.reflectionEnabled,
-      intervalMs: reflectionIntervalMs,
+    dreaming: {
+      due: dreamingDue,
+      enabled: row.dreamingEnabled,
+      intervalMs: dreamingIntervalMs,
       localDate,
       timezone: row.timezone,
     },
@@ -194,7 +194,7 @@ export async function readHeartbeatSchedule(input: {
 function disabledSchedule(now: Date): AgentTickerSchedule {
   return {
     heartbeat: { enabled: false, intervalMs: 0 },
-    reflection: {
+    dreaming: {
       due: false,
       enabled: false,
       intervalMs: 0,
@@ -218,7 +218,7 @@ export async function pokeSessionHeartbeat(input: {
   })
 }
 
-export async function pokeSessionReflection(input: {
+export async function pokeSessionDreaming(input: {
   agentId: string
   ack: string
   localDate: string
@@ -226,7 +226,7 @@ export async function pokeSessionReflection(input: {
 }): Promise<void> {
   'use step'
   await resumeHook(sessionToken(input.agentId, input.sessionEpoch), {
-    type: 'reflection',
+    type: 'dreaming',
     ack: input.ack,
     localDate: input.localDate,
     scheduledAt: new Date().toISOString(),

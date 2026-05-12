@@ -275,10 +275,10 @@ function toDashboardAgent(agent: Agent): DashboardAgent {
     heartbeatIntervalMinutes: agent.heartbeatIntervalMinutes,
     id: agent.id,
     lastHeartbeatAt: agent.lastHeartbeatAt?.toISOString() ?? null,
-    lastReflectionAt: agent.lastReflectionAt?.toISOString() ?? null,
+    lastDreamingAt: agent.lastDreamingAt?.toISOString() ?? null,
     lastSessionRunId: agent.lastSessionRunId,
     model: agent.model,
     name: agent.name,
-    reflectionEnabled: agent.reflectionEnabled,
+    dreamingEnabled: agent.dreamingEnabled,
   }
 }

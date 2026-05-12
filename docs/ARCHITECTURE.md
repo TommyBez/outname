@@ -578,8 +578,8 @@ In this phase the agent's `ToolSet` is just memory tools. No maintainer catalog 
 ### Phase 5 — DREAMS / dreaming
 *Proactivity becomes self-improving.*
 
-- Independent dreaming ticker scheduled via `reflection_interval_minutes` plus a forced run on each local-day boundary (using `user.timezone` + `localDateKey`). Manual trigger via `pokeReflection` from `/agents/:id/dreams` "Dream now".
-- `agent_file_changes` table stores before/after content + sha256 + source attribution (`chat | heartbeat | reflection | invocation`) for every event-touching DREAMS/GOALS/TASKS/logs path. UI surfaces diffs at `/agents/:id/dreams`.
+- Independent dreaming ticker scheduled via `dreaming_interval_minutes` plus a forced run on each local-day boundary (using `user.timezone` + `localDateKey`). Manual trigger via `pokeDreaming` from `/agents/:id/dreams` "Dream now".
+- `agent_file_changes` table stores before/after content + sha256 + source attribution (`chat | heartbeat | dreaming | invocation`) for every event-touching DREAMS/GOALS/TASKS/logs path. UI surfaces diffs at `/agents/:id/dreams`.
 - Admin UI for the daily-log timeline and the DREAMS stream.
 - Tune the default base system prompt based on what the dreaming loop actually produces in practice.
 

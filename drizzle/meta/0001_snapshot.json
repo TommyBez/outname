@@ -182,28 +182,28 @@
           "primaryKey": false,
           "notNull": false
         },
-        "reflection_enabled": {
-          "name": "reflection_enabled",
+        "dreaming_enabled": {
+          "name": "dreaming_enabled",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,
           "default": true
         },
-        "reflection_interval_minutes": {
-          "name": "reflection_interval_minutes",
+        "dreaming_interval_minutes": {
+          "name": "dreaming_interval_minutes",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "default": 1440
         },
-        "last_reflection_at": {
-          "name": "last_reflection_at",
+        "last_dreaming_at": {
+          "name": "last_dreaming_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
-        "last_reflection_local_date": {
-          "name": "last_reflection_local_date",
+        "last_dreaming_local_date": {
+          "name": "last_dreaming_local_date",
           "type": "text",
           "primaryKey": false,
           "notNull": false

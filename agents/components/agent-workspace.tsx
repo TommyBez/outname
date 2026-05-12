@@ -46,7 +46,7 @@ function toHeaderAgent(agent: Agent) {
     id: agent.id,
     model: agent.model,
     name: agent.name,
-    reflectionEnabled: agent.reflectionEnabled,
-    reflectionIntervalMinutes: agent.reflectionIntervalMinutes,
+    dreamingEnabled: agent.dreamingEnabled,
+    dreamingIntervalMinutes: agent.dreamingIntervalMinutes,
   }
 }

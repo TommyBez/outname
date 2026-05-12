@@ -15,7 +15,7 @@ export type SessionEvent =
       scheduledAt?: string
     }
   | {
-      type: 'reflection'
+      type: 'dreaming'
       ack?: string
       localDate: string
       manual?: boolean

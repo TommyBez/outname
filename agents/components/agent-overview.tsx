@@ -71,13 +71,13 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
                 },
                 {
                   label: 'Dreaming',
-                  value: agent.reflectionEnabled
-                    ? formatAgentCadence(agent.reflectionIntervalMinutes)
+                  value: agent.dreamingEnabled
+                    ? formatAgentCadence(agent.dreamingIntervalMinutes)
                     : 'Off',
                 },
                 {
                   label: 'Last dream',
-                  value: formatNullableAgentDate(agent.lastReflectionAt),
+                  value: formatNullableAgentDate(agent.lastDreamingAt),
                 },
               ]}
             />

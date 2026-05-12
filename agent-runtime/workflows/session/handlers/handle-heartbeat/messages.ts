@@ -1,5 +1,5 @@
-export type HeartbeatMode = 'normal' | 'reflection'
+export type HeartbeatMode = 'normal' | 'dreaming'
 
 export function activityMessage(mode: HeartbeatMode, message: string): string {
-  return mode === 'reflection' ? `Dreaming: ${message}` : message
+  return mode === 'dreaming' ? `Dreaming: ${message}` : message
 }

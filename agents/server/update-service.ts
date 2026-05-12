@@ -13,6 +13,8 @@ import { agent } from '@/shared/db/schema'
 import { isModelIdValid } from '@/shared/server/ai-gateway-models'
 
 export interface UpdateAgentInput {
+  dreamingEnabled: boolean
+  dreamingIntervalMinutes: number
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
   id: string
@@ -22,8 +24,6 @@ export interface UpdateAgentInput {
   instructionsOriginal: string
   model: string
   name: string
-  reflectionEnabled: boolean
-  reflectionIntervalMinutes: number
   soul: string
   soulOriginal: string
   stepLimitCustom?: number | null
@@ -51,9 +51,7 @@ export async function updateAgentForUser(
       ? input.model
       : existing.model
   const heartbeatIntervalMinutes = clampInterval(input.heartbeatIntervalMinutes)
-  const reflectionIntervalMinutes = clampInterval(
-    input.reflectionIntervalMinutes
-  )
+  const dreamingIntervalMinutes = clampInterval(input.dreamingIntervalMinutes)
 
   const [updated] = await db
     .update(agent)
@@ -62,8 +60,8 @@ export async function updateAgentForUser(
       model,
       heartbeatEnabled: input.heartbeatEnabled,
       heartbeatIntervalMinutes,
-      reflectionEnabled: input.reflectionEnabled,
-      reflectionIntervalMinutes,
+      dreamingEnabled: input.dreamingEnabled,
+      dreamingIntervalMinutes,
       stepLimitMode: input.stepLimitMode,
       stepLimitCustom:
         input.stepLimitMode === 'custom'
@@ -121,7 +119,7 @@ export async function updateAgentForUser(
     },
   })
 
-  // Poke heartbeat schedule changes immediately; reflection schedule changes
+  // Poke heartbeat schedule changes immediately; dreaming schedule changes
   // wait for their own scheduler/manual trigger.
   if (
     updated.enabled &&

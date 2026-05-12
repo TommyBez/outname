@@ -18,14 +18,14 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 interface HeaderAgent {
+  dreamingEnabled: boolean
+  dreamingIntervalMinutes: number
   enabled: boolean
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
   id: string
   model: string
   name: string
-  reflectionEnabled: boolean
-  reflectionIntervalMinutes: number
 }
 
 const WORKSPACE_TABS = [
@@ -75,9 +75,9 @@ export function AgentWorkspaceHeader({ agent }: { agent: HeaderAgent }) {
                   : 'Heartbeat off'}
               </Badge>
               <Badge variant="secondary">
-                {agent.reflectionEnabled
+                {agent.dreamingEnabled
                   ? `Dreaming ${formatAgentInterval(
-                      agent.reflectionIntervalMinutes
+                      agent.dreamingIntervalMinutes
                     )}`
                   : 'Dreaming off'}
               </Badge>
@@ -98,7 +98,7 @@ export function AgentWorkspaceHeader({ agent }: { agent: HeaderAgent }) {
           <TriggerButton
             agentId={agent.id}
             label="Dream"
-            mode="reflection"
+            mode="dreaming"
             variant="outline"
           />
           <Button asChild size="sm" variant="default">

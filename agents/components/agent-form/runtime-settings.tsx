@@ -106,22 +106,22 @@ export function HeartbeatSettings({
   )
 }
 
-export function ReflectionSettings({
-  reflectionEnabled,
-  reflectionIntervalMinutes,
-  setReflectionEnabled,
-  setReflectionIntervalMinutes,
+export function DreamingSettings({
+  dreamingEnabled,
+  dreamingIntervalMinutes,
+  setDreamingEnabled,
+  setDreamingIntervalMinutes,
 }: {
-  reflectionEnabled: boolean
-  reflectionIntervalMinutes: number
-  setReflectionEnabled: (value: boolean) => void
-  setReflectionIntervalMinutes: (value: number) => void
+  dreamingEnabled: boolean
+  dreamingIntervalMinutes: number
+  setDreamingEnabled: (value: boolean) => void
+  setDreamingIntervalMinutes: (value: number) => void
 }) {
   return (
     <div className="grid gap-4 border-2 border-foreground bg-background p-5 md:grid-cols-[12rem_minmax(0,1fr)]">
       <Label
         className="font-bold text-sm uppercase tracking-[0.14em]"
-        htmlFor="agent-reflection"
+        htmlFor="agent-dreaming"
       >
         Dreaming
       </Label>
@@ -133,17 +133,17 @@ export function ReflectionSettings({
             heartbeat is off.
           </p>
           <Switch
-            checked={reflectionEnabled}
-            id="agent-reflection"
-            onCheckedChange={setReflectionEnabled}
+            checked={dreamingEnabled}
+            id="agent-dreaming"
+            onCheckedChange={setDreamingEnabled}
           />
         </div>
-        {reflectionEnabled ? (
+        {dreamingEnabled ? (
           <IntervalSelect
-            id="agent-reflection-interval"
+            id="agent-dreaming-interval"
             label="Dreaming cadence"
-            setValue={setReflectionIntervalMinutes}
-            value={reflectionIntervalMinutes}
+            setValue={setDreamingIntervalMinutes}
+            value={dreamingIntervalMinutes}
           />
         ) : null}
       </div>

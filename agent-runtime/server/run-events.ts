@@ -1,6 +1,6 @@
 import { getWritable } from 'workflow'
 
-// Use a per-run stream namespace so concurrent chat, heartbeat, reflection,
+// Use a per-run stream namespace so concurrent chat, heartbeat, dreaming,
 // and invocation breadcrumbs never interleave.
 export type RunStepName = 'read' | 'classify' | 'persist' | 'finalize'
 

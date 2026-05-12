@@ -73,7 +73,7 @@ export async function recordTokenUsageStep(input: {
   userId: string
   agentId: string
   rootAgentId: string
-  sourceType: 'chat' | 'heartbeat' | 'reflection' | 'invocation'
+  sourceType: 'chat' | 'heartbeat' | 'dreaming' | 'invocation'
   sourceId?: string | null
   model: string
   usage: LanguageModelUsage | undefined

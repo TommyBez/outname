@@ -7,14 +7,14 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
 export interface RegistryAgent {
+  dreamingEnabled: boolean
+  dreamingIntervalMinutes: number
   enabled: boolean
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
   id: string
   model: string
   name: string
-  reflectionEnabled: boolean
-  reflectionIntervalMinutes: number
 }
 
 export function AgentRegistry({ agents }: { agents: RegistryAgent[] }) {
@@ -30,7 +30,7 @@ export function AgentRegistry({ agents }: { agents: RegistryAgent[] }) {
         agent.model,
         agent.enabled ? 'active' : 'paused',
         agent.heartbeatEnabled ? 'heartbeat' : 'heartbeat off',
-        agent.reflectionEnabled ? 'dreaming' : 'dreaming off',
+        agent.dreamingEnabled ? 'dreaming' : 'dreaming off',
       ].some((value) => value.toLowerCase().includes(needle))
     )
   }, [agents, query])
@@ -112,10 +112,8 @@ function AgentRegistryRow({ agent }: { agent: RegistryAgent }) {
               : 'Heartbeat off'}
           </span>
           <span>
-            {agent.reflectionEnabled
-              ? `Dreaming ${formatAgentInterval(
-                  agent.reflectionIntervalMinutes
-                )}`
+            {agent.dreamingEnabled
+              ? `Dreaming ${formatAgentInterval(agent.dreamingIntervalMinutes)}`
               : 'Dreaming off'}
           </span>
         </div>

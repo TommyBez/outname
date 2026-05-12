@@ -137,13 +137,10 @@ function formatSettingValue(key: SettingsKey, value: unknown): string {
   if (value === null || value === undefined || value === '') {
     return 'none'
   }
-  if (key === 'heartbeatEnabled' || key === 'reflectionEnabled') {
+  if (key === 'heartbeatEnabled' || key === 'dreamingEnabled') {
     return value === true ? 'on' : 'off'
   }
-  if (
-    key === 'heartbeatIntervalMinutes' ||
-    key === 'reflectionIntervalMinutes'
-  ) {
+  if (key === 'heartbeatIntervalMinutes' || key === 'dreamingIntervalMinutes') {
     return formatIntervalSetting(value)
   }
   return String(value)

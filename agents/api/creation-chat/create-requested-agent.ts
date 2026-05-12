@@ -35,8 +35,8 @@ export async function createRequestedAgent(input: {
     model: input.input.model,
     heartbeatEnabled: input.input.heartbeat.enabled,
     heartbeatIntervalMinutes: input.input.heartbeat.intervalMinutes,
-    reflectionEnabled: input.input.reflection.enabled,
-    reflectionIntervalMinutes: input.input.reflection.intervalMinutes,
+    dreamingEnabled: input.input.dreaming.enabled,
+    dreamingIntervalMinutes: input.input.dreaming.intervalMinutes,
     stepLimitMode: input.input.stepLimit.mode,
     stepLimitCustom: input.input.stepLimit.custom,
     identityCard,
@@ -199,9 +199,9 @@ function resolveInstructions(input: AgentCreationRequest): string {
       : 'Do not run proactive heartbeat work unless the user enables it later.',
     '',
     '## Dreaming',
-    input.reflection.enabled
+    input.dreaming.enabled
       ? `Review memory and recent work ${formatAgentCadenceLower(
-          input.reflection.intervalMinutes
+          input.dreaming.intervalMinutes
         )}.`
       : 'Do not run scheduled dreaming unless the user enables it later.',
     '',

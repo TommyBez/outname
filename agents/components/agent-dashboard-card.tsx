@@ -19,16 +19,16 @@ import {
 import { cn } from '@/lib/utils'
 
 export interface DashboardAgent {
+  dreamingEnabled: boolean
   enabled: boolean
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
   id: string
+  lastDreamingAt: string | null
   lastHeartbeatAt: string | null
-  lastReflectionAt: string | null
   lastSessionRunId: string | null
   model: string
   name: string
-  reflectionEnabled: boolean
 }
 
 export function AgentDashboardCard({
@@ -47,7 +47,7 @@ export function AgentDashboardCard({
   const preview = useAgentRunTranscriptPreview({
     enabled: agent.enabled,
     lastHeartbeatAt: agent.lastHeartbeatAt,
-    lastReflectionAt: agent.lastReflectionAt,
+    lastDreamingAt: agent.lastDreamingAt,
     sessionRunId: agent.lastSessionRunId,
     streamState: transcript,
   })
@@ -207,11 +207,11 @@ function buildSchedule(agent: DashboardAgent) {
     },
     {
       label: 'Dreaming',
-      value: agent.reflectionEnabled ? 'On' : 'Off',
+      value: agent.dreamingEnabled ? 'On' : 'Off',
     },
     {
       label: 'Last dream',
-      value: formatNullableDate(agent.lastReflectionAt),
+      value: formatNullableDate(agent.lastDreamingAt),
     },
   ]
 }

@@ -182,7 +182,7 @@ async function ResolvedAgentMemoryDreams({ params }: { params: Params }) {
           <TriggerButton
             agentId={agent.id}
             label="Dream now"
-            mode="reflection"
+            mode="dreaming"
             variant="outline"
           />
         </div>
@@ -282,7 +282,7 @@ function formatChangeSourceType(
   sourceType: AgentFileChange['sourceType']
 ): string {
   switch (sourceType) {
-    case 'reflection':
+    case 'dreaming':
       return 'dreaming'
     case 'invocation':
       return 'sub-agent'

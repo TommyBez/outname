@@ -3,8 +3,8 @@ import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 import { type NextRequest, NextResponse } from 'next/server'
 import {
+  pokeDreaming,
   pokeHeartbeat,
-  pokeReflection,
 } from '@/agent-runtime/server/session-events'
 import { getAgentById } from '@/agent-runtime/server/start-agent-run'
 import { auth } from '@/auth/server/auth'
@@ -12,7 +12,7 @@ import { db } from '@/shared/db'
 import { user } from '@/shared/db/schema'
 import { localDateKey } from '@/shared/server/timezone'
 
-type TriggerMode = 'heartbeat' | 'reflection'
+type TriggerMode = 'heartbeat' | 'dreaming'
 
 // This hits the same workflow hook the scheduler uses, so manual triggers behave like real ticks.
 export async function POST(
@@ -40,8 +40,8 @@ export async function POST(
   try {
     const mode = await readTriggerMode(req)
     const { sessionRunId } =
-      mode === 'reflection'
-        ? await pokeReflection({
+      mode === 'dreaming'
+        ? await pokeDreaming({
             agent,
             localDate: await readUserLocalDate(session.user.id),
           })
@@ -67,7 +67,7 @@ export async function POST(
 
 async function readTriggerMode(req: NextRequest): Promise<TriggerMode> {
   const body = await req.json().catch(() => null)
-  return body && body.mode === 'reflection' ? 'reflection' : 'heartbeat'
+  return body && body.mode === 'dreaming' ? 'dreaming' : 'heartbeat'
 }
 
 async function readUserLocalDate(userId: string): Promise<string> {

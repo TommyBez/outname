@@ -126,7 +126,7 @@ export function buildHeartbeatKickoff(args: {
   ].join('\n')
 }
 
-export function buildReflectionKickoff(args: {
+export function buildDreamingKickoff(args: {
   localDate: string
   manual: boolean
   nowIso: string

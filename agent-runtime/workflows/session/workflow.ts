@@ -19,7 +19,7 @@ import { createPendingWrites, type PendingWrites } from './tools/pending-writes'
 type EventSource =
   | { sourceType: 'chat'; sourceId: string }
   | { sourceType: 'heartbeat'; sourceId: string | null }
-  | { sourceType: 'reflection'; sourceId: string | null }
+  | { sourceType: 'dreaming'; sourceId: string | null }
   | { sourceType: 'invocation'; sourceId: string | null }
 
 interface EventDispatchResult {
@@ -99,8 +99,8 @@ async function dispatchSessionEvent(input: {
       return await dispatchChatEvent({ agentId, event })
     case 'heartbeat':
       return await dispatchHeartbeatEvent({ agentId, event, sessionEpoch })
-    case 'reflection':
-      return await dispatchReflectionEvent({ agentId, event, sessionEpoch })
+    case 'dreaming':
+      return await dispatchDreamingEvent({ agentId, event, sessionEpoch })
     case 'invocation':
       return await dispatchInvocationEvent({ agentId, event })
     default: {
@@ -151,9 +151,9 @@ async function dispatchHeartbeatEvent(input: {
   }
 }
 
-async function dispatchReflectionEvent(input: {
+async function dispatchDreamingEvent(input: {
   agentId: string
-  event: Extract<SessionEvent, { type: 'reflection' }>
+  event: Extract<SessionEvent, { type: 'dreaming' }>
   sessionEpoch: number
 }): Promise<EventDispatchResult> {
   const { agentId, event, sessionEpoch } = input
@@ -162,12 +162,12 @@ async function dispatchReflectionEvent(input: {
       agentId,
       localDate: event.localDate,
       manual: event.manual ?? false,
-      mode: 'reflection',
+      mode: 'dreaming',
       scheduledAt: event.scheduledAt,
     })
     return {
       pending: result.pending,
-      source: { sourceType: 'reflection', sourceId: result.runId },
+      source: { sourceType: 'dreaming', sourceId: result.runId },
     }
   } finally {
     await ackIfNeeded({ agentId, ack: event.ack, sessionEpoch })

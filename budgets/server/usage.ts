@@ -17,7 +17,7 @@ export async function recordAgentTokenUsage(input: {
   userId: string
   agentId: string
   rootAgentId: string
-  sourceType: 'chat' | 'heartbeat' | 'reflection' | 'invocation'
+  sourceType: 'chat' | 'heartbeat' | 'dreaming' | 'invocation'
   sourceId?: string | null
   model: string
   usage: LanguageModelUsage | UsageInput | undefined

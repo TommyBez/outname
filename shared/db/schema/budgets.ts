@@ -62,7 +62,7 @@ export const agentTokenUsage = pgTable(
       .notNull()
       .references(() => agent.id, { onDelete: 'cascade' }),
     sourceType: text('source_type')
-      .$type<'chat' | 'heartbeat' | 'reflection' | 'invocation'>()
+      .$type<'chat' | 'heartbeat' | 'dreaming' | 'invocation'>()
       .notNull(),
     sourceId: text('source_id'),
     model: text('model').notNull(),

@@ -21,7 +21,7 @@ export function TriggerButton({
   agentId: string
   variant?: 'default' | 'outline' | 'link'
   label?: string
-  mode?: 'heartbeat' | 'reflection'
+  mode?: 'heartbeat' | 'dreaming'
   className?: string
 }) {
   const router = useRouter()
@@ -42,7 +42,7 @@ export function TriggerButton({
       }
       const { sessionRunId } = (await res.json()) as { sessionRunId?: string }
       toast.success(
-        mode === 'reflection' ? 'Dreaming started' : 'Run started',
+        mode === 'dreaming' ? 'Dreaming started' : 'Run started',
         sessionRunId
           ? { description: `Session ${sessionRunId.slice(0, 8)}` }
           : undefined
@@ -50,7 +50,7 @@ export function TriggerButton({
       startTransition(() => router.refresh())
     } catch (err) {
       toast.error(
-        mode === 'reflection'
+        mode === 'dreaming'
           ? 'Could not start dreaming'
           : 'Could not start run',
         {

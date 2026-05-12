@@ -4,8 +4,8 @@ import { startupSystemSandbox } from '@/agent-runtime/server/agent-sandbox'
 import { emitActivity } from '@/agent-runtime/server/run-events'
 import {
   buildAgent,
+  buildDreamingKickoff,
   buildHeartbeatKickoff,
-  buildReflectionKickoff,
 } from '../agent-factory'
 import {
   didReachStepLimit,
@@ -32,8 +32,8 @@ import {
 import {
   markBudgetSkippedRunCompleted,
   markRunCompleted,
+  readPreviousDreamingCompletion,
   readPreviousHeartbeatCompletion,
-  readPreviousReflectionCompletion,
 } from './handle-heartbeat/state'
 
 export async function handleHeartbeat(input: {
@@ -46,7 +46,7 @@ export async function handleHeartbeat(input: {
   const { agentId } = input
   const mode = input.mode ?? 'normal'
   const nowIso = input.scheduledAt ?? new Date().toISOString()
-  const reflectionLocalDate = input.localDate ?? nowIso.slice(0, 10)
+  const dreamingLocalDate = input.localDate ?? nowIso.slice(0, 10)
   const { runId } = await beginHeartbeatRun({ agentId })
   const writable = getWritable<UIMessageChunk>({ namespace: runId })
 
@@ -65,7 +65,7 @@ export async function handleHeartbeat(input: {
     if (userId === BUDGET_EXCEEDED) {
       await markBudgetSkippedRunCompleted({
         agentId,
-        localDate: reflectionLocalDate,
+        localDate: dreamingLocalDate,
         mode,
       })
       return { pending: createPendingWrites(), runId }
@@ -92,9 +92,9 @@ export async function handleHeartbeat(input: {
       custom: meta.stepLimitCustom,
     } as const
     const kickoff =
-      mode === 'reflection'
-        ? buildReflectionKickoff({
-            localDate: reflectionLocalDate,
+      mode === 'dreaming'
+        ? buildDreamingKickoff({
+            localDate: dreamingLocalDate,
             manual: input.manual ?? false,
             nowIso,
             previousIso,
@@ -111,7 +111,7 @@ export async function handleHeartbeat(input: {
         userId,
         agentId,
         rootAgentId: agentId,
-        sourceType: mode === 'reflection' ? 'reflection' : 'heartbeat',
+        sourceType: mode === 'dreaming' ? 'dreaming' : 'heartbeat',
         sourceId: runId,
         model: meta.model,
         usage: extractTotalUsage(result),
@@ -120,7 +120,7 @@ export async function handleHeartbeat(input: {
 
     await finalizeHeartbeatRun({
       agentId,
-      localDate: reflectionLocalDate,
+      localDate: dreamingLocalDate,
       mode,
       resultSteps: result.steps,
       runId,
@@ -160,8 +160,8 @@ async function readPreviousCompletion(
   agentId: string,
   mode: HeartbeatMode
 ): Promise<string | null> {
-  return mode === 'reflection'
-    ? await readPreviousReflectionCompletion(agentId)
+  return mode === 'dreaming'
+    ? await readPreviousDreamingCompletion(agentId)
     : await readPreviousHeartbeatCompletion(agentId)
 }
 
