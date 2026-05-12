@@ -198,12 +198,12 @@ function resolveInstructions(input: AgentCreationRequest): string {
         )} and perform one useful, bounded action aligned with the role.`
       : 'Do not run proactive heartbeat work unless the user enables it later.',
     '',
-    '## Reflection',
+    '## Dreaming',
     input.reflection.enabled
       ? `Review memory and recent work ${formatAgentCadenceLower(
           input.reflection.intervalMinutes
         )}.`
-      : 'Do not run scheduled reflection unless the user enables it later.',
+      : 'Do not run scheduled dreaming unless the user enables it later.',
     '',
     '## Tool Use',
     toolInstruction(input),

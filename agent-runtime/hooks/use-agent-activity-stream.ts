@@ -99,7 +99,7 @@ export function useAgentActivityPreview(input: {
     return `Last heartbeat ${formatRelativeTime(lastHeartbeatAt)}`
   }
   if (lastReflectionAt) {
-    return `Last reflection ${formatRelativeTime(lastReflectionAt)}`
+    return `Last dream ${formatRelativeTime(lastReflectionAt)}`
   }
   return 'No activity streamed yet.'
 }

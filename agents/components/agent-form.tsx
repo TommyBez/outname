@@ -133,7 +133,7 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
       </ConfigureSection>
 
       <ConfigureSection
-        description="Model, step limit, heartbeat cadence, and reflection cadence."
+        description="Model, step limit, heartbeat cadence, and dreaming cadence."
         id="runtime"
         title="Runtime"
       >

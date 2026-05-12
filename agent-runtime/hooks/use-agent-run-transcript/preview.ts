@@ -35,7 +35,7 @@ export function getAgentRunTranscriptPreview(input: {
     return `Last heartbeat ${formatRelativeTime(lastHeartbeatAt)}`
   }
   if (lastReflectionAt) {
-    return `Last reflection ${formatRelativeTime(lastReflectionAt)}`
+    return `Last dream ${formatRelativeTime(lastReflectionAt)}`
   }
   return 'No run transcript streamed yet.'
 }

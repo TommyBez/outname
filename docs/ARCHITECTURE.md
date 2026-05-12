@@ -154,7 +154,7 @@ Rules:
 - System sandbox network egress is `deny-all`; it is a markdown memory volume, not a tool runtime.
 - The sandbox name on the agent row is authoritative. Any cached copy elsewhere is advisory.
 - The system base image is minimal: just enough to host markdown files and the memory-tool implementations. Heavy runtimes (Chromium, Python ML, …) live in tool sandboxes, not here.
-- Chat, manual triggers, scheduled heartbeat, reflection, and invocation events are serialized by the workflow hook. Additional session split-brain locking is intentionally out of scope while the app is pre-production.
+- Chat, manual triggers, scheduled heartbeat, dreaming, and invocation events are serialized by the workflow hook. Additional session split-brain locking is intentionally out of scope while the app is pre-production.
 
 #### Tool sandboxes (second tier)
 
@@ -178,7 +178,7 @@ Two tiers:
 | `GOALS.md` | lazy | Long-horizon objectives | User + agent (synthesized from DREAMS) | Agent on demand (typically on heartbeat) |
 | `CALENDAR.md` | lazy | Known time-bound events & deadlines | Agent (from tool results); user (manual) | Agent on demand (typically on heartbeat) |
 | `TASKS.md` | lazy | Active tactical items, status, dependencies | Agent | Agent on demand; UI displays |
-| `DREAMS.md` | lazy | Reflection, pattern anticipation, self-evaluation | Agent during dedicated heartbeat runs | Agent on demand (DREAMS runs) |
+| `DREAMS.md` | lazy | Dreaming, pattern anticipation, self-evaluation | Agent during dedicated heartbeat runs | Agent on demand (DREAMS runs) |
 | `logs/YYYY-MM-DD.md` | lazy | Raw event trace for the day | Agent (auto-appended each event via `append_memory`) | Agent on demand; UI timeline |
 
 > **Note — `AGENTS.md` follows the [agents.md](https://agents.md/) public standard, with per-agent customization.** The spec defines a markdown file that tells AI agents how to operate within a given codebase, and explicitly supports hierarchical / context-specific variants. Each agent's "codebase" is its own system sandbox, so a per-agent `AGENTS.md` is spec-aligned. It has two layers: a **template baseline** seeded by the system at agent creation (memory-file layout, conventions, memory-tool usage notes), and **per-agent instructions** appended or edited by the user via the pending-writes queue (escalation rules, preferred tools, "always read MEMORY.md before replying to chat," domain-specific checklists). Agents should not self-rewrite `AGENTS.md`; the `write_memory` tool rejects writes to it regardless.
@@ -383,7 +383,7 @@ The default base system prompt, prepended at every event, makes the policy expli
 
 > *`AGENTS.md` and `SOUL.md` are read-only for you. Treat them as given. Write attempts via memory tools will be rejected. `USER.md`, when present, is injected too, but you may create and update it with memory tools as you learn durable facts about the user.*
 
-Opt-in self-rewrite of `SOUL.md` or `AGENTS.md` (e.g. for meta-reflection agents) would be a per-agent flag relaxing the tool-layer write block; not in scope for this refactor.
+Opt-in self-rewrite of `SOUL.md` or `AGENTS.md` (e.g. for meta-dreaming agents) would be a per-agent flag relaxing the tool-layer write block; not in scope for this refactor.
 
 ### 4.7 Event flows
 
@@ -516,7 +516,7 @@ These aren't architectural beams but are canonical enough to codify here.
 - **Log retention.** Daily logs are never auto-deleted. `DREAMS.md` digests and summarises old logs. Users may prune manually.
 - **Base system prompt.** Short code-side preamble prepended on every event. Tells the agent: (1) eager files are pre-loaded when present (`AGENTS.md` = how, `SOUL.md` = who, `USER.md` = target); (2) memory files live in the **system sandbox** and are accessed only via the memory tools (`read_memory`, `write_memory`, `append_memory`, `list_memory`, `search_memory`, …) — read other files (`MEMORY.md`, `TASKS.md`, etc.) lazily when relevant, per the guidance in `AGENTS.md`; (3) `SOUL.md` and `AGENTS.md` are read-only for you (write attempts will be rejected); `USER.md` is agent-maintained and should be created or updated with memory tools when durable profile facts appear. Operational conventions (file layout, checkbox / date formats, memory-tool notes, per-agent workflow rules) live in `AGENTS.md` in the system sandbox, not in the base prompt — auditable and version-controlled alongside the agent's other files. Tools are exposed through the AI SDK `ToolSet`, not through a markdown index.
 - **Tool failure handling.** `FatalError` for bad inputs / invalid credentials; `RetryableError` for rate limits / 5xx. Fatal tool errors become an agent-visible message, not a workflow crash.
-- **Streaming namespaces.** Each chat turn uses a per-turn namespace keyed by `replyStreamToken`. Heartbeat/reflection and sub-agent work use the workflow runtime id directly as their stream namespace, with breadcrumbs under `events:${runId}`. The UI may subscribe selectively per turn/event instead of multiplexing through a single global feed.
+- **Streaming namespaces.** Each chat turn uses a per-turn namespace keyed by `replyStreamToken`. Heartbeat/dreaming and sub-agent work use the workflow runtime id directly as their stream namespace, with breadcrumbs under `events:${runId}`. The UI may subscribe selectively per turn/event instead of multiplexing through a single global feed.
 - **Model selection** goes through AI Gateway; the supported model list is a small allow-list curated by the maintainer.
 
 ---
@@ -575,13 +575,13 @@ In this phase the agent's `ToolSet` is just memory tools. No maintainer catalog 
 
 **Testable end state.** A user can create an "orchestrator" agent whose toolset includes other agents they own plus the browser tool. First attach of the browser tool builds the chromium snapshot once (cached for everyone after); subsequent invocations are fast. Sub-agent calls show up as linked workflow runs in observability.
 
-### Phase 5 — DREAMS / reflection
+### Phase 5 — DREAMS / dreaming
 *Proactivity becomes self-improving.*
 
-- Independent reflection ticker scheduled via `reflection_interval_minutes` plus a forced run on each local-day boundary (using `user.timezone` + `localDateKey`). Manual trigger via `pokeReflection` from `/agents/:id/dreams` "Reflect now".
+- Independent dreaming ticker scheduled via `reflection_interval_minutes` plus a forced run on each local-day boundary (using `user.timezone` + `localDateKey`). Manual trigger via `pokeReflection` from `/agents/:id/dreams` "Dream now".
 - `agent_file_changes` table stores before/after content + sha256 + source attribution (`chat | heartbeat | reflection | invocation`) for every event-touching DREAMS/GOALS/TASKS/logs path. UI surfaces diffs at `/agents/:id/dreams`.
 - Admin UI for the daily-log timeline and the DREAMS stream.
-- Tune the default base system prompt based on what the reflection loop actually produces in practice.
+- Tune the default base system prompt based on what the dreaming loop actually produces in practice.
 
 **Testable end state.** An agent left running for a few days produces coherent `DREAMS.md` entries that cite specific log events and propose plausible new tasks / goals. The app is then eligible for production.
 
@@ -598,7 +598,7 @@ In this phase the agent's `ToolSet` is just memory tools. No maintainer catalog 
 - **User-defined tools.** No-code tool builder (e.g. "call this HTTPS endpoint with these params"). For now, sub-agents are the only user-authored "tools."
 - **Retention/pruning for `agent_file_changes`.** Unbounded today; cap N most recent per `(agent_id, path)` via cron, or store sha-only and look up content from `agent_files` history. Sized for v1.0.
 - **Multi-user orgs / workspaces / billing.**
-- **Per-agent opt-in to aggressive `SOUL.md` self-rewrite** (meta-reflection agents).
+- **Per-agent opt-in to aggressive `SOUL.md` self-rewrite** (meta-dreaming agents).
 
 ---
 

@@ -138,7 +138,7 @@ function AgentActivityPanel({
             className="h-full"
             emptyDescription={
               getTranscriptMessage(transcript) ??
-              'Trigger a heartbeat or reflection to populate this read-only run monitor.'
+              'Trigger a heartbeat or dream run to populate this read-only run monitor.'
             }
             emptyTitle="No run transcript yet"
             messages={transcript.messages}
@@ -206,11 +206,11 @@ function buildSchedule(agent: DashboardAgent) {
       value: formatNullableDate(agent.lastHeartbeatAt),
     },
     {
-      label: 'Reflection',
+      label: 'Dreaming',
       value: agent.reflectionEnabled ? 'On' : 'Off',
     },
     {
-      label: 'Last reflection',
+      label: 'Last dream',
       value: formatNullableDate(agent.lastReflectionAt),
     },
   ]

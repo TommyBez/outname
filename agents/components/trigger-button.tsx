@@ -42,7 +42,7 @@ export function TriggerButton({
       }
       const { sessionRunId } = (await res.json()) as { sessionRunId?: string }
       toast.success(
-        mode === 'reflection' ? 'Reflection started' : 'Run started',
+        mode === 'reflection' ? 'Dreaming started' : 'Run started',
         sessionRunId
           ? { description: `Session ${sessionRunId.slice(0, 8)}` }
           : undefined
@@ -51,7 +51,7 @@ export function TriggerButton({
     } catch (err) {
       toast.error(
         mode === 'reflection'
-          ? 'Could not start reflection'
+          ? 'Could not start dreaming'
           : 'Could not start run',
         {
           description: err instanceof Error ? err.message : 'Unknown error',

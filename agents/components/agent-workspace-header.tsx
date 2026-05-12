@@ -76,10 +76,10 @@ export function AgentWorkspaceHeader({ agent }: { agent: HeaderAgent }) {
               </Badge>
               <Badge variant="secondary">
                 {agent.reflectionEnabled
-                  ? `Reflection ${formatAgentInterval(
+                  ? `Dreaming ${formatAgentInterval(
                       agent.reflectionIntervalMinutes
                     )}`
-                  : 'Reflection off'}
+                  : 'Dreaming off'}
               </Badge>
             </div>
             <h1 className="text-pretty font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter md:text-7xl">
@@ -97,7 +97,7 @@ export function AgentWorkspaceHeader({ agent }: { agent: HeaderAgent }) {
           />
           <TriggerButton
             agentId={agent.id}
-            label="Reflect"
+            label="Dream"
             mode="reflection"
             variant="outline"
           />

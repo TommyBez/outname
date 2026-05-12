@@ -101,7 +101,7 @@ export const featureModes: readonly FeatureMode[] = [
     label: 'Review',
     metric: 'diffs',
     signal: 'GOALS.md and TASKS.md changes',
-    steps: ['read reflection', 'compare the diff', 'mark reviewed'],
+    steps: ['read dreaming', 'compare the diff', 'mark reviewed'],
     title: 'Review what the agent learned and changed.',
   },
 ] as const
@@ -168,14 +168,14 @@ export const memoryFiles: readonly MemoryFile[] = [
     tag: 'agent memory',
   },
   {
-    detail: 'Daily event logs mirrored after chat, heartbeat, and reflection.',
+    detail: 'Daily event logs mirrored after chat, heartbeat, and dreaming.',
     id: 'logs',
     label: 'Timeline',
     path: 'logs/YYYY-MM-DD.md',
     tag: 'mirror',
   },
   {
-    detail: 'Reflection output plus GOALS.md and TASKS.md diffs.',
+    detail: 'Dreaming output plus GOALS.md and TASKS.md diffs.',
     id: 'dreams',
     label: 'Dreams',
     path: 'DREAMS.md',
@@ -225,7 +225,7 @@ export const routeLinks = [
 export const loopWords = [
   'chat',
   'heartbeat',
-  'reflection',
+  'dreaming',
   'tools',
   'files',
 ] as const

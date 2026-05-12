@@ -2,7 +2,7 @@
 
 Personal AI agent workspace built with Next.js, React, Vercel Workflow, Vercel Sandbox, Better Auth, Neon Postgres, and Drizzle ORM.
 
-The app lets a single authenticated operator create persistent agents, chat with them, configure heartbeat and reflection loops, inspect their memory files, attach tools, and delegate work between agents.
+The app lets a single authenticated operator create persistent agents, chat with them, configure heartbeat and dreaming loops, inspect their memory files, attach tools, and delegate work between agents.
 
 ## Architecture
 
@@ -15,7 +15,7 @@ Agents are not stateless chat completions. Each agent has:
 - markdown memory files in a persistent sandbox;
 - a mirrored database view of those memory files for fast UI rendering;
 - optional external tool attachments and encrypted connection credentials;
-- a long-lived workflow session that receives chat, heartbeat, reflection, and sub-agent invocation events.
+- a long-lived workflow session that receives chat, heartbeat, dreaming, and sub-agent invocation events.
 
 ### System context
 
@@ -51,7 +51,7 @@ flowchart LR
 | Browser UI | Render dashboard, agent workspaces, chat, memory files, tool setup, settings, and forms. | Client component state and streamed UI messages. | Can reload safely because durable state is server-owned. |
 | Next.js control plane | Authenticate, authorize, validate input, run Server Actions, serve route handlers, revalidate cache tags, and dispatch workflow events. | Request context, Better Auth session, Next cache tags. | Request failure does not corrupt agent memory because writes are persisted or queued before workflow work begins. |
 | Neon and Drizzle | Store auth rows, agents, conversations, messages, memory mirrors, pending writes, tools, connections, and sandbox build records. | Postgres tables and generated migrations. | Database is the source of truth for operator-visible state and recovery metadata. |
-| Vercel Workflow | Run long-lived agent sessions, ticker workflows, heartbeat/reflection handlers, chat handlers, sub-agent invocations, and tool sandbox builds. | Workflow run ids, hooks, streamed namespaces, durable step state. | Failed sessions can be detected and restarted by liveness checks. |
+| Vercel Workflow | Run long-lived agent sessions, ticker workflows, heartbeat/dreaming handlers, chat handlers, sub-agent invocations, and tool sandbox builds. | Workflow run ids, hooks, streamed namespaces, durable step state. | Failed sessions can be detected and restarted by liveness checks. |
 | Vercel Sandbox | Provide each agent's named persistent memory sandbox plus explicit non-persistent tool-build and tool-runtime environments. | Named sandboxes, resumable sessions, and tool sandbox snapshots. | System sandboxes are stopped after workflow events and transparently resume on the next SDK operation. |
 | Tool and connector runtime | Resolve attached tools, decrypt connection credentials, run maintainer tools, and expose sub-agents as callable tools. | `agent_tools`, `user_connections`, tool sandbox snapshots. | Broken tools are surfaced to the model as unavailable instead of crashing the whole session. |
 
@@ -114,9 +114,9 @@ The persistence order is deliberate:
 3. Assistant output is persisted after streaming completes, matching the transcript to what the user saw.
 4. Memory mutations are drained at the end of the event, after model/tool work finishes, so file state represents the completed turn.
 
-### Heartbeats, reflection, and liveness
+### Heartbeats, dreaming, and liveness
 
-Agents can be configured for recurring heartbeat work and separate reflection work. A session workflow starts a sibling ticker workflow that gates each scheduled tick on completion of the previous event, preventing overlapping heartbeat runs for the same agent.
+Agents can be configured for recurring heartbeat work and separate dreaming work. A session workflow starts a sibling ticker workflow that gates each scheduled tick on completion of the previous event, preventing overlapping heartbeat runs for the same agent.
 
 Vercel Cron calls the liveness endpoint every 15 minutes. When enabled, it checks every active agent's latest workflow run and restarts sessions that died or belong to an older deployment world. This keeps proactive agents recoverable without requiring the operator to open the UI.
 
@@ -127,11 +127,11 @@ stateDiagram-v2
   SessionStarting --> WaitingForEvents: session hook ready
   WaitingForEvents --> HandlingChat: chat event
   WaitingForEvents --> HandlingHeartbeat: ticker event
-  WaitingForEvents --> HandlingReflection: reflection event
+  WaitingForEvents --> HandlingDreaming: dreaming event
   WaitingForEvents --> HandlingInvocation: sub-agent call
   HandlingChat --> EndOfEvent
   HandlingHeartbeat --> EndOfEvent
-  HandlingReflection --> EndOfEvent
+  HandlingDreaming --> EndOfEvent
   HandlingInvocation --> EndOfEvent
   EndOfEvent --> WaitingForEvents: flush memory and release sandboxes
   WaitingForEvents --> Paused: operator disables agent

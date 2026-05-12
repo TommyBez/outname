@@ -70,13 +70,13 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
                   value: formatNullableAgentDate(agent.lastHeartbeatAt),
                 },
                 {
-                  label: 'Reflection',
+                  label: 'Dreaming',
                   value: agent.reflectionEnabled
                     ? formatAgentCadence(agent.reflectionIntervalMinutes)
                     : 'Off',
                 },
                 {
-                  label: 'Last reflection',
+                  label: 'Last dream',
                   value: formatNullableAgentDate(agent.lastReflectionAt),
                 },
               ]}

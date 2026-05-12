@@ -39,8 +39,8 @@ export const SETTINGS_FIELDS = [
   { key: 'model', label: 'Model' },
   { key: 'heartbeatEnabled', label: 'Heartbeat' },
   { key: 'heartbeatIntervalMinutes', label: 'Heartbeat interval' },
-  { key: 'reflectionEnabled', label: 'Reflection' },
-  { key: 'reflectionIntervalMinutes', label: 'Reflection interval' },
+  { key: 'reflectionEnabled', label: 'Dreaming' },
+  { key: 'reflectionIntervalMinutes', label: 'Dreaming interval' },
   { key: 'stepLimitMode', label: 'Step limit' },
   { key: 'stepLimitCustom', label: 'Custom step limit' },
 ] as const

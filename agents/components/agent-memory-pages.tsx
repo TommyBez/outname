@@ -61,7 +61,7 @@ async function ResolvedAgentMemoryFiles({ params }: { params: Params }) {
   return (
     <>
       <MemorySectionHeader
-        description="Markdown notes the agent maintains inside its persistent sandbox. They are snapshotted to the database at the end of each chat turn, heartbeat, and reflection."
+        description="Markdown notes the agent maintains inside its persistent sandbox. They are snapshotted to the database at the end of each chat turn, heartbeat, and dreaming run."
         eyebrow="Memory · Files"
         title="Sandbox files"
       />
@@ -114,14 +114,14 @@ async function ResolvedAgentMemoryTimeline({ params }: { params: Params }) {
   return (
     <>
       <MemorySectionHeader
-        description="The agent's markdown event log, mirrored from its system sandbox after each chat, heartbeat, reflection, or sub-agent invocation."
+        description="The agent's markdown event log, mirrored from its system sandbox after each chat, heartbeat, dreaming run, or sub-agent invocation."
         eyebrow="Memory · Timeline"
         title="Daily logs"
       />
 
       {logs.length === 0 ? (
         <p className="text-muted-foreground text-sm">
-          No logs yet. Trigger a heartbeat or reflection to create the first
+          No logs yet. Trigger a heartbeat or dream run to create the first
           daily log.
         </p>
       ) : (
@@ -175,13 +175,13 @@ async function ResolvedAgentMemoryDreams({ params }: { params: Params }) {
       <div className="mb-12 grid gap-8 md:grid-cols-[minmax(0,1fr)_auto]">
         <MemorySectionHeader
           description="Daily self-review output and reviewable changes proposed to the agent's goals and task list."
-          eyebrow="Memory · Reflection"
-          title="Reflection stream"
+          eyebrow="Memory · Dreaming"
+          title="Dreaming stream"
         />
         <div className="flex items-start md:justify-end">
           <TriggerButton
             agentId={agent.id}
-            label="Reflect now"
+            label="Dream now"
             mode="reflection"
             variant="outline"
           />
@@ -244,7 +244,8 @@ function FileChangeCard({ change }: { change: AgentFileChange }) {
             {change.path}
           </p>
           <p className="mt-1 text-muted-foreground text-xs">
-            {change.sourceType} · {formatDateTime(change.createdAt)}
+            {formatChangeSourceType(change.sourceType)} ·{' '}
+            {formatDateTime(change.createdAt)}
           </p>
         </div>
         <FileChangeReviewButton
@@ -275,6 +276,19 @@ function DiffPane({ label, value }: { label: string; value: string | null }) {
 
 function formatLogPath(path: string): string {
   return path.replace(LOGS_PREFIX_RE, '').replace(MARKDOWN_EXTENSION_RE, '')
+}
+
+function formatChangeSourceType(
+  sourceType: AgentFileChange['sourceType']
+): string {
+  switch (sourceType) {
+    case 'reflection':
+      return 'dreaming'
+    case 'invocation':
+      return 'sub-agent'
+    default:
+      return sourceType
+  }
 }
 
 function MemoryPageSkeleton() {

@@ -46,7 +46,7 @@ export function FinalConfigurationCard({
               `Model: ${config.model}`,
               `Step limit: ${stepLimitLabel(config.stepLimit)}`,
               `Heartbeat: ${scheduleLabel(config.heartbeat)}`,
-              `Reflection: ${scheduleLabel(config.reflection)}`,
+              `Dreaming: ${scheduleLabel(config.reflection)}`,
             ].join('\n')}
           />
           <ReviewBlock

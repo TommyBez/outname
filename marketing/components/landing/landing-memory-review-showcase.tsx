@@ -44,7 +44,7 @@ export function LandingMemoryReviewShowcase({
           </div>
           <p className="max-w-2xl text-muted-foreground leading-relaxed">
             Agents work in markdown. You can inspect their logs, memory files,
-            and reflection diffs before trusting what changed.
+            and dreaming diffs before trusting what changed.
           </p>
         </motion.div>
 
@@ -143,19 +143,17 @@ export function LandingMemoryReviewShowcase({
             <div className="border-2 border-foreground bg-accent p-6">
               <p className="swiss-label">Mirrored after event</p>
               <div className="mt-6 grid gap-2">
-                {['chat', 'heartbeat', 'reflection', 'sub-agent'].map(
-                  (item) => (
-                    <div
-                      className="flex items-center justify-between border-2 border-foreground bg-background px-3 py-2"
-                      key={item}
-                    >
-                      <span className="font-black text-xs uppercase tracking-normal">
-                        {item}
-                      </span>
-                      <RefreshCwIcon className="size-4" />
-                    </div>
-                  )
-                )}
+                {['chat', 'heartbeat', 'dreaming', 'sub-agent'].map((item) => (
+                  <div
+                    className="flex items-center justify-between border-2 border-foreground bg-background px-3 py-2"
+                    key={item}
+                  >
+                    <span className="font-black text-xs uppercase tracking-normal">
+                      {item}
+                    </span>
+                    <RefreshCwIcon className="size-4" />
+                  </div>
+                ))}
               </div>
             </div>
           </div>

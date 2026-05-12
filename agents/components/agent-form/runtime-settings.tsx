@@ -94,7 +94,7 @@ export function HeartbeatSettings({
         </div>
         {heartbeatEnabled ? (
           <IntervalSelect
-            helpText="Reflection runs at most once per N minutes, and at least once per local day."
+            helpText="Dreaming runs at most once per N minutes, and at least once per local day."
             id="agent-interval"
             label="Interval"
             setValue={setIntervalMinutes}
@@ -123,12 +123,12 @@ export function ReflectionSettings({
         className="font-bold text-sm uppercase tracking-[0.14em]"
         htmlFor="agent-reflection"
       >
-        Reflection
+        Dreaming
       </Label>
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-4">
           <p className="text-muted-foreground text-xs">
-            When on, the agent periodically reviews its logs, writes DREAMS.md,
+            When on, the agent periodically reviews its logs, updates DREAMS.md,
             and proposes updates to goals or tasks. This can run even when
             heartbeat is off.
           </p>
@@ -141,7 +141,7 @@ export function ReflectionSettings({
         {reflectionEnabled ? (
           <IntervalSelect
             id="agent-reflection-interval"
-            label="Reflection cadence"
+            label="Dreaming cadence"
             setValue={setReflectionIntervalMinutes}
             value={reflectionIntervalMinutes}
           />
