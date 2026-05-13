@@ -6,8 +6,8 @@ export const agentBrowserManifest = defineSandboxManifest({
   id: 'agent-browser',
   displayName: 'agent-browser',
   description:
-    'Sandbox image with the agent-browser CLI and its Chromium dependencies pre-installed.',
-  version: 1,
+    'Sandbox image with the agent-browser CLI configured to use the Lightpanda engine.',
+  version: 2,
   build: {
     runtime: 'node22',
     timeout: 600_000,

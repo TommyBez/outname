@@ -41,13 +41,13 @@ const inputSchema = z.object({
     .string()
     .min(1)
     .describe(
-      `agent-browser subcommand. See https://agent-browser.dev for the full reference. Common: ${KNOWN_COMMANDS.join(', ')}.`
+      `agent-browser subcommand. This sandbox pins agent-browser to the Lightpanda engine. See https://agent-browser.dev for the full reference. Common: ${KNOWN_COMMANDS.join(', ')}.`
     ),
   args: z
     .array(z.string())
     .default([])
     .describe(
-      'Positional + flag arguments to pass to the subcommand, in order. Example: ["https://example.com"] for `open`, or ["-i", "-c"] for `snapshot`. Quoting is handled by the runtime.'
+      'Positional + flag arguments to pass to the subcommand, in order. Example: ["https://example.com"] for `open`, or ["-i", "-c"] for `snapshot`. Quoting is handled by the runtime. Chrome-only flags such as headed mode, persistent profiles, storage state, and file access are unavailable under the Lightpanda engine.'
     ),
   timeoutMs: z
     .number()
@@ -118,7 +118,7 @@ export const agentBrowserTool = defineSandboxTool({
   category: 'browser',
   displayName: 'agent-browser',
   description:
-    'Drive a headless browser via the agent-browser CLI. The browser session persists across calls for the duration of this conversation, so you can chain `open` -> `snapshot` -> `click @ref` etc. Returns exit code, stdout, and stderr per call.',
+    'Drive a headless browser via the agent-browser CLI configured for the Lightpanda engine in this sandbox. The browser session persists across calls for the duration of this conversation, so you can chain `open` -> `snapshot` -> `click @ref` etc. Chrome-only features such as headed mode, persistent profiles, storage state, and file access are unavailable; screenshot support depends on Lightpanda CDP coverage. Returns exit code, stdout, and stderr per call.',
   manifestId: 'agent-browser',
   inputSchema,
   async execute({ input: { command, args, timeoutMs }, ctx }) {
