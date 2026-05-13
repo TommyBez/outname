@@ -17,8 +17,10 @@ if [ "$(uname -m)" != "x86_64" ]; then
   exit 1
 fi
 
-sudo dnf clean all
-sudo dnf install -y --skip-broken ca-certificates curl
+if ! command -v curl >/dev/null 2>&1; then
+  echo "curl must be available in the base sandbox image" >&2
+  exit 1
+fi
 
 curl --fail --location --silent --show-error \
   "$LIGHTPANDA_DOWNLOAD_URL" \
