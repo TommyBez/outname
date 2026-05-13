@@ -30,7 +30,7 @@ async function ResolvedAgentMemoryPage({ params }: { params: Params }) {
           Agent memory
         </h1>
         <p className="mt-5 max-w-2xl border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
-          Inspect the mirrored sandbox files, daily logs, and reflection output
+          Inspect the mirrored sandbox files, daily logs, and reflection notes
           for this agent.
         </p>
       </header>
@@ -47,7 +47,7 @@ async function ResolvedAgentMemoryPage({ params }: { params: Params }) {
           title="Timeline"
         />
         <MemoryCard
-          description="DREAMS.md plus reviewable changes proposed to GOALS.md and TASKS.md."
+          description="DREAMS.md and the latest reflection output from the agent."
           href={`/agents/${agent.id}/memory/dreams`}
           title="Reflection"
         />

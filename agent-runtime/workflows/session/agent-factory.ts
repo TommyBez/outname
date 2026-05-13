@@ -5,11 +5,9 @@ import { buildAttachedTools } from '@/tools/runtime/build-attached-tools'
 import { composeSystemPrompt } from './compose-system-prompt'
 import { resolveToolPlan } from './steps/resolve-tool-plan'
 import { createFileTools } from './tools/file-tools'
-import { createPendingWrites, type PendingWrites } from './tools/pending-writes'
 
 // Build one event-scoped agent: prompt from sandbox files, built-in file
-// tools, attached maintainer/sub-agent tools, and a tracker for reviewable
-// file writes.
+// tools, and attached maintainer/sub-agent tools.
 export interface BuildAgentArgs {
   agentId: string
   callStack?: string[]
@@ -30,7 +28,6 @@ export interface BuildAgentResult {
     stepLimitCustom: number | null
     stepLimitMode: 'custom' | 'grind' | 'high' | 'low' | 'medium'
   }
-  pending: PendingWrites
   tools: Record<string, Tool>
 }
 
@@ -72,9 +69,7 @@ export async function buildAgent(
     reconnects: attached.reconnects,
   })
 
-  const pending = createPendingWrites()
-
-  const fileTools = await createFileTools({ agentId, pending })
+  const fileTools = await createFileTools({ agentId })
   const tools = {
     ...fileTools,
     ...attached.tools,
@@ -88,7 +83,6 @@ export async function buildAgent(
 
   return {
     agent: durableAgent,
-    pending,
     tools,
     meta: {
       name: row.name,

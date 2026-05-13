@@ -7,7 +7,6 @@ import {
   writeFileViaBashTool,
 } from './file-tools/file-steps'
 import type { FileToolsContext as FileToolsContextType } from './file-tools/types'
-import { rememberReviewBefore } from './pending-writes'
 
 const MAX_LIST_RESULTS = 1000
 const MAX_GREP_RESULTS = 200
@@ -33,18 +32,13 @@ export function createFileTools(
         content: z.string().describe('The content to write to the file'),
         path: z.string().describe('The path where the file should be written'),
       }),
-      execute: async ({ content, path }, options) => {
-        const result = await writeFileViaBashTool({
+      execute: async ({ content, path }, options) =>
+        writeFileViaBashTool({
           agentId: ctx.agentId,
           content,
           options,
           path,
-        })
-        for (const before of result.reviewBefore) {
-          rememberReviewBefore(ctx.pending, before.path, before.before)
-        }
-        return result.toolResult
-      },
+        }),
     }),
     listFiles: tool({
       description:

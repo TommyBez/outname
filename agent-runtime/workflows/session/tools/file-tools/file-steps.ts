@@ -2,7 +2,6 @@ import type { ToolExecutionOptions } from 'ai'
 import { grepLiveFiles } from '../sandbox-file-helpers/grep'
 import { listLiveFiles } from '../sandbox-file-helpers/list'
 import { createSystemBashTool } from './system-bash-tool'
-import type { ReviewBefore } from './types'
 
 type BashToolExecutor<TInput> = (
   input: TInput,
@@ -30,24 +29,16 @@ export async function writeFileViaBashTool(args: {
   content: string
   options: ToolExecutionOptions
   path: string
-}): Promise<{ reviewBefore: ReviewBefore[]; toolResult: unknown }> {
+}): Promise<unknown> {
   'use step'
-  const reviewBefore: ReviewBefore[] = []
-  const bashTool = await createSystemBashTool({
-    agentId: args.agentId,
-    reviewBefore,
-  })
+  const bashTool = await createSystemBashTool({ agentId: args.agentId })
   const execute = bashTool.tools.writeFile.execute as
     | BashToolExecutor<{ content: string; path: string }>
     | undefined
   if (!execute) {
     throw new Error('writeFile tool execute handler is unavailable')
   }
-  const toolResult = await execute(
-    { content: args.content, path: args.path },
-    args.options
-  )
-  return { reviewBefore, toolResult }
+  return await execute({ content: args.content, path: args.path }, args.options)
 }
 
 export async function listFilesStep(

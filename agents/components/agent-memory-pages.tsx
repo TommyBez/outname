@@ -2,18 +2,16 @@ import { asc, eq } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { RunResultView } from '@/agent-runtime/components/run-result-view'
-import { FileChangeReviewButton } from '@/agents/components/file-change-review-button'
 import { TriggerButton } from '@/agents/components/trigger-button'
 import { requireSession } from '@/auth/server/auth-guard'
 import { db } from '@/shared/db'
-import { type AgentFileChange, agentFiles } from '@/shared/db/schema'
+import { agentFiles } from '@/shared/db/schema'
 import {
   getCachedAgentByIdForUser,
-  getCachedAgentFileChanges,
   getCachedAgentLogFiles,
   getCachedAgentMemoryFile,
 } from '@/shared/server/data'
-import { formatDateTime, formatRelative } from '@/shared/server/format'
+import { formatRelative } from '@/shared/server/format'
 
 type Params = Promise<{ agentId: string }>
 
@@ -153,28 +151,16 @@ async function ResolvedAgentMemoryDreams({ params }: { params: Params }) {
     notFound()
   }
 
-  const [dreams, goalsChanges, taskChanges] = await Promise.all([
-    getCachedAgentMemoryFile({ agentId: agent.id, path: 'DREAMS.md' }),
-    getCachedAgentFileChanges({
-      agentId: agent.id,
-      limit: 10,
-      path: 'GOALS.md',
-    }),
-    getCachedAgentFileChanges({
-      agentId: agent.id,
-      limit: 10,
-      path: 'TASKS.md',
-    }),
-  ])
-  const reviewChanges = [...goalsChanges, ...taskChanges].sort(
-    (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
-  )
+  const dreams = await getCachedAgentMemoryFile({
+    agentId: agent.id,
+    path: 'DREAMS.md',
+  })
 
   return (
     <>
       <div className="mb-12 grid gap-8 md:grid-cols-[minmax(0,1fr)_auto]">
         <MemorySectionHeader
-          description="Daily self-review output and reviewable changes proposed to the agent's goals and task list."
+          description="Daily self-review output captured in the agent's reflection log."
           eyebrow="Memory · Reflection"
           title="Reflection stream"
         />
@@ -188,26 +174,9 @@ async function ResolvedAgentMemoryDreams({ params }: { params: Params }) {
         </div>
       </div>
 
-      <section className="mb-14">
-        <h2 className="swiss-label mb-6 text-accent">01. DREAMS.md</h2>
+      <section>
+        <h2 className="swiss-label mb-6 text-accent">DREAMS.md</h2>
         <RunResultView content={dreams?.content ?? null} />
-      </section>
-
-      <section className="border-foreground border-t-2 pt-8">
-        <h2 className="swiss-label mb-6 text-accent">02. Review diffs</h2>
-        {reviewChanges.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            No GOALS.md or TASKS.md changes have been captured yet.
-          </p>
-        ) : (
-          <ul className="flex flex-col gap-8">
-            {reviewChanges.map((change) => (
-              <li key={change.id}>
-                <FileChangeCard change={change} />
-              </li>
-            ))}
-          </ul>
-        )}
       </section>
     </>
   )
@@ -232,44 +201,6 @@ function MemorySectionHeader({
         {description}
       </p>
     </header>
-  )
-}
-
-function FileChangeCard({ change }: { change: AgentFileChange }) {
-  return (
-    <article className="border-2 border-foreground">
-      <header className="flex flex-wrap items-baseline justify-between gap-3 border-foreground border-b-2 p-4">
-        <div>
-          <p className="font-bold font-mono text-sm uppercase tracking-[0.12em]">
-            {change.path}
-          </p>
-          <p className="mt-1 text-muted-foreground text-xs">
-            {change.sourceType} · {formatDateTime(change.createdAt)}
-          </p>
-        </div>
-        <FileChangeReviewButton
-          changeId={change.id}
-          reviewed={Boolean(change.reviewedAt)}
-        />
-      </header>
-      <div className="grid md:grid-cols-2">
-        <DiffPane label="Before" value={change.beforeContent} />
-        <DiffPane label="After" value={change.afterContent} />
-      </div>
-    </article>
-  )
-}
-
-function DiffPane({ label, value }: { label: string; value: string | null }) {
-  return (
-    <section className="border-foreground border-b-2 p-4 last:border-b-0 md:border-r-2 md:border-b-0 md:last:border-r-0">
-      <h3 className="mb-3 font-bold text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
-        {label}
-      </h3>
-      <pre className="max-h-96 overflow-auto whitespace-pre-wrap bg-muted p-3 font-mono text-xs leading-relaxed">
-        {value ?? '(missing)'}
-      </pre>
-    </section>
   )
 }
 

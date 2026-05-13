@@ -14,7 +14,7 @@ import {
   Settings2Icon,
 } from 'lucide-react'
 
-export type FeatureId = 'chat' | 'heartbeat' | 'memory' | 'tools' | 'review'
+export type FeatureId = 'chat' | 'heartbeat' | 'memory' | 'tools' | 'reflection'
 export type ToolId = 'resend' | 'calcom' | 'browser' | 'subagent'
 export type MemoryId = 'identity' | 'instructions' | 'user' | 'logs' | 'dreams'
 
@@ -78,7 +78,7 @@ export const featureModes: readonly FeatureMode[] = [
     id: 'memory',
     label: 'Memory',
     metric: 'md files',
-    signal: 'markdown files are mirrored for review',
+    signal: 'markdown files are mirrored after each event',
     steps: ['seed identity', 'maintain user context', 'mirror logs'],
     title: 'Give every agent readable memory.',
   },
@@ -97,12 +97,12 @@ export const featureModes: readonly FeatureMode[] = [
     accent: 'bg-accent',
     href: '/login?from=/agents',
     icon: FileClockIcon,
-    id: 'review',
-    label: 'Review',
-    metric: 'diffs',
-    signal: 'GOALS.md and TASKS.md changes',
-    steps: ['read reflection', 'compare the diff', 'mark reviewed'],
-    title: 'Review what the agent learned and changed.',
+    id: 'reflection',
+    label: 'Reflection',
+    metric: 'dreams',
+    signal: 'daily self-review output',
+    steps: ['run reflection', 'read DREAMS.md', 'adjust plans carefully'],
+    title: 'Read how the agent reflects between runs.',
   },
 ] as const
 
@@ -175,11 +175,11 @@ export const memoryFiles: readonly MemoryFile[] = [
     tag: 'mirror',
   },
   {
-    detail: 'Reflection output plus GOALS.md and TASKS.md diffs.',
+    detail: 'Reflection output stored in DREAMS.md.',
     id: 'dreams',
     label: 'Dreams',
     path: 'DREAMS.md',
-    tag: 'review',
+    tag: 'reflection',
   },
 ] as const
 

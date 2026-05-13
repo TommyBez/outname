@@ -10,13 +10,8 @@ import {
   ToolOutput,
   type ToolPart,
 } from '@/components/ai-elements/tool'
-import { AgentEditApprovalPreview } from './approval-preview'
 import { BudgetApprovalPreview, ProposeBudgetCard } from './budget-preview'
-import type {
-  AgentEditMarkdownFiles,
-  AgentEditSettings,
-  SendMessageFn,
-} from './types'
+import type { SendMessageFn } from './types'
 
 const PROPOSE_BUDGET_PART_TYPE = 'tool-propose_agent_budget'
 const TOOL_PREFIX_PATTERN = /^tool-/
@@ -24,8 +19,6 @@ const TOOL_PREFIX_PATTERN = /^tool-/
 export function renderMessagePart(input: {
   addToolApprovalResponse: ChatAddToolApproveResponseFunction
   currentBudget: AgentBudgetValues
-  currentMarkdownFiles: AgentEditMarkdownFiles
-  currentSettings: AgentEditSettings
   key: string
   part: UIMessage['parts'][number]
   sendMessage: SendMessageFn
@@ -49,8 +42,6 @@ export function renderMessagePart(input: {
       <ToolCard
         addToolApprovalResponse={input.addToolApprovalResponse}
         currentBudget={input.currentBudget}
-        currentMarkdownFiles={input.currentMarkdownFiles}
-        currentSettings={input.currentSettings}
         key={key}
         part={part as ToolPart}
       />
@@ -61,8 +52,6 @@ export function renderMessagePart(input: {
       <ToolCard
         addToolApprovalResponse={input.addToolApprovalResponse}
         currentBudget={input.currentBudget}
-        currentMarkdownFiles={input.currentMarkdownFiles}
-        currentSettings={input.currentSettings}
         key={key}
         part={part as ToolPart}
       />
@@ -75,21 +64,15 @@ function ToolCard({
   part,
   addToolApprovalResponse,
   currentBudget,
-  currentMarkdownFiles,
-  currentSettings,
 }: {
   addToolApprovalResponse: ChatAddToolApproveResponseFunction
   currentBudget: AgentBudgetValues
-  currentMarkdownFiles: AgentEditMarkdownFiles
-  currentSettings: AgentEditSettings
   part: ToolPart
 }) {
   const toolName = getToolPartName(part)
   const isApprovalRequest = part.state === 'approval-requested'
   const previewBody = renderApprovalPreview({
     currentBudget,
-    currentMarkdownFiles,
-    currentSettings,
     input: part.input,
     isApprovalRequest,
     toolName,
@@ -130,23 +113,12 @@ function ToolCard({
 
 function renderApprovalPreview(input: {
   currentBudget: AgentBudgetValues
-  currentMarkdownFiles: AgentEditMarkdownFiles
-  currentSettings: AgentEditSettings
   input: unknown
   isApprovalRequest: boolean
   toolName: string
 }) {
   if (!input.isApprovalRequest) {
     return <ToolInput input={input.input} />
-  }
-  if (input.toolName === 'apply_agent_edit') {
-    return (
-      <AgentEditApprovalPreview
-        currentMarkdownFiles={input.currentMarkdownFiles}
-        currentSettings={input.currentSettings}
-        input={input.input}
-      />
-    )
   }
   if (input.toolName === 'set_agent_budget') {
     return (

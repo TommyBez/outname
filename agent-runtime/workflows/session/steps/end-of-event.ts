@@ -7,31 +7,17 @@ import {
   releaseSandbox,
   SYSTEM_SANDBOX_ROOT,
 } from '@/agent-runtime/server/agent-sandbox'
-import {
-  type PendingWrites,
-  reviewPathsFromPending,
-} from '@/agent-runtime/workflows/session/tools/pending-writes'
 import { listTrackedArchitectureFiles } from '@/agent-runtime/workflows/session/tools/sandbox-file-helpers/list'
 import { db } from '@/shared/db'
-import { agentFileChanges, agentFiles } from '@/shared/db/schema'
+import { agentFiles } from '@/shared/db/schema'
 import { agentTag } from '@/shared/server/cache-tags'
 import { stopAllBrokeredHttpSandboxesForRun } from '@/tools/runtime/brokered-http/sandbox'
 import { stopAllToolSandboxesForRun } from '@/tools/sandbox-runtime/runtime'
 
-type EndOfEventSource =
-  | { sourceType: 'chat'; sourceId: string | null }
-  | { sourceType: 'heartbeat'; sourceId: string | null }
-  | { sourceType: 'reflection'; sourceId: string | null }
-  | { sourceType: 'invocation'; sourceId: string | null }
-
-// Persist review rows, mirror tracked files into `agent_files`, then release
-// the system and tool sandboxes. Failures are logged and swallowed so one bad
-// flush never poisons the long-lived session loop.
-export async function endOfEvent(input: {
-  agentId: string
-  pending: PendingWrites
-  source: EndOfEventSource
-}): Promise<void> {
+// Mirror tracked files into `agent_files`, then release the system and tool
+// sandboxes. Failures are logged and swallowed so one bad flush never poisons
+// the long-lived session loop.
+export async function endOfEvent(input: { agentId: string }): Promise<void> {
   'use step'
 
   let systemSandbox: Sandbox
@@ -41,23 +27,6 @@ export async function endOfEvent(input: {
     // Nothing to flush if startup never produced a system sandbox for this turn.
     console.error('[v0] endOfEvent: getSystemSandbox failed', err)
     return
-  }
-
-  const reviewPaths = reviewPathsFromPending(input.pending)
-  const beforeReviewContent = new Map(
-    Object.entries(input.pending.beforeByPath)
-  )
-
-  try {
-    await persistReviewChanges({
-      agentId: input.agentId,
-      beforeByPath: beforeReviewContent,
-      paths: reviewPaths,
-      sandbox: systemSandbox,
-      source: input.source,
-    })
-  } catch (err) {
-    console.error('[v0] endOfEvent: persistReviewChanges failed', err)
   }
 
   try {
@@ -74,47 +43,6 @@ export async function endOfEvent(input: {
     stopAllToolSandboxesForRun(),
     stopAllBrokeredHttpSandboxesForRun(),
   ])
-}
-
-async function persistReviewChanges(input: {
-  agentId: string
-  beforeByPath: Map<string, string | null>
-  paths: readonly string[]
-  sandbox: Sandbox
-  source: EndOfEventSource
-}): Promise<void> {
-  for (const path of input.paths) {
-    const before = input.beforeByPath.get(path) ?? null
-    const after = await readTrackedContent(input.sandbox, path)
-    if (before === after) {
-      continue
-    }
-
-    await db.insert(agentFileChanges).values({
-      id: fileChangeId(),
-      agentId: input.agentId,
-      path,
-      sourceType: input.source.sourceType,
-      sourceId: input.source.sourceId,
-      beforeContent: before,
-      afterContent: after,
-      beforeSha256: before === null ? null : sha256(before),
-      afterSha256: after === null ? null : sha256(after),
-      createdAt: new Date(),
-    })
-  }
-}
-
-function fileChangeId(): string {
-  return (
-    'chg_' +
-    Math.random().toString(36).slice(2, 10) +
-    Date.now().toString(36).slice(-4)
-  )
-}
-
-function sha256(content: string): string {
-  return createHash('sha256').update(content).digest('hex')
 }
 
 async function mirrorTrackedFilesToDb(

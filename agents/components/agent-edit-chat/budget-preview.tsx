@@ -5,8 +5,8 @@ import {
   formatBudgetSummary,
 } from '@/agents/components/agent-budget-widget'
 import type { ToolPart } from '@/components/ai-elements/tool'
-import { isRecord } from './diff'
 import type { SendMessageFn } from './types'
+import { isRecord } from './value-utils'
 
 interface ProposeBudgetInput {
   daily?: number | null

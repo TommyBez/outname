@@ -1,6 +1,6 @@
 'use client'
 
-import { CheckIcon, RefreshCwIcon } from 'lucide-react'
+import { RefreshCwIcon } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
 import {
@@ -14,13 +14,40 @@ import {
   staggerVariants,
 } from '@/marketing/components/landing/landing-motion'
 
+const memoryPreviewById: Record<MemoryId, string> = {
+  identity: [
+    'Name: Atlas',
+    'Role: Operations copilot',
+    'Tone: calm, direct',
+  ].join('\n'),
+  instructions: [
+    '- Read MEMORY.md before planning.',
+    '- Keep tasks concrete.',
+    '- Stop after one useful action.',
+  ].join('\n'),
+  user: [
+    'Timezone: Europe/Rome',
+    'Prefers concise updates',
+    'Goal: keep weekly priorities aligned',
+  ].join('\n'),
+  logs: [
+    '- Reviewed inbox summary',
+    '- Deferred one follow-up to Friday',
+    '- Logged a blocker in CRM sync',
+  ].join('\n'),
+  dreams: [
+    '## 2026-05-13',
+    '- Pattern: follow-ups slip after late meetings.',
+    '- Next step: tighten weekly task review cadence.',
+  ].join('\n'),
+}
+
 export function LandingMemoryReviewShowcase({
   shouldReduceMotion,
 }: {
   shouldReduceMotion: boolean
 }) {
   const [activeMemoryId, setActiveMemoryId] = useState<MemoryId>('identity')
-  const [reviewed, setReviewed] = useState(false)
   const activeMemory = memoryById(activeMemoryId)
 
   return (
@@ -39,12 +66,12 @@ export function LandingMemoryReviewShowcase({
           <div>
             <p className="swiss-label text-accent">Memory</p>
             <h2 className="mt-4 text-balance font-black text-5xl uppercase leading-[0.88] tracking-normal md:text-7xl">
-              Readable memory, reviewable changes.
+              Readable memory, reflection notes.
             </h2>
           </div>
           <p className="max-w-2xl text-muted-foreground leading-relaxed">
             Agents work in markdown. You can inspect their logs, memory files,
-            and reflection diffs before trusting what changed.
+            and reflection output after each event.
           </p>
         </motion.div>
 
@@ -65,7 +92,6 @@ export function LandingMemoryReviewShowcase({
                     key={file.id}
                     onClick={() => {
                       setActiveMemoryId(file.id)
-                      setReviewed(false)
                     }}
                     type="button"
                   >
@@ -102,23 +128,13 @@ export function LandingMemoryReviewShowcase({
                     {activeMemory.detail}
                   </p>
 
-                  <div className="mt-8 grid gap-3 font-mono text-xs">
-                    <div className="border-2 border-foreground bg-background p-4">
-                      <p className="text-muted-foreground uppercase tracking-normal">
-                        before
-                      </p>
-                      <p className="mt-3 whitespace-pre-wrap">
-                        - stale next step
-                      </p>
-                    </div>
-                    <div className="border-2 border-foreground bg-background p-4">
-                      <p className="text-muted-foreground uppercase tracking-normal">
-                        after
-                      </p>
-                      <p className="mt-3 whitespace-pre-wrap">
-                        + reviewed next step
-                      </p>
-                    </div>
+                  <div className="mt-8 border-2 border-foreground bg-background p-4 font-mono text-xs">
+                    <p className="text-muted-foreground uppercase tracking-normal">
+                      latest excerpt
+                    </p>
+                    <pre className="mt-3 whitespace-pre-wrap">
+                      {memoryPreviewById[activeMemory.id]}
+                    </pre>
                   </div>
                 </motion.div>
               </AnimatePresence>
@@ -127,18 +143,14 @@ export function LandingMemoryReviewShowcase({
 
           <div className="grid gap-4">
             <div className="border-2 border-foreground bg-foreground p-6 text-background">
-              <p className="swiss-label text-accent">Review diff</p>
+              <p className="swiss-label text-accent">Readable markdown</p>
               <p className="mt-6 font-black text-5xl uppercase leading-[0.86] tracking-normal">
-                {reviewed ? 'Reviewed' : 'Needs review'}
+                {activeMemory.label}
               </p>
-              <button
-                className="ease mt-8 inline-flex min-h-12 items-center justify-center gap-3 border-2 border-background bg-background px-4 font-bold text-foreground text-xs uppercase tracking-normal transition-[transform,background-color,color] duration-150 hover:bg-accent active:scale-[0.98]"
-                onClick={() => setReviewed(true)}
-                type="button"
-              >
-                <CheckIcon className="size-4" />
-                Mark reviewed
-              </button>
+              <p className="mt-6 max-w-sm text-background/75 text-sm leading-relaxed">
+                Open the latest mirrored file state without restarting the
+                agent&apos;s sandbox.
+              </p>
             </div>
             <div className="border-2 border-foreground bg-accent p-6">
               <p className="swiss-label">Mirrored after event</p>
