@@ -580,7 +580,7 @@ In this phase the agent's `ToolSet` is just memory tools. No maintainer catalog 
 
 - Independent dreaming ticker scheduled via `dreaming_interval_minutes` plus a forced run on each local-day boundary (using `user.timezone` + `localDateKey`). Manual trigger via `pokeDreaming` from `/agents/:id/dreams` "Dream now".
 - Dreaming output is written into `DREAMS.md`, and the UI at `/agents/:id/dreams` reads the mirrored file from `agent_files`.
-- `agent_file_changes` stores before/after content + sha256 + source attribution (`chat | heartbeat | dreaming | invocation`) for event-touching `DREAMS.md`, `GOALS.md`, `TASKS.md`, and daily log paths.
+- Event flushes mirror tracked architecture files into `agent_files`; there is no separate per-diff review log for dreaming or heartbeat edits.
 - Admin UI for the daily-log timeline and the DREAMS stream.
 - Tune the default base system prompt based on what the dreaming loop actually produces in practice.
 

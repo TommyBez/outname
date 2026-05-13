@@ -126,36 +126,6 @@ export const pendingFileWrites = pgTable(
   ]
 )
 
-// Post-event before/after record for tracked architecture-file edits. This
-// preserves an audit trail without blocking the single-threaded session loop.
-export const agentFileChanges = pgTable(
-  'agent_file_changes',
-  {
-    id: text('id').primaryKey(),
-    agentId: text('agent_id')
-      .notNull()
-      .references(() => agent.id, { onDelete: 'cascade' }),
-    path: text('path').notNull(),
-    sourceType: text('source_type')
-      .$type<'chat' | 'heartbeat' | 'dreaming' | 'invocation'>()
-      .notNull(),
-    sourceId: text('source_id'),
-    beforeContent: text('before_content'),
-    afterContent: text('after_content'),
-    beforeSha256: text('before_sha256'),
-    afterSha256: text('after_sha256'),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
-  },
-  (t) => [
-    index('agent_file_changes_agent_created_idx').on(t.agentId, t.createdAt),
-    index('agent_file_changes_path_idx').on(t.path),
-  ]
-)
-
 export type Agent = typeof agent.$inferSelect
 export type AgentFile = typeof agentFiles.$inferSelect
 export type PendingFileWrite = typeof pendingFileWrites.$inferSelect
-export type AgentFileChange = typeof agentFileChanges.$inferSelect

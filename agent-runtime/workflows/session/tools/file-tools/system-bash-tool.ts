@@ -5,17 +5,12 @@ import {
 } from '@/agent-runtime/server/agent-sandbox'
 import {
   assertWritableSandboxPath,
-  isTrackedArchitecturePath,
   type NormalizedSandboxPath,
   normalizeSandboxPath,
 } from '../sandbox-file-helpers/paths'
 import { readLiveFile } from '../sandbox-file-helpers/read'
-import type { ReviewBefore } from './types'
 
-export async function createSystemBashTool(input: {
-  agentId: string
-  reviewBefore?: ReviewBefore[]
-}) {
+export async function createSystemBashTool(input: { agentId: string }) {
   const sandbox = await getSystemSandbox(input.agentId)
   const { createBashTool } = await import('bash-tool')
   return await createBashTool({
@@ -25,15 +20,11 @@ export async function createSystemBashTool(input: {
       toolPrompt:
         'Bash execution is disabled for this agent. Use readFile, writeFile, listFiles, and grepFiles for sandbox file work.',
     },
-    sandbox: createSystemSandboxAdapter({
-      reviewBefore: input.reviewBefore,
-      sandbox,
-    }),
+    sandbox: createSystemSandboxAdapter({ sandbox }),
   })
 }
 
 function createSystemSandboxAdapter(input: {
-  reviewBefore?: ReviewBefore[]
   sandbox: Awaited<ReturnType<typeof getSystemSandbox>>
 }): BashToolSandbox {
   return {
@@ -62,8 +53,6 @@ function createSystemSandboxAdapter(input: {
           safe,
         }
       })
-      const trackedBefore = await readTrackedBefore(input.sandbox, prepared)
-      input.reviewBefore?.push(...trackedBefore)
       await ensureParentDirectories(
         input.sandbox,
         prepared.map((file) => file.safe)
@@ -76,30 +65,6 @@ function createSystemSandboxAdapter(input: {
       )
     },
   }
-}
-
-async function readTrackedBefore(
-  sandbox: Awaited<ReturnType<typeof getSystemSandbox>>,
-  files: Array<{ content: string; safe: NormalizedSandboxPath }>
-): Promise<ReviewBefore[]> {
-  const seen = new Set<string>()
-  const tracked = files
-    .map((file) => file.safe)
-    .filter((safe) => isTrackedArchitecturePath(safe.relPath))
-    .filter((safe) => {
-      if (seen.has(safe.relPath)) {
-        return false
-      }
-      seen.add(safe.relPath)
-      return true
-    })
-
-  return await Promise.all(
-    tracked.map(async (safe) => ({
-      before: await readSandboxText(sandbox, safe),
-      path: safe.relPath,
-    }))
-  )
 }
 
 async function ensureParentDirectories(
@@ -124,16 +89,6 @@ async function ensureParentDirectories(
       )
     }
   }
-}
-
-async function readSandboxText(
-  sandbox: Awaited<ReturnType<typeof getSystemSandbox>>,
-  safe: NormalizedSandboxPath
-): Promise<string | null> {
-  const buf = await sandbox
-    .readFileToBuffer({ path: safe.absPath })
-    .catch(() => null)
-  return buf ? buf.toString('utf8') : null
 }
 
 function contentToString(content: string | Buffer): string {

@@ -50,6 +50,20 @@ CREATE TABLE "agent_channel_bindings" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "agent_file_changes" (
+	"id" text PRIMARY KEY NOT NULL,
+	"agent_id" text NOT NULL,
+	"path" text NOT NULL,
+	"source_type" text NOT NULL,
+	"source_id" text,
+	"before_content" text,
+	"after_content" text,
+	"before_sha256" text,
+	"after_sha256" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"reviewed_at" timestamp with time zone
+);
+--> statement-breakpoint
 CREATE TABLE "agent_files" (
 	"agent_id" text NOT NULL,
 	"path" text NOT NULL,
@@ -234,6 +248,7 @@ CREATE TABLE "verification" (
 ALTER TABLE "account" ADD CONSTRAINT "account_userId_user_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "agent" ADD CONSTRAINT "agent_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "agent_channel_bindings" ADD CONSTRAINT "agent_channel_bindings_agent_id_agent_id_fk" FOREIGN KEY ("agent_id") REFERENCES "public"."agent"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "agent_file_changes" ADD CONSTRAINT "agent_file_changes_agent_id_agent_id_fk" FOREIGN KEY ("agent_id") REFERENCES "public"."agent"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "agent_files" ADD CONSTRAINT "agent_files_agent_id_agent_id_fk" FOREIGN KEY ("agent_id") REFERENCES "public"."agent"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "agent_token_usage" ADD CONSTRAINT "agent_token_usage_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "agent_token_usage" ADD CONSTRAINT "agent_token_usage_agent_id_agent_id_fk" FOREIGN KEY ("agent_id") REFERENCES "public"."agent"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -254,6 +269,8 @@ ALTER TABLE "user_connections" ADD CONSTRAINT "user_connections_user_id_user_id_
 CREATE INDEX "agent_user_idx" ON "agent" USING btree ("user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "agent_channel_bindings_lookup_idx" ON "agent_channel_bindings" USING btree ("channel","team_id","external_key","kind");--> statement-breakpoint
 CREATE INDEX "agent_channel_bindings_agent_idx" ON "agent_channel_bindings" USING btree ("agent_id");--> statement-breakpoint
+CREATE INDEX "agent_file_changes_agent_created_idx" ON "agent_file_changes" USING btree ("agent_id","created_at");--> statement-breakpoint
+CREATE INDEX "agent_file_changes_path_idx" ON "agent_file_changes" USING btree ("path");--> statement-breakpoint
 CREATE INDEX "agent_files_agent_idx" ON "agent_files" USING btree ("agent_id");--> statement-breakpoint
 CREATE INDEX "agent_token_usage_user_created_idx" ON "agent_token_usage" USING btree ("user_id","created_at" DESC NULLS LAST);--> statement-breakpoint
 CREATE INDEX "agent_token_usage_root_agent_created_idx" ON "agent_token_usage" USING btree ("root_agent_id","created_at" DESC NULLS LAST);--> statement-breakpoint
