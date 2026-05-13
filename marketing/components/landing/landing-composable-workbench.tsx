@@ -711,8 +711,8 @@ function FlyingChip({
     <span
       aria-hidden
       className={cn(
-        'pointer-events-none absolute z-0 font-mono text-[11px] uppercase tracking-normal transition-opacity duration-150',
-        'border-2 border-foreground px-3 py-2 shadow-[4px_4px_0_0] shadow-foreground/15',
+        'pointer-events-none absolute z-0 font-mono text-[15px] uppercase tracking-normal transition-opacity duration-150',
+        'border-2 border-foreground px-5 py-3 shadow-[5px_5px_0_0] shadow-foreground/15',
         stageColor === 'accent'
           ? 'bg-accent text-foreground'
           : 'bg-background text-foreground',
