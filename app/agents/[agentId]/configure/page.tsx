@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
+import { AgentDeleteDialog } from '@/agents/components/agent-delete-dialog'
 import { AgentEditChat } from '@/agents/components/agent-edit-chat'
 import {
   AgentBudgetSection,
@@ -166,14 +167,9 @@ async function AgentConfigure({ params }: { params: Params }) {
             Deleting this agent removes all of its run history and results.
           </p>
         </div>
-        <form action={remove} className="self-start sm:self-auto">
-          <button
-            className="h-11 border-2 border-destructive px-4 font-bold text-destructive text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-destructive-foreground"
-            type="submit"
-          >
-            Delete agent
-          </button>
-        </form>
+        <div className="self-start sm:self-auto">
+          <AgentDeleteDialog agentName={agentRow.name} onDelete={remove} />
+        </div>
       </section>
     </>
   )
