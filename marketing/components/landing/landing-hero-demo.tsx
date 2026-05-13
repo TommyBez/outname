@@ -35,14 +35,14 @@ export function LandingHeroDemo({
 
         <div className="min-w-0">
           <h1 className="home-display text-balance font-black text-6xl uppercase leading-[0.84] tracking-normal sm:text-7xl md:text-[6rem] lg:text-[8rem] xl:text-[10rem] 2xl:text-[12rem]">
-            Private agents. Composed by you.
+            Agents that keep working.
           </h1>
         </div>
 
         <div className="grid gap-8 border-foreground border-t-2 pt-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
           <p className="max-w-2xl text-base leading-relaxed md:text-lg">
-            Memory, schedules, tools, sub-agents, channels. Every run leaves a
-            trace you can inspect.
+            They remember. They learn. They call other agents. Every run
+            sharpens the next.
           </p>
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row md:justify-end">
             <PrimaryLink href="/login?from=/agents/new">

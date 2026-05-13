@@ -174,14 +174,14 @@ export function LandingHeartbeatCloser({
           variants={revealVariants}
         >
           <h3 className="home-display text-balance font-black text-6xl uppercase leading-[0.84] tracking-normal md:text-8xl">
-            Stand it up.
+            Run yours.
           </h3>
           <div className="flex min-w-0 flex-col gap-3 md:items-end">
             <PrimaryLink href="/login?from=/agents/new">
               Create your agent
             </PrimaryLink>
             <p className="font-mono text-[11px] text-muted-foreground uppercase tracking-normal">
-              Runs on your Vercel account.
+              Smarter every day.
             </p>
           </div>
         </motion.div>

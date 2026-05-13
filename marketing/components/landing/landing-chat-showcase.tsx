@@ -509,13 +509,11 @@ export function LandingChatShowcase({
           <div>
             <p className="swiss-label text-accent">Live agent · /chat/:id</p>
             <h2 className="mt-4 text-balance font-black text-5xl uppercase leading-[0.88] tracking-normal md:text-7xl">
-              Watch the run, not the bot.
+              Same agent. Every surface.
             </h2>
           </div>
           <p className="max-w-2xl text-muted-foreground leading-relaxed">
-            Same surface your team uses. Tool calls render inline. Reasoning is
-            visible. Sub-agents leave a trace. Pick a scenario or write your
-            own.
+            Heartbeat runs, in-app chat, Slack, Discord, Telegram.
           </p>
         </motion.div>
 
