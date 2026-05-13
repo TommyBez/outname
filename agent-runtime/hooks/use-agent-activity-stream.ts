@@ -68,14 +68,14 @@ export function useAgentActivityStream(input: {
 export function useAgentActivityPreview(input: {
   enabled: boolean
   lastHeartbeatAt: string | null
-  lastReflectionAt: string | null
+  lastDreamingAt: string | null
   sessionRunId: string | null
   streamState: AgentActivityStreamState
 }): string {
   const {
     enabled,
     lastHeartbeatAt,
-    lastReflectionAt,
+    lastDreamingAt,
     sessionRunId,
     streamState,
   } = input
@@ -98,8 +98,8 @@ export function useAgentActivityPreview(input: {
   if (lastHeartbeatAt) {
     return `Last heartbeat ${formatRelativeTime(lastHeartbeatAt)}`
   }
-  if (lastReflectionAt) {
-    return `Last reflection ${formatRelativeTime(lastReflectionAt)}`
+  if (lastDreamingAt) {
+    return `Last dream ${formatRelativeTime(lastDreamingAt)}`
   }
   return 'No activity streamed yet.'
 }

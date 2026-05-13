@@ -2,8 +2,8 @@ import { createHook, sleep } from 'workflow'
 import { heartbeatAckToken } from './events'
 import { generateAckId } from './steps/generate-ack-id'
 import {
+  pokeSessionDreaming,
   pokeSessionHeartbeat,
-  pokeSessionReflection,
   readHeartbeatSchedule,
 } from './steps/ticker-control'
 
@@ -21,21 +21,21 @@ export async function agentTickerWorkflow(input: {
     const schedule = await readHeartbeatSchedule({ agentId, sessionEpoch })
     const now = new Date().toISOString()
 
-    if (!(schedule.heartbeat.enabled || schedule.reflection.enabled)) {
+    if (!(schedule.heartbeat.enabled || schedule.dreaming.enabled)) {
       await sleep(DISABLED_POLL_MS)
       continue
     }
 
-    if (schedule.reflection.due) {
-      await dispatchReflection({
+    if (schedule.dreaming.due) {
+      await dispatchDreaming({
         agentId,
-        localDate: schedule.reflection.localDate,
+        localDate: schedule.dreaming.localDate,
         sessionEpoch,
       })
     }
 
     if (!schedule.heartbeat.enabled) {
-      await sleep(Math.min(DISABLED_POLL_MS, schedule.reflection.intervalMs))
+      await sleep(Math.min(DISABLED_POLL_MS, schedule.dreaming.intervalMs))
       continue
     }
 
@@ -64,7 +64,7 @@ async function dispatchHeartbeat(input: {
   await ackHook
 }
 
-async function dispatchReflection(input: {
+async function dispatchDreaming(input: {
   agentId: string
   localDate: string
   sessionEpoch: number
@@ -76,7 +76,7 @@ async function dispatchReflection(input: {
     token: heartbeatAckToken(agentId, sessionEpoch, ack),
   })
 
-  await pokeSessionReflection({ agentId, ack, localDate, sessionEpoch })
+  await pokeSessionDreaming({ agentId, ack, localDate, sessionEpoch })
 
   await ackHook
 }

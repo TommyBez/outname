@@ -15,16 +15,16 @@ export async function readPreviousHeartbeatCompletion(
   return row?.lastHeartbeatAt ? row.lastHeartbeatAt.toISOString() : null
 }
 
-export async function readPreviousReflectionCompletion(
+export async function readPreviousDreamingCompletion(
   agentId: string
 ): Promise<string | null> {
   'use step'
   const [row] = await db
-    .select({ lastReflectionAt: agentTable.lastReflectionAt })
+    .select({ lastDreamingAt: agentTable.lastDreamingAt })
     .from(agentTable)
     .where(eq(agentTable.id, agentId))
     .limit(1)
-  return row?.lastReflectionAt ? row.lastReflectionAt.toISOString() : null
+  return row?.lastDreamingAt ? row.lastDreamingAt.toISOString() : null
 }
 
 export async function markBudgetSkippedRunCompleted(input: {
@@ -32,10 +32,10 @@ export async function markBudgetSkippedRunCompleted(input: {
   localDate: string
   mode: HeartbeatMode
 }): Promise<void> {
-  if (input.mode !== 'reflection') {
+  if (input.mode !== 'dreaming') {
     return
   }
-  await markReflectionCompleted({
+  await markDreamingCompleted({
     agentId: input.agentId,
     localDate: input.localDate,
   })
@@ -46,8 +46,8 @@ export async function markRunCompleted(input: {
   localDate: string
   mode: HeartbeatMode
 }): Promise<void> {
-  if (input.mode === 'reflection') {
-    await markReflectionCompleted({
+  if (input.mode === 'dreaming') {
+    await markDreamingCompleted({
       agentId: input.agentId,
       localDate: input.localDate,
     })
@@ -67,7 +67,7 @@ async function markHeartbeatCompleted(agentId: string): Promise<void> {
     .where(eq(agentTable.id, agentId))
 }
 
-async function markReflectionCompleted(input: {
+async function markDreamingCompleted(input: {
   agentId: string
   localDate: string
 }): Promise<void> {
@@ -75,8 +75,8 @@ async function markReflectionCompleted(input: {
   await db
     .update(agentTable)
     .set({
-      lastReflectionAt: new Date(),
-      lastReflectionLocalDate: input.localDate,
+      lastDreamingAt: new Date(),
+      lastDreamingLocalDate: input.localDate,
       updatedAt: new Date(),
     })
     .where(eq(agentTable.id, input.agentId))

@@ -34,14 +34,14 @@ export const agent = pgTable(
       .notNull()
       .default(30),
     lastHeartbeatAt: timestamp('last_heartbeat_at', { withTimezone: true }),
-    // Reflection stays independent from proactive heartbeat work.
-    reflectionEnabled: boolean('reflection_enabled').notNull().default(true),
-    reflectionIntervalMinutes: integer('reflection_interval_minutes')
+    // Dreaming stays independent from proactive heartbeat work.
+    dreamingEnabled: boolean('dreaming_enabled').notNull().default(true),
+    dreamingIntervalMinutes: integer('dreaming_interval_minutes')
       .notNull()
       .default(1440),
-    lastReflectionAt: timestamp('last_reflection_at', { withTimezone: true }),
-    // Makes "daily reflection" mean once per local day in the owner's timezone.
-    lastReflectionLocalDate: text('last_reflection_local_date'),
+    lastDreamingAt: timestamp('last_dreaming_at', { withTimezone: true }),
+    // Makes "daily dreaming" mean once per local day in the owner's timezone.
+    lastDreamingLocalDate: text('last_dreaming_local_date'),
     // Persistent system sandbox name. Null before first boot; after that, the
     // same sandbox is resumed on each event.
     sandboxSystemId: text('sandbox_system_id'),
@@ -126,6 +126,36 @@ export const pendingFileWrites = pgTable(
   ]
 )
 
+// Post-event before/after record for tracked architecture-file edits. This
+// preserves an audit trail without blocking the single-threaded session loop.
+export const agentFileChanges = pgTable(
+  'agent_file_changes',
+  {
+    id: text('id').primaryKey(),
+    agentId: text('agent_id')
+      .notNull()
+      .references(() => agent.id, { onDelete: 'cascade' }),
+    path: text('path').notNull(),
+    sourceType: text('source_type')
+      .$type<'chat' | 'heartbeat' | 'dreaming' | 'invocation'>()
+      .notNull(),
+    sourceId: text('source_id'),
+    beforeContent: text('before_content'),
+    afterContent: text('after_content'),
+    beforeSha256: text('before_sha256'),
+    afterSha256: text('after_sha256'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('agent_file_changes_agent_created_idx').on(t.agentId, t.createdAt),
+    index('agent_file_changes_path_idx').on(t.path),
+  ]
+)
+
 export type Agent = typeof agent.$inferSelect
 export type AgentFile = typeof agentFiles.$inferSelect
 export type PendingFileWrite = typeof pendingFileWrites.$inferSelect
+export type AgentFileChange = typeof agentFileChanges.$inferSelect

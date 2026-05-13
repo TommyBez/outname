@@ -7,14 +7,14 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
 export interface RegistryAgent {
+  dreamingEnabled: boolean
+  dreamingIntervalMinutes: number
   enabled: boolean
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
   id: string
   model: string
   name: string
-  reflectionEnabled: boolean
-  reflectionIntervalMinutes: number
 }
 
 export function AgentRegistry({ agents }: { agents: RegistryAgent[] }) {
@@ -30,7 +30,7 @@ export function AgentRegistry({ agents }: { agents: RegistryAgent[] }) {
         agent.model,
         agent.enabled ? 'active' : 'paused',
         agent.heartbeatEnabled ? 'heartbeat' : 'heartbeat off',
-        agent.reflectionEnabled ? 'reflection' : 'reflection off',
+        agent.dreamingEnabled ? 'dreaming' : 'dreaming off',
       ].some((value) => value.toLowerCase().includes(needle))
     )
   }, [agents, query])
@@ -64,8 +64,7 @@ export function AgentRegistry({ agents }: { agents: RegistryAgent[] }) {
             No matching agents.
           </p>
           <p className="mt-3 max-w-md text-muted-foreground text-sm">
-            Try searching by name, model, active state, heartbeat, or
-            reflection.
+            Try searching by name, model, active state, heartbeat, or dreaming.
           </p>
         </div>
       ) : (
@@ -113,11 +112,9 @@ function AgentRegistryRow({ agent }: { agent: RegistryAgent }) {
               : 'Heartbeat off'}
           </span>
           <span>
-            {agent.reflectionEnabled
-              ? `Reflection ${formatAgentInterval(
-                  agent.reflectionIntervalMinutes
-                )}`
-              : 'Reflection off'}
+            {agent.dreamingEnabled
+              ? `Dreaming ${formatAgentInterval(agent.dreamingIntervalMinutes)}`
+              : 'Dreaming off'}
           </span>
         </div>
       </div>

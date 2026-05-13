@@ -38,12 +38,12 @@ export interface AgentCreationBudget {
 export interface AgentCreationRequest {
   behavior: string
   budget: AgentCreationBudget
+  dreaming: AgentCreationSchedule
   heartbeat: AgentCreationSchedule
   identityCard?: string
   instructions?: string
   model: string
   name: string
-  reflection: AgentCreationSchedule
   requestId: string
   role: string
   soul?: string

@@ -35,8 +35,8 @@ export async function createRequestedAgent(input: {
     model: input.input.model,
     heartbeatEnabled: input.input.heartbeat.enabled,
     heartbeatIntervalMinutes: input.input.heartbeat.intervalMinutes,
-    reflectionEnabled: input.input.reflection.enabled,
-    reflectionIntervalMinutes: input.input.reflection.intervalMinutes,
+    dreamingEnabled: input.input.dreaming.enabled,
+    dreamingIntervalMinutes: input.input.dreaming.intervalMinutes,
     stepLimitMode: input.input.stepLimit.mode,
     stepLimitCustom: input.input.stepLimit.custom,
     identityCard,
@@ -198,12 +198,12 @@ function resolveInstructions(input: AgentCreationRequest): string {
         )} and perform one useful, bounded action aligned with the role.`
       : 'Do not run proactive heartbeat work unless the user enables it later.',
     '',
-    '## Reflection',
-    input.reflection.enabled
+    '## Dreaming',
+    input.dreaming.enabled
       ? `Review memory and recent work ${formatAgentCadenceLower(
-          input.reflection.intervalMinutes
+          input.dreaming.intervalMinutes
         )}.`
-      : 'Do not run scheduled reflection unless the user enables it later.',
+      : 'Do not run scheduled dreaming unless the user enables it later.',
     '',
     '## Tool Use',
     toolInstruction(input),

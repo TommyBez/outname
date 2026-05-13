@@ -5,9 +5,11 @@ import { buildAttachedTools } from '@/tools/runtime/build-attached-tools'
 import { composeSystemPrompt } from './compose-system-prompt'
 import { resolveToolPlan } from './steps/resolve-tool-plan'
 import { createFileTools } from './tools/file-tools'
+import { createPendingWrites, type PendingWrites } from './tools/pending-writes'
 
 // Build one event-scoped agent: prompt from sandbox files, built-in file
-// tools, and attached maintainer/sub-agent tools.
+// tools, attached maintainer/sub-agent tools, and a tracker for reviewable
+// file writes.
 export interface BuildAgentArgs {
   agentId: string
   callStack?: string[]
@@ -28,6 +30,7 @@ export interface BuildAgentResult {
     stepLimitCustom: number | null
     stepLimitMode: 'custom' | 'grind' | 'high' | 'low' | 'medium'
   }
+  pending: PendingWrites
   tools: Record<string, Tool>
 }
 
@@ -69,7 +72,9 @@ export async function buildAgent(
     reconnects: attached.reconnects,
   })
 
-  const fileTools = await createFileTools({ agentId })
+  const pending = createPendingWrites()
+
+  const fileTools = await createFileTools({ agentId, pending })
   const tools = {
     ...fileTools,
     ...attached.tools,
@@ -83,6 +88,7 @@ export async function buildAgent(
 
   return {
     agent: durableAgent,
+    pending,
     tools,
     meta: {
       name: row.name,
@@ -120,25 +126,25 @@ export function buildHeartbeatKickoff(args: {
   ].join('\n')
 }
 
-export function buildReflectionKickoff(args: {
+export function buildDreamingKickoff(args: {
   localDate: string
   manual: boolean
   nowIso: string
   previousIso: string | null
 }): string {
   const trigger = args.manual
-    ? 'The user explicitly requested this reflection pass.'
-    : 'This is your scheduled reflection pass.'
+    ? 'The user explicitly requested this dreaming pass.'
+    : 'This is your scheduled dreaming pass.'
   const previous = args.previousIso
-    ? `Your last completed reflection was at ${args.previousIso}.`
-    : 'This is your first completed reflection window.'
+    ? `Your last completed dream was at ${args.previousIso}.`
+    : 'This is your first completed dreaming window.'
 
   return [
     `It is now ${args.nowIso}. Local date: ${args.localDate}.`,
     trigger,
     previous,
     '',
-    'Run a focused DREAMS / reflection pass:',
+    'Run a focused DREAMS / dreaming pass:',
     '',
     '1. Use listFiles/grepFiles to inspect recent logs under logs/.',
     '   Prefer today and recent days, but do not read huge files blindly.',
@@ -148,8 +154,8 @@ export function buildReflectionKickoff(args: {
     '   `logs/2026-04-30.md:12`.',
     '4. Edit GOALS.md and TASKS.md only when the evidence supports a',
     '   concrete change. Avoid speculative churn.',
-    "5. Read today's log if it exists, then write it back with one concise reflection bullet.",
+    "5. Read today's log if it exists, then write it back with one concise dreaming bullet.",
     '',
-    'Stop after the reflection. Do not start an open-ended work session.',
+    'Stop after the dreaming pass. Do not start an open-ended work session.',
   ].join('\n')
 }

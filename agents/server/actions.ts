@@ -23,14 +23,14 @@ import {
 } from '@/shared/server/cache-tags'
 
 interface CreateInput {
+  dreamingEnabled: boolean
+  dreamingIntervalMinutes: number
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
   identityCard: string
   instructions: string
   model: string
   name: string
-  reflectionEnabled: boolean
-  reflectionIntervalMinutes: number
   soul: string
   stepLimitCustom?: number | null
   stepLimitMode: 'custom' | 'grind' | 'high' | 'low' | 'medium'

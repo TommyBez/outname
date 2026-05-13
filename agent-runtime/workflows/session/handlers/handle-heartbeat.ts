@@ -4,8 +4,8 @@ import { startupSystemSandbox } from '@/agent-runtime/server/agent-sandbox'
 import { emitActivity } from '@/agent-runtime/server/run-events'
 import {
   buildAgent,
+  buildDreamingKickoff,
   buildHeartbeatKickoff,
-  buildReflectionKickoff,
 } from '../agent-factory'
 import {
   didReachStepLimit,
@@ -18,6 +18,10 @@ import { drainPendingWrites } from '../steps/drain-pending-writes'
 import { finalizeRun } from '../steps/finalize-run'
 import { initRun } from '../steps/init-run'
 import {
+  createPendingWrites,
+  type PendingWrites,
+} from '../tools/pending-writes'
+import {
   BUDGET_EXCEEDED,
   checkBudgetOrFinalize,
 } from './handle-heartbeat/budget'
@@ -28,8 +32,8 @@ import {
 import {
   markBudgetSkippedRunCompleted,
   markRunCompleted,
+  readPreviousDreamingCompletion,
   readPreviousHeartbeatCompletion,
-  readPreviousReflectionCompletion,
 } from './handle-heartbeat/state'
 
 export async function handleHeartbeat(input: {
@@ -38,11 +42,11 @@ export async function handleHeartbeat(input: {
   manual?: boolean
   mode?: HeartbeatMode
   scheduledAt?: string
-}): Promise<void> {
+}): Promise<{ pending: PendingWrites; runId: string }> {
   const { agentId } = input
   const mode = input.mode ?? 'normal'
   const nowIso = input.scheduledAt ?? new Date().toISOString()
-  const reflectionLocalDate = input.localDate ?? nowIso.slice(0, 10)
+  const dreamingLocalDate = input.localDate ?? nowIso.slice(0, 10)
   const { runId } = await beginHeartbeatRun({ agentId })
   const writable = getWritable<UIMessageChunk>({ namespace: runId })
 
@@ -61,16 +65,20 @@ export async function handleHeartbeat(input: {
     if (userId === BUDGET_EXCEEDED) {
       await markBudgetSkippedRunCompleted({
         agentId,
-        localDate: reflectionLocalDate,
+        localDate: dreamingLocalDate,
         mode,
       })
-      return
+      return { pending: createPendingWrites(), runId }
     }
 
     const previousIso = await readPreviousCompletion(agentId, mode)
     await prepareHeartbeatSandbox({ agentId, mode, previousIso, runId })
 
-    const { agent: durableAgent, meta } = await buildAgent({
+    const {
+      agent: durableAgent,
+      meta,
+      pending,
+    } = await buildAgent({
       agentId,
       runId,
       currentRunId: runId,
@@ -84,9 +92,9 @@ export async function handleHeartbeat(input: {
       custom: meta.stepLimitCustom,
     } as const
     const kickoff =
-      mode === 'reflection'
-        ? buildReflectionKickoff({
-            localDate: reflectionLocalDate,
+      mode === 'dreaming'
+        ? buildDreamingKickoff({
+            localDate: dreamingLocalDate,
             manual: input.manual ?? false,
             nowIso,
             previousIso,
@@ -103,7 +111,7 @@ export async function handleHeartbeat(input: {
         userId,
         agentId,
         rootAgentId: agentId,
-        sourceType: mode === 'reflection' ? 'reflection' : 'heartbeat',
+        sourceType: mode === 'dreaming' ? 'dreaming' : 'heartbeat',
         sourceId: runId,
         model: meta.model,
         usage: extractTotalUsage(result),
@@ -112,12 +120,13 @@ export async function handleHeartbeat(input: {
 
     await finalizeHeartbeatRun({
       agentId,
-      localDate: reflectionLocalDate,
+      localDate: dreamingLocalDate,
       mode,
       resultSteps: result.steps,
       runId,
       stepLimitInput,
     })
+    return { pending, runId }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     await emitActivity(runId, activityMessage(mode, 'Run failed'), { message })
@@ -151,8 +160,8 @@ async function readPreviousCompletion(
   agentId: string,
   mode: HeartbeatMode
 ): Promise<string | null> {
-  return mode === 'reflection'
-    ? await readPreviousReflectionCompletion(agentId)
+  return mode === 'dreaming'
+    ? await readPreviousDreamingCompletion(agentId)
     : await readPreviousHeartbeatCompletion(agentId)
 }
 

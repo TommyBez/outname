@@ -4,14 +4,14 @@ import type { AgentRunTranscriptState } from './types'
 export function getAgentRunTranscriptPreview(input: {
   enabled: boolean
   lastHeartbeatAt: string | null
-  lastReflectionAt: string | null
+  lastDreamingAt: string | null
   sessionRunId: string | null
   streamState: AgentRunTranscriptState
 }): string {
   const {
     enabled,
     lastHeartbeatAt,
-    lastReflectionAt,
+    lastDreamingAt,
     sessionRunId,
     streamState,
   } = input
@@ -34,8 +34,8 @@ export function getAgentRunTranscriptPreview(input: {
   if (lastHeartbeatAt) {
     return `Last heartbeat ${formatRelativeTime(lastHeartbeatAt)}`
   }
-  if (lastReflectionAt) {
-    return `Last reflection ${formatRelativeTime(lastReflectionAt)}`
+  if (lastDreamingAt) {
+    return `Last dream ${formatRelativeTime(lastDreamingAt)}`
   }
   return 'No run transcript streamed yet.'
 }

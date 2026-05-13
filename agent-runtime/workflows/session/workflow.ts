@@ -14,6 +14,23 @@ import {
   startTicker,
   stopTicker,
 } from './steps/ticker-control'
+import { createPendingWrites, type PendingWrites } from './tools/pending-writes'
+
+type EventSource =
+  | { sourceType: 'chat'; sourceId: string }
+  | { sourceType: 'heartbeat'; sourceId: string | null }
+  | { sourceType: 'dreaming'; sourceId: string | null }
+  | { sourceType: 'invocation'; sourceId: string | null }
+
+interface EventDispatchResult {
+  pending: PendingWrites
+  source: EventSource
+}
+
+const FALLBACK_SOURCE: EventSource = {
+  sourceType: 'heartbeat',
+  sourceId: null,
+}
 
 // Long-lived per-agent session loop: run the ticker, dispatch hook events,
 // always call `endOfEvent`, and stop the ticker on shutdown.
@@ -47,14 +64,23 @@ export async function agentSessionWorkflow(input: {
         sessionRunId,
       })
 
+      let result: EventDispatchResult = {
+        pending: createPendingWrites(),
+        source: FALLBACK_SOURCE,
+      }
+
       try {
-        await dispatchSessionEvent({ agentId, event, sessionEpoch })
+        result = await dispatchSessionEvent({ agentId, event, sessionEpoch })
       } catch (err) {
         // One bad event must not poison the long-lived session loop.
         console.error('[v0] agentSessionWorkflow: handler failed', err)
       }
 
-      await endOfEvent({ agentId })
+      await endOfEvent({
+        agentId,
+        pending: result.pending,
+        source: result.source,
+      })
       await clearSessionEventMarker({ agentId, sessionEpoch, sessionRunId })
     }
   } finally {
@@ -66,15 +92,15 @@ async function dispatchSessionEvent(input: {
   agentId: string
   event: Exclude<SessionEvent, { type: 'shutdown' }>
   sessionEpoch: number
-}): Promise<void> {
+}): Promise<EventDispatchResult> {
   const { agentId, event, sessionEpoch } = input
   switch (event.type) {
     case 'chat':
       return await dispatchChatEvent({ agentId, event })
     case 'heartbeat':
       return await dispatchHeartbeatEvent({ agentId, event, sessionEpoch })
-    case 'reflection':
-      return await dispatchReflectionEvent({ agentId, event, sessionEpoch })
+    case 'dreaming':
+      return await dispatchDreamingEvent({ agentId, event, sessionEpoch })
     case 'invocation':
       return await dispatchInvocationEvent({ agentId, event })
     default: {
@@ -89,48 +115,60 @@ async function dispatchSessionEvent(input: {
 async function dispatchChatEvent(input: {
   agentId: string
   event: Extract<SessionEvent, { type: 'chat' }>
-}): Promise<void> {
+}): Promise<EventDispatchResult> {
   const { agentId, event } = input
-  await handleChat({
+  const result = await handleChat({
     agentId,
     conversationId: event.conversationId,
     replyToken: event.replyToken,
     uiMessages: event.uiMessages,
   })
+  return {
+    pending: result.pending,
+    source: { sourceType: 'chat', sourceId: event.conversationId },
+  }
 }
 
 async function dispatchHeartbeatEvent(input: {
   agentId: string
   event: Extract<SessionEvent, { type: 'heartbeat' }>
   sessionEpoch: number
-}): Promise<void> {
+}): Promise<EventDispatchResult> {
   const { agentId, event, sessionEpoch } = input
   try {
-    await handleHeartbeat({
+    const result = await handleHeartbeat({
       agentId,
       manual: event.manual ?? false,
       mode: 'normal',
       scheduledAt: event.scheduledAt,
     })
+    return {
+      pending: result.pending,
+      source: { sourceType: 'heartbeat', sourceId: result.runId },
+    }
   } finally {
     await ackIfNeeded({ agentId, ack: event.ack, sessionEpoch })
   }
 }
 
-async function dispatchReflectionEvent(input: {
+async function dispatchDreamingEvent(input: {
   agentId: string
-  event: Extract<SessionEvent, { type: 'reflection' }>
+  event: Extract<SessionEvent, { type: 'dreaming' }>
   sessionEpoch: number
-}): Promise<void> {
+}): Promise<EventDispatchResult> {
   const { agentId, event, sessionEpoch } = input
   try {
-    await handleHeartbeat({
+    const result = await handleHeartbeat({
       agentId,
       localDate: event.localDate,
       manual: event.manual ?? false,
-      mode: 'reflection',
+      mode: 'dreaming',
       scheduledAt: event.scheduledAt,
     })
+    return {
+      pending: result.pending,
+      source: { sourceType: 'dreaming', sourceId: result.runId },
+    }
   } finally {
     await ackIfNeeded({ agentId, ack: event.ack, sessionEpoch })
   }
@@ -139,9 +177,9 @@ async function dispatchReflectionEvent(input: {
 async function dispatchInvocationEvent(input: {
   agentId: string
   event: Extract<SessionEvent, { type: 'invocation' }>
-}): Promise<void> {
+}): Promise<EventDispatchResult> {
   const { agentId, event } = input
-  await handleInvocation({
+  const result = await handleInvocation({
     agentId,
     callStack: event.callStack,
     depth: event.depth,
@@ -152,6 +190,10 @@ async function dispatchInvocationEvent(input: {
     parentToolId: event.parentToolId,
     streamToken: event.streamToken,
   })
+  return {
+    pending: result.pending,
+    source: { sourceType: 'invocation', sourceId: result.runId },
+  }
 }
 
 async function ackIfNeeded(input: {
