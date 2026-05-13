@@ -1,9 +1,6 @@
 'use client'
 
-import {
-  PrimaryLink,
-  SecondaryLink,
-} from '@/marketing/components/landing/landing-links'
+import { PrimaryLink } from '@/marketing/components/landing/landing-links'
 import { TextLoop } from '@/marketing/components/motion-primitives/text-loop'
 
 const loopWords = [
@@ -51,7 +48,6 @@ export function LandingHeroDemo({
             <PrimaryLink href="/login?from=/agents/new">
               Create your agent
             </PrimaryLink>
-            <SecondaryLink href="#chat">See it run</SecondaryLink>
           </div>
         </div>
       </div>
