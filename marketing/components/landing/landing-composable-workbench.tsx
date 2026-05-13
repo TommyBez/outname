@@ -14,7 +14,7 @@ import {
   useScroll,
   useTransform,
 } from 'motion/react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import {
@@ -141,6 +141,56 @@ composabilityStages.forEach((stage, stageIndex) => {
   })
 })
 
+function stageSlotCounts(activeIndex: number) {
+  return composabilityStages.map((stage, index) =>
+    index <= activeIndex ? stage.parts.length : 0
+  )
+}
+
+function mostVisibleStageIndex(stageVisibility: ReadonlyMap<number, number>) {
+  let nextIndex = 0
+  let bestRatio = 0
+
+  for (const [index, ratio] of stageVisibility.entries()) {
+    if (ratio > bestRatio) {
+      bestRatio = ratio
+      nextIndex = index
+    }
+  }
+
+  return bestRatio > 0 ? nextIndex : null
+}
+
+function mobileMarkerTone(isActive: boolean, isAttached: boolean) {
+  if (isActive) {
+    return 'bg-foreground text-background'
+  }
+  if (isAttached) {
+    return 'bg-accent/35'
+  }
+  return 'bg-background'
+}
+
+function mobileStageSurfaceTone(active: boolean, attached: boolean) {
+  if (active) {
+    return 'bg-accent/25'
+  }
+  if (attached) {
+    return 'bg-muted'
+  }
+  return 'bg-background'
+}
+
+function mobileStageStatus(active: boolean, attached: boolean) {
+  if (active) {
+    return 'Attaching now'
+  }
+  if (attached) {
+    return 'Attached'
+  }
+  return 'Queued'
+}
+
 function clamp01(value: number) {
   if (value < 0) {
     return 0
@@ -200,7 +250,7 @@ export function LandingComposableWorkbench({
       ) : (
         <>
           <div className="lg:hidden">
-            <ComposabilityStacked />
+            <ComposabilityMobileStory />
           </div>
           <div className="hidden lg:block">
             <ComposabilityPinned />
@@ -256,6 +306,195 @@ function ComposabilityPinned() {
             slotCounts={slotCounts}
           />
           <AssemblyVisual progress={progressSnapshot} slotCounts={slotCounts} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface MobileVisualSize {
+  height: number
+  width: number
+}
+
+function ComposabilityMobileStory() {
+  const [activeIndex, setActiveIndex] = useState(0)
+  const [visualSize, setVisualSize] = useState<MobileVisualSize>({
+    height: 272,
+    width: 320,
+  })
+  const stageRefs = useRef<Array<HTMLElement | null>>([])
+  const visualRef = useRef<HTMLDivElement>(null)
+  const stickyRef = useRef<HTMLDivElement>(null)
+  const activeStage = composabilityStages[activeIndex] ?? composabilityStages[0]
+  const slotCounts = stageSlotCounts(activeIndex)
+  const attached = slotCounts.reduce((sum, count) => sum + count, 0)
+
+  useEffect(() => {
+    const visual = visualRef.current
+    if (!visual) {
+      return
+    }
+
+    const updateSize = () => {
+      setVisualSize({
+        height: visual.clientHeight || 272,
+        width: visual.clientWidth || 320,
+      })
+    }
+
+    updateSize()
+
+    if (typeof ResizeObserver === 'undefined') {
+      return
+    }
+
+    const observer = new ResizeObserver(() => {
+      updateSize()
+    })
+    observer.observe(visual)
+
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') {
+      return
+    }
+
+    const stageVisibility = new Map<number, number>()
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const index = Number((entry.target as HTMLElement).dataset.stageIndex)
+          if (Number.isNaN(index)) {
+            continue
+          }
+          stageVisibility.set(
+            index,
+            entry.isIntersecting ? entry.intersectionRatio : 0
+          )
+        }
+
+        const nextIndex = mostVisibleStageIndex(stageVisibility)
+        if (nextIndex !== null) {
+          setActiveIndex((currentIndex) =>
+            currentIndex === nextIndex ? currentIndex : nextIndex
+          )
+        }
+      },
+      {
+        rootMargin: '-42% 0px -28% 0px',
+        threshold: [0.25, 0.4, 0.55, 0.7, 0.85],
+      }
+    )
+
+    for (const [index, node] of stageRefs.current.entries()) {
+      if (!node) {
+        continue
+      }
+      stageVisibility.set(index, 0)
+      observer.observe(node)
+    }
+
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <div className="mx-auto mt-10 max-w-7xl px-0 lg:px-4">
+      <div className="grid gap-4">
+        <div className="sticky top-4 z-20" ref={stickyRef}>
+          <div className="border-2 border-foreground bg-background/95 p-3 shadow-[0_14px_32px_rgb(0_0_0/0.08)] supports-backdrop-filter:bg-background/85 supports-backdrop-filter:backdrop-blur">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="swiss-label text-accent">{activeStage.eyebrow}</p>
+                <p className="mt-1 font-mono text-[10px] text-muted-foreground uppercase tracking-normal">
+                  Scroll to compose
+                </p>
+              </div>
+              <Badge
+                className="h-auto border-2 px-2 py-1 font-mono text-[10px] uppercase tracking-normal"
+                variant="outline"
+              >
+                {attached} / {totalParts} attached
+              </Badge>
+            </div>
+
+            <div className="mt-4 overflow-hidden border-2 border-foreground bg-muted p-3">
+              <div className="relative h-68 sm:h-76" ref={visualRef}>
+                <div
+                  aria-hidden
+                  className="swiss-diagonal pointer-events-none absolute inset-0 opacity-30"
+                />
+                <div className="absolute inset-0">
+                  <MobileStageFlight
+                    activeIndex={activeIndex}
+                    size={visualSize}
+                  />
+                </div>
+                <div className="absolute inset-x-3 top-12 bottom-3 grid place-items-center">
+                  <AgentShellCard compact slotCounts={slotCounts} />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-4 gap-1 font-mono text-[10px] uppercase tracking-normal">
+              {composabilityStages.map((stage, index) => {
+                const isActive = index === activeIndex
+                const isAttached = index < activeIndex
+
+                return (
+                  <div
+                    className={cn(
+                      'border-2 border-foreground p-2',
+                      mobileMarkerTone(isActive, isAttached)
+                    )}
+                    key={stage.id}
+                  >
+                    <span className="block font-bold">
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
+                    <span className="mt-1 block truncate font-black text-[11px]">
+                      {stage.label}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="mt-3 h-2 overflow-hidden border-2 border-foreground bg-muted">
+              <motion.span
+                animate={{ scaleX: (activeIndex + 1) / stageCount }}
+                aria-hidden
+                className="block h-full origin-left bg-accent"
+                initial={false}
+                transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+              />
+            </div>
+
+            <h3 className="mt-4 font-black text-3xl uppercase leading-[0.9] tracking-normal sm:text-4xl">
+              {activeStage.label}
+            </h3>
+            <p className="mt-3 max-w-xl text-muted-foreground text-sm leading-relaxed">
+              {activeStage.caption}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-4">
+          {composabilityStages.map((stage, index) => (
+            <MobileStageCard
+              active={index === activeIndex}
+              attached={index <= activeIndex}
+              key={stage.id}
+              setRef={(node) => {
+                stageRefs.current[index] = node
+              }}
+              stage={stage}
+              stageIndex={index}
+              stickyRef={stickyRef}
+            />
+          ))}
         </div>
       </div>
     </div>
@@ -336,7 +575,7 @@ function AssemblyVisual({
   slotCounts: readonly number[]
 }) {
   return (
-    <div className="relative h-full min-h-[36rem] w-full">
+    <div className="relative h-full min-h-144 w-full">
       <div
         aria-hidden
         className="swiss-diagonal pointer-events-none absolute inset-0 opacity-40"
@@ -361,6 +600,79 @@ function AssemblyVisual({
       <div className="absolute inset-0 grid place-items-center">
         <AgentShellCard slotCounts={slotCounts} />
       </div>
+    </div>
+  )
+}
+
+function MobileStageFlight({
+  activeIndex,
+  size,
+}: {
+  activeIndex: number
+  size: MobileVisualSize
+}) {
+  const activeStage = composabilityStages[activeIndex] ?? composabilityStages[0]
+  const width = size.width || 320
+  const height = size.height || 272
+
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0"
+      key={activeStage.id}
+    >
+      {activeStage.parts.map((part, partIndex) => {
+        const start = cornerStart[activeStage.corner]
+        const spread =
+          activeStage.parts.length > 1
+            ? partIndex - (activeStage.parts.length - 1) / 2
+            : 0
+        const axisX =
+          activeStage.corner === 'ne' || activeStage.corner === 'se' ? -1 : 1
+        const axisY =
+          activeStage.corner === 'sw' || activeStage.corner === 'se' ? -1 : 1
+        const startLeft = start.left + spread * 6 * axisX
+        const startTop = start.top + spread * 6 * axisY
+        const deltaX = ((centerTarget.left - startLeft) / 100) * width
+        const deltaY = ((centerTarget.top - startTop) / 100) * height
+        const stageColor = activeStage.id === 'memory' ? 'accent' : 'background'
+
+        return (
+          <span
+            className="absolute"
+            key={`${activeStage.id}-${part.id}`}
+            style={{ left: `${startLeft}%`, top: `${startTop}%` }}
+          >
+            <motion.span
+              animate={{
+                opacity: [0, 1, 1, 0],
+                scale: [0.96, 1, 0.84, 0.72],
+                x: [0, deltaX * 0.58, deltaX, deltaX],
+                y: [0, deltaY * 0.58, deltaY, deltaY],
+              }}
+              className="block will-change-transform"
+              initial={{ opacity: 0, scale: 0.96, x: 0, y: 0 }}
+              transition={{
+                delay: partIndex * 0.08,
+                duration: 0.72,
+                ease: [0.19, 1, 0.22, 1],
+                times: [0, 0.18, 0.72, 1],
+              }}
+            >
+              <span
+                className={cn(
+                  'block -translate-x-1/2 -translate-y-1/2 border-2 border-foreground px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-normal shadow-[3px_3px_0_0] shadow-foreground/15',
+                  stageColor === 'accent'
+                    ? 'bg-accent text-foreground'
+                    : 'bg-background text-foreground'
+                )}
+              >
+                {part.label}
+              </span>
+            </motion.span>
+          </span>
+        )
+      })}
     </div>
   )
 }
@@ -418,29 +730,63 @@ function FlyingChip({
   )
 }
 
-function AgentShellCard({ slotCounts }: { slotCounts: readonly number[] }) {
+function AgentShellCard({
+  compact = false,
+  slotCounts,
+}: {
+  compact?: boolean
+  slotCounts: readonly number[]
+}) {
   const allFilled = slotCounts.every(
     (count, idx) => count === composabilityStages[idx].parts.length
   )
 
   return (
-    <div className="relative z-10 w-full max-w-[28rem] border-2 border-foreground bg-background p-2 shadow-[8px_8px_0_0] shadow-foreground/25">
-      <div className="border border-foreground/15 bg-background p-5">
-        <div className="flex items-start justify-between gap-3 border-foreground border-b-2 pb-4">
+    <div
+      className={cn(
+        'relative z-10 w-full border-2 border-foreground bg-background shadow-foreground/25',
+        compact
+          ? 'max-w-[18rem] p-1.5 shadow-[6px_6px_0_0] sm:max-w-76'
+          : 'max-w-md p-2 shadow-[8px_8px_0_0]'
+      )}
+    >
+      <div
+        className={cn(
+          'border border-foreground/15 bg-background',
+          compact ? 'p-4' : 'p-5'
+        )}
+      >
+        <div
+          className={cn(
+            'flex items-start justify-between gap-3 border-foreground border-b-2',
+            compact ? 'pb-3' : 'pb-4'
+          )}
+        >
           <div>
             <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-normal">
               Agent
             </p>
-            <p className="mt-2 font-black text-2xl uppercase leading-none tracking-normal">
+            <p
+              className={cn(
+                'mt-2 font-black uppercase leading-none tracking-normal',
+                compact ? 'text-lg' : 'text-2xl'
+              )}
+            >
               INBOX SENTINEL
             </p>
           </div>
-          <Badge variant="outline">
+          <Badge
+            className={cn(
+              compact &&
+                'h-auto px-2 py-1 font-mono text-[9px] uppercase tracking-normal'
+            )}
+            variant="outline"
+          >
             {allFilled ? 'composed' : 'incomplete'}
           </Badge>
         </div>
 
-        <div className="mt-4 grid gap-2">
+        <div className={cn('mt-4 grid', compact ? 'gap-1.5' : 'gap-2')}>
           {composabilityStages.map((stage, idx) => {
             const count = slotCounts[idx] ?? 0
             const total = stage.parts.length
@@ -449,18 +795,27 @@ function AgentShellCard({ slotCounts }: { slotCounts: readonly number[] }) {
             return (
               <div
                 className={cn(
-                  'grid grid-cols-[1.75rem_minmax(0,1fr)_auto] items-center gap-3 border-2 border-foreground px-3 py-3 transition-colors duration-150',
+                  'grid items-center border-2 border-foreground transition-colors duration-150',
+                  compact
+                    ? 'grid-cols-[1.25rem_minmax(0,1fr)_auto] gap-2 px-2.5 py-2'
+                    : 'grid-cols-[1.75rem_minmax(0,1fr)_auto] gap-3 px-3 py-3',
                   filled ? 'bg-foreground text-background' : 'bg-muted'
                 )}
                 key={stage.id}
               >
-                <Icon className="size-4" />
-                <p className="font-black text-sm uppercase tracking-normal">
+                <Icon className={compact ? 'size-3.5' : 'size-4'} />
+                <p
+                  className={cn(
+                    'font-black uppercase tracking-normal',
+                    compact ? 'text-[11px] leading-tight' : 'text-sm'
+                  )}
+                >
                   {stage.label}
                 </p>
                 <p
                   className={cn(
-                    'font-mono text-xs tabular-nums',
+                    'font-mono tabular-nums',
+                    compact ? 'text-[10px]' : 'text-xs',
                     filled ? 'text-background/80' : 'text-muted-foreground'
                   )}
                 >
@@ -471,13 +826,122 @@ function AgentShellCard({ slotCounts }: { slotCounts: readonly number[] }) {
           })}
         </div>
 
-        <p className="mt-4 border-foreground border-t-2 pt-3 font-mono text-[10px] text-muted-foreground uppercase tracking-normal">
+        <p
+          className={cn(
+            'border-foreground border-t-2 font-mono text-muted-foreground uppercase tracking-normal',
+            compact ? 'mt-3 pt-2 text-[9px]' : 'mt-4 pt-3 text-[10px]'
+          )}
+        >
           {allFilled
             ? 'Eight parts. One agent. Yours.'
             : 'Waiting for parts to attach…'}
         </p>
       </div>
     </div>
+  )
+}
+
+function MobileStageCard({
+  active,
+  attached,
+  setRef,
+  stage,
+  stageIndex,
+  stickyRef,
+}: {
+  active: boolean
+  attached: boolean
+  setRef: (node: HTMLElement | null) => void
+  stage: ComposabilityStage
+  stageIndex: number
+  stickyRef: React.RefObject<HTMLDivElement | null>
+}) {
+  const Icon = stageIcons[stage.id]
+  const articleRef = useRef<HTMLElement | null>(null)
+  const opacity = useMotionValue(1)
+  const scale = useMotionValue(1)
+  const { scrollY } = useScroll()
+
+  useMotionValueEvent(scrollY, 'change', () => {
+    const node = articleRef.current
+    const sticky = stickyRef.current
+    if (!(node && sticky)) {
+      return
+    }
+    const cardTop = node.getBoundingClientRect().top
+    const stickyBottom = sticky.getBoundingClientRect().bottom
+    const fadeStart = -180
+    const fadeEnd = -60
+    const diff = cardTop - stickyBottom
+    const next = clamp01((diff - fadeStart) / (fadeEnd - fadeStart))
+    opacity.set(next)
+    scale.set(0.94 + next * 0.06)
+  })
+
+  const assignRef = (node: HTMLElement | null) => {
+    articleRef.current = node
+    setRef(node)
+  }
+
+  return (
+    <motion.article
+      aria-current={active ? 'step' : undefined}
+      className={cn(
+        'scroll-mt-24 border-2 border-foreground p-2 transition-colors duration-200 will-change-transform',
+        mobileStageSurfaceTone(active, attached)
+      )}
+      data-stage-index={stageIndex}
+      ref={assignRef}
+      style={{ opacity, scale }}
+    >
+      <div
+        className={cn(
+          'border p-5',
+          active
+            ? 'border-foreground bg-background'
+            : 'border-foreground/15 bg-background'
+        )}
+      >
+        <div className="flex items-start justify-between gap-3 border-foreground border-b-2 pb-4">
+          <div>
+            <p className="swiss-label text-accent">{stage.eyebrow}</p>
+            <h3 className="mt-3 font-black text-3xl uppercase leading-none tracking-normal">
+              {stage.label}
+            </h3>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <span className="grid size-11 place-items-center border-2 border-foreground bg-accent">
+              <Icon className="size-5" />
+            </span>
+            <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-normal">
+              {mobileStageStatus(active, attached)}
+            </span>
+          </div>
+        </div>
+
+        <p className="mt-4 text-muted-foreground text-sm leading-relaxed">
+          {stage.caption}
+        </p>
+
+        <div className="mt-5 flex flex-wrap gap-2">
+          {stage.parts.map((part) => (
+            <span
+              className={cn(
+                'border-2 border-foreground px-3 py-2 font-mono text-[11px] uppercase tracking-normal',
+                active || attached ? 'bg-background' : 'bg-muted'
+              )}
+              key={part.id}
+            >
+              {part.label}
+            </span>
+          ))}
+        </div>
+
+        <p className="mt-4 font-mono text-[10px] text-muted-foreground uppercase tracking-normal">
+          Attaches to {cornerLabels[stage.corner]} slot of the agent shell.
+        </p>
+      </div>
+    </motion.article>
   )
 }
 

@@ -523,28 +523,35 @@ export function LandingChatShowcase({
           className="mt-8 border-2 border-foreground bg-background p-2"
           variants={revealVariants}
         >
-          <div className="grid min-h-[44rem] border border-foreground/15 bg-background lg:grid-cols-[18rem_minmax(0,1fr)]">
-            <aside className="flex flex-col border-foreground border-b-2 bg-muted lg:border-r-2 lg:border-b-0">
-              <div className="border-foreground border-b-2 p-5">
-                <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-normal">
-                  Workspace
-                </p>
-                <div className="mt-3 flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-black text-lg uppercase leading-none tracking-normal">
-                      {agentMeta.name}
-                    </p>
-                    <p className="mt-2 font-mono text-[10px] text-muted-foreground uppercase tracking-normal">
-                      {agentMeta.attached}
-                    </p>
-                  </div>
-                  <span className="grid size-9 shrink-0 place-items-center border-2 border-foreground bg-accent">
+          <div className="grid min-h-[32rem] border border-foreground/15 bg-background lg:min-h-[44rem] lg:grid-cols-[18rem_minmax(0,1fr)]">
+            <aside className="min-w-0 border-foreground border-b-2 bg-muted lg:flex lg:flex-col lg:border-r-2 lg:border-b-0">
+              <div className="flex items-center justify-between gap-3 border-foreground border-b-2 p-3 lg:block lg:p-5">
+                <div className="flex min-w-0 items-center gap-3 lg:block">
+                  <span className="grid size-9 shrink-0 place-items-center border-2 border-foreground bg-accent lg:hidden">
                     <BotIcon className="size-4" />
                   </span>
+                  <div className="min-w-0">
+                    <p className="hidden font-bold text-[10px] text-muted-foreground uppercase tracking-normal lg:block">
+                      Workspace
+                    </p>
+                    <div className="lg:mt-3 lg:flex lg:items-start lg:justify-between lg:gap-3">
+                      <div className="min-w-0">
+                        <p className="font-black text-sm uppercase leading-none tracking-normal lg:text-lg">
+                          {agentMeta.name}
+                        </p>
+                        <p className="mt-1 font-mono text-[10px] text-muted-foreground uppercase tracking-normal lg:mt-2">
+                          {agentMeta.attached}
+                        </p>
+                      </div>
+                      <span className="hidden size-9 shrink-0 place-items-center border-2 border-foreground bg-accent lg:grid">
+                        <BotIcon className="size-4" />
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <nav className="border-foreground border-b-2 p-3">
+              <nav className="hidden border-foreground border-b-2 p-3 lg:block">
                 <ul className="grid gap-0.5 font-mono text-[11px] uppercase tracking-normal">
                   {[
                     { active: true, label: 'Chat' },
@@ -572,16 +579,16 @@ export function LandingChatShowcase({
                 </ul>
               </nav>
 
-              <div className="flex min-h-0 flex-1 flex-col p-3">
-                <p className="px-2 pt-1 pb-2 font-bold text-[10px] text-muted-foreground uppercase tracking-normal">
+              <div className="min-w-0 border-foreground border-b-2 p-2 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:border-b-0 lg:p-3">
+                <p className="hidden px-2 pt-1 pb-2 font-bold text-[10px] text-muted-foreground uppercase tracking-normal lg:block">
                   Conversations
                 </p>
-                <ul className="grid gap-1.5">
+                <ul className="-mx-2 flex gap-1.5 overflow-x-auto px-2 lg:mx-0 lg:grid lg:gap-1.5 lg:overflow-visible lg:px-0">
                   {showcaseScenarios.map((scenario) => (
-                    <li key={scenario.id}>
+                    <li className="shrink-0 lg:shrink" key={scenario.id}>
                       <button
                         className={cn(
-                          'ease grid w-full gap-1 border-2 border-foreground px-3 py-2.5 text-left transition-colors duration-150',
+                          'ease grid h-full w-44 gap-1 border-2 border-foreground px-3 py-2 text-left transition-colors duration-150 lg:w-full lg:px-3 lg:py-2.5',
                           activeScenario.id === scenario.id
                             ? 'bg-background'
                             : 'bg-muted hover:bg-background'
@@ -597,7 +604,7 @@ export function LandingChatShowcase({
                             {scenario.relativeTime}
                           </span>
                         </span>
-                        <span className="line-clamp-2 text-[11px] text-muted-foreground leading-snug">
+                        <span className="line-clamp-2 hidden text-[11px] text-muted-foreground leading-snug lg:block">
                           {scenario.description}
                         </span>
                       </button>
