@@ -40,6 +40,8 @@ export type BootstrapFileValue =
 export type StepLimitMode = 'custom' | 'grind' | 'high' | 'low' | 'medium'
 
 export interface AgentFormInitial {
+  dreamingEnabled: boolean
+  dreamingIntervalMinutes: number
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
   id: string
@@ -48,8 +50,6 @@ export interface AgentFormInitial {
   instructions: string
   model: string
   name: string
-  reflectionEnabled: boolean
-  reflectionIntervalMinutes: number
   stepLimitCustom: number | null
   stepLimitMode: StepLimitMode
   userProfile: string

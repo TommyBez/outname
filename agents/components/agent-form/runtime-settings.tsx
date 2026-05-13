@@ -94,7 +94,7 @@ export function HeartbeatSettings({
         </div>
         {heartbeatEnabled ? (
           <IntervalSelect
-            helpText="Reflection runs at most once per N minutes, and at least once per local day."
+            helpText="Dreaming runs at most once per N minutes, and at least once per local day."
             id="agent-interval"
             label="Interval"
             setValue={setIntervalMinutes}
@@ -106,44 +106,44 @@ export function HeartbeatSettings({
   )
 }
 
-export function ReflectionSettings({
-  reflectionEnabled,
-  reflectionIntervalMinutes,
-  setReflectionEnabled,
-  setReflectionIntervalMinutes,
+export function DreamingSettings({
+  dreamingEnabled,
+  dreamingIntervalMinutes,
+  setDreamingEnabled,
+  setDreamingIntervalMinutes,
 }: {
-  reflectionEnabled: boolean
-  reflectionIntervalMinutes: number
-  setReflectionEnabled: (value: boolean) => void
-  setReflectionIntervalMinutes: (value: number) => void
+  dreamingEnabled: boolean
+  dreamingIntervalMinutes: number
+  setDreamingEnabled: (value: boolean) => void
+  setDreamingIntervalMinutes: (value: number) => void
 }) {
   return (
     <div className="grid gap-4 border-2 border-foreground bg-background p-5 md:grid-cols-[12rem_minmax(0,1fr)]">
       <Label
         className="font-bold text-sm uppercase tracking-[0.14em]"
-        htmlFor="agent-reflection"
+        htmlFor="agent-dreaming"
       >
-        Reflection
+        Dreaming
       </Label>
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-4">
           <p className="text-muted-foreground text-xs">
-            When on, the agent periodically reviews its logs, writes DREAMS.md,
+            When on, the agent periodically reviews its logs, updates DREAMS.md,
             and proposes updates to goals or tasks. This can run even when
             heartbeat is off.
           </p>
           <Switch
-            checked={reflectionEnabled}
-            id="agent-reflection"
-            onCheckedChange={setReflectionEnabled}
+            checked={dreamingEnabled}
+            id="agent-dreaming"
+            onCheckedChange={setDreamingEnabled}
           />
         </div>
-        {reflectionEnabled ? (
+        {dreamingEnabled ? (
           <IntervalSelect
-            id="agent-reflection-interval"
-            label="Reflection cadence"
-            setValue={setReflectionIntervalMinutes}
-            value={reflectionIntervalMinutes}
+            id="agent-dreaming-interval"
+            label="Dreaming cadence"
+            setValue={setDreamingIntervalMinutes}
+            value={dreamingIntervalMinutes}
           />
         ) : null}
       </div>

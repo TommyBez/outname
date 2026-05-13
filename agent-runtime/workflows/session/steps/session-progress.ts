@@ -17,7 +17,7 @@ interface SessionProgressState {
 export type SessionProgressEventType =
   | 'chat'
   | 'heartbeat'
-  | 'reflection'
+  | 'dreaming'
   | 'invocation'
 
 export async function markSessionEventStarted(

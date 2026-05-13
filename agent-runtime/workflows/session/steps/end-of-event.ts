@@ -21,7 +21,7 @@ import { stopAllToolSandboxesForRun } from '@/tools/sandbox-runtime/runtime'
 type EndOfEventSource =
   | { sourceType: 'chat'; sourceId: string | null }
   | { sourceType: 'heartbeat'; sourceId: string | null }
-  | { sourceType: 'reflection'; sourceId: string | null }
+  | { sourceType: 'dreaming'; sourceId: string | null }
   | { sourceType: 'invocation'; sourceId: string | null }
 
 // Persist review rows, mirror tracked files into `agent_files`, then release

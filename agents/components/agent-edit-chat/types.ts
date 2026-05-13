@@ -15,12 +15,12 @@ export interface AgentEditMarkdownFiles {
 }
 
 export interface AgentEditSettings {
+  dreamingEnabled: boolean
+  dreamingIntervalMinutes: number
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
   model: string
   name: string
-  reflectionEnabled: boolean
-  reflectionIntervalMinutes: number
   stepLimitCustom: null | number
   stepLimitMode: 'custom' | 'grind' | 'high' | 'low' | 'medium'
 }
@@ -39,8 +39,8 @@ export const SETTINGS_FIELDS = [
   { key: 'model', label: 'Model' },
   { key: 'heartbeatEnabled', label: 'Heartbeat' },
   { key: 'heartbeatIntervalMinutes', label: 'Heartbeat interval' },
-  { key: 'reflectionEnabled', label: 'Reflection' },
-  { key: 'reflectionIntervalMinutes', label: 'Reflection interval' },
+  { key: 'dreamingEnabled', label: 'Dreaming' },
+  { key: 'dreamingIntervalMinutes', label: 'Dreaming interval' },
   { key: 'stepLimitMode', label: 'Step limit' },
   { key: 'stepLimitCustom', label: 'Custom step limit' },
 ] as const

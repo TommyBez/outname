@@ -47,7 +47,7 @@ export function useAgentRunTranscript(input: {
 export function useAgentRunTranscriptPreview(input: {
   enabled: boolean
   lastHeartbeatAt: string | null
-  lastReflectionAt: string | null
+  lastDreamingAt: string | null
   sessionRunId: string | null
   streamState: AgentRunTranscriptStateType
 }): string {

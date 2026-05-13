@@ -19,16 +19,16 @@ import {
 import { cn } from '@/lib/utils'
 
 export interface DashboardAgent {
+  dreamingEnabled: boolean
   enabled: boolean
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
   id: string
+  lastDreamingAt: string | null
   lastHeartbeatAt: string | null
-  lastReflectionAt: string | null
   lastSessionRunId: string | null
   model: string
   name: string
-  reflectionEnabled: boolean
 }
 
 export function AgentDashboardCard({
@@ -47,7 +47,7 @@ export function AgentDashboardCard({
   const preview = useAgentRunTranscriptPreview({
     enabled: agent.enabled,
     lastHeartbeatAt: agent.lastHeartbeatAt,
-    lastReflectionAt: agent.lastReflectionAt,
+    lastDreamingAt: agent.lastDreamingAt,
     sessionRunId: agent.lastSessionRunId,
     streamState: transcript,
   })
@@ -138,7 +138,7 @@ function AgentActivityPanel({
             className="h-full"
             emptyDescription={
               getTranscriptMessage(transcript) ??
-              'Trigger a heartbeat or reflection to populate this read-only run monitor.'
+              'Trigger a heartbeat or dream run to populate this read-only run monitor.'
             }
             emptyTitle="No run transcript yet"
             messages={transcript.messages}
@@ -206,12 +206,12 @@ function buildSchedule(agent: DashboardAgent) {
       value: formatNullableDate(agent.lastHeartbeatAt),
     },
     {
-      label: 'Reflection',
-      value: agent.reflectionEnabled ? 'On' : 'Off',
+      label: 'Dreaming',
+      value: agent.dreamingEnabled ? 'On' : 'Off',
     },
     {
-      label: 'Last reflection',
-      value: formatNullableDate(agent.lastReflectionAt),
+      label: 'Last dream',
+      value: formatNullableDate(agent.lastDreamingAt),
     },
   ]
 }

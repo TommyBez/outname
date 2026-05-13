@@ -71,7 +71,7 @@ export function AgentEditChat({
         <ConversationContent className="gap-6">
           {messages.length === 0 ? (
             <ConversationEmptyState
-              description="Example: tighten tone, switch model, and disable reflection."
+              description="Example: tighten tone, switch model, and disable dreaming."
               icon={<BotIcon className="size-6" />}
               title="Describe what to change"
             />

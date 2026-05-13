@@ -37,12 +37,12 @@ export async function pokeHeartbeat(opts: {
   })
 }
 
-export async function pokeReflection(opts: {
+export async function pokeDreaming(opts: {
   agent: Agent
   localDate: string
 }): Promise<{ sessionRunId: string }> {
   return await resumeSessionEvent(opts.agent, {
-    type: 'reflection',
+    type: 'dreaming',
     localDate: opts.localDate,
     manual: true,
     scheduledAt: new Date().toISOString(),

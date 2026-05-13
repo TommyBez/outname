@@ -16,8 +16,8 @@ import type {
   StepLimitMode,
 } from './agent-form/options'
 import {
+  DreamingSettings,
   HeartbeatSettings,
-  ReflectionSettings,
   StepLimitSettings,
 } from './agent-form/runtime-settings'
 
@@ -44,11 +44,11 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
   const [intervalMinutes, setIntervalMinutes] = useState(
     initial?.heartbeatIntervalMinutes ?? 30
   )
-  const [reflectionEnabled, setReflectionEnabled] = useState(
-    initial?.reflectionEnabled ?? true
+  const [dreamingEnabled, setDreamingEnabled] = useState(
+    initial?.dreamingEnabled ?? true
   )
-  const [reflectionIntervalMinutes, setReflectionIntervalMinutes] = useState(
-    initial?.reflectionIntervalMinutes ?? 1440
+  const [dreamingIntervalMinutes, setDreamingIntervalMinutes] = useState(
+    initial?.dreamingIntervalMinutes ?? 1440
   )
   const [stepLimitMode, setStepLimitMode] = useState<StepLimitMode>(
     initial?.stepLimitMode ?? 'medium'
@@ -77,8 +77,8 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
           instructions,
           intervalMinutes,
           model,
-          reflectionEnabled,
-          reflectionIntervalMinutes,
+          dreamingEnabled,
+          dreamingIntervalMinutes,
           stepLimitCustom,
           stepLimitMode,
           userProfile,
@@ -133,7 +133,7 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
       </ConfigureSection>
 
       <ConfigureSection
-        description="Model, step limit, heartbeat cadence, and reflection cadence."
+        description="Model, step limit, heartbeat cadence, and dreaming cadence."
         id="runtime"
         title="Runtime"
       >
@@ -156,11 +156,11 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
             setHeartbeatEnabled={setHeartbeatEnabled}
             setIntervalMinutes={setIntervalMinutes}
           />
-          <ReflectionSettings
-            reflectionEnabled={reflectionEnabled}
-            reflectionIntervalMinutes={reflectionIntervalMinutes}
-            setReflectionEnabled={setReflectionEnabled}
-            setReflectionIntervalMinutes={setReflectionIntervalMinutes}
+          <DreamingSettings
+            dreamingEnabled={dreamingEnabled}
+            dreamingIntervalMinutes={dreamingIntervalMinutes}
+            setDreamingEnabled={setDreamingEnabled}
+            setDreamingIntervalMinutes={setDreamingIntervalMinutes}
           />
         </div>
       </ConfigureSection>
@@ -217,8 +217,8 @@ async function saveAgent(input: {
     instructions: string
     intervalMinutes: number
     model: string
-    reflectionEnabled: boolean
-    reflectionIntervalMinutes: number
+    dreamingEnabled: boolean
+    dreamingIntervalMinutes: number
     stepLimitCustom: number
     stepLimitMode: StepLimitMode
     userProfile: string
@@ -238,8 +238,8 @@ async function saveAgent(input: {
         model: input.values.model,
         heartbeatEnabled: input.values.heartbeatEnabled,
         heartbeatIntervalMinutes: input.values.intervalMinutes,
-        reflectionEnabled: input.values.reflectionEnabled,
-        reflectionIntervalMinutes: input.values.reflectionIntervalMinutes,
+        dreamingEnabled: input.values.dreamingEnabled,
+        dreamingIntervalMinutes: input.values.dreamingIntervalMinutes,
         stepLimitMode: input.values.stepLimitMode,
         stepLimitCustom: input.values.stepLimitCustom,
         soul: input.values.identity,
@@ -258,8 +258,8 @@ async function saveAgent(input: {
       model: input.values.model,
       heartbeatEnabled: input.values.heartbeatEnabled,
       heartbeatIntervalMinutes: input.values.intervalMinutes,
-      reflectionEnabled: input.values.reflectionEnabled,
-      reflectionIntervalMinutes: input.values.reflectionIntervalMinutes,
+      dreamingEnabled: input.values.dreamingEnabled,
+      dreamingIntervalMinutes: input.values.dreamingIntervalMinutes,
       stepLimitMode: input.values.stepLimitMode,
       stepLimitCustom: input.values.stepLimitCustom,
       soul: input.values.identity,

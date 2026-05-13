@@ -113,7 +113,7 @@ export const createAgentInputSchema = z.object({
     enabled: true,
     intervalMinutes: 30,
   }),
-  reflection: scheduleSchema.default({
+  dreaming: scheduleSchema.default({
     enabled: true,
     intervalMinutes: 1440,
   }),
