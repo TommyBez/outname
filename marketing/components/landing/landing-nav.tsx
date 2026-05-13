@@ -16,9 +16,6 @@ export function LandingNav() {
           OUTNA.ME
         </Link>
         <div className="hidden items-center gap-1 sm:flex">
-          <NavLink href="#chat">Chat</NavLink>
-          <NavLink href="#workbench">Anatomy</NavLink>
-          <NavLink href="#heartbeat">Heartbeat</NavLink>
           <NavLink href="/login?from=/dashboard">Login</NavLink>
         </div>
       </nav>

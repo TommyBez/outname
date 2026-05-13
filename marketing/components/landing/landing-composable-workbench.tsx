@@ -211,11 +211,29 @@ function partSnapProgress(partId: string, sectionProgress: number) {
   )
 }
 
+const LG_BREAKPOINT_PX = 1024
+
+function useIsDesktopViewport() {
+  const [isDesktop, setIsDesktop] = useState<boolean | undefined>(undefined)
+
+  useEffect(() => {
+    const mql = window.matchMedia(`(min-width: ${LG_BREAKPOINT_PX}px)`)
+    const update = () => setIsDesktop(mql.matches)
+    update()
+    mql.addEventListener('change', update)
+    return () => mql.removeEventListener('change', update)
+  }, [])
+
+  return isDesktop
+}
+
 export function LandingComposableWorkbench({
   shouldReduceMotion,
 }: {
   shouldReduceMotion: boolean
 }) {
+  const isDesktop = useIsDesktopViewport()
+
   return (
     <section
       className="px-4 py-20 sm:px-6 md:px-10 md:py-28 lg:px-12"
@@ -245,18 +263,16 @@ export function LandingComposableWorkbench({
         </motion.div>
       </motion.div>
 
-      {shouldReduceMotion ? (
-        <ComposabilityStacked />
-      ) : (
-        <>
-          <div className="lg:hidden">
-            <ComposabilityMobileStory />
-          </div>
-          <div className="hidden lg:block">
-            <ComposabilityPinned />
-          </div>
-        </>
-      )}
+      {(() => {
+        if (shouldReduceMotion || isDesktop === undefined) {
+          return <ComposabilityStacked />
+        }
+        return isDesktop ? (
+          <ComposabilityPinned />
+        ) : (
+          <ComposabilityMobileStory />
+        )
+      })()}
     </section>
   )
 }
