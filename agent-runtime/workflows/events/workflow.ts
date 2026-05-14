@@ -1,4 +1,4 @@
-import type { UIMessage } from 'ai'
+import type { ModelMessage, UIMessage } from 'ai'
 import { getWorkflowMetadata } from 'workflow'
 import { start } from 'workflow/api'
 import { replyNamespaceForEvent } from '@/agent-runtime/server/agent-event-keys'
@@ -101,6 +101,7 @@ async function dispatchAgentEvent(event: WorkflowAgentEvent): Promise<void> {
       await handleChat({
         agentId: event.agentId,
         conversationId: payload.conversationId,
+        modelMessages: payload.modelMessages as ModelMessage[] | undefined,
         replyToken: replyNamespaceForEvent(event.id),
         uiMessages: payload.uiMessages as UIMessage[],
       })

@@ -1,4 +1,9 @@
-import { convertToModelMessages, type UIMessage, type UIMessageChunk } from 'ai'
+import {
+  convertToModelMessages,
+  type ModelMessage,
+  type UIMessage,
+  type UIMessageChunk,
+} from 'ai'
 import { getWorkflowMetadata, getWritable } from 'workflow'
 import { startupSystemSandbox } from '@/agent-runtime/server/agent-sandbox'
 import { emitActivity } from '@/agent-runtime/server/run-events'
@@ -28,10 +33,16 @@ import { emitChatStatus } from '../steps/emit-chat-status'
 export async function handleChat(input: {
   agentId: string
   conversationId: string
+  // Pre-converted history from channel adapters that own the thread (Chat
+  // SDK `toAiMessages`). When present, the model sees this directly instead
+  // of converting `uiMessages`, which for non-web sources only carries the
+  // newly-arrived user turn.
+  modelMessages?: ModelMessage[]
   replyToken: string
   uiMessages: UIMessage[]
 }): Promise<void> {
-  const { agentId, conversationId, replyToken, uiMessages } = input
+  const { agentId, conversationId, modelMessages, replyToken, uiMessages } =
+    input
   const sessionRunId = await currentSessionRunId(conversationId)
 
   const writable = getWritable<UIMessageChunk>({
@@ -90,10 +101,12 @@ export async function handleChat(input: {
     streamNamespace: replyToken,
   })
 
-  const modelMessages = await convertToModelMessages(
-    compactSubAgentToolOutputsForModel(uiMessages),
-    { tools }
-  )
+  const resolvedModelMessages =
+    modelMessages ??
+    (await convertToModelMessages(
+      compactSubAgentToolOutputsForModel(uiMessages),
+      { tools }
+    ))
   await emitActivity(sessionRunId, 'Chat: Streaming model response', {
     model: meta.model,
   })
@@ -113,7 +126,7 @@ export async function handleChat(input: {
     uiMessages,
   })
   const streamPromise = agent.stream({
-    messages: modelMessages,
+    messages: resolvedModelMessages,
     writable,
     stopWhen: resolveStepLimit(stepLimitInput),
     collectUIMessages: true,
