@@ -20,6 +20,7 @@ export interface AgentEventPayloads {
     slack?: {
       channelId: string
       messageTs: string
+      recipientUserId?: string
       teamId: string
       threadTs: string
     }

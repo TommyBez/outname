@@ -4,6 +4,7 @@ export async function slackStreamForwarderWorkflow(input: {
   channelId: string
   eventId: string
   replyNamespace: string
+  recipientUserId?: string
   teamId: string
   threadTs: string
   workflowRunId: string

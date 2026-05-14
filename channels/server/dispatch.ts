@@ -121,6 +121,16 @@ function slackEventMetadata(
   if (!(channelId && messageTs && teamId && threadTs)) {
     return null
   }
+  const slackPayload: Record<string, string> = {
+    channelId,
+    messageTs,
+    teamId,
+    threadTs,
+  }
+  const recipientUserId = readSlackUserId(message.externalUserId)
+  if (recipientUserId) {
+    slackPayload.recipientUserId = recipientUserId
+  }
   return {
     concurrencyKey: slackConcurrencyKey({
       agentId,
@@ -135,12 +145,7 @@ function slackEventMetadata(
       teamId,
     }),
     payload: {
-      slack: {
-        channelId,
-        messageTs,
-        teamId,
-        threadTs,
-      },
+      slack: slackPayload,
     },
   }
 }
@@ -151,6 +156,11 @@ function readString(
 ): string {
   const item = value?.[key]
   return typeof item === 'string' ? item : ''
+}
+
+function readSlackUserId(value: string): string | null {
+  const trimmed = value.trim()
+  return trimmed && trimmed !== 'unknown' ? trimmed : null
 }
 
 // Channel adapters only want visible assistant text, so ignore non-text chunks here.
