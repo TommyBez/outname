@@ -126,7 +126,7 @@
     "test:typecheck": "tsc --noEmit -p tsconfig.vitest.json",
     "test:workflow": "pnpm test:workflow:unit && pnpm test:workflow:integration && pnpm test:workflow:server",
     "test:workflow:integration": "cd test/workflow-fixtures && ../../node_modules/.bin/vitest run --config ../../vitest.workflow.config.ts",
-    "test:workflow:server": "vitest run --config vitest.workflow-server.config.ts",
+    "test:workflow:server": "cd test/workflow-server-app && ../../node_modules/.bin/vitest run --config ../../vitest.workflow-server.config.ts",
     "test:workflow:unit": "vitest run --config vitest.workflow-unit.config.ts"
   },
   "version": "0.1.0",

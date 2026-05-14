@@ -1,5 +1,3 @@
-// Test-only workflow fixture kept in source so the Next.js workflow manifest
-// registers it for server-based integration tests.
 export async function serverEchoWorkflow(input: {
   documentId: string
   value: number

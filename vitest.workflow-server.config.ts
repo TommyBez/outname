@@ -1,14 +1,16 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 import { workflow } from 'workflow/vite'
-import { workflowTestAlias } from './vitest.workflow.shared'
+import { workflowServerAppRoot } from './vitest.workflow.shared'
 
 const WORKFLOW_SERVER_BASE_URL = 'http://127.0.0.1:4010'
+const workflowServerSetupPath = fileURLToPath(
+  new URL('./vitest.workflow-server.setup.ts', import.meta.url)
+)
 
 export default defineConfig({
   plugins: [workflow()],
-  resolve: {
-    alias: workflowTestAlias,
-  },
+  root: workflowServerAppRoot,
   test: {
     clearMocks: true,
     environment: 'node',
@@ -16,7 +18,7 @@ export default defineConfig({
       WORKFLOW_LOCAL_BASE_URL: WORKFLOW_SERVER_BASE_URL,
       WORKFLOW_TARGET_WORLD: 'local',
     },
-    globalSetup: './vitest.workflow-server.setup.ts',
+    globalSetup: workflowServerSetupPath,
     include: ['**/*.workflow.server.test.ts'],
     mockReset: true,
     restoreMocks: true,

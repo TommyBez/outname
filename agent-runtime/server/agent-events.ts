@@ -10,7 +10,6 @@ import {
   type AgentEventType,
   agentEvents,
 } from '@/shared/db/schema'
-import { serverEchoWorkflow } from '@/tools/testing/server-workflow'
 import { replyNamespaceForEvent } from './agent-event-keys'
 import {
   claimQueuedEvent,
@@ -22,13 +21,6 @@ import {
 } from './agent-event-store'
 
 const EVENT_CLAIM_TTL_MS = 5 * 60_000
-
-if (
-  process.env.NODE_ENV === 'test' &&
-  typeof serverEchoWorkflow !== 'function'
-) {
-  throw new Error('workflow test fixture failed to load')
-}
 
 export interface EnqueueAgentEventInput {
   agent: Agent

@@ -1,5 +1,6 @@
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
 import { spawn } from 'node:child_process'
+import { join } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
 
 const HOST = '127.0.0.1'
@@ -7,6 +8,7 @@ const PORT = '4010'
 const SERVER_URL = `http://${HOST}:${PORT}`
 const START_TIMEOUT_MS = 45_000
 const STDIO_BUFFER_LIMIT = 4000
+const NEXT_BINARY = join(process.cwd(), '../../node_modules/.bin/next')
 
 let server: ChildProcessWithoutNullStreams | null = null
 
@@ -49,22 +51,18 @@ export async function setup(): Promise<void> {
   const stderr: string[] = []
 
   emitSetupLog('server_starting', {
-    command: `pnpm exec next dev --hostname ${HOST} --port ${PORT}`,
+    command: `${NEXT_BINARY} dev --hostname ${HOST} --port ${PORT}`,
   })
 
-  server = spawn(
-    'pnpm',
-    ['exec', 'next', 'dev', '--hostname', HOST, '--port', PORT],
-    {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        CI: '1',
-        WORKFLOW_TARGET_WORLD: 'local',
-      },
-      stdio: 'pipe',
-    }
-  )
+  server = spawn(NEXT_BINARY, ['dev', '--hostname', HOST, '--port', PORT], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      CI: '1',
+      WORKFLOW_TARGET_WORLD: 'local',
+    },
+    stdio: 'pipe',
+  })
 
   server.stdout.on('data', (data: Buffer) => {
     const message = data.toString()
@@ -114,7 +112,7 @@ export async function setup(): Promise<void> {
   throw new Error(
     [
       `Server failed to start within ${START_TIMEOUT_MS}ms.`,
-      `Command: pnpm exec next dev --hostname ${HOST} --port ${PORT}`,
+      `Command: ${NEXT_BINARY} dev --hostname ${HOST} --port ${PORT}`,
       `WORKFLOW_LOCAL_BASE_URL: ${SERVER_URL}`,
       `Recent stdout:\n${stdout.join('').trim() || '(empty)'}`,
       `Recent stderr:\n${stderr.join('').trim() || '(empty)'}`,

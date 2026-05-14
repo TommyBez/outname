@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { start } from 'workflow/api'
-import { serverEchoWorkflow } from '@/tools/testing/server-workflow'
+import { serverEchoWorkflow } from './workflows/server-echo'
 
 const WORKFLOW_RUN_ID_PATTERN = /^wrun_/
 
