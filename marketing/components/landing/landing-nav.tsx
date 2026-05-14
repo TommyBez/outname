@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { NavLink } from '@/marketing/components/landing/landing-links'
 
-export function LandingNav() {
+export function LandingNav({ waitlistEnabled }: { waitlistEnabled: boolean }) {
   return (
     <header className="absolute top-0 right-0 left-0 z-10 px-4 pt-5 sm:px-6 md:px-10 lg:px-12">
       <nav
@@ -16,6 +16,9 @@ export function LandingNav() {
           OUTNA.ME
         </Link>
         <div className="hidden items-center gap-1 sm:flex">
+          {waitlistEnabled ? (
+            <NavLink href="/waitlist?source=landing-nav">Waitlist</NavLink>
+          ) : null}
           <NavLink href="/login?from=/dashboard">Login</NavLink>
         </div>
       </nav>

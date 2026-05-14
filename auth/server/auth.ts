@@ -1,5 +1,7 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import { admin as adminPlugin } from 'better-auth/plugins'
+import { ac, roles } from '@/auth/access-control'
 import { db } from '@/shared/db'
 
 // Production uses Better Auth defaults. Non-production must trust the incoming
@@ -77,6 +79,13 @@ export const auth = betterAuth({
           },
         },
       }),
+  plugins: [
+    adminPlugin({
+      ac,
+      roles,
+      defaultRole: 'user',
+    }),
+  ],
 })
 
 export type Session = typeof auth.$Infer.Session

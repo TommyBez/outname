@@ -1,5 +1,6 @@
 import { headers } from 'next/headers'
-import { redirect } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
+import { waitlistManagePermission } from '@/auth/access-control'
 import { auth } from '@/auth/server/auth'
 
 export async function requireSession() {
@@ -14,6 +15,26 @@ export async function requireSession() {
 
 export async function getSession() {
   return auth.api.getSession({ headers: await headers() })
+}
+
+export async function hasWaitlistManageAccess(
+  userId: string
+): Promise<boolean> {
+  const permission = await auth.api.userHasPermission({
+    body: {
+      userId,
+      permissions: waitlistManagePermission,
+    },
+  })
+  return permission.success
+}
+
+export async function requireWaitlistManageAccess() {
+  const session = await requireSession()
+  if (!(await hasWaitlistManageAccess(session.user.id))) {
+    notFound()
+  }
+  return session
 }
 
 /**

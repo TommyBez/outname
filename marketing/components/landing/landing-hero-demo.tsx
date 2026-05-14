@@ -1,6 +1,9 @@
 'use client'
 
-import { PrimaryLink } from '@/marketing/components/landing/landing-links'
+import {
+  PrimaryLink,
+  SecondaryLink,
+} from '@/marketing/components/landing/landing-links'
 import { TextLoop } from '@/marketing/components/motion-primitives/text-loop'
 
 const loopWords = [
@@ -13,8 +16,10 @@ const loopWords = [
 
 export function LandingHeroDemo({
   shouldReduceMotion,
+  waitlistEnabled,
 }: {
   shouldReduceMotion: boolean
+  waitlistEnabled: boolean
 }) {
   return (
     <section className="relative px-4 pt-24 pb-24 sm:px-6 sm:pt-28 md:px-10 md:pb-32 lg:px-12 lg:pt-32 lg:pb-40">
@@ -45,9 +50,12 @@ export function LandingHeroDemo({
             sharpens the next.
           </p>
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row md:justify-end">
-            <PrimaryLink href="/login?from=/agents/new">
-              Create your agent
-            </PrimaryLink>
+            {waitlistEnabled ? (
+              <PrimaryLink href="/waitlist?source=landing-hero">
+                Join the waitlist
+              </PrimaryLink>
+            ) : null}
+            <SecondaryLink href="/login?from=/agents/new">Login</SecondaryLink>
           </div>
         </div>
       </div>

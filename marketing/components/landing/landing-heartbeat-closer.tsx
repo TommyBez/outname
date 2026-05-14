@@ -4,7 +4,10 @@ import { motion, useMotionValueEvent, useScroll } from 'motion/react'
 import { useRef, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { PrimaryLink } from '@/marketing/components/landing/landing-links'
+import {
+  PrimaryLink,
+  SecondaryLink,
+} from '@/marketing/components/landing/landing-links'
 import {
   revealVariants,
   staggerVariants,
@@ -101,8 +104,10 @@ const heartbeatEvents: readonly HeartbeatEvent[] = [
 
 export function LandingHeartbeatCloser({
   shouldReduceMotion,
+  waitlistEnabled,
 }: {
   shouldReduceMotion: boolean
+  waitlistEnabled: boolean
 }) {
   return (
     <section
@@ -174,14 +179,21 @@ export function LandingHeartbeatCloser({
           variants={revealVariants}
         >
           <h3 className="home-display text-balance font-black text-6xl uppercase leading-[0.84] tracking-normal md:text-8xl">
-            Run yours.
+            Get early access.
           </h3>
           <div className="flex min-w-0 flex-col gap-3 md:items-end">
-            <PrimaryLink href="/login?from=/agents/new">
-              Create your agent
-            </PrimaryLink>
+            <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
+              {waitlistEnabled ? (
+                <PrimaryLink href="/waitlist?source=landing-closer">
+                  Join the waitlist
+                </PrimaryLink>
+              ) : null}
+              <SecondaryLink href="/login?from=/agents/new">
+                Login
+              </SecondaryLink>
+            </div>
             <p className="font-mono text-[11px] text-muted-foreground uppercase tracking-normal">
-              Smarter every day.
+              Confirm by email, then wait for invite.
             </p>
           </div>
         </motion.div>

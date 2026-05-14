@@ -1,0 +1,85 @@
+import type { Metadata } from 'next'
+import Link from 'next/link'
+
+export const metadata: Metadata = {
+  title: 'Confirm waitlist request',
+  description: 'Confirm your waitlist request for OUTNA.ME.',
+  robots: {
+    index: false,
+    follow: false,
+  },
+}
+
+export default async function WaitlistConfirmPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    status?: string
+    token?: string
+  }>
+}) {
+  const { status, token } = await searchParams
+  let content: React.ReactNode
+
+  if (status === 'confirmed') {
+    content = (
+      <div className="mt-8 space-y-4">
+        <p className="text-sm leading-relaxed">
+          Your email is confirmed. We&apos;ll reach out when your access is
+          ready.
+        </p>
+        <Link
+          className="inline-flex min-h-11 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.14em] transition-colors hover:bg-foreground hover:text-background"
+          href="/"
+        >
+          Back to home
+        </Link>
+      </div>
+    )
+  } else if (token) {
+    content = (
+      <div className="mt-8 space-y-5">
+        <p className="text-sm leading-relaxed">
+          Final step: confirm that this email address belongs to you.
+        </p>
+        <form action="/api/waitlist/confirm" method="post">
+          <input name="token" type="hidden" value={token} />
+          <button
+            className="inline-flex min-h-11 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.14em] transition-colors hover:bg-accent hover:text-foreground"
+            type="submit"
+          >
+            Confirm waitlist request
+          </button>
+        </form>
+      </div>
+    )
+  } else {
+    content = (
+      <div className="mt-8 space-y-4">
+        <p className="text-sm leading-relaxed">
+          This confirmation link is invalid or has expired.
+        </p>
+        <Link
+          className="inline-flex min-h-11 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.14em] transition-colors hover:bg-foreground hover:text-background"
+          href="/waitlist?source=confirm-page"
+        >
+          Request a new link
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <main className="swiss-grid-pattern grid min-h-svh place-items-center bg-background px-6 py-12">
+      <div className="w-full max-w-xl border-4 border-foreground bg-background p-8 md:p-10">
+        <div className="border-foreground border-t-4 pt-5">
+          <p className="swiss-label text-accent">00. waitlist confirm</p>
+          <h1 className="mt-4 font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter">
+            {status === 'confirmed' ? 'Confirmed' : 'Confirm your email'}
+          </h1>
+        </div>
+        {content}
+      </div>
+    </main>
+  )
+}

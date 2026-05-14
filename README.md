@@ -265,6 +265,12 @@ BETTER_AUTH_SECRET=<random-auth-secret>
 BETTER_AUTH_URL=http://localhost:3000
 CONNECTION_ENCRYPTION_KEY=<base64-encoded-32-byte-key>
 AI_GATEWAY_API_KEY=<vercel-ai-gateway-key>
+RESEND_API_KEY=<resend-api-key>
+WAITLIST_FROM_EMAIL=<verified-resend-sender>
+WAITLIST_REPLY_TO=<optional-reply-to-email>
+WAITLIST_PUBLIC_ENABLED=true
+UPSTASH_REDIS_REST_URL=<upstash-rest-url>
+UPSTASH_REDIS_REST_TOKEN=<upstash-rest-token>
 ```
 
 Optional cron settings:
