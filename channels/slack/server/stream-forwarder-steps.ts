@@ -11,8 +11,10 @@ export async function forwardSlackStreamToThread(input: {
   workflowRunId: string
 }): Promise<void> {
   'use step'
-  const adapter = getSlackAdapter()
   const bot = getSlackBot()
+  await bot.initialize()
+
+  const adapter = getSlackAdapter()
   const install = await adapter.getInstallation(input.teamId)
   if (!install) {
     throw new Error(`Slack workspace ${input.teamId} is not installed`)
