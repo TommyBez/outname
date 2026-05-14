@@ -1,10 +1,10 @@
 import 'server-only'
 import { Sandbox } from '@vercel/sandbox'
 import { eq } from 'drizzle-orm'
-import { getWorkflowMetadata } from 'workflow'
 import { db } from '@/shared/db'
 import { toolSandboxSnapshots } from '@/shared/db/schema'
 import { toolRuntimeSandboxTags } from '@/shared/server/vercel-sandbox-config'
+import { currentToolRuntimeRunId } from '@/tools/runtime/run-id'
 import { getToolSandboxManifest } from '@/tools/sandboxes'
 
 // Cache tool sandboxes per workflow run so repeated tool calls can reuse the
@@ -33,10 +33,7 @@ class ToolSandboxUnavailableError extends Error {
 export { ToolSandboxUnavailableError }
 
 function currentRunId(): string {
-  // `getWorkflowMetadata()` is available inside `'use step'` bodies and
-  // returns the runtime id of the workflow that's currently executing
-  // for tool calls, the current agent event workflow run.
-  return getWorkflowMetadata().workflowRunId
+  return currentToolRuntimeRunId()
 }
 
 async function readSnapshotId(manifestId: string): Promise<string | null> {

@@ -5,6 +5,7 @@ import { agentBrowserTool } from '@/tools/providers/agent-browser'
 import { agentBrowserLightTool } from '@/tools/providers/agent-browser-light'
 import { calcomRequestTool } from '@/tools/providers/calcom'
 import { firecrawlScrapeTool } from '@/tools/providers/firecrawl-scrape'
+import { githubRepoTool } from '@/tools/providers/github-repo'
 import { parallelSearchTool } from '@/tools/providers/parallel'
 import { posthogRequestTool } from '@/tools/providers/posthog'
 import { resendSendTool } from '@/tools/providers/resend'
@@ -21,6 +22,7 @@ const TOOLS: MaintainerTool[] = [
   resendSendTool,
   calcomRequestTool,
   firecrawlScrapeTool,
+  githubRepoTool,
   parallelSearchTool,
   posthogRequestTool,
   agentBrowserTool,
@@ -68,6 +70,7 @@ export const TOOL_CATEGORY_ORDER = [
   'analytics',
   'social',
   'browser',
+  'developer',
   'deployment',
   'database',
 ] as const
