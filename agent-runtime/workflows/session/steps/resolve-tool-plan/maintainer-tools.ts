@@ -3,7 +3,7 @@ import { db } from '@/shared/db'
 import { toolSandboxBuilds, toolSandboxSnapshots } from '@/shared/db/schema'
 import { getMaintainerTool } from '@/tools/catalog/registry'
 import type { MaintainerTool, Reconnect } from '@/tools/catalog/types'
-import { getToolSandboxManifest, manifestHash } from '@/tools/sandboxes'
+import { getToolSandboxManifest } from '@/tools/sandboxes/registry'
 import type { MaintainerRow, PlannedTool } from './types'
 
 type MaintainerOutcome =
@@ -122,7 +122,7 @@ async function checkSandboxRequirement(
     .where(eq(toolSandboxSnapshots.manifestId, manifestId))
     .limit(1)
 
-  const desiredHash = manifestHash(manifestId)
+  const desiredHash = await manifestHashStep({ manifestId })
   if (snapshot && snapshot.manifestHash === desiredHash) {
     return null
   }
@@ -154,4 +154,12 @@ async function checkSandboxRequirement(
     manifest: manifestId,
     message: `No ready snapshot for "${manifestId}"`,
   }
+}
+
+async function manifestHashStep(input: {
+  manifestId: string
+}): Promise<string> {
+  'use step'
+  const { manifestHash } = await import('@/tools/sandboxes')
+  return manifestHash(input.manifestId)
 }
