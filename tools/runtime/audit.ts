@@ -1,5 +1,4 @@
 import 'server-only'
-import { randomUUID } from 'node:crypto'
 import { db } from '@/shared/db'
 import { toolInvocations } from '@/shared/db/schema'
 import type { ToolErrorCode } from '@/tools/catalog/types'
@@ -25,7 +24,7 @@ export async function recordToolInvocation(input: {
   'use step'
   try {
     await db.insert(toolInvocations).values({
-      id: `tinv_${randomUUID()}`,
+      id: `tinv_${crypto.randomUUID()}`,
       agentId: input.agentId,
       userId: input.userId,
       runId: input.runId,

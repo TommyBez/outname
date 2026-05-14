@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto'
 import { getWorkflowMetadata } from 'workflow'
 
 let fallbackRunId: string | null = null
@@ -18,6 +17,6 @@ export function currentToolRuntimeRunId(): string {
     }
   }
 
-  fallbackRunId ??= `standalone-${randomUUID()}`
+  fallbackRunId ??= `standalone-${crypto.randomUUID()}`
   return fallbackRunId
 }

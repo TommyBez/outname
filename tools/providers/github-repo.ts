@@ -293,7 +293,7 @@ type CreateBranchInput = z.infer<typeof createBranchInputSchema>
 type CommitPushInput = z.infer<typeof commitPushInputSchema>
 type CreatePullRequestInput = z.infer<typeof createPullRequestInputSchema>
 
-function mutationPolicy<TInput extends { [key: string]: unknown }>(input: {
+function mutationPolicy(input: {
   confirmField:
     | 'confirmBranchCreation'
     | 'confirmCreatePullRequest'
@@ -303,10 +303,10 @@ function mutationPolicy<TInput extends { [key: string]: unknown }>(input: {
 }) {
   return ({
     config,
-    input: value,
+    input: rawInput,
   }: {
     config: GitHubRepoConfig
-    input: TInput
+    input: unknown
   }) => {
     if (config.readOnly) {
       return {
@@ -316,7 +316,12 @@ function mutationPolicy<TInput extends { [key: string]: unknown }>(input: {
       }
     }
 
-    if (value[input.confirmField] !== true) {
+    const confirmValue =
+      typeof rawInput === 'object' && rawInput !== null
+        ? (rawInput as Record<string, unknown>)[input.confirmField]
+        : undefined
+
+    if (confirmValue !== true) {
       return {
         ok: false as const,
         message: input.confirmMessage,
@@ -429,7 +434,7 @@ const githubRepoTools: Record<string, BundleChildToolArgs<GitHubRepoConfig>> = {
       'Write one or more UTF-8 text files to the attached GitHub repository checkout.',
     inputSchema: writeFilesInputSchema,
     policies: [
-      mutationPolicy<WriteFilesInput>({
+      mutationPolicy({
         confirmField: 'confirmWrite',
         confirmMessage:
           'Writing repository files requires confirmWrite=true on this tool call.',
@@ -493,7 +498,7 @@ const githubRepoTools: Record<string, BundleChildToolArgs<GitHubRepoConfig>> = {
       'Fetch a base branch from origin, create a new local branch from it, and check it out in the repo workspace.',
     inputSchema: createBranchInputSchema,
     policies: [
-      mutationPolicy<CreateBranchInput>({
+      mutationPolicy({
         confirmField: 'confirmBranchCreation',
         confirmMessage:
           'Branch creation requires confirmBranchCreation=true on this tool call.',
@@ -520,7 +525,7 @@ const githubRepoTools: Record<string, BundleChildToolArgs<GitHubRepoConfig>> = {
       'Create a git commit from local changes in the repo workspace and push the branch to origin.',
     inputSchema: commitPushInputSchema,
     policies: [
-      mutationPolicy<CommitPushInput>({
+      mutationPolicy({
         confirmField: 'confirmPush',
         confirmMessage:
           'Commit and push requires confirmPush=true on this tool call.',
@@ -545,7 +550,7 @@ const githubRepoTools: Record<string, BundleChildToolArgs<GitHubRepoConfig>> = {
       'Open a GitHub pull request for the attached repository using the configured default base branch or an explicit override.',
     inputSchema: createPullRequestInputSchema,
     policies: [
-      mutationPolicy<CreatePullRequestInput>({
+      mutationPolicy({
         confirmField: 'confirmCreatePullRequest',
         confirmMessage:
           'Pull request creation requires confirmCreatePullRequest=true on this tool call.',

@@ -7,7 +7,7 @@ import { toolSandboxSnapshots } from '@/shared/db/schema'
 import { repoWorkspaceSandboxTags } from '@/shared/server/vercel-sandbox-config'
 import { createInjectedHeadersNetworkPolicy } from '@/tools/runtime/network-policy'
 import { currentToolRuntimeRunId } from '@/tools/runtime/run-id'
-import { getToolSandboxManifest } from '@/tools/sandboxes'
+import { getToolSandboxManifest } from '@/tools/sandboxes/registry'
 import { createRepoWorkspaceBashTool } from './bash-tool'
 import {
   RepoWorkspaceProviderError,

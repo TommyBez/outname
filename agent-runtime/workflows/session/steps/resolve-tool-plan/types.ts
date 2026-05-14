@@ -30,6 +30,7 @@ export interface SubAgentRow {
 export interface MaintainerRow {
   config: unknown
   toolId: string
+  toolSandboxManifestHash: string | null
 }
 
 export interface SubAgentResolution {

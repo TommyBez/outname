@@ -5,7 +5,7 @@ import { db } from '@/shared/db'
 import { toolSandboxSnapshots } from '@/shared/db/schema'
 import { toolRuntimeSandboxTags } from '@/shared/server/vercel-sandbox-config'
 import { currentToolRuntimeRunId } from '@/tools/runtime/run-id'
-import { getToolSandboxManifest } from '@/tools/sandboxes'
+import { getToolSandboxManifest } from '@/tools/sandboxes/registry'
 
 // Cache tool sandboxes per workflow run so repeated tool calls can reuse the
 // same snapshot-backed process. The cache is best-effort and is cleared at the

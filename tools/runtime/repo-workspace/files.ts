@@ -1,4 +1,3 @@
-import type { CommandResult } from 'bash-tool'
 import { RepoWorkspaceInputError, RepoWorkspaceProviderError } from './errors'
 import {
   assertReadableRepoWorkspacePath,
@@ -10,10 +9,13 @@ import {
 import { shellQuote } from './shell'
 import type {
   RepoWorkspace,
+  RepoWorkspaceCommandResult,
   RepoWorkspaceFileWrite,
   RepoWorkspaceGrepInput,
   RepoWorkspaceGrepMatch,
   RepoWorkspaceListInput,
+  RepoWorkspaceReadFileResult,
+  RepoWorkspaceWriteFileResult,
 } from './types'
 
 const DEFAULT_LIST_RESULTS = 1000
@@ -26,10 +28,10 @@ type BashToolExecute<TInput, TOutput> = (input: TInput) => Promise<TOutput>
 export async function runRepoWorkspaceCommand(
   workspace: RepoWorkspace,
   command: string
-): Promise<CommandResult> {
+): Promise<RepoWorkspaceCommandResult> {
   const execute = workspace.bashTool.bash.execute as BashToolExecute<
     { command: string },
-    CommandResult
+    RepoWorkspaceCommandResult
   >
   return await execute({ command })
 }
@@ -43,7 +45,7 @@ export async function readRepoWorkspaceFile(
 
   const execute = workspace.bashTool.tools.readFile.execute as BashToolExecute<
     { path: string },
-    { content: string }
+    RepoWorkspaceReadFileResult
   >
   const result = await execute({ path: safe.relPath })
   return { content: result.content, path: safe.relPath }
@@ -59,7 +61,7 @@ export async function writeRepoWorkspaceFiles(
 
   const execute = workspace.bashTool.tools.writeFile.execute as BashToolExecute<
     { content: string; path: string },
-    { success: boolean }
+    RepoWorkspaceWriteFileResult
   >
 
   const writtenPaths: string[] = []

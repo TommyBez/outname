@@ -1,5 +1,4 @@
 import type { Sandbox as VercelSandbox } from '@vercel/sandbox'
-import type { BashToolkit, Sandbox as BashToolSandbox } from 'bash-tool'
 import { RepoWorkspaceProviderError } from './errors'
 import {
   assertReadableRepoWorkspacePath,
@@ -8,13 +7,29 @@ import {
   normalizeRepoWorkspacePath,
   REPO_WORKSPACE_ROOT,
 } from './paths'
+import type { RepoWorkspaceBashToolkit } from './types'
 
 const MAX_BASH_OUTPUT_CHARS = 64 * 1024
+
+interface RepoWorkspaceBashToolSandbox {
+  executeCommand(command: string): Promise<{
+    exitCode: number
+    stderr: string
+    stdout: string
+  }>
+  readFile(path: string): Promise<string>
+  writeFiles(
+    files: Array<{
+      content: string | Buffer
+      path: string
+    }>
+  ): Promise<void>
+}
 
 export async function createRepoWorkspaceBashTool(input: {
   rootPath?: string
   sandbox: VercelSandbox
-}): Promise<BashToolkit> {
+}): Promise<RepoWorkspaceBashToolkit> {
   const rootPath = input.rootPath ?? REPO_WORKSPACE_ROOT
   await input.sandbox.mkDir(rootPath).catch(async () => {
     const result = await input.sandbox.runCommand({
@@ -29,7 +44,17 @@ export async function createRepoWorkspaceBashTool(input: {
     }
   })
 
-  const { createBashTool } = await import('bash-tool')
+  const { createBashTool } = (await import(
+    bashToolModuleName()
+  )) as unknown as {
+    createBashTool(args: {
+      destination: string
+      maxFiles: number
+      maxOutputLength: number
+      promptOptions: { toolPrompt: string }
+      sandbox: RepoWorkspaceBashToolSandbox
+    }): Promise<RepoWorkspaceBashToolkit>
+  }
 
   return await createBashTool({
     destination: rootPath,
@@ -46,10 +71,14 @@ export async function createRepoWorkspaceBashTool(input: {
   })
 }
 
+function bashToolModuleName(): string {
+  return process.env.CURSOR_BASH_TOOL_MODULE ?? 'bash-tool'
+}
+
 function createRepoWorkspaceSandboxAdapter(input: {
   rootPath: string
   sandbox: VercelSandbox
-}): BashToolSandbox {
+}): RepoWorkspaceBashToolSandbox {
   return {
     async executeCommand(command) {
       const result = await input.sandbox.runCommand({
