@@ -39,7 +39,7 @@ export async function buildToolSandboxWorkflow(input: {
       await markBuildFailed({ buildId, error: message })
     } catch (innerErr) {
       console.error(
-        '[v0] buildToolSandboxWorkflow: markBuildFailed failed',
+        'buildToolSandboxWorkflow: markBuildFailed failed',
         innerErr
       )
     }

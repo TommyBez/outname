@@ -101,10 +101,9 @@ export async function getAvailableModels(): Promise<ModelOption[]> {
       next: { revalidate: 3600 },
     })
     if (!res.ok) {
-      console.error(
-        '[v0] getAvailableModels: non-OK response, using fallback',
-        { status: res.status }
-      )
+      console.error('getAvailableModels: non-OK response, using fallback', {
+        status: res.status,
+      })
       return [...FALLBACK]
     }
     const json = (await res.json()) as RawResponse
@@ -118,7 +117,7 @@ export async function getAvailableModels(): Promise<ModelOption[]> {
     }
     if (mapped.length === 0) {
       console.error(
-        '[v0] getAvailableModels: zero language+tool-use models in response, using fallback'
+        'getAvailableModels: zero language+tool-use models in response, using fallback'
       )
       return [...FALLBACK]
     }
@@ -130,7 +129,7 @@ export async function getAvailableModels(): Promise<ModelOption[]> {
     })
     return mapped
   } catch (err) {
-    console.error('[v0] getAvailableModels: fetch threw, using fallback', err)
+    console.error('getAvailableModels: fetch threw, using fallback', err)
     return [...FALLBACK]
   }
 }

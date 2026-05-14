@@ -191,7 +191,7 @@ function drainLines(
       onEvent(JSON.parse(line) as BuildStreamEvent)
     } catch (err) {
       // Skip malformed lines — the stream is best-effort.
-      console.error('[v0] useToolSandboxBuildStream: bad line', line, err)
+      console.error('useToolSandboxBuildStream: bad line', line, err)
     }
   }
   return working

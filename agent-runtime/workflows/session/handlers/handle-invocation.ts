@@ -205,7 +205,7 @@ async function finishInvocationStreams(
   await Promise.all(
     namespaces.map((namespace) =>
       finishUiMessageStream(namespace).catch((err) => {
-        console.error('[v0] handleInvocation: failed to close transcript', err)
+        console.error('handleInvocation: failed to close transcript', err)
       })
     )
   )
@@ -284,7 +284,7 @@ async function failInvocation(input: {
     await emitRun(input.runId, 'failed', message)
   } catch (innerErr) {
     console.error(
-      '[v0] handleInvocation: failed to emit failure breadcrumbs',
+      'handleInvocation: failed to emit failure breadcrumbs',
       innerErr
     )
   }

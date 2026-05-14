@@ -83,6 +83,6 @@ export async function recordTokenUsageStep(input: {
     await recordAgentTokenUsage(input)
   } catch (err) {
     // Usage persistence is best-effort because the run already happened.
-    console.error('[v0] recordTokenUsageStep: failed to persist usage', err)
+    console.error('recordTokenUsageStep: failed to persist usage', err)
   }
 }

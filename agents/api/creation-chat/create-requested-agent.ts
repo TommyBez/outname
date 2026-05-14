@@ -145,7 +145,7 @@ async function applyAgentBudget(input: {
         limitUsd: limit,
       })
     } catch (err) {
-      console.error('[v0] applyAgentBudget: failed to persist rule', {
+      console.error('applyAgentBudget: failed to persist rule', {
         period,
         err,
       })
