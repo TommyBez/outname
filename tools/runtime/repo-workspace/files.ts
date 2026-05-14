@@ -127,8 +127,6 @@ export async function grepRepoWorkspaceFiles(
   const grepFlags = [
     '-RInI',
     input.fixedString ? '-F' : '-E',
-    '-m',
-    String(maxResults + 1),
     '--binary-files=without-match',
     '--exclude-dir=.git',
   ]
@@ -136,13 +134,14 @@ export async function grepRepoWorkspaceFiles(
     grepFlags.push('-i')
   }
 
-  const command = [
+  const grepCommand = [
     'grep',
     ...grepFlags,
     '--',
     shellQuote(input.pattern),
     shellQuote(searchRoot),
   ].join(' ')
+  const command = `set -o pipefail && ${grepCommand} | head -n ${maxResults + 1}`
 
   const result = await runRepoWorkspaceCommand(workspace, command)
   if (result.exitCode > 1) {

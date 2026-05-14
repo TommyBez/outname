@@ -3,7 +3,7 @@ import { db } from '@/shared/db'
 import { toolSandboxBuilds, toolSandboxSnapshots } from '@/shared/db/schema'
 import { getMaintainerTool } from '@/tools/catalog/registry'
 import type { MaintainerTool, Reconnect } from '@/tools/catalog/types'
-import { getToolSandboxManifest } from '@/tools/sandboxes/registry'
+import { getToolSandboxManifest, manifestHash } from '@/tools/sandboxes'
 import type { MaintainerRow, PlannedTool } from './types'
 
 type MaintainerOutcome =
@@ -30,11 +30,7 @@ export async function resolveMaintainerRow(
     return parsed
   }
 
-  const sandbox = await checkSandboxRequirements(
-    tool,
-    row.toolId,
-    row.toolSandboxManifestHash
-  )
+  const sandbox = await checkSandboxRequirements(tool, row.toolId)
   if (sandbox) {
     return { kind: 'reconnect', reconnects: [sandbox] }
   }
@@ -91,18 +87,13 @@ function parseMaintainerConfig(
 
 async function checkSandboxRequirements(
   tool: MaintainerTool,
-  toolId: string,
-  toolSandboxManifestHash: string | null
+  toolId: string
 ): Promise<Reconnect | null> {
   for (const requirement of tool.capabilities) {
     if (requirement.kind !== 'tool_sandbox') {
       continue
     }
-    const blocking = await checkSandboxRequirement(
-      requirement.manifest,
-      toolId,
-      toolSandboxManifestHash
-    )
+    const blocking = await checkSandboxRequirement(requirement.manifest, toolId)
     if (blocking) {
       return blocking
     }
@@ -112,8 +103,7 @@ async function checkSandboxRequirements(
 
 async function checkSandboxRequirement(
   manifestId: string,
-  toolId: string,
-  desiredHash: string | null
+  toolId: string
 ): Promise<Reconnect | null> {
   try {
     getToolSandboxManifest(manifestId)
@@ -126,21 +116,13 @@ async function checkSandboxRequirement(
     }
   }
 
-  if (!desiredHash) {
-    return {
-      toolId,
-      reason: 'tool_sandbox_unavailable',
-      manifest: manifestId,
-      message: `Tool sandbox manifest hash for "${manifestId}" is missing. Reattach the tool to rebuild it.`,
-    }
-  }
-
   const [snapshot] = await db
     .select()
     .from(toolSandboxSnapshots)
     .where(eq(toolSandboxSnapshots.manifestId, manifestId))
     .limit(1)
 
+  const desiredHash = manifestHash(manifestId)
   if (snapshot && snapshot.manifestHash === desiredHash) {
     return null
   }

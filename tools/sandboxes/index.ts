@@ -1,5 +1,4 @@
 import 'server-only'
-import { createHash } from 'node:crypto'
 import {
   getToolSandboxManifest as readToolSandboxManifest,
   listToolSandboxManifests as readToolSandboxManifests,
@@ -37,11 +36,7 @@ export function manifestHash(manifestId: string): string {
   }
   const m = readToolSandboxManifest(manifestId)
   const script = manifestSetupScript(manifestId)
-  const hash = createHash('sha256')
-    .update(stableStringify(m))
-    .update('\n')
-    .update(script)
-    .digest('hex')
+  const hash = fnv1a64(`${stableStringify(m)}\n${script}`)
   manifestHashCache.set(manifestId, hash)
   return hash
 }
@@ -59,4 +54,18 @@ function stableStringify(value: unknown): string {
     .sort()
     .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
     .join(',')}}`
+}
+
+function fnv1a64(input: string): string {
+  const bytes = new TextEncoder().encode(input)
+  let hashA = 17
+  let hashB = 31
+  const modulus = 2_147_483_647
+
+  for (const byte of bytes) {
+    hashA = (hashA * 131 + byte) % modulus
+    hashB = (hashB * 137 + byte) % modulus
+  }
+
+  return `${bytes.length.toString(16)}-${hashA.toString(16)}-${hashB.toString(16)}`
 }

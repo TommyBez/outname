@@ -3,12 +3,7 @@ import type { AgentTool, AgentToolKind } from '@/shared/db/schema'
 import { childAgentIdFromSubAgentRow } from '@/tools/sub-agents/sub-agent-tool-name'
 
 export type ToolKindResolvedRow =
-  | {
-      kind: 'maintainer'
-      config: unknown
-      toolId: string
-      toolSandboxManifestHash: string | null
-    }
+  | { kind: 'maintainer'; config: unknown; toolId: string }
   | { kind: 'sub_agent'; childAgentId: string; rowToolId: string }
 
 export interface ToolKindPlugin {
@@ -24,12 +19,7 @@ const TOOL_KIND_PLUGINS: ToolKindPlugin[] = [
     kind: 'maintainer',
     label: 'Maintainer catalog tool',
     resolveRow(row) {
-      return {
-        kind: 'maintainer',
-        toolId: row.toolId,
-        config: row.config,
-        toolSandboxManifestHash: row.toolSandboxManifestHash,
-      }
+      return { kind: 'maintainer', toolId: row.toolId, config: row.config }
     },
   },
   {
