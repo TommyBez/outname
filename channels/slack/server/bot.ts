@@ -1,7 +1,12 @@
 import 'server-only'
 import { createSlackAdapter, type SlackAdapter } from '@chat-adapter/slack'
 import type { ModelMessage } from 'ai'
-import { Chat, type Message as ChatMessage, toAiMessages } from 'chat'
+import {
+  type AiMessage,
+  Chat,
+  type Message as ChatMessage,
+  toAiMessages,
+} from 'chat'
 import { runChannelChatTurn } from '@/channels/server/dispatch'
 import type { IncomingChannelMessage } from '@/channels/server/types'
 import { SlackHybridState } from './state'
@@ -140,8 +145,6 @@ async function handleSlackMessage(input: {
   const externalRoutingKey =
     kind === 'dm' ? (message.author?.userId ?? channelId) : channelId
 
-  const modelMessages = await collectThreadHistory(thread)
-
   const incoming: IncomingChannelMessage = {
     channel: 'slack',
     teamId,
@@ -158,7 +161,7 @@ async function handleSlackMessage(input: {
       slackThreadTs: threadTs,
       slackTeamId: teamId,
     },
-    modelMessages,
+    loadModelMessages: () => collectThreadHistory(thread),
   }
 
   const handled = await runChannelChatTurn({
@@ -202,8 +205,14 @@ async function collectThreadHistory(
       return
     }
     // `includeNames` prefixes user turns with `[name]:` so multi-user channels
-    // stay attributable. Harmless in 1:1 DMs.
-    const aiMessages = await toAiMessages(messages, { includeNames: true })
+    // stay attributable. Harmless in 1:1 DMs. `transformMessage` strips image
+    // and file parts that `toAiMessages` inlines as base64 — Slack threads
+    // never sent media to the model before this fix, and replaying them on
+    // every turn would balloon token cost and break text-only models.
+    const aiMessages = await toAiMessages(messages, {
+      includeNames: true,
+      transformMessage: stripNonTextParts,
+    })
     return aiMessages as ModelMessage[]
   } catch (err) {
     // Fall back to "new turn only" — the workflow still works, just without
@@ -214,4 +223,18 @@ async function collectThreadHistory(
     })
     return
   }
+}
+
+function stripNonTextParts(aiMessage: AiMessage): AiMessage | null {
+  if (typeof aiMessage.content === 'string') {
+    return aiMessage.content.trim() ? aiMessage : null
+  }
+  if (aiMessage.role !== 'user') {
+    return aiMessage
+  }
+  const textParts = aiMessage.content.filter((part) => part.type === 'text')
+  if (textParts.length === 0) {
+    return null
+  }
+  return { ...aiMessage, content: textParts }
 }

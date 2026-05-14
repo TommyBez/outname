@@ -13,11 +13,13 @@ export interface IncomingChannelMessage {
   externalThreadKey: string
   externalUserDisplayName?: string
   externalUserId: string
-  // Thread history already converted to AI SDK model-message shape. Channel
-  // adapters that own the thread (Slack/Discord/Telegram via Chat SDK) should
-  // populate this from `thread.allMessages` + `toAiMessages` so the workflow
-  // can skip `convertToModelMessages` and the model sees the full conversation.
-  modelMessages?: ModelMessage[]
+  // Lazy loader for thread history already converted to AI SDK model-message
+  // shape. Channel adapters that own the thread (Slack/Discord/Telegram via
+  // Chat SDK) populate this from `thread.allMessages` + `toAiMessages`. It is
+  // a thunk (not an eager array) so the dispatch layer can skip the
+  // potentially paginated history fetch when no agent is bound to the thread.
+  // Returning `undefined` falls back to the UIMessage conversion path.
+  loadModelMessages?: () => Promise<ModelMessage[] | undefined>
   // Workspace scope used to keep installs and bindings owner-safe in multi-user deployments.
   teamId: string
   text: string
