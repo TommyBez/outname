@@ -16,10 +16,6 @@ import {
   recordTokenUsageStep,
 } from '../steps/budget'
 import { drainPendingWrites } from '../steps/drain-pending-writes'
-import {
-  createPendingWrites,
-  type PendingWrites,
-} from '../tools/pending-writes'
 import { finishSuccessfulInvocation } from './handle-invocation/finish-success'
 import { startForwardingChildTrace } from './handle-invocation/forward-child-trace'
 import {
@@ -41,7 +37,7 @@ export async function handleInvocation(input: {
   parentStream?: WritableStream<UIMessageChunk> | null
   callStack: string[]
   depth: number
-}): Promise<{ pending: PendingWrites; runId: string }> {
+}): Promise<void> {
   const {
     agentId,
     input: instruction,
@@ -61,7 +57,6 @@ export async function handleInvocation(input: {
   })
   const streamNamespace = streamToken
   const writable = getWritable<UIMessageChunk>({ namespace: streamNamespace })
-  let pending: PendingWrites = createPendingWrites()
   let forwardPromise = Promise.resolve([] as AgentChatMessage[])
 
   try {
@@ -81,7 +76,6 @@ export async function handleInvocation(input: {
       depth,
       streamNamespace,
     })
-    pending = built.pending
     const rootAgentId = callStack[0] ?? agentId
 
     const exceeded = await preflightBudget({
@@ -94,7 +88,7 @@ export async function handleInvocation(input: {
         runId,
         streamNamespace,
       })
-      return { pending, runId }
+      return
     }
 
     await emitActivity(runId, 'Sub-agent: Streaming model work', {
@@ -157,8 +151,6 @@ export async function handleInvocation(input: {
     })
     throw err
   }
-
-  return { pending, runId }
 }
 
 async function prepareInvocationRun(input: {

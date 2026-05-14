@@ -579,7 +579,8 @@ In this phase the agent's `ToolSet` is just memory tools. No maintainer catalog 
 *Proactivity becomes self-improving.*
 
 - Independent dreaming ticker scheduled via `dreaming_interval_minutes` plus a forced run on each local-day boundary (using `user.timezone` + `localDateKey`). Manual trigger via `pokeDreaming` from `/agents/:id/dreams` "Dream now".
-- `agent_file_changes` table stores before/after content + sha256 + source attribution (`chat | heartbeat | dreaming | invocation`) for every event-touching DREAMS/GOALS/TASKS/logs path. UI surfaces diffs at `/agents/:id/dreams`.
+- Dreaming output is written into `DREAMS.md`, and the UI at `/agents/:id/dreams` reads the mirrored file from `agent_files`.
+- Event flushes mirror tracked architecture files into `agent_files`; there is no separate per-diff review log for dreaming or heartbeat edits.
 - Admin UI for the daily-log timeline and the DREAMS stream.
 - Tune the default base system prompt based on what the dreaming loop actually produces in practice.
 
@@ -596,7 +597,6 @@ In this phase the agent's `ToolSet` is just memory tools. No maintainer catalog 
 - **Agent sharing.** Relax "owner-only invocation" to ACLs. Makes the "credentials are the callee's owner's" rule load-bearing.
 - **Structured UI widgets over MD.** Parse `TASKS.md` / `CALENDAR.md` into shadow tables for filterable / interactive UI. The flat file cache is a stepping stone.
 - **User-defined tools.** No-code tool builder (e.g. "call this HTTPS endpoint with these params"). For now, sub-agents are the only user-authored "tools."
-- **Retention/pruning for `agent_file_changes`.** Unbounded today; cap N most recent per `(agent_id, path)` via cron, or store sha-only and look up content from `agent_files` history. Sized for v1.0.
 - **Multi-user orgs / workspaces / billing.**
 - **Per-agent opt-in to aggressive `SOUL.md` self-rewrite** (meta-dreaming agents).
 
