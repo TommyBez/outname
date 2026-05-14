@@ -1,6 +1,7 @@
 import 'server-only'
 import { createSlackAdapter, type SlackAdapter } from '@chat-adapter/slack'
-import { Chat } from 'chat'
+import type { ModelMessage } from 'ai'
+import { Chat, type Message as ChatMessage, toAiMessages } from 'chat'
 import { runChannelChatTurn } from '@/channels/server/dispatch'
 import type { IncomingChannelMessage } from '@/channels/server/types'
 import { SlackHybridState } from './state'
@@ -139,6 +140,8 @@ async function handleSlackMessage(input: {
   const externalRoutingKey =
     kind === 'dm' ? (message.author?.userId ?? channelId) : channelId
 
+  const modelMessages = await collectThreadHistory(thread)
+
   const incoming: IncomingChannelMessage = {
     channel: 'slack',
     teamId,
@@ -155,6 +158,7 @@ async function handleSlackMessage(input: {
       slackThreadTs: threadTs,
       slackTeamId: teamId,
     },
+    modelMessages,
   }
 
   const handled = await runChannelChatTurn({
@@ -180,5 +184,34 @@ async function handleSlackMessage(input: {
       kind,
       routingKey: externalRoutingKey,
     })
+  }
+}
+
+// Materialise the full Slack thread into AI SDK model messages. Chat SDK
+// auto-paginates and maps `author.isMe` to "assistant", so the LLM sees the
+// real conversation rather than just the latest user turn.
+async function collectThreadHistory(
+  thread: SlackThread
+): Promise<ModelMessage[] | undefined> {
+  try {
+    const messages: ChatMessage[] = []
+    for await (const m of thread.allMessages) {
+      messages.push(m)
+    }
+    if (messages.length === 0) {
+      return
+    }
+    // `includeNames` prefixes user turns with `[name]:` so multi-user channels
+    // stay attributable. Harmless in 1:1 DMs.
+    const aiMessages = await toAiMessages(messages, { includeNames: true })
+    return aiMessages as ModelMessage[]
+  } catch (err) {
+    // Fall back to "new turn only" — the workflow still works, just without
+    // history, which matches the pre-Chat-SDK-hydration behaviour.
+    console.warn('[slack] failed to hydrate thread history; falling back', {
+      err: err instanceof Error ? err.message : String(err),
+      threadId: thread.id,
+    })
+    return
   }
 }

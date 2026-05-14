@@ -72,6 +72,7 @@ export async function runChannelChatTurn(input: {
       conversationId: route.conversationId,
       extraPayload: slack?.payload,
       idempotencyKey: slack?.idempotencyKey,
+      modelMessages: message.modelMessages,
       source: message.channel,
       uiMessages: [userUiMessage],
     })
