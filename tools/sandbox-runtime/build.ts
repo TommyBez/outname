@@ -65,7 +65,7 @@ export async function ensureToolSandboxBuild(input: {
   } catch (err) {
     // Surface a terminal failure immediately so the UI does not spin forever.
     console.error(
-      '[v0] ensureToolSandboxBuild: start(buildToolSandboxWorkflow) failed',
+      'ensureToolSandboxBuild: start(buildToolSandboxWorkflow) failed',
       err
     )
     await db

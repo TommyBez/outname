@@ -38,7 +38,7 @@ export async function recordToolInvocation(input: {
       errorMessage: clipAuditErrorMessage(input.errorMessage),
     })
   } catch (err) {
-    console.error('[v0] recordToolInvocation failed', {
+    console.error('recordToolInvocation failed', {
       agentId: input.agentId,
       toolId: input.toolId,
       err,

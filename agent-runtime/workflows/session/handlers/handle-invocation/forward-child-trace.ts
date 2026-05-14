@@ -28,7 +28,7 @@ export function startForwardingChildTrace(input: {
     runId: input.runId,
     toolName: input.toolName,
   }).catch((err) => {
-    console.error('[v0] handleInvocation: failed to forward child trace', err)
+    console.error('handleInvocation: failed to forward child trace', err)
     return []
   })
 }
