@@ -31,7 +31,16 @@ export async function agentEventWorkflow(input: {
 
     const workflowRunId = currentWorkflowRunId(event.workflowRunId)
     await markAgentEventRunningStep({ eventId: event.id, workflowRunId })
-    await maybeStartPublisher({ event, workflowRunId })
+    const publisherWorkflowRunId = await maybeStartPublisher({
+      event,
+      workflowRunId,
+    })
+    if (publisherWorkflowRunId) {
+      await setAgentEventPublisherWorkflowRunIdStep({
+        eventId: event.id,
+        publisherWorkflowRunId,
+      })
+    }
     await dispatchAgentEvent(event)
     await markAgentEventTerminalStep({
       eventId: event.id,
@@ -56,20 +65,21 @@ export async function agentEventWorkflow(input: {
 async function maybeStartPublisher(input: {
   event: WorkflowAgentEvent
   workflowRunId: string | null
-}): Promise<void> {
+}): Promise<string | null> {
+  'use step'
   if (!input.workflowRunId) {
-    return
+    return null
   }
   const { event } = input
   if (event.type !== 'chat' || event.source !== 'slack') {
-    return
+    return null
   }
   if (event.publisherWorkflowRunId) {
-    return
+    return null
   }
   const payload = payloadAs<AgentEventPayloads['chat']>(event)
   if (!payload.slack) {
-    return
+    return null
   }
   const run = await start(slackStreamForwarderWorkflow, [
     {
@@ -79,10 +89,7 @@ async function maybeStartPublisher(input: {
       workflowRunId: input.workflowRunId,
     },
   ])
-  await setAgentEventPublisherWorkflowRunIdStep({
-    eventId: event.id,
-    publisherWorkflowRunId: run.runId,
-  })
+  return run.runId
 }
 
 async function dispatchAgentEvent(event: WorkflowAgentEvent): Promise<void> {
