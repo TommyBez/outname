@@ -1,13 +1,18 @@
 import 'server-only'
 import { and, desc, eq } from 'drizzle-orm'
 import { cacheLife, cacheTag } from 'next/cache'
+import {
+  type AgentMemoryFile,
+  listAgentFilesFromSandbox,
+  readAgentFileFromSandbox,
+  readCachedAgentFile,
+  readCachedAgentFiles,
+} from '@/agent-runtime/server/file-cache'
 import { db } from '@/shared/db'
 import {
   type Agent,
-  type AgentFile,
   type AgentTool,
   agent,
-  agentFiles,
   agentTools,
   type UserConnection,
   userConnections,
@@ -62,18 +67,38 @@ export async function getCachedAgentByIdForUser(
   return await getAgentByIdForUser(agentId, userId)
 }
 
-export async function getAgentLogFiles(agentId: string): Promise<AgentFile[]> {
-  const rows = await db
-    .select()
-    .from(agentFiles)
-    .where(eq(agentFiles.agentId, agentId))
-    .orderBy(desc(agentFiles.path))
-  return rows.filter((row) => row.path.startsWith('logs/'))
+export async function getAgentMemoryFiles(
+  agentId: string
+): Promise<AgentMemoryFile[]> {
+  const cached = await readCachedAgentFiles(agentId)
+  if (cached.length > 0) {
+    return cached.sort((a, b) => a.path.localeCompare(b.path))
+  }
+  return await listAgentFilesFromSandbox(agentId)
+}
+
+export async function getCachedAgentMemoryFiles(
+  agentId: string
+): Promise<AgentMemoryFile[]> {
+  'use cache'
+
+  cacheLife('minutes')
+  cacheTag(agentTag(agentId))
+  return await getAgentMemoryFiles(agentId)
+}
+
+export async function getAgentLogFiles(
+  agentId: string
+): Promise<AgentMemoryFile[]> {
+  const rows = await getAgentMemoryFiles(agentId)
+  return rows
+    .filter((row) => row.path.startsWith('logs/'))
+    .sort((a, b) => b.path.localeCompare(a.path))
 }
 
 export async function getCachedAgentLogFiles(
   agentId: string
-): Promise<AgentFile[]> {
+): Promise<AgentMemoryFile[]> {
   'use cache'
 
   cacheLife('minutes')
@@ -84,24 +109,17 @@ export async function getCachedAgentLogFiles(
 export async function getAgentMemoryFile(input: {
   agentId: string
   path: string
-}): Promise<AgentFile | null> {
-  const [row] = await db
-    .select()
-    .from(agentFiles)
-    .where(
-      and(
-        eq(agentFiles.agentId, input.agentId),
-        eq(agentFiles.path, input.path)
-      )
-    )
-    .limit(1)
-  return row ?? null
+}): Promise<AgentMemoryFile | null> {
+  return (
+    (await readCachedAgentFile(input)) ??
+    (await readAgentFileFromSandbox(input))
+  )
 }
 
 export async function getCachedAgentMemoryFile(input: {
   agentId: string
   path: string
-}): Promise<AgentFile | null> {
+}): Promise<AgentMemoryFile | null> {
   'use cache'
 
   cacheLife('minutes')

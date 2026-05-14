@@ -14,7 +14,7 @@ import { localDateKey } from '@/shared/server/timezone'
 
 type TriggerMode = 'heartbeat' | 'dreaming'
 
-// This hits the same workflow hook the scheduler uses, so manual triggers behave like real ticks.
+// Manual triggers enqueue the same event shape the scheduler creates.
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ agentId: string }> }
@@ -39,7 +39,7 @@ export async function POST(
 
   try {
     const mode = await readTriggerMode(req)
-    const { sessionRunId } =
+    const { eventId, sessionRunId } =
       mode === 'dreaming'
         ? await pokeDreaming({
             agent,
@@ -55,7 +55,12 @@ export async function POST(
     revalidatePath('/agents')
     revalidatePath('/')
 
-    return NextResponse.json({ ok: true, mode, sessionRunId })
+    return NextResponse.json({
+      eventId,
+      ok: true,
+      mode,
+      workflowRunId: sessionRunId,
+    })
   } catch (err) {
     console.error('[trigger] failed', err)
     return NextResponse.json(

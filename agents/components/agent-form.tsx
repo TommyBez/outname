@@ -7,6 +7,7 @@ import { createAgentAction, updateAgentAction } from '@/agents/server/actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import type { AgentScheduleMode } from '@/shared/agent-schedule'
 import type { ModelOption } from '@/shared/server/ai-gateway-models'
 import { BootstrapFiles } from './agent-form/bootstrap-files'
 import { ModelSelector } from './agent-form/model-selector'
@@ -41,11 +42,21 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
   const [heartbeatEnabled, setHeartbeatEnabled] = useState(
     initial?.heartbeatEnabled ?? true
   )
+  const [heartbeatScheduleMode, setHeartbeatScheduleMode] =
+    useState<AgentScheduleMode>(initial?.heartbeatScheduleMode ?? 'interval')
+  const [heartbeatScheduleTimes, setHeartbeatScheduleTimes] = useState(
+    initial?.heartbeatScheduleTimes ?? []
+  )
   const [intervalMinutes, setIntervalMinutes] = useState(
     initial?.heartbeatIntervalMinutes ?? 30
   )
   const [dreamingEnabled, setDreamingEnabled] = useState(
     initial?.dreamingEnabled ?? true
+  )
+  const [dreamingScheduleMode, setDreamingScheduleMode] =
+    useState<AgentScheduleMode>(initial?.dreamingScheduleMode ?? 'interval')
+  const [dreamingScheduleTimes, setDreamingScheduleTimes] = useState(
+    initial?.dreamingScheduleTimes ?? []
   )
   const [dreamingIntervalMinutes, setDreamingIntervalMinutes] = useState(
     initial?.dreamingIntervalMinutes ?? 1440
@@ -72,6 +83,8 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
         initial,
         values: {
           heartbeatEnabled,
+          heartbeatScheduleMode,
+          heartbeatScheduleTimes,
           identity,
           identityCard,
           instructions,
@@ -79,6 +92,8 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
           model,
           dreamingEnabled,
           dreamingIntervalMinutes,
+          dreamingScheduleMode,
+          dreamingScheduleTimes,
           stepLimitCustom,
           stepLimitMode,
           userProfile,
@@ -153,14 +168,22 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
           <HeartbeatSettings
             heartbeatEnabled={heartbeatEnabled}
             intervalMinutes={intervalMinutes}
+            scheduleMode={heartbeatScheduleMode}
+            scheduleTimes={heartbeatScheduleTimes}
             setHeartbeatEnabled={setHeartbeatEnabled}
             setIntervalMinutes={setIntervalMinutes}
+            setScheduleMode={setHeartbeatScheduleMode}
+            setScheduleTimes={setHeartbeatScheduleTimes}
           />
           <DreamingSettings
             dreamingEnabled={dreamingEnabled}
             dreamingIntervalMinutes={dreamingIntervalMinutes}
+            scheduleMode={dreamingScheduleMode}
+            scheduleTimes={dreamingScheduleTimes}
             setDreamingEnabled={setDreamingEnabled}
             setDreamingIntervalMinutes={setDreamingIntervalMinutes}
+            setScheduleMode={setDreamingScheduleMode}
+            setScheduleTimes={setDreamingScheduleTimes}
           />
         </div>
       </ConfigureSection>
@@ -212,6 +235,8 @@ async function saveAgent(input: {
   trimmedName: string
   values: {
     heartbeatEnabled: boolean
+    heartbeatScheduleMode: AgentScheduleMode
+    heartbeatScheduleTimes: string[]
     identity: string
     identityCard: string
     instructions: string
@@ -219,6 +244,8 @@ async function saveAgent(input: {
     model: string
     dreamingEnabled: boolean
     dreamingIntervalMinutes: number
+    dreamingScheduleMode: AgentScheduleMode
+    dreamingScheduleTimes: string[]
     stepLimitCustom: number
     stepLimitMode: StepLimitMode
     userProfile: string
@@ -237,9 +264,13 @@ async function saveAgent(input: {
         userProfileOriginal: input.initial.userProfile,
         model: input.values.model,
         heartbeatEnabled: input.values.heartbeatEnabled,
+        heartbeatScheduleMode: input.values.heartbeatScheduleMode,
+        heartbeatScheduleTimes: input.values.heartbeatScheduleTimes,
         heartbeatIntervalMinutes: input.values.intervalMinutes,
         dreamingEnabled: input.values.dreamingEnabled,
         dreamingIntervalMinutes: input.values.dreamingIntervalMinutes,
+        dreamingScheduleMode: input.values.dreamingScheduleMode,
+        dreamingScheduleTimes: input.values.dreamingScheduleTimes,
         stepLimitMode: input.values.stepLimitMode,
         stepLimitCustom: input.values.stepLimitCustom,
         soul: input.values.identity,
@@ -257,9 +288,13 @@ async function saveAgent(input: {
       userProfile: input.values.userProfile,
       model: input.values.model,
       heartbeatEnabled: input.values.heartbeatEnabled,
+      heartbeatScheduleMode: input.values.heartbeatScheduleMode,
+      heartbeatScheduleTimes: input.values.heartbeatScheduleTimes,
       heartbeatIntervalMinutes: input.values.intervalMinutes,
       dreamingEnabled: input.values.dreamingEnabled,
       dreamingIntervalMinutes: input.values.dreamingIntervalMinutes,
+      dreamingScheduleMode: input.values.dreamingScheduleMode,
+      dreamingScheduleTimes: input.values.dreamingScheduleTimes,
       stepLimitMode: input.values.stepLimitMode,
       stepLimitCustom: input.values.stepLimitCustom,
       soul: input.values.identity,

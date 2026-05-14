@@ -1,13 +1,17 @@
 import 'server-only'
 
 import { and, eq } from 'drizzle-orm'
-import { pokeHeartbeat } from '@/agent-runtime/server/session-events'
+import { writeBootstrapFiles } from '@/agents/server/bootstrap-files'
 import { refreshAgentCapabilitySummary } from '@/agents/server/capability-summary'
 import {
   clampInterval,
   normalizeNewlines,
 } from '@/agents/server/creation-service'
-import { enqueuePendingFileWrite } from '@/agents/server/pending-writes'
+import {
+  type AgentScheduleMode,
+  normalizeAgentScheduleMode,
+  normalizeScheduleTimesForMode,
+} from '@/shared/agent-schedule'
 import { db } from '@/shared/db'
 import { agent } from '@/shared/db/schema'
 import { isModelIdValid } from '@/shared/server/ai-gateway-models'
@@ -15,8 +19,12 @@ import { isModelIdValid } from '@/shared/server/ai-gateway-models'
 export interface UpdateAgentInput {
   dreamingEnabled: boolean
   dreamingIntervalMinutes: number
+  dreamingScheduleMode: AgentScheduleMode
+  dreamingScheduleTimes: string[]
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
+  heartbeatScheduleMode: AgentScheduleMode
+  heartbeatScheduleTimes: string[]
   id: string
   identityCard: string
   identityCardOriginal: string
@@ -52,15 +60,35 @@ export async function updateAgentForUser(
       : existing.model
   const heartbeatIntervalMinutes = clampInterval(input.heartbeatIntervalMinutes)
   const dreamingIntervalMinutes = clampInterval(input.dreamingIntervalMinutes)
+  const heartbeatScheduleMode = normalizeAgentScheduleMode(
+    input.heartbeatScheduleMode
+  )
+  const dreamingScheduleMode = normalizeAgentScheduleMode(
+    input.dreamingScheduleMode
+  )
+  const heartbeatScheduleTimes = normalizeScheduleTimesForMode({
+    enabled: input.heartbeatEnabled,
+    mode: heartbeatScheduleMode,
+    times: input.heartbeatScheduleTimes,
+  })
+  const dreamingScheduleTimes = normalizeScheduleTimesForMode({
+    enabled: input.dreamingEnabled,
+    mode: dreamingScheduleMode,
+    times: input.dreamingScheduleTimes,
+  })
 
-  const [updated] = await db
+  await db
     .update(agent)
     .set({
       name,
       model,
       heartbeatEnabled: input.heartbeatEnabled,
+      heartbeatScheduleMode,
+      heartbeatScheduleTimes,
       heartbeatIntervalMinutes,
       dreamingEnabled: input.dreamingEnabled,
+      dreamingScheduleMode,
+      dreamingScheduleTimes,
       dreamingIntervalMinutes,
       stepLimitMode: input.stepLimitMode,
       stepLimitCustom:
@@ -70,45 +98,36 @@ export async function updateAgentForUser(
       updatedAt: new Date(),
     })
     .where(eq(agent.id, input.id))
-    .returning()
 
   // Normalize both sides to LF so textarea round-trips do not manufacture
-  // phantom edits on Windows, and only enqueue writes when the operator really
+  // phantom edits on Windows, and only write files when the operator really
   // changed the file.
+  const files: Parameters<typeof writeBootstrapFiles>[0]['files'] = {}
   const identityCardNorm = normalizeNewlines(input.identityCard)
   const identityCardOrigNorm = normalizeNewlines(input.identityCardOriginal)
   if (identityCardNorm !== identityCardOrigNorm) {
-    await enqueuePendingFileWrite({
-      agentId: input.id,
-      path: 'IDENTITY.md',
-      content: identityCardNorm,
-    })
+    files['IDENTITY.md'] = identityCardNorm
   }
   const soulNorm = normalizeNewlines(input.soul)
   const soulOrigNorm = normalizeNewlines(input.soulOriginal)
   if (soulNorm !== soulOrigNorm) {
-    await enqueuePendingFileWrite({
-      agentId: input.id,
-      path: 'SOUL.md',
-      content: soulNorm,
-    })
+    files['SOUL.md'] = soulNorm
   }
   const instructionsNorm = normalizeNewlines(input.instructions)
   const instructionsOrigNorm = normalizeNewlines(input.instructionsOriginal)
   if (instructionsNorm !== instructionsOrigNorm) {
-    await enqueuePendingFileWrite({
-      agentId: input.id,
-      path: 'AGENTS.md',
-      content: instructionsNorm,
-    })
+    files['AGENTS.md'] = instructionsNorm
   }
   const userProfileNorm = normalizeNewlines(input.userProfile)
   const userProfileOrigNorm = normalizeNewlines(input.userProfileOriginal)
   if (userProfileNorm !== userProfileOrigNorm) {
-    await enqueuePendingFileWrite({
+    files['USER.md'] = userProfileNorm
+  }
+
+  if (Object.keys(files).length > 0) {
+    await writeBootstrapFiles({
       agentId: input.id,
-      path: 'USER.md',
-      content: userProfileNorm,
+      files,
     })
   }
 
@@ -118,21 +137,4 @@ export async function updateAgentForUser(
       'AGENTS.md': instructionsNorm,
     },
   })
-
-  // Poke heartbeat schedule changes immediately; dreaming schedule changes
-  // wait for their own scheduler/manual trigger.
-  if (
-    updated.enabled &&
-    (existing.heartbeatEnabled !== updated.heartbeatEnabled ||
-      existing.heartbeatIntervalMinutes !== updated.heartbeatIntervalMinutes)
-  ) {
-    try {
-      await pokeHeartbeat({ agent: updated })
-    } catch (err) {
-      console.error(
-        '[v0] updateAgentForUser: pokeHeartbeat after schedule change failed',
-        err
-      )
-    }
-  }
 }

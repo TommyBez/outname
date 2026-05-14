@@ -19,9 +19,8 @@ import {
 import type { ChatRole } from '@/shared/db/schema'
 import { conversationListTag } from '@/shared/server/cache-tags'
 
-// Authenticate, persist the newest user turn, dispatch into the long-lived
-// session workflow, then pipe the per-turn reply-token sub-stream back into
-// `useChat`.
+// Authenticate, persist the newest user turn, dispatch into an event workflow,
+// then pipe the per-turn reply stream back into `useChat`.
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ agentId: string }> }
@@ -96,8 +95,8 @@ export async function POST(
         type: CHAT_STATUS_PART_TYPE,
         id: CHAT_STATUS_PART_ID,
         data: {
-          message: 'Starting workflow session...',
-          phase: 'workflow-session',
+          message: 'Starting agent event...',
+          phase: 'agent-event',
           timestamp: new Date().toISOString(),
         },
         transient: true,
@@ -108,6 +107,19 @@ export async function POST(
         conversationId,
         uiMessages,
       })
+      if (!sessionRunId) {
+        writer.write({
+          type: CHAT_STATUS_PART_TYPE,
+          id: CHAT_STATUS_PART_ID,
+          data: {
+            message: 'Agent event queued...',
+            phase: 'agent-event',
+            timestamp: new Date().toISOString(),
+          },
+          transient: true,
+        })
+        return
+      }
 
       // `handleChat` writes `UIMessageChunk`s into this reply-token namespace.
       const readable = getRun(sessionRunId).getReadable<AgentChatChunk>({

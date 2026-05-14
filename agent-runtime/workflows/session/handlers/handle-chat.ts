@@ -20,7 +20,6 @@ import {
   preflightBudget,
   recordTokenUsageStep,
 } from '../steps/budget'
-import { drainPendingWrites } from '../steps/drain-pending-writes'
 import { emitChatStatus } from '../steps/emit-chat-status'
 
 // Workflow-side chat handler: boot the system sandbox, build the event-scoped
@@ -82,16 +81,12 @@ export async function handleChat(input: {
   })
   await startupSystemSandbox({ agentId })
 
-  // Sync operator-authored bootstrap edits before composing the prompt so the
-  // model sees the latest AGENTS.md / IDENTITY.md / SOUL.md content.
-  await emitActivity(sessionRunId, 'Chat: Syncing bootstrap edits')
-  await drainPendingWrites({ agentId })
-
   const { agent, meta, tools } = await buildAgent({
     agentId,
     runId: conversationId,
     currentRunId: sessionRunId,
     conversationId,
+    eventKind: 'chat',
     streamNamespace: replyToken,
   })
 

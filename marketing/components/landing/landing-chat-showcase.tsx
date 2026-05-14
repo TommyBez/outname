@@ -47,7 +47,7 @@ const showcaseScenarios: readonly ChatShowcaseScenario[] = [
     relativeTime: '2m ago',
     status: {
       message: 'Resolving attached tools…',
-      phase: 'workflow-session',
+      phase: 'agent-event',
       timestamp: '2026-05-13T07:30:00.000Z',
     },
     title: 'Morning triage',
@@ -213,8 +213,8 @@ const showcaseScenarios: readonly ChatShowcaseScenario[] = [
     prompt: '(heartbeat) Prepare and send the weekly digest.',
     relativeTime: 'yesterday',
     status: {
-      message: 'Mirroring memory changes…',
-      phase: 'pending-writes',
+      message: 'Saving sandbox memory…',
+      phase: 'agent-stream',
       timestamp: '2026-05-12T14:00:00.000Z',
     },
     title: 'Weekly digest',

@@ -35,7 +35,7 @@ export { ToolSandboxUnavailableError }
 function currentRunId(): string {
   // `getWorkflowMetadata()` is available inside `'use step'` bodies and
   // returns the runtime id of the workflow that's currently executing
-  // — for tool calls, the long-lived agent session run.
+  // for tool calls, the current agent event workflow run.
   return getWorkflowMetadata().workflowRunId
 }
 
@@ -91,7 +91,7 @@ export async function getOrStartToolSandbox(
   return sandbox
 }
 
-// `endOfEvent` calls this so each event boots fresh tool sandboxes. Failed
+// Event workflow cleanup calls this so each event boots fresh tool sandboxes. Failed
 // stops are logged and swallowed so cleanup never poisons a successful turn.
 export async function stopAllToolSandboxesForRun(): Promise<void> {
   let runId: string

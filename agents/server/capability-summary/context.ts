@@ -1,10 +1,13 @@
 import 'server-only'
 
-import { and, eq } from 'drizzle-orm'
-import { buildAgentsMdContent } from '@/agents/server/agents-md-template'
-import { readLatestPendingFileWrite } from '@/agents/server/pending-writes'
+import { eq } from 'drizzle-orm'
+import {
+  buildAgentsMdContent,
+  extractAgentsMdCustomInstructions,
+} from '@/agents/server/agents-md-template'
 import { db } from '@/shared/db'
-import { agent, agentFiles, agentTools } from '@/shared/db/schema'
+import { agent, agentTools } from '@/shared/db/schema'
+import { getAgentMemoryFile } from '@/shared/server/data'
 import { getMaintainerTool } from '@/tools/catalog/registry'
 import { childAgentIdFromSubAgentRow } from '@/tools/sub-agents/sub-agent-tool-name'
 import type {
@@ -54,25 +57,13 @@ async function loadAgentsMdContent(
 }
 
 async function readStoredAgentsMdContent(agentId: string): Promise<string> {
-  const pending = await readLatestPendingFileWrite({
+  const file = await getAgentMemoryFile({
     agentId,
     path: SUMMARY_BOOTSTRAP_PATH,
   })
-  if (pending) {
-    return buildEffectiveAgentsMd(pending.content)
-  }
-
-  const [file] = await db
-    .select({ content: agentFiles.content })
-    .from(agentFiles)
-    .where(
-      and(
-        eq(agentFiles.agentId, agentId),
-        eq(agentFiles.path, SUMMARY_BOOTSTRAP_PATH)
-      )
-    )
-    .limit(1)
-  return file?.content ?? ''
+  return file?.content
+    ? buildEffectiveAgentsMd(extractAgentsMdCustomInstructions(file.content))
+    : ''
 }
 
 function buildEffectiveAgentsMd(

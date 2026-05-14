@@ -1,0 +1,178 @@
+import 'server-only'
+import { createHash } from 'node:crypto'
+import { Redis } from '@upstash/redis'
+import {
+  getSystemSandbox,
+  SYSTEM_SANDBOX_ROOT,
+} from '@/agent-runtime/server/agent-sandbox'
+import { mergeCachedAgentFilePaths } from '@/agent-runtime/shared/file-cache-index'
+import { listTrackedArchitectureFiles } from '@/agent-runtime/workflows/session/tools/sandbox-file-helpers/list'
+
+export interface AgentMemoryFile {
+  content: string
+  path: string
+  sha256: string
+  updatedAt: Date
+}
+
+const FILE_INDEX_SUFFIX = 'files:index'
+
+let redisClient: Redis | null | undefined
+
+function getRedis(): Redis | null {
+  if (redisClient !== undefined) {
+    return redisClient
+  }
+
+  const url = process.env.UPSTASH_REDIS_REST_URL
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN
+  redisClient = url && token ? new Redis({ token, url }) : null
+  return redisClient
+}
+
+export async function refreshAgentFileCache(
+  agentId: string
+): Promise<AgentMemoryFile[]> {
+  const sandbox = await getSystemSandbox(agentId)
+  const paths = await listTrackedArchitectureFiles(sandbox)
+  const files: AgentMemoryFile[] = []
+
+  for (const path of paths) {
+    const buf = await sandbox
+      .readFileToBuffer({ path: `${SYSTEM_SANDBOX_ROOT}/${path}` })
+      .catch(() => null)
+    if (!buf) {
+      continue
+    }
+    const content = buf.toString('utf8')
+    files.push({
+      content,
+      path,
+      sha256: createHash('sha256').update(content).digest('hex'),
+      updatedAt: new Date(),
+    })
+  }
+
+  await writeCachedAgentFiles(agentId, files)
+  return files
+}
+
+export async function readAgentFileFromSandbox(input: {
+  agentId: string
+  path: string
+}): Promise<AgentMemoryFile | null> {
+  const sandbox = await getSystemSandbox(input.agentId).catch(() => null)
+  if (!sandbox) {
+    return null
+  }
+
+  const buf = await sandbox
+    .readFileToBuffer({ path: `${SYSTEM_SANDBOX_ROOT}/${input.path}` })
+    .catch(() => null)
+  if (!buf) {
+    return null
+  }
+
+  const content = buf.toString('utf8')
+  const file = {
+    content,
+    path: input.path,
+    sha256: createHash('sha256').update(content).digest('hex'),
+    updatedAt: new Date(),
+  }
+  await writeCachedAgentFiles(input.agentId, [file], { merge: true })
+  return file
+}
+
+export async function listAgentFilesFromSandbox(
+  agentId: string
+): Promise<AgentMemoryFile[]> {
+  return await refreshAgentFileCache(agentId).catch(() => [])
+}
+
+export async function readCachedAgentFiles(
+  agentId: string
+): Promise<AgentMemoryFile[]> {
+  const redis = getRedis()
+  if (!redis) {
+    return []
+  }
+
+  const paths = (await redis.get<string[]>(indexKey(agentId))) ?? []
+  if (paths.length === 0) {
+    return []
+  }
+
+  const records = await Promise.all(
+    paths.map((path) =>
+      redis.get<CachedAgentMemoryFile>(fileKey(agentId, path))
+    )
+  )
+  return records.flatMap((record) => (record ? [fromCached(record)] : []))
+}
+
+export async function readCachedAgentFile(input: {
+  agentId: string
+  path: string
+}): Promise<AgentMemoryFile | null> {
+  const redis = getRedis()
+  if (!redis) {
+    return null
+  }
+  const record = await redis.get<CachedAgentMemoryFile>(
+    fileKey(input.agentId, input.path)
+  )
+  return record ? fromCached(record) : null
+}
+
+export async function writeCachedAgentFiles(
+  agentId: string,
+  files: AgentMemoryFile[],
+  options: { merge?: boolean } = {}
+): Promise<void> {
+  const redis = getRedis()
+  if (!redis) {
+    return
+  }
+
+  const existingPaths = options.merge
+    ? ((await redis.get<string[]>(indexKey(agentId))) ?? [])
+    : []
+  const paths = mergeCachedAgentFilePaths(existingPaths, files)
+
+  await Promise.all([
+    redis.set(indexKey(agentId), paths),
+    ...files.map((file) =>
+      redis.set(fileKey(agentId, file.path), toCached(file))
+    ),
+  ])
+}
+
+function indexKey(agentId: string): string {
+  return `agent:${agentId}:${FILE_INDEX_SUFFIX}`
+}
+
+function fileKey(agentId: string, path: string): string {
+  return `agent:${agentId}:files:${encodeURIComponent(path)}`
+}
+
+interface CachedAgentMemoryFile {
+  content: string
+  path: string
+  sha256: string
+  updatedAt: string
+}
+
+function toCached(file: AgentMemoryFile): CachedAgentMemoryFile {
+  return {
+    ...file,
+    updatedAt: file.updatedAt.toISOString(),
+  }
+}
+
+function fromCached(file: CachedAgentMemoryFile): AgentMemoryFile {
+  return {
+    ...file,
+    updatedAt: new Date(file.updatedAt),
+  }
+}

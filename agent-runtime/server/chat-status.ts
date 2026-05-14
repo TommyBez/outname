@@ -4,9 +4,8 @@ export const CHAT_STATUS_PART_ID = 'workflow-bootstrap' as const
 export const CHAT_STATUS_PART_TYPE = 'data-workflow-status' as const
 
 export const CHAT_STATUS_PHASES = [
-  'workflow-session',
+  'agent-event',
   'system-sandbox',
-  'pending-writes',
   'agent-build',
   'agent-stream',
 ] as const

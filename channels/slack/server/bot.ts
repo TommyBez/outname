@@ -43,8 +43,9 @@ function buildBundle(): SlackBotBundle {
     // Persist owner-scoped installations in `channel_installations`; locks and
     // subscriptions stay in Redis/memory via the inner backing adapter.
     state: new SlackHybridState(),
-    // Dropping overlapping messages avoids racing the same agent against itself.
-    concurrency: 'drop',
+    // The canonical queue lives in `agent_events`; this only protects webhook
+    // ingestion from overlapping handler work inside the Chat SDK.
+    concurrency: 'queue',
   })
 
   registerHandlers(bot)
@@ -124,6 +125,7 @@ async function handleSlackMessage(input: {
     return
   }
   const { channelId, threadTs } = slackThread
+  const messageTs = (message.raw as SlackRawMessage | undefined)?.ts ?? threadTs
 
   const teamId = extractTeamId(message)
   if (!teamId) {
@@ -149,6 +151,7 @@ async function handleSlackMessage(input: {
     text,
     threadMetadata: {
       slackChannel: channelId,
+      slackMessageTs: messageTs,
       slackThreadTs: threadTs,
       slackTeamId: teamId,
     },

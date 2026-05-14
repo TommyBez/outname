@@ -1,4 +1,5 @@
 import { formatAgentCadence } from '@/agents/format'
+import type { AgentScheduleMode } from '@/shared/agent-schedule'
 import type { ModelOption } from '@/shared/server/ai-gateway-models'
 
 export const INTERVAL_OPTIONS = [
@@ -42,8 +43,12 @@ export type StepLimitMode = 'custom' | 'grind' | 'high' | 'low' | 'medium'
 export interface AgentFormInitial {
   dreamingEnabled: boolean
   dreamingIntervalMinutes: number
+  dreamingScheduleMode: AgentScheduleMode
+  dreamingScheduleTimes: string[]
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
+  heartbeatScheduleMode: AgentScheduleMode
+  heartbeatScheduleTimes: string[]
   id: string
   identity: string
   identityCard: string
