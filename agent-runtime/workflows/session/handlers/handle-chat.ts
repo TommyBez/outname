@@ -22,20 +22,16 @@ import {
 } from '../steps/budget'
 import { drainPendingWrites } from '../steps/drain-pending-writes'
 import { emitChatStatus } from '../steps/emit-chat-status'
-import {
-  createPendingWrites,
-  type PendingWrites,
-} from '../tools/pending-writes'
 
 // Workflow-side chat handler: boot the system sandbox, build the event-scoped
-// agent, stream into the reply-token namespace, and return pending file writes
-// for `endOfEvent`. Tool bodies cross back into `"use step"` as needed.
+// agent, and stream into the reply-token namespace. Tool bodies cross back into
+// `"use step"` as needed.
 export async function handleChat(input: {
   agentId: string
   conversationId: string
   replyToken: string
   uiMessages: UIMessage[]
-}): Promise<{ pending: PendingWrites }> {
+}): Promise<void> {
   const { agentId, conversationId, replyToken, uiMessages } = input
   const sessionRunId = await currentSessionRunId(conversationId)
 
@@ -77,7 +73,7 @@ export async function handleChat(input: {
       await emitActivity(sessionRunId, 'Chat: Budget refusal saved', {
         conversationId,
       })
-      return { pending: createPendingWrites() }
+      return
     }
   }
 
@@ -91,7 +87,7 @@ export async function handleChat(input: {
   await emitActivity(sessionRunId, 'Chat: Syncing bootstrap edits')
   await drainPendingWrites({ agentId })
 
-  const { agent, meta, pending, tools } = await buildAgent({
+  const { agent, meta, tools } = await buildAgent({
     agentId,
     runId: conversationId,
     currentRunId: sessionRunId,
@@ -185,8 +181,6 @@ export async function handleChat(input: {
       uiMessages: persistedMessages,
     })
     await emitActivity(sessionRunId, 'Chat: Response saved', { conversationId })
-
-    return { pending }
   } catch (error) {
     await streamPromise.catch(() => {
       // Let the agent stream settle before forcing a manual close.

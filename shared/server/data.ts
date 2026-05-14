@@ -5,10 +5,8 @@ import { db } from '@/shared/db'
 import {
   type Agent,
   type AgentFile,
-  type AgentFileChange,
   type AgentTool,
   agent,
-  agentFileChanges,
   agentFiles,
   agentTools,
   type UserConnection,
@@ -109,35 +107,6 @@ export async function getCachedAgentMemoryFile(input: {
   cacheLife('minutes')
   cacheTag(agentTag(input.agentId))
   return await getAgentMemoryFile(input)
-}
-
-export async function getAgentFileChanges(input: {
-  agentId: string
-  limit?: number
-  path?: string
-}): Promise<AgentFileChange[]> {
-  const filters = [eq(agentFileChanges.agentId, input.agentId)]
-  if (input.path) {
-    filters.push(eq(agentFileChanges.path, input.path))
-  }
-  return await db
-    .select()
-    .from(agentFileChanges)
-    .where(and(...filters))
-    .orderBy(desc(agentFileChanges.createdAt))
-    .limit(input.limit ?? 50)
-}
-
-export async function getCachedAgentFileChanges(input: {
-  agentId: string
-  limit?: number
-  path?: string
-}): Promise<AgentFileChange[]> {
-  'use cache'
-
-  cacheLife('minutes')
-  cacheTag(agentTag(input.agentId))
-  return await getAgentFileChanges(input)
 }
 
 export async function getUserConnections(

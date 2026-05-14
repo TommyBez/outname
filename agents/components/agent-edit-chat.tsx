@@ -26,12 +26,7 @@ import {
 import { renderMessagePart } from './agent-edit-chat/tool-parts'
 import type { AgentEditChatProps } from './agent-edit-chat/types'
 
-export function AgentEditChat({
-  agentId,
-  currentBudget,
-  currentMarkdownFiles,
-  currentSettings,
-}: AgentEditChatProps) {
+export function AgentEditChat({ agentId, currentBudget }: AgentEditChatProps) {
   const [input, setInput] = useState('')
   const router = useRouter()
   const {
@@ -86,8 +81,6 @@ export function AgentEditChat({
                     renderMessagePart({
                       addToolApprovalResponse,
                       currentBudget,
-                      currentMarkdownFiles,
-                      currentSettings,
                       key: `${message.id}-${index}`,
                       part,
                       sendMessage,

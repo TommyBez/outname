@@ -18,10 +18,6 @@ import { drainPendingWrites } from '../steps/drain-pending-writes'
 import { finalizeRun } from '../steps/finalize-run'
 import { initRun } from '../steps/init-run'
 import {
-  createPendingWrites,
-  type PendingWrites,
-} from '../tools/pending-writes'
-import {
   BUDGET_EXCEEDED,
   checkBudgetOrFinalize,
 } from './handle-heartbeat/budget'
@@ -42,7 +38,7 @@ export async function handleHeartbeat(input: {
   manual?: boolean
   mode?: HeartbeatMode
   scheduledAt?: string
-}): Promise<{ pending: PendingWrites; runId: string }> {
+}): Promise<void> {
   const { agentId } = input
   const mode = input.mode ?? 'normal'
   const nowIso = input.scheduledAt ?? new Date().toISOString()
@@ -68,17 +64,13 @@ export async function handleHeartbeat(input: {
         localDate: dreamingLocalDate,
         mode,
       })
-      return { pending: createPendingWrites(), runId }
+      return
     }
 
     const previousIso = await readPreviousCompletion(agentId, mode)
     await prepareHeartbeatSandbox({ agentId, mode, previousIso, runId })
 
-    const {
-      agent: durableAgent,
-      meta,
-      pending,
-    } = await buildAgent({
+    const { agent: durableAgent, meta } = await buildAgent({
       agentId,
       runId,
       currentRunId: runId,
@@ -126,7 +118,6 @@ export async function handleHeartbeat(input: {
       runId,
       stepLimitInput,
     })
-    return { pending, runId }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     await emitActivity(runId, activityMessage(mode, 'Run failed'), { message })

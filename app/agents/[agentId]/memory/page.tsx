@@ -47,7 +47,7 @@ async function ResolvedAgentMemoryPage({ params }: { params: Params }) {
           title="Timeline"
         />
         <MemoryCard
-          description="DREAMS.md plus reviewable changes proposed to GOALS.md and TASKS.md."
+          description="DREAMS.md and the latest dreaming output captured for this agent."
           href={`/agents/${agent.id}/memory/dreams`}
           title="Dreaming"
         />
