@@ -1,5 +1,4 @@
-import assert from 'node:assert/strict'
-import test from 'node:test'
+import { expect, test } from 'vitest'
 import {
   eventActivityNamespace,
   replyNamespaceForEvent,
@@ -11,25 +10,23 @@ import {
 } from './agent-event-keys'
 
 test('slack event keys isolate duplicate messages from same-thread ordering', () => {
-  assert.equal(
+  expect(
     slackIdempotencyKey({
       agentId: 'agent_123',
       channelId: 'C123',
       messageTs: '1715680800.123456',
       teamId: 'T123',
-    }),
-    'slack:T123:C123:1715680800.123456:agent_123'
-  )
+    })
+  ).toBe('slack:T123:C123:1715680800.123456:agent_123')
 
-  assert.equal(
+  expect(
     slackConcurrencyKey({
       agentId: 'agent_123',
       channelId: 'C123',
       teamId: 'T123',
       threadTs: '1715680000.000001',
-    }),
-    'slack:T123:C123:1715680000.000001:agent_123'
-  )
+    })
+  ).toBe('slack:T123:C123:1715680000.000001:agent_123')
 })
 
 test('scheduled event keys bucket heartbeat and dreaming independently', () => {
@@ -44,8 +41,7 @@ test('scheduled event keys bucket heartbeat and dreaming independently', () => {
     type: 'heartbeat',
   })
 
-  assert.equal(
-    heartbeatKey,
+  expect(heartbeatKey).toBe(
     scheduledBucketKey({
       agentId: 'agent_123',
       intervalMinutes: 5,
@@ -53,8 +49,7 @@ test('scheduled event keys bucket heartbeat and dreaming independently', () => {
       type: 'heartbeat',
     })
   )
-  assert.notEqual(
-    heartbeatKey,
+  expect(heartbeatKey).not.toBe(
     scheduledBucketKey({
       agentId: 'agent_123',
       intervalMinutes: 5,
@@ -62,8 +57,7 @@ test('scheduled event keys bucket heartbeat and dreaming independently', () => {
       type: 'heartbeat',
     })
   )
-  assert.notEqual(
-    heartbeatKey,
+  expect(heartbeatKey).not.toBe(
     scheduledBucketKey({
       agentId: 'agent_123',
       intervalMinutes: 5,
@@ -74,45 +68,41 @@ test('scheduled event keys bucket heartbeat and dreaming independently', () => {
 })
 
 test('scheduled concurrency and stream namespaces are stable', () => {
-  assert.equal(
+  expect(
     scheduledConcurrencyKey({
       agentId: 'agent_123',
       intervalMinutes: 5,
       now: new Date('2026-05-14T09:07:12.000Z'),
       type: 'heartbeat',
-    }),
-    'sched:agent_123:heartbeat:5929165'
-  )
-  assert.equal(
+    })
+  ).toBe('sched:agent_123:heartbeat:5929165')
+  expect(
     scheduledConcurrencyKey({
       agentId: 'agent_123',
       intervalMinutes: 5,
       now: new Date('2026-05-14T09:07:12.000Z'),
       type: 'dreaming',
-    }),
-    'sched:agent_123:dreaming:5929165'
-  )
-  assert.equal(replyNamespaceForEvent('event_123'), 'reply:event_123')
-  assert.equal(eventActivityNamespace('run_123'), 'events:run_123')
+    })
+  ).toBe('sched:agent_123:dreaming:5929165')
+  expect(replyNamespaceForEvent('event_123')).toBe('reply:event_123')
+  expect(eventActivityNamespace('run_123')).toBe('events:run_123')
 })
 
 test('daily scheduled keys use local date and HHmm slot', () => {
-  assert.equal(
+  expect(
     scheduledDailyKey({
       agentId: 'agent_123',
       localDate: '2026-05-14',
       time: '09:00',
       type: 'heartbeat',
-    }),
-    'sched:agent_123:heartbeat:daily:2026-05-14:0900'
-  )
-  assert.equal(
+    })
+  ).toBe('sched:agent_123:heartbeat:daily:2026-05-14:0900')
+  expect(
     scheduledDailyKey({
       agentId: 'agent_123',
       localDate: '2026-05-14',
       time: '17:30',
       type: 'dreaming',
-    }),
-    'sched:agent_123:dreaming:daily:2026-05-14:1730'
-  )
+    })
+  ).toBe('sched:agent_123:dreaming:daily:2026-05-14:1730')
 })

@@ -1,5 +1,4 @@
-import assert from 'node:assert/strict'
-import test from 'node:test'
+import { expect, test } from 'vitest'
 import { describeSlackAttachments, extractSlackThread } from './thread-ids'
 
 test('extractSlackThread uses ts for top-level DM messages', () => {
@@ -14,7 +13,7 @@ test('extractSlackThread uses ts for top-level DM messages', () => {
     }
   )
 
-  assert.deepEqual(result, {
+  expect(result).toEqual({
     channelId: 'D123',
     threadTs: '1234567890.123456',
   })
@@ -33,7 +32,7 @@ test('extractSlackThread prefers thread_ts when a reply is already threaded', ()
     }
   )
 
-  assert.deepEqual(result, {
+  expect(result).toEqual({
     channelId: 'D123',
     threadTs: '1234567890.123456',
   })
@@ -48,7 +47,7 @@ test('extractSlackThread falls back to SDK ids when raw payload is missing', () 
     undefined
   )
 
-  assert.deepEqual(result, {
+  expect(result).toEqual({
     channelId: 'D123',
     threadTs: '1234567890.123456',
   })
@@ -63,13 +62,13 @@ test('extractSlackThread rejects malformed SDK ids with an empty thread suffix',
     undefined
   )
 
-  assert.equal(result, null)
+  expect(result).toBeNull()
 })
 
 test('describeSlackAttachments returns empty string when no files are present', () => {
-  assert.equal(describeSlackAttachments(undefined), '')
-  assert.equal(describeSlackAttachments({}), '')
-  assert.equal(describeSlackAttachments({ files: [] }), '')
+  expect(describeSlackAttachments(undefined)).toBe('')
+  expect(describeSlackAttachments({})).toBe('')
+  expect(describeSlackAttachments({ files: [] })).toBe('')
 })
 
 test('describeSlackAttachments lists name and mimetype for each file', () => {
@@ -79,7 +78,7 @@ test('describeSlackAttachments lists name and mimetype for each file', () => {
       { name: 'report.pdf', mimetype: 'application/pdf' },
     ],
   })
-  assert.equal(result, 'cover.png (image/png), report.pdf (application/pdf)')
+  expect(result).toBe('cover.png (image/png), report.pdf (application/pdf)')
 })
 
 test('describeSlackAttachments falls back to title then a generic label', () => {
@@ -89,12 +88,12 @@ test('describeSlackAttachments falls back to title then a generic label', () => 
       { mimetype: 'image/gif' },
     ],
   })
-  assert.equal(result, 'Untitled image (image/jpeg), attachment (image/gif)')
+  expect(result).toBe('Untitled image (image/jpeg), attachment (image/gif)')
 })
 
 test('describeSlackAttachments omits the mimetype when missing', () => {
   const result = describeSlackAttachments({
     files: [{ name: 'notes.txt' }],
   })
-  assert.equal(result, 'notes.txt')
+  expect(result).toBe('notes.txt')
 })

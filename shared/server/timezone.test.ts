@@ -1,5 +1,4 @@
-import assert from 'node:assert/strict'
-import test from 'node:test'
+import { expect, test } from 'vitest'
 import { localDateTimeParts, localDateTimeToUtc } from './timezone'
 
 test('localDateTimeParts formats local date and time in timezone', () => {
@@ -7,8 +6,8 @@ test('localDateTimeParts formats local date and time in timezone', () => {
     new Date('2026-05-14T16:03:00.000Z'),
     'Europe/Rome'
   )
-  assert.equal(parts.date, '2026-05-14')
-  assert.equal(parts.time, '18:03')
+  expect(parts.date).toBe('2026-05-14')
+  expect(parts.time).toBe('18:03')
 })
 
 test('localDateTimeToUtc converts a valid local slot to UTC', () => {
@@ -17,7 +16,7 @@ test('localDateTimeToUtc converts a valid local slot to UTC', () => {
     time: '09:00',
     timezone: 'Europe/Rome',
   })
-  assert.equal(utc?.toISOString(), '2026-05-14T07:00:00.000Z')
+  expect(utc?.toISOString()).toBe('2026-05-14T07:00:00.000Z')
 })
 
 test('localDateTimeToUtc falls back to UTC for invalid timezone', () => {
@@ -26,5 +25,5 @@ test('localDateTimeToUtc falls back to UTC for invalid timezone', () => {
     time: '09:00',
     timezone: 'Not/A_Zone',
   })
-  assert.equal(utc?.toISOString(), '2026-05-14T09:00:00.000Z')
+  expect(utc?.toISOString()).toBe('2026-05-14T09:00:00.000Z')
 })

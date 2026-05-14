@@ -95,13 +95,16 @@
     "@types/node": "^22",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@workflow/rollup": "^4.0.4",
+    "@workflow/vitest": "^4.0.5",
     "drizzle-kit": "^0.31.10",
     "postcss": "^8.5",
     "tailwindcss": "^4.2.0",
     "tsx": "^4.21.0",
     "tw-animate-css": "1.3.3",
     "typescript": "5.7.3",
-    "ultracite": "7.6.2"
+    "ultracite": "7.6.2",
+    "vitest": "^4.1.6"
   },
   "name": "my-project",
   "scripts": {
@@ -119,7 +122,12 @@
     "reset:workflow": "rm -rf .swc .next app/.well-known",
     "check": "ultracite check",
     "fix": "ultracite fix",
-    "test": "tsx --test"
+    "test": "vitest run --config vitest.config.ts",
+    "test:typecheck": "tsc --noEmit -p tsconfig.vitest.json",
+    "test:workflow": "pnpm test:workflow:unit && pnpm test:workflow:integration && pnpm test:workflow:server",
+    "test:workflow:integration": "cd test/workflow-fixtures && ../../node_modules/.bin/vitest run --config ../../vitest.workflow.config.ts",
+    "test:workflow:server": "cd test/workflow-server-app && ../../node_modules/.bin/vitest run --config ../../vitest.workflow-server.config.ts",
+    "test:workflow:unit": "vitest run --config vitest.workflow-unit.config.ts"
   },
   "version": "0.1.0",
   "private": true
