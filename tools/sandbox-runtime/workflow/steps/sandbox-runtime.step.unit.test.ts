@@ -191,17 +191,23 @@ describe('runSandboxBuild', () => {
       stop,
     })
 
-    const error = await runSandboxBuild({
-      buildId: 'build_123',
-      manifestId: 'manifest_123',
-      setup: 'exit 7',
-    }).catch((err: unknown) => err as Error)
+    try {
+      await runSandboxBuild({
+        buildId: 'build_123',
+        manifestId: 'manifest_123',
+        setup: 'exit 7',
+      })
+      throw new Error('Expected runSandboxBuild to throw')
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error)
+      const message = error instanceof Error ? error.message : String(error)
 
-    expect(error.message).toContain('setup script exited with code 7')
-    expect(error.message).toContain('e'.repeat(4000))
-    expect(error.message).not.toContain('e'.repeat(4001))
-    expect(error.message).toContain('o'.repeat(1000))
-    expect(error.message).not.toContain('o'.repeat(1001))
+      expect(message).toContain('setup script exited with code 7')
+      expect(message).toContain('e'.repeat(4000))
+      expect(message).not.toContain('e'.repeat(4001))
+      expect(message).toContain('o'.repeat(1000))
+      expect(message).not.toContain('o'.repeat(1001))
+    }
     expect(stop).toHaveBeenCalledTimes(1)
   })
 })
