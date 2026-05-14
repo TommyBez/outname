@@ -241,6 +241,12 @@
       "skillPath": "skills/social-content/SKILL.md",
       "computedHash": "755e9cc7e222bc6196972e749a4eaebf97f9827a331a19265f220bbf7e3c234e"
     },
+    "upstash-redis-js": {
+      "source": "upstash/skills",
+      "sourceType": "github",
+      "skillPath": "skills/upstash-redis-js/SKILL.md",
+      "computedHash": "2ce020fc849bbbb20a6266944d99a9499d54a3cde335fa17763f58542e670c69"
+    },
     "video": {
       "source": "coreyhaines31/marketingskills",
       "sourceType": "github",
