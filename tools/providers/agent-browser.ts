@@ -1,5 +1,6 @@
 import 'server-only'
 import { z } from 'zod'
+import type { MaintainerTool } from '@/tools/catalog/types'
 import {
   defineSandboxTool,
   toolError,
@@ -36,29 +37,24 @@ const KNOWN_COMMANDS = [
   'frames',
 ] as const
 
-const inputSchema = z.object({
-  command: z
-    .string()
-    .min(1)
-    .describe(
-      `agent-browser subcommand. This sandbox pins agent-browser to the Lightpanda engine. See https://agent-browser.dev for the full reference. Common: ${KNOWN_COMMANDS.join(', ')}.`
-    ),
-  args: z
-    .array(z.string())
-    .default([])
-    .describe(
-      'Positional + flag arguments to pass to the subcommand, in order. Example: ["https://example.com"] for `open`, or ["-i", "-c"] for `snapshot`. Quoting is handled by the runtime. Chrome-only flags such as headed mode, persistent profiles, storage state, and file access are unavailable under the Lightpanda engine.'
-    ),
-  timeoutMs: z
-    .number()
-    .int()
-    .min(500)
-    .max(120_000)
-    .default(30_000)
-    .describe(
-      'Per-call wall-clock budget. Most commands return in under 5 seconds; bump this only when you expect a long page load or a long script.'
-    ),
-})
+function createInputSchema(input: {
+  argsDescription: string
+  commandDescription: string
+}) {
+  return z.object({
+    command: z.string().min(1).describe(input.commandDescription),
+    args: z.array(z.string()).default([]).describe(input.argsDescription),
+    timeoutMs: z
+      .number()
+      .int()
+      .min(500)
+      .max(120_000)
+      .default(30_000)
+      .describe(
+        'Per-call wall-clock budget. Most commands return in under 5 seconds; bump this only when you expect a long page load or a long script.'
+      ),
+  })
+}
 
 interface RunAgentBrowserInput {
   args: string[]
@@ -113,22 +109,50 @@ async function runAgentBrowser(input: {
   }
 }
 
-export const agentBrowserTool = defineSandboxTool({
+interface AgentBrowserToolOptions {
+  argsDescription: string
+  commandDescription: string
+  description: string
+  displayName: string
+  id: string
+  manifestId: string
+}
+
+export function createAgentBrowserTool(
+  input: AgentBrowserToolOptions
+): MaintainerTool {
+  const inputSchema = createInputSchema({
+    commandDescription: input.commandDescription,
+    argsDescription: input.argsDescription,
+  })
+
+  return defineSandboxTool({
+    id: input.id,
+    category: 'browser',
+    displayName: input.displayName,
+    description: input.description,
+    manifestId: input.manifestId,
+    inputSchema,
+    async execute({ input: { command, args, timeoutMs }, ctx }) {
+      const result = await runAgentBrowser({
+        run: ctx.sandbox.run,
+        value: { command, args: args ?? [], timeoutMs: timeoutMs ?? 30_000 },
+      })
+      if (result.timedOut) {
+        return toolError('provider_error', result.stderr)
+      }
+      return toolSuccess(result)
+    },
+  })
+}
+
+export const agentBrowserTool = createAgentBrowserTool({
   id: 'agent_browser',
-  category: 'browser',
   displayName: 'agent-browser',
-  description:
-    'Drive a headless browser via the agent-browser CLI configured for the Lightpanda engine in this sandbox. The browser session persists across calls for the duration of this conversation, so you can chain `open` -> `snapshot` -> `click @ref` etc. Chrome-only features such as headed mode, persistent profiles, storage state, and file access are unavailable; screenshot support depends on Lightpanda CDP coverage. Returns exit code, stdout, and stderr per call.',
   manifestId: 'agent-browser',
-  inputSchema,
-  async execute({ input: { command, args, timeoutMs }, ctx }) {
-    const result = await runAgentBrowser({
-      run: ctx.sandbox.run,
-      value: { command, args: args ?? [], timeoutMs: timeoutMs ?? 30_000 },
-    })
-    if (result.timedOut) {
-      return toolError('provider_error', result.stderr)
-    }
-    return toolSuccess(result)
-  },
+  commandDescription: `agent-browser subcommand. This sandbox runs agent-browser on its default Chrome engine. See https://agent-browser.dev for the full reference. Common: ${KNOWN_COMMANDS.join(', ')}.`,
+  argsDescription:
+    'Positional + flag arguments to pass to the subcommand, in order. Example: ["https://example.com"] for `open`, or ["-i", "-c"] for `snapshot`. Quoting is handled by the runtime. This sandbox uses agent-browser on its default Chrome engine and bundled Chromium.',
+  description:
+    'Drive a headless browser via the agent-browser CLI using its default Chrome engine in this sandbox. The browser session persists across calls for the duration of this conversation, so you can chain `open` -> `snapshot` -> `click @ref` etc. Returns exit code, stdout, and stderr per call.',
 })

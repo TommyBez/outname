@@ -7,36 +7,18 @@ export const agentBrowserSetupScript = String.raw`#!/usr/bin/env bash
 # triggers a rebuild on the next attach.
 set -euo pipefail
 
-# 1. Install Lightpanda and pin agent-browser to it for every invocation.
-#    The official Lightpanda docs currently publish a Linux x86_64 binary.
-LIGHTPANDA_INSTALL_PATH="/usr/local/bin/lightpanda"
-LIGHTPANDA_DOWNLOAD_URL="https://github.com/lightpanda-io/browser/releases/download/nightly/lightpanda-x86_64-linux"
+# 1. Chromium runtime libraries. agent-browser drives a real Chromium
+#    binary under the hood, which needs the same shared libs Playwright
+#    documents for Amazon Linux / Fedora-style images.
+sudo dnf clean all
+sudo dnf install -y --skip-broken \
+  nss nspr libxkbcommon atk at-spi2-atk at-spi2-core \
+  libXcomposite libXdamage libXrandr libXfixes libXcursor libXi libXtst \
+  libXScrnSaver libXext mesa-libgbm libdrm mesa-libGL mesa-libEGL \
+  cups-libs alsa-lib pango cairo gtk3 dbus-libs
+sudo ldconfig
 
-if [ "$(uname -m)" != "x86_64" ]; then
-  echo "agent-browser Lightpanda sandbox only supports x86_64 builds" >&2
-  exit 1
-fi
-
-if ! command -v curl >/dev/null 2>&1; then
-  echo "curl must be available in the base sandbox image" >&2
-  exit 1
-fi
-
-curl --fail --location --silent --show-error \
-  "$LIGHTPANDA_DOWNLOAD_URL" \
-  --output /tmp/lightpanda
-chmod 0755 /tmp/lightpanda
-sudo install -m 0755 /tmp/lightpanda "$LIGHTPANDA_INSTALL_PATH"
-rm -f /tmp/lightpanda
-
-# 2. Install the agent-browser CLI itself, but skip Chromium bootstrap.
+# 2. agent-browser CLI itself + its bundled Chromium.
 npm install -g agent-browser
-
-mkdir -p "$HOME/.agent-browser"
-cat > "$HOME/.agent-browser/config.json" <<'EOF'
-{
-  "engine": "lightpanda",
-  "executablePath": "/usr/local/bin/lightpanda"
-}
-EOF
+npx --yes agent-browser install
 `

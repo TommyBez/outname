@@ -2,6 +2,7 @@ import 'server-only'
 import { getConnector } from '@/connections/registry'
 import type { MaintainerTool } from '@/tools/catalog/types'
 import { agentBrowserTool } from '@/tools/providers/agent-browser'
+import { agentBrowserLightTool } from '@/tools/providers/agent-browser-light'
 import { calcomRequestTool } from '@/tools/providers/calcom'
 import { firecrawlScrapeTool } from '@/tools/providers/firecrawl-scrape'
 import { parallelSearchTool } from '@/tools/providers/parallel'
@@ -23,6 +24,7 @@ const TOOLS: MaintainerTool[] = [
   parallelSearchTool,
   posthogRequestTool,
   agentBrowserTool,
+  agentBrowserLightTool,
   xApiRequestTool,
   typefullyRequestTool,
   vercelRequestTool,
