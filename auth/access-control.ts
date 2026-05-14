@@ -27,5 +27,5 @@ export const roles = {
 } as const
 
 export const waitlistManagePermission = {
-  waitlist: ['manage'],
-} as const
+  waitlist: ['manage'] as 'manage'[],
+}

@@ -22,12 +22,7 @@ export const metadata: Metadata = createPrivatePageMetadata(
   'Manage OUTNA.ME account settings, budget, and agent defaults.'
 )
 
-export default async function SettingsPage() {
-  const session = await getSession()
-  const canManageWaitlist = session
-    ? await hasWaitlistManageAccess(session.user.id)
-    : false
-
+export default function SettingsPage() {
   return (
     <AppShell>
       <header className="mb-12 border-foreground border-t-4 pt-6 md:mb-16">
@@ -56,11 +51,9 @@ export default async function SettingsPage() {
           </Suspense>
         </Section>
 
-        {canManageWaitlist ? (
-          <Section title="Waitlist">
-            <WaitlistSection />
-          </Section>
-        ) : null}
+        <Suspense fallback={null}>
+          <WaitlistAdminSection />
+        </Suspense>
       </div>
     </AppShell>
   )
@@ -120,6 +113,19 @@ async function AccountSection() {
         {session?.user.email ?? '—'}
       </p>
     </Row>
+  )
+}
+
+async function WaitlistAdminSection() {
+  const session = await getSession()
+  if (!(session && (await hasWaitlistManageAccess(session.user.id)))) {
+    return null
+  }
+
+  return (
+    <Section title="Waitlist">
+      <WaitlistSection />
+    </Section>
   )
 }
 

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { Suspense } from 'react'
 
 export const metadata: Metadata = {
   title: 'Confirm waitlist request',
@@ -18,10 +19,31 @@ export default async function WaitlistConfirmPage({
     token?: string
   }>
 }) {
+  return (
+    <main className="swiss-grid-pattern grid min-h-svh place-items-center bg-background px-6 py-12">
+      <div className="w-full max-w-xl border-4 border-foreground bg-background p-8 md:p-10">
+        <Suspense fallback={<ConfirmFallback />}>
+          <ConfirmContent searchParams={searchParams} />
+        </Suspense>
+      </div>
+    </main>
+  )
+}
+
+async function ConfirmContent({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    status?: string
+    token?: string
+  }>
+}) {
   const { status, token } = await searchParams
   let content: React.ReactNode
+  let title = 'Confirm your email'
 
   if (status === 'confirmed') {
+    title = 'Confirmed'
     content = (
       <div className="mt-8 space-y-4">
         <p className="text-sm leading-relaxed">
@@ -70,16 +92,20 @@ export default async function WaitlistConfirmPage({
   }
 
   return (
-    <main className="swiss-grid-pattern grid min-h-svh place-items-center bg-background px-6 py-12">
-      <div className="w-full max-w-xl border-4 border-foreground bg-background p-8 md:p-10">
-        <div className="border-foreground border-t-4 pt-5">
-          <p className="swiss-label text-accent">00. waitlist confirm</p>
-          <h1 className="mt-4 font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter">
-            {status === 'confirmed' ? 'Confirmed' : 'Confirm your email'}
-          </h1>
-        </div>
-        {content}
-      </div>
-    </main>
+    <div className="border-foreground border-t-4 pt-5">
+      <p className="swiss-label text-accent">00. waitlist confirm</p>
+      <h1 className="mt-4 font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter">
+        {title}
+      </h1>
+      {content}
+    </div>
+  )
+}
+
+function ConfirmFallback() {
+  return (
+    <div className="mt-8 text-muted-foreground text-sm" role="status">
+      Loading confirmation state…
+    </div>
   )
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { Suspense } from 'react'
 import { requireWaitlistManageAccess } from '@/auth/server/auth-guard'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -78,6 +79,26 @@ export default async function WaitlistSettingsPage({
     useCase?: string
   }>
 }) {
+  return (
+    <AppShell>
+      <Suspense fallback={<WaitlistSettingsFallback />}>
+        <WaitlistSettingsContent searchParams={searchParams} />
+      </Suspense>
+    </AppShell>
+  )
+}
+
+async function WaitlistSettingsContent({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    created?: string
+    search?: string
+    source?: string
+    status?: string
+    useCase?: string
+  }>
+}) {
   await requireWaitlistManageAccess()
   const params = await searchParams
   const filters = buildFilters(params)
@@ -88,7 +109,7 @@ export default async function WaitlistSettingsPage({
   ])
 
   return (
-    <AppShell>
+    <>
       <header className="mb-12 border-foreground border-t-4 pt-6 md:mb-16">
         <p className="swiss-label mb-4 text-accent">10. Settings / Waitlist</p>
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -215,7 +236,19 @@ export default async function WaitlistSettingsPage({
           </TableBody>
         </Table>
       </section>
-    </AppShell>
+    </>
+  )
+}
+
+function WaitlistSettingsFallback() {
+  return (
+    <div
+      aria-busy="true"
+      className="border-foreground border-t-4 pt-6 text-muted-foreground text-sm"
+      role="status"
+    >
+      Loading waitlist manager…
+    </div>
   )
 }
 

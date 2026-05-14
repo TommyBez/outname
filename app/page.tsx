@@ -1,4 +1,3 @@
-import { connection } from 'next/server'
 import { LandingHomePage } from '@/marketing/components/landing-home-page'
 import { siteConfig } from '@/shared/server/site-metadata'
 import { isWaitlistPublicEnabled } from '@/waitlist/server/public-config'
@@ -12,7 +11,6 @@ export const metadata = {
   },
 }
 
-export default async function HomePage() {
-  await connection()
+export default function HomePage() {
   return <LandingHomePage waitlistEnabled={isWaitlistPublicEnabled()} />
 }
