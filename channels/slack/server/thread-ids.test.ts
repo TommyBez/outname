@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { extractSlackThread } from './thread-ids'
+import { describeSlackAttachments, extractSlackThread } from './thread-ids'
 
 test('extractSlackThread uses ts for top-level DM messages', () => {
   const result = extractSlackThread(
@@ -64,4 +64,37 @@ test('extractSlackThread rejects malformed SDK ids with an empty thread suffix',
   )
 
   assert.equal(result, null)
+})
+
+test('describeSlackAttachments returns empty string when no files are present', () => {
+  assert.equal(describeSlackAttachments(undefined), '')
+  assert.equal(describeSlackAttachments({}), '')
+  assert.equal(describeSlackAttachments({ files: [] }), '')
+})
+
+test('describeSlackAttachments lists name and mimetype for each file', () => {
+  const result = describeSlackAttachments({
+    files: [
+      { name: 'cover.png', mimetype: 'image/png' },
+      { name: 'report.pdf', mimetype: 'application/pdf' },
+    ],
+  })
+  assert.equal(result, 'cover.png (image/png), report.pdf (application/pdf)')
+})
+
+test('describeSlackAttachments falls back to title then a generic label', () => {
+  const result = describeSlackAttachments({
+    files: [
+      { title: 'Untitled image', mimetype: 'image/jpeg' },
+      { mimetype: 'image/gif' },
+    ],
+  })
+  assert.equal(result, 'Untitled image (image/jpeg), attachment (image/gif)')
+})
+
+test('describeSlackAttachments omits the mimetype when missing', () => {
+  const result = describeSlackAttachments({
+    files: [{ name: 'notes.txt' }],
+  })
+  assert.equal(result, 'notes.txt')
 })
