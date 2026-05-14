@@ -269,6 +269,7 @@ RESEND_API_KEY=<resend-api-key>
 WAITLIST_FROM_EMAIL=<verified-resend-sender>
 WAITLIST_REPLY_TO=<optional-reply-to-email>
 WAITLIST_PUBLIC_ENABLED=true
+BETTER_AUTH_ADMIN_USER_IDS=<comma-separated-admin-user-ids>
 UPSTASH_REDIS_REST_URL=<upstash-rest-url>
 UPSTASH_REDIS_REST_TOKEN=<upstash-rest-token>
 ```

@@ -3,7 +3,6 @@ ALTER TABLE "user" ADD COLUMN "role" text DEFAULT 'user' NOT NULL;--> statement-
 ALTER TABLE "user" ADD COLUMN "banned" boolean DEFAULT false NOT NULL;--> statement-breakpoint
 ALTER TABLE "user" ADD COLUMN "banReason" text;--> statement-breakpoint
 ALTER TABLE "user" ADD COLUMN "banExpires" timestamp with time zone;--> statement-breakpoint
-UPDATE "user" SET "role" = 'admin';--> statement-breakpoint
 CREATE TABLE "waitlist_entries" (
 	"id" text PRIMARY KEY NOT NULL,
 	"email" text NOT NULL,

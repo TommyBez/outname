@@ -19,6 +19,17 @@ const devTrustedOrigins = [
   'https://*.vusercontent.net',
 ]
 
+function parseAdminUserIds(): string[] {
+  const raw = process.env.BETTER_AUTH_ADMIN_USER_IDS
+  if (!raw) {
+    return []
+  }
+  return raw
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
+}
+
 function productionTrustedOrigins(): string[] | undefined {
   const url = process.env.BETTER_AUTH_URL
   if (url) {
@@ -83,6 +94,7 @@ export const auth = betterAuth({
     adminPlugin({
       ac,
       roles,
+      adminUserIds: parseAdminUserIds(),
       defaultRole: 'user',
     }),
   ],
