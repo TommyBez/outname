@@ -63,14 +63,12 @@ export function brokeredHttpSandboxTags(input: {
 
 export function repoWorkspaceSandboxTags(input: {
   attachmentToolId: string
-  manifestId: string
   runId: string
 }): Record<string, string> {
   return {
     ...baseSandboxTags(),
     kind: 'repo-workspace',
     attachmentToolId: input.attachmentToolId,
-    manifestId: input.manifestId,
     runId: input.runId,
   }
 }
