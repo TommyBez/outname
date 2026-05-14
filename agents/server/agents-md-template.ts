@@ -24,12 +24,9 @@ responsible for proactively creating, updating, pruning, and correcting
 those files as you work. The platform never rewrites them on your
 behalf, and the user should not need to babysit routine memory hygiene.
 
-Only architecture-defined files are mirrored into the agent files UI and
-review-change table: \`AGENTS.md\`, \`IDENTITY.md\`, \`SOUL.md\`,
-\`USER.md\`, \`MEMORY.md\`, \`TASKS.md\`, \`CALENDAR.md\`, \`GOALS.md\`,
-\`DREAMS.md\`, and \`logs/*.md\`. Arbitrary files under
-\`/vercel/sandbox\` still persist in the system sandbox, but they are not
-inserted into those DB mirrors.
+The sandbox filesystem is the source of truth. The UI may cache common
+markdown files for faster reads, but if the cache is stale the sandbox
+state wins.
 
 ## Tools available to you
 
@@ -201,4 +198,14 @@ export function buildAgentsMdContent(input?: {
 
 ${custom}
 `
+}
+
+const CUSTOM_INSTRUCTIONS_HEADER = '## User custom instructions'
+
+export function extractAgentsMdCustomInstructions(content: string): string {
+  const index = content.indexOf(CUSTOM_INSTRUCTIONS_HEADER)
+  if (index < 0) {
+    return content.trim() === AGENTS_MD_TEMPLATE.trim() ? '' : content
+  }
+  return content.slice(index + CUSTOM_INSTRUCTIONS_HEADER.length).trimStart()
 }

@@ -3,6 +3,10 @@ import type { UIMessage, UIMessageChunk } from 'ai'
 import { nanoid } from 'nanoid'
 import { revalidateTag } from 'next/cache'
 import { getRun } from 'workflow/api'
+import {
+  slackConcurrencyKey,
+  slackIdempotencyKey,
+} from '@/agent-runtime/server/agent-event-keys'
 import { dispatchChatTurn } from '@/agent-runtime/server/session-events'
 import { insertChatMessage } from '@/chat/server/chat'
 import { conversationListTag } from '@/shared/server/cache-tags'
@@ -61,11 +65,32 @@ export async function runChannelChatTurn(input: {
 
     await sink.startTyping?.('Thinking...')
 
-    const { sessionRunId, replyToken } = await dispatchChatTurn({
+    const slack = slackEventMetadata(agent.id, message)
+    const { sessionRunId, replyToken, workflowRunId } = await dispatchChatTurn({
       agent,
+      concurrencyKey: slack?.concurrencyKey,
       conversationId: route.conversationId,
+      extraPayload: slack?.payload,
+      idempotencyKey: slack?.idempotencyKey,
+      source: message.channel,
       uiMessages: [userUiMessage],
     })
+
+    if (slack) {
+      if (!workflowRunId) {
+        await sink.postReply(
+          `Queued behind the current thread run for "${agent.name}".`
+        )
+      }
+      handled = true
+      continue
+    }
+
+    if (!sessionRunId) {
+      await sink.postReply(`Queued event for "${agent.name}".`)
+      handled = true
+      continue
+    }
 
     const readable = getRun(sessionRunId).getReadable<UIMessageChunk>({
       namespace: replyToken,
@@ -76,6 +101,56 @@ export async function runChannelChatTurn(input: {
     handled = true
   }
   return handled
+}
+
+function slackEventMetadata(
+  agentId: string,
+  message: IncomingChannelMessage
+): {
+  concurrencyKey: string
+  idempotencyKey: string
+  payload: Record<string, unknown>
+} | null {
+  if (message.channel !== 'slack') {
+    return null
+  }
+  const channelId = readString(message.threadMetadata, 'slackChannel')
+  const messageTs = readString(message.threadMetadata, 'slackMessageTs')
+  const teamId = readString(message.threadMetadata, 'slackTeamId')
+  const threadTs = readString(message.threadMetadata, 'slackThreadTs')
+  if (!(channelId && messageTs && teamId && threadTs)) {
+    return null
+  }
+  return {
+    concurrencyKey: slackConcurrencyKey({
+      agentId,
+      channelId,
+      teamId,
+      threadTs,
+    }),
+    idempotencyKey: slackIdempotencyKey({
+      agentId,
+      channelId,
+      messageTs,
+      teamId,
+    }),
+    payload: {
+      slack: {
+        channelId,
+        messageTs,
+        teamId,
+        threadTs,
+      },
+    },
+  }
+}
+
+function readString(
+  value: Record<string, unknown> | undefined,
+  key: string
+): string {
+  const item = value?.[key]
+  return typeof item === 'string' ? item : ''
 }
 
 // Channel adapters only want visible assistant text, so ignore non-text chunks here.

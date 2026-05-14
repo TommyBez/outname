@@ -15,7 +15,6 @@ import {
   preflightBudget,
   recordTokenUsageStep,
 } from '../steps/budget'
-import { drainPendingWrites } from '../steps/drain-pending-writes'
 import { finishSuccessfulInvocation } from './handle-invocation/finish-success'
 import { startForwardingChildTrace } from './handle-invocation/forward-child-trace'
 import {
@@ -35,6 +34,7 @@ export async function handleInvocation(input: {
   parentToolId?: string | null
   parentToolCallId?: string | null
   parentStream?: WritableStream<UIMessageChunk> | null
+  replyToken?: string | null
   callStack: string[]
   depth: number
 }): Promise<void> {
@@ -46,6 +46,7 @@ export async function handleInvocation(input: {
     parentToolId,
     parentToolCallId,
     parentStream,
+    replyToken,
     callStack,
     depth,
   } = input
@@ -56,7 +57,8 @@ export async function handleInvocation(input: {
     streamToken,
   })
   const streamNamespace = streamToken
-  const writable = getWritable<UIMessageChunk>({ namespace: streamNamespace })
+  const streamNamespaces = uniqueNamespaces(streamNamespace, replyToken ?? null)
+  const writable = createInvocationWritable(streamNamespaces)
   let forwardPromise = Promise.resolve([] as AgentChatMessage[])
 
   try {
@@ -74,6 +76,7 @@ export async function handleInvocation(input: {
       currentRunId: runId,
       callStack,
       depth,
+      eventKind: 'invocation',
       streamNamespace,
     })
     const rootAgentId = callStack[0] ?? agentId
@@ -87,6 +90,7 @@ export async function handleInvocation(input: {
         exceeded,
         runId,
         streamNamespace,
+        streamNamespaces,
       })
       return
     }
@@ -137,10 +141,9 @@ export async function handleInvocation(input: {
       runId,
       stepLimitInput,
       streamNamespace,
+      streamNamespaces,
     })
-    await finishUiMessageStream(streamNamespace).catch((err) => {
-      console.error('[v0] handleInvocation: failed to close transcript', err)
-    })
+    await finishInvocationStreams(streamNamespaces)
     await forwardPromise
   } catch (err) {
     await failInvocation({
@@ -148,9 +151,75 @@ export async function handleInvocation(input: {
       forwardPromise,
       runId,
       streamNamespace,
+      streamNamespaces,
     })
     throw err
   }
+}
+
+function createInvocationWritable(
+  namespaces: readonly string[]
+): WritableStream<UIMessageChunk> {
+  if (namespaces.length === 1) {
+    return getWritable<UIMessageChunk>({ namespace: namespaces[0] })
+  }
+
+  const writables = namespaces.map((namespace) =>
+    getWritable<UIMessageChunk>({ namespace })
+  )
+
+  return new WritableStream<UIMessageChunk>({
+    async abort(reason) {
+      await Promise.all(
+        writables.map((writable) =>
+          writable.abort(reason).catch(() => undefined)
+        )
+      )
+    },
+    async close() {
+      await Promise.all(writables.map((writable) => writable.close()))
+    },
+    async write(chunk) {
+      await Promise.all(
+        writables.map((writable) => writeChunk(writable, chunk))
+      )
+    },
+  })
+}
+
+async function writeChunk(
+  writable: WritableStream<UIMessageChunk>,
+  chunk: UIMessageChunk
+): Promise<void> {
+  const writer = writable.getWriter()
+  try {
+    await writer.write(chunk)
+  } finally {
+    writer.releaseLock()
+  }
+}
+
+async function finishInvocationStreams(
+  namespaces: readonly string[]
+): Promise<void> {
+  await Promise.all(
+    namespaces.map((namespace) =>
+      finishUiMessageStream(namespace).catch((err) => {
+        console.error('[v0] handleInvocation: failed to close transcript', err)
+      })
+    )
+  )
+}
+
+function uniqueNamespaces(
+  primaryNamespace: string,
+  mirrorNamespace: string | null
+): string[] {
+  return [...new Set([primaryNamespace, mirrorNamespace].filter(isString))]
+}
+
+function isString(value: string | null): value is string {
+  return typeof value === 'string' && value.length > 0
 }
 
 async function prepareInvocationRun(input: {
@@ -160,23 +229,22 @@ async function prepareInvocationRun(input: {
   parentToolId: string | null
   runId: string
 }): Promise<void> {
-  await emitRun(input.runId, 'started', 'Sub-agent invocation started', {
+  await emitRun(input.runId, 'started', 'Sub-agent run started', {
     parentRunId: input.parentRunId,
     parentToolId: input.parentToolId,
   })
-  await emitActivity(input.runId, 'Sub-agent: Preparing invocation', {
+  await emitActivity(input.runId, 'Sub-agent: Preparing run', {
     depth: input.depth,
     parentRunId: input.parentRunId,
   })
   await startupSystemSandbox({ agentId: input.agentId })
-  await emitActivity(input.runId, 'Sub-agent: Syncing bootstrap edits')
-  await drainPendingWrites({ agentId: input.agentId })
 }
 
 async function refuseBudgetExceeded(input: {
   exceeded: Parameters<typeof formatBudgetExceededMessage>[0]
   runId: string
   streamNamespace: string
+  streamNamespaces: readonly string[]
 }): Promise<void> {
   const message = formatBudgetExceededMessage(input.exceeded)
   await emitActivity(input.runId, 'Sub-agent: Budget exceeded, refusing', {
@@ -185,12 +253,20 @@ async function refuseBudgetExceeded(input: {
   })
   await emitStep(input.runId, 'read', 'error', message)
   await emitRun(input.runId, 'failed', message)
-  await writeUiMessageStreamError(input.streamNamespace, message).catch(() => {
-    // Best-effort signal so the parent-side collector doesn't hang.
-  })
-  await finishUiMessageStream(input.streamNamespace).catch(() => {
-    // Best-effort close.
-  })
+  await Promise.all(
+    input.streamNamespaces.map((namespace) =>
+      writeUiMessageStreamError(namespace, message).catch(() => {
+        // Best-effort signal so the parent-side collector doesn't hang.
+      })
+    )
+  )
+  await Promise.all(
+    input.streamNamespaces.map((namespace) =>
+      finishUiMessageStream(namespace).catch(() => {
+        // Best-effort close.
+      })
+    )
+  )
 }
 
 async function failInvocation(input: {
@@ -198,11 +274,12 @@ async function failInvocation(input: {
   forwardPromise: Promise<AgentChatMessage[]>
   runId: string
   streamNamespace: string
+  streamNamespaces: readonly string[]
 }): Promise<void> {
   const message =
     input.err instanceof Error ? input.err.message : String(input.err)
   try {
-    await emitActivity(input.runId, 'Sub-agent: Invocation failed', { message })
+    await emitActivity(input.runId, 'Sub-agent: Run failed', { message })
     await emitStep(input.runId, 'read', 'error', message)
     await emitRun(input.runId, 'failed', message)
   } catch (innerErr) {
@@ -211,12 +288,20 @@ async function failInvocation(input: {
       innerErr
     )
   }
-  await writeUiMessageStreamError(input.streamNamespace, message).catch(() => {
-    // Best-effort signal for the parent-side collector.
-  })
-  await finishUiMessageStream(input.streamNamespace).catch(() => {
-    // Best-effort close so the parent-side sub-agent tool stream can settle.
-  })
+  await Promise.all(
+    input.streamNamespaces.map((namespace) =>
+      writeUiMessageStreamError(namespace, message).catch(() => {
+        // Best-effort signal for the parent-side collector.
+      })
+    )
+  )
+  await Promise.all(
+    input.streamNamespaces.map((namespace) =>
+      finishUiMessageStream(namespace).catch(() => {
+        // Best-effort close so the parent-side sub-agent tool stream can settle.
+      })
+    )
+  )
   await input.forwardPromise.catch(() => {
     // Already logged by the forwarding task.
   })

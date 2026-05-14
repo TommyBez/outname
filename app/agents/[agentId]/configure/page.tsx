@@ -10,7 +10,7 @@ import {
 } from '@/agents/components/agent-edit-sections'
 import { AgentForm } from '@/agents/components/agent-form'
 import { deleteAgentAction } from '@/agents/server/actions'
-import { readLatestPendingFileWrite } from '@/agents/server/pending-writes'
+import { customInstructionsFromAgentsMd } from '@/agents/server/bootstrap-files'
 import { requireSession } from '@/auth/server/auth-guard'
 import { listAgentBudgetRules } from '@/budgets/server/rules'
 import {
@@ -39,29 +39,27 @@ async function AgentConfigure({ params }: { params: Params }) {
   const [
     agentRow,
     models,
-    identityRow,
-    soulRow,
-    agentsMdRow,
-    userMdRow,
+    identityFile,
+    soulFile,
+    agentsMdFile,
     userMdFile,
     budgetRules,
   ] = await Promise.all([
     getCachedAgentByIdForUser(agentId, session.user.id),
     getAvailableModels(),
-    readLatestPendingFileWrite({ agentId, path: 'IDENTITY.md' }),
-    readLatestPendingFileWrite({ agentId, path: 'SOUL.md' }),
-    readLatestPendingFileWrite({ agentId, path: 'AGENTS.md' }),
-    readLatestPendingFileWrite({ agentId, path: 'USER.md' }),
+    getCachedAgentMemoryFile({ agentId, path: 'IDENTITY.md' }),
+    getCachedAgentMemoryFile({ agentId, path: 'SOUL.md' }),
+    getCachedAgentMemoryFile({ agentId, path: 'AGENTS.md' }),
     getCachedAgentMemoryFile({ agentId, path: 'USER.md' }),
     listAgentBudgetRules({ userId: session.user.id, agentId }),
   ])
   if (!agentRow) {
     notFound()
   }
-  const userProfile =
-    userMdRow && (!userMdFile || userMdRow.enqueuedAt >= userMdFile.updatedAt)
-      ? userMdRow.content
-      : (userMdFile?.content ?? '')
+  const instructions = agentsMdFile?.content
+    ? customInstructionsFromAgentsMd(agentsMdFile.content)
+    : ''
+  const userProfile = userMdFile?.content ?? ''
 
   const currentBudget = summarizeBudgetRules(budgetRules)
 
@@ -79,14 +77,18 @@ async function AgentConfigure({ params }: { params: Params }) {
           initial={{
             id: agentRow.id,
             name: agentRow.name,
-            identityCard: identityRow?.content ?? '',
-            identity: soulRow?.content ?? '',
-            instructions: agentsMdRow?.content ?? '',
+            identityCard: identityFile?.content ?? '',
+            identity: soulFile?.content ?? '',
+            instructions,
             userProfile,
             model: agentRow.model,
             heartbeatEnabled: agentRow.heartbeatEnabled,
+            heartbeatScheduleMode: agentRow.heartbeatScheduleMode,
+            heartbeatScheduleTimes: agentRow.heartbeatScheduleTimes,
             heartbeatIntervalMinutes: agentRow.heartbeatIntervalMinutes,
             dreamingEnabled: agentRow.dreamingEnabled,
+            dreamingScheduleMode: agentRow.dreamingScheduleMode,
+            dreamingScheduleTimes: agentRow.dreamingScheduleTimes,
             dreamingIntervalMinutes: agentRow.dreamingIntervalMinutes,
             stepLimitMode: (agentRow.stepLimitMode ?? 'medium') as
               | 'custom'
@@ -135,17 +137,21 @@ async function AgentConfigure({ params }: { params: Params }) {
           agentId={agentRow.id}
           currentBudget={currentBudget}
           currentMarkdownFiles={{
-            identityCard: identityRow?.content ?? '',
-            instructions: agentsMdRow?.content ?? '',
-            soul: soulRow?.content ?? '',
+            identityCard: identityFile?.content ?? '',
+            instructions,
+            soul: soulFile?.content ?? '',
             userProfile,
           }}
           currentSettings={{
             heartbeatEnabled: agentRow.heartbeatEnabled,
+            heartbeatScheduleMode: agentRow.heartbeatScheduleMode,
+            heartbeatScheduleTimes: agentRow.heartbeatScheduleTimes,
             heartbeatIntervalMinutes: agentRow.heartbeatIntervalMinutes,
             model: agentRow.model,
             name: agentRow.name,
             dreamingEnabled: agentRow.dreamingEnabled,
+            dreamingScheduleMode: agentRow.dreamingScheduleMode,
+            dreamingScheduleTimes: agentRow.dreamingScheduleTimes,
             dreamingIntervalMinutes: agentRow.dreamingIntervalMinutes,
             stepLimitCustom: agentRow.stepLimitCustom,
             stepLimitMode: (agentRow.stepLimitMode ?? 'medium') as

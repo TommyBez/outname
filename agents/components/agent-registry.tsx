@@ -2,16 +2,21 @@
 
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
-import { formatAgentInterval } from '@/agents/format'
+import { formatAgentScheduleInline } from '@/agents/format'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import type { AgentScheduleMode } from '@/shared/agent-schedule'
 
 export interface RegistryAgent {
   dreamingEnabled: boolean
   dreamingIntervalMinutes: number
+  dreamingScheduleMode: AgentScheduleMode
+  dreamingScheduleTimes: string[]
   enabled: boolean
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
+  heartbeatScheduleMode: AgentScheduleMode
+  heartbeatScheduleTimes: string[]
   id: string
   model: string
   name: string
@@ -105,16 +110,20 @@ function AgentRegistryRow({ agent }: { agent: RegistryAgent }) {
         </Link>
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-muted-foreground text-xs">
           <span>
-            {agent.heartbeatEnabled
-              ? `Heartbeat ${formatAgentInterval(
-                  agent.heartbeatIntervalMinutes
-                )}`
-              : 'Heartbeat off'}
+            {`Heartbeat ${formatAgentScheduleInline({
+              enabled: agent.heartbeatEnabled,
+              intervalMinutes: agent.heartbeatIntervalMinutes,
+              mode: agent.heartbeatScheduleMode,
+              times: agent.heartbeatScheduleTimes,
+            })}`}
           </span>
           <span>
-            {agent.dreamingEnabled
-              ? `Dreaming ${formatAgentInterval(agent.dreamingIntervalMinutes)}`
-              : 'Dreaming off'}
+            {`Dreaming ${formatAgentScheduleInline({
+              enabled: agent.dreamingEnabled,
+              intervalMinutes: agent.dreamingIntervalMinutes,
+              mode: agent.dreamingScheduleMode,
+              times: agent.dreamingScheduleTimes,
+            })}`}
           </span>
         </div>
       </div>

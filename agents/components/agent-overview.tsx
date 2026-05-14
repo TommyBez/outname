@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
-import { formatAgentCadence } from '@/agents/format'
+import { listRecentAgentEvents } from '@/agent-runtime/server/agent-event-store'
+import { formatAgentSchedule } from '@/agents/format'
 import { requireSession } from '@/auth/server/auth-guard'
 import { BudgetIndicator } from '@/budgets/components/budget-indicator'
 import { loadBudgetSummary } from '@/budgets/server/summary'
@@ -31,7 +32,7 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
     notFound()
   }
 
-  const [budgetEntries, tools, logs, dreams] = await Promise.all([
+  const [budgetEntries, tools, logs, dreams, recentEvents] = await Promise.all([
     loadBudgetSummary({
       userId: session.user.id,
       scope: { type: 'agent', agentId: agent.id },
@@ -39,6 +40,7 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
     getCachedAgentTools(agent.id),
     getCachedAgentLogFiles(agent.id),
     getCachedAgentMemoryFile({ agentId: agent.id, path: 'DREAMS.md' }),
+    listRecentAgentEvents({ agentId: agent.id, limit: 6 }),
   ])
 
   const connectedTools = tools.filter((tool) => tool.status === 'connected')
@@ -61,9 +63,12 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
                 { label: 'Model', value: agent.model },
                 {
                   label: 'Heartbeat',
-                  value: agent.heartbeatEnabled
-                    ? formatAgentCadence(agent.heartbeatIntervalMinutes)
-                    : 'Off',
+                  value: formatAgentSchedule({
+                    enabled: agent.heartbeatEnabled,
+                    intervalMinutes: agent.heartbeatIntervalMinutes,
+                    mode: agent.heartbeatScheduleMode,
+                    times: agent.heartbeatScheduleTimes,
+                  }),
                 },
                 {
                   label: 'Last heartbeat',
@@ -71,9 +76,12 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
                 },
                 {
                   label: 'Dreaming',
-                  value: agent.dreamingEnabled
-                    ? formatAgentCadence(agent.dreamingIntervalMinutes)
-                    : 'Off',
+                  value: formatAgentSchedule({
+                    enabled: agent.dreamingEnabled,
+                    intervalMinutes: agent.dreamingIntervalMinutes,
+                    mode: agent.dreamingScheduleMode,
+                    times: agent.dreamingScheduleTimes,
+                  }),
                 },
                 {
                   label: 'Last dream',
@@ -161,18 +169,60 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
             value={agent.enabled ? 'Active' : 'Paused'}
           />
           <StateTile
-            label="Session"
-            value={agent.lastSessionRunId ? 'Ready' : 'Not started'}
+            label="Runtime"
+            value={agent.enabled ? 'Event-ready' : 'Paused'}
           />
           <StateTile
-            label="Recovery"
-            value={
-              agent.lastRecoveryAt
-                ? formatNullableAgentDate(agent.lastRecoveryAt)
-                : 'No recovery yet'
-            }
+            label="Scheduling"
+            value={agent.heartbeatEnabled ? 'Heartbeat on' : 'Heartbeat off'}
           />
         </div>
+      </section>
+
+      <section className="mt-12 border-foreground border-t-2 pt-8">
+        <div className="mb-6 flex flex-wrap items-baseline justify-between gap-4">
+          <div>
+            <p className="swiss-label text-accent">Events</p>
+            <h2 className="mt-3 font-black font-serif text-3xl uppercase leading-none tracking-tighter">
+              Recent event ledger
+            </h2>
+          </div>
+          <Link
+            className="font-bold text-muted-foreground text-xs uppercase tracking-[0.18em] hover:text-foreground"
+            href={`/agents/${agent.id}/events`}
+          >
+            Open events →
+          </Link>
+        </div>
+        {recentEvents.length === 0 ? (
+          <p className="border-foreground border-y-2 py-6 text-muted-foreground text-sm">
+            No events recorded yet.
+          </p>
+        ) : (
+          <ul className="border-foreground border-y-2">
+            {recentEvents.map((event) => (
+              <li
+                className="border-foreground border-b-2 last:border-b-0"
+                key={event.id}
+              >
+                <Link
+                  className="grid gap-2 py-4 transition-colors hover:bg-accent md:grid-cols-[10rem_1fr_10rem]"
+                  href={`/agents/${agent.id}/events?event=${event.id}`}
+                >
+                  <span className="font-bold text-xs uppercase tracking-[0.16em]">
+                    {event.status}
+                  </span>
+                  <span className="text-sm">
+                    {event.type} · {event.source}
+                  </span>
+                  <span className="font-mono text-muted-foreground text-xs md:text-right">
+                    {formatNullableAgentDate(event.queuedAt)}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </>
   )

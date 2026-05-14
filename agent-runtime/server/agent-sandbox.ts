@@ -62,7 +62,9 @@ export interface EnsureResult {
   sandbox: Sandbox
 }
 
-async function ensureSystemSandbox(agentId: string): Promise<EnsureResult> {
+export async function ensureSystemSandbox(
+  agentId: string
+): Promise<EnsureResult> {
   // The SDK resumes persistent sandboxes by name, so `sandbox_system_id`
   // stores that stable name rather than an opaque SDK id.
   const persistedName = await readSandboxId(agentId)

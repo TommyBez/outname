@@ -1,3 +1,9 @@
+import {
+  type AgentScheduleMode,
+  normalizeAgentScheduleMode,
+  normalizeDailyScheduleTimes,
+} from '@/shared/agent-schedule'
+
 const MINUTES_PER_HOUR = 60
 const MINUTES_PER_DAY = MINUTES_PER_HOUR * 24
 
@@ -26,6 +32,38 @@ export function formatAgentCadence(minutes: number): string {
 export function formatAgentCadenceLower(minutes: number): string {
   const cadence = formatAgentCadence(minutes)
   return `${cadence.charAt(0).toLowerCase()}${cadence.slice(1)}`
+}
+
+export function formatAgentSchedule(input: {
+  enabled: boolean
+  intervalMinutes: number
+  mode: AgentScheduleMode
+  times: readonly string[] | null | undefined
+}): string {
+  if (!input.enabled) {
+    return 'Off'
+  }
+  if (normalizeAgentScheduleMode(input.mode) === 'daily_times') {
+    const times = normalizeDailyScheduleTimes(input.times)
+    return times.length > 0 ? `At ${times.join(', ')}` : 'No times set'
+  }
+  return formatAgentCadence(input.intervalMinutes)
+}
+
+export function formatAgentScheduleInline(input: {
+  enabled: boolean
+  intervalMinutes: number
+  mode: AgentScheduleMode
+  times: readonly string[] | null | undefined
+}): string {
+  if (!input.enabled) {
+    return 'off'
+  }
+  if (normalizeAgentScheduleMode(input.mode) === 'daily_times') {
+    const times = normalizeDailyScheduleTimes(input.times)
+    return times.length > 0 ? `at ${times.join(', ')}` : 'no times set'
+  }
+  return formatAgentInterval(input.intervalMinutes)
 }
 
 function formatMinuteDuration(

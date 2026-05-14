@@ -14,7 +14,6 @@ import {
 } from '../step-limit'
 import { beginHeartbeatRun } from '../steps/begin-heartbeat-run'
 import { extractTotalUsage, recordTokenUsageStep } from '../steps/budget'
-import { drainPendingWrites } from '../steps/drain-pending-writes'
 import { finalizeRun } from '../steps/finalize-run'
 import { initRun } from '../steps/init-run'
 import {
@@ -37,6 +36,7 @@ export async function handleHeartbeat(input: {
   localDate?: string
   manual?: boolean
   mode?: HeartbeatMode
+  replyToken?: string
   scheduledAt?: string
 }): Promise<void> {
   const { agentId } = input
@@ -44,18 +44,15 @@ export async function handleHeartbeat(input: {
   const nowIso = input.scheduledAt ?? new Date().toISOString()
   const dreamingLocalDate = input.localDate ?? nowIso.slice(0, 10)
   const { runId } = await beginHeartbeatRun({ agentId })
-  const writable = getWritable<UIMessageChunk>({ namespace: runId })
+  const outputNamespace = input.replyToken ?? runId
+  const writable = getWritable<UIMessageChunk>({ namespace: outputNamespace })
 
   try {
     await initRun(runId)
-    await emitActivity(
-      runId,
-      activityMessage(mode, 'Preparing agent session'),
-      {
-        mode,
-        manual: input.manual ?? false,
-      }
-    )
+    await emitActivity(runId, activityMessage(mode, 'Preparing agent event'), {
+      mode,
+      manual: input.manual ?? false,
+    })
 
     const userId = await checkBudgetOrFinalize({ agentId, mode, runId })
     if (userId === BUDGET_EXCEEDED) {
@@ -74,6 +71,7 @@ export async function handleHeartbeat(input: {
       agentId,
       runId,
       currentRunId: runId,
+      eventKind: mode === 'dreaming' ? 'dreaming' : 'heartbeat',
     })
 
     await emitActivity(runId, activityMessage(mode, 'Streaming model work'), {
@@ -140,11 +138,6 @@ async function prepareHeartbeatSandbox(input: {
     }
   )
   await startupSystemSandbox({ agentId: input.agentId })
-  await emitActivity(
-    input.runId,
-    activityMessage(input.mode, 'Syncing bootstrap edits')
-  )
-  await drainPendingWrites({ agentId: input.agentId })
 }
 
 async function readPreviousCompletion(

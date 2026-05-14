@@ -101,9 +101,9 @@ export function AgentBudgetWidget({
           <p className="text-muted-foreground text-sm">{rationale}</p>
         ) : null}
         <p className="text-muted-foreground text-xs">
-          USD spend caps for this agent. Sub-agent invocations roll into these
-          numbers. External-service tool costs are not counted. Leave a field
-          empty to skip that period.
+          USD spend caps for this agent. Sub-agent runs roll into these numbers.
+          External-service tool costs are not counted. Leave a field empty to
+          skip that period.
         </p>
         <div className="grid gap-3 sm:grid-cols-3">
           <BudgetField

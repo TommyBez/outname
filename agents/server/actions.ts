@@ -4,18 +4,15 @@ import { and, eq } from 'drizzle-orm'
 import { revalidatePath, updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { destroyAgentSandboxes } from '@/agent-runtime/server/agent-sandbox'
-import {
-  startAgentSession,
-  stopAgentSession,
-} from '@/agent-runtime/server/session-lifecycle'
 import { createAgentForUser } from '@/agents/server/creation-service'
 import {
   type UpdateAgentInput,
   updateAgentForUser,
 } from '@/agents/server/update-service'
 import { requireSession } from '@/auth/server/auth-guard'
+import type { AgentScheduleMode } from '@/shared/agent-schedule'
 import { db } from '@/shared/db'
-import { agent } from '@/shared/db/schema'
+import { agent, agentEvents } from '@/shared/db/schema'
 import {
   agentTag,
   conversationListTag,
@@ -25,8 +22,12 @@ import {
 interface CreateInput {
   dreamingEnabled: boolean
   dreamingIntervalMinutes: number
+  dreamingScheduleMode?: AgentScheduleMode
+  dreamingScheduleTimes?: string[]
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
+  heartbeatScheduleMode?: AgentScheduleMode
+  heartbeatScheduleTimes?: string[]
   identityCard: string
   instructions: string
   model: string
@@ -82,21 +83,10 @@ export async function toggleAgentAction(
     return
   }
 
-  const [updated] = await db
+  await db
     .update(agent)
     .set({ enabled, updatedAt: new Date() })
     .where(eq(agent.id, agentId))
-    .returning()
-
-  if (!existing.enabled && updated.enabled) {
-    try {
-      await startAgentSession(updated)
-    } catch (err) {
-      console.error('[v0] toggleAgentAction: startAgentSession failed', err)
-    }
-  } else if (existing.enabled && !updated.enabled) {
-    await stopAgentSession(agentId)
-  }
 
   updateTag(userAgentsTag(session.user.id))
   updateTag(agentTag(agentId))
@@ -117,8 +107,15 @@ export async function deleteAgentAction(agentId: string): Promise<void> {
     redirect('/agents')
   }
 
-  // Stop the session first so it cannot write into a torn-down sandbox or row.
-  await stopAgentSession(agentId)
+  await db
+    .update(agentEvents)
+    .set({
+      completedAt: new Date(),
+      lastError: 'agent deleted',
+      status: 'cancelled',
+      updatedAt: new Date(),
+    })
+    .where(eq(agentEvents.agentId, agentId))
 
   // Best-effort delete of the persistent sandbox before removing the agent row.
   await destroyAgentSandboxes(agentId)
