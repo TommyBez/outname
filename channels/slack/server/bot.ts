@@ -1,12 +1,7 @@
 import 'server-only'
 import { createSlackAdapter, type SlackAdapter } from '@chat-adapter/slack'
 import type { ModelMessage } from 'ai'
-import {
-  type AiMessage,
-  Chat,
-  type Message as ChatMessage,
-  toAiMessages,
-} from 'chat'
+import { Chat, type Message as ChatMessage, toAiMessages } from 'chat'
 import { runChannelChatTurn } from '@/channels/server/dispatch'
 import type { IncomingChannelMessage } from '@/channels/server/types'
 import { SlackHybridState } from './state'
@@ -192,7 +187,10 @@ async function handleSlackMessage(input: {
 
 // Materialise the full Slack thread into AI SDK model messages. Chat SDK
 // auto-paginates and maps `author.isMe` to "assistant", so the LLM sees the
-// real conversation rather than just the latest user turn.
+// real conversation rather than just the latest user turn. Image and text-file
+// attachments come through as `FilePart`/`ImagePart` with inlined data, so the
+// model gets vision/file context too — pick a multimodal model for any agent
+// bound to channels where users share media.
 async function collectThreadHistory(
   thread: SlackThread
 ): Promise<ModelMessage[] | undefined> {
@@ -205,14 +203,8 @@ async function collectThreadHistory(
       return
     }
     // `includeNames` prefixes user turns with `[name]:` so multi-user channels
-    // stay attributable. Harmless in 1:1 DMs. `transformMessage` strips image
-    // and file parts that `toAiMessages` inlines as base64 — Slack threads
-    // never sent media to the model before this fix, and replaying them on
-    // every turn would balloon token cost and break text-only models.
-    const aiMessages = await toAiMessages(messages, {
-      includeNames: true,
-      transformMessage: stripNonTextParts,
-    })
+    // stay attributable. Harmless in 1:1 DMs.
+    const aiMessages = await toAiMessages(messages, { includeNames: true })
     return aiMessages as ModelMessage[]
   } catch (err) {
     // Fall back to "new turn only" — the workflow still works, just without
@@ -223,18 +215,4 @@ async function collectThreadHistory(
     })
     return
   }
-}
-
-function stripNonTextParts(aiMessage: AiMessage): AiMessage | null {
-  if (typeof aiMessage.content === 'string') {
-    return aiMessage.content.trim() ? aiMessage : null
-  }
-  if (aiMessage.role !== 'user') {
-    return aiMessage
-  }
-  const textParts = aiMessage.content.filter((part) => part.type === 'text')
-  if (textParts.length === 0) {
-    return null
-  }
-  return { ...aiMessage, content: textParts }
 }
