@@ -122,7 +122,7 @@
     "reset:workflow": "rm -rf .swc .next app/.well-known",
     "check": "ultracite check",
     "fix": "ultracite fix",
-    "test": "tsx --test",
+    "test": "vitest run --config vitest.config.ts",
     "test:workflow": "pnpm test:workflow:unit && pnpm test:workflow:integration && pnpm test:workflow:server",
     "test:workflow:integration": "cd test/workflow-fixtures && ../../node_modules/.bin/vitest run --config ../../vitest.workflow.config.ts",
     "test:workflow:server": "vitest run --config vitest.workflow-server.config.ts",

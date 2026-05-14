@@ -1,5 +1,4 @@
-import assert from 'node:assert/strict'
-import test from 'node:test'
+import { expect, test } from 'vitest'
 import { resolveDailyScheduleDue } from './schedule-due'
 
 test('daily schedule waits until the first local slot is due', () => {
@@ -9,7 +8,7 @@ test('daily schedule waits until the first local slot is due', () => {
     times: ['09:00'],
     timezone: 'Europe/Rome',
   })
-  assert.equal(due, null)
+  expect(due).toBeNull()
 })
 
 test('daily schedule maps local time to scheduled UTC instant', () => {
@@ -19,9 +18,9 @@ test('daily schedule maps local time to scheduled UTC instant', () => {
     times: ['09:00'],
     timezone: 'Europe/Rome',
   })
-  assert.equal(due?.localDate, '2026-05-14')
-  assert.equal(due?.time, '09:00')
-  assert.equal(due?.scheduledFor.toISOString(), '2026-05-14T07:00:00.000Z')
+  expect(due?.localDate).toBe('2026-05-14')
+  expect(due?.time).toBe('09:00')
+  expect(due?.scheduledFor.toISOString()).toBe('2026-05-14T07:00:00.000Z')
 })
 
 test('daily schedule catches only the latest missed slot for today', () => {
@@ -31,8 +30,8 @@ test('daily schedule catches only the latest missed slot for today', () => {
     times: ['09:00', '17:00'],
     timezone: 'Europe/Rome',
   })
-  assert.equal(due?.time, '17:00')
-  assert.equal(due?.scheduledFor.toISOString(), '2026-05-14T15:00:00.000Z')
+  expect(due?.time).toBe('17:00')
+  expect(due?.scheduledFor.toISOString()).toBe('2026-05-14T15:00:00.000Z')
 })
 
 test('daily schedule does not repeat a slot already covered by last run', () => {
@@ -42,5 +41,5 @@ test('daily schedule does not repeat a slot already covered by last run', () => 
     times: ['09:00', '17:00'],
     timezone: 'Europe/Rome',
   })
-  assert.equal(due, null)
+  expect(due).toBeNull()
 })

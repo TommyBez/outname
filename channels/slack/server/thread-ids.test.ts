@@ -1,5 +1,4 @@
-import assert from 'node:assert/strict'
-import test from 'node:test'
+import { expect, test } from 'vitest'
 import { extractSlackThread } from './thread-ids'
 
 test('extractSlackThread uses ts for top-level DM messages', () => {
@@ -14,7 +13,7 @@ test('extractSlackThread uses ts for top-level DM messages', () => {
     }
   )
 
-  assert.deepEqual(result, {
+  expect(result).toEqual({
     channelId: 'D123',
     threadTs: '1234567890.123456',
   })
@@ -33,7 +32,7 @@ test('extractSlackThread prefers thread_ts when a reply is already threaded', ()
     }
   )
 
-  assert.deepEqual(result, {
+  expect(result).toEqual({
     channelId: 'D123',
     threadTs: '1234567890.123456',
   })
@@ -48,7 +47,7 @@ test('extractSlackThread falls back to SDK ids when raw payload is missing', () 
     undefined
   )
 
-  assert.deepEqual(result, {
+  expect(result).toEqual({
     channelId: 'D123',
     threadTs: '1234567890.123456',
   })
@@ -63,5 +62,5 @@ test('extractSlackThread rejects malformed SDK ids with an empty thread suffix',
     undefined
   )
 
-  assert.equal(result, null)
+  expect(result).toBeNull()
 })
