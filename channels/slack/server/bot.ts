@@ -6,6 +6,7 @@ import { runChannelChatTurn } from '@/channels/server/dispatch'
 import type { IncomingChannelMessage } from '@/channels/server/types'
 import { SlackHybridState } from './state'
 import {
+  describeSlackAttachments,
   extractSlackTeamId,
   extractSlackThread,
   type SlackRawMessage,
@@ -107,17 +108,19 @@ async function handleSlackMessage(input: {
   kind: 'channel' | 'dm'
 }): Promise<void> {
   const { thread, message, kind } = input
-  const text = message.text?.trim()
-  if (!text) {
+  const raw = message.raw as SlackRawMessage | undefined
+  const trimmedText = message.text?.trim() ?? ''
+  const attachmentSummary = describeSlackAttachments(raw)
+  if (!(trimmedText || attachmentSummary)) {
     return
   }
+  // Attachment-only messages still flow through routing/persistence; the model
+  // receives the actual file bytes via `toAiMessages` in `loadModelMessages`.
+  const text = trimmedText || `(attachment: ${attachmentSummary})`
 
   // Keep provider-native Slack ids out of routing keys; `slack:`-prefixed SDK
   // ids should not leak into shared channel bindings.
-  const slackThread = extractSlackThread(
-    thread,
-    message.raw as SlackRawMessage | undefined
-  )
+  const slackThread = extractSlackThread(thread, raw)
   if (!slackThread) {
     console.warn('[slack] thread missing slack ids; skipping', {
       channelId: thread.channelId,
@@ -126,7 +129,7 @@ async function handleSlackMessage(input: {
     return
   }
   const { channelId, threadTs } = slackThread
-  const messageTs = (message.raw as SlackRawMessage | undefined)?.ts ?? threadTs
+  const messageTs = raw?.ts ?? threadTs
 
   const teamId = extractTeamId(message)
   if (!teamId) {
