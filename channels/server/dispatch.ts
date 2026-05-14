@@ -28,6 +28,13 @@ export async function runChannelChatTurn(input: {
     return false
   }
 
+  // Defer the thread-history fetch until after routing confirmed at least one
+  // bound agent. `thread.allMessages` can hit paginated platform APIs, so
+  // installed-but-unbound channels would otherwise pay for work no one reads.
+  // Shared across the fan-out loop below so multi-tenant installs only pay
+  // once even when several agents are bound to the same thread.
+  const modelMessages = await message.loadModelMessages?.()
+
   let handled = false
   for (const agent of agents) {
     if (!agent.enabled) {
@@ -72,6 +79,7 @@ export async function runChannelChatTurn(input: {
       conversationId: route.conversationId,
       extraPayload: slack?.payload,
       idempotencyKey: slack?.idempotencyKey,
+      modelMessages,
       source: message.channel,
       uiMessages: [userUiMessage],
     })
