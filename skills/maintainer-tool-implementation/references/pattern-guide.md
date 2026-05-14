@@ -8,6 +8,7 @@ Use this file to pick the right helper before writing the tool.
 | --- | --- | --- | --- |
 | Authenticated HTTP call with request/response normalization | `defineApiPassthroughTool` | `brokered_http` | `tools/providers/calcom.ts` |
 | Custom execution flow with parsing, multiple steps, or mixed concerns | `defineActionTool` | `brokered_http`, `tool_sandbox`, `none`, or a mix | `tools/providers/resend.ts` |
+| One attachment exposing several related child tools that share config and capabilities | `defineToolBundle` | `brokered_http`, `sdk`, `tool_sandbox`, or a mix | `tools/providers/v0.ts` |
 | CLI or process executed inside a snapshot-backed sandbox | `defineSandboxTool` | `tool_sandbox` | `tools/providers/agent-browser.ts` |
 
 ## Authenticated Integrations: Required Security Pattern
@@ -135,6 +136,8 @@ Typical cases:
 
 If the CLI talks to an authenticated service, the sandbox must use restricted egress plus Secret Injection. If that is not possible for the CLI, call it out as a blocker instead of passing secrets into env vars or args.
 
+If the tool is part of a bundle, make sure the child tools actually inherit the bundle-level sandbox manifest at runtime and add a focused test for that path.
+
 Repo convention for sandbox manifests:
 
 - keep the descriptor in `tools/sandboxes/<id>/manifest.ts`
@@ -183,6 +186,7 @@ Touch only when required:
 - connector/provider code for a brand new `brokered_http` provider, usually under `connections/` plus `connections/registry.ts`
 - `tools/sandboxes/<id>/manifest.ts`, `tools/sandboxes/<id>/setup.ts`, and `tools/sandboxes/registry.ts` for a brand new sandbox manifest
 - sandbox network policy/auth injection setup when an authenticated CLI or runtime is introduced
+- provider-agnostic runtime helpers when the repository does not yet have a reusable pattern for a new class of maintainer tool; do not hide those helpers under one provider-specific directory unless they are truly provider-specific
 - `tools/catalog/types.ts` only if the new tool truly requires a new shared runtime concept
 - runtime boot files like `tools/runtime/build-attached-tools.ts` or `agent-runtime/workflows/session/steps/resolve-tool-plan` only if the normal registry-driven flow is insufficient
 

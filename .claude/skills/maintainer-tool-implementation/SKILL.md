@@ -72,6 +72,7 @@ If a field is secret, it does not belong in `configSchema`. For SDK-backed tools
 - Use `defineToolBundle` when one attachment should expose many AI SDK child tools directly (for example, flattening an SDK-provided tool map into namespaced child tool ids)
 - Use `defineApiPassthroughTool` when the tool is mostly "validated input -> authenticated HTTP request -> normalized response"
 - Use `defineSandboxTool` when the tool runs a CLI or process inside a tool sandbox snapshot
+- When a tool combines provider APIs, sandbox lifecycle, and repository/file operations, keep `tools/providers/<tool>.ts` declarative and move reusable mechanics into provider-agnostic runtime helpers instead of tool-specific helper files
 - Prefer `tools/runtime/define-maintainer-tool/provider-response.ts` when several brokered HTTP tools need the same clipped-error / response-body plumbing
 - Prefer `tools/runtime/define-maintainer-tool/sdk-step.ts` when a workflow step needs connector-backed SDK credentials without hand-rolling `readBrokeredCredential` error mapping
 - For sandbox manifests in this repo, keep installer bytes in `tools/sandboxes/<id>/setup.ts` and expose them through `tools/sandboxes/registry.ts`; do not rely on runtime reads of repo-relative `.sh` files
@@ -161,6 +162,7 @@ Only add a new category ordering entry if the category is actually new.
 - New SDK-backed tool with connector: ensure the connector/provider exists in `connections/registry.ts`, the tool uses `capabilities: [{ kind: 'sdk', provider: '<name>' }]`, credentials are read only at execute time from the connector runtime, and secrets never flow through attachment config or child tool ids
 - New SDK-backed tool with no connector: ensure the SDK runs entirely in trusted server code, uses `capabilities: [{ kind: 'none' }]`, and does not push secrets into attachment config or sandbox args
 - New bundled tool: ensure one attachment row can expose multiple child tool ids cleanly, and keep child ids namespaced to avoid collisions in the runtime tool dictionary
+- New bundled sandbox tool: ensure bundle child tools inherit the bundle-level sandbox manifest cleanly and add a focused test for that runtime path
 - New sandbox tool: ensure the manifest exists in `tools/sandboxes/<id>/{manifest.ts, setup.ts}`, the manifest id matches exactly, the registry exposes bundled setup-script bytes, and any authenticated egress uses a restricted network policy plus Secret Injection
 - New runtime behavior: only then inspect `tools/runtime/build-attached-tools.ts`, `agent-runtime/workflows/session/steps/resolve-tool-plan`, or other runtime files
 
@@ -176,6 +178,7 @@ At minimum:
 - confirm connector-backed SDK tools read credentials only at execute time and never during tool build
 - confirm the chosen `maxResponseBytes` matches the tool's expected payload shape and size
 - confirm `response.truncated` is handled intentionally for brokered HTTP tools
+- if you introduced a new runtime abstraction, confirm it is provider-agnostic and reusable by similar future tools rather than nested under one provider-specific implementation path
 - run `pnpm check` if the change is substantial or touches shared runtime types
 - mention any unimplemented prerequisite such as a missing connector, missing sandbox manifest, or missing product rule instead of guessing
 
