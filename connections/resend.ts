@@ -13,7 +13,8 @@ export type ResendCredential = z.infer<typeof resendCredentialSchema>
 
 export const resendConnector = defineConnector('resend', {
   displayName: 'Resend',
-  description: 'Transactional email via Resend. Used by the resend.send tool.',
+  description:
+    'Resend REST API access (sending, contacts, domains, templates, segments, broadcasts, events, and more). Used by the Resend · API tool bundle.',
   credential: resendCredentialSchema,
   fields: [
     {

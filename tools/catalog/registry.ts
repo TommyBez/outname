@@ -7,7 +7,7 @@ import { calcomRequestTool } from '@/tools/providers/calcom'
 import { firecrawlScrapeTool } from '@/tools/providers/firecrawl-scrape'
 import { parallelSearchTool } from '@/tools/providers/parallel'
 import { posthogRequestTool } from '@/tools/providers/posthog'
-import { resendSendTool } from '@/tools/providers/resend'
+import { resendApiTool } from '@/tools/providers/resend'
 import { supabaseRequestTool } from '@/tools/providers/supabase'
 import { typefullyRequestTool } from '@/tools/providers/typefully'
 import { v0PlatformTool } from '@/tools/providers/v0'
@@ -18,7 +18,7 @@ import { getToolSandboxManifest } from '@/tools/sandboxes/registry'
 // Catalog order is UI order. Removing an entry is safe: existing rows degrade
 // to `reason: "tool_removed"` instead of crashing boot.
 const TOOLS: MaintainerTool[] = [
-  resendSendTool,
+  resendApiTool,
   calcomRequestTool,
   firecrawlScrapeTool,
   parallelSearchTool,
