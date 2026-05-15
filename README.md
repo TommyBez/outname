@@ -1,8 +1,9 @@
-# personal-assistant-agent
+# outname
 
-Open-source codebase for OUTNA.ME, a Next.js application for running personal
-AI agents with persistent memory, scheduled work, sandboxed execution, tool
-attachments, and Slack routing.
+Open-source codebase for outname, a Next.js application for running personal AI
+agents with persistent memory, scheduled work, sandboxed execution, tool
+attachments, and Slack routing. The current repository name still uses
+`personal-assistant-agent` and will be renamed separately later.
 
 ## What the application does
 

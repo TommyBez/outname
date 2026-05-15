@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in improving `personal-assistant-agent`.
+Thanks for your interest in improving `outname`.
 
 ## Before you open a pull request
 

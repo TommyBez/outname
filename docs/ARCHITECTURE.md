@@ -1,7 +1,7 @@
 # Architecture
 
-This document describes the current architecture of
-`personal-assistant-agent`. The application is a single Next.js control plane
+This document describes the current architecture of `outname`. The application
+is a single Next.js control plane
 that orchestrates event-driven agent work through Vercel Workflow, persists
 application state in Neon Postgres, and keeps each agent's filesystem in a
 persistent Vercel Sandbox.
