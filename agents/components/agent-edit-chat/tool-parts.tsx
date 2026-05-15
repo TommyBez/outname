@@ -1,7 +1,17 @@
 import type { ChatAddToolApproveResponseFunction, UIMessage } from 'ai'
 import { CheckIcon, XIcon } from 'lucide-react'
 import type { AgentBudgetValues } from '@/agents/components/agent-budget-widget'
+import {
+  Confirmation,
+  ConfirmationAction,
+  ConfirmationActions,
+} from '@/components/ai-elements/confirmation'
 import { MessageResponse } from '@/components/ai-elements/message'
+import {
+  Reasoning,
+  ReasoningContent,
+  ReasoningTrigger,
+} from '@/components/ai-elements/reasoning'
 import {
   Tool,
   ToolContent,
@@ -26,6 +36,14 @@ export function renderMessagePart(input: {
   const { part, key } = input
   if (part.type === 'text') {
     return <MessageResponse key={key}>{part.text}</MessageResponse>
+  }
+  if (part.type === 'reasoning') {
+    return (
+      <Reasoning isStreaming={part.state === 'streaming'} key={key}>
+        <ReasoningTrigger />
+        <ReasoningContent>{part.text}</ReasoningContent>
+      </Reasoning>
+    )
   }
   if (part.type === PROPOSE_BUDGET_PART_TYPE) {
     return (
@@ -95,10 +113,35 @@ function ToolCard({
       <ToolContent>
         {previewBody}
         {part.state === 'approval-requested' ? (
-          <ToolApprovalActions
-            approvalId={part.approval.id}
-            onRespond={addToolApprovalResponse}
-          />
+          <Confirmation approval={part.approval} state={part.state}>
+            <ConfirmationActions>
+              <ConfirmationAction
+                onClick={() =>
+                  addToolApprovalResponse({
+                    id: part.approval.id,
+                    approved: true,
+                    reason: 'User approved this edit operation.',
+                  })
+                }
+              >
+                <CheckIcon className="size-4" />
+                Approve
+              </ConfirmationAction>
+              <ConfirmationAction
+                onClick={() =>
+                  addToolApprovalResponse({
+                    id: part.approval.id,
+                    approved: false,
+                    reason: 'User denied this edit operation.',
+                  })
+                }
+                variant="outline"
+              >
+                <XIcon className="size-4" />
+                Deny
+              </ConfirmationAction>
+            </ConfirmationActions>
+          </Confirmation>
         ) : null}
         {part.state === 'output-available' ? (
           <ToolOutput errorText={undefined} output={part.output} />
@@ -136,45 +179,4 @@ function getToolPartName(part: ToolPart): string {
     return (part as { toolName: string }).toolName
   }
   return part.type.replace(TOOL_PREFIX_PATTERN, '')
-}
-
-function ToolApprovalActions({
-  approvalId,
-  onRespond,
-}: {
-  approvalId: string
-  onRespond: ChatAddToolApproveResponseFunction
-}) {
-  return (
-    <div className="flex flex-wrap items-center gap-2 border-2 border-foreground bg-muted p-3">
-      <button
-        className="inline-flex h-10 items-center justify-center gap-2 border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground"
-        onClick={() =>
-          onRespond({
-            id: approvalId,
-            approved: true,
-            reason: 'User approved this edit operation.',
-          })
-        }
-        type="button"
-      >
-        <CheckIcon className="size-4" />
-        Approve
-      </button>
-      <button
-        className="inline-flex h-10 items-center justify-center gap-2 border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background"
-        onClick={() =>
-          onRespond({
-            id: approvalId,
-            approved: false,
-            reason: 'User denied this edit operation.',
-          })
-        }
-        type="button"
-      >
-        <XIcon className="size-4" />
-        Deny
-      </button>
-    </div>
-  )
 }

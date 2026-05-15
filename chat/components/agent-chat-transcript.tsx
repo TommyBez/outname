@@ -26,6 +26,7 @@ import {
   ReasoningContent,
   ReasoningTrigger,
 } from '@/components/ai-elements/reasoning'
+import { Task, TaskContent, TaskTrigger } from '@/components/ai-elements/task'
 import {
   Tool,
   ToolContent,
@@ -180,28 +181,29 @@ function WorkflowStatusMessage({
   tone?: 'default' | 'error'
   transient?: boolean
 }) {
+  // System-level status: rendered as a standalone row (not a Message), so it
+  // does not enter the conversation's aria-log as an assistant turn and does
+  // not inherit assistant bubble styling.
   return (
-    <Message from="assistant">
-      <MessageContent>
-        <div
-          className={cn(
-            'flex items-center gap-2 border-2 px-3 py-3 font-medium text-xs uppercase leading-5 tracking-[0.12em]',
-            tone === 'error'
-              ? 'border-destructive bg-destructive/10 text-destructive'
-              : 'border-border bg-muted/40 text-muted-foreground'
-          )}
-          data-transient={transient ? 'true' : undefined}
-        >
-          <span
-            className={cn(
-              'size-2 rounded-full',
-              tone === 'error' ? 'bg-destructive' : 'animate-pulse bg-primary'
-            )}
-          />
-          <span>{status.message}</span>
-        </div>
-      </MessageContent>
-    </Message>
+    <div
+      aria-live="polite"
+      className={cn(
+        'flex w-full max-w-[95%] items-center gap-2 border-2 px-3 py-3 font-medium text-xs uppercase leading-5 tracking-[0.12em]',
+        tone === 'error'
+          ? 'border-destructive bg-destructive/10 text-destructive'
+          : 'border-border bg-muted/40 text-muted-foreground'
+      )}
+      data-transient={transient ? 'true' : undefined}
+      role="status"
+    >
+      <span
+        className={cn(
+          'size-2 rounded-full',
+          tone === 'error' ? 'bg-destructive' : 'animate-pulse bg-primary'
+        )}
+      />
+      <span>{status.message}</span>
+    </div>
   )
 }
 
@@ -260,29 +262,23 @@ function ToolBody({ part }: { part: ToolPart }) {
 
 function SubAgentToolTrace({ output }: { output: SubAgentToolOutput }) {
   const hasMessages = output.messages.length > 0
+  const title = `Sub-agent trace · ${formatSubAgentStatus(output)}`
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-border border-b pb-2">
-        <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-          Sub-agent trace
-        </h4>
-        <span className="font-medium text-muted-foreground text-xs">
-          {formatSubAgentStatus(output)}
-        </span>
-      </div>
-      {hasMessages ? (
-        <div className="space-y-3 border-border border-l-2 pl-3">
-          {output.messages.map((message) => (
+    <Task defaultOpen>
+      <TaskTrigger title={title} />
+      <TaskContent>
+        {hasMessages ? (
+          output.messages.map((message) => (
             <ChatMessage key={message.id} message={message} />
-          ))}
-        </div>
-      ) : (
-        <p className="text-muted-foreground text-sm">
-          {getSubAgentEmptyText(output)}
-        </p>
-      )}
-    </div>
+          ))
+        ) : (
+          <p className="text-muted-foreground text-sm">
+            {getSubAgentEmptyText(output)}
+          </p>
+        )}
+      </TaskContent>
+    </Task>
   )
 }
 

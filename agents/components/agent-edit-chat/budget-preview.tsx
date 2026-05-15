@@ -4,7 +4,13 @@ import {
   AgentBudgetWidget,
   formatBudgetSummary,
 } from '@/agents/components/agent-budget-widget'
-import type { ToolPart } from '@/components/ai-elements/tool'
+import {
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolOutput,
+  type ToolPart,
+} from '@/components/ai-elements/tool'
 import type { SendMessageFn } from './types'
 import { isRecord } from './value-utils'
 
@@ -47,17 +53,29 @@ export function ProposeBudgetCard({
 
   if (part.state === 'input-streaming' || part.state === 'input-available') {
     return (
-      <div className="w-full border-2 border-foreground bg-muted p-3 text-xs">
-        Drafting budget suggestion…
-      </div>
+      <Tool>
+        <ToolHeader
+          state={part.state}
+          type={part.type as Exclude<ToolPart['type'], 'dynamic-tool'>}
+        />
+      </Tool>
     )
   }
 
   if (part.state === 'output-error') {
     return (
-      <div className="w-full border-2 border-destructive bg-destructive/5 p-3 text-destructive text-xs">
-        {part.errorText ?? 'Budget proposal failed.'}
-      </div>
+      <Tool defaultOpen>
+        <ToolHeader
+          state={part.state}
+          type={part.type as Exclude<ToolPart['type'], 'dynamic-tool'>}
+        />
+        <ToolContent>
+          <ToolOutput
+            errorText={part.errorText ?? 'Budget proposal failed.'}
+            output={undefined}
+          />
+        </ToolContent>
+      </Tool>
     )
   }
 
@@ -77,17 +95,25 @@ export function ProposeBudgetCard({
   }
 
   return (
-    <AgentBudgetWidget
-      applyLabel="Apply budget"
-      current={currentBudget}
-      onApply={submit}
-      onSkip={() => submit({ daily: null, weekly: null, monthly: null })}
-      proposed={proposed}
-      rationale={rationale}
-      skipLabel="Clear all"
-      submitted={submitted}
-      title="Adjust agent budget"
-    />
+    <Tool defaultOpen>
+      <ToolHeader
+        state={part.state}
+        type={part.type as Exclude<ToolPart['type'], 'dynamic-tool'>}
+      />
+      <ToolContent>
+        <AgentBudgetWidget
+          applyLabel="Apply budget"
+          current={currentBudget}
+          onApply={submit}
+          onSkip={() => submit({ daily: null, weekly: null, monthly: null })}
+          proposed={proposed}
+          rationale={rationale}
+          skipLabel="Clear all"
+          submitted={submitted}
+          title="Adjust agent budget"
+        />
+      </ToolContent>
+    </Tool>
   )
 }
 
