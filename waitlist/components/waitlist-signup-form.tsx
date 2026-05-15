@@ -58,8 +58,8 @@ export function WaitlistSignupForm({
         body: JSON.stringify({
           email,
           name,
-          primaryInterest,
-          profileType,
+          primaryInterest: primaryInterest || null,
+          profileType: profileType || null,
           useCase,
           source: initialSource,
           referrer,
