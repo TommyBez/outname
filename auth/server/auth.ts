@@ -1,5 +1,7 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import { admin as adminPlugin } from 'better-auth/plugins'
+import { ac, roles } from '@/auth/access-control'
 import { db } from '@/shared/db'
 
 // Production uses Better Auth defaults. Non-production must trust the incoming
@@ -16,6 +18,17 @@ const devTrustedOrigins = [
   'https://*.v0.dev',
   'https://*.vusercontent.net',
 ]
+
+function parseAdminUserIds(): string[] {
+  const raw = process.env.BETTER_AUTH_ADMIN_USER_IDS
+  if (!raw) {
+    return []
+  }
+  return raw
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
+}
 
 function productionTrustedOrigins(): string[] | undefined {
   const url = process.env.BETTER_AUTH_URL
@@ -77,6 +90,14 @@ export const auth = betterAuth({
           },
         },
       }),
+  plugins: [
+    adminPlugin({
+      ac,
+      roles,
+      adminUserIds: parseAdminUserIds(),
+      defaultRole: 'user',
+    }),
+  ],
 })
 
 export type Session = typeof auth.$Infer.Session

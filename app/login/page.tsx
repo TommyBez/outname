@@ -1,11 +1,13 @@
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import { LoginForm } from '@/auth/components/login-form'
 import { auth } from '@/auth/server/auth'
 import { Skeleton } from '@/components/ui/skeleton'
 import { createPrivatePageMetadata } from '@/shared/server/site-metadata'
+import { isWaitlistPublicEnabled } from '@/waitlist/server/public-config'
 
 export const metadata: Metadata = createPrivatePageMetadata(
   'Sign in',
@@ -17,6 +19,8 @@ export default function LoginPage({
 }: {
   searchParams: Promise<{ from?: string }>
 }) {
+  const waitlistEnabled = isWaitlistPublicEnabled()
+
   return (
     <main className="swiss-grid-pattern grid min-h-svh place-items-center bg-background px-6">
       <div className="w-full max-w-md border-4 border-foreground bg-background p-8">
@@ -32,6 +36,19 @@ export default function LoginPage({
         <Suspense fallback={<LoginFormSkeleton />}>
           <LoginGate searchParams={searchParams} />
         </Suspense>
+        {waitlistEnabled ? (
+          <div className="mt-8 border-foreground border-t-2 pt-5">
+            <p className="font-mono text-[11px] text-muted-foreground uppercase tracking-normal">
+              Need access first?
+            </p>
+            <Link
+              className="mt-3 inline-flex min-h-11 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+              href="/waitlist?source=login-page"
+            >
+              Join the waitlist
+            </Link>
+          </div>
+        ) : null}
       </div>
     </main>
   )

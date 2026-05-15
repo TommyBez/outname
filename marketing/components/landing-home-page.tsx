@@ -7,7 +7,11 @@ import { LandingHeartbeatCloser } from '@/marketing/components/landing/landing-h
 import { LandingHeroDemo } from '@/marketing/components/landing/landing-hero-demo'
 import { LandingNav } from '@/marketing/components/landing/landing-nav'
 
-export function LandingHomePage() {
+export function LandingHomePage({
+  waitlistEnabled,
+}: {
+  waitlistEnabled: boolean
+}) {
   const shouldReduceMotion = useReducedMotion()
   const reduceMotionFlag = Boolean(shouldReduceMotion)
 
@@ -17,12 +21,18 @@ export function LandingHomePage() {
         aria-hidden
         className="swiss-grid-pattern pointer-events-none absolute inset-0 -z-10 opacity-80"
       />
-      <LandingNav />
+      <LandingNav waitlistEnabled={waitlistEnabled} />
 
-      <LandingHeroDemo shouldReduceMotion={reduceMotionFlag} />
+      <LandingHeroDemo
+        shouldReduceMotion={reduceMotionFlag}
+        waitlistEnabled={waitlistEnabled}
+      />
       <LandingChatShowcase shouldReduceMotion={reduceMotionFlag} />
       <LandingComposableWorkbench shouldReduceMotion={reduceMotionFlag} />
-      <LandingHeartbeatCloser shouldReduceMotion={reduceMotionFlag} />
+      <LandingHeartbeatCloser
+        shouldReduceMotion={reduceMotionFlag}
+        waitlistEnabled={waitlistEnabled}
+      />
     </main>
   )
 }
