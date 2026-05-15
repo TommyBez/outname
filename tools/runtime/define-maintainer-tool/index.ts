@@ -257,6 +257,12 @@ function buildChildTool<TInput, TConfig, TData>(input: {
           'sandboxManifestId' in input.definition
             ? input.definition.sandboxManifestId
             : undefined,
+        toolConfig:
+          typeof input.config === 'object' &&
+          input.config !== null &&
+          !Array.isArray(input.config)
+            ? (input.config as Record<string, unknown>)
+            : undefined,
       })
       return await executeWithPolicies({
         config: input.config,

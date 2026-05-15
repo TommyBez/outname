@@ -46,16 +46,19 @@ export async function getOrCreateBrokerSandbox(input: {
 }
 
 export async function createBrokerSandbox(input: {
+  apiKeyOverride?: string
   connector: NonNullable<ReturnType<typeof getConnector>>
   provider: string
   runId: string
   unauthenticatedHosts?: readonly string[]
   userId: string
 }): Promise<Sandbox> {
-  const credential = await readBrokeredCredential({
-    provider: input.provider,
-    userId: input.userId,
-  })
+  const credential = input.apiKeyOverride
+    ? ({ apiKey: input.apiKeyOverride } as const)
+    : await readBrokeredCredential({
+        provider: input.provider,
+        userId: input.userId,
+      })
   const injectedHeaders = validateInjectedHeaders(
     input.provider,
     input.connector.broker.injectedHeaderNames,

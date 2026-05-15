@@ -7,7 +7,10 @@ import type {
 export interface BrokeredHttpClient {
   request(
     provider: string,
-    request: BrokeredHttpRequest
+    request: BrokeredHttpRequest,
+    options?: {
+      apiKeyOverride?: string
+    }
   ): Promise<BrokeredHttpResponse>
 }
 
@@ -58,6 +61,7 @@ export function createRuntimeContext(input: {
   attachmentToolId?: string
   conversationId: string | null
   runId: string | null
+  toolConfig?: Record<string, unknown>
   sandboxManifestId?: string
   toolId: string
   userId: string
@@ -67,6 +71,7 @@ export function createRuntimeContext(input: {
     attachmentToolId,
     conversationId,
     runId,
+    toolConfig,
     sandboxManifestId,
     toolId,
     userId,
@@ -89,12 +94,15 @@ export function createRuntimeContext(input: {
     http: {
       async request(provider, request) {
         const { brokeredHttpRequest } = await import('../brokered-http')
+        const apiKeyOverride = readApiKeyOverride(toolConfig)
         return await brokeredHttpRequest({
           agentId,
+          attachmentToolId: attachmentToolId ?? toolId,
           toolId,
           userId,
           provider,
           request,
+          apiKeyOverride,
         })
       },
     },
@@ -133,4 +141,15 @@ export function createRuntimeContext(input: {
       },
     },
   }
+}
+
+function readApiKeyOverride(config: Record<string, unknown> | undefined) {
+  if (!config) {
+    return
+  }
+
+  const value = config.apiKeyOverride
+  return typeof value === 'string' && value.trim().length > 0
+    ? value.trim()
+    : undefined
 }

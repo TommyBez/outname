@@ -22,6 +22,8 @@ import {
 
 export async function brokeredHttpRequest(input: {
   agentId: string
+  apiKeyOverride?: string
+  attachmentToolId: string
   provider: string
   request: BrokeredHttpRequestType
   toolId: string
@@ -60,10 +62,11 @@ export async function brokeredHttpRequest(input: {
     runId,
     provider:
       mode === 'authenticated'
-        ? input.provider
+        ? `${input.provider}:${input.attachmentToolId}:${input.apiKeyOverride ? 'override' : 'connection'}`
         : `${input.provider}:unauthenticated:${url.hostname}`,
     createSandbox: () =>
       createBrokerSandbox({
+        apiKeyOverride: input.apiKeyOverride,
         connector,
         provider: input.provider,
         runId,
