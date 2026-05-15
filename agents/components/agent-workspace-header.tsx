@@ -20,9 +20,6 @@ import type { AgentScheduleMode } from '@/shared/agent-schedule'
 
 interface HeaderAgent {
   dreamingEnabled: boolean
-  dreamingIntervalMinutes: number
-  dreamingScheduleMode: AgentScheduleMode
-  dreamingScheduleTimes: string[]
   enabled: boolean
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
@@ -83,12 +80,7 @@ export function AgentWorkspaceHeader({ agent }: { agent: HeaderAgent }) {
                   })}`}
                 </Badge>
                 <Badge variant="secondary">
-                  {`Dreaming ${formatAgentScheduleInline({
-                    enabled: agent.dreamingEnabled,
-                    intervalMinutes: agent.dreamingIntervalMinutes,
-                    mode: agent.dreamingScheduleMode,
-                    times: agent.dreamingScheduleTimes,
-                  })}`}
+                  {`Dreaming ${agent.dreamingEnabled ? 'daily' : 'off'}`}
                 </Badge>
               </div>
               <h1 className="text-pretty font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter md:text-7xl">

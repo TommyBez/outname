@@ -76,12 +76,7 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
                 },
                 {
                   label: 'Dreaming',
-                  value: formatAgentSchedule({
-                    enabled: agent.dreamingEnabled,
-                    intervalMinutes: agent.dreamingIntervalMinutes,
-                    mode: agent.dreamingScheduleMode,
-                    times: agent.dreamingScheduleTimes,
-                  }),
+                  value: agent.dreamingEnabled ? 'Daily' : 'Off',
                 },
                 {
                   label: 'Last dream',

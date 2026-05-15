@@ -53,14 +53,6 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
   const [dreamingEnabled, setDreamingEnabled] = useState(
     initial?.dreamingEnabled ?? true
   )
-  const [dreamingScheduleMode, setDreamingScheduleMode] =
-    useState<AgentScheduleMode>(initial?.dreamingScheduleMode ?? 'interval')
-  const [dreamingScheduleTimes, setDreamingScheduleTimes] = useState(
-    initial?.dreamingScheduleTimes ?? []
-  )
-  const [dreamingIntervalMinutes, setDreamingIntervalMinutes] = useState(
-    initial?.dreamingIntervalMinutes ?? 1440
-  )
   const [stepLimitMode, setStepLimitMode] = useState<StepLimitMode>(
     initial?.stepLimitMode ?? 'medium'
   )
@@ -91,9 +83,6 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
           intervalMinutes,
           model,
           dreamingEnabled,
-          dreamingIntervalMinutes,
-          dreamingScheduleMode,
-          dreamingScheduleTimes,
           stepLimitCustom,
           stepLimitMode,
           userProfile,
@@ -148,7 +137,7 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
       </ConfigureSection>
 
       <ConfigureSection
-        description="Model, step limit, heartbeat cadence, and dreaming cadence."
+        description="Model, step limit, heartbeat cadence, and dreaming on/off."
         id="runtime"
         title="Runtime"
       >
@@ -177,13 +166,7 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
           />
           <DreamingSettings
             dreamingEnabled={dreamingEnabled}
-            dreamingIntervalMinutes={dreamingIntervalMinutes}
-            scheduleMode={dreamingScheduleMode}
-            scheduleTimes={dreamingScheduleTimes}
             setDreamingEnabled={setDreamingEnabled}
-            setDreamingIntervalMinutes={setDreamingIntervalMinutes}
-            setScheduleMode={setDreamingScheduleMode}
-            setScheduleTimes={setDreamingScheduleTimes}
           />
         </div>
       </ConfigureSection>
@@ -243,9 +226,6 @@ async function saveAgent(input: {
     intervalMinutes: number
     model: string
     dreamingEnabled: boolean
-    dreamingIntervalMinutes: number
-    dreamingScheduleMode: AgentScheduleMode
-    dreamingScheduleTimes: string[]
     stepLimitCustom: number
     stepLimitMode: StepLimitMode
     userProfile: string
@@ -268,9 +248,6 @@ async function saveAgent(input: {
         heartbeatScheduleTimes: input.values.heartbeatScheduleTimes,
         heartbeatIntervalMinutes: input.values.intervalMinutes,
         dreamingEnabled: input.values.dreamingEnabled,
-        dreamingIntervalMinutes: input.values.dreamingIntervalMinutes,
-        dreamingScheduleMode: input.values.dreamingScheduleMode,
-        dreamingScheduleTimes: input.values.dreamingScheduleTimes,
         stepLimitMode: input.values.stepLimitMode,
         stepLimitCustom: input.values.stepLimitCustom,
         soul: input.values.identity,
@@ -292,9 +269,6 @@ async function saveAgent(input: {
       heartbeatScheduleTimes: input.values.heartbeatScheduleTimes,
       heartbeatIntervalMinutes: input.values.intervalMinutes,
       dreamingEnabled: input.values.dreamingEnabled,
-      dreamingIntervalMinutes: input.values.dreamingIntervalMinutes,
-      dreamingScheduleMode: input.values.dreamingScheduleMode,
-      dreamingScheduleTimes: input.values.dreamingScheduleTimes,
       stepLimitMode: input.values.stepLimitMode,
       stepLimitCustom: input.values.stepLimitCustom,
       soul: input.values.identity,

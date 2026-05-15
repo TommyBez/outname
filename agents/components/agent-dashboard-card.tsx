@@ -23,9 +23,6 @@ import type { AgentScheduleMode } from '@/shared/agent-schedule'
 
 export interface DashboardAgent {
   dreamingEnabled: boolean
-  dreamingIntervalMinutes: number
-  dreamingScheduleMode: AgentScheduleMode
-  dreamingScheduleTimes: string[]
   enabled: boolean
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
@@ -392,12 +389,7 @@ function buildSchedule(agent: DashboardAgent) {
     },
     {
       label: 'Dreaming',
-      value: formatAgentSchedule({
-        enabled: agent.dreamingEnabled,
-        intervalMinutes: agent.dreamingIntervalMinutes,
-        mode: agent.dreamingScheduleMode,
-        times: agent.dreamingScheduleTimes,
-      }),
+      value: agent.dreamingEnabled ? 'Daily' : 'Off',
     },
     {
       label: 'Last dream',

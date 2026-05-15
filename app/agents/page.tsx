@@ -104,8 +104,5 @@ function toRegistryAgent(agent: Agent): RegistryAgent {
     model: agent.model,
     name: agent.name,
     dreamingEnabled: agent.dreamingEnabled,
-    dreamingScheduleMode: agent.dreamingScheduleMode,
-    dreamingScheduleTimes: agent.dreamingScheduleTimes,
-    dreamingIntervalMinutes: agent.dreamingIntervalMinutes,
   }
 }

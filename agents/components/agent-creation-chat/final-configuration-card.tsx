@@ -3,6 +3,7 @@ import type { AgentCreationRequest } from '@/agents/server/creation-types'
 import { Button } from '@/components/ui/button'
 import {
   budgetReviewLines,
+  dreamingLabel,
   scheduleLabel,
   stepLimitLabel,
 } from './review-labels'
@@ -46,7 +47,7 @@ export function FinalConfigurationCard({
               `Model: ${config.model}`,
               `Step limit: ${stepLimitLabel(config.stepLimit)}`,
               `Heartbeat: ${scheduleLabel(config.heartbeat)}`,
-              `Dreaming: ${scheduleLabel(config.dreaming)}`,
+              `Dreaming: ${dreamingLabel(config.dreaming)}`,
             ].join('\n')}
           />
           <ReviewBlock

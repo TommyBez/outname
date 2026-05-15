@@ -141,12 +141,15 @@ export const createAgentInputSchema = z.object({
     intervalMinutes: 30,
     times: [],
   }),
-  dreaming: scheduleSchema.default({
-    enabled: true,
-    mode: 'interval',
-    intervalMinutes: 1440,
-    times: [],
-  }),
+  dreaming: z
+    .object({
+      enabled: z
+        .boolean()
+        .describe(
+          'Whether dreaming is enabled. When on, the agent dreams once per local day, the first cron tick that has not run it yet.'
+        ),
+    })
+    .default({ enabled: true }),
   stepLimit: stepLimitSchema.default({
     mode: 'medium',
     custom: null,
