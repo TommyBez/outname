@@ -1,0 +1,30 @@
+name: Feature request
+description: Suggest an improvement to the product or contributor experience.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What user or contributor problem are you trying to solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the change you would like to see.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Mention any alternatives, workarounds, or trade-offs.
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Mockups, references, examples, or related issues.

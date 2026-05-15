@@ -1,4 +1,30 @@
 {
+  "name": "outname",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Open-source Next.js app for personal AI agents with memory, schedules, tools, and sandboxed execution.",
+  "license": "MIT",
+  "homepage": "https://github.com/TommyBez/personal-assistant-agent#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TommyBez/personal-assistant-agent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/TommyBez/personal-assistant-agent/issues"
+  },
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=9"
+  },
+  "keywords": [
+    "ai-agents",
+    "better-auth",
+    "neon",
+    "nextjs",
+    "slack",
+    "vercel-sandbox",
+    "vercel-workflow"
+  ],
   "dependencies": {
     "@ai-sdk/react": "^3.0.170",
     "@chat-adapter/slack": "^4.27.0",
@@ -110,7 +136,6 @@
     "ultracite": "7.6.2",
     "vitest": "^4.1.6"
   },
-  "name": "my-project",
   "scripts": {
     "dev": "next dev",
     "dev:fresh": "pnpm run reset:workflow && next dev",
@@ -133,7 +158,5 @@
     "test:workflow:integration": "cd test/workflow-fixtures && ../../node_modules/.bin/vitest run --config ../../vitest.workflow.config.ts",
     "test:workflow:server": "cd test/workflow-server-app && ../../node_modules/.bin/vitest run --config ../../vitest.workflow-server.config.ts",
     "test:workflow:unit": "vitest run --config vitest.workflow-unit.config.ts"
-  },
-  "version": "0.1.0",
-  "private": true
+  }
 }
