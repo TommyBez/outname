@@ -305,10 +305,10 @@ function buildInputSchema(group: ResendGroup) {
       .optional()
       .describe('Optional query string parameters.'),
     body: z
-      .record(z.unknown())
+      .union([z.record(z.unknown()), z.array(z.unknown())])
       .optional()
       .describe(
-        'Optional JSON body for non-GET requests. Required by send/create/update endpoints.'
+        'Optional JSON body for non-GET requests. Required by send/create/update endpoints. Use an array for endpoints that expect a JSON array payload (for example POST /emails/batch).'
       ),
     maxResponseBytes: z
       .number()
