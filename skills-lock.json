@@ -181,6 +181,12 @@
       "skillPath": "skills/social/SKILL.md",
       "computedHash": "45f19eb1da07de3505f4db57ea0a83906c73bc30bc6af1fdb4d576d5d2dee310"
     },
+    "typefully": {
+      "source": "typefully/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/typefully/SKILL.md",
+      "computedHash": "94b25a1ed407f9def95c56f6cfa09e510c315027e426aacc65b1cb4ecb45158d"
+    },
     "upstash-redis-js": {
       "source": "upstash/skills",
       "sourceType": "github",
