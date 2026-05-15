@@ -1,6 +1,12 @@
 import 'server-only'
 
+import { createElement, type ReactElement } from 'react'
+import { Resend } from 'resend'
+import { WaitlistConfirmationEmail } from '@/emails/waitlist-confirmation-email'
+import { WaitlistInviteEmail } from '@/emails/waitlist-invite-email'
 import { siteConfig } from '@/shared/server/site-metadata'
+
+let resendClient: Resend | null = null
 
 function getBaseUrl(): string {
   return process.env.BETTER_AUTH_URL || siteConfig.url
@@ -22,31 +28,55 @@ function getResendApiKey(): string {
   return apiKey
 }
 
+function getResendClient(): Resend {
+  if (resendClient) {
+    return resendClient
+  }
+
+  resendClient = new Resend(getResendApiKey())
+  return resendClient
+}
+
+function getWaitlistReplyTo(): string | undefined {
+  return process.env.WAITLIST_REPLY_TO || undefined
+}
+
+function createWaitlistEmailIdempotencyKey(
+  eventType: 'waitlist-confirmation' | 'waitlist-invite',
+  entityId: string
+): string {
+  return `${eventType}/${encodeURIComponent(entityId.toLowerCase())}`
+}
+
 async function sendResendEmail(input: {
-  html: string
+  idempotencyKey: string
+  react: ReactElement
   subject: string
-  text: string
   to: string
 }) {
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      authorization: `Bearer ${getResendApiKey()}`,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
+  const { error } = await getResendClient().emails.send(
+    {
       from: getWaitlistFromEmail(),
-      to: input.to,
+      replyTo: getWaitlistReplyTo(),
       subject: input.subject,
-      text: input.text,
-      html: input.html,
-      reply_to: process.env.WAITLIST_REPLY_TO || undefined,
-    }),
-  })
+      to: [input.to],
+      react: input.react,
+    },
+    {
+      idempotencyKey: input.idempotencyKey,
+    }
+  )
 
-  if (!response.ok) {
-    throw new Error(`Resend email send failed with status ${response.status}`)
+  if (error) {
+    const statusCodeSuffix = error.statusCode ? ` (${error.statusCode})` : ''
+    throw new Error(
+      `Resend email send failed [${error.name}]${statusCodeSuffix}: ${error.message}`
+    )
   }
+}
+
+function getWaitlistLogoUrl(): string {
+  return `${getBaseUrl()}/email/outna-logo.png`
 }
 
 export function buildWaitlistConfirmationUrl(token: string): string {
@@ -61,19 +91,30 @@ export async function sendWaitlistConfirmationEmail(input: {
 }) {
   const confirmationUrl = buildWaitlistConfirmationUrl(input.token)
   await sendResendEmail({
+    idempotencyKey: createWaitlistEmailIdempotencyKey(
+      'waitlist-confirmation',
+      input.token
+    ),
     to: input.email,
-    subject: 'Confirm your waitlist spot',
-    text: `Confirm your waitlist spot by opening this link: ${confirmationUrl}`,
-    html: `<p>Confirm your waitlist spot.</p><p><a href="${confirmationUrl}">Open confirmation page</a></p>`,
+    subject: 'Confirm your OUTNA.ME waitlist request',
+    react: createElement(WaitlistConfirmationEmail, {
+      confirmationUrl,
+      logoUrl: getWaitlistLogoUrl(),
+    }),
   })
 }
 
 export async function sendWaitlistInviteEmail(input: { email: string }) {
-  const baseUrl = getBaseUrl()
   await sendResendEmail({
+    idempotencyKey: createWaitlistEmailIdempotencyKey(
+      'waitlist-invite',
+      input.email
+    ),
     to: input.email,
-    subject: 'Your access is ready',
-    text: `Your access is ready. Sign in here: ${baseUrl}/login`,
-    html: `<p>Your access is ready.</p><p><a href="${baseUrl}/login">Sign in</a></p>`,
+    subject: 'Your OUTNA.ME access is ready',
+    react: createElement(WaitlistInviteEmail, {
+      loginUrl: `${getBaseUrl()}/login`,
+      logoUrl: getWaitlistLogoUrl(),
+    }),
   })
 }

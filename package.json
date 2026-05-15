@@ -73,10 +73,12 @@
     "react": "^19.2.5",
     "react-day-picker": "9.13.2",
     "react-dom": "^19.2.5",
+    "react-email": "^6.1.4",
     "react-hook-form": "^7.54.1",
     "react-jsx-parser": "^2.4.1",
     "react-resizable-panels": "^2.1.7",
     "recharts": "2.15.0",
+    "resend": "^6.12.3",
     "server-only": "^0.0.1",
     "shiki": "^4.0.2",
     "sonner": "^1.7.1",
@@ -91,6 +93,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.12",
+    "@react-email/ui": "6.1.4",
     "@tailwindcss/postcss": "^4.2.0",
     "@types/ms": "^2.1.0",
     "@types/node": "^22",
@@ -111,6 +114,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:fresh": "pnpm run reset:workflow && next dev",
+    "email": "email dev --dir emails --port 3000",
     "build": "next build",
     "build:vercel": "pnpm db:migrate && pnpm build",
     "start": "next start",
