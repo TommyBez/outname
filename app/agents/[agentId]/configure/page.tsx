@@ -87,9 +87,6 @@ async function AgentConfigure({ params }: { params: Params }) {
             heartbeatScheduleTimes: agentRow.heartbeatScheduleTimes,
             heartbeatIntervalMinutes: agentRow.heartbeatIntervalMinutes,
             dreamingEnabled: agentRow.dreamingEnabled,
-            dreamingScheduleMode: agentRow.dreamingScheduleMode,
-            dreamingScheduleTimes: agentRow.dreamingScheduleTimes,
-            dreamingIntervalMinutes: agentRow.dreamingIntervalMinutes,
             stepLimitMode: (agentRow.stepLimitMode ?? 'medium') as
               | 'custom'
               | 'grind'
@@ -150,9 +147,6 @@ async function AgentConfigure({ params }: { params: Params }) {
             model: agentRow.model,
             name: agentRow.name,
             dreamingEnabled: agentRow.dreamingEnabled,
-            dreamingScheduleMode: agentRow.dreamingScheduleMode,
-            dreamingScheduleTimes: agentRow.dreamingScheduleTimes,
-            dreamingIntervalMinutes: agentRow.dreamingIntervalMinutes,
             stepLimitCustom: agentRow.stepLimitCustom,
             stepLimitMode: (agentRow.stepLimitMode ?? 'medium') as
               | 'custom'

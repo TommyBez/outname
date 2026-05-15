@@ -127,22 +127,10 @@ export function HeartbeatSettings({
 
 export function DreamingSettings({
   dreamingEnabled,
-  dreamingIntervalMinutes,
-  scheduleMode,
-  scheduleTimes,
   setDreamingEnabled,
-  setDreamingIntervalMinutes,
-  setScheduleMode,
-  setScheduleTimes,
 }: {
   dreamingEnabled: boolean
-  dreamingIntervalMinutes: number
-  scheduleMode: AgentScheduleMode
-  scheduleTimes: string[]
   setDreamingEnabled: (value: boolean) => void
-  setDreamingIntervalMinutes: (value: number) => void
-  setScheduleMode: (value: AgentScheduleMode) => void
-  setScheduleTimes: (value: string[]) => void
 }) {
   return (
     <div className="grid gap-4 border-2 border-foreground bg-background p-5 md:grid-cols-[12rem_minmax(0,1fr)]">
@@ -152,33 +140,17 @@ export function DreamingSettings({
       >
         Dreaming
       </Label>
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between gap-4">
-          <p className="text-muted-foreground text-xs">
-            When on, the agent periodically reviews its logs, updates DREAMS.md,
-            and proposes updates to goals or tasks. This can run even when
-            heartbeat is off.
-          </p>
-          <Switch
-            checked={dreamingEnabled}
-            id="agent-dreaming"
-            onCheckedChange={setDreamingEnabled}
-          />
-        </div>
-        {dreamingEnabled ? (
-          <ScheduleControls
-            intervalHelpText="Interval mode also preserves the daily local-date dreaming fallback."
-            intervalId="agent-dreaming-interval"
-            intervalLabel="Dreaming cadence"
-            intervalMinutes={dreamingIntervalMinutes}
-            mode={scheduleMode}
-            setIntervalMinutes={setDreamingIntervalMinutes}
-            setMode={setScheduleMode}
-            setTimes={setScheduleTimes}
-            times={scheduleTimes}
-            timesId="agent-dreaming-times"
-          />
-        ) : null}
+      <div className="flex items-center justify-between gap-4">
+        <p className="text-muted-foreground text-xs">
+          When on, the agent reviews its logs, updates DREAMS.md, and proposes
+          updates to goals or tasks once per day — the first cron tick of the
+          day that hasn't run it yet.
+        </p>
+        <Switch
+          checked={dreamingEnabled}
+          id="agent-dreaming"
+          onCheckedChange={setDreamingEnabled}
+        />
       </div>
     </div>
   )

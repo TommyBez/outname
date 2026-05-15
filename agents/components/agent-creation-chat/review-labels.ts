@@ -15,6 +15,12 @@ export function scheduleLabel(
   })
 }
 
+export function dreamingLabel(
+  dreaming: AgentCreationRequest['dreaming']
+): string {
+  return dreaming.enabled ? 'daily' : 'off'
+}
+
 export function stepLimitLabel(
   stepLimit: AgentCreationRequest['stepLimit']
 ): string {

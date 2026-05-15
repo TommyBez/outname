@@ -329,8 +329,5 @@ function toDashboardAgent(agent: Agent): DashboardAgent {
     model: agent.model,
     name: agent.name,
     dreamingEnabled: agent.dreamingEnabled,
-    dreamingIntervalMinutes: agent.dreamingIntervalMinutes,
-    dreamingScheduleMode: agent.dreamingScheduleMode,
-    dreamingScheduleTimes: agent.dreamingScheduleTimes,
   }
 }

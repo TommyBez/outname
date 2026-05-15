@@ -38,9 +38,6 @@ export async function createRequestedAgent(input: {
     heartbeatScheduleTimes: input.input.heartbeat.times,
     heartbeatIntervalMinutes: input.input.heartbeat.intervalMinutes,
     dreamingEnabled: input.input.dreaming.enabled,
-    dreamingScheduleMode: input.input.dreaming.mode,
-    dreamingScheduleTimes: input.input.dreaming.times,
-    dreamingIntervalMinutes: input.input.dreaming.intervalMinutes,
     stepLimitMode: input.input.stepLimit.mode,
     stepLimitCustom: input.input.stepLimit.custom,
     identityCard,
@@ -207,12 +204,7 @@ function resolveInstructions(input: AgentCreationRequest): string {
     '',
     '## Dreaming',
     input.dreaming.enabled
-      ? `Review memory and recent work ${formatAgentScheduleInline({
-          enabled: input.dreaming.enabled,
-          intervalMinutes: input.dreaming.intervalMinutes,
-          mode: input.dreaming.mode,
-          times: input.dreaming.times,
-        })}.`
+      ? 'Review memory and recent work once per day, on the first cron tick of the day that has not run dreaming yet.'
       : 'Do not run scheduled dreaming unless the user enables it later.',
     '',
     '## Tool Use',

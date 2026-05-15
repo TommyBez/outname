@@ -60,21 +60,10 @@ export const agent = pgTable(
       .notNull()
       .default(30),
     lastHeartbeatAt: timestamp('last_heartbeat_at', { withTimezone: true }),
-    // Dreaming stays independent from proactive heartbeat work.
+    // Dreaming is on/off only: when enabled, the scheduler runs it the first
+    // time each local day in the owner's timezone that it has not yet run.
     dreamingEnabled: boolean('dreaming_enabled').notNull().default(true),
-    dreamingScheduleMode: text('dreaming_schedule_mode')
-      .$type<AgentScheduleMode>()
-      .notNull()
-      .default('interval'),
-    dreamingScheduleTimes: jsonb('dreaming_schedule_times')
-      .$type<string[]>()
-      .notNull()
-      .default([]),
-    dreamingIntervalMinutes: integer('dreaming_interval_minutes')
-      .notNull()
-      .default(1440),
     lastDreamingAt: timestamp('last_dreaming_at', { withTimezone: true }),
-    // Makes "daily dreaming" mean once per local day in the owner's timezone.
     lastDreamingLocalDate: text('last_dreaming_local_date'),
     // Persistent system sandbox name. Null before first boot; after that, the
     // same sandbox is resumed on each event.

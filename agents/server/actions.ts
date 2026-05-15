@@ -21,9 +21,6 @@ import {
 
 interface CreateInput {
   dreamingEnabled: boolean
-  dreamingIntervalMinutes: number
-  dreamingScheduleMode?: AgentScheduleMode
-  dreamingScheduleTimes?: string[]
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
   heartbeatScheduleMode?: AgentScheduleMode

@@ -1,7 +1,6 @@
 import 'server-only'
 import { eq } from 'drizzle-orm'
 import {
-  scheduledBucketKey,
   scheduledConcurrencyKey,
   scheduledDailyKey,
 } from '@/agent-runtime/server/agent-event-keys'
@@ -98,7 +97,6 @@ async function enqueueDueScheduledEvents(
       agent: a,
       localDate,
       now,
-      timezone: row.timezone,
     })
     if (dreamingDue) {
       await enqueueAgentEvent({
@@ -262,46 +260,19 @@ function resolveDreamingDue(input: {
   agent: typeof agent.$inferSelect
   localDate: string
   now: Date
-  timezone: string
 }): ScheduledDue | null {
   const a = input.agent
   if (!a.dreamingEnabled) {
     return null
   }
-  if (normalizeAgentScheduleMode(a.dreamingScheduleMode) === 'daily_times') {
-    const due = resolveDailyScheduleDue({
-      lastRunAt: a.lastDreamingAt,
-      now: input.now,
-      times: a.dreamingScheduleTimes,
-      timezone: input.timezone,
-    })
-    if (!due) {
-      return null
-    }
-    return {
-      key: scheduledDailyKey({
-        agentId: a.id,
-        localDate: due.localDate,
-        time: due.time,
-        type: 'dreaming',
-      }),
-      localDate: due.localDate,
-      scheduledFor: due.scheduledFor,
-    }
-  }
-
-  const intervalElapsed =
-    !a.lastDreamingAt ||
-    input.now.getTime() - a.lastDreamingAt.getTime() >=
-      a.dreamingIntervalMinutes * 60_000
-  if (!(intervalElapsed || a.lastDreamingLocalDate !== input.localDate)) {
+  if (a.lastDreamingLocalDate === input.localDate) {
     return null
   }
   return {
-    key: scheduledBucketKey({
+    key: scheduledDailyKey({
       agentId: a.id,
-      intervalMinutes: a.dreamingIntervalMinutes,
-      now: input.now,
+      localDate: input.localDate,
+      time: '00:00',
       type: 'dreaming',
     }),
     localDate: input.localDate,

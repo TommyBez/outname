@@ -42,9 +42,6 @@ export type StepLimitMode = 'custom' | 'grind' | 'high' | 'low' | 'medium'
 
 export interface AgentFormInitial {
   dreamingEnabled: boolean
-  dreamingIntervalMinutes: number
-  dreamingScheduleMode: AgentScheduleMode
-  dreamingScheduleTimes: string[]
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
   heartbeatScheduleMode: AgentScheduleMode
