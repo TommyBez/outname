@@ -2,8 +2,7 @@
 
 Open-source codebase for outname, a Next.js application for running personal AI
 agents with persistent memory, scheduled work, sandboxed execution, tool
-attachments, and Slack routing. The current repository name still uses
-`personal-assistant-agent` and will be renamed separately later.
+attachments, and Slack routing.
 
 ## What the application does
 
