@@ -6,11 +6,18 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
-import { WAITLIST_GENERIC_SUCCESS_MESSAGE } from '@/waitlist/server/constants'
+import {
+  WAITLIST_GENERIC_SUCCESS_MESSAGE,
+  WAITLIST_PRIMARY_INTEREST_OPTIONS,
+  WAITLIST_PROFILE_TYPE_OPTIONS,
+  type WaitlistPrimaryInterest,
+  type WaitlistProfileType,
+} from '@/waitlist/server/constants'
 
 interface WaitlistSignupFormProps {
   initialSource: string
   utmCampaign?: string
+  utmContent?: string
   utmMedium?: string
   utmSource?: string
 }
@@ -18,11 +25,16 @@ interface WaitlistSignupFormProps {
 export function WaitlistSignupForm({
   initialSource,
   utmCampaign,
+  utmContent,
   utmMedium,
   utmSource,
 }: WaitlistSignupFormProps) {
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
+  const [primaryInterest, setPrimaryInterest] = useState<
+    WaitlistPrimaryInterest | ''
+  >('')
+  const [profileType, setProfileType] = useState<WaitlistProfileType | ''>('')
   const [useCase, setUseCase] = useState('')
   const [company, setCompany] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -46,10 +58,13 @@ export function WaitlistSignupForm({
         body: JSON.stringify({
           email,
           name,
+          primaryInterest,
+          profileType,
           useCase,
           source: initialSource,
           referrer,
           utmCampaign,
+          utmContent,
           utmMedium,
           utmSource,
           company,
@@ -112,13 +127,58 @@ export function WaitlistSignupForm({
         />
       </div>
       <div className="flex flex-col gap-2">
+        <Label
+          className="text-muted-foreground"
+          htmlFor="waitlist-primary-interest"
+        >
+          What are you here for?
+        </Label>
+        <select
+          className="h-11 border-2 border-foreground bg-background px-3 text-sm"
+          id="waitlist-primary-interest"
+          onChange={(event) =>
+            setPrimaryInterest(event.target.value as WaitlistPrimaryInterest)
+          }
+          required
+          value={primaryInterest}
+        >
+          <option value="">Select one</option>
+          {WAITLIST_PRIMARY_INTEREST_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label className="text-muted-foreground" htmlFor="waitlist-profile">
+          Which describes you best?
+        </Label>
+        <select
+          className="h-11 border-2 border-foreground bg-background px-3 text-sm"
+          id="waitlist-profile"
+          onChange={(event) =>
+            setProfileType(event.target.value as WaitlistProfileType)
+          }
+          required
+          value={profileType}
+        >
+          <option value="">Select one</option>
+          {WAITLIST_PROFILE_TYPE_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="flex flex-col gap-2">
         <Label className="text-muted-foreground" htmlFor="waitlist-use-case">
           Use case
         </Label>
         <Textarea
           id="waitlist-use-case"
           onChange={(event) => setUseCase(event.target.value)}
-          placeholder="What would you use OUTNA.ME for?"
+          placeholder="Optional: what would you use OUTNA.ME for?"
           rows={4}
           value={useCase}
         />

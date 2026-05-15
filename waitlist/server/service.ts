@@ -7,6 +7,8 @@ import { waitlistEntry } from '@/shared/db/schema'
 import {
   WAITLIST_CONFIRMATION_RESEND_COOLDOWN_MS,
   type WaitlistEntryStatus,
+  type WaitlistPrimaryInterest,
+  type WaitlistProfileType,
 } from '@/waitlist/server/constants'
 import { hashWaitlistToken, issueWaitlistToken } from '@/waitlist/server/token'
 
@@ -25,6 +27,7 @@ export interface WaitlistMetadataInput {
   referrer?: string | null
   source?: string | null
   utmCampaign?: string | null
+  utmContent?: string | null
   utmMedium?: string | null
   utmSource?: string | null
 }
@@ -33,15 +36,18 @@ export interface WaitlistSubmissionInput extends WaitlistMetadataInput {
   email: string
   name?: string | null
   now?: Date
+  primaryInterest?: WaitlistPrimaryInterest | null
+  profileType?: WaitlistProfileType | null
   useCase?: string | null
 }
 
 export interface WaitlistFilters {
   createdWithinDays?: number
+  primaryInterest?: WaitlistPrimaryInterest
+  profileType?: WaitlistProfileType
   search?: string
   source?: string
   status?: WaitlistEntryStatus
-  useCase?: string
 }
 
 export function normalizeWaitlistEmail(email: string): string {
@@ -71,6 +77,7 @@ function toMetadataPatch(input: WaitlistMetadataInput) {
     referrer: normalizeOptionalText(input.referrer),
     source: normalizeOptionalText(input.source),
     utmCampaign: normalizeOptionalText(input.utmCampaign),
+    utmContent: normalizeOptionalText(input.utmContent),
     utmMedium: normalizeOptionalText(input.utmMedium),
     utmSource: normalizeOptionalText(input.utmSource),
   }
@@ -104,6 +111,8 @@ export async function submitWaitlistEntry(
   const now = input.now ?? new Date()
   const normalizedEmail = normalizeWaitlistEmail(input.email)
   const name = normalizeOptionalText(input.name)
+  const primaryInterest = input.primaryInterest ?? null
+  const profileType = input.profileType ?? null
   const useCase = normalizeOptionalText(input.useCase)
   const metadataPatch = toMetadataPatch(input)
   const existing = await getWaitlistEntryByEmail(normalizedEmail)
@@ -116,6 +125,8 @@ export async function submitWaitlistEntry(
         id: createWaitlistEntryId(),
         email: normalizedEmail,
         name,
+        primaryInterest,
+        profileType,
         useCase,
         status: 'pending',
         confirmationTokenHash: token.hash,
@@ -139,6 +150,8 @@ export async function submitWaitlistEntry(
         .update(waitlistEntry)
         .set({
           name: name ?? existing.name,
+          primaryInterest: primaryInterest ?? existing.primaryInterest,
+          profileType: profileType ?? existing.profileType,
           useCase: useCase ?? existing.useCase,
           updatedAt: now,
           ...metadataPatch,
@@ -156,6 +169,8 @@ export async function submitWaitlistEntry(
       .update(waitlistEntry)
       .set({
         name: name ?? existing.name,
+        primaryInterest: primaryInterest ?? existing.primaryInterest,
+        profileType: profileType ?? existing.profileType,
         useCase: useCase ?? existing.useCase,
         confirmationTokenHash: token.hash,
         confirmationTokenExpiresAt: token.expiresAt,
@@ -178,6 +193,8 @@ export async function submitWaitlistEntry(
       .update(waitlistEntry)
       .set({
         name: name ?? existing.name,
+        primaryInterest: primaryInterest ?? existing.primaryInterest,
+        profileType: profileType ?? existing.profileType,
         useCase: useCase ?? existing.useCase,
         updatedAt: now,
         ...metadataPatch,
@@ -340,8 +357,11 @@ export function listWaitlistEntries(filters: WaitlistFilters = {}) {
   if (filters.source) {
     conditions.push(eq(waitlistEntry.source, filters.source))
   }
-  if (filters.useCase) {
-    conditions.push(eq(waitlistEntry.useCase, filters.useCase))
+  if (filters.primaryInterest) {
+    conditions.push(eq(waitlistEntry.primaryInterest, filters.primaryInterest))
+  }
+  if (filters.profileType) {
+    conditions.push(eq(waitlistEntry.profileType, filters.profileType))
   }
   if (filters.createdWithinDays) {
     const since = new Date(Date.now() - filters.createdWithinDays * 86_400_000)
@@ -355,24 +375,14 @@ export function listWaitlistEntries(filters: WaitlistFilters = {}) {
 }
 
 export async function listWaitlistFilterValues() {
-  const [sources, useCases] = await Promise.all([
-    db
-      .selectDistinct({ source: waitlistEntry.source })
-      .from(waitlistEntry)
-      .where(isNotNull(waitlistEntry.source)),
-    db
-      .selectDistinct({ useCase: waitlistEntry.useCase })
-      .from(waitlistEntry)
-      .where(isNotNull(waitlistEntry.useCase)),
-  ])
+  const sources = await db
+    .selectDistinct({ source: waitlistEntry.source })
+    .from(waitlistEntry)
+    .where(isNotNull(waitlistEntry.source))
 
   return {
     sources: sources
       .map((row) => row.source)
-      .filter((value): value is string => Boolean(value))
-      .sort((left, right) => left.localeCompare(right)),
-    useCases: useCases
-      .map((row) => row.useCase)
       .filter((value): value is string => Boolean(value))
       .sort((left, right) => left.localeCompare(right)),
   }

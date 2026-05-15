@@ -17,7 +17,11 @@ import type { WaitlistEntry } from '@/shared/db/schema'
 import { formatDateTime, formatRelative } from '@/shared/server/format'
 import { createPrivatePageMetadata } from '@/shared/server/site-metadata'
 import { WaitlistActionButtons } from '@/waitlist/components/waitlist-action-buttons'
-import { WAITLIST_ENTRY_STATUSES } from '@/waitlist/server/constants'
+import {
+  WAITLIST_ENTRY_STATUSES,
+  WAITLIST_PRIMARY_INTEREST_OPTIONS,
+  WAITLIST_PROFILE_TYPE_OPTIONS,
+} from '@/waitlist/server/constants'
 import {
   listWaitlistEntries,
   listWaitlistFilterValues,
@@ -46,21 +50,29 @@ function parseCreatedWithinDays(value?: string): number | undefined {
 
 function buildFilters(params: {
   created?: string
+  primaryInterest?: string
+  profileType?: string
   search?: string
   source?: string
   status?: string
-  useCase?: string
 }): WaitlistFilters {
   const status = WAITLIST_ENTRY_STATUSES.find(
     (value) => value === params.status
   )
+  const primaryInterest = WAITLIST_PRIMARY_INTEREST_OPTIONS.find(
+    (option) => option.value === params.primaryInterest
+  )?.value
+  const profileType = WAITLIST_PROFILE_TYPE_OPTIONS.find(
+    (option) => option.value === params.profileType
+  )?.value
 
   return {
     createdWithinDays: parseCreatedWithinDays(params.created),
+    primaryInterest,
+    profileType,
     search: params.search,
     source: params.source || undefined,
     status,
-    useCase: params.useCase || undefined,
   }
 }
 
@@ -69,10 +81,11 @@ export default async function WaitlistSettingsPage({
 }: {
   searchParams: Promise<{
     created?: string
+    primaryInterest?: string
+    profileType?: string
     search?: string
     source?: string
     status?: string
-    useCase?: string
   }>
 }) {
   return (
@@ -89,10 +102,11 @@ async function WaitlistSettingsContent({
 }: {
   searchParams: Promise<{
     created?: string
+    primaryInterest?: string
+    profileType?: string
     search?: string
     source?: string
     status?: string
-    useCase?: string
   }>
 }) {
   await requireWaitlistManageAccess()
@@ -128,7 +142,7 @@ async function WaitlistSettingsContent({
       </header>
 
       <section className="border-foreground border-y-2 py-8">
-        <form className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_repeat(4,minmax(0,1fr))_auto]">
+        <form className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_repeat(5,minmax(0,1fr))_auto]">
           <label className="flex flex-col gap-2">
             <span className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
               Search email
@@ -169,15 +183,22 @@ async function WaitlistSettingsContent({
           />
 
           <FilterSelect
-            defaultValue={params.useCase ?? ''}
-            label="Use case"
-            name="useCase"
+            defaultValue={params.primaryInterest ?? ''}
+            label="Interest"
+            name="primaryInterest"
             options={[
               { label: 'All', value: '' },
-              ...filterValues.useCases.map((useCase) => ({
-                label: useCase,
-                value: useCase,
-              })),
+              ...WAITLIST_PRIMARY_INTEREST_OPTIONS,
+            ]}
+          />
+
+          <FilterSelect
+            defaultValue={params.profileType ?? ''}
+            label="Profile"
+            name="profileType"
+            options={[
+              { label: 'All', value: '' },
+              ...WAITLIST_PROFILE_TYPE_OPTIONS,
             ]}
           />
 
@@ -209,8 +230,10 @@ async function WaitlistSettingsContent({
             <TableRow>
               <TableHead>Email</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Interest</TableHead>
+              <TableHead>Profile</TableHead>
               <TableHead>Use case</TableHead>
-              <TableHead>Source</TableHead>
+              <TableHead>Attribution</TableHead>
               <TableHead>Created</TableHead>
               <TableHead>Confirmation</TableHead>
               <TableHead>Invite</TableHead>
@@ -220,7 +243,7 @@ async function WaitlistSettingsContent({
           <TableBody>
             {entries.length === 0 ? (
               <TableRow>
-                <TableCell className="py-8 text-muted-foreground" colSpan={8}>
+                <TableCell className="py-8 text-muted-foreground" colSpan={10}>
                   No waitlist entries match the current filters.
                 </TableCell>
               </TableRow>
@@ -293,10 +316,25 @@ function WaitlistTableRow({ entry }: { entry: WaitlistEntry }) {
       <TableCell className="align-top">
         <Badge variant="outline">{entry.status}</Badge>
       </TableCell>
+      <TableCell className="align-top text-sm">
+        {getOptionLabel(
+          WAITLIST_PRIMARY_INTEREST_OPTIONS,
+          entry.primaryInterest
+        )}
+      </TableCell>
+      <TableCell className="align-top text-sm">
+        {getOptionLabel(WAITLIST_PROFILE_TYPE_OPTIONS, entry.profileType)}
+      </TableCell>
       <TableCell className="max-w-[18rem] whitespace-normal align-top text-sm leading-relaxed">
         {entry.useCase ?? '—'}
       </TableCell>
-      <TableCell className="align-top text-sm">{entry.source ?? '—'}</TableCell>
+      <TableCell className="align-top text-xs">
+        <AttributionLine label="Source" value={entry.source} />
+        <AttributionLine label="UTM source" value={entry.utmSource} />
+        <AttributionLine label="Medium" value={entry.utmMedium} />
+        <AttributionLine label="Campaign" value={entry.utmCampaign} />
+        <AttributionLine label="Content" value={entry.utmContent} />
+      </TableCell>
       <TableCell className="align-top text-xs">
         <div>{formatDateTime(entry.createdAt)}</div>
         <div className="text-muted-foreground">
@@ -319,5 +357,30 @@ function WaitlistTableRow({ entry }: { entry: WaitlistEntry }) {
         <WaitlistActionButtons entry={entry} />
       </TableCell>
     </TableRow>
+  )
+}
+
+function getOptionLabel(
+  options: readonly { label: string; value: string }[],
+  value?: string | null
+) {
+  if (!value) {
+    return '—'
+  }
+  return options.find((option) => option.value === value)?.label ?? value
+}
+
+function AttributionLine({
+  label,
+  value,
+}: {
+  label: string
+  value?: string | null
+}) {
+  return (
+    <div className="max-w-[12rem] truncate">
+      <span className="text-muted-foreground">{label}: </span>
+      {value ?? '—'}
+    </div>
   )
 }
