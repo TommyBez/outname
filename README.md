@@ -33,6 +33,8 @@ attachments, and Slack routing.
 
 ## Deploy on Vercel
 
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FTommyBez%2Fpersonal-assistant-agent)
+
 1. Fork this repository and create a new Vercel project from the fork.
 2. Set the project runtime to Node.js 22 or newer.
 3. Add the environment variables from `.env.example`.
