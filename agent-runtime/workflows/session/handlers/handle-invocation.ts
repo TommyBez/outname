@@ -160,43 +160,16 @@ export async function handleInvocation(input: {
 function createInvocationWritable(
   namespaces: readonly string[]
 ): WritableStream<UIMessageChunk> {
-  if (namespaces.length === 1) {
-    return getWritable<UIMessageChunk>({ namespace: namespaces[0] })
+  const primaryNamespace = namespaces[0]
+  if (!primaryNamespace) {
+    throw new Error('createInvocationWritable: missing stream namespace')
   }
-
-  const writables = namespaces.map((namespace) =>
-    getWritable<UIMessageChunk>({ namespace })
-  )
-
-  return new WritableStream<UIMessageChunk>({
-    async abort(reason) {
-      await Promise.all(
-        writables.map((writable) =>
-          writable.abort(reason).catch(() => undefined)
-        )
-      )
-    },
-    async close() {
-      await Promise.all(writables.map((writable) => writable.close()))
-    },
-    async write(chunk) {
-      await Promise.all(
-        writables.map((writable) => writeChunk(writable, chunk))
-      )
-    },
-  })
-}
-
-async function writeChunk(
-  writable: WritableStream<UIMessageChunk>,
-  chunk: UIMessageChunk
-): Promise<void> {
-  const writer = writable.getWriter()
-  try {
-    await writer.write(chunk)
-  } finally {
-    writer.releaseLock()
+  if (namespaces.length > 1) {
+    console.warn('createInvocationWritable: mirror namespace disabled', {
+      namespaces,
+    })
   }
+  return getWritable<UIMessageChunk>({ namespace: primaryNamespace })
 }
 
 async function finishInvocationStreams(
