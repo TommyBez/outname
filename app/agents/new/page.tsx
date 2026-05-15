@@ -25,7 +25,7 @@ export default function NewAgentPage() {
       <section className="border-foreground border-t-2 pt-6">
         <Suspense
           fallback={
-            <div className="min-h-[min(720px,calc(100vh-18rem))] border-2 border-foreground bg-muted" />
+            <div className="h-[min(720px,calc(100vh-18rem))] min-h-[420px] border-2 border-foreground bg-muted" />
           }
         >
           <AgentCreationChat />

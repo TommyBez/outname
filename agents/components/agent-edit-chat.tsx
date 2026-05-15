@@ -93,12 +93,10 @@ export function AgentEditChat({ agentId, currentBudget }: AgentEditChatProps) {
         </ConversationContent>
         <ConversationScrollButton />
       </Conversation>
-      {error ? (
-        <p className="shrink-0 px-4 py-2 text-destructive text-xs">
-          {error.message}
-        </p>
-      ) : null}
-      <div className="shrink-0 border-border border-t p-4">
+      <div className="sticky bottom-0 z-10 shrink-0 border-border border-t bg-background p-4">
+        {error ? (
+          <p className="mb-3 text-destructive text-xs">{error.message}</p>
+        ) : null}
         <PromptInput onSubmit={handleSubmit}>
           <PromptInputTextarea
             disabled={isBusy}
