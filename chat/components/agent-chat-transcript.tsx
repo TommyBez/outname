@@ -1,6 +1,7 @@
 'use client'
 
 import type { UIMessage } from 'ai'
+import { ChevronDownIcon, SearchIcon } from 'lucide-react'
 import type {
   AgentChatMessage,
   WorkflowStatusData,
@@ -35,6 +36,7 @@ import {
   ToolOutput,
   type ToolPart,
 } from '@/components/ai-elements/tool'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 interface AgentChatTranscriptProps {
@@ -266,7 +268,23 @@ function SubAgentToolTrace({ output }: { output: SubAgentToolOutput }) {
 
   return (
     <Task defaultOpen>
-      <TaskTrigger title={title} />
+      {/*
+       * Pass the design-system `Button` instead of relying on `TaskTrigger`'s
+       * default `<div>` child, which is not focusable and not keyboard-
+       * operable when used as `CollapsibleTrigger asChild`. Visual overrides
+       * preserve the muted, lowercase look of a Task trigger.
+       */}
+      <TaskTrigger title={title}>
+        <Button
+          className="h-auto w-full justify-start gap-2 border-0 px-0 py-0 font-medium text-muted-foreground text-sm normal-case tracking-normal hover:bg-transparent hover:text-foreground"
+          type="button"
+          variant="ghost"
+        >
+          <SearchIcon className="size-4" />
+          <span>{title}</span>
+          <ChevronDownIcon className="size-4 transition-transform group-data-[state=open]:rotate-180" />
+        </Button>
+      </TaskTrigger>
       <TaskContent>
         {hasMessages ? (
           output.messages.map((message) => (
