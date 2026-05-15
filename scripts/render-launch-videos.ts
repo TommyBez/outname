@@ -1,17 +1,18 @@
 import { spawnSync } from 'node:child_process'
 import { mkdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
-import { scheduledRunVideo } from '../content/outname-launch/assets/video-manifest'
+import { launchVideoManifest } from '../content/outname-launch/assets/video-manifest'
 
 type RenderMode = 'render' | 'still'
 
 const ENTRYPOINT = 'remotion/index.ts'
-const STILL_FRAME = '600'
+const STILL_FRAME = '450'
 
 function parseMode(value: string | undefined): RenderMode {
   if (value === 'still') {
     return 'still'
   }
+
   return 'render'
 }
 
@@ -22,7 +23,7 @@ function getRemotionBin() {
 
 function renderVariant(
   mode: RenderMode,
-  variant: (typeof scheduledRunVideo.variants)[number]
+  variant: (typeof launchVideoManifest)[number]['variants'][number]
 ) {
   const outputPath = mode === 'still' ? variant.stillPath : variant.outputPath
   mkdirSync(dirname(resolve(outputPath)), { recursive: true })
@@ -59,8 +60,10 @@ function renderVariant(
 function main() {
   const mode = parseMode(process.argv[2])
 
-  for (const variant of scheduledRunVideo.variants) {
-    renderVariant(mode, variant)
+  for (const asset of launchVideoManifest) {
+    for (const variant of asset.variants) {
+      renderVariant(mode, variant)
+    }
   }
 }
 

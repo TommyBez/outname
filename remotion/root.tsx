@@ -1,25 +1,29 @@
 import { Composition } from 'remotion'
-import { scheduledRunVideo } from '@/content/outname-launch/assets/video-manifest'
-import { ScheduledRunDemo } from './scheduled-run-demo'
+import { launchVideoManifest } from '@/content/outname-launch/assets/video-manifest'
+import { LaunchVideo } from './launch-videos'
 
 const FPS = 30
-const DURATION_IN_FRAMES = 720
 
 export function RemotionRoot() {
   return (
     <>
-      {scheduledRunVideo.variants.map((variant) => (
-        <Composition
-          component={ScheduledRunDemo}
-          defaultProps={{ aspect: variant.aspect }}
-          durationInFrames={DURATION_IN_FRAMES}
-          fps={FPS}
-          height={variant.height}
-          id={variant.compositionId}
-          key={variant.compositionId}
-          width={variant.width}
-        />
-      ))}
+      {launchVideoManifest.flatMap((asset) =>
+        asset.variants.map((variant) => (
+          <Composition
+            component={LaunchVideo}
+            defaultProps={{
+              aspect: variant.aspect,
+              slug: asset.slug,
+            }}
+            durationInFrames={asset.durationInFrames}
+            fps={FPS}
+            height={variant.height}
+            id={variant.compositionId}
+            key={variant.compositionId}
+            width={variant.width}
+          />
+        ))
+      )}
     </>
   )
 }

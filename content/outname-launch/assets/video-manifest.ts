@@ -13,56 +13,149 @@ export interface LaunchVideoVariant {
 
 export interface LaunchVideoAsset {
   description: string
+  durationInFrames: number
   linkedPosts: readonly string[]
   slug: string
   title: string
   variants: readonly LaunchVideoVariant[]
 }
 
-export const scheduledRunVideo = {
-  description:
-    'Silent Remotion-generated simil-demo showing a scheduled run, queue check, tool activity, memory writes, and a readable execution trace.',
-  linkedPosts: [
-    'content/outname-launch/X/2026-05-22_15-30.md',
-    'content/outname-launch/LinkedIn/2026-05-22_10-30.md',
-  ],
-  slug: '2026-05-22-scheduled-run-demo',
-  title: 'Scheduled run demo',
-  variants: [
-    {
-      aspect: '16x9',
-      compositionId: 'scheduled-run-demo-16x9',
-      height: 1080,
-      outputPath:
-        'content/outname-launch/assets/videos/2026-05-22-scheduled-run-demo-16x9.mp4',
-      platformUsage: 'x',
-      stillPath:
-        'content/outname-launch/assets/stills/2026-05-22-scheduled-run-demo-16x9.png',
-      width: 1920,
-    },
-    {
-      aspect: '4x5',
-      compositionId: 'scheduled-run-demo-4x5',
-      height: 1350,
-      outputPath:
-        'content/outname-launch/assets/videos/2026-05-22-scheduled-run-demo-4x5.mp4',
-      platformUsage: 'linkedin',
-      stillPath:
-        'content/outname-launch/assets/stills/2026-05-22-scheduled-run-demo-4x5.png',
-      width: 1080,
-    },
-    {
-      aspect: '1x1',
-      compositionId: 'scheduled-run-demo-1x1',
-      height: 1080,
-      outputPath:
-        'content/outname-launch/assets/videos/2026-05-22-scheduled-run-demo-1x1.mp4',
-      platformUsage: 'cross-post',
-      stillPath:
-        'content/outname-launch/assets/stills/2026-05-22-scheduled-run-demo-1x1.png',
-      width: 1080,
-    },
-  ],
-} as const satisfies LaunchVideoAsset
+const FPS_18_SECONDS = 540
 
-export const launchVideoManifest = [scheduledRunVideo] as const
+function buildVariant(
+  slug: string,
+  aspect: LaunchVideoAspect,
+  platformUsage: LaunchVideoPlatform
+): LaunchVideoVariant {
+  const dimensions = getDimensions(aspect)
+
+  return {
+    aspect,
+    compositionId: `${slug}-${aspect}`,
+    height: dimensions.height,
+    outputPath: `content/outname-launch/assets/videos/${slug}-${aspect}.mp4`,
+    platformUsage,
+    stillPath: `content/outname-launch/assets/stills/${slug}-${aspect}.png`,
+    width: dimensions.width,
+  }
+}
+
+function getDimensions(aspect: LaunchVideoAspect) {
+  if (aspect === '16x9') {
+    return { height: 1080, width: 1920 } as const
+  }
+
+  if (aspect === '4x5') {
+    return { height: 1350, width: 1080 } as const
+  }
+
+  return { height: 1080, width: 1080 } as const
+}
+
+export const launchVideoManifest = [
+  {
+    description:
+      'Editorial video about repeating context and needing autonomous agents that return to the work over time.',
+    durationInFrames: FPS_18_SECONDS,
+    linkedPosts: [
+      'content/outname-launch/LinkedIn/2026-05-18_10-30.md',
+      'content/outname-launch/X/2026-05-18_15-30.md',
+    ],
+    slug: '2026-05-18-why-outname-exists',
+    title: 'Why OUTNA.ME exists',
+    variants: [
+      buildVariant('2026-05-18-why-outname-exists', '4x5', 'linkedin'),
+      buildVariant('2026-05-18-why-outname-exists', '1x1', 'x'),
+    ],
+  },
+  {
+    description:
+      'Feature video showing agents as configurable units with model, identity, schedule, and memory scope.',
+    durationInFrames: FPS_18_SECONDS,
+    linkedPosts: [
+      'content/outname-launch/LinkedIn/2026-05-20_10-30.md',
+      'content/outname-launch/X/2026-05-19_15-30.md',
+    ],
+    slug: '2026-05-20-agent-configuration',
+    title: 'Agent configuration',
+    variants: [
+      buildVariant('2026-05-20-agent-configuration', '4x5', 'linkedin'),
+      buildVariant('2026-05-20-agent-configuration', '1x1', 'x'),
+    ],
+  },
+  {
+    description:
+      'Feature video showing an autonomous run that starts from a schedule, uses channels/tools/sub-agents, and updates memory.',
+    durationInFrames: FPS_18_SECONDS,
+    linkedPosts: [
+      'content/outname-launch/LinkedIn/2026-05-22_10-30.md',
+      'content/outname-launch/X/2026-05-22_15-30.md',
+      'content/outname-launch/X/2026-05-29_15-30.md',
+    ],
+    slug: '2026-05-22-autonomous-run',
+    title: 'Autonomous run',
+    variants: [
+      buildVariant('2026-05-22-autonomous-run', '16x9', 'x'),
+      buildVariant('2026-05-22-autonomous-run', '4x5', 'linkedin'),
+      buildVariant('2026-05-22-autonomous-run', '1x1', 'cross-post'),
+    ],
+  },
+  {
+    description:
+      'Feature video about memory as a way for agents to adapt after repeated runs.',
+    durationInFrames: FPS_18_SECONDS,
+    linkedPosts: [
+      'content/outname-launch/LinkedIn/2026-05-26_10-30.md',
+      'content/outname-launch/X/2026-05-26_15-30.md',
+    ],
+    slug: '2026-05-26-memory-over-time',
+    title: 'Memory over time',
+    variants: [
+      buildVariant('2026-05-26-memory-over-time', '4x5', 'linkedin'),
+      buildVariant('2026-05-26-memory-over-time', '1x1', 'x'),
+    ],
+  },
+  {
+    description:
+      'Feature video showing tools, sub-agents, MCP/skills, and communication channels as composable building blocks.',
+    durationInFrames: FPS_18_SECONDS,
+    linkedPosts: [
+      'content/outname-launch/LinkedIn/2026-05-28_10-30.md',
+      'content/outname-launch/X/2026-05-21_15-30.md',
+      'content/outname-launch/X/2026-05-25_15-30.md',
+    ],
+    slug: '2026-05-28-composable-channels',
+    title: 'Composable channels',
+    variants: [
+      buildVariant('2026-05-28-composable-channels', '4x5', 'linkedin'),
+      buildVariant('2026-05-28-composable-channels', '1x1', 'x'),
+    ],
+  },
+  {
+    description:
+      'Technical X-only video showing the Vercel-native stack behind OUTNA.ME.',
+    durationInFrames: FPS_18_SECONDS,
+    linkedPosts: [
+      'content/outname-launch/X/2026-05-20_15-30.md',
+      'content/outname-launch/X/2026-05-28_15-30.md',
+    ],
+    slug: '2026-05-20-vercel-stack',
+    title: 'Vercel agent stack',
+    variants: [
+      buildVariant('2026-05-20-vercel-stack', '16x9', 'x'),
+      buildVariant('2026-05-20-vercel-stack', '1x1', 'x'),
+    ],
+  },
+] as const satisfies readonly LaunchVideoAsset[]
+
+export type LaunchVideoSlug = (typeof launchVideoManifest)[number]['slug']
+
+export function getLaunchVideoAsset(slug: LaunchVideoSlug) {
+  const asset = launchVideoManifest.find((item) => item.slug === slug)
+
+  if (!asset) {
+    throw new Error(`Launch video not found: ${slug}`)
+  }
+
+  return asset
+}
