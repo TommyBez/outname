@@ -47,7 +47,7 @@ export function AppShell({
             href="/dashboard"
           >
             <span aria-hidden className="inline-block size-3 bg-accent" />
-            <span>agents</span>
+            <span>outna.me</span>
           </Link>
         </header>
         <main

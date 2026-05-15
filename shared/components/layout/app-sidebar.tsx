@@ -68,7 +68,7 @@ export function AppSidebar({ sidebarExtras }: AppSidebarProps = {}) {
             className="inline-block size-3 shrink-0 bg-accent"
           />
           <span className="truncate group-data-[collapsible=icon]:hidden">
-            agents
+            outna.me
           </span>
         </Link>
       </SidebarHeader>
@@ -123,7 +123,7 @@ export function AppSidebarFallback() {
             className="inline-block size-3 shrink-0 bg-accent"
           />
           <span className="truncate group-data-[collapsible=icon]:hidden">
-            agents
+            outna.me
           </span>
         </div>
       </SidebarHeader>
