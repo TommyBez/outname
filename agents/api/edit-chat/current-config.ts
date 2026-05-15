@@ -1,6 +1,4 @@
-import { and, desc, eq } from 'drizzle-orm'
-import { db } from '@/shared/db'
-import { pendingFileWrites } from '@/shared/db/schema'
+import { customInstructionsFromAgentsMd } from '@/agents/server/bootstrap-files'
 import { getAgentByIdForUser, getAgentMemoryFile } from '@/shared/server/data'
 
 export async function getCurrent(agentId: string, userId: string) {
@@ -18,8 +16,12 @@ export async function getCurrent(agentId: string, userId: string) {
     name: agentRow.name,
     model: agentRow.model,
     heartbeatEnabled: agentRow.heartbeatEnabled,
+    heartbeatScheduleMode: agentRow.heartbeatScheduleMode,
+    heartbeatScheduleTimes: agentRow.heartbeatScheduleTimes,
     heartbeatIntervalMinutes: agentRow.heartbeatIntervalMinutes,
     dreamingEnabled: agentRow.dreamingEnabled,
+    dreamingScheduleMode: agentRow.dreamingScheduleMode,
+    dreamingScheduleTimes: agentRow.dreamingScheduleTimes,
     dreamingIntervalMinutes: agentRow.dreamingIntervalMinutes,
     stepLimitMode: (agentRow.stepLimitMode ?? 'medium') as
       | 'custom'
@@ -36,20 +38,9 @@ export async function getCurrent(agentId: string, userId: string) {
 }
 
 async function resolveBootstrap(agentId: string, path: string) {
-  const [latest] = await db
-    .select()
-    .from(pendingFileWrites)
-    .where(
-      and(
-        eq(pendingFileWrites.agentId, agentId),
-        eq(pendingFileWrites.path, path)
-      )
-    )
-    .orderBy(desc(pendingFileWrites.enqueuedAt))
-    .limit(1)
-  if (latest) {
-    return latest.content
-  }
   const file = await getAgentMemoryFile({ agentId, path })
+  if (path === 'AGENTS.md' && file?.content) {
+    return customInstructionsFromAgentsMd(file.content)
+  }
   return file?.content ?? ''
 }

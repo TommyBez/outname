@@ -14,6 +14,7 @@ export interface BuildAgentArgs {
   conversationId?: string | null
   currentRunId?: string | null
   depth?: number
+  eventKind?: 'chat' | 'dreaming' | 'heartbeat' | 'invocation'
   nowIso?: string
   runId: string
   streamNamespace?: string | null
@@ -65,6 +66,7 @@ export async function buildAgent(
   const systemPrompt = await composeSystemPrompt({
     agentId,
     agentName: row.name,
+    eventKind: args.eventKind,
     nowIso: args.nowIso ?? new Date().toISOString(),
     reconnects: attached.reconnects,
   })

@@ -30,19 +30,18 @@ async function ResolvedAgentMemoryPage({ params }: { params: Params }) {
           Agent memory
         </h1>
         <p className="mt-5 max-w-2xl border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
-          Inspect the mirrored sandbox files, daily logs, and dreaming output
-          for this agent.
+          Inspect sandbox files, daily logs, and dreaming output for this agent.
         </p>
       </header>
 
       <div className="grid gap-4 md:grid-cols-3">
         <MemoryCard
-          description="Every markdown file currently mirrored from the persistent system sandbox."
+          description="Common markdown files read from the persistent system sandbox, with Redis as a cache."
           href={`/agents/${agent.id}/memory/files`}
           title="Files"
         />
         <MemoryCard
-          description="Daily event logs from chat, heartbeat, dreaming, and sub-agent invocation runs."
+          description="Daily event logs from chat, heartbeat, dreaming, and sub-agent runs."
           href={`/agents/${agent.id}/memory/timeline`}
           title="Timeline"
         />

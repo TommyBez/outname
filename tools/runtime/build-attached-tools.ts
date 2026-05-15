@@ -57,7 +57,7 @@ function buildOne(args: {
     })
     return toBuiltToolEntries(p.toolId, built)
   } catch (err) {
-    console.error('[v0] buildAttachedTools: build failed', {
+    console.error('buildAttachedTools: build failed', {
       agentId,
       toolId: p.toolId,
       err,

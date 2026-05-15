@@ -1,15 +1,13 @@
-import { asc, eq } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { RunResultView } from '@/agent-runtime/components/run-result-view'
 import { TriggerButton } from '@/agents/components/trigger-button'
 import { requireSession } from '@/auth/server/auth-guard'
-import { db } from '@/shared/db'
-import { agentFiles } from '@/shared/db/schema'
 import {
   getCachedAgentByIdForUser,
   getCachedAgentLogFiles,
   getCachedAgentMemoryFile,
+  getCachedAgentMemoryFiles,
 } from '@/shared/server/data'
 import { formatRelative } from '@/shared/server/format'
 
@@ -50,16 +48,12 @@ async function ResolvedAgentMemoryFiles({ params }: { params: Params }) {
     notFound()
   }
 
-  const rows = await db
-    .select()
-    .from(agentFiles)
-    .where(eq(agentFiles.agentId, agent.id))
-    .orderBy(asc(agentFiles.path))
+  const rows = await getCachedAgentMemoryFiles(agent.id)
 
   return (
     <>
       <MemorySectionHeader
-        description="Markdown notes the agent maintains inside its persistent sandbox. They are snapshotted to the database at the end of each chat turn, heartbeat, and dreaming run."
+        description="Markdown notes the agent maintains inside its persistent sandbox. The sandbox is the source of truth; Redis is only a fast cache for this view."
         eyebrow="Memory · Files"
         title="Sandbox files"
       />
@@ -112,7 +106,7 @@ async function ResolvedAgentMemoryTimeline({ params }: { params: Params }) {
   return (
     <>
       <MemorySectionHeader
-        description="The agent's markdown event log, mirrored from its system sandbox after each chat, heartbeat, dreaming run, or sub-agent invocation."
+        description="The agent's markdown event log from its persistent system sandbox."
         eyebrow="Memory · Timeline"
         title="Daily logs"
       />

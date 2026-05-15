@@ -99,7 +99,7 @@ export async function stopAllBrokeredHttpSandboxesForRun(): Promise<void> {
         const sandbox = await sandboxPromise
         await sandbox.stop()
       } catch (err) {
-        console.error('[v0] stopAllBrokeredHttpSandboxesForRun: stop failed', {
+        console.error('stopAllBrokeredHttpSandboxesForRun: stop failed', {
           provider,
           err,
         })

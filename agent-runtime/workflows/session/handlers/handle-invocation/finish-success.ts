@@ -27,8 +27,10 @@ export async function finishSuccessfulInvocation(input: {
   runId: string
   stepLimitInput: StepLimitInput
   streamNamespace: string
+  streamNamespaces?: readonly string[]
 }): Promise<void> {
-  const { result, runId, stepLimitInput, streamNamespace } = input
+  const { result, runId, stepLimitInput } = input
+  const streamNamespaces = input.streamNamespaces ?? [input.streamNamespace]
   const hitStepLimit = didReachStepLimit({
     ...stepLimitInput,
     steps: result.steps,
@@ -52,11 +54,15 @@ export async function finishSuccessfulInvocation(input: {
   )
 
   if (hitStepLimit) {
-    await writeAssistantNotice(
-      streamNamespace,
-      formatStepLimitStreamText(
-        result.uiMessages ?? [],
-        buildStepLimitNotice(stepLimitInput)
+    await Promise.all(
+      streamNamespaces.map((namespace) =>
+        writeAssistantNotice(
+          namespace,
+          formatStepLimitStreamText(
+            result.uiMessages ?? [],
+            buildStepLimitNotice(stepLimitInput)
+          )
+        )
       )
     )
   }
@@ -65,7 +71,7 @@ export async function finishSuccessfulInvocation(input: {
     runId,
     'completed',
     hitStepLimit
-      ? 'Sub-agent invocation completed after reaching the step limit'
-      : 'Sub-agent invocation completed'
+      ? 'Sub-agent run completed after reaching the step limit'
+      : 'Sub-agent run completed'
   )
 }

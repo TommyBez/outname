@@ -116,31 +116,33 @@ export function AgentChat({
         workflowStatus={showWorkflowStatus ? workflowStatus : null}
       />
 
-      {error && (
-        <p
-          className="mb-2 border-2 border-destructive bg-destructive px-3 py-2 font-bold text-destructive-foreground text-xs uppercase tracking-[0.12em]"
-          role="alert"
-        >
-          {error.message || 'Something went wrong. Try again.'}
-        </p>
-      )}
+      <div className="sticky bottom-0 z-10 shrink-0 bg-background pt-4">
+        {error && (
+          <p
+            className="mb-3 border-2 border-destructive bg-destructive px-3 py-2 font-bold text-destructive-foreground text-xs uppercase tracking-[0.12em]"
+            role="alert"
+          >
+            {error.message || 'Something went wrong. Try again.'}
+          </p>
+        )}
 
-      <PromptInput className="mt-4" onSubmit={handleSubmit}>
-        <PromptInputTextarea
-          disabled={isBusy}
-          onChange={(event) => setInput(event.target.value)}
-          placeholder="Ask about your inbox…"
-          value={input}
-        />
-        <PromptInputFooter>
-          <div />
-          <PromptInputSubmit
-            disabled={!isBusy && input.trim().length === 0}
-            onStop={stop}
-            status={status}
+        <PromptInput onSubmit={handleSubmit}>
+          <PromptInputTextarea
+            disabled={isBusy}
+            onChange={(event) => setInput(event.target.value)}
+            placeholder="Ask about your inbox…"
+            value={input}
           />
-        </PromptInputFooter>
-      </PromptInput>
+          <PromptInputFooter>
+            <div />
+            <PromptInputSubmit
+              disabled={!isBusy && input.trim().length === 0}
+              onStop={stop}
+              status={status}
+            />
+          </PromptInputFooter>
+        </PromptInput>
+      </div>
     </div>
   )
 }

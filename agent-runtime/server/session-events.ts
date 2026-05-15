@@ -1,67 +1,109 @@
 import 'server-only'
-import type { UIMessage, UIMessageChunk } from 'ai'
+import type { ModelMessage, UIMessage } from 'ai'
 import { eq } from 'drizzle-orm'
-import { getHookByToken, resumeHook } from 'workflow/api'
+import { nanoid } from 'nanoid'
 import {
-  type SessionEvent,
-  sessionToken,
-} from '@/agent-runtime/workflows/session/events'
+  type EnqueueAgentEventResult,
+  enqueueAgentEvent,
+} from '@/agent-runtime/server/agent-events'
 import { db } from '@/shared/db'
 import { type Agent, agent } from '@/shared/db/schema'
-import {
-  isWorkflowRunAlive,
-  restartAgentSession,
-  sleep,
-  startAgentSession,
-} from './session-lifecycle'
 
-const SESSION_HOOK_READY_TIMEOUT_MS = 5000
-const SESSION_HOOK_POLL_MS = 100
+function workflowRunIdOrNull(result: EnqueueAgentEventResult): string | null {
+  return result.workflowRunId
+}
 
-function newReplyToken() {
-  return (
-    'rep_' +
-    Math.random().toString(36).slice(2, 10) +
-    Date.now().toString(36).slice(-4)
-  )
+function workflowRunIdOrThrow(result: EnqueueAgentEventResult): string {
+  if (!result.workflowRunId) {
+    throw new Error(
+      `Agent event ${result.eventId} was queued before a workflow run became available`
+    )
+  }
+  return result.workflowRunId
 }
 
 export async function pokeHeartbeat(opts: {
   agent: Agent
-}): Promise<{ sessionRunId: string }> {
-  return await resumeSessionEvent(opts.agent, {
+}): Promise<{ eventId: string; sessionRunId: string | null }> {
+  const result = await enqueueAgentEvent({
+    agent: opts.agent,
+    concurrencyKey: null,
+    idempotencyKey: `manual:${opts.agent.id}:heartbeat:${nanoid(12)}`,
+    payload: {
+      manual: true,
+      scheduledAt: new Date().toISOString(),
+    },
+    source: 'manual',
     type: 'heartbeat',
-    mode: 'normal',
-    manual: true,
-    scheduledAt: new Date().toISOString(),
   })
+  return {
+    eventId: result.eventId,
+    sessionRunId: workflowRunIdOrNull(result),
+  }
 }
 
 export async function pokeDreaming(opts: {
   agent: Agent
   localDate: string
-}): Promise<{ sessionRunId: string }> {
-  return await resumeSessionEvent(opts.agent, {
+}): Promise<{ eventId: string; sessionRunId: string | null }> {
+  const result = await enqueueAgentEvent({
+    agent: opts.agent,
+    concurrencyKey: null,
+    idempotencyKey: `manual:${opts.agent.id}:dreaming:${nanoid(12)}`,
+    payload: {
+      localDate: opts.localDate,
+      manual: true,
+      scheduledAt: new Date().toISOString(),
+    },
+    source: 'manual',
     type: 'dreaming',
-    localDate: opts.localDate,
-    manual: true,
-    scheduledAt: new Date().toISOString(),
   })
+  return {
+    eventId: result.eventId,
+    sessionRunId: workflowRunIdOrNull(result),
+  }
 }
 
 export async function dispatchChatTurn(opts: {
   agent: Agent
+  concurrencyKey?: string | null
   conversationId: string
+  extraPayload?: Record<string, unknown>
+  idempotencyKey?: string
+  // Pre-converted model messages, populated by channel adapters that own the
+  // thread (Chat SDK `toAiMessages`). When present, the workflow uses them
+  // directly and skips converting `uiMessages`.
+  modelMessages?: ModelMessage[]
+  source?: 'chat' | 'slack'
   uiMessages: UIMessage[]
-}): Promise<{ sessionRunId: string; replyToken: string }> {
-  const replyToken = newReplyToken()
-  const { sessionRunId } = await resumeSessionEvent(opts.agent, {
+}): Promise<{
+  eventId: string
+  replyToken: string
+  sessionRunId: string | null
+  workflowRunId: string | null
+}> {
+  const messageId = opts.uiMessages.at(-1)?.id ?? nanoid(12)
+  const result = await enqueueAgentEvent({
+    agent: opts.agent,
+    idempotencyKey:
+      opts.idempotencyKey ??
+      `chat:${opts.agent.id}:${opts.conversationId}:${messageId}`,
+    payload: {
+      conversationId: opts.conversationId,
+      ...(opts.extraPayload ?? {}),
+      modelMessages: opts.modelMessages,
+      uiMessages: opts.uiMessages,
+    },
+    concurrencyKey: opts.concurrencyKey ?? null,
+    source: opts.source ?? 'chat',
     type: 'chat',
-    conversationId: opts.conversationId,
-    uiMessages: opts.uiMessages,
-    replyToken,
   })
-  return { sessionRunId, replyToken }
+  return {
+    eventId: result.eventId,
+    replyToken: result.replyNamespace,
+    sessionRunId: workflowRunIdOrNull(result),
+    workflowRunId: result.workflowRunId,
+  }
 }
 
 export async function dispatchInvocation(input: {
@@ -71,12 +113,11 @@ export async function dispatchInvocation(input: {
   parentRunId: string | null
   parentToolId: string
   parentToolCallId?: string | null
-  parentStream?: WritableStream<UIMessageChunk> | null
   instruction: string
   streamToken: string
   callStack: string[]
   depth: number
-}): Promise<{ sessionRunId: string }> {
+}): Promise<{ eventId: string; sessionRunId: string }> {
   if (input.childUserId !== input.parentUserId) {
     throw new Error(
       `dispatchInvocation: child ${input.childAgentId} does not belong to caller`
@@ -97,102 +138,28 @@ export async function dispatchInvocation(input: {
     )
   }
 
-  const { sessionRunId } = await resumeSessionEvent(child, {
+  const result = await enqueueAgentEvent({
+    agent: child,
+    idempotencyKey: [
+      'invocation',
+      input.childAgentId,
+      input.parentRunId ?? 'root',
+      input.parentToolCallId ?? input.streamToken,
+    ].join(':'),
+    payload: {
+      callStack: input.callStack,
+      depth: input.depth,
+      input: input.instruction,
+      parentRunId: input.parentRunId,
+      parentToolCallId: input.parentToolCallId ?? null,
+      parentToolId: input.parentToolId,
+      streamToken: input.streamToken,
+    },
+    source: 'invocation',
     type: 'invocation',
-    input: input.instruction,
-    streamToken: input.streamToken,
-    parentRunId: input.parentRunId,
-    parentToolId: input.parentToolId,
-    parentToolCallId: input.parentToolCallId ?? null,
-    parentStream: input.parentStream ?? null,
-    callStack: input.callStack,
-    depth: input.depth,
   })
-  return { sessionRunId }
-}
-
-function isHookNotFoundError(err: unknown): boolean {
-  return err instanceof Error && err.name === 'HookNotFoundError'
-}
-
-async function waitForSessionHook(
-  agentId: string,
-  sessionEpoch: number,
-  sessionRunId: string
-): Promise<boolean> {
-  const token = sessionToken(agentId, sessionEpoch)
-  const deadlineMs = Date.now() + SESSION_HOOK_READY_TIMEOUT_MS
-
-  while (Date.now() < deadlineMs) {
-    try {
-      const hook = await getHookByToken(token)
-      if (hook.runId === sessionRunId) {
-        return true
-      }
-    } catch (err) {
-      if (!isHookNotFoundError(err)) {
-        throw err
-      }
-    }
-
-    if (!(await isWorkflowRunAlive(sessionRunId))) {
-      return false
-    }
-    await sleep(SESSION_HOOK_POLL_MS)
+  return {
+    eventId: result.eventId,
+    sessionRunId: workflowRunIdOrThrow(result),
   }
-
-  return false
-}
-
-async function resumeSessionEvent(
-  a: Agent,
-  event: SessionEvent
-): Promise<{ sessionRunId: string }> {
-  let { sessionEpoch, sessionRunId } = await readySession(a)
-  try {
-    await resumeHook(sessionToken(a.id, sessionEpoch), event)
-    return { sessionRunId }
-  } catch (err) {
-    if (!isHookNotFoundError(err)) {
-      throw err
-    }
-  }
-
-  console.warn('[v0] agent session hook disappeared; restarting session', {
-    agentId: a.id,
-    sessionRunId,
-  })
-
-  ;({ sessionEpoch, sessionRunId } = await restartAgentSession(a))
-  if (!(await waitForSessionHook(a.id, sessionEpoch, sessionRunId))) {
-    throw new Error(
-      `Session hook for agent ${a.id} was not ready after recovery restart (${sessionRunId}).`
-    )
-  }
-
-  await resumeHook(sessionToken(a.id, sessionEpoch), event)
-  return { sessionRunId }
-}
-
-async function readySession(
-  a: Agent
-): Promise<{ sessionEpoch: number; sessionRunId: string }> {
-  let { sessionEpoch, sessionRunId } = await startAgentSession(a)
-  if (await waitForSessionHook(a.id, sessionEpoch, sessionRunId)) {
-    return { sessionEpoch, sessionRunId }
-  }
-
-  console.warn('[v0] agent session hook was not ready; restarting session', {
-    agentId: a.id,
-    sessionRunId,
-  })
-
-  ;({ sessionEpoch, sessionRunId } = await restartAgentSession(a))
-  if (await waitForSessionHook(a.id, sessionEpoch, sessionRunId)) {
-    return { sessionEpoch, sessionRunId }
-  }
-
-  throw new Error(
-    `Session hook for agent ${a.id} was not ready after restart (${sessionRunId}).`
-  )
 }

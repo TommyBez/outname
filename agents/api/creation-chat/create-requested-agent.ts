@@ -1,5 +1,5 @@
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { formatAgentCadenceLower } from '@/agents/format'
+import { formatAgentScheduleInline } from '@/agents/format'
 import { refreshAgentCapabilitySummary } from '@/agents/server/capability-summary'
 import { createAgentForUser } from '@/agents/server/creation-service'
 import type {
@@ -34,8 +34,12 @@ export async function createRequestedAgent(input: {
     name: input.input.name,
     model: input.input.model,
     heartbeatEnabled: input.input.heartbeat.enabled,
+    heartbeatScheduleMode: input.input.heartbeat.mode,
+    heartbeatScheduleTimes: input.input.heartbeat.times,
     heartbeatIntervalMinutes: input.input.heartbeat.intervalMinutes,
     dreamingEnabled: input.input.dreaming.enabled,
+    dreamingScheduleMode: input.input.dreaming.mode,
+    dreamingScheduleTimes: input.input.dreaming.times,
     dreamingIntervalMinutes: input.input.dreaming.intervalMinutes,
     stepLimitMode: input.input.stepLimit.mode,
     stepLimitCustom: input.input.stepLimit.custom,
@@ -141,7 +145,7 @@ async function applyAgentBudget(input: {
         limitUsd: limit,
       })
     } catch (err) {
-      console.error('[v0] applyAgentBudget: failed to persist rule', {
+      console.error('applyAgentBudget: failed to persist rule', {
         period,
         err,
       })
@@ -193,16 +197,22 @@ function resolveInstructions(input: AgentCreationRequest): string {
     '',
     '## Heartbeat',
     input.heartbeat.enabled
-      ? `Wake ${formatAgentCadenceLower(
-          input.heartbeat.intervalMinutes
-        )} and perform one useful, bounded action aligned with the role.`
+      ? `Wake ${formatAgentScheduleInline({
+          enabled: input.heartbeat.enabled,
+          intervalMinutes: input.heartbeat.intervalMinutes,
+          mode: input.heartbeat.mode,
+          times: input.heartbeat.times,
+        })} and perform one useful, bounded action aligned with the role.`
       : 'Do not run proactive heartbeat work unless the user enables it later.',
     '',
     '## Dreaming',
     input.dreaming.enabled
-      ? `Review memory and recent work ${formatAgentCadenceLower(
-          input.dreaming.intervalMinutes
-        )}.`
+      ? `Review memory and recent work ${formatAgentScheduleInline({
+          enabled: input.dreaming.enabled,
+          intervalMinutes: input.dreaming.intervalMinutes,
+          mode: input.dreaming.mode,
+          times: input.dreaming.times,
+        })}.`
       : 'Do not run scheduled dreaming unless the user enables it later.',
     '',
     '## Tool Use',

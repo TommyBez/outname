@@ -1,8 +1,12 @@
+import type { AgentScheduleMode } from '@/shared/agent-schedule'
+
 export type StepLimitMode = 'custom' | 'grind' | 'high' | 'low' | 'medium'
 
 export interface AgentCreationSchedule {
   enabled: boolean
   intervalMinutes: number
+  mode: AgentScheduleMode
+  times: string[]
 }
 
 export interface AgentCreationStepLimit {

@@ -1,17 +1,43 @@
 import { z } from 'zod'
+import { MAX_DAILY_SCHEDULE_TIMES } from '@/shared/agent-schedule'
 import { DEFAULT_MODEL_ID } from '@/shared/server/ai-gateway-models'
 
 const DEFAULT_TOOLS = { maintainer: [], subAgents: [] }
 
-const scheduleSchema = z.object({
-  enabled: z.boolean().describe('Whether this recurring loop is enabled.'),
-  intervalMinutes: z
-    .number()
-    .int()
-    .min(5)
-    .max(1440)
-    .describe('Cadence in minutes, between 5 minutes and 24 hours.'),
-})
+const scheduleSchema = z
+  .object({
+    enabled: z.boolean().describe('Whether this recurring loop is enabled.'),
+    mode: z
+      .enum(['interval', 'daily_times'])
+      .default('interval')
+      .describe(
+        'Use interval for cadence or daily_times for HH:mm local times.'
+      ),
+    intervalMinutes: z
+      .number()
+      .int()
+      .min(5)
+      .max(1440)
+      .describe('Cadence in minutes, between 5 minutes and 24 hours.'),
+    times: z
+      .array(z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/))
+      .max(MAX_DAILY_SCHEDULE_TIMES)
+      .default([])
+      .describe('Daily local times in HH:mm format when mode is daily_times.'),
+  })
+  .superRefine((value, ctx) => {
+    if (
+      value.enabled &&
+      value.mode === 'daily_times' &&
+      value.times.length === 0
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Daily schedule mode needs at least one time.',
+        path: ['times'],
+      })
+    }
+  })
 
 const stepLimitSchema = z.object({
   mode: z
@@ -64,7 +90,7 @@ const budgetSchema = z
   })
   .default({ daily: null, weekly: null, monthly: null })
   .describe(
-    'Per-agent USD spend caps. Sub-agent invocations roll into this budget too. Tool external-service costs are not counted.'
+    'Per-agent USD spend caps. Sub-agent runs roll into this budget too. Tool external-service costs are not counted.'
   )
 
 export const proposeBudgetInputSchema = z.object({
@@ -111,11 +137,15 @@ export const createAgentInputSchema = z.object({
     .describe('Runtime model id for the created agent.'),
   heartbeat: scheduleSchema.default({
     enabled: true,
+    mode: 'interval',
     intervalMinutes: 30,
+    times: [],
   }),
   dreaming: scheduleSchema.default({
     enabled: true,
+    mode: 'interval',
     intervalMinutes: 1440,
+    times: [],
   }),
   stepLimit: stepLimitSchema.default({
     mode: 'medium',

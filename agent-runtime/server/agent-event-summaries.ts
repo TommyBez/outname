@@ -1,0 +1,200 @@
+import 'server-only'
+import { and, asc, eq, inArray } from 'drizzle-orm'
+import type {
+  AgentEventSource,
+  AgentEventSummary,
+  AgentEventType,
+} from '@/agent-runtime/shared/event-types'
+import { db } from '@/shared/db'
+import { type AgentEvent, agentEvents } from '@/shared/db/schema'
+import {
+  ACTIVE_EVENT_STATUSES,
+  type AgentEventPayloads,
+  listRecentAgentEvents,
+  payloadAs,
+} from './agent-event-store'
+
+const PREVIEW_LIMIT = 160
+export async function listAgentEventSummaries(input: {
+  agentId: string
+  limit?: number
+}): Promise<AgentEventSummary[]> {
+  const [liveEvents, recentEvents] = await Promise.all([
+    listLiveAgentEvents(input.agentId),
+    listRecentAgentEvents({
+      agentId: input.agentId,
+      limit: input.limit,
+    }),
+  ])
+  const events = mergeEvents(liveEvents, recentEvents)
+  const blockers = await findQueuedEventBlockers(events)
+  return events.map((event) =>
+    summarizeAgentEvent(event, blockers.get(event.id) ?? null)
+  )
+}
+
+export function summarizeAgentEvent(
+  event: AgentEvent,
+  blockedByEventId: string | null = null
+): AgentEventSummary {
+  return {
+    attempt: event.attempt,
+    blockedByEventId,
+    completedAt: dateToIso(event.completedAt),
+    id: event.id,
+    lastError: event.lastError,
+    preview: previewAgentEvent(event),
+    queuedAt: event.queuedAt.toISOString(),
+    source: event.source as AgentEventSource,
+    startedAt: dateToIso(event.startedAt),
+    status: event.status,
+    type: event.type as AgentEventType,
+    workflowRunId: readableWorkflowRunId(event.workflowRunId),
+  }
+}
+
+async function listLiveAgentEvents(agentId: string): Promise<AgentEvent[]> {
+  return await db
+    .select()
+    .from(agentEvents)
+    .where(
+      and(
+        eq(agentEvents.agentId, agentId),
+        inArray(agentEvents.status, ['queued', ...ACTIVE_EVENT_STATUSES])
+      )
+    )
+    .orderBy(asc(agentEvents.queuedAt))
+    .limit(100)
+}
+
+async function findQueuedEventBlockers(
+  events: readonly AgentEvent[]
+): Promise<Map<string, string>> {
+  const concurrencyKeys = [
+    ...new Set(
+      events
+        .filter((event) => event.status === 'queued')
+        .map((event) => event.concurrencyKey)
+        .filter(isString)
+    ),
+  ]
+  if (concurrencyKeys.length === 0) {
+    return new Map()
+  }
+
+  const activeEvents = await db
+    .select({
+      concurrencyKey: agentEvents.concurrencyKey,
+      id: agentEvents.id,
+    })
+    .from(agentEvents)
+    .where(
+      and(
+        inArray(agentEvents.concurrencyKey, concurrencyKeys),
+        inArray(agentEvents.status, ACTIVE_EVENT_STATUSES)
+      )
+    )
+
+  const activeByKey = new Map<string, string>()
+  for (const event of activeEvents) {
+    if (event.concurrencyKey) {
+      activeByKey.set(event.concurrencyKey, event.id)
+    }
+  }
+
+  const blockers = new Map<string, string>()
+  for (const event of events) {
+    if (event.status !== 'queued' || !event.concurrencyKey) {
+      continue
+    }
+    const blockerId = activeByKey.get(event.concurrencyKey)
+    if (blockerId && blockerId !== event.id) {
+      blockers.set(event.id, blockerId)
+    }
+  }
+  return blockers
+}
+
+function mergeEvents(
+  liveEvents: readonly AgentEvent[],
+  recentEvents: readonly AgentEvent[]
+): AgentEvent[] {
+  const byId = new Map<string, AgentEvent>()
+  for (const event of [...liveEvents, ...recentEvents]) {
+    byId.set(event.id, event)
+  }
+  return [...byId.values()]
+}
+
+function previewAgentEvent(event: AgentEvent): string | null {
+  switch (event.type) {
+    case 'chat':
+      return previewChatEvent(payloadAs<AgentEventPayloads['chat']>(event))
+    case 'dreaming':
+      return previewScheduledEvent('Dreaming', event)
+    case 'heartbeat':
+      return previewScheduledEvent('Heartbeat', event)
+    case 'invocation':
+      return truncate(payloadAs<AgentEventPayloads['invocation']>(event).input)
+    default: {
+      const exhaustive: never = event.type
+      return exhaustive
+    }
+  }
+}
+
+function previewChatEvent(payload: AgentEventPayloads['chat']): string | null {
+  const lastMessage = payload.uiMessages.at(-1)
+  if (!isRecord(lastMessage)) {
+    return null
+  }
+  const parts = lastMessage.parts
+  if (!Array.isArray(parts)) {
+    return null
+  }
+
+  const text = parts
+    .map((part) => {
+      if (!isRecord(part) || part.type !== 'text') {
+        return ''
+      }
+      return typeof part.text === 'string' ? part.text : ''
+    })
+    .join(' ')
+    .trim()
+  return truncate(text)
+}
+
+function previewScheduledEvent(label: string, event: AgentEvent): string {
+  const source = event.source === 'manual' ? 'manual' : event.source
+  return `${label} ${source}`
+}
+
+function readableWorkflowRunId(workflowRunId: string | null): string | null {
+  if (!(workflowRunId && !workflowRunId.startsWith('starting:'))) {
+    return null
+  }
+  return workflowRunId
+}
+
+function truncate(value: string | null | undefined): string | null {
+  const trimmed = value?.trim()
+  if (!trimmed) {
+    return null
+  }
+  return trimmed.length > PREVIEW_LIMIT
+    ? `${trimmed.slice(0, PREVIEW_LIMIT - 3)}...`
+    : trimmed
+}
+
+function dateToIso(value: Date | null): string | null {
+  return value?.toISOString() ?? null
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isString(value: string | null): value is string {
+  return typeof value === 'string' && value.length > 0
+}

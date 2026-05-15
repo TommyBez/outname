@@ -42,11 +42,15 @@ function toHeaderAgent(agent: Agent) {
   return {
     enabled: agent.enabled,
     heartbeatEnabled: agent.heartbeatEnabled,
+    heartbeatScheduleMode: agent.heartbeatScheduleMode,
+    heartbeatScheduleTimes: agent.heartbeatScheduleTimes,
     heartbeatIntervalMinutes: agent.heartbeatIntervalMinutes,
     id: agent.id,
     model: agent.model,
     name: agent.name,
     dreamingEnabled: agent.dreamingEnabled,
+    dreamingScheduleMode: agent.dreamingScheduleMode,
+    dreamingScheduleTimes: agent.dreamingScheduleTimes,
     dreamingIntervalMinutes: agent.dreamingIntervalMinutes,
   }
 }

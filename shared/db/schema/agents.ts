@@ -1,14 +1,33 @@
+import { sql } from 'drizzle-orm'
 import {
   boolean,
   index,
   integer,
+  jsonb,
   pgTable,
-  primaryKey,
   text,
   timestamp,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core'
-import { isNull } from 'drizzle-orm/pg-core/expressions'
+import type { AgentScheduleMode } from '@/shared/agent-schedule'
 import { user } from './auth'
+
+export type AgentEventStatus =
+  | 'queued'
+  | 'starting'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
+
+export type AgentEventType = 'chat' | 'heartbeat' | 'dreaming' | 'invocation'
+
+export type AgentEventSource =
+  | 'chat'
+  | 'slack'
+  | 'scheduler'
+  | 'manual'
+  | 'invocation'
 
 export const agent = pgTable(
   'agent',
@@ -27,15 +46,30 @@ export const agent = pgTable(
     // Per-agent model-step budget for `stopWhen` guards.
     stepLimitMode: text('step_limit_mode').notNull().default('medium'),
     stepLimitCustom: integer('step_limit_custom'),
-    // Heartbeat opt-in and cadence; used by the ticker workflow and the
-    // liveness sweeper.
+    // Heartbeat opt-in and cadence; used by the scheduler cron.
     heartbeatEnabled: boolean('heartbeat_enabled').notNull().default(true),
+    heartbeatScheduleMode: text('heartbeat_schedule_mode')
+      .$type<AgentScheduleMode>()
+      .notNull()
+      .default('interval'),
+    heartbeatScheduleTimes: jsonb('heartbeat_schedule_times')
+      .$type<string[]>()
+      .notNull()
+      .default([]),
     heartbeatIntervalMinutes: integer('heartbeat_interval_minutes')
       .notNull()
       .default(30),
     lastHeartbeatAt: timestamp('last_heartbeat_at', { withTimezone: true }),
     // Dreaming stays independent from proactive heartbeat work.
     dreamingEnabled: boolean('dreaming_enabled').notNull().default(true),
+    dreamingScheduleMode: text('dreaming_schedule_mode')
+      .$type<AgentScheduleMode>()
+      .notNull()
+      .default('interval'),
+    dreamingScheduleTimes: jsonb('dreaming_schedule_times')
+      .$type<string[]>()
+      .notNull()
+      .default([]),
     dreamingIntervalMinutes: integer('dreaming_interval_minutes')
       .notNull()
       .default(1440),
@@ -45,31 +79,6 @@ export const agent = pgTable(
     // Persistent system sandbox name. Null before first boot; after that, the
     // same sandbox is resumed on each event.
     sandboxSystemId: text('sandbox_system_id'),
-    // Latest session workflow run. Used for chat streaming and liveness
-    // recovery even after the run has already terminated.
-    lastSessionRunId: text('last_session_run_id'),
-    // Monotonic generation for session hook tokens; recovery increments it so
-    // fresh sessions stop sharing a token with a stuck older run.
-    sessionEpoch: integer('session_epoch').notNull().default(0),
-    // Latest sibling ticker run. Persisted so a mid-handler crash leaves
-    // enough forensic state for later reaping and recovery.
-    lastTickerRunId: text('last_ticker_run_id'),
-    // Current in-flight event marker; an old marker is a conservative sign that
-    // the session wedged mid-event.
-    sessionEventRunId: text('session_event_run_id'),
-    sessionEventType: text('session_event_type'),
-    sessionEventStartedAt: timestamp('session_event_started_at', {
-      withTimezone: true,
-    }),
-    // Short-lived control-plane lease for starts, restarts, and recovery.
-    sessionControlLeaseId: text('session_control_lease_id'),
-    sessionControlLeaseUntil: timestamp('session_control_lease_until', {
-      withTimezone: true,
-    }),
-    lastRecoveryAt: timestamp('last_recovery_at', { withTimezone: true }),
-    lastRecoveryMode: text('last_recovery_mode'),
-    lastRecoveryReason: text('last_recovery_reason'),
-    lastRecoveryError: text('last_recovery_error'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -80,52 +89,61 @@ export const agent = pgTable(
   (t) => [index('agent_user_idx').on(t.userId)]
 )
 
-// Mirror of tracked markdown files from the agent sandbox. The `(agent_id,
-// path)` PK makes writes idempotent, and `sha256` lets flushes skip unchanged
-// content.
-export const agentFiles = pgTable(
-  'agent_files',
-  {
-    agentId: text('agent_id')
-      .notNull()
-      .references(() => agent.id, { onDelete: 'cascade' }),
-    path: text('path').notNull(),
-    content: text('content').notNull(),
-    sha256: text('sha256').notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (t) => [
-    primaryKey({ columns: [t.agentId, t.path] }),
-    index('agent_files_agent_idx').on(t.agentId),
-  ]
-)
-
-// Queue of UI-authored bootstrap-file edits applied before the next event.
-// Protected files bypass the tool-layer block here, and `applied_at` keeps an
-// audit trail instead of deleting rows after success.
-export const pendingFileWrites = pgTable(
-  'pending_file_writes',
+export const agentEvents = pgTable(
+  'agent_events',
   {
     id: text('id').primaryKey(),
     agentId: text('agent_id')
       .notNull()
       .references(() => agent.id, { onDelete: 'cascade' }),
-    path: text('path').notNull(),
-    content: text('content').notNull(),
-    enqueuedAt: timestamp('enqueued_at', { withTimezone: true })
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    type: text('type').$type<AgentEventType>().notNull(),
+    source: text('source').$type<AgentEventSource>().notNull(),
+    status: text('status').$type<AgentEventStatus>().notNull(),
+    idempotencyKey: text('idempotency_key').notNull(),
+    concurrencyKey: text('concurrency_key'),
+    payload: jsonb('payload')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    scheduledFor: timestamp('scheduled_for', { withTimezone: true }),
+    attempt: integer('attempt').notNull().default(0),
+    workflowRunId: text('workflow_run_id'),
+    publisherWorkflowRunId: text('publisher_workflow_run_id'),
+    queuedAt: timestamp('queued_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
-    appliedAt: timestamp('applied_at', { withTimezone: true }),
+    startedAt: timestamp('started_at', { withTimezone: true }),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    heartbeatAt: timestamp('heartbeat_at', { withTimezone: true }),
+    claimExpiresAt: timestamp('claim_expires_at', { withTimezone: true }),
+    lastError: text('last_error'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (t) => [
-    index('pending_file_writes_agent_unapplied_idx')
-      .on(t.agentId)
-      .where(isNull(t.appliedAt)),
+    uniqueIndex('agent_events_idempotency_idx').on(t.idempotencyKey),
+    uniqueIndex('agent_events_active_concurrency_idx')
+      .on(t.concurrencyKey)
+      .where(
+        sql`concurrency_key IS NOT NULL AND status in ('starting', 'running')`
+      ),
+    index('agent_events_agent_status_idx').on(t.agentId, t.status, t.queuedAt),
+    index('agent_events_user_status_idx').on(t.userId, t.status, t.queuedAt),
+    index('agent_events_concurrency_status_idx').on(
+      t.concurrencyKey,
+      t.status,
+      t.queuedAt
+    ),
+    index('agent_events_scheduled_idx').on(t.scheduledFor, t.status),
   ]
 )
 
 export type Agent = typeof agent.$inferSelect
-export type AgentFile = typeof agentFiles.$inferSelect
-export type PendingFileWrite = typeof pendingFileWrites.$inferSelect
+export type AgentEvent = typeof agentEvents.$inferSelect

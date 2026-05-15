@@ -40,14 +40,23 @@ export function TriggerButton({
         const body = await res.json().catch(() => ({ error: res.statusText }))
         throw new Error(body.error ?? `HTTP ${res.status}`)
       }
-      const { sessionRunId } = (await res.json()) as { sessionRunId?: string }
+      const { eventId, workflowRunId } = (await res.json()) as {
+        eventId?: string
+        workflowRunId?: string
+      }
       toast.success(
         mode === 'dreaming' ? 'Dreaming started' : 'Run started',
-        sessionRunId
-          ? { description: `Session ${sessionRunId.slice(0, 8)}` }
+        (workflowRunId ?? eventId)
+          ? { description: `Event ${(workflowRunId ?? eventId)?.slice(0, 8)}` }
           : undefined
       )
-      startTransition(() => router.refresh())
+      startTransition(() => {
+        if (eventId) {
+          router.push(`/agents/${agentId}/events?event=${eventId}`)
+          return
+        }
+        router.refresh()
+      })
     } catch (err) {
       toast.error(
         mode === 'dreaming'

@@ -1,19 +1,55 @@
 import { z } from 'zod'
+import { MAX_DAILY_SCHEDULE_TIMES } from '@/shared/agent-schedule'
 
-export const updateSchema = z.object({
-  name: z.string().min(1),
-  model: z.string().min(1),
-  heartbeatEnabled: z.boolean(),
-  heartbeatIntervalMinutes: z.number().int().min(5).max(1440),
-  dreamingEnabled: z.boolean(),
-  dreamingIntervalMinutes: z.number().int().min(5).max(1440),
-  stepLimitMode: z.enum(['custom', 'grind', 'high', 'low', 'medium']),
-  stepLimitCustom: z.number().int().min(1).nullable(),
-  identityCard: z.string(),
-  soul: z.string(),
-  instructions: z.string(),
-  userProfile: z.string(),
-})
+const scheduleModeSchema = z.enum(['interval', 'daily_times'])
+const scheduleTimesSchema = z
+  .array(z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/))
+  .max(MAX_DAILY_SCHEDULE_TIMES)
+  .default([])
+
+export const updateSchema = z
+  .object({
+    name: z.string().min(1),
+    model: z.string().min(1),
+    heartbeatEnabled: z.boolean(),
+    heartbeatScheduleMode: scheduleModeSchema.default('interval'),
+    heartbeatScheduleTimes: scheduleTimesSchema,
+    heartbeatIntervalMinutes: z.number().int().min(5).max(1440),
+    dreamingEnabled: z.boolean(),
+    dreamingScheduleMode: scheduleModeSchema.default('interval'),
+    dreamingScheduleTimes: scheduleTimesSchema,
+    dreamingIntervalMinutes: z.number().int().min(5).max(1440),
+    stepLimitMode: z.enum(['custom', 'grind', 'high', 'low', 'medium']),
+    stepLimitCustom: z.number().int().min(1).nullable(),
+    identityCard: z.string(),
+    soul: z.string(),
+    instructions: z.string(),
+    userProfile: z.string(),
+  })
+  .superRefine((value, ctx) => {
+    if (
+      value.heartbeatEnabled &&
+      value.heartbeatScheduleMode === 'daily_times' &&
+      value.heartbeatScheduleTimes.length === 0
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Heartbeat daily schedule needs at least one time.',
+        path: ['heartbeatScheduleTimes'],
+      })
+    }
+    if (
+      value.dreamingEnabled &&
+      value.dreamingScheduleMode === 'daily_times' &&
+      value.dreamingScheduleTimes.length === 0
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Dreaming daily schedule needs at least one time.',
+        path: ['dreamingScheduleTimes'],
+      })
+    }
+  })
 
 export const attachMaintainerToolSchema = z.object({
   toolId: z.string().min(1),

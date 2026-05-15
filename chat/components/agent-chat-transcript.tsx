@@ -9,6 +9,7 @@ import {
   isSubAgentToolOutput,
   type SubAgentToolOutput,
 } from '@/agent-runtime/server/sub-agent-tool-output'
+import { readEventActivityMetadata } from '@/agent-runtime/shared/event-transcript'
 import {
   Conversation,
   ConversationContent,
@@ -53,7 +54,7 @@ export function AgentChatTranscript({
   return (
     <Conversation className={cn('min-h-0 flex-1', className)}>
       <ConversationContent>
-        {messages.length === 0 ? (
+        {messages.length === 0 && !workflowStatus ? (
           <ConversationEmptyState
             description={emptyDescription}
             title={emptyTitle}
@@ -88,6 +89,21 @@ export function hasAssistantContentAfterLatestUser(
 }
 
 function ChatMessage({ message }: { message: UIMessage }) {
+  const activityMetadata = readEventActivityMetadata(message)
+  if (activityMetadata) {
+    return (
+      <WorkflowStatusMessage
+        status={{
+          message: readMessageText(message),
+          phase: 'agent-stream',
+          timestamp: activityMetadata.timestamp,
+        }}
+        tone={activityMetadata.tone}
+        transient={activityMetadata.transient}
+      />
+    )
+  }
+
   return (
     <Message from={message.role === 'user' ? 'user' : 'assistant'}>
       <MessageContent>
@@ -155,17 +171,51 @@ function ChatMessage({ message }: { message: UIMessage }) {
   )
 }
 
-function WorkflowStatusMessage({ status }: { status: WorkflowStatusData }) {
+function WorkflowStatusMessage({
+  status,
+  tone = 'default',
+  transient = true,
+}: {
+  status: WorkflowStatusData
+  tone?: 'default' | 'error'
+  transient?: boolean
+}) {
   return (
     <Message from="assistant">
       <MessageContent>
-        <div className="flex items-center gap-2 border-2 border-border bg-muted/40 px-3 py-3 font-medium text-muted-foreground text-xs uppercase leading-5 tracking-[0.12em]">
-          <span className="size-2 animate-pulse rounded-full bg-primary" />
+        <div
+          className={cn(
+            'flex items-center gap-2 border-2 px-3 py-3 font-medium text-xs uppercase leading-5 tracking-[0.12em]',
+            tone === 'error'
+              ? 'border-destructive bg-destructive/10 text-destructive'
+              : 'border-border bg-muted/40 text-muted-foreground'
+          )}
+          data-transient={transient ? 'true' : undefined}
+        >
+          <span
+            className={cn(
+              'size-2 rounded-full',
+              tone === 'error' ? 'bg-destructive' : 'animate-pulse bg-primary'
+            )}
+          />
           <span>{status.message}</span>
         </div>
       </MessageContent>
     </Message>
   )
+}
+
+function readMessageText(message: UIMessage): string {
+  const text = message.parts
+    .map((part) => {
+      if (part.type === 'text') {
+        return part.text
+      }
+      return ''
+    })
+    .join(' ')
+    .trim()
+  return text || 'Event activity updated'
 }
 
 function hasVisibleAssistantContent(message: AgentChatMessage) {

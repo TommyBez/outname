@@ -1,5 +1,10 @@
 import Link from 'next/link'
 import { Suspense } from 'react'
+import { listAgentEventSummaries } from '@/agent-runtime/server/agent-event-summaries'
+import {
+  type AgentEventSummary,
+  isTerminalAgentEventStatus,
+} from '@/agent-runtime/shared/event-types'
 import {
   AgentDashboardCard,
   type DashboardAgent,
@@ -20,7 +25,7 @@ import { createPrivatePageMetadata } from '@/shared/server/site-metadata'
 
 export const metadata = createPrivatePageMetadata(
   'Dashboard',
-  'Monitor personal AI agents, session state, and live activity in one private OUTNA.ME operator view.'
+  'Monitor personal AI agents, event state, budgets, and attention in one private OUTNA.ME operator view.'
 )
 
 export default function DashboardPage() {
@@ -38,7 +43,8 @@ export default function DashboardPage() {
           </div>
           <div className="flex flex-col items-start gap-6 xl:items-stretch xl:justify-self-end">
             <p className="max-w-xs border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
-              Live cockpit for budget, sessions, and agents that need attention.
+              Live cockpit for event queues, budgets, and agents that need
+              attention.
             </p>
             <Link
               className="inline-flex h-14 shrink-0 items-center justify-center border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground"
@@ -94,25 +100,51 @@ async function DashboardCockpit({ userId }: { userId: string }) {
 
   const enabledCount = agents.filter((agent) => agent.enabled).length
   const pausedCount = agents.length - enabledCount
-  const sessionCount = agents.filter((agent) => agent.lastSessionRunId).length
-  const attentionAgents = agents.filter(
-    (agent) => !(agent.enabled && agent.lastSessionRunId)
-  )
-  const monitorAgents = agents.filter(
-    (agent) => agent.enabled || agent.lastSessionRunId
-  )
-  const agentBudgets = await Promise.all(
-    monitorAgents.map(async (a) => ({
-      agentId: a.id,
-      entries: await loadBudgetSummary({
-        userId,
-        scope: { type: 'agent', agentId: a.id },
-      }),
-    }))
-  )
+  const attentionAgents = agents.filter((agent) => !agent.enabled)
+  const monitorAgents = agents.filter((agent) => agent.enabled)
+  const [agentBudgets, agentEvents] = await Promise.all([
+    Promise.all(
+      monitorAgents.map(async (a) => ({
+        agentId: a.id,
+        entries: await loadBudgetSummary({
+          userId,
+          scope: { type: 'agent', agentId: a.id },
+        }),
+      }))
+    ),
+    Promise.all(
+      monitorAgents.map(async (a) => ({
+        agentId: a.id,
+        events: await listAgentEventSummaries({
+          agentId: a.id,
+          limit: 25,
+        }),
+      }))
+    ),
+  ])
   const agentBudgetMap = new Map<string, BudgetSummaryEntry[]>(
     agentBudgets.map((b) => [b.agentId, b.entries])
   )
+  const agentEventMap = new Map(
+    agentEvents.map((entry) => [entry.agentId, entry.events])
+  )
+  const activeEventCount = agentEvents
+    .flatMap((entry) => entry.events)
+    .filter(isActiveDashboardEvent).length
+  const attentionAgentIds = new Set<string>()
+  for (const agent of attentionAgents) {
+    attentionAgentIds.add(agent.id)
+  }
+  for (const entry of agentEvents) {
+    if (entry.events.some(isFailedDashboardEvent)) {
+      attentionAgentIds.add(entry.agentId)
+    }
+  }
+  for (const entry of agentBudgets) {
+    if (entry.entries.some(isBudgetAttention)) {
+      attentionAgentIds.add(entry.agentId)
+    }
+  }
 
   return (
     <section aria-labelledby="dashboard-cockpit-heading">
@@ -122,8 +154,8 @@ async function DashboardCockpit({ userId }: { userId: string }) {
 
       <div className="mb-8 grid gap-4 border-foreground border-y-2 py-5 sm:grid-cols-3">
         <DashboardMetric label="Active" value={enabledCount} />
-        <DashboardMetric label="Sessions" value={sessionCount} />
-        <DashboardMetric label="Attention" value={attentionAgents.length} />
+        <DashboardMetric label="In flight" value={activeEventCount} />
+        <DashboardMetric label="Attention" value={attentionAgentIds.size} />
       </div>
 
       <div className="mb-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
@@ -171,7 +203,7 @@ async function DashboardCockpit({ userId }: { userId: string }) {
           <div>
             <p className="swiss-label text-accent">Run monitor</p>
             <h2 className="mt-3 font-black font-serif text-3xl uppercase leading-none tracking-tighter">
-              Live sessions
+              Event-ready agents
             </h2>
           </div>
           <Link
@@ -183,7 +215,7 @@ async function DashboardCockpit({ userId }: { userId: string }) {
         </div>
         {monitorAgents.length === 0 ? (
           <p className="border-foreground border-y-2 py-6 text-muted-foreground text-sm">
-            No active sessions yet.
+            No active agents yet.
           </p>
         ) : (
           <ul className="border-foreground border-y-2">
@@ -193,6 +225,7 @@ async function DashboardCockpit({ userId }: { userId: string }) {
                   <AgentDashboardCard
                     agent={toDashboardAgent(agent)}
                     budgetEntries={agentBudgetMap.get(agent.id) ?? []}
+                    eventSummaries={agentEventMap.get(agent.id) ?? []}
                   />
                 </Suspense>
               </li>
@@ -208,9 +241,9 @@ function AttentionQueue({ agents }: { agents: Agent[] }) {
   if (agents.length === 0) {
     return (
       <section className="border-foreground border-y-2 py-6">
-        <p className="swiss-label text-accent">Attention</p>
+        <p className="swiss-label text-accent">Paused agents</p>
         <p className="mt-3 text-muted-foreground text-sm">
-          No agents need attention right now.
+          No paused agents right now.
         </p>
       </section>
     )
@@ -218,7 +251,7 @@ function AttentionQueue({ agents }: { agents: Agent[] }) {
 
   return (
     <section className="border-foreground border-y-2 py-6">
-      <p className="swiss-label text-accent">Attention</p>
+      <p className="swiss-label text-accent">Paused agents</p>
       <ul className="mt-5 grid gap-3 md:grid-cols-2">
         {agents.map((agent) => (
           <li key={agent.id}>
@@ -230,7 +263,7 @@ function AttentionQueue({ agents }: { agents: Agent[] }) {
                 {agent.name}
               </p>
               <p className="mt-2 font-mono text-muted-foreground text-xs">
-                {agent.enabled ? 'No session run recorded yet' : 'Paused'}
+                {agent.enabled ? 'Ready for events' : 'Paused'}
               </p>
             </Link>
           </li>
@@ -264,6 +297,21 @@ function QuickAction({ href, label }: { href: string; label: string }) {
   )
 }
 
+function isActiveDashboardEvent(event: AgentEventSummary): boolean {
+  return event.type !== 'chat' && !isTerminalAgentEventStatus(event.status)
+}
+
+function isFailedDashboardEvent(event: AgentEventSummary): boolean {
+  return event.type !== 'chat' && event.status === 'failed'
+}
+
+function isBudgetAttention(entry: BudgetSummaryEntry): boolean {
+  if (!(entry.enabled && entry.limitUsd > 0)) {
+    return false
+  }
+  return entry.spentUsd / entry.limitUsd >= 0.8
+}
+
 function DashboardContentFallback() {
   return <RunResultSkeleton />
 }
@@ -273,12 +321,16 @@ function toDashboardAgent(agent: Agent): DashboardAgent {
     enabled: agent.enabled,
     heartbeatEnabled: agent.heartbeatEnabled,
     heartbeatIntervalMinutes: agent.heartbeatIntervalMinutes,
+    heartbeatScheduleMode: agent.heartbeatScheduleMode,
+    heartbeatScheduleTimes: agent.heartbeatScheduleTimes,
     id: agent.id,
     lastHeartbeatAt: agent.lastHeartbeatAt?.toISOString() ?? null,
     lastDreamingAt: agent.lastDreamingAt?.toISOString() ?? null,
-    lastSessionRunId: agent.lastSessionRunId,
     model: agent.model,
     name: agent.name,
     dreamingEnabled: agent.dreamingEnabled,
+    dreamingIntervalMinutes: agent.dreamingIntervalMinutes,
+    dreamingScheduleMode: agent.dreamingScheduleMode,
+    dreamingScheduleTimes: agent.dreamingScheduleTimes,
   }
 }

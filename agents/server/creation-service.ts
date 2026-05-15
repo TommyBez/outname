@@ -1,10 +1,14 @@
 import 'server-only'
 import { createHash } from 'node:crypto'
 import { eq } from 'drizzle-orm'
-import { startAgentSession } from '@/agent-runtime/server/session-lifecycle'
+import { writeBootstrapFiles } from '@/agents/server/bootstrap-files'
 import { refreshAgentCapabilitySummary } from '@/agents/server/capability-summary'
 import type { StepLimitMode } from '@/agents/server/creation-types'
-import { enqueuePendingFileWrite } from '@/agents/server/pending-writes'
+import {
+  type AgentScheduleMode,
+  normalizeAgentScheduleMode,
+  normalizeScheduleTimesForMode,
+} from '@/shared/agent-schedule'
 import { db } from '@/shared/db'
 import { type Agent, agent } from '@/shared/db/schema'
 import {
@@ -18,8 +22,12 @@ export const HEARTBEAT_MAX = 1440
 export interface CreateAgentInput {
   dreamingEnabled: boolean
   dreamingIntervalMinutes: number
+  dreamingScheduleMode?: AgentScheduleMode
+  dreamingScheduleTimes?: string[]
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
+  heartbeatScheduleMode?: AgentScheduleMode
+  heartbeatScheduleTimes?: string[]
   idempotencyKey?: string
   identityCard: string
   instructions: string
@@ -84,6 +92,22 @@ export async function createAgentForUser(
     : DEFAULT_MODEL_ID
   const heartbeatIntervalMinutes = clampInterval(input.heartbeatIntervalMinutes)
   const dreamingIntervalMinutes = clampInterval(input.dreamingIntervalMinutes)
+  const heartbeatScheduleMode = normalizeAgentScheduleMode(
+    input.heartbeatScheduleMode
+  )
+  const dreamingScheduleMode = normalizeAgentScheduleMode(
+    input.dreamingScheduleMode
+  )
+  const heartbeatScheduleTimes = normalizeScheduleTimesForMode({
+    enabled: input.heartbeatEnabled,
+    mode: heartbeatScheduleMode,
+    times: input.heartbeatScheduleTimes,
+  })
+  const dreamingScheduleTimes = normalizeScheduleTimesForMode({
+    enabled: input.dreamingEnabled,
+    mode: dreamingScheduleMode,
+    times: input.dreamingScheduleTimes,
+  })
   const id = input.idempotencyKey
     ? stableAgentIdForCreation({
         userId: input.userId,
@@ -100,8 +124,12 @@ export async function createAgentForUser(
       model,
       enabled: true,
       heartbeatEnabled: input.heartbeatEnabled,
+      heartbeatScheduleMode,
+      heartbeatScheduleTimes,
       heartbeatIntervalMinutes,
       dreamingEnabled: input.dreamingEnabled,
+      dreamingScheduleMode,
+      dreamingScheduleTimes,
       dreamingIntervalMinutes,
       stepLimitMode: input.stepLimitMode,
       stepLimitCustom:
@@ -116,8 +144,8 @@ export async function createAgentForUser(
   const row =
     inserted[0] ?? (await readExistingAgentForCreate(id, input.userId))
 
-  // Idempotent replays may hit an existing row; re-queueing bootstrap writes lets retries self-heal.
-  await enqueueBootstrapFiles({
+  // Idempotent replays may hit an existing row; direct sandbox writes let retries self-heal.
+  await writeInitialBootstrapFiles({
     agentId: id,
     identityCard: input.identityCard,
     instructions: input.instructions,
@@ -131,12 +159,6 @@ export async function createAgentForUser(
       'AGENTS.md': normalizeNewlines(input.instructions).trim(),
     },
   })
-
-  try {
-    await startAgentSession(row)
-  } catch (err) {
-    console.error('[v0] createAgentForUser: startAgentSession failed', err)
-  }
 
   return { id, agent: row, created }
 }
@@ -156,46 +178,36 @@ async function readExistingAgentForCreate(
   return row
 }
 
-async function enqueueBootstrapFiles(input: {
+async function writeInitialBootstrapFiles(input: {
   agentId: string
   identityCard: string
   instructions: string
   soul: string
   userProfile: string
 }): Promise<void> {
+  const files: Parameters<typeof writeBootstrapFiles>[0]['files'] = {}
   const identityCard = normalizeNewlines(input.identityCard).trim()
   if (identityCard.length > 0) {
-    await enqueuePendingFileWrite({
-      agentId: input.agentId,
-      path: 'IDENTITY.md',
-      content: identityCard,
-    })
+    files['IDENTITY.md'] = identityCard
   }
 
   const soul = normalizeNewlines(input.soul).trim()
   if (soul.length > 0) {
-    await enqueuePendingFileWrite({
-      agentId: input.agentId,
-      path: 'SOUL.md',
-      content: soul,
-    })
+    files['SOUL.md'] = soul
   }
 
   const instructions = normalizeNewlines(input.instructions).trim()
   if (instructions.length > 0) {
-    await enqueuePendingFileWrite({
-      agentId: input.agentId,
-      path: 'AGENTS.md',
-      content: instructions,
-    })
+    files['AGENTS.md'] = instructions
   }
 
   const userProfile = normalizeNewlines(input.userProfile).trim()
   if (userProfile.length > 0) {
-    await enqueuePendingFileWrite({
-      agentId: input.agentId,
-      path: 'USER.md',
-      content: userProfile,
-    })
+    files['USER.md'] = userProfile
   }
+
+  await writeBootstrapFiles({
+    agentId: input.agentId,
+    files,
+  })
 }

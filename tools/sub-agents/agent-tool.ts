@@ -2,7 +2,6 @@ import { tool, type UIMessageChunk } from 'ai'
 import { getWritable } from 'workflow'
 import { z } from 'zod'
 import type { AgentChatMessage } from '@/agent-runtime/server/chat-status'
-import { dispatchInvocation } from '@/agent-runtime/server/session-events'
 import {
   isSubAgentToolOutput,
   type SubAgentToolOutput,
@@ -131,9 +130,9 @@ async function dispatchSubAgentInvocation(input: {
 }): Promise<{ sessionRunId: string }> {
   'use step'
   const { handle, instruction, streamToken, toolCallId } = input
-  const parentStream = handle.streamNamespace
-    ? getWritable<UIMessageChunk>({ namespace: handle.streamNamespace })
-    : null
+  const { dispatchInvocation } = await import(
+    '@/agent-runtime/server/session-events'
+  )
   return await dispatchInvocation({
     childAgentId: handle.childAgentId,
     childUserId: handle.childUserId,
@@ -141,7 +140,6 @@ async function dispatchSubAgentInvocation(input: {
     parentRunId: handle.parentRunId,
     parentToolId: handle.parentToolId,
     parentToolCallId: toolCallId,
-    parentStream,
     instruction,
     streamToken,
     callStack: [...handle.parentCallStack, handle.parentAgentId],

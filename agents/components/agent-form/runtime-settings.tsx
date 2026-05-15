@@ -1,3 +1,5 @@
+import { Plus, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -8,6 +10,10 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import {
+  type AgentScheduleMode,
+  MAX_DAILY_SCHEDULE_TIMES,
+} from '@/shared/agent-schedule'
 import { INTERVAL_OPTIONS, type StepLimitMode } from './options'
 
 export function StepLimitSettings({
@@ -64,13 +70,21 @@ export function StepLimitSettings({
 export function HeartbeatSettings({
   heartbeatEnabled,
   intervalMinutes,
+  scheduleMode,
+  scheduleTimes,
   setHeartbeatEnabled,
   setIntervalMinutes,
+  setScheduleMode,
+  setScheduleTimes,
 }: {
   heartbeatEnabled: boolean
   intervalMinutes: number
+  scheduleMode: AgentScheduleMode
+  scheduleTimes: string[]
   setHeartbeatEnabled: (value: boolean) => void
   setIntervalMinutes: (value: number) => void
+  setScheduleMode: (value: AgentScheduleMode) => void
+  setScheduleTimes: (value: string[]) => void
 }) {
   return (
     <div className="swiss-diagonal grid gap-4 border-2 border-foreground bg-muted p-5 md:grid-cols-[12rem_minmax(0,1fr)]">
@@ -93,12 +107,17 @@ export function HeartbeatSettings({
           />
         </div>
         {heartbeatEnabled ? (
-          <IntervalSelect
-            helpText="Dreaming runs at most once per N minutes, and at least once per local day."
-            id="agent-interval"
-            label="Interval"
-            setValue={setIntervalMinutes}
-            value={intervalMinutes}
+          <ScheduleControls
+            intervalHelpText="Heartbeat runs when this interval has elapsed since the last completed heartbeat."
+            intervalId="agent-interval"
+            intervalLabel="Interval"
+            intervalMinutes={intervalMinutes}
+            mode={scheduleMode}
+            setIntervalMinutes={setIntervalMinutes}
+            setMode={setScheduleMode}
+            setTimes={setScheduleTimes}
+            times={scheduleTimes}
+            timesId="agent-heartbeat-times"
           />
         ) : null}
       </div>
@@ -109,13 +128,21 @@ export function HeartbeatSettings({
 export function DreamingSettings({
   dreamingEnabled,
   dreamingIntervalMinutes,
+  scheduleMode,
+  scheduleTimes,
   setDreamingEnabled,
   setDreamingIntervalMinutes,
+  setScheduleMode,
+  setScheduleTimes,
 }: {
   dreamingEnabled: boolean
   dreamingIntervalMinutes: number
+  scheduleMode: AgentScheduleMode
+  scheduleTimes: string[]
   setDreamingEnabled: (value: boolean) => void
   setDreamingIntervalMinutes: (value: number) => void
+  setScheduleMode: (value: AgentScheduleMode) => void
+  setScheduleTimes: (value: string[]) => void
 }) {
   return (
     <div className="grid gap-4 border-2 border-foreground bg-background p-5 md:grid-cols-[12rem_minmax(0,1fr)]">
@@ -139,16 +166,175 @@ export function DreamingSettings({
           />
         </div>
         {dreamingEnabled ? (
-          <IntervalSelect
-            id="agent-dreaming-interval"
-            label="Dreaming cadence"
-            setValue={setDreamingIntervalMinutes}
-            value={dreamingIntervalMinutes}
+          <ScheduleControls
+            intervalHelpText="Interval mode also preserves the daily local-date dreaming fallback."
+            intervalId="agent-dreaming-interval"
+            intervalLabel="Dreaming cadence"
+            intervalMinutes={dreamingIntervalMinutes}
+            mode={scheduleMode}
+            setIntervalMinutes={setDreamingIntervalMinutes}
+            setMode={setScheduleMode}
+            setTimes={setScheduleTimes}
+            times={scheduleTimes}
+            timesId="agent-dreaming-times"
           />
         ) : null}
       </div>
     </div>
   )
+}
+
+function ScheduleControls({
+  intervalHelpText,
+  intervalId,
+  intervalLabel,
+  intervalMinutes,
+  mode,
+  setIntervalMinutes,
+  setMode,
+  setTimes,
+  times,
+  timesId,
+}: {
+  intervalHelpText: string
+  intervalId: string
+  intervalLabel: string
+  intervalMinutes: number
+  mode: AgentScheduleMode
+  setIntervalMinutes: (value: number) => void
+  setMode: (value: AgentScheduleMode) => void
+  setTimes: (value: string[]) => void
+  times: string[]
+  timesId: string
+}) {
+  function changeMode(value: AgentScheduleMode) {
+    setMode(value)
+    if (value === 'daily_times' && times.length === 0) {
+      setTimes(['09:00'])
+    }
+  }
+
+  return (
+    <div className="grid gap-4">
+      <div className="flex flex-col gap-2">
+        <Label className="text-sm" htmlFor={`${timesId}-mode`}>
+          Schedule mode
+        </Label>
+        <Select
+          onValueChange={(value) => changeMode(value as AgentScheduleMode)}
+          value={mode}
+        >
+          <SelectTrigger id={`${timesId}-mode`}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="interval">Interval</SelectItem>
+            <SelectItem value="daily_times">Times of day</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      {mode === 'daily_times' ? (
+        <DailyTimesEditor id={timesId} setTimes={setTimes} times={times} />
+      ) : (
+        <IntervalSelect
+          helpText={intervalHelpText}
+          id={intervalId}
+          label={intervalLabel}
+          setValue={setIntervalMinutes}
+          value={intervalMinutes}
+        />
+      )}
+    </div>
+  )
+}
+
+function DailyTimesEditor({
+  id,
+  setTimes,
+  times,
+}: {
+  id: string
+  setTimes: (value: string[]) => void
+  times: string[]
+}) {
+  const visibleTimes = times.length > 0 ? times : ['09:00']
+  const rows = scheduleTimeRows(id, visibleTimes)
+
+  function updateTime(index: number, value: string) {
+    const next = visibleTimes.slice()
+    next[index] = value
+    setTimes(next)
+  }
+
+  function addTime() {
+    if (visibleTimes.length >= MAX_DAILY_SCHEDULE_TIMES) {
+      return
+    }
+    setTimes([...visibleTimes, '09:00'])
+  }
+
+  function removeTime(index: number) {
+    const next = visibleTimes.filter((_, i) => i !== index)
+    setTimes(next.length > 0 ? next : ['09:00'])
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Label className="text-sm" htmlFor={`${id}-0`}>
+        Times of day
+      </Label>
+      <div className="grid gap-2">
+        {rows.map((row, index) => (
+          <div className="flex items-center gap-2" key={row.key}>
+            <Input
+              id={`${id}-${index}`}
+              max="23:59"
+              min="00:00"
+              onChange={(event) => updateTime(index, event.target.value)}
+              type="time"
+              value={row.time}
+            />
+            <Button
+              aria-label="Remove schedule time"
+              disabled={visibleTimes.length === 1}
+              onClick={() => removeTime(index)}
+              size="icon"
+              type="button"
+              variant="outline"
+            >
+              <X aria-hidden className="size-4" />
+            </Button>
+          </div>
+        ))}
+      </div>
+      <Button
+        className="self-start"
+        disabled={visibleTimes.length >= MAX_DAILY_SCHEDULE_TIMES}
+        onClick={addTime}
+        type="button"
+        variant="outline"
+      >
+        <Plus aria-hidden className="mr-2 size-4" />
+        Add time
+      </Button>
+      <p className="text-muted-foreground text-xs">
+        Times use your account timezone and run on the first cron tick after the
+        selected time.
+      </p>
+    </div>
+  )
+}
+
+function scheduleTimeRows(id: string, times: readonly string[]) {
+  const counts = new Map<string, number>()
+  return times.map((time) => {
+    const count = (counts.get(time) ?? 0) + 1
+    counts.set(time, count)
+    return {
+      key: `${id}-${time}-${count}`,
+      time,
+    }
+  })
 }
 
 function IntervalSelect({
