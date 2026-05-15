@@ -23,61 +23,103 @@ const statusSchema = z.object({
   status: z.enum(['converted', 'unsubscribed']),
 })
 
+export type WaitlistAdminActionResult =
+  | { ok: true }
+  | { error: string; ok: false }
+
 function revalidateWaitlistRoutes() {
   revalidatePath('/settings')
   revalidatePath('/settings/waitlist')
 }
 
+function getActionErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+  return fallback
+}
+
 export async function resendWaitlistConfirmationAction(
-  formData: FormData
-): Promise<void> {
+  entryId: string
+): Promise<WaitlistAdminActionResult> {
   await requireWaitlistManageAccess()
   const parsed = entryIdSchema.safeParse({
-    entryId: formData.get('entryId'),
+    entryId,
   })
   if (!parsed.success) {
-    throw new Error('Invalid waitlist entry id')
+    return { error: 'Invalid waitlist entry id', ok: false }
   }
 
-  const message = await adminResendWaitlistConfirmation(parsed.data.entryId)
-  await sendWaitlistConfirmationEmail({
-    email: message.email,
-    token: message.token,
-  })
-  revalidateWaitlistRoutes()
+  try {
+    const message = await adminResendWaitlistConfirmation(parsed.data.entryId)
+    await sendWaitlistConfirmationEmail({
+      email: message.email,
+      token: message.token,
+    })
+    revalidateWaitlistRoutes()
+    return { ok: true }
+  } catch (error) {
+    return {
+      error: getActionErrorMessage(
+        error,
+        'Could not resend the confirmation email.'
+      ),
+      ok: false,
+    }
+  }
 }
 
 export async function sendWaitlistInviteAction(
-  formData: FormData
-): Promise<void> {
+  entryId: string
+): Promise<WaitlistAdminActionResult> {
   await requireWaitlistManageAccess()
   const parsed = entryIdSchema.safeParse({
-    entryId: formData.get('entryId'),
+    entryId,
   })
   if (!parsed.success) {
-    throw new Error('Invalid waitlist entry id')
+    return { error: 'Invalid waitlist entry id', ok: false }
   }
 
-  const entry = await adminPrepareWaitlistInvite(parsed.data.entryId)
-  await sendWaitlistInviteEmail({
-    email: entry.email,
-  })
-  await adminMarkWaitlistInvited(parsed.data.entryId)
-  revalidateWaitlistRoutes()
+  try {
+    const entry = await adminPrepareWaitlistInvite(parsed.data.entryId)
+    await sendWaitlistInviteEmail({
+      email: entry.email,
+    })
+    await adminMarkWaitlistInvited(parsed.data.entryId)
+    revalidateWaitlistRoutes()
+    return { ok: true }
+  } catch (error) {
+    return {
+      error: getActionErrorMessage(error, 'Could not send the invite.'),
+      ok: false,
+    }
+  }
 }
 
 export async function updateWaitlistStatusAction(
-  formData: FormData
-): Promise<void> {
+  entryId: string,
+  status: 'converted' | 'unsubscribed'
+): Promise<WaitlistAdminActionResult> {
   await requireWaitlistManageAccess()
   const parsed = statusSchema.safeParse({
-    entryId: formData.get('entryId'),
-    status: formData.get('status'),
+    entryId,
+    status,
   })
   if (!parsed.success) {
-    throw new Error('Invalid waitlist status update')
+    return { error: 'Invalid waitlist status update', ok: false }
   }
 
-  await adminUpdateWaitlistStatus(parsed.data.entryId, parsed.data.status)
-  revalidateWaitlistRoutes()
+  try {
+    await adminUpdateWaitlistStatus(parsed.data.entryId, parsed.data.status)
+    revalidateWaitlistRoutes()
+    return { ok: true }
+  } catch (error) {
+    return {
+      error: getActionErrorMessage(
+        error,
+        'Could not update the waitlist status.'
+      ),
+      ok: false,
+    }
+  }
 }

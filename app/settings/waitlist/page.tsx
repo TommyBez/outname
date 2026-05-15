@@ -16,11 +16,7 @@ import { AppShell } from '@/shared/components/layout/app-shell'
 import type { WaitlistEntry } from '@/shared/db/schema'
 import { formatDateTime, formatRelative } from '@/shared/server/format'
 import { createPrivatePageMetadata } from '@/shared/server/site-metadata'
-import {
-  resendWaitlistConfirmationAction,
-  sendWaitlistInviteAction,
-  updateWaitlistStatusAction,
-} from '@/waitlist/server/actions'
+import { WaitlistActionButtons } from '@/waitlist/components/waitlist-action-buttons'
 import { WAITLIST_ENTRY_STATUSES } from '@/waitlist/server/constants'
 import {
   listWaitlistEntries,
@@ -323,49 +319,5 @@ function WaitlistTableRow({ entry }: { entry: WaitlistEntry }) {
         <WaitlistActionButtons entry={entry} />
       </TableCell>
     </TableRow>
-  )
-}
-
-function WaitlistActionButtons({ entry }: { entry: WaitlistEntry }) {
-  return (
-    <div className="flex flex-col gap-2">
-      {entry.status === 'pending' ? (
-        <form action={resendWaitlistConfirmationAction}>
-          <input name="entryId" type="hidden" value={entry.id} />
-          <Button size="xs" type="submit" variant="outline">
-            Resend confirm
-          </Button>
-        </form>
-      ) : null}
-
-      {entry.status === 'confirmed' || entry.status === 'invited' ? (
-        <form action={sendWaitlistInviteAction}>
-          <input name="entryId" type="hidden" value={entry.id} />
-          <Button size="xs" type="submit">
-            Send invite
-          </Button>
-        </form>
-      ) : null}
-
-      {entry.status === 'converted' ? null : (
-        <form action={updateWaitlistStatusAction}>
-          <input name="entryId" type="hidden" value={entry.id} />
-          <input name="status" type="hidden" value="converted" />
-          <Button size="xs" type="submit" variant="secondary">
-            Mark converted
-          </Button>
-        </form>
-      )}
-
-      {entry.status === 'unsubscribed' ? null : (
-        <form action={updateWaitlistStatusAction}>
-          <input name="entryId" type="hidden" value={entry.id} />
-          <input name="status" type="hidden" value="unsubscribed" />
-          <Button size="xs" type="submit" variant="ghost">
-            Unsubscribe
-          </Button>
-        </form>
-      )}
-    </div>
   )
 }
