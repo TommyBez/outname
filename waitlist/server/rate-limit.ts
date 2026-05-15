@@ -14,11 +14,7 @@ function getRedisClient(): Redis | null {
   if (cachedRedis !== undefined) {
     return cachedRedis
   }
-  if (
-    !(
-      process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
-    )
-  ) {
+  if (!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN)) {
     cachedRedis = null
     return cachedRedis
   }
