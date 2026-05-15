@@ -53,39 +53,39 @@ const BODY_START_FRAME = 76
 const videoMeta: Record<LaunchVideoSlug, VideoMeta> = {
   '2026-05-18-why-outname-exists': {
     cta: 'OUTNA.ME / waitlist open',
-    eyebrow: 'why outna.me exists',
-    headline: 'I needed agents that come back to the work.',
-    subline: 'Repeating context is where solo work starts to leak time.',
+    eyebrow: 'why outna.me',
+    headline: 'Less context rebuilding.',
+    subline: 'Solo work should resume.',
   },
   '2026-05-20-agent-configuration': {
     cta: 'model / identity / schedule',
     eyebrow: 'agent configuration',
-    headline: 'An agent should have a job, not just a prompt.',
-    subline: 'Configure the operator before expecting useful work.',
+    headline: 'Agents need shape.',
+    subline: 'Model. Identity. Schedule.',
   },
   '2026-05-22-autonomous-run': {
     cta: 'scheduled work / no manual nudge',
     eyebrow: 'autonomous run',
-    headline: 'The run starts while I am somewhere else.',
-    subline: 'Schedule, channel, tools, sub-agent, memory. One motion.',
+    headline: 'Work starts without me.',
+    subline: 'Schedule. Tools. Memory.',
   },
   '2026-05-26-memory-over-time': {
     cta: 'less setup every run',
     eyebrow: 'memory over time',
-    headline: 'I want agents that learn how I work.',
-    subline: 'The point is not storage. The point is better next runs.',
+    headline: 'Better defaults every run.',
+    subline: 'Memory becomes momentum.',
   },
   '2026-05-28-composable-channels': {
     cta: 'tools / sub-agents / channels',
     eyebrow: 'composability',
-    headline: 'Small agents, wired into real surfaces.',
-    subline: 'Tools, sub-agents, channels, MCP and skills as building blocks.',
+    headline: 'Agents need surfaces.',
+    subline: 'Tools. Channels. Sub-agents.',
   },
   '2026-05-20-vercel-stack': {
     cta: 'built on Vercel primitives',
     eyebrow: 'vercel-native stack',
-    headline: 'The agent runtime sits on the platform I already ship with.',
-    subline: 'AI SDK, Workflow, Sandbox, Crons, Chat SDK.',
+    headline: 'An agent runtime on Vercel.',
+    subline: 'AI SDK. Workflow. Sandbox. Crons.',
   },
 }
 
@@ -245,7 +245,7 @@ function VideoShell({
             textTransform: 'uppercase',
           }}
         >
-          Built as a public pre-launch lab.
+          Public pre-launch lab.
         </p>
         <p
           style={{
@@ -356,16 +356,13 @@ function WhyOutnameExists({ aspect, frame, layout }: StoryProps) {
             padding: layout.scenePadding,
           }}
         >
-          <SectionTitle
-            kicker="the friction"
-            title="Every useful task starts by rebuilding context."
-          />
+          <SectionTitle kicker="the friction" title="Context resets." />
           <StackedWindows
             frame={frame}
             items={[
-              ['Project notes', 'Where did we stop?'],
-              ['Client thread', 'What changed since last week?'],
-              ['Build queue', 'Which tasks are still open?'],
+              ['Project notes', 'Where were we?'],
+              ['Client thread', 'What changed?'],
+              ['Build queue', "What's next?"],
             ]}
           />
         </VideoPanel>
@@ -403,11 +400,7 @@ function WhyOutnameExists({ aspect, frame, layout }: StoryProps) {
             padding: layout.scenePadding,
           }}
         >
-          <SectionTitle
-            dark
-            kicker="the system"
-            title="Agents return to the work with their own context."
-          />
+          <SectionTitle dark kicker="the system" title="Agents come back." />
           <ReturnBoard frame={frame} />
         </VideoPanel>
       </Scene>
@@ -437,7 +430,7 @@ function AgentConfiguration({ aspect, frame, layout }: StoryProps) {
           >
             <SectionTitle
               kicker="choose the operator"
-              title="Different jobs need different agents."
+              title="One job. One operator."
             />
             <ProfileStrip
               activeIndex={Math.min(2, Math.floor((frame - 90) / 28))}
@@ -464,7 +457,7 @@ function AgentConfiguration({ aspect, frame, layout }: StoryProps) {
           <SectionTitle
             dark
             kicker="configured"
-            title="The agent now has a model, identity, and schedule."
+            title="Model. Identity. Schedule."
           />
           <ConfiguredAgentCard frame={frame} />
         </VideoPanel>
@@ -626,24 +619,22 @@ function ManualLoopCard({
           minHeight: 0,
         }}
       >
-        {['Open thread', 'Rebuild context', 'Move one task'].map(
-          (step, stepIndex) => (
-            <div
-              key={step}
-              style={{
-                background: stepIndex === 1 ? '#ff3000' : '#f4f4f4',
-                border: '2px solid #000000',
-                fontFamily: 'var(--font-mono)',
-                fontSize: compact ? 12 : 16,
-                fontWeight: 850,
-                padding: compact ? '8px 10px' : '14px 16px',
-                textTransform: 'uppercase',
-              }}
-            >
-              {step}
-            </div>
-          )
-        )}
+        {['Open', 'Rebuild', 'Move'].map((step, stepIndex) => (
+          <div
+            key={step}
+            style={{
+              background: stepIndex === 1 ? '#ff3000' : '#f4f4f4',
+              border: '2px solid #000000',
+              fontFamily: 'var(--font-mono)',
+              fontSize: compact ? 12 : 16,
+              fontWeight: 850,
+              padding: compact ? '8px 10px' : '14px 16px',
+              textTransform: 'uppercase',
+            }}
+          >
+            {step}
+          </div>
+        ))}
       </div>
       <div
         style={{
@@ -675,9 +666,9 @@ function ReturnBoard({ frame }: { frame: number }) {
       }}
     >
       {[
-        ['08:30', 'Research agent resumes'],
-        ['12:00', 'Ops agent checks queue'],
-        ['17:30', 'Writing agent drafts update'],
+        ['08:30', 'Research resumes'],
+        ['12:00', 'Queue checked'],
+        ['17:30', 'Draft ready'],
       ].map(([time, label], index) => {
         const progress = appear(frame, 326 + index * 22, 18)
         return (
@@ -734,49 +725,47 @@ function AgentList({ frame }: { frame: number }) {
       }}
     >
       <VideoLabel invert>agents</VideoLabel>
-      {['Research operator', 'Writing operator', 'Ops operator'].map(
-        (agent, index) => {
-          const progress = appear(frame, 88 + index * 20, 18)
-          const isActive = index === 1
-          return (
-            <div
-              key={agent}
+      {['Research', 'Writing', 'Ops'].map((agent, index) => {
+        const progress = appear(frame, 88 + index * 20, 18)
+        const isActive = index === 1
+        return (
+          <div
+            key={agent}
+            style={{
+              background: isActive ? '#ff3000' : '#111111',
+              border: '2px solid rgba(255,255,255,0.38)',
+              color: isActive ? '#000000' : '#ffffff',
+              opacity: progress,
+              padding: '18px 20px',
+              transform: `translateX(${(1 - progress) * -28}px)`,
+            }}
+          >
+            <strong
               style={{
-                background: isActive ? '#ff3000' : '#111111',
-                border: '2px solid rgba(255,255,255,0.38)',
-                color: isActive ? '#000000' : '#ffffff',
-                opacity: progress,
-                padding: '18px 20px',
-                transform: `translateX(${(1 - progress) * -28}px)`,
+                display: 'block',
+                fontSize: 29,
+                fontWeight: 950,
+                lineHeight: 1,
+                textTransform: 'uppercase',
               }}
             >
-              <strong
-                style={{
-                  display: 'block',
-                  fontSize: 29,
-                  fontWeight: 950,
-                  lineHeight: 1,
-                  textTransform: 'uppercase',
-                }}
-              >
-                {agent}
-              </strong>
-              <span
-                style={{
-                  display: 'block',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 14,
-                  fontWeight: 750,
-                  marginTop: 10,
-                  textTransform: 'uppercase',
-                }}
-              >
-                configurable unit
-              </span>
-            </div>
-          )
-        }
-      )}
+              {agent}
+            </strong>
+            <span
+              style={{
+                display: 'block',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 14,
+                fontWeight: 750,
+                marginTop: 10,
+                textTransform: 'uppercase',
+              }}
+            >
+              operator
+            </span>
+          </div>
+        )
+      })}
     </VideoPanel>
   )
 }
@@ -819,10 +808,10 @@ function ProfileStrip({
 
 function ConfigWorkbench({ aspect, frame, layout }: StoryProps) {
   const fields = [
-    ['model', 'Claude Sonnet'],
-    ['identity', 'Writing operator'],
-    ['schedule', 'Weekdays 09:00'],
-    ['memory', 'Project context'],
+    ['model', 'Sonnet'],
+    ['identity', 'Writer'],
+    ['schedule', '09:00'],
+    ['memory', 'Context'],
   ] as const
 
   return (
@@ -835,10 +824,7 @@ function ConfigWorkbench({ aspect, frame, layout }: StoryProps) {
         padding: layout.scenePadding,
       }}
     >
-      <SectionTitle
-        kicker="workbench"
-        title="Configuration becomes the first screen."
-      />
+      <SectionTitle kicker="workbench" title="Configuration first." />
       <div style={{ display: 'grid', gap: 14 }}>
         {fields.map(([label, value], index) => {
           const progress = appear(frame, 188 + index * 22, 16)
@@ -911,7 +897,7 @@ function ConfiguredAgentCard({ frame }: { frame: number }) {
             textTransform: 'uppercase',
           }}
         >
-          Writing operator
+          Writing
         </p>
       </div>
       <div
@@ -946,7 +932,7 @@ function ScheduleTrigger({ aspect, frame, layout }: StoryProps) {
         padding: layout.scenePadding,
       }}
     >
-      <SectionTitle kicker="schedule" title="The run starts at 08:30." />
+      <SectionTitle kicker="schedule" title="08:30. It starts." />
       <div
         style={{
           background: '#000000',
@@ -1001,11 +987,7 @@ function RunPipeline({ aspect, frame, layout }: StoryProps) {
         padding: layout.scenePadding,
       }}
     >
-      <SectionTitle
-        dark
-        kicker="run in motion"
-        title="Channel input turns into work."
-      />
+      <SectionTitle dark kicker="run in motion" title="Input becomes action." />
       <div
         style={{
           alignItems: 'stretch',
@@ -1087,17 +1069,10 @@ function MemoryUpdateScene({ aspect, frame, layout }: StoryProps) {
         padding: layout.scenePadding,
       }}
     >
-      <SectionTitle
-        kicker="next run"
-        title="The next start has one more useful piece of context."
-      />
+      <SectionTitle kicker="next run" title="Next run knows more." />
       <MemoryChips
         frame={frame}
-        items={[
-          'prefers concise recap',
-          'checks channel first',
-          'drafts before sending',
-        ]}
+        items={['short recap', 'check channel', 'draft first']}
         start={340}
       />
     </VideoPanel>
@@ -1114,7 +1089,7 @@ function RunHistoryGrid({ aspect, frame, layout }: StoryProps) {
         padding: layout.scenePadding,
       }}
     >
-      <SectionTitle kicker="repeated work" title="Three runs. Less setup." />
+      <SectionTitle kicker="repeated work" title="Less setup." />
       <div
         style={{
           display: 'grid',
@@ -1124,9 +1099,9 @@ function RunHistoryGrid({ aspect, frame, layout }: StoryProps) {
         }}
       >
         {[
-          ['Run 01', 'Explain context'],
-          ['Run 02', 'Apply preference'],
-          ['Run 03', 'Start closer'],
+          ['Run 01', 'Context'],
+          ['Run 02', 'Preference'],
+          ['Run 03', 'Closer start'],
         ].map(([run, result], index) => {
           const progress = appear(frame, 104 + index * 30, 18)
           return (
@@ -1172,20 +1147,11 @@ function MemoryCanvas({ aspect, frame, layout }: StoryProps) {
         padding: layout.scenePadding,
       }}
     >
-      <SectionTitle
-        dark
-        kicker="memory"
-        title="Context compounds between runs."
-      />
+      <SectionTitle dark kicker="memory" title="Memory compounds." />
       <MemoryChips
         dark
         frame={frame}
-        items={[
-          'tone: direct',
-          'weekly format',
-          'client context',
-          'source priority',
-        ]}
+        items={['tone', 'format', 'client', 'sources']}
         start={224}
       />
     </VideoPanel>
@@ -1203,42 +1169,37 @@ function LessSetupScene({ aspect, frame, layout }: StoryProps) {
         padding: layout.scenePadding,
       }}
     >
-      <SectionTitle
-        kicker="outcome"
-        title="The repeated explanation disappears."
-      />
+      <SectionTitle kicker="outcome" title="Less explaining." />
       <div style={{ display: 'grid', gap: 14 }}>
-        {[
-          'Here is the full context again...',
-          'Remember the client tone...',
-          'Start from last run',
-        ].map((line, index) => {
-          const progress = appear(frame, 344 + index * 18, 16)
-          const removed = index < 2
-          return (
-            <div
-              key={line}
-              style={{
-                background: removed ? '#f4f4f4' : '#ff3000',
-                border: '3px solid #000000',
-                color: removed ? '#8a8a8a' : '#000000',
-                opacity: removed ? 1 - progress * 0.62 : progress,
-                padding: '18px 20px',
-              }}
-            >
-              <strong
+        {['Context dump', 'Tone reminder', 'Start from memory'].map(
+          (line, index) => {
+            const progress = appear(frame, 344 + index * 18, 16)
+            const removed = index < 2
+            return (
+              <div
+                key={line}
                 style={{
-                  fontSize: 28,
-                  fontWeight: 950,
-                  lineHeight: 1,
-                  textTransform: 'uppercase',
+                  background: removed ? '#f4f4f4' : '#ff3000',
+                  border: '3px solid #000000',
+                  color: removed ? '#8a8a8a' : '#000000',
+                  opacity: removed ? 1 - progress * 0.62 : progress,
+                  padding: '18px 20px',
                 }}
               >
-                {line}
-              </strong>
-            </div>
-          )
-        })}
+                <strong
+                  style={{
+                    fontSize: 28,
+                    fontWeight: 950,
+                    lineHeight: 1,
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {line}
+                </strong>
+              </div>
+            )
+          }
+        )}
       </div>
     </VideoPanel>
   )
@@ -1257,7 +1218,7 @@ function ComposableHub({ aspect, frame, layout }: StoryProps) {
         padding: layout.scenePadding,
       }}
     >
-      <SectionTitle kicker="composition" title="One system, smaller pieces." />
+      <SectionTitle kicker="composition" title="Pieces snap together." />
       <div
         style={{
           display: 'grid',
@@ -1309,11 +1270,7 @@ function ChannelRouter({ aspect, frame, layout }: StoryProps) {
       }}
     >
       <ChannelGrid frame={frame} />
-      <SectionTitle
-        dark
-        kicker="channels"
-        title="Slack, Telegram, Discord, Webhooks become routes."
-      />
+      <SectionTitle dark kicker="channels" title="Every channel is a route." />
     </VideoPanel>
   )
 }
@@ -1369,39 +1326,34 @@ function ComingSoonSlots({ aspect, frame, layout }: StoryProps) {
         padding: layout.scenePadding,
       }}
     >
-      <SectionTitle
-        kicker="next pieces"
-        title="MCP and skills plug into the same composition model."
-      />
+      <SectionTitle kicker="next pieces" title="MCP. Skills. Templates." />
       <div style={{ display: 'grid', gap: 14 }}>
-        {['MCP servers', 'Reusable skills', 'Agent templates'].map(
-          (slot, index) => {
-            const progress = appear(frame, 350 + index * 22, 16)
-            return (
-              <div
-                key={slot}
+        {['MCP', 'Skills', 'Templates'].map((slot, index) => {
+          const progress = appear(frame, 350 + index * 22, 16)
+          return (
+            <div
+              key={slot}
+              style={{
+                background: index === 0 ? '#ff3000' : '#ffffff',
+                border: '3px dashed #000000',
+                opacity: progress,
+                padding: '22px 24px',
+                transform: `translateY(${(1 - progress) * 24}px)`,
+              }}
+            >
+              <strong
                 style={{
-                  background: index === 0 ? '#ff3000' : '#ffffff',
-                  border: '3px dashed #000000',
-                  opacity: progress,
-                  padding: '22px 24px',
-                  transform: `translateY(${(1 - progress) * 24}px)`,
+                  fontSize: 34,
+                  fontWeight: 950,
+                  lineHeight: 1,
+                  textTransform: 'uppercase',
                 }}
               >
-                <strong
-                  style={{
-                    fontSize: 34,
-                    fontWeight: 950,
-                    lineHeight: 1,
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {slot}
-                </strong>
-              </div>
-            )
-          }
-        )}
+                {slot}
+              </strong>
+            </div>
+          )
+        })}
       </div>
     </VideoPanel>
   )
@@ -1420,10 +1372,7 @@ function VercelLayerBuild({ aspect, frame, layout }: StoryProps) {
         padding: layout.scenePadding,
       }}
     >
-      <SectionTitle
-        kicker="platform stack"
-        title="Vercel primitives become the runtime."
-      />
+      <SectionTitle kicker="platform stack" title="Primitives, not glue." />
       <div style={{ display: 'grid', gap: 10 }}>
         {layers.map((layer, index) => {
           const progress = appear(frame, 102 + index * 20, 18)
@@ -1471,7 +1420,7 @@ function PrimitiveFlow({ aspect, frame, layout }: StoryProps) {
       <SectionTitle
         dark
         kicker="execution path"
-        title="Generation, workflow, runtime, schedule, surface."
+        title="Generate. Run. Return."
       />
       <div
         style={{
@@ -1480,7 +1429,7 @@ function PrimitiveFlow({ aspect, frame, layout }: StoryProps) {
           gridTemplateColumns: aspect === '16x9' ? 'repeat(5, 1fr)' : '1fr',
         }}
       >
-        {['Prompt', 'AI SDK', 'Workflow', 'Sandbox', 'Product'].map(
+        {['Generate', 'Workflow', 'Sandbox', 'Cron', 'UI'].map(
           (label, index) => {
             const progress = appear(frame, 218 + index * 18, 16)
             return (
@@ -1525,39 +1474,34 @@ function DeployPath({ aspect, frame, layout }: StoryProps) {
         padding: layout.scenePadding,
       }}
     >
-      <SectionTitle
-        kicker="open source soon"
-        title="Fork, deploy, own your runtime."
-      />
+      <SectionTitle kicker="open source soon" title="Fork. Deploy. Own." />
       <div style={{ display: 'grid', gap: 14 }}>
-        {['Fork repo', 'Set env vars', 'Deploy on Vercel'].map(
-          (step, index) => {
-            const progress = appear(frame, 350 + index * 22, 16)
-            return (
-              <div
-                key={step}
+        {['Fork', 'Env', 'Vercel'].map((step, index) => {
+          const progress = appear(frame, 350 + index * 22, 16)
+          return (
+            <div
+              key={step}
+              style={{
+                background: index === 2 ? '#ff3000' : '#ffffff',
+                border: '3px solid #000000',
+                opacity: progress,
+                padding: '20px 22px',
+                transform: `translateX(${(1 - progress) * 36}px)`,
+              }}
+            >
+              <strong
                 style={{
-                  background: index === 2 ? '#ff3000' : '#ffffff',
-                  border: '3px solid #000000',
-                  opacity: progress,
-                  padding: '20px 22px',
-                  transform: `translateX(${(1 - progress) * 36}px)`,
+                  fontSize: 34,
+                  fontWeight: 950,
+                  lineHeight: 1,
+                  textTransform: 'uppercase',
                 }}
               >
-                <strong
-                  style={{
-                    fontSize: 34,
-                    fontWeight: 950,
-                    lineHeight: 1,
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {step}
-                </strong>
-              </div>
-            )
-          }
-        )}
+                {step}
+              </strong>
+            </div>
+          )
+        })}
       </div>
     </VideoPanel>
   )
