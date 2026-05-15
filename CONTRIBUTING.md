@@ -49,9 +49,9 @@ pnpm test
 pnpm test:typecheck
 ```
 
-If your change affects deployed behavior, validate it in a Vercel environment
-when possible because workflow execution, cron, sandbox persistence, and Slack
-streaming are most representative there.
+If your change affects cron, Slack delivery, or other hosted integrations,
+validate it in a Vercel environment when practical. Most product and UI work
+can still be developed and reviewed locally.
 
 ## Pull request checklist
 

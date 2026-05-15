@@ -92,8 +92,8 @@ Open `http://localhost:3000`.
 - The database is remote; no local Postgres setup is required.
 - Sign-up is disabled, so use the seeded test user credentials exposed through
   `TEST_USER_EMAIL` and `TEST_USER_PASSWORD`.
-- Workflow, cron, persistent sandbox behavior, and Slack streaming are most
-  representative in a Vercel deployment.
+- Local development is enough for day-to-day product work; use Vercel when you
+  want to exercise cron-driven flows or hosted integrations end-to-end.
 
 ## Common commands
 

@@ -184,8 +184,9 @@ The main application tables are:
 
 ## Local versus deployed behavior
 
-Local development uses the same Next.js application and database schema, but
-some features are most faithful on Vercel:
+Local development uses the same Next.js application and database schema as the
+deployed app. For most product work, the local environment is enough. Vercel is
+mainly useful when you want to exercise hosted or scheduled behavior such as:
 
 - workflow execution and reply streaming;
 - persistent sandbox lifecycle;
