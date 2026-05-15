@@ -1,5 +1,6 @@
 import { convertToModelMessages, type UIMessage, type UIMessageChunk } from 'ai'
 import { getWritable } from 'workflow'
+import { getRun } from 'workflow/api'
 import { startupSystemSandbox } from '@/agent-runtime/server/agent-sandbox'
 import type { AgentChatMessage } from '@/agent-runtime/server/chat-status'
 import {
@@ -58,8 +59,12 @@ export async function handleInvocation(input: {
   })
   const streamNamespace = streamToken
   const streamNamespaces = uniqueNamespaces(streamNamespace, replyToken ?? null)
-  const writable = createInvocationWritable(streamNamespaces)
+  const writable = getWritable<UIMessageChunk>({ namespace: streamNamespace })
+  const mirrorNamespace = streamNamespaces.find(
+    (namespace) => namespace !== streamNamespace
+  )
   let forwardPromise = Promise.resolve([] as AgentChatMessage[])
+  let mirrorPromise = Promise.resolve()
 
   try {
     await prepareInvocationRun({
@@ -110,6 +115,13 @@ export async function handleInvocation(input: {
     const modelMessages = await convertToModelMessages([userMessage])
 
     await emitStep(runId, 'read', 'start', 'Running sub-agent instruction')
+    mirrorPromise = mirrorNamespace
+      ? mirrorInvocationStream({
+          runId,
+          sourceNamespace: streamNamespace,
+          targetNamespace: mirrorNamespace,
+        })
+      : Promise.resolve()
     forwardPromise = startForwardingChildTrace({
       childAgentId: agentId,
       childName: built.meta.name,
@@ -145,6 +157,7 @@ export async function handleInvocation(input: {
     })
     await finishInvocationStreams(streamNamespaces)
     await forwardPromise
+    await mirrorPromise
   } catch (err) {
     await failInvocation({
       err,
@@ -153,23 +166,9 @@ export async function handleInvocation(input: {
       streamNamespace,
       streamNamespaces,
     })
+    await mirrorPromise.catch(() => undefined)
     throw err
   }
-}
-
-function createInvocationWritable(
-  namespaces: readonly string[]
-): WritableStream<UIMessageChunk> {
-  const primaryNamespace = namespaces[0]
-  if (!primaryNamespace) {
-    throw new Error('createInvocationWritable: missing stream namespace')
-  }
-  if (namespaces.length > 1) {
-    console.warn('createInvocationWritable: mirror namespace disabled', {
-      namespaces,
-    })
-  }
-  return getWritable<UIMessageChunk>({ namespace: primaryNamespace })
 }
 
 async function finishInvocationStreams(
@@ -193,6 +192,29 @@ function uniqueNamespaces(
 
 function isString(value: string | null): value is string {
   return typeof value === 'string' && value.length > 0
+}
+
+async function mirrorInvocationStream(input: {
+  runId: string
+  sourceNamespace: string
+  targetNamespace: string
+}): Promise<void> {
+  'use step'
+  const source = getRun(input.runId).getReadable<UIMessageChunk>({
+    namespace: input.sourceNamespace,
+    startIndex: 0,
+  })
+  const target = getWritable<UIMessageChunk>({ namespace: input.targetNamespace })
+  const writer = target.getWriter()
+  try {
+    for await (const chunk of source) {
+      await writer.write(chunk)
+    }
+  } catch (err) {
+    console.error('handleInvocation: failed to mirror invocation stream', err)
+  } finally {
+    writer.releaseLock()
+  }
 }
 
 async function prepareInvocationRun(input: {
