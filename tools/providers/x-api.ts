@@ -38,13 +38,13 @@ const xApiRequestInputSchema = z.object({
     ),
   path: z.string().min(1).describe(`Relative X API path. ${X_ENDPOINT_GUIDE}`),
   query: z
-    .record(xApiQueryValueSchema)
+    .record(z.string(), xApiQueryValueSchema)
     .optional()
     .describe(
       'Optional query parameters. Use strings for comma-separated field lists such as tweet.fields or expansions.'
     ),
   body: z
-    .record(z.unknown())
+    .record(z.string(), z.unknown())
     .optional()
     .describe('Optional JSON request body for non-GET requests.'),
   maxResponseBytes: z

@@ -13,7 +13,7 @@ import { submitWaitlistEntry } from '@/waitlist/server/service'
 const emptyStringToNull = (value: unknown) => (value === '' ? null : value)
 
 const waitlistRequestSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   name: z.string().max(120).optional().nullable(),
   primaryInterest: z.preprocess(
     emptyStringToNull,

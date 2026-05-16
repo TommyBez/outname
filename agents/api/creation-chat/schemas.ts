@@ -32,7 +32,7 @@ const scheduleSchema = z
       value.times.length === 0
     ) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         message: 'Daily schedule mode needs at least one time.',
         path: ['times'],
       })
@@ -56,7 +56,7 @@ const maintainerToolSelectionSchema = z.object({
     .string()
     .describe('Exact maintainer tool id from list_available_tools.'),
   config: z
-    .record(z.unknown())
+    .record(z.string(), z.unknown())
     .default({})
     .describe('Per-attachment config matching that tool config schema.'),
   reason: z
