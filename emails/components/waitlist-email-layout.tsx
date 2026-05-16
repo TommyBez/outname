@@ -24,6 +24,8 @@ interface WaitlistEmailLayoutProps {
   ctaLabel?: string
   eyebrow: string
   footer?: ReactNode
+  footerEyebrow?: string
+  footerText?: ReactNode
   lead: string
   logoUrl: string
   preview: string
@@ -35,6 +37,8 @@ export function WaitlistEmailLayout({
   ctaHref,
   ctaLabel,
   eyebrow,
+  footerEyebrow,
+  footerText,
   footer,
   lead,
   logoUrl,
@@ -103,13 +107,17 @@ export function WaitlistEmailLayout({
               {footer ?? (
                 <>
                   <Text className="m-0 font-black text-[11px] text-subtle uppercase tracking-[2px]">
-                    {EMAIL_BRAND_NAME} / waitlist
+                    {footerEyebrow ?? `${EMAIL_BRAND_NAME} / waitlist`}
                   </Text>
-                  <Text className="m-0 mt-[12px] text-[12px] text-subtle leading-[20px]">
-                    This email was sent because an address requested access to{' '}
-                    {EMAIL_BRAND_NAME}. If that was not you, you can safely
-                    ignore it.
-                  </Text>
+                  {footerText ? (
+                    footerText
+                  ) : (
+                    <Text className="m-0 mt-[12px] text-[12px] text-subtle leading-[20px]">
+                      This email was sent because an address requested access to{' '}
+                      {EMAIL_BRAND_NAME}. If that was not you, you can safely
+                      ignore it.
+                    </Text>
+                  )}
                   <Text className="m-0 mt-[10px] text-[12px] text-subtle leading-[20px]">
                     <Link
                       className="text-ink no-underline"

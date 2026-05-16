@@ -26,7 +26,7 @@ import {
 
 export const metadata: Metadata = createPrivatePageMetadata(
   'Waitlist',
-  'Manage waitlist confirmations, invites, and status transitions.'
+  'Manage waitlist confirmations, account provisioning, and access notifications.'
 )
 
 const CREATED_FILTERS = [
@@ -114,8 +114,8 @@ async function WaitlistSettingsContent({
               Waitlist
             </h1>
             <p className="mt-4 max-w-2xl text-muted-foreground text-sm leading-relaxed">
-              Review pending signups, resend confirmation emails, and send
-              invites when access is ready.
+              Review pending signups, provision accounts when access is ready,
+              and resend confirmation or access emails.
             </p>
           </div>
           <Link
@@ -213,7 +213,7 @@ async function WaitlistSettingsContent({
               <TableHead>Source</TableHead>
               <TableHead>Created</TableHead>
               <TableHead>Confirmation</TableHead>
-              <TableHead>Invite</TableHead>
+              <TableHead>Access</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -280,6 +280,13 @@ function FilterSelect({
 }
 
 function WaitlistTableRow({ entry }: { entry: WaitlistEntry }) {
+  let accessState = 'Not provisioned'
+  if (entry.provisionedAt) {
+    accessState = 'Provisioned'
+  } else if (entry.invitedAt) {
+    accessState = 'Access emailed'
+  }
+
   return (
     <TableRow>
       <TableCell className="align-top">
@@ -310,10 +317,10 @@ function WaitlistTableRow({ entry }: { entry: WaitlistEntry }) {
         </div>
       </TableCell>
       <TableCell className="align-top text-xs">
-        <div>{formatDateTime(entry.inviteEmailSentAt)}</div>
-        <div className="text-muted-foreground">
-          {entry.invitedAt ? 'Invited' : 'Not sent'}
+        <div>
+          {formatDateTime(entry.provisionedAt ?? entry.inviteEmailSentAt)}
         </div>
+        <div className="text-muted-foreground">{accessState}</div>
       </TableCell>
       <TableCell className="align-top">
         <WaitlistActionButtons entry={entry} />

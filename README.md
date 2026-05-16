@@ -52,13 +52,17 @@ BETTER_AUTH_SECRET=
 BETTER_AUTH_URL=
 CONNECTION_ENCRYPTION_KEY=
 AI_GATEWAY_API_KEY=
+RESEND_API_KEY=
+AUTH_FROM_EMAIL=
+AUTH_REPLY_TO=
 ```
 
 ### Common optional integrations
 
 - Slack: `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, `SLACK_SIGNING_SECRET`
 - Redis coordination: `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
-- Waitlist email: `RESEND_API_KEY`, `WAITLIST_FROM_EMAIL`
+- Auth email: `RESEND_API_KEY`, `AUTH_FROM_EMAIL`, `AUTH_REPLY_TO`
+- Waitlist email: `WAITLIST_FROM_EMAIL`, `WAITLIST_REPLY_TO`
 - Waitlist rate limit: `KV_REST_API_URL`, `KV_REST_API_TOKEN`
 - Cron hardening: `CRON_SECRET`
 
@@ -90,8 +94,10 @@ Open `http://localhost:3000`.
 - This is a single Next.js application, not a monorepo.
 - The only required local service is the Next.js dev server.
 - The database is remote; no local Postgres setup is required.
-- Sign-up is disabled, so use the seeded test user credentials exposed through
-  `TEST_USER_EMAIL` and `TEST_USER_PASSWORD`.
+- Sign-up stays disabled; accounts are provisioned from the waitlist and sign-in
+  happens with one-time codes sent by email.
+- Use `TEST_USER_EMAIL` for a provisioned dev account when available, then
+  request an OTP from the login page.
 - Local development is enough for day-to-day product work; use Vercel when you
   want to exercise cron-driven flows or hosted integrations end-to-end.
 

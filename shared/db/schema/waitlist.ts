@@ -5,6 +5,7 @@ import {
   timestamp,
   uniqueIndex,
 } from 'drizzle-orm/pg-core'
+import { user } from './auth'
 
 export const waitlistEntry = pgTable(
   'waitlist_entries',
@@ -31,6 +32,10 @@ export const waitlistEntry = pgTable(
       withTimezone: true,
     }),
     invitedAt: timestamp('invited_at', { withTimezone: true }),
+    provisionedUserId: text('provisioned_user_id').references(() => user.id, {
+      onDelete: 'set null',
+    }),
+    provisionedAt: timestamp('provisioned_at', { withTimezone: true }),
     convertedAt: timestamp('converted_at', { withTimezone: true }),
     notes: text('notes'),
     createdAt: timestamp('created_at', { withTimezone: true })
