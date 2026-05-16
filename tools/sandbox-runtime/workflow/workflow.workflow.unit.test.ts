@@ -139,7 +139,7 @@ describe('buildToolSandboxWorkflow', () => {
     ).rejects.toThrow('sandbox crashed')
 
     expect(consoleError).toHaveBeenCalledWith(
-      '[v0] buildToolSandboxWorkflow: markBuildFailed failed',
+      'buildToolSandboxWorkflow: markBuildFailed failed',
       markFailedError
     )
     expect(mockEmitBuildEvent).toHaveBeenCalledWith({

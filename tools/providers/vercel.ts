@@ -35,11 +35,11 @@ const vercelRequestInputSchema = z.object({
       'Relative API path, for example /v10/projects or /v9/teams/{teamId}.'
     ),
   query: z
-    .record(z.string())
+    .record(z.string(), z.string())
     .optional()
     .describe('Optional query string pairs appended to the request URL.'),
   body: z
-    .record(z.unknown())
+    .record(z.string(), z.unknown())
     .optional()
     .describe('Optional JSON request body for non-GET requests.'),
   confirmIrreversible: z

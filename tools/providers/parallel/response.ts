@@ -9,7 +9,7 @@ const parallelWarningSchema = z.object({
     'warning',
   ]),
   message: z.string(),
-  detail: z.record(z.unknown()).nullable().optional(),
+  detail: z.record(z.string(), z.unknown()).nullable().optional(),
 })
 
 const parallelUsageItemSchema = z.object({
@@ -37,7 +37,7 @@ const parallelErrorResponseSchema = z.object({
   error: z.object({
     ref_id: z.string().optional(),
     message: z.string(),
-    detail: z.record(z.unknown()).nullable().optional(),
+    detail: z.record(z.string(), z.unknown()).nullable().optional(),
   }),
 })
 

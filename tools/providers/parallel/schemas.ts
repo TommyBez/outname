@@ -18,7 +18,7 @@ const afterDateSchema = z
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD format.')
 
 const sourcePolicySchema = z
-  .object({
+  .strictObject({
     include_domains: z
       .array(domainSchema)
       .min(1)
@@ -41,14 +41,13 @@ const sourcePolicySchema = z
         'Optional freshness floor in YYYY-MM-DD format. Results should be published on or after this date.'
       ),
   })
-  .strict()
   .superRefine((value, ctx) => {
     const total =
       (value.include_domains?.length ?? 0) +
       (value.exclude_domains?.length ?? 0)
     if (total > 200) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         message:
           'Combined include_domains and exclude_domains entries cannot exceed 200.',
         path: ['exclude_domains'],
@@ -56,42 +55,38 @@ const sourcePolicySchema = z
     }
   })
 
-const fetchPolicySchema = z
-  .object({
-    max_age_seconds: z
-      .number()
-      .int()
-      .min(600)
-      .optional()
-      .describe(
-        'Optional maximum cached age in seconds before Parallel fetches live content. Minimum 600.'
-      ),
-    timeout_seconds: z
-      .number()
-      .positive()
-      .optional()
-      .describe('Optional timeout in seconds for live fetches.'),
-    disable_cache_fallback: z
-      .boolean()
-      .optional()
-      .describe(
-        'When true, fail instead of falling back to older cached content if a live fetch times out or fails.'
-      ),
-  })
-  .strict()
+const fetchPolicySchema = z.strictObject({
+  max_age_seconds: z
+    .number()
+    .int()
+    .min(600)
+    .optional()
+    .describe(
+      'Optional maximum cached age in seconds before Parallel fetches live content. Minimum 600.'
+    ),
+  timeout_seconds: z
+    .number()
+    .positive()
+    .optional()
+    .describe('Optional timeout in seconds for live fetches.'),
+  disable_cache_fallback: z
+    .boolean()
+    .optional()
+    .describe(
+      'When true, fail instead of falling back to older cached content if a live fetch times out or fails.'
+    ),
+})
 
-const excerptSettingsSchema = z
-  .object({
-    max_chars_per_result: z
-      .number()
-      .int()
-      .min(1000)
-      .optional()
-      .describe(
-        'Optional upper bound on excerpt characters per result. Values below 1000 are not allowed.'
-      ),
-  })
-  .strict()
+const excerptSettingsSchema = z.strictObject({
+  max_chars_per_result: z
+    .number()
+    .int()
+    .min(1000)
+    .optional()
+    .describe(
+      'Optional upper bound on excerpt characters per result. Values below 1000 are not allowed.'
+    ),
+})
 
 interface AdvancedSettingsInput {
   after_date?: string
@@ -132,7 +127,7 @@ export function normalizeAdvancedSettings(
 }
 
 export const advancedSettingsSchema = z
-  .object({
+  .strictObject({
     source_policy: sourcePolicySchema
       .optional()
       .describe(
@@ -184,7 +179,6 @@ export const advancedSettingsSchema = z
         'Optional upper bound on the number of search results to return.'
       ),
   })
-  .strict()
   .superRefine((value, ctx) => {
     const hasSourcePolicyAliases =
       value.include_domains !== undefined ||
@@ -202,7 +196,7 @@ export const advancedSettingsSchema = z
 
     if (total > 200) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         message:
           'Combined include_domains and exclude_domains entries cannot exceed 200.',
         path: ['exclude_domains'],

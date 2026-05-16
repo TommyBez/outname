@@ -34,7 +34,7 @@ const supabaseJsonBodySchema: z.ZodType<SupabaseJsonValue> = z.lazy(() =>
     z.boolean(),
     z.null(),
     z.array(supabaseJsonBodySchema),
-    z.record(supabaseJsonBodySchema),
+    z.record(z.string(), supabaseJsonBodySchema),
   ])
 )
 
@@ -51,7 +51,7 @@ const supabaseRequestInputSchema = z.object({
       `Relative Supabase Management API path. ${SUPABASE_ENDPOINT_GUIDE}`
     ),
   query: z
-    .record(supabaseQueryValueSchema)
+    .record(z.string(), supabaseQueryValueSchema)
     .optional()
     .describe('Optional query parameters appended to the request URL.'),
   body: supabaseJsonBodySchema

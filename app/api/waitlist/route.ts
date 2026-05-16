@@ -7,7 +7,7 @@ import { getWaitlistRateLimiter } from '@/waitlist/server/rate-limit'
 import { submitWaitlistEntry } from '@/waitlist/server/service'
 
 const waitlistRequestSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   name: z.string().max(120).optional().nullable(),
   useCase: z.string().max(2000).optional().nullable(),
   source: z.string().max(120).optional().nullable(),
