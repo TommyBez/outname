@@ -21,6 +21,7 @@ export interface LaunchVideoAsset {
 }
 
 const FPS_18_SECONDS = 540
+const FPS_26_SECONDS = 780
 
 function buildVariant(
   slug: string,
@@ -56,7 +57,7 @@ export const launchVideoManifest = [
   {
     description:
       'Editorial video about repeating context and needing autonomous agents that return to the work over time.',
-    durationInFrames: FPS_18_SECONDS,
+    durationInFrames: FPS_26_SECONDS,
     linkedPosts: [
       'content/outname-launch/LinkedIn/2026-05-18_10-30.md',
       'content/outname-launch/X/2026-05-18_15-30.md',

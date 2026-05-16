@@ -47,8 +47,21 @@ interface BrandCloseLayout {
   wordmarkSize: number
 }
 
+interface WhyFilmLayout {
+  edge: number
+  finalCaptionSize: number
+  finalLogoSize: number
+  finalWordmarkSize: number
+  fragmentSize: number
+  giantSize: number
+  monoSize: number
+  thesisSize: number
+}
+
 const CTA_START_FRAME = 420
 const BODY_START_FRAME = 76
+const BRAND_CLOSE_FRAME = 488
+const WHY_OUTNAME_SLUG = '2026-05-18-why-outname-exists'
 
 const videoMeta: Record<LaunchVideoSlug, VideoMeta> = {
   '2026-05-18-why-outname-exists': {
@@ -96,10 +109,18 @@ export function LaunchVideo(props: LaunchVideoProps) {
   const layout = getLayout(aspect)
   const meta = videoMeta[slug]
 
+  if (slug === WHY_OUTNAME_SLUG) {
+    return <WhyOutnameFilm aspect={aspect} frame={frame} />
+  }
+
   return (
     <AbsoluteFill
-      className="outname-video-root outname-video-grid"
-      style={{ padding: layout.padding }}
+      className="outname-video-root"
+      style={{
+        background: '#ffffff',
+        overflow: 'hidden',
+        padding: layout.padding,
+      }}
     >
       <VideoShell aspect={aspect} frame={frame} layout={layout} meta={meta}>
         {renderStory(slug, aspect, frame, layout)}
@@ -107,6 +128,631 @@ export function LaunchVideo(props: LaunchVideoProps) {
       <BrandClosingOverlay aspect={aspect} frame={frame} />
     </AbsoluteFill>
   )
+}
+
+function WhyOutnameFilm({
+  aspect,
+  frame,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+}) {
+  const layout = getWhyFilmLayout(aspect)
+
+  return (
+    <AbsoluteFill
+      className="outname-video-root"
+      style={{
+        background: '#ffffff',
+        overflow: 'hidden',
+      }}
+    >
+      <ColdOpen frame={frame} layout={layout} />
+      <ContextFragments aspect={aspect} frame={frame} layout={layout} />
+      <ResetBeat frame={frame} layout={layout} />
+      <BuilderLoad aspect={aspect} frame={frame} layout={layout} />
+      <ThesisBeat frame={frame} layout={layout} />
+      <SystemShape aspect={aspect} frame={frame} layout={layout} />
+      <WhyEndCard aspect={aspect} frame={frame} layout={layout} />
+    </AbsoluteFill>
+  )
+}
+
+function ColdOpen({ frame, layout }: { frame: number; layout: WhyFilmLayout }) {
+  const scene = sceneOpacity(frame, 0, 96, 12)
+  const drift = ease(frame, 0, 90, [0, 1])
+  const clockSize = layout.monoSize * 1.35
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#ffffff',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          background: '#ff3000',
+          height: clockSize * 1.2,
+          left: layout.edge,
+          opacity: 0.95,
+          position: 'absolute',
+          top: layout.edge - clockSize * 0.1,
+          transform: `scaleY(${ease(frame, 4, 28, [0, 1])})`,
+          transformOrigin: 'top',
+          width: Math.max(7, layout.monoSize * 0.42),
+        }}
+      />
+      <div
+        style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: clockSize,
+          fontWeight: 900,
+          left: layout.edge + layout.monoSize * 1.35,
+          letterSpacing: '0.16em',
+          lineHeight: 1,
+          position: 'absolute',
+          top: layout.edge,
+          transform: `translate3d(${drift * 18}px, ${drift * 12}px, 0) scale(${1 + drift * 0.18})`,
+          transformOrigin: 'left top',
+        }}
+      >
+        08:29
+      </div>
+      <div
+        style={{
+          background: '#ff3000',
+          bottom: layout.edge,
+          height: 4,
+          left: layout.edge,
+          opacity: ease(frame, 42, 82, [0, 1]) * 0.9,
+          position: 'absolute',
+          transform: `scaleX(${ease(frame, 42, 82, [0, 1])})`,
+          transformOrigin: 'left',
+          width: aspectLineWidth(layout),
+        }}
+      />
+    </AbsoluteFill>
+  )
+}
+
+function ContextFragments({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: WhyFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 76, 202, 14)
+  const pan = ease(frame, 82, 190, [0, 1])
+  const isWide = aspect === '16x9'
+  const fragments = [
+    {
+      delay: 86,
+      text: 'WHERE WAS I?',
+      x: isWide ? 28 : 86,
+      y: layout.edge + (isWide ? 38 : 120),
+    },
+    {
+      delay: 104,
+      text: 'WHAT CHANGED?',
+      x: isWide ? 620 : 210,
+      y: isWide ? 390 : 460,
+    },
+    {
+      delay: 122,
+      text: "WHAT'S NEXT?",
+      x: isWide ? 190 : 88,
+      y: isWide ? 710 : 810,
+    },
+  ] as const
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#ffffff',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          background: '#ff3000',
+          height: layout.fragmentSize * 0.7,
+          left: layout.edge,
+          opacity: ease(frame, 82, 108, [0, 1]) * 0.95,
+          position: 'absolute',
+          top: layout.edge,
+          transform: `scaleY(${ease(frame, 82, 118, [0, 1])})`,
+          transformOrigin: 'top',
+          width: Math.max(8, layout.monoSize * 0.5),
+        }}
+      />
+      <div
+        style={{
+          height: '100%',
+          transform: `translate3d(${pan * (isWide ? -72 : -42)}px, 0, 0)`,
+          width: '100%',
+        }}
+      >
+        {fragments.map((fragment, index) => {
+          const inProgress = appear(frame, fragment.delay, 20)
+          const localPan = ease(
+            frame,
+            fragment.delay,
+            fragment.delay + 70,
+            [0, 1]
+          )
+
+          return (
+            <div
+              key={fragment.text}
+              style={{
+                color: '#000000',
+                fontSize: layout.fragmentSize,
+                fontWeight: 950,
+                left: fragment.x,
+                letterSpacing: 0,
+                lineHeight: 0.82,
+                opacity: inProgress,
+                position: 'absolute',
+                textTransform: 'uppercase',
+                top: fragment.y,
+                transform: `translate3d(${(1 - inProgress) * 88 - localPan * 22}px, 0, 0) scale(${1 + localPan * 0.035})`,
+                transformOrigin: index === 1 ? 'right center' : 'left center',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {fragment.text}
+              {index === 2 ? (
+                <div
+                  style={{
+                    background: '#ff3000',
+                    height: Math.max(8, layout.monoSize * 0.55),
+                    marginTop: layout.monoSize,
+                    transform: `scaleX(${ease(frame, 146, 188, [0, 1])})`,
+                    transformOrigin: 'left',
+                    width: '64%',
+                  }}
+                />
+              ) : null}
+            </div>
+          )
+        })}
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+function ResetBeat({
+  frame,
+  layout,
+}: {
+  frame: number
+  layout: WhyFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 176, 294, 14)
+  const hit = ease(frame, 188, 220, [0, 1])
+  const release = ease(frame, 226, 284, [0, 1])
+
+  return (
+    <AbsoluteFill
+      style={{
+        alignItems: 'center',
+        background: '#ffffff',
+        display: 'flex',
+        justifyContent: 'center',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          maxWidth: '88%',
+          transform: `scale(${1.22 - hit * 0.22 - release * 0.1}) translateY(${release * -44}px)`,
+          transformOrigin: 'center',
+        }}
+      >
+        <h2
+          style={{
+            color: '#000000',
+            fontSize: layout.giantSize,
+            fontWeight: 950,
+            letterSpacing: 0,
+            lineHeight: 0.84,
+            margin: 0,
+            textAlign: 'center',
+            textTransform: 'uppercase',
+          }}
+        >
+          REBUILD THE CONTEXT.
+        </h2>
+        <p
+          style={{
+            color: '#ff3000',
+            fontFamily: 'var(--font-mono)',
+            fontSize: layout.monoSize * 1.45,
+            fontWeight: 900,
+            letterSpacing: '0.18em',
+            margin: `${layout.edge * 0.36}px 0 0`,
+            opacity: ease(frame, 230, 262, [0, 1]),
+            textAlign: 'right',
+            textTransform: 'uppercase',
+            transform: `translateY(${(1 - ease(frame, 230, 262, [0, 1])) * 18}px)`,
+          }}
+        >
+          again
+        </p>
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+function BuilderLoad({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: WhyFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 270, 420, 12)
+  const words = [
+    { delay: 282, text: 'BUILD.', x: 0.1, y: 0.2 },
+    { delay: 312, text: 'SHIP.', x: 0.5, y: 0.36 },
+    { delay: 342, text: 'FOLLOW UP.', x: 0.08, y: 0.56 },
+    { delay: 372, text: 'REMEMBER.', x: 0.24, y: 0.72 },
+  ] as const
+  const isWide = aspect === '16x9'
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#000000',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          background: '#ff3000',
+          bottom: layout.edge,
+          height: Math.max(8, layout.monoSize * 0.5),
+          left: layout.edge,
+          opacity: ease(frame, 282, 312, [0, 1]),
+          position: 'absolute',
+          transform: `scaleX(${ease(frame, 282, 328, [0, 1])})`,
+          transformOrigin: 'left',
+          width: layout.edge * 2.2,
+        }}
+      />
+      {words.map((word, index) => {
+        const enter = appear(frame, word.delay, 14)
+        const leave = ease(frame, word.delay + 44, word.delay + 72, [0, 1])
+        const emphasis = index === 3
+        const left = `${word.x * 100}%`
+        const top = `${word.y * 100}%`
+
+        return (
+          <div
+            key={word.text}
+            style={{
+              color: emphasis ? '#ff3000' : '#ffffff',
+              fontSize: emphasis
+                ? layout.giantSize * (isWide ? 1.08 : 0.92)
+                : layout.giantSize * (isWide ? 0.92 : 0.78),
+              fontWeight: 950,
+              left,
+              letterSpacing: 0,
+              lineHeight: 0.82,
+              opacity: enter * (emphasis ? 1 : 1 - leave * 0.72),
+              position: 'absolute',
+              textTransform: 'uppercase',
+              top,
+              transform: `translate3d(${(1 - enter) * -84 + leave * 36}px, 0, 0) scale(${0.9 + enter * 0.1 + (emphasis ? ease(frame, 388, 414, [0, 1]) * 0.045 : 0)})`,
+              transformOrigin: 'left center',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {word.text}
+          </div>
+        )
+      })}
+    </AbsoluteFill>
+  )
+}
+
+function ThesisBeat({
+  frame,
+  layout,
+}: {
+  frame: number
+  layout: WhyFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 390, 528, 16)
+  const enter = appear(frame, 404, 28)
+  const hold = ease(frame, 430, 510, [0, 1])
+  const sub = appear(frame, 452, 24)
+
+  return (
+    <AbsoluteFill
+      style={{
+        alignItems: 'center',
+        background: '#ffffff',
+        display: 'flex',
+        justifyContent: 'center',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          maxWidth: '86%',
+          transform: `translateY(${(1 - enter) * 34}px) scale(${0.96 + enter * 0.04 + hold * 0.025})`,
+          transformOrigin: 'center',
+        }}
+      >
+        <h2
+          style={{
+            color: '#000000',
+            fontSize: layout.thesisSize,
+            fontWeight: 950,
+            letterSpacing: 0,
+            lineHeight: 0.84,
+            margin: 0,
+            textAlign: 'center',
+            textTransform: 'uppercase',
+          }}
+        >
+          <span style={{ display: 'block' }}>
+            WORK SHOULD <span style={{ color: '#ff3000' }}>NOT</span>
+          </span>
+          <span style={{ display: 'block' }}>RESET</span>
+        </h2>
+        <p
+          style={{
+            color: '#000000',
+            fontFamily: 'var(--font-mono)',
+            fontSize: layout.monoSize * 1.35,
+            fontWeight: 900,
+            letterSpacing: '0.04em',
+            margin: `${layout.edge * 0.42}px 0 0`,
+            opacity: sub,
+            textAlign: 'center',
+            transform: `translateY(${(1 - sub) * 18}px)`,
+          }}
+        >
+          every time I sit back down
+        </p>
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+function SystemShape({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: WhyFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 510, 720, 18)
+  const assemble = ease(frame, 520, 604, [0, 1])
+  const compact = ease(frame, 596, 634, [0, 1])
+  const resume = ease(frame, 616, 638, [0, 1])
+  const isWide = aspect === '16x9'
+  const modules = [
+    { color: '#ffffff', delay: 524, text: 'AGENT', x: isWide ? 18 : 10, y: 18 },
+    {
+      color: '#ff3000',
+      delay: 548,
+      text: 'SCHEDULE',
+      x: isWide ? 48 : 26,
+      y: isWide ? 38 : 40,
+    },
+    {
+      color: '#ffffff',
+      delay: 572,
+      text: 'MEMORY',
+      x: isWide ? 30 : 14,
+      y: isWide ? 62 : 64,
+    },
+  ] as const
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#ffffff',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          background: '#000000',
+          bottom: layout.edge,
+          left: layout.edge,
+          overflow: 'hidden',
+          position: 'absolute',
+          right: layout.edge,
+          top: layout.edge,
+          transform: `scale(${0.94 + assemble * 0.06 - compact * 0.08})`,
+          transformOrigin: 'center',
+        }}
+      >
+        {modules.map((module, index) => {
+          const enter = appear(frame, module.delay, 20)
+          const x = module.x + compact * (34 - module.x)
+          const y = module.y + compact * (35 + index * 12 - module.y)
+
+          return (
+            <div
+              key={module.text}
+              style={{
+                background: module.color,
+                border: '3px solid #ffffff',
+                color: '#000000',
+                fontSize: layout.monoSize * (isWide ? 2.45 : 2.12),
+                fontWeight: 950,
+                left: `${x}%`,
+                lineHeight: 1,
+                opacity: enter * (1 - resume),
+                padding: `${layout.edge * 0.3}px ${layout.edge * 0.4}px`,
+                position: 'absolute',
+                textTransform: 'uppercase',
+                top: `${y}%`,
+                transform: `translate3d(${(1 - enter) * (index === 1 ? 120 : -120)}px, 0, 0) scale(${0.94 + enter * 0.06})`,
+                transformOrigin: 'center',
+              }}
+            >
+              {module.text}
+            </div>
+          )
+        })}
+        <div
+          style={{
+            color: '#ffffff',
+            fontSize: layout.thesisSize * 0.72,
+            fontWeight: 950,
+            left: '50%',
+            letterSpacing: 0,
+            lineHeight: 0.86,
+            opacity: resume,
+            position: 'absolute',
+            textAlign: 'center',
+            textTransform: 'uppercase',
+            top: '50%',
+            transform: `translate(-50%, -50%) scale(${0.88 + resume * 0.12})`,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          WORK RESUMES
+        </div>
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+function WhyEndCard({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: WhyFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 696, 780, 18)
+  const enter = appear(frame, 714, 26)
+  const isWide = aspect === '16x9'
+
+  return (
+    <AbsoluteFill
+      style={{
+        alignItems: 'center',
+        background: '#ffffff',
+        display: 'flex',
+        justifyContent: 'center',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          alignItems: 'center',
+          display: 'grid',
+          gap: isWide ? 42 : 30,
+          gridTemplateColumns: isWide ? 'auto auto' : '1fr',
+          justifyItems: 'center',
+          transform: `translateY(${(1 - enter) * 28}px) scale(${0.97 + enter * 0.03})`,
+        }}
+      >
+        <Img
+          alt="OUTNA.ME logo"
+          src={staticFile('email/outna-logo.png')}
+          style={{
+            height: layout.finalLogoSize,
+            width: layout.finalLogoSize,
+          }}
+        />
+        <div
+          style={{
+            display: 'grid',
+            gap: layout.edge * 0.22,
+            justifyItems: isWide ? 'start' : 'center',
+            textAlign: isWide ? 'left' : 'center',
+          }}
+        >
+          <strong
+            style={{
+              color: '#000000',
+              fontSize: layout.finalWordmarkSize,
+              fontWeight: 950,
+              letterSpacing: 0,
+              lineHeight: 0.82,
+              textTransform: 'uppercase',
+            }}
+          >
+            OUTNA.ME
+          </strong>
+          <span
+            style={{
+              color: '#ff3000',
+              fontFamily: 'var(--font-mono)',
+              fontSize: layout.finalCaptionSize,
+              fontWeight: 900,
+              letterSpacing: '0.18em',
+              lineHeight: 1,
+              textTransform: 'uppercase',
+            }}
+          >
+            personal agent runtime
+          </span>
+          <span
+            style={{
+              color: '#000000',
+              fontFamily: 'var(--font-mono)',
+              fontSize: layout.finalCaptionSize * 0.92,
+              fontWeight: 850,
+              letterSpacing: '0.12em',
+              lineHeight: 1,
+              textTransform: 'uppercase',
+            }}
+          >
+            waitlist open
+          </span>
+        </div>
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+function aspectLineWidth(layout: WhyFilmLayout) {
+  return layout.edge * 2.3
+}
+
+function sceneOpacity(
+  frame: number,
+  start: number,
+  end: number,
+  fadeFrames: number
+) {
+  const enter = ease(frame, start, start + fadeFrames, [0, 1])
+  const exit = ease(frame, end - fadeFrames, end, [1, 0])
+
+  return Math.min(enter, exit)
+}
+
+function ease(
+  frame: number,
+  start: number,
+  end: number,
+  output: readonly [number, number]
+) {
+  return interpolate(frame, [start, end], output, {
+    easing: Easing.bezier(0.16, 1, 0.3, 1),
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  })
 }
 
 function renderStory(
@@ -271,7 +917,7 @@ function BrandClosingOverlay({
   aspect: LaunchVideoAspect
   frame: number
 }) {
-  const progress = appear(frame, 488, 24)
+  const progress = appear(frame, BRAND_CLOSE_FRAME, 24)
   const layout = getBrandCloseLayout(aspect)
 
   return (
@@ -545,10 +1191,20 @@ function StackedWindows({
   frame: number
   items: readonly (readonly [string, string])[]
 }) {
+  const deckMove = progressBetween(frame, 100, 170)
+
   return (
-    <div style={{ minHeight: 0, position: 'relative' }}>
+    <div
+      style={{
+        minHeight: 0,
+        position: 'relative',
+        transform: `translate3d(${deckMove * -18}px, ${deckMove * -14}px, 0) scale(${1 + deckMove * 0.035})`,
+        transformOrigin: 'center',
+      }}
+    >
       {items.map(([title, detail], index) => {
         const progress = appear(frame, 90 + index * 18, 18)
+        const focus = progressBetween(frame, 110 + index * 18, 156 + index * 18)
         return (
           <div
             key={title}
@@ -562,7 +1218,8 @@ function StackedWindows({
               position: 'absolute',
               right: 72 - index * 22,
               top: index * 58,
-              transform: `translate(${(1 - progress) * 34}px, ${(1 - progress) * 10}px)`,
+              transform: `translate3d(${(1 - progress) * 34 - focus * 10}px, ${(1 - progress) * 10 - focus * 8}px, 0) scale(${1 + focus * 0.025})`,
+              transformOrigin: 'center',
             }}
           >
             <VideoTag>{title}</VideoTag>
@@ -597,6 +1254,8 @@ function ManualLoopCard({
 }) {
   const progress = appear(frame, 178 + index * 24, 18)
   const barProgress = progressBetween(frame, 210 + index * 18, 292)
+  const focus = progressBetween(frame, 202 + index * 20, 250 + index * 20)
+  const exit = progressBetween(frame, 278, 306)
 
   return (
     <VideoPanel
@@ -607,7 +1266,8 @@ function ManualLoopCard({
         minHeight: 0,
         opacity: progress,
         padding: compact ? 14 : 24,
-        transform: `translateY(${(1 - progress) * 28}px)`,
+        transform: `translate3d(0, ${(1 - progress) * 28 - focus * 10 + exit * 12}px, 0) scale(${0.97 + progress * 0.03 + focus * 0.035 - exit * 0.025})`,
+        transformOrigin: 'center',
       }}
     >
       <VideoTag>{label}</VideoTag>
@@ -628,7 +1288,11 @@ function ManualLoopCard({
               fontFamily: 'var(--font-mono)',
               fontSize: compact ? 12 : 16,
               fontWeight: 850,
+              opacity: appear(frame, 190 + index * 20 + stepIndex * 9, 12),
               padding: compact ? '8px 10px' : '14px 16px',
+              transform: `translateX(${
+                (1 - appear(frame, 190 + index * 20 + stepIndex * 9, 12)) * -18
+              }px)`,
               textTransform: 'uppercase',
             }}
           >
@@ -656,6 +1320,8 @@ function ManualLoopCard({
 }
 
 function ReturnBoard({ frame }: { frame: number }) {
+  const boardFocus = progressBetween(frame, 324, 440)
+
   return (
     <div
       style={{
@@ -663,6 +1329,8 @@ function ReturnBoard({ frame }: { frame: number }) {
         display: 'grid',
         gap: 16,
         minHeight: 0,
+        transform: `translateY(${boardFocus * -18}px) scale(${1 + boardFocus * 0.025})`,
+        transformOrigin: 'center',
       }}
     >
       {[
@@ -671,6 +1339,7 @@ function ReturnBoard({ frame }: { frame: number }) {
         ['17:30', 'Draft ready'],
       ].map(([time, label], index) => {
         const progress = appear(frame, 326 + index * 22, 18)
+        const focus = progressBetween(frame, 338 + index * 24, 386 + index * 24)
         return (
           <div
             key={time}
@@ -684,7 +1353,8 @@ function ReturnBoard({ frame }: { frame: number }) {
               gridTemplateColumns: 'auto 1fr',
               opacity: progress,
               padding: '20px 22px',
-              transform: `translateX(${(1 - progress) * 48}px)`,
+              transform: `translate3d(${(1 - progress) * 48 - focus * 18}px, 0, 0) scale(${1 + focus * 0.035})`,
+              transformOrigin: 'center',
             }}
           >
             <strong
@@ -715,6 +1385,8 @@ function ReturnBoard({ frame }: { frame: number }) {
 }
 
 function AgentList({ frame }: { frame: number }) {
+  const listCompress = progressBetween(frame, 126, 176)
+
   return (
     <VideoPanel
       emphasis
@@ -722,11 +1394,14 @@ function AgentList({ frame }: { frame: number }) {
         display: 'grid',
         gap: 14,
         padding: 26,
+        transform: `scale(${1 - listCompress * 0.045}) translateY(${listCompress * -10}px)`,
+        transformOrigin: 'center',
       }}
     >
       <VideoLabel invert>agents</VideoLabel>
       {['Research', 'Writing', 'Ops'].map((agent, index) => {
         const progress = appear(frame, 88 + index * 20, 18)
+        const focus = progressBetween(frame, 104 + index * 18, 148 + index * 18)
         const isActive = index === 1
         return (
           <div
@@ -737,7 +1412,8 @@ function AgentList({ frame }: { frame: number }) {
               color: isActive ? '#000000' : '#ffffff',
               opacity: progress,
               padding: '18px 20px',
-              transform: `translateX(${(1 - progress) * -28}px)`,
+              transform: `translate3d(${(1 - progress) * -28 + focus * 14}px, 0, 0) scale(${1 + focus * 0.035})`,
+              transformOrigin: 'center',
             }}
           >
             <strong
@@ -813,6 +1489,7 @@ function ConfigWorkbench({ aspect, frame, layout }: StoryProps) {
     ['schedule', '09:00'],
     ['memory', 'Context'],
   ] as const
+  const panelMove = progressBetween(frame, 182, 314)
 
   return (
     <VideoPanel
@@ -822,12 +1499,19 @@ function ConfigWorkbench({ aspect, frame, layout }: StoryProps) {
         gridTemplateColumns: aspect === '16x9' ? '0.8fr 1.2fr' : '1fr',
         height: '100%',
         padding: layout.scenePadding,
+        transform: `scale(${0.985 + panelMove * 0.015})`,
+        transformOrigin: 'left center',
       }}
     >
       <SectionTitle kicker="workbench" title="Configuration first." />
       <div style={{ display: 'grid', gap: 14 }}>
         {fields.map(([label, value], index) => {
           const progress = appear(frame, 188 + index * 22, 16)
+          const focus = progressBetween(
+            frame,
+            198 + index * 22,
+            238 + index * 22
+          )
           return (
             <div
               key={label}
@@ -840,7 +1524,8 @@ function ConfigWorkbench({ aspect, frame, layout }: StoryProps) {
                 gridTemplateColumns: '0.45fr 1fr',
                 opacity: progress,
                 padding: '16px 18px',
-                transform: `translateX(${(1 - progress) * 32}px)`,
+                transform: `translate3d(${(1 - progress) * 32 - focus * 18}px, 0, 0) scale(${1 + focus * 0.035})`,
+                transformOrigin: 'center',
               }}
             >
               <span
@@ -873,6 +1558,7 @@ function ConfigWorkbench({ aspect, frame, layout }: StoryProps) {
 
 function ConfiguredAgentCard({ frame }: { frame: number }) {
   const pulse = progressBetween(frame, 348, 430)
+  const cardIn = appear(frame, 334, 26)
 
   return (
     <div
@@ -882,10 +1568,17 @@ function ConfiguredAgentCard({ frame }: { frame: number }) {
         display: 'grid',
         gap: 22,
         gridTemplateColumns: '1fr auto',
+        opacity: cardIn,
         padding: 28,
+        transform: `scale(${0.92 + cardIn * 0.08 + pulse * 0.035})`,
+        transformOrigin: 'center',
       }}
     >
-      <div>
+      <div
+        style={{
+          transform: `translateX(${(1 - cardIn) * -36}px)`,
+        }}
+      >
         <VideoTag active>active</VideoTag>
         <p
           style={{
@@ -909,7 +1602,7 @@ function ConfiguredAgentCard({ frame }: { frame: number }) {
           fontSize: 36,
           fontWeight: 950,
           padding: 28,
-          transform: `scale(${0.92 + pulse * 0.08})`,
+          transform: `translateX(${(1 - cardIn) * 44}px) scale(${0.92 + pulse * 0.08})`,
         }}
       >
         09:00
@@ -920,6 +1613,7 @@ function ConfiguredAgentCard({ frame }: { frame: number }) {
 
 function ScheduleTrigger({ aspect, frame, layout }: StoryProps) {
   const pulse = progressBetween(frame, 92, 168)
+  const settle = progressBetween(frame, 144, 178)
 
   return (
     <VideoPanel
@@ -930,6 +1624,8 @@ function ScheduleTrigger({ aspect, frame, layout }: StoryProps) {
         gridTemplateColumns: aspect === '16x9' ? '0.82fr 1.18fr' : '1fr',
         height: '100%',
         padding: layout.scenePadding,
+        transform: `scale(${0.985 + pulse * 0.025 - settle * 0.01})`,
+        transformOrigin: 'left center',
       }}
     >
       <SectionTitle kicker="schedule" title="08:30. It starts." />
@@ -940,6 +1636,8 @@ function ScheduleTrigger({ aspect, frame, layout }: StoryProps) {
           display: 'grid',
           gap: 22,
           padding: 34,
+          transform: `translateX(${settle * (aspect === '16x9' ? 22 : 0)}px) scale(${1 + pulse * 0.055})`,
+          transformOrigin: 'center',
         }}
       >
         <span
@@ -976,6 +1674,7 @@ function ScheduleTrigger({ aspect, frame, layout }: StoryProps) {
 
 function RunPipeline({ aspect, frame, layout }: StoryProps) {
   const nodes = ['Channel', 'Tool', 'Sub-agent', 'Memory'] as const
+  const travel = progressBetween(frame, 194, 292)
 
   return (
     <VideoPanel
@@ -985,6 +1684,8 @@ function RunPipeline({ aspect, frame, layout }: StoryProps) {
         gap: 22,
         height: '100%',
         padding: layout.scenePadding,
+        transform: `translateY(${travel * -10}px) scale(${0.985 + travel * 0.015})`,
+        transformOrigin: 'left center',
       }}
     >
       <SectionTitle dark kicker="run in motion" title="Input becomes action." />
@@ -998,8 +1699,14 @@ function RunPipeline({ aspect, frame, layout }: StoryProps) {
       >
         {nodes.map((node, index) => {
           const progress = appear(frame, 194 + index * 28, 18)
+          const active = progressBetween(
+            frame,
+            198 + index * 24,
+            242 + index * 24
+          )
           return (
             <PipelineNode
+              active={active}
               index={index}
               key={node}
               label={node}
@@ -1013,10 +1720,12 @@ function RunPipeline({ aspect, frame, layout }: StoryProps) {
 }
 
 function PipelineNode({
+  active,
   index,
   label,
   progress,
 }: {
+  active: number
   index: number
   label: string
   progress: number
@@ -1032,7 +1741,8 @@ function PipelineNode({
         minHeight: 132,
         opacity: progress,
         padding: 18,
-        transform: `translateY(${(1 - progress) * 28}px)`,
+        transform: `translateY(${(1 - progress) * 28 - active * 16}px) scale(${1 + active * 0.055})`,
+        transformOrigin: 'center',
       }}
     >
       <span
@@ -1059,6 +1769,8 @@ function PipelineNode({
 }
 
 function MemoryUpdateScene({ aspect, frame, layout }: StoryProps) {
+  const sceneFocus = progressBetween(frame, 334, 470)
+
   return (
     <VideoPanel
       style={{
@@ -1067,6 +1779,8 @@ function MemoryUpdateScene({ aspect, frame, layout }: StoryProps) {
         gridTemplateColumns: aspect === '16x9' ? '0.8fr 1.2fr' : '1fr',
         height: '100%',
         padding: layout.scenePadding,
+        transform: `scale(${0.985 + sceneFocus * 0.015})`,
+        transformOrigin: 'left center',
       }}
     >
       <SectionTitle kicker="next run" title="Next run knows more." />
@@ -1080,6 +1794,8 @@ function MemoryUpdateScene({ aspect, frame, layout }: StoryProps) {
 }
 
 function RunHistoryGrid({ aspect, frame, layout }: StoryProps) {
+  const historyMove = progressBetween(frame, 106, 198)
+
   return (
     <VideoPanel
       style={{
@@ -1087,6 +1803,8 @@ function RunHistoryGrid({ aspect, frame, layout }: StoryProps) {
         gap: 18,
         height: '100%',
         padding: layout.scenePadding,
+        transform: `scale(${0.985 + historyMove * 0.015}) translateY(${historyMove * -10}px)`,
+        transformOrigin: 'left center',
       }}
     >
       <SectionTitle kicker="repeated work" title="Less setup." />
@@ -1104,6 +1822,11 @@ function RunHistoryGrid({ aspect, frame, layout }: StoryProps) {
           ['Run 03', 'Closer start'],
         ].map(([run, result], index) => {
           const progress = appear(frame, 104 + index * 30, 18)
+          const focus = progressBetween(
+            frame,
+            120 + index * 26,
+            174 + index * 26
+          )
           return (
             <div
               key={run}
@@ -1112,7 +1835,8 @@ function RunHistoryGrid({ aspect, frame, layout }: StoryProps) {
                 border: '3px solid #000000',
                 opacity: progress,
                 padding: 22,
-                transform: `translateY(${(1 - progress) * 26}px)`,
+                transform: `translateY(${(1 - progress) * 26 - focus * 16}px) scale(${1 + focus * 0.045})`,
+                transformOrigin: 'center',
               }}
             >
               <VideoTag>{run}</VideoTag>
@@ -1136,6 +1860,8 @@ function RunHistoryGrid({ aspect, frame, layout }: StoryProps) {
 }
 
 function MemoryCanvas({ aspect, frame, layout }: StoryProps) {
+  const memoryZoom = progressBetween(frame, 222, 326)
+
   return (
     <VideoPanel
       emphasis
@@ -1145,6 +1871,8 @@ function MemoryCanvas({ aspect, frame, layout }: StoryProps) {
         gridTemplateColumns: aspect === '16x9' ? '0.85fr 1.15fr' : '1fr',
         height: '100%',
         padding: layout.scenePadding,
+        transform: `scale(${0.985 + memoryZoom * 0.015}) translateY(${memoryZoom * -10}px)`,
+        transformOrigin: 'left center',
       }}
     >
       <SectionTitle dark kicker="memory" title="Memory compounds." />
@@ -1159,6 +1887,8 @@ function MemoryCanvas({ aspect, frame, layout }: StoryProps) {
 }
 
 function LessSetupScene({ aspect, frame, layout }: StoryProps) {
+  const outcomeZoom = progressBetween(frame, 344, 464)
+
   return (
     <VideoPanel
       style={{
@@ -1167,6 +1897,8 @@ function LessSetupScene({ aspect, frame, layout }: StoryProps) {
         gridTemplateColumns: aspect === '16x9' ? '1fr 1fr' : '1fr',
         height: '100%',
         padding: layout.scenePadding,
+        transform: `scale(${0.985 + outcomeZoom * 0.015})`,
+        transformOrigin: 'left center',
       }}
     >
       <SectionTitle kicker="outcome" title="Less explaining." />
@@ -1175,6 +1907,9 @@ function LessSetupScene({ aspect, frame, layout }: StoryProps) {
           (line, index) => {
             const progress = appear(frame, 344 + index * 18, 16)
             const removed = index < 2
+            const removeMove = removed
+              ? progressBetween(frame, 366 + index * 14, 438)
+              : 0
             return (
               <div
                 key={line}
@@ -1184,6 +1919,10 @@ function LessSetupScene({ aspect, frame, layout }: StoryProps) {
                   color: removed ? '#8a8a8a' : '#000000',
                   opacity: removed ? 1 - progress * 0.62 : progress,
                   padding: '18px 20px',
+                  transform: removed
+                    ? `translateX(${removeMove * -26}px) scale(${1 - removeMove * 0.06})`
+                    : `translateY(${(1 - progress) * 28}px) scale(${0.96 + progress * 0.04})`,
+                  transformOrigin: 'center',
                 }}
               >
                 <strong
@@ -1207,6 +1946,7 @@ function LessSetupScene({ aspect, frame, layout }: StoryProps) {
 
 function ComposableHub({ aspect, frame, layout }: StoryProps) {
   const items = ['Tools', 'Sub-agents', 'Channels', 'Memory']
+  const assemble = progressBetween(frame, 104, 186)
 
   return (
     <VideoPanel
@@ -1216,6 +1956,8 @@ function ComposableHub({ aspect, frame, layout }: StoryProps) {
         gridTemplateColumns: aspect === '16x9' ? '0.85fr 1.15fr' : '1fr',
         height: '100%',
         padding: layout.scenePadding,
+        transform: `scale(${0.985 + assemble * 0.015}) translateY(${assemble * -10}px)`,
+        transformOrigin: 'left center',
       }}
     >
       <SectionTitle kicker="composition" title="Pieces snap together." />
@@ -1228,6 +1970,13 @@ function ComposableHub({ aspect, frame, layout }: StoryProps) {
       >
         {items.map((item, index) => {
           const progress = appear(frame, 104 + index * 20, 18)
+          const focus = progressBetween(
+            frame,
+            118 + index * 18,
+            164 + index * 18
+          )
+          const xDirection = index % 2 === 0 ? -1 : 1
+          const yDirection = index < 2 ? -1 : 1
           return (
             <div
               key={item}
@@ -1236,7 +1985,10 @@ function ComposableHub({ aspect, frame, layout }: StoryProps) {
                 border: '3px solid #000000',
                 opacity: progress,
                 padding: 22,
-                transform: `scale(${0.94 + progress * 0.06})`,
+                transform: `translate3d(${(1 - progress) * xDirection * 38}px, ${
+                  (1 - progress) * yDirection * 30 - focus * 10
+                }px, 0) scale(${0.94 + progress * 0.06 + focus * 0.045})`,
+                transformOrigin: 'center',
               }}
             >
               <strong
@@ -1258,6 +2010,8 @@ function ComposableHub({ aspect, frame, layout }: StoryProps) {
 }
 
 function ChannelRouter({ aspect, frame, layout }: StoryProps) {
+  const routeMove = progressBetween(frame, 210, 320)
+
   return (
     <VideoPanel
       emphasis
@@ -1267,6 +2021,8 @@ function ChannelRouter({ aspect, frame, layout }: StoryProps) {
         gridTemplateColumns: aspect === '16x9' ? '1fr 0.8fr' : '1fr',
         height: '100%',
         padding: layout.scenePadding,
+        transform: `scale(${0.985 + routeMove * 0.015})`,
+        transformOrigin: 'left center',
       }}
     >
       <ChannelGrid frame={frame} />
@@ -1286,6 +2042,7 @@ function ChannelGrid({ frame }: { frame: number }) {
     >
       {['Slack', 'Telegram', 'Discord', 'Webhooks'].map((channel, index) => {
         const progress = appear(frame, 214 + index * 18, 16)
+        const focus = progressBetween(frame, 224 + index * 18, 268 + index * 18)
         return (
           <div
             key={channel}
@@ -1295,7 +2052,8 @@ function ChannelGrid({ frame }: { frame: number }) {
               color: '#000000',
               opacity: progress,
               padding: 24,
-              transform: `translateX(${(1 - progress) * (index % 2 === 0 ? -34 : 34)}px)`,
+              transform: `translate3d(${(1 - progress) * (index % 2 === 0 ? -34 : 34)}px, ${focus * -8}px, 0) scale(${1 + focus * 0.04})`,
+              transformOrigin: 'center',
             }}
           >
             <strong
@@ -1316,6 +2074,8 @@ function ChannelGrid({ frame }: { frame: number }) {
 }
 
 function ComingSoonSlots({ aspect, frame, layout }: StoryProps) {
+  const queueMove = progressBetween(frame, 344, 468)
+
   return (
     <VideoPanel
       style={{
@@ -1324,12 +2084,19 @@ function ComingSoonSlots({ aspect, frame, layout }: StoryProps) {
         gridTemplateColumns: aspect === '16x9' ? '0.9fr 1.1fr' : '1fr',
         height: '100%',
         padding: layout.scenePadding,
+        transform: `scale(${0.985 + queueMove * 0.015}) translateY(${queueMove * -10}px)`,
+        transformOrigin: 'left center',
       }}
     >
       <SectionTitle kicker="next pieces" title="MCP. Skills. Templates." />
       <div style={{ display: 'grid', gap: 14 }}>
         {['MCP', 'Skills', 'Templates'].map((slot, index) => {
           const progress = appear(frame, 350 + index * 22, 16)
+          const focus = progressBetween(
+            frame,
+            360 + index * 20,
+            410 + index * 20
+          )
           return (
             <div
               key={slot}
@@ -1338,7 +2105,8 @@ function ComingSoonSlots({ aspect, frame, layout }: StoryProps) {
                 border: '3px dashed #000000',
                 opacity: progress,
                 padding: '22px 24px',
-                transform: `translateY(${(1 - progress) * 24}px)`,
+                transform: `translateY(${(1 - progress) * 24 - focus * 12}px) scale(${1 + focus * 0.045})`,
+                transformOrigin: 'center',
               }}
             >
               <strong
@@ -1361,6 +2129,7 @@ function ComingSoonSlots({ aspect, frame, layout }: StoryProps) {
 
 function VercelLayerBuild({ aspect, frame, layout }: StoryProps) {
   const layers = ['AI SDK', 'Workflow', 'Sandbox', 'Crons', 'Chat SDK'] as const
+  const layerMove = progressBetween(frame, 104, 196)
 
   return (
     <VideoPanel
@@ -1370,12 +2139,19 @@ function VercelLayerBuild({ aspect, frame, layout }: StoryProps) {
         gridTemplateColumns: aspect === '16x9' ? '0.8fr 1.2fr' : '1fr',
         height: '100%',
         padding: layout.scenePadding,
+        transform: `scale(${0.985 + layerMove * 0.015}) translateY(${layerMove * -10}px)`,
+        transformOrigin: 'left center',
       }}
     >
       <SectionTitle kicker="platform stack" title="Primitives, not glue." />
       <div style={{ display: 'grid', gap: 10 }}>
         {layers.map((layer, index) => {
           const progress = appear(frame, 102 + index * 20, 18)
+          const focus = progressBetween(
+            frame,
+            114 + index * 18,
+            152 + index * 18
+          )
           return (
             <div
               key={layer}
@@ -1385,7 +2161,8 @@ function VercelLayerBuild({ aspect, frame, layout }: StoryProps) {
                 color: index === 2 ? '#000000' : '#ffffff',
                 opacity: progress,
                 padding: '16px 20px',
-                transform: `translateX(${(1 - progress) * 42}px)`,
+                transform: `translate3d(${(1 - progress) * 42 - focus * 18}px, 0, 0) scale(${1 + focus * 0.04})`,
+                transformOrigin: 'center',
               }}
             >
               <strong
@@ -1407,6 +2184,8 @@ function VercelLayerBuild({ aspect, frame, layout }: StoryProps) {
 }
 
 function PrimitiveFlow({ aspect, frame, layout }: StoryProps) {
+  const flowMove = progressBetween(frame, 218, 330)
+
   return (
     <VideoPanel
       emphasis
@@ -1415,6 +2194,8 @@ function PrimitiveFlow({ aspect, frame, layout }: StoryProps) {
         gap: 20,
         height: '100%',
         padding: layout.scenePadding,
+        transform: `scale(${0.985 + flowMove * 0.015})`,
+        transformOrigin: 'left center',
       }}
     >
       <SectionTitle
@@ -1432,6 +2213,11 @@ function PrimitiveFlow({ aspect, frame, layout }: StoryProps) {
         {['Generate', 'Workflow', 'Sandbox', 'Cron', 'UI'].map(
           (label, index) => {
             const progress = appear(frame, 218 + index * 18, 16)
+            const focus = progressBetween(
+              frame,
+              226 + index * 18,
+              266 + index * 18
+            )
             return (
               <div
                 key={label}
@@ -1441,7 +2227,8 @@ function PrimitiveFlow({ aspect, frame, layout }: StoryProps) {
                   color: '#000000',
                   opacity: progress,
                   padding: 18,
-                  transform: `translateY(${(1 - progress) * 30}px)`,
+                  transform: `translateY(${(1 - progress) * 30 - focus * 12}px) scale(${1 + focus * 0.045})`,
+                  transformOrigin: 'center',
                 }}
               >
                 <strong
@@ -1464,6 +2251,8 @@ function PrimitiveFlow({ aspect, frame, layout }: StoryProps) {
 }
 
 function DeployPath({ aspect, frame, layout }: StoryProps) {
+  const deployMove = progressBetween(frame, 350, 470)
+
   return (
     <VideoPanel
       style={{
@@ -1472,12 +2261,19 @@ function DeployPath({ aspect, frame, layout }: StoryProps) {
         gridTemplateColumns: aspect === '16x9' ? '0.85fr 1.15fr' : '1fr',
         height: '100%',
         padding: layout.scenePadding,
+        transform: `scale(${0.985 + deployMove * 0.015})`,
+        transformOrigin: 'left center',
       }}
     >
       <SectionTitle kicker="open source soon" title="Fork. Deploy. Own." />
       <div style={{ display: 'grid', gap: 14 }}>
         {['Fork', 'Env', 'Vercel'].map((step, index) => {
           const progress = appear(frame, 350 + index * 22, 16)
+          const focus = progressBetween(
+            frame,
+            360 + index * 20,
+            414 + index * 20
+          )
           return (
             <div
               key={step}
@@ -1486,7 +2282,8 @@ function DeployPath({ aspect, frame, layout }: StoryProps) {
                 border: '3px solid #000000',
                 opacity: progress,
                 padding: '20px 22px',
-                transform: `translateX(${(1 - progress) * 36}px)`,
+                transform: `translateX(${(1 - progress) * 36 - focus * 18}px) scale(${1 + focus * 0.045})`,
+                transformOrigin: 'center',
               }}
             >
               <strong
@@ -1634,33 +2431,107 @@ function Scene({
   from: number
   to: number
 }) {
-  const enter = interpolate(frame, [from, from + 18], [0, 1], {
-    easing: Easing.out(Easing.cubic),
+  const direction = getSceneDirection(from)
+  const enter = interpolate(frame, [from, from + 34], [0, 1], {
+    easing: Easing.bezier(0.16, 1, 0.3, 1),
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   })
-  const exit = interpolate(frame, [to - 18, to], [1, 0], {
-    easing: Easing.in(Easing.cubic),
+  const exit = interpolate(frame, [to - 30, to], [1, 0], {
+    easing: Easing.bezier(0.7, 0, 0.84, 0),
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   })
+  const hold = progressBetween(frame, from + 28, to - 30)
   const opacity = Math.min(enter, exit)
-  const y = (1 - enter) * 34 + (1 - exit) * -26
+  const x =
+    (1 - enter) * direction.enterX +
+    hold * direction.holdX +
+    (1 - exit) * direction.exitX
+  const y =
+    (1 - enter) * direction.enterY +
+    hold * direction.holdY +
+    (1 - exit) * direction.exitY
+  const scale =
+    direction.scaleFrom +
+    enter * (1 - direction.scaleFrom) +
+    hold * direction.holdScale +
+    (1 - exit) * direction.exitScale
 
   return (
     <div
       style={{
         height: '100%',
         opacity,
+        overflow: 'hidden',
         pointerEvents: 'none',
         position: 'absolute',
-        transform: `translateY(${y}px)`,
+        transform: `translate3d(${x}px, ${y}px, 0) scale(${scale})`,
+        transformOrigin: 'center',
         width: '100%',
       }}
     >
       {children}
     </div>
   )
+}
+
+function getSceneDirection(from: number) {
+  const index = Math.round(from / 74) % 4
+
+  if (index === 0) {
+    return {
+      enterX: -10,
+      enterY: 0,
+      exitScale: -0.012,
+      exitX: 12,
+      exitY: 0,
+      holdScale: 0,
+      holdX: 0,
+      holdY: 0,
+      scaleFrom: 0.985,
+    }
+  }
+
+  if (index === 1) {
+    return {
+      enterX: 0,
+      enterY: 12,
+      exitScale: -0.01,
+      exitX: 0,
+      exitY: -12,
+      holdScale: 0,
+      holdX: 0,
+      holdY: 0,
+      scaleFrom: 0.985,
+    }
+  }
+
+  if (index === 2) {
+    return {
+      enterX: 10,
+      enterY: 0,
+      exitScale: -0.012,
+      exitX: -10,
+      exitY: 0,
+      holdScale: 0,
+      holdX: 0,
+      holdY: 0,
+      scaleFrom: 0.985,
+    }
+  }
+
+  return {
+    enterX: 0,
+    enterY: -10,
+    exitScale: -0.01,
+    exitX: 0,
+    exitY: 12,
+    holdScale: 0,
+    holdX: 0,
+    holdY: 0,
+    scaleFrom: 0.985,
+  }
 }
 
 interface StoryProps {
@@ -1683,6 +2554,45 @@ function getLaunchVideoSlug(value: unknown): LaunchVideoSlug {
   }
 
   return '2026-05-18-why-outname-exists'
+}
+
+function getWhyFilmLayout(aspect: LaunchVideoAspect): WhyFilmLayout {
+  if (aspect === '16x9') {
+    return {
+      edge: 70,
+      finalCaptionSize: 20,
+      finalLogoSize: 156,
+      finalWordmarkSize: 112,
+      fragmentSize: 118,
+      giantSize: 124,
+      monoSize: 21,
+      thesisSize: 112,
+    }
+  }
+
+  if (aspect === '4x5') {
+    return {
+      edge: 64,
+      finalCaptionSize: 17,
+      finalLogoSize: 180,
+      finalWordmarkSize: 86,
+      fragmentSize: 86,
+      giantSize: 92,
+      monoSize: 18,
+      thesisSize: 78,
+    }
+  }
+
+  return {
+    edge: 56,
+    finalCaptionSize: 15,
+    finalLogoSize: 152,
+    finalWordmarkSize: 74,
+    fragmentSize: 72,
+    giantSize: 78,
+    monoSize: 17,
+    thesisSize: 68,
+  }
 }
 
 function getLayout(aspect: LaunchVideoAspect): VideoLayout {
