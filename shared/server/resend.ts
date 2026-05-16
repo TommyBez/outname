@@ -22,34 +22,18 @@ export function getResendClient(): Resend {
   return resendClient
 }
 
-export function getTransactionalFromEmail(): string {
-  const fromEmail = process.env.AUTH_FROM_EMAIL
-  if (!fromEmail) {
-    throw new Error('AUTH_FROM_EMAIL is not set')
-  }
-  return fromEmail
-}
-
-export function getTransactionalReplyTo(): string {
-  const replyTo = process.env.AUTH_REPLY_TO
-  if (!replyTo) {
-    throw new Error('AUTH_REPLY_TO is not set')
-  }
-  return replyTo
-}
-
-export async function sendTransactionalEmail(input: {
-  from?: string
+export async function sendResendReactEmail(input: {
+  from: string
   idempotencyKey: string
   react: ReactElement
-  replyTo?: string
+  replyTo: string
   subject: string
   to: string
 }) {
   const { error } = await getResendClient().emails.send(
     {
-      from: input.from ?? getTransactionalFromEmail(),
-      replyTo: input.replyTo ?? getTransactionalReplyTo(),
+      from: input.from,
+      replyTo: input.replyTo,
       subject: input.subject,
       to: [input.to],
       react: input.react,

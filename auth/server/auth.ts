@@ -1,12 +1,9 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { admin as adminPlugin, emailOTP } from 'better-auth/plugins'
-import { createElement } from 'react'
 import { ac, roles } from '@/auth/access-control'
-import { AuthSignInOtpEmail } from '@/emails/auth-sign-in-otp-email'
+import { sendAuthSignInOtpEmail } from '@/auth/server/auth-email'
 import { db } from '@/shared/db'
-import { sendTransactionalEmail } from '@/shared/server/resend'
-import { siteConfig } from '@/shared/server/site-metadata'
 
 // Production uses Better Auth defaults. Non-production must trust the incoming
 // origin and issue `SameSite=None` cookies so sign-in still works inside the
@@ -64,18 +61,6 @@ function devTrustedOriginsList(request: Request | undefined): string[] {
 const AUTH_EMAIL_OTP_LENGTH = 6
 const AUTH_EMAIL_OTP_EXPIRES_IN_SECONDS = 60 * 10
 
-function getBaseUrl(): string {
-  return process.env.BETTER_AUTH_URL || siteConfig.url
-}
-
-function getEmailLogoUrl(): string {
-  return `${getBaseUrl()}/email/outna-logo.png`
-}
-
-function createOtpIdempotencyKey(email: string, otp: string): string {
-  return `auth-email-otp/${encodeURIComponent(email.toLowerCase())}/${otp}`
-}
-
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: 'pg',
@@ -121,16 +106,9 @@ export const auth = betterAuth({
           return
         }
 
-        await sendTransactionalEmail({
-          idempotencyKey: createOtpIdempotencyKey(email, otp),
-          subject: 'Your OUTNA.ME sign-in code',
-          to: email,
-          react: createElement(AuthSignInOtpEmail, {
-            code: otp,
-            expiresInMinutes: AUTH_EMAIL_OTP_EXPIRES_IN_SECONDS / 60,
-            loginUrl: `${getBaseUrl()}/login`,
-            logoUrl: getEmailLogoUrl(),
-          }),
+        await sendAuthSignInOtpEmail({
+          email,
+          otp,
         })
       },
     }),

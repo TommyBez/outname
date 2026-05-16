@@ -3,7 +3,7 @@ import 'server-only'
 import { createElement, type ReactElement } from 'react'
 import { WaitlistConfirmationEmail } from '@/emails/waitlist-confirmation-email'
 import { WaitlistInviteEmail } from '@/emails/waitlist-invite-email'
-import { sendTransactionalEmail } from '@/shared/server/resend'
+import { sendResendReactEmail } from '@/shared/server/resend'
 import { siteConfig } from '@/shared/server/site-metadata'
 
 function getBaseUrl(): string {
@@ -39,7 +39,7 @@ async function sendResendEmail(input: {
   subject: string
   to: string
 }) {
-  await sendTransactionalEmail({
+  await sendResendReactEmail({
     ...input,
     from: getWaitlistFromEmail(),
     replyTo: getWaitlistReplyTo(),
