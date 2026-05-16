@@ -8,7 +8,7 @@ const OTP_REQUEST_RATE_LIMIT_WINDOW = '1 m'
 const OTP_REQUEST_RATE_LIMIT_WINDOW_MS = 60_000
 
 interface RateLimitResult {
-  pending: Promise<void>
+  pending: Promise<unknown>
   success: boolean
 }
 
@@ -61,10 +61,10 @@ function createLocalRateLimiter(scope: Scope): RateLimiter {
 
       store.set(key, activeEntries)
 
-      return {
+      return Promise.resolve({
         pending: Promise.resolve(),
         success,
-      }
+      })
     },
   }
 }
