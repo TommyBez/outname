@@ -50,7 +50,7 @@ function createLocalRateLimiter(scope: Scope): RateLimiter {
   const store = localBucketsByScope[scope]
 
   return {
-    async limit(key: string) {
+    limit(key: string) {
       const now = Date.now()
       const activeEntries = cleanupExpiredEntries(store.get(key) ?? [], now)
       const success = activeEntries.length < OTP_REQUEST_RATE_LIMIT_MAX_REQUESTS
