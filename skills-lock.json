@@ -145,6 +145,12 @@
       "skillPath": "skills/react-email/SKILL.md",
       "computedHash": "070a814e7ae89542250de27a0b03d8020ca1e8c57abf6304ecff527057c70256"
     },
+    "remotion-best-practices": {
+      "source": "remotion-dev/skills",
+      "sourceType": "github",
+      "skillPath": "skills/remotion/SKILL.md",
+      "computedHash": "006f8413941b59eff54a7ce64851b8a2fb79e7a3a5f1a895e97a48f01482553d"
+    },
     "resend": {
       "source": "resend/resend-skills",
       "sourceType": "github",
