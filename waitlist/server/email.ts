@@ -17,13 +17,33 @@ function createWaitlistEmailIdempotencyKey(
   return `${eventType}/${encodeURIComponent(entityId.toLowerCase())}`
 }
 
+function getWaitlistFromEmail(): string {
+  const fromEmail = process.env.WAITLIST_FROM_EMAIL
+  if (!fromEmail) {
+    throw new Error('WAITLIST_FROM_EMAIL is not set')
+  }
+  return fromEmail
+}
+
+function getWaitlistReplyTo(): string {
+  const replyTo = process.env.WAITLIST_REPLY_TO
+  if (!replyTo) {
+    throw new Error('WAITLIST_REPLY_TO is not set')
+  }
+  return replyTo
+}
+
 async function sendResendEmail(input: {
   idempotencyKey: string
   react: ReactElement
   subject: string
   to: string
 }) {
-  await sendTransactionalEmail(input)
+  await sendTransactionalEmail({
+    ...input,
+    from: getWaitlistFromEmail(),
+    replyTo: getWaitlistReplyTo(),
+  })
 }
 
 function getWaitlistLogoUrl(): string {

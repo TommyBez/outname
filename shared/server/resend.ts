@@ -23,16 +23,19 @@ export function getResendClient(): Resend {
 }
 
 export function getTransactionalFromEmail(): string {
-  const fromEmail =
-    process.env.AUTH_FROM_EMAIL || process.env.WAITLIST_FROM_EMAIL
+  const fromEmail = process.env.AUTH_FROM_EMAIL
   if (!fromEmail) {
-    throw new Error('AUTH_FROM_EMAIL or WAITLIST_FROM_EMAIL is not set')
+    throw new Error('AUTH_FROM_EMAIL is not set')
   }
   return fromEmail
 }
 
-export function getTransactionalReplyTo(): string | undefined {
-  return process.env.AUTH_REPLY_TO || process.env.WAITLIST_REPLY_TO || undefined
+export function getTransactionalReplyTo(): string {
+  const replyTo = process.env.AUTH_REPLY_TO
+  if (!replyTo) {
+    throw new Error('AUTH_REPLY_TO is not set')
+  }
+  return replyTo
 }
 
 export async function sendTransactionalEmail(input: {

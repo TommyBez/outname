@@ -22,6 +22,8 @@ Notes:
 - Use Node.js 22 or newer.
 - This repository is a single Next.js application, not a monorepo.
 - The database is remote, so no local Postgres instance is required.
+- Set `AUTH_FROM_EMAIL` and `AUTH_REPLY_TO` in `.env.local` for auth emails, and
+  keep `WAITLIST_FROM_EMAIL` plus `WAITLIST_REPLY_TO` for waitlist mail.
 - Sign-up is disabled; provision a user through the waitlist flow or use the
   provisioned test address from `TEST_USER_EMAIL`, then request an email OTP
   from `/login`.

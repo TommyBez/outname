@@ -145,7 +145,11 @@ BETTER_AUTH_SECRET=<from env>
 BETTER_AUTH_URL=http://localhost:3000
 CONNECTION_ENCRYPTION_KEY=<from env>
 AI_GATEWAY_API_KEY=<from env>
-AUTH_FROM_EMAIL=<verified sender, or reuse WAITLIST_FROM_EMAIL>
+RESEND_API_KEY=<from env>
+AUTH_FROM_EMAIL=<verified sender>
+AUTH_REPLY_TO=<verified reply-to sender>
+WAITLIST_FROM_EMAIL=<verified sender for waitlist emails>
+WAITLIST_REPLY_TO=<reply-to sender for waitlist emails>
 ```
 
 ### Known caveats
