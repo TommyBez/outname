@@ -76,6 +76,13 @@ interface MemoryFilmLayout extends WhyFilmLayout {
   microSize: number
 }
 
+interface ComposableFilmLayout extends WhyFilmLayout {
+  channelSize: number
+  chipSize: number
+  moduleSize: number
+  smallSize: number
+}
+
 const CTA_START_FRAME = 420
 const BODY_START_FRAME = 76
 const BRAND_CLOSE_FRAME = 488
@@ -83,6 +90,7 @@ const WHY_OUTNAME_SLUG = '2026-05-18-why-outname-exists'
 const AGENT_CONFIGURATION_SLUG = '2026-05-20-agent-configuration'
 const AUTONOMOUS_RUN_SLUG = '2026-05-22-autonomous-run'
 const MEMORY_OVER_TIME_SLUG = '2026-05-26-memory-over-time'
+const COMPOSABLE_CHANNELS_SLUG = '2026-05-28-composable-channels'
 
 const videoMeta: Record<LaunchVideoSlug, VideoMeta> = {
   '2026-05-18-why-outname-exists': {
@@ -144,6 +152,10 @@ export function LaunchVideo(props: LaunchVideoProps) {
 
   if (slug === MEMORY_OVER_TIME_SLUG) {
     return <MemoryOverTimeFilm aspect={aspect} frame={frame} />
+  }
+
+  if (slug === COMPOSABLE_CHANNELS_SLUG) {
+    return <ComposableChannelsFilm aspect={aspect} frame={frame} />
   }
 
   return (
@@ -2257,6 +2269,729 @@ function MemoryStateFile({
       </div>
     </div>
   )
+}
+
+function ComposableChannelsFilm({
+  aspect,
+  frame,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+}) {
+  const layout = getComposableFilmLayout(aspect)
+
+  return (
+    <AbsoluteFill
+      className="outname-video-root"
+      style={{
+        background: '#ffffff',
+        overflow: 'hidden',
+      }}
+    >
+      <ComposableCoreOpen aspect={aspect} frame={frame} layout={layout} />
+      <ComposableToolsAttach aspect={aspect} frame={frame} layout={layout} />
+      <ComposableSubagentSplit aspect={aspect} frame={frame} layout={layout} />
+      <ComposableChannelDoors aspect={aspect} frame={frame} layout={layout} />
+      <ComposableFutureSurfaces aspect={aspect} frame={frame} layout={layout} />
+      <ComposablePayoff aspect={aspect} frame={frame} layout={layout} />
+      <FilmEndCard
+        aspect={aspect}
+        endFrame={540}
+        enterFrame={514}
+        frame={frame}
+        layout={layout}
+        startFrame={496}
+      />
+    </AbsoluteFill>
+  )
+}
+
+function ComposableCoreOpen({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: ComposableFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 0, 92, 12)
+  const enter = appear(frame, 4, 24)
+  const drift = ease(frame, 18, 84, [0, 1])
+  const isWide = aspect === '16x9'
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#000000',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          background: '#ffffff',
+          color: '#000000',
+          height: isWide ? '62%' : '46%',
+          left: '50%',
+          overflow: 'hidden',
+          padding: layout.edge * 0.68,
+          position: 'absolute',
+          top: '52%',
+          transform: `translate(-50%, -50%) translateX(${(1 - enter) * 520 - drift * (isWide ? 150 : 84)}px) scale(${1.12 - drift * 0.05})`,
+          transformOrigin: 'center',
+          width: isWide ? '62%' : '82%',
+        }}
+      >
+        <div
+          style={{
+            background: '#ff3000',
+            bottom: 0,
+            left: 0,
+            position: 'absolute',
+            top: 0,
+            transform: `scaleY(${enter})`,
+            transformOrigin: 'top',
+            width: Math.max(12, layout.monoSize * 0.72),
+          }}
+        />
+        <strong
+          style={{
+            display: 'block',
+            fontSize: layout.giantSize * (isWide ? 0.62 : 0.7),
+            fontWeight: 950,
+            letterSpacing: 0,
+            lineHeight: 0.86,
+            marginLeft: layout.edge * 0.4,
+            textTransform: 'uppercase',
+          }}
+        >
+          ONE
+          <br />
+          AGENT
+        </strong>
+        <span
+          style={{
+            color: '#ff3000',
+            display: 'block',
+            fontFamily: 'var(--font-mono)',
+            fontSize: layout.smallSize,
+            fontWeight: 900,
+            letterSpacing: '0.16em',
+            marginLeft: layout.edge * 0.42,
+            marginTop: layout.edge * 0.34,
+            textTransform: 'uppercase',
+          }}
+        >
+          composable by design
+        </span>
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+function ComposableToolsAttach({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: ComposableFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 58, 184, 16)
+  const titleIn = appear(frame, 68, 18)
+  const coreIn = appear(frame, 86, 20)
+  const isWide = aspect === '16x9'
+  const tools = [
+    { accent: true, label: 'RESEND', rotation: -3, x: -30, y: -25 },
+    { accent: false, label: 'PARALLEL', rotation: 3, x: 29, y: -17 },
+    { accent: false, label: 'AGENT BROWSER', rotation: -2, x: -24, y: 28 },
+    { accent: true, label: 'GITHUB', rotation: 4, x: 30, y: 23 },
+  ] as const
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#ffffff',
+        opacity: scene,
+      }}
+    >
+      <h2
+        style={{
+          color: '#000000',
+          fontSize: layout.thesisSize * (isWide ? 0.72 : 0.76),
+          fontWeight: 950,
+          left: layout.edge,
+          letterSpacing: 0,
+          lineHeight: 0.84,
+          margin: 0,
+          opacity: titleIn,
+          position: 'absolute',
+          textTransform: 'uppercase',
+          top: layout.edge,
+          transform: `translateY(${(1 - titleIn) * 32}px)`,
+          width: isWide ? '48%' : '78%',
+        }}
+      >
+        GIVE IT
+        <br />
+        <span style={{ color: '#ff3000' }}>TOOLS</span>
+      </h2>
+      <div
+        style={{
+          background: '#000000',
+          height: isWide ? layout.edge * 2.1 : layout.edge * 2,
+          left: '50%',
+          position: 'absolute',
+          top: isWide ? '55%' : '53%',
+          transform: `translate(-50%, -50%) scale(${0.76 + coreIn * 0.24}) rotate(${(1 - coreIn) * -4}deg)`,
+          transformOrigin: 'center',
+          width: isWide ? layout.edge * 3.7 : layout.edge * 3.25,
+        }}
+      >
+        <div
+          style={{
+            background: '#ff3000',
+            bottom: 0,
+            left: 0,
+            position: 'absolute',
+            top: 0,
+            transform: `scaleY(${coreIn})`,
+            transformOrigin: 'bottom',
+            width: Math.max(12, layout.monoSize * 0.72),
+          }}
+        />
+      </div>
+      {tools.map((tool, index) => {
+        const inFrame = appear(frame, 92 + index * 12, 18)
+        const lock = ease(frame, 116 + index * 8, 170, [0, 1])
+        const x = tool.x * (1 - lock * 0.42)
+        const y = tool.y * (1 - lock * 0.42)
+        const fromX = tool.x > 0 ? 340 : -340
+        const fromY = tool.y > 0 ? 180 : -180
+
+        return (
+          <ComposableModule
+            accent={tool.accent}
+            frame={frame}
+            key={tool.label}
+            label={tool.label}
+            layout={layout}
+            style={{
+              left: `${50 + x}%`,
+              minWidth: tool.label === 'AGENT BROWSER' ? '38%' : '28%',
+              opacity: inFrame,
+              top: `${(isWide ? 54 : 55) + y}%`,
+              transform: `translate(-50%, -50%) translate(${(1 - inFrame) * fromX}px, ${(1 - inFrame) * fromY}px) rotate(${tool.rotation * (1 - lock * 0.4)}deg) scale(${0.9 + lock * 0.13})`,
+            }}
+          />
+        )
+      })}
+    </AbsoluteFill>
+  )
+}
+
+function ComposableSubagentSplit({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: ComposableFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 154, 278, 16)
+  const titleIn = appear(frame, 166, 20)
+  const split = ease(frame, 184, 262, [0, 1])
+  const isWide = aspect === '16x9'
+  const panels = [
+    { label: 'PARENT', tone: 'dark', x: 0, y: 0 },
+    { label: 'SUBAGENT 01', tone: 'light', x: isWide ? -28 : -21, y: 23 },
+    { label: 'SUBAGENT 02', tone: 'red', x: isWide ? 29 : 22, y: -22 },
+  ] as const
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#ffffff',
+        opacity: scene,
+      }}
+    >
+      <h2
+        style={{
+          color: '#000000',
+          fontSize: layout.thesisSize * (isWide ? 0.74 : 0.74),
+          fontWeight: 950,
+          left: layout.edge,
+          letterSpacing: 0,
+          lineHeight: 0.84,
+          margin: 0,
+          opacity: titleIn,
+          position: 'absolute',
+          textTransform: 'uppercase',
+          top: layout.edge,
+          transform: `translateY(${(1 - titleIn) * 34}px)`,
+          width: isWide ? '54%' : '82%',
+        }}
+      >
+        SPLIT
+        <br />
+        THE WORK
+      </h2>
+      {panels.map((panel, index) => (
+        <ComposableSubagentPanel
+          frame={frame}
+          index={index}
+          isWide={isWide}
+          key={panel.label}
+          layout={layout}
+          panel={panel}
+          split={split}
+        />
+      ))}
+    </AbsoluteFill>
+  )
+}
+
+function ComposableSubagentPanel({
+  frame,
+  index,
+  isWide,
+  layout,
+  panel,
+  split,
+}: {
+  frame: number
+  index: number
+  isWide: boolean
+  layout: ComposableFilmLayout
+  panel: {
+    label: string
+    tone: 'dark' | 'light' | 'red'
+    x: number
+    y: number
+  }
+  split: number
+}) {
+  const panelIn = appear(frame, 178 + index * 12, 18)
+  const x = panel.x * split
+  const y = panel.y * split
+  const isParent = panel.label === 'PARENT'
+  const background = getComposablePanelBackground(panel.tone)
+  const color = panel.tone === 'dark' ? '#ffffff' : '#000000'
+  const panelHeight = isParent ? layout.edge * 2.35 : layout.edge * 1.9
+  const panelScale = isParent ? 1.08 - split * 0.08 : 0.78 + split * 0.22
+  const top = isWide ? 58 : 58 + y
+  const verticalShift = isWide ? y * 0.5 : 0
+
+  return (
+    <div
+      style={{
+        background,
+        border: `${Math.max(4, layout.monoSize * 0.24)}px solid #000000`,
+        color,
+        height: panelHeight,
+        left: `${50 + x}%`,
+        opacity: panelIn,
+        padding: layout.edge * 0.36,
+        position: 'absolute',
+        top: `${top}%`,
+        transform: `translate(-50%, -50%) translateY(${verticalShift}%) rotate(${(index - 1) * 3 * split}deg) scale(${panelScale})`,
+        transformOrigin: 'center',
+        width: getComposableSubagentPanelWidth(isParent, isWide),
+        zIndex: isParent ? 3 : 2,
+      }}
+    >
+      <strong
+        style={{
+          display: 'block',
+          fontFamily: 'var(--font-mono)',
+          fontSize: layout.chipSize * (isParent ? 0.82 : 0.72),
+          fontWeight: 950,
+          letterSpacing: '0.03em',
+          lineHeight: 0.92,
+          textTransform: 'uppercase',
+        }}
+      >
+        {panel.label}
+      </strong>
+      <div
+        style={{
+          background: panel.tone === 'red' ? '#000000' : '#ff3000',
+          height: Math.max(10, layout.monoSize * 0.62),
+          marginTop: layout.edge * 0.34,
+          transform: `scaleX(${split})`,
+          transformOrigin: 'left',
+          width: '72%',
+        }}
+      />
+    </div>
+  )
+}
+
+function ComposableChannelDoors({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: ComposableFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 246, 376, 16)
+  const titleIn = appear(frame, 258, 20)
+  const coreIn = appear(frame, 276, 20)
+  const isWide = aspect === '16x9'
+  const doors = [
+    { accent: false, label: 'SLACK', side: 'left', y: 34 },
+    { accent: true, label: 'TELEGRAM', side: 'right', y: 45 },
+    { accent: false, label: 'DISCORD', side: 'left', y: 62 },
+    { accent: true, label: 'WEBHOOKS', side: 'right', y: 73 },
+  ] as const
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#000000',
+        opacity: scene,
+      }}
+    >
+      <h2
+        style={{
+          color: '#ffffff',
+          fontSize: layout.thesisSize * (isWide ? 0.72 : 0.72),
+          fontWeight: 950,
+          left: layout.edge,
+          letterSpacing: 0,
+          lineHeight: 0.84,
+          margin: 0,
+          opacity: titleIn,
+          position: 'absolute',
+          textTransform: 'uppercase',
+          top: layout.edge,
+          transform: `translateY(${(1 - titleIn) * 30}px)`,
+        }}
+      >
+        OPEN
+        <br />
+        <span style={{ color: '#ff3000' }}>THE DOORS</span>
+      </h2>
+      <div
+        style={{
+          background: '#ffffff',
+          height: layout.edge * 2.15,
+          left: '50%',
+          overflow: 'hidden',
+          position: 'absolute',
+          top: isWide ? '56%' : '54%',
+          transform: `translate(-50%, -50%) scale(${0.82 + coreIn * 0.18})`,
+          width: isWide ? layout.edge * 3.5 : layout.edge * 3.1,
+          zIndex: 5,
+        }}
+      >
+        <div
+          style={{
+            background: '#ff3000',
+            bottom: 0,
+            left: 0,
+            position: 'absolute',
+            top: 0,
+            width: Math.max(12, layout.monoSize * 0.72),
+          }}
+        />
+      </div>
+      {doors.map((door, index) => {
+        const doorIn = appear(frame, 280 + index * 10, 18)
+        const lock = ease(frame, 302 + index * 8, 364, [0, 1])
+        const from = door.side === 'left' ? -112 : 112
+        const dock = door.side === 'left' ? -6 : 6
+
+        return (
+          <div
+            key={door.label}
+            style={{
+              alignItems: 'center',
+              background: door.accent ? '#ff3000' : '#ffffff',
+              color: '#000000',
+              display: 'flex',
+              fontFamily: 'var(--font-mono)',
+              fontSize: layout.channelSize,
+              fontWeight: 950,
+              height: layout.edge * (isWide ? 0.86 : 0.78),
+              justifyContent: door.side === 'left' ? 'flex-end' : 'flex-start',
+              left: '50%',
+              letterSpacing: '0.08em',
+              opacity: doorIn,
+              padding: `0 ${layout.edge * 0.34}px`,
+              position: 'absolute',
+              textTransform: 'uppercase',
+              top: `${door.y}%`,
+              transform: `translate(-50%, -50%) translateX(${from * (1 - doorIn) + dock * lock}%)`,
+              transformOrigin: 'center',
+              width: isWide ? '58%' : '72%',
+              zIndex: index === 1 ? 6 : 4,
+            }}
+          >
+            {door.label}
+          </div>
+        )
+      })}
+    </AbsoluteFill>
+  )
+}
+
+function ComposableFutureSurfaces({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: ComposableFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 366, 462, 16)
+  const enter = appear(frame, 374, 20)
+  const activate = ease(frame, 394, 450, [0, 1])
+  const isWide = aspect === '16x9'
+  const slots = [
+    { label: 'MCP', x: isWide ? -24 : -20, y: isWide ? 16 : 24 },
+    { label: 'SKILLS', x: isWide ? 24 : 20, y: isWide ? -16 : -22 },
+  ] as const
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#ffffff',
+        opacity: scene,
+      }}
+    >
+      <h2
+        style={{
+          color: '#000000',
+          fontSize: layout.thesisSize * (isWide ? 0.66 : 0.68),
+          fontWeight: 950,
+          left: layout.edge,
+          letterSpacing: 0,
+          lineHeight: 0.84,
+          margin: 0,
+          opacity: enter,
+          position: 'absolute',
+          textTransform: 'uppercase',
+          top: layout.edge,
+          transform: `translateY(${(1 - enter) * 30}px)`,
+          width: isWide ? '60%' : '84%',
+        }}
+      >
+        MORE
+        <br />
+        SURFACES
+      </h2>
+      <span
+        style={{
+          color: '#ff3000',
+          fontFamily: 'var(--font-mono)',
+          fontSize: layout.smallSize,
+          fontWeight: 900,
+          left: layout.edge,
+          letterSpacing: '0.16em',
+          opacity: enter,
+          position: 'absolute',
+          textTransform: 'uppercase',
+          top: layout.edge + layout.thesisSize * (isWide ? 1.18 : 1.26),
+        }}
+      >
+        coming soon
+      </span>
+      <div
+        style={{
+          background: '#000000',
+          bottom: layout.edge * 0.8,
+          left: isWide ? '42%' : layout.edge * 0.72,
+          overflow: 'hidden',
+          position: 'absolute',
+          right: layout.edge * 0.72,
+          top: isWide ? layout.edge * 0.85 : '42%',
+          transform: `translateX(${(1 - enter) * 74}px) scale(${0.95 + enter * 0.05})`,
+          transformOrigin: 'center',
+        }}
+      >
+        <div
+          style={{
+            background: '#ff3000',
+            height: Math.max(12, layout.monoSize * 0.72),
+            left: 0,
+            position: 'absolute',
+            top: 0,
+            transform: `scaleX(${activate})`,
+            transformOrigin: 'left',
+            width: '100%',
+          }}
+        />
+        {slots.map((slot, index) => {
+          const slotIn = appear(frame, 386 + index * 18, 18)
+
+          return (
+            <div
+              key={slot.label}
+              style={{
+                alignItems: 'center',
+                border: `${Math.max(3, layout.monoSize * 0.2)}px dashed ${
+                  index === 0 ? '#ff3000' : '#ffffff'
+                }`,
+                color: index === 0 ? '#ff3000' : '#ffffff',
+                display: 'flex',
+                fontFamily: 'var(--font-mono)',
+                fontSize: layout.moduleSize,
+                fontWeight: 950,
+                height: layout.edge * (isWide ? 1.95 : 1.8),
+                justifyContent: 'center',
+                left: `${50 + slot.x * activate}%`,
+                letterSpacing: '0.08em',
+                opacity: slotIn * (0.45 + activate * 0.55),
+                position: 'absolute',
+                textTransform: 'uppercase',
+                top: `${54 + slot.y * activate}%`,
+                transform: `translate(-50%, -50%) rotate(${(index === 0 ? -2 : 2) * activate}deg) scale(${0.9 + activate * 0.1})`,
+                transformOrigin: 'center',
+                width: isWide ? '32%' : '52%',
+              }}
+            >
+              {slot.label}
+            </div>
+          )
+        })}
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+function ComposablePayoff({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: ComposableFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 426, 508, 14)
+  const enter = appear(frame, 436, 22)
+  const lock = ease(frame, 446, 494, [0, 1])
+  const isWide = aspect === '16x9'
+  const pieces = [
+    { color: '#ffffff', height: 0.48, width: 0.52, x: -18, y: 21 },
+    { color: '#ff3000', height: 0.32, width: 0.46, x: 15, y: -18 },
+    { color: '#ffffff', height: 0.24, width: 0.38, x: 22, y: 19 },
+  ] as const
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#000000',
+        opacity: scene,
+      }}
+    >
+      {pieces.map((piece, index) => {
+        const pieceIn = appear(frame, 430 + index * 8, 16)
+
+        return (
+          <div
+            key={`${piece.color}-${piece.x}-${piece.y}`}
+            style={{
+              background: piece.color,
+              height: layout.edge * piece.height,
+              left: `${50 + piece.x * (1 - lock * 0.72)}%`,
+              opacity: pieceIn,
+              position: 'absolute',
+              top: `${62 + piece.y * (1 - lock * 0.56)}%`,
+              transform: `translate(-50%, -50%) scaleX(${piece.width + lock * 0.72})`,
+              transformOrigin: 'center',
+              width: isWide ? '34%' : '48%',
+            }}
+          />
+        )
+      })}
+      <h2
+        style={{
+          color: '#ffffff',
+          fontSize: layout.thesisSize * (isWide ? 0.64 : 0.68),
+          fontWeight: 950,
+          left: '50%',
+          letterSpacing: 0,
+          lineHeight: 0.84,
+          margin: 0,
+          opacity: enter,
+          position: 'absolute',
+          textAlign: 'center',
+          textTransform: 'uppercase',
+          top: '43%',
+          transform: `translate(-50%, -50%) translateY(${(1 - enter) * 28}px) scale(${0.96 + lock * 0.04})`,
+          width: isWide ? '74%' : '88%',
+        }}
+      >
+        BUILD THE AGENT
+        <br />
+        <span style={{ color: '#ff3000' }}>CONNECT</span>
+        <br />
+        THE SYSTEM
+      </h2>
+    </AbsoluteFill>
+  )
+}
+
+function ComposableModule({
+  accent,
+  label,
+  layout,
+  style,
+}: {
+  accent: boolean
+  frame: number
+  label: string
+  layout: ComposableFilmLayout
+  style: CSSProperties
+}) {
+  return (
+    <div
+      style={{
+        background: accent ? '#ff3000' : '#000000',
+        color: accent ? '#000000' : '#ffffff',
+        fontFamily: 'var(--font-mono)',
+        fontSize: layout.chipSize,
+        fontWeight: 950,
+        letterSpacing: '0.06em',
+        lineHeight: 1,
+        padding: `${layout.edge * 0.28}px ${layout.edge * 0.34}px`,
+        position: 'absolute',
+        textAlign: 'center',
+        textTransform: 'uppercase',
+        transformOrigin: 'center',
+        ...style,
+      }}
+    >
+      {label}
+    </div>
+  )
+}
+
+function getComposablePanelBackground(tone: 'dark' | 'light' | 'red') {
+  if (tone === 'dark') {
+    return '#000000'
+  }
+
+  if (tone === 'red') {
+    return '#ff3000'
+  }
+
+  return '#ffffff'
+}
+
+function getComposableSubagentPanelWidth(isParent: boolean, isWide: boolean) {
+  if (isParent) {
+    return isWide ? '31%' : '56%'
+  }
+
+  return isWide ? '28%' : '48%'
 }
 
 function ColdOpen({ frame, layout }: { frame: number; layout: WhyFilmLayout }) {
@@ -4868,6 +5603,59 @@ function getMemoryFilmLayout(aspect: LaunchVideoAspect): MemoryFilmLayout {
     microSize: 14,
     monoSize: 17,
     thesisSize: 68,
+  }
+}
+
+function getComposableFilmLayout(
+  aspect: LaunchVideoAspect
+): ComposableFilmLayout {
+  if (aspect === '16x9') {
+    return {
+      channelSize: 28,
+      chipSize: 26,
+      edge: 70,
+      finalCaptionSize: 20,
+      finalLogoSize: 156,
+      finalWordmarkSize: 112,
+      fragmentSize: 112,
+      giantSize: 118,
+      moduleSize: 44,
+      monoSize: 21,
+      smallSize: 18,
+      thesisSize: 108,
+    }
+  }
+
+  if (aspect === '4x5') {
+    return {
+      channelSize: 24,
+      chipSize: 23,
+      edge: 64,
+      finalCaptionSize: 17,
+      finalLogoSize: 180,
+      finalWordmarkSize: 86,
+      fragmentSize: 84,
+      giantSize: 92,
+      moduleSize: 38,
+      monoSize: 18,
+      smallSize: 16,
+      thesisSize: 82,
+    }
+  }
+
+  return {
+    channelSize: 21,
+    chipSize: 20,
+    edge: 56,
+    finalCaptionSize: 15,
+    finalLogoSize: 152,
+    finalWordmarkSize: 74,
+    fragmentSize: 72,
+    giantSize: 78,
+    moduleSize: 34,
+    monoSize: 17,
+    smallSize: 14,
+    thesisSize: 72,
   }
 }
 

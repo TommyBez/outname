@@ -119,7 +119,7 @@ export const launchVideoManifest = [
   },
   {
     description:
-      'Feature video showing tools, sub-agents, MCP/skills, and communication channels as composable building blocks.',
+      'Feature video showing an agent gaining real tools, splitting work into sub-agents, opening communication channels, and preparing MCP/skills surfaces.',
     durationInFrames: FPS_18_SECONDS,
     linkedPosts: [
       'content/outname-launch/LinkedIn/2026-05-28_10-30.md',

@@ -30,13 +30,10 @@ async function getAesKey(): Promise<CryptoKey> {
   if (!cachedAesKey) {
     const subtle = getSubtleCrypto()
     const rawKey = Uint8Array.from(getConnectionEncryptionKey())
-    cachedAesKey = subtle.importKey(
-      'raw',
-      rawKey,
-      { name: 'AES-GCM' },
-      false,
-      ['encrypt', 'decrypt']
-    )
+    cachedAesKey = subtle.importKey('raw', rawKey, { name: 'AES-GCM' }, false, [
+      'encrypt',
+      'decrypt',
+    ])
   }
   return await cachedAesKey
 }
