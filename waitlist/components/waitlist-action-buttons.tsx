@@ -122,7 +122,7 @@ export function WaitlistActionButtons({ entry }: { entry: WaitlistEntry }) {
           }
           pendingAction={pendingAction}
         >
-          Send invite
+          {entry.status === 'invited' ? 'Resend access' : 'Grant access'}
         </ActionButton>
       ) : null}
 

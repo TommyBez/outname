@@ -2,8 +2,9 @@ import 'server-only'
 
 import { and, desc, eq, gt, ilike, isNotNull, type SQL } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
+import { auth } from '@/auth/server/auth'
 import { db } from '@/shared/db'
-import { waitlistEntry } from '@/shared/db/schema'
+import { user, waitlistEntry } from '@/shared/db/schema'
 import {
   WAITLIST_CONFIRMATION_RESEND_COOLDOWN_MS,
   type WaitlistEntryStatus,
@@ -21,6 +22,11 @@ const TERMINAL_PUBLIC_STATUSES: WaitlistEntryStatus[] = [
   'invited',
   'converted',
   'unsubscribed',
+]
+const ACCESS_PROVISIONABLE_STATUSES: WaitlistEntryStatus[] = [
+  'confirmed',
+  'invited',
+  'converted',
 ]
 
 export interface WaitlistMetadataInput {
@@ -57,6 +63,24 @@ export function normalizeWaitlistEmail(email: string): string {
 export function normalizeOptionalText(value?: string | null): string | null {
   const trimmed = value?.trim()
   return trimmed ? trimmed : null
+}
+
+function buildProvisionedUserName(input: {
+  email: string
+  name?: string | null
+}) {
+  const normalizedName = normalizeOptionalText(input.name)
+  if (normalizedName) {
+    return normalizedName
+  }
+
+  const [localPart = 'outname user'] = input.email.split('@')
+  const fallbackName = localPart
+    .replace(/[._-]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ')
+
+  return fallbackName || 'outname user'
 }
 
 export function isWaitlistResendCoolingDown(sentAt?: Date | null): boolean {
@@ -100,6 +124,127 @@ export async function getWaitlistEntryByEmail(email: string) {
     .where(eq(waitlistEntry.email, normalizedEmail))
     .limit(1)
   return entry ?? null
+}
+
+async function getAuthUserByEmail(email: string) {
+  const normalizedEmail = normalizeWaitlistEmail(email)
+  const [existingUser] = await db
+    .select()
+    .from(user)
+    .where(eq(user.email, normalizedEmail))
+    .limit(1)
+
+  return existingUser ?? null
+}
+
+async function markUserEmailVerified(userId: string, now: Date) {
+  await db
+    .update(user)
+    .set({
+      emailVerified: true,
+      updatedAt: now,
+    })
+    .where(eq(user.id, userId))
+}
+
+async function markWaitlistProvisioned(
+  entryId: string,
+  provisionedUserId: string,
+  now: Date
+) {
+  const [updatedEntry] = await db
+    .update(waitlistEntry)
+    .set({
+      provisionedAt: now,
+      provisionedUserId,
+      updatedAt: now,
+    })
+    .where(eq(waitlistEntry.id, entryId))
+    .returning()
+
+  if (!updatedEntry) {
+    throw new Error('Waitlist entry not found')
+  }
+
+  return updatedEntry
+}
+
+async function ensureProvisionedWaitlistUser(entryId: string) {
+  const entry = await getWaitlistEntryById(entryId)
+  if (
+    !(
+      entry &&
+      ACCESS_PROVISIONABLE_STATUSES.includes(
+        entry.status as WaitlistEntryStatus
+      )
+    )
+  ) {
+    throw new Error(
+      'Only confirmed or invited waitlist entries can be provisioned'
+    )
+  }
+
+  const now = new Date()
+  const existingUser =
+    (entry.provisionedUserId
+      ? await db
+          .select()
+          .from(user)
+          .where(eq(user.id, entry.provisionedUserId))
+          .limit(1)
+          .then((rows) => rows[0] ?? null)
+      : null) ?? (await getAuthUserByEmail(entry.email))
+
+  if (existingUser) {
+    await Promise.all([
+      markUserEmailVerified(existingUser.id, now),
+      markWaitlistProvisioned(entry.id, existingUser.id, now),
+    ])
+
+    return {
+      entryId: entry.id,
+      userId: existingUser.id,
+      wasCreated: false,
+    }
+  }
+
+  const created = await auth.api.createUser({
+    body: {
+      email: entry.email,
+      name: buildProvisionedUserName(entry),
+    },
+  })
+
+  await Promise.all([
+    markUserEmailVerified(created.user.id, now),
+    markWaitlistProvisioned(entry.id, created.user.id, now),
+  ])
+
+  return {
+    entryId: entry.id,
+    userId: created.user.id,
+    wasCreated: true,
+  }
+}
+
+export function provisionWaitlistAccess(entryId: string) {
+  return ensureProvisionedWaitlistUser(entryId)
+}
+
+export async function provisionWaitlistAccessByEmail(email: string) {
+  const entry = await getWaitlistEntryByEmail(email)
+  if (
+    !(
+      entry &&
+      ACCESS_PROVISIONABLE_STATUSES.includes(
+        entry.status as WaitlistEntryStatus
+      )
+    )
+  ) {
+    return null
+  }
+
+  return ensureProvisionedWaitlistUser(entry.id)
 }
 
 export async function submitWaitlistEntry(

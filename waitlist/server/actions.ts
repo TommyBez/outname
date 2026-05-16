@@ -12,6 +12,7 @@ import {
   adminPrepareWaitlistInvite,
   adminResendWaitlistConfirmation,
   adminUpdateWaitlistStatus,
+  provisionWaitlistAccess,
 } from '@/waitlist/server/service'
 
 const entryIdSchema = z.object({
@@ -82,6 +83,7 @@ export async function sendWaitlistInviteAction(
 
   try {
     const entry = await adminPrepareWaitlistInvite(parsed.data.entryId)
+    await provisionWaitlistAccess(entry.id)
     await sendWaitlistInviteEmail({
       email: entry.email,
     })
