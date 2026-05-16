@@ -111,8 +111,8 @@ importers:
         specifier: ^1.2.2
         version: 1.2.2(@types/react@19.2.14)(react@19.2.5)
       '@rive-app/react-webgl2':
-        specifier: ^4.28.1
-        version: 4.28.1(react@19.2.5)
+        specifier: ^4.28.5
+        version: 4.28.5(react@19.2.5)
       '@streamdown/cjk':
         specifier: ^1.0.3
         version: 1.0.3(@types/mdast@4.0.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(react@19.2.5)(unified@11.0.5)
@@ -2698,13 +2698,13 @@ packages:
     peerDependencies:
       '@redis/client': ^5.12.1
 
-  '@rive-app/react-webgl2@4.28.1':
-    resolution: {integrity: sha512-hGxhN84K8hOfgiLitQiRMGdDbEL34TijFZCiOW8ShxBpKWVu2mGtjw37MCWAznBaXGCu5+bFZ42SzOfL1onxDQ==}
+  '@rive-app/react-webgl2@4.28.5':
+    resolution: {integrity: sha512-ieNHpANoaHD6R6m33jtJfjIQB37PpDo9RkbjlkpaZbvHSn9c2ZpKsD3vUlndKOpwl+6cA97JXJuPfs0LbkZ9AA==}
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0
 
-  '@rive-app/webgl2@2.37.2':
-    resolution: {integrity: sha512-fQFBGDcjOGNIyhW33lBdamj15oVJTCLHsKBKGolXFjHziFj+Fw0kKd3pRekZNkyfZ0IUQwoS/P2bnF+Vz98CrQ==}
+  '@rive-app/webgl2@2.37.7':
+    resolution: {integrity: sha512-UBhiWn9Ujjsl7H98pv5WKvUvhh79xd2IkFhT6BvK0Z3rFC6ikqDZ9odUokwhmQa8xoaJT3rDL9t5aq4wlqBrsQ==}
 
   '@rolldown/binding-android-arm64@1.0.0':
     resolution: {integrity: sha512-TWMZnRLMe63C2Lhyicviu7ZHaU4kxa6PS3rofvc9GmcvptzNN11BcfQ4Sl7MwTOsisQoa2keB/EBdNCAnUo8vA==}
@@ -9560,12 +9560,12 @@ snapshots:
     dependencies:
       '@redis/client': 5.12.1(@opentelemetry/api@1.9.1)
 
-  '@rive-app/react-webgl2@4.28.1(react@19.2.5)':
+  '@rive-app/react-webgl2@4.28.5(react@19.2.5)':
     dependencies:
-      '@rive-app/webgl2': 2.37.2
+      '@rive-app/webgl2': 2.37.7
       react: 19.2.5
 
-  '@rive-app/webgl2@2.37.2': {}
+  '@rive-app/webgl2@2.37.7': {}
 
   '@rolldown/binding-android-arm64@1.0.0':
     optional: true
