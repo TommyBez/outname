@@ -64,11 +64,18 @@ interface AgentConfigFilmLayout extends WhyFilmLayout {
   optionSize: number
 }
 
+interface AutonomousRunFilmLayout extends WhyFilmLayout {
+  captionSize: number
+  microSize: number
+  taskSize: number
+}
+
 const CTA_START_FRAME = 420
 const BODY_START_FRAME = 76
 const BRAND_CLOSE_FRAME = 488
 const WHY_OUTNAME_SLUG = '2026-05-18-why-outname-exists'
 const AGENT_CONFIGURATION_SLUG = '2026-05-20-agent-configuration'
+const AUTONOMOUS_RUN_SLUG = '2026-05-22-autonomous-run'
 
 const videoMeta: Record<LaunchVideoSlug, VideoMeta> = {
   '2026-05-18-why-outname-exists': {
@@ -84,10 +91,10 @@ const videoMeta: Record<LaunchVideoSlug, VideoMeta> = {
     subline: 'Model. Identity. Schedule.',
   },
   '2026-05-22-autonomous-run': {
-    cta: 'scheduled work / no manual nudge',
+    cta: 'calendar / follow-ups / brief',
     eyebrow: 'autonomous run',
     headline: 'Work starts without me.',
-    subline: 'Schedule. Tools. Memory.',
+    subline: 'Calendar. Follow-ups. Memory.',
   },
   '2026-05-26-memory-over-time': {
     cta: 'less setup every run',
@@ -122,6 +129,10 @@ export function LaunchVideo(props: LaunchVideoProps) {
 
   if (slug === AGENT_CONFIGURATION_SLUG) {
     return <AgentConfigurationFilm aspect={aspect} frame={frame} />
+  }
+
+  if (slug === AUTONOMOUS_RUN_SLUG) {
+    return <AutonomousRunFilm aspect={aspect} frame={frame} />
   }
 
   return (
@@ -868,6 +879,679 @@ function AgentAssembly({
           </p>
         </div>
       </div>
+    </AbsoluteFill>
+  )
+}
+
+function AutonomousRunFilm({
+  aspect,
+  frame,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+}) {
+  const layout = getAutonomousRunFilmLayout(aspect)
+
+  return (
+    <AbsoluteFill
+      className="outname-video-root"
+      style={{
+        background: '#000000',
+        overflow: 'hidden',
+      }}
+    >
+      <RunWake aspect={aspect} frame={frame} layout={layout} />
+      <RunScheduleFires aspect={aspect} frame={frame} layout={layout} />
+      <RunCalendarTask aspect={aspect} frame={frame} layout={layout} />
+      <RunFollowUpsTask aspect={aspect} frame={frame} layout={layout} />
+      <RunBriefTask aspect={aspect} frame={frame} layout={layout} />
+      <RunMemoryUpdate aspect={aspect} frame={frame} layout={layout} />
+      <RunNextRun aspect={aspect} frame={frame} layout={layout} />
+      <FilmEndCard
+        aspect={aspect}
+        endFrame={540}
+        enterFrame={508}
+        frame={frame}
+        layout={layout}
+        startFrame={492}
+      />
+    </AbsoluteFill>
+  )
+}
+
+function RunWake({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: AutonomousRunFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 0, 82, 12)
+  const line = ease(frame, 8, 36, [0, 1])
+  const pulse = ease(frame, 28, 52, [0, 1])
+  const isWide = aspect === '16x9'
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#000000',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          background: '#ffffff',
+          height: 5,
+          left: layout.edge,
+          position: 'absolute',
+          right: layout.edge,
+          top: isWide ? '58%' : '60%',
+          transform: `scaleX(${line})`,
+          transformOrigin: 'center',
+        }}
+      />
+      <div
+        style={{
+          background: '#ff3000',
+          height: layout.edge * (isWide ? 0.92 : 1.22),
+          left: '50%',
+          position: 'absolute',
+          top: isWide ? '58%' : '60%',
+          transform: `translate(-50%, -50%) scaleY(${0.76 + pulse * 0.42})`,
+          transformOrigin: 'center',
+          width: Math.max(14, layout.monoSize * 0.82),
+        }}
+      />
+      <strong
+        style={{
+          color: '#ffffff',
+          fontFamily: 'var(--font-mono)',
+          fontSize: layout.giantSize * (isWide ? 0.76 : 0.72),
+          fontWeight: 950,
+          left: '50%',
+          letterSpacing: 0,
+          lineHeight: 1,
+          opacity: appear(frame, 18, 22),
+          position: 'absolute',
+          top: isWide ? '37%' : '39%',
+          transform: `translate(-50%, -50%) scale(${0.94 + pulse * 0.06})`,
+        }}
+      >
+        08:30
+      </strong>
+    </AbsoluteFill>
+  )
+}
+
+function RunScheduleFires({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: AutonomousRunFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 58, 144, 12)
+  const fire = ease(frame, 70, 116, [0, 1])
+  const isWide = aspect === '16x9'
+  const travelWidth = isWide ? 64 : 58
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#000000',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          background: '#ffffff',
+          height: 5,
+          left: layout.edge,
+          position: 'absolute',
+          right: layout.edge,
+          top: isWide ? '60%' : '64%',
+        }}
+      />
+      <div
+        style={{
+          background: '#ff3000',
+          height: layout.edge * (isWide ? 0.9 : 1.1),
+          left: `${18 + fire * travelWidth}%`,
+          position: 'absolute',
+          top: isWide ? '60%' : '64%',
+          transform: 'translate(-50%, -50%)',
+          width: Math.max(16, layout.monoSize * 0.9),
+        }}
+      />
+      <div
+        style={{
+          background: '#ff3000',
+          height: Math.max(7, layout.monoSize * 0.42),
+          left: `${18 + fire * travelWidth}%`,
+          opacity: 1 - fire * 0.3,
+          position: 'absolute',
+          top: isWide ? '60%' : '64%',
+          transform: `translate(-100%, -50%) scaleX(${fire})`,
+          transformOrigin: 'right',
+          width: isWide ? '24%' : '34%',
+        }}
+      />
+      <h2
+        style={{
+          color: '#ffffff',
+          fontSize: layout.giantSize * (isWide ? 0.98 : 0.78),
+          fontWeight: 950,
+          left: layout.edge,
+          letterSpacing: 0,
+          lineHeight: 0.84,
+          margin: 0,
+          opacity: appear(frame, 82, 22),
+          position: 'absolute',
+          textTransform: 'uppercase',
+          top: layout.edge,
+          transform: `translateY(${(1 - appear(frame, 82, 22)) * 32}px)`,
+        }}
+      >
+        SCHEDULE
+        <br />
+        FIRES
+      </h2>
+    </AbsoluteFill>
+  )
+}
+
+function RunCalendarTask({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: AutonomousRunFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 124, 228, 14)
+  const enter = appear(frame, 136, 26)
+  const sweep = ease(frame, 156, 208, [0, 1])
+  const isWide = aspect === '16x9'
+  const calendarRows = isWide
+    ? (['focus', 'client-call', 'review'] as const)
+    : (['focus', 'client-call', 'review', 'planning'] as const)
+  const calendarMarkerSize = Math.max(22, layout.monoSize * 1.2)
+  const calendarLineHeight = Math.max(9, layout.monoSize * 0.52)
+  const calendarInset = layout.edge * (isWide ? 0.82 : 0.74)
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#ffffff',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          background: '#000000',
+          bottom: calendarInset,
+          color: '#ffffff',
+          left: calendarInset,
+          overflow: 'hidden',
+          padding: layout.edge * 0.68,
+          position: 'absolute',
+          right: isWide ? '29%' : calendarInset,
+          top: calendarInset,
+          transform: `translateX(${(1 - enter) * -110}px) scale(${0.94 + enter * 0.06})`,
+          transformOrigin: 'left center',
+        }}
+      >
+        <h2
+          style={{
+            fontSize: layout.taskSize * 1.06,
+            fontWeight: 950,
+            letterSpacing: 0,
+            lineHeight: 0.84,
+            margin: 0,
+            textTransform: 'uppercase',
+          }}
+        >
+          CHECK
+          <br />
+          CALENDAR
+        </h2>
+        <div
+          style={{
+            display: 'grid',
+            gap: layout.edge * 0.24,
+            marginTop: layout.edge * 0.82,
+          }}
+        >
+          {calendarRows.map((calendarRow, index) => {
+            const row = appear(frame, 164 + index * 10, 14)
+            const active = index === 1 || index === calendarRows.length - 1
+
+            return (
+              <div
+                key={calendarRow}
+                style={{
+                  alignItems: 'center',
+                  display: 'grid',
+                  gap: layout.edge * 0.24,
+                  gridTemplateColumns: 'auto 1fr',
+                  opacity: row,
+                  transform: `translateX(${(1 - row) * -28}px) scale(${active ? 1 + sweep * 0.035 : 1})`,
+                  transformOrigin: 'left center',
+                }}
+              >
+                <div
+                  style={{
+                    background: active ? '#ff3000' : '#ffffff',
+                    height: calendarMarkerSize,
+                    transform: `scale(${active ? 0.86 + sweep * 0.14 : 1})`,
+                    width: calendarMarkerSize,
+                  }}
+                />
+                <div
+                  style={{
+                    background: active ? '#ff3000' : '#ffffff',
+                    height: calendarLineHeight,
+                    opacity: active ? 1 : 0.52,
+                    transform: `scaleX(${row})`,
+                    transformOrigin: 'left',
+                    width: `${active ? 82 : 62}%`,
+                  }}
+                />
+              </div>
+            )
+          })}
+        </div>
+      </div>
+      <div
+        style={{
+          background: '#ff3000',
+          bottom: calendarInset,
+          position: 'absolute',
+          right: isWide ? calendarInset : layout.edge,
+          top: calendarInset,
+          transform: `scaleY(${sweep})`,
+          transformOrigin: 'top',
+          width: Math.max(12, layout.monoSize * 0.68),
+        }}
+      />
+    </AbsoluteFill>
+  )
+}
+
+function RunFollowUpsTask({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: AutonomousRunFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 208, 318, 14)
+  const enter = appear(frame, 220, 22)
+  const active = ease(frame, 248, 294, [0, 1])
+  const isWide = aspect === '16x9'
+  const panelInset = layout.edge * 0.72
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#ffffff',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          background: '#000000',
+          bottom: panelInset,
+          color: '#ffffff',
+          left: isWide ? '24%' : panelInset,
+          overflow: 'hidden',
+          padding: layout.edge * 0.66,
+          position: 'absolute',
+          right: panelInset,
+          top: isWide ? panelInset : layout.edge * 1.02,
+          transform: `translateX(${(1 - enter) * 96}px) scale(${0.95 + enter * 0.05})`,
+        }}
+      >
+        <h2
+          style={{
+            fontSize: layout.taskSize * (isWide ? 1 : 0.88),
+            fontWeight: 950,
+            letterSpacing: 0,
+            lineHeight: 0.84,
+            margin: 0,
+            textTransform: 'uppercase',
+          }}
+        >
+          FIND
+          <br />
+          FOLLOW-UPS
+        </h2>
+        <div
+          style={{
+            display: 'grid',
+            gap: layout.edge * 0.16,
+            marginTop: layout.edge * 0.56,
+          }}
+        >
+          {['OPEN LOOP', 'WAITING', 'NEXT STEP'].map((item, index) => {
+            const row = appear(frame, 242 + index * 12, 14)
+            const selected = index === 0
+
+            return (
+              <div
+                key={item}
+                style={{
+                  alignItems: 'center',
+                  background: selected ? '#ff3000' : '#ffffff',
+                  color: '#000000',
+                  display: 'grid',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: layout.microSize * 1.08,
+                  fontWeight: 900,
+                  gridTemplateColumns: '1fr auto',
+                  letterSpacing: '0.1em',
+                  opacity: row,
+                  padding: `${layout.edge * 0.21}px ${layout.edge * 0.28}px`,
+                  textTransform: 'uppercase',
+                  transform: `translateX(${(1 - row) * -38}px) scale(${selected ? 1 + active * 0.045 : 1})`,
+                  transformOrigin: 'left center',
+                }}
+              >
+                <span>{item}</span>
+                <span>{selected ? '02' : `0${index}`}</span>
+              </div>
+            )
+          })}
+        </div>
+        <strong
+          style={{
+            color: '#ff3000',
+            display: 'block',
+            fontFamily: 'var(--font-mono)',
+            fontSize: layout.captionSize * 1.18,
+            fontWeight: 950,
+            letterSpacing: '0.14em',
+            marginTop: layout.edge * 0.42,
+            opacity: active,
+            textTransform: 'uppercase',
+          }}
+        >
+          2 OPEN LOOPS
+        </strong>
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+function RunBriefTask({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: AutonomousRunFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 300, 394, 14)
+  const enter = appear(frame, 312, 24)
+  const send = ease(frame, 338, 378, [0, 1])
+  const isWide = aspect === '16x9'
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#ffffff',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          background: '#000000',
+          color: '#ffffff',
+          left: '50%',
+          minHeight: isWide ? 500 : 570,
+          overflow: 'hidden',
+          padding: layout.edge * 0.7,
+          position: 'absolute',
+          top: '50%',
+          transform: `translate(-50%, -50%) scale(${0.9 + enter * 0.1})`,
+          width: isWide ? '62%' : '84%',
+        }}
+      >
+        <h2
+          style={{
+            fontSize: layout.taskSize * (isWide ? 1.04 : 0.9),
+            fontWeight: 950,
+            letterSpacing: 0,
+            lineHeight: 0.84,
+            margin: 0,
+            textTransform: 'uppercase',
+          }}
+        >
+          SEND
+          <br />A BRIEF
+        </h2>
+        <div
+          style={{
+            display: 'grid',
+            gap: layout.edge * 0.2,
+            marginTop: layout.edge * 0.66,
+          }}
+        >
+          {[0.86, 0.68, 0.78].map((width, index) => {
+            const row = appear(frame, 330 + index * 10, 12)
+
+            return (
+              <div
+                key={`brief-line-${width}`}
+                style={{
+                  background: '#ffffff',
+                  height: Math.max(10, layout.monoSize * 0.56),
+                  opacity: row * (index === 1 ? 0.6 : 0.9),
+                  transform: `scaleX(${row})`,
+                  transformOrigin: 'left',
+                  width: `${width * 100}%`,
+                }}
+              />
+            )
+          })}
+        </div>
+        <div
+          style={{
+            background: '#ff3000',
+            bottom: 0,
+            height: Math.max(14, layout.monoSize * 0.82),
+            left: 0,
+            position: 'absolute',
+            transform: `scaleX(${send})`,
+            transformOrigin: 'left',
+            width: '100%',
+          }}
+        />
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+function RunMemoryUpdate({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: AutonomousRunFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 374, 464, 14)
+  const enter = appear(frame, 388, 24)
+  const link = ease(frame, 410, 446, [0, 1])
+  const isWide = aspect === '16x9'
+  const rows = ['TODAY', 'FOLLOW-UPS', 'CONTEXT'] as const
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#ffffff',
+        opacity: scene,
+      }}
+    >
+      <h2
+        style={{
+          color: '#000000',
+          fontSize: layout.taskSize * (isWide ? 0.9 : 0.72),
+          fontWeight: 950,
+          left: layout.edge,
+          letterSpacing: 0,
+          lineHeight: 0.86,
+          margin: 0,
+          opacity: enter,
+          position: 'absolute',
+          textTransform: 'uppercase',
+          top: layout.edge,
+          transform: `translateY(${(1 - enter) * 30}px)`,
+        }}
+      >
+        MEMORY
+        <br />
+        UPDATES
+      </h2>
+      <div
+        style={{
+          display: 'grid',
+          gap: layout.edge * 0.22,
+          position: 'absolute',
+          right: layout.edge * 0.74,
+          top: isWide ? layout.edge * 1.28 : layout.edge * 3.88,
+          width: isWide ? '55%' : '82%',
+        }}
+      >
+        {rows.map((row, index) => {
+          const rowIn = appear(frame, 398 + index * 10, 14)
+          const active = index === 1
+
+          return (
+            <div
+              key={row}
+              style={{
+                alignItems: 'center',
+                background: active ? '#ff3000' : '#000000',
+                color: active ? '#000000' : '#ffffff',
+                display: 'grid',
+                fontSize: layout.captionSize * 1.42,
+                fontWeight: 950,
+                gridTemplateColumns: 'auto 1fr',
+                opacity: rowIn,
+                padding: `${layout.edge * 0.3}px ${layout.edge * 0.38}px`,
+                textTransform: 'uppercase',
+                transform: `translateX(${(1 - rowIn) * 46}px)`,
+              }}
+            >
+              <span
+                style={{
+                  background: active ? '#000000' : '#ffffff',
+                  display: 'block',
+                  height: Math.max(18, layout.monoSize),
+                  marginRight: 20,
+                  width: Math.max(18, layout.monoSize),
+                }}
+              />
+              <span>{row}</span>
+            </div>
+          )
+        })}
+      </div>
+      <div
+        style={{
+          background: '#ff3000',
+          bottom: layout.edge,
+          height: Math.max(7, layout.monoSize * 0.42),
+          left: layout.edge,
+          position: 'absolute',
+          transform: `scaleX(${link})`,
+          transformOrigin: 'left',
+          width: isWide ? '52%' : '64%',
+        }}
+      />
+    </AbsoluteFill>
+  )
+}
+
+function RunNextRun({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: AutonomousRunFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 448, 506, 10)
+  const enter = appear(frame, 456, 18)
+  const isWide = aspect === '16x9'
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#000000',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          background: '#ffffff',
+          height: 5,
+          left: layout.edge,
+          position: 'absolute',
+          right: layout.edge,
+          top: isWide ? '64%' : '66%',
+          transform: `scaleX(${enter})`,
+          transformOrigin: 'center',
+        }}
+      />
+      {[0.26, 0.42, 0.68].map((left, index) => (
+        <div
+          key={`next-marker-${left}`}
+          style={{
+            background: index === 2 ? '#ff3000' : '#ffffff',
+            height: layout.edge * (index === 2 ? 0.92 : 0.62),
+            left: `${left * 100}%`,
+            opacity: enter,
+            position: 'absolute',
+            top: isWide ? '64%' : '66%',
+            transform: `translate(-50%, -50%) scaleY(${enter})`,
+            width: index === 2 ? Math.max(16, layout.monoSize * 0.86) : 10,
+          }}
+        />
+      ))}
+      <h2
+        style={{
+          color: '#ffffff',
+          fontSize: layout.thesisSize * (isWide ? 0.74 : 0.66),
+          fontWeight: 950,
+          left: '50%',
+          letterSpacing: 0,
+          lineHeight: 0.86,
+          margin: 0,
+          opacity: enter,
+          position: 'absolute',
+          textAlign: 'center',
+          textTransform: 'uppercase',
+          top: isWide ? '35%' : '38%',
+          transform: `translate(-50%, -50%) translateY(${(1 - enter) * 26}px)`,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        NEXT RUN
+        <br />
+        <span style={{ color: '#ff3000' }}>STARTS AHEAD</span>
+      </h2>
     </AbsoluteFill>
   )
 }
@@ -3382,6 +4066,56 @@ function getAgentConfigFilmLayout(
     labelSize: 34,
     monoSize: 17,
     optionSize: 42,
+    thesisSize: 68,
+  }
+}
+
+function getAutonomousRunFilmLayout(
+  aspect: LaunchVideoAspect
+): AutonomousRunFilmLayout {
+  if (aspect === '16x9') {
+    return {
+      captionSize: 22,
+      edge: 70,
+      finalCaptionSize: 20,
+      finalLogoSize: 156,
+      finalWordmarkSize: 112,
+      fragmentSize: 112,
+      giantSize: 116,
+      microSize: 17,
+      monoSize: 21,
+      taskSize: 92,
+      thesisSize: 104,
+    }
+  }
+
+  if (aspect === '4x5') {
+    return {
+      captionSize: 19,
+      edge: 64,
+      finalCaptionSize: 17,
+      finalLogoSize: 180,
+      finalWordmarkSize: 86,
+      fragmentSize: 84,
+      giantSize: 88,
+      microSize: 16,
+      monoSize: 18,
+      taskSize: 82,
+      thesisSize: 78,
+    }
+  }
+
+  return {
+    captionSize: 17,
+    edge: 56,
+    finalCaptionSize: 15,
+    finalLogoSize: 152,
+    finalWordmarkSize: 74,
+    fragmentSize: 72,
+    giantSize: 76,
+    microSize: 14,
+    monoSize: 17,
+    taskSize: 66,
     thesisSize: 68,
   }
 }

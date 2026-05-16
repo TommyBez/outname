@@ -87,7 +87,7 @@ export const launchVideoManifest = [
   },
   {
     description:
-      'Feature video showing an autonomous run that starts from a schedule, uses channels/tools/sub-agents, and updates memory.',
+      'Feature video showing an autonomous run that starts from a schedule, checks the day, finds follow-ups, sends a brief, and updates memory.',
     durationInFrames: FPS_18_SECONDS,
     linkedPosts: [
       'content/outname-launch/LinkedIn/2026-05-22_10-30.md',
