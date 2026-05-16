@@ -2,6 +2,10 @@ import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/auth/server/auth'
+import {
+  getOtpEmailRateLimiter,
+  getOtpIpRateLimiter,
+} from '@/auth/server/request-otp-rate-limit'
 import { db } from '@/shared/db'
 import { user } from '@/shared/db/schema'
 import {
@@ -15,8 +19,39 @@ const requestOtpSchema = z.object({
 
 const REQUEST_SUCCESS_MESSAGE =
   'Check your inbox for a 6-digit sign-in code. It expires after 10 minutes.'
+const REQUEST_OTP_RATE_LIMIT_MESSAGE =
+  'Too many sign-in code requests. Please wait a minute and try again.'
+
+function getRequestIp(request: Request): string {
+  if (request.headers instanceof Headers) {
+    const forwardedFor = request.headers.get('x-forwarded-for')
+    if (forwardedFor) {
+      const [ip] = forwardedFor.split(',')
+      if (ip) {
+        return ip.trim()
+      }
+    }
+
+    const realIp = request.headers.get('x-real-ip')
+    if (realIp) {
+      return realIp
+    }
+  }
+
+  return 'unknown'
+}
 
 export async function POST(request: Request) {
+  const ipLimiter = getOtpIpRateLimiter()
+  const ipRateLimitResult = await ipLimiter.limit(`ip:${getRequestIp(request)}`)
+  await ipRateLimitResult.pending
+  if (!ipRateLimitResult.success) {
+    return NextResponse.json(
+      { error: REQUEST_OTP_RATE_LIMIT_MESSAGE },
+      { status: 429 }
+    )
+  }
+
   let payload: unknown
   try {
     payload = await request.json()
@@ -33,6 +68,16 @@ export async function POST(request: Request) {
   }
 
   const email = parsed.data.email.trim().toLowerCase()
+  const emailLimiter = getOtpEmailRateLimiter()
+  const emailRateLimitResult = await emailLimiter.limit(`email:${email}`)
+  await emailRateLimitResult.pending
+  if (!emailRateLimitResult.success) {
+    return NextResponse.json(
+      { error: REQUEST_OTP_RATE_LIMIT_MESSAGE },
+      { status: 429 }
+    )
+  }
+
   try {
     const [existingUser] = await db
       .select({
