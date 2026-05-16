@@ -21,6 +21,7 @@ export interface LaunchVideoAsset {
 }
 
 const FPS_18_SECONDS = 540
+const FPS_20_SECONDS = 600
 const FPS_26_SECONDS = 780
 
 function buildVariant(
@@ -72,7 +73,7 @@ export const launchVideoManifest = [
   {
     description:
       'Feature video showing agents as configurable units with model, identity, schedule, and memory scope.',
-    durationInFrames: FPS_18_SECONDS,
+    durationInFrames: FPS_20_SECONDS,
     linkedPosts: [
       'content/outname-launch/LinkedIn/2026-05-20_10-30.md',
       'content/outname-launch/X/2026-05-19_15-30.md',

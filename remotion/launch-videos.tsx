@@ -58,10 +58,17 @@ interface WhyFilmLayout {
   thesisSize: number
 }
 
+interface AgentConfigFilmLayout extends WhyFilmLayout {
+  captionSize: number
+  labelSize: number
+  optionSize: number
+}
+
 const CTA_START_FRAME = 420
 const BODY_START_FRAME = 76
 const BRAND_CLOSE_FRAME = 488
 const WHY_OUTNAME_SLUG = '2026-05-18-why-outname-exists'
+const AGENT_CONFIGURATION_SLUG = '2026-05-20-agent-configuration'
 
 const videoMeta: Record<LaunchVideoSlug, VideoMeta> = {
   '2026-05-18-why-outname-exists': {
@@ -113,6 +120,10 @@ export function LaunchVideo(props: LaunchVideoProps) {
     return <WhyOutnameFilm aspect={aspect} frame={frame} />
   }
 
+  if (slug === AGENT_CONFIGURATION_SLUG) {
+    return <AgentConfigurationFilm aspect={aspect} frame={frame} />
+  }
+
   return (
     <AbsoluteFill
       className="outname-video-root"
@@ -154,6 +165,709 @@ function WhyOutnameFilm({
       <ThesisBeat frame={frame} layout={layout} />
       <SystemShape aspect={aspect} frame={frame} layout={layout} />
       <WhyEndCard aspect={aspect} frame={frame} layout={layout} />
+    </AbsoluteFill>
+  )
+}
+
+function AgentConfigurationFilm({
+  aspect,
+  frame,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+}) {
+  const layout = getAgentConfigFilmLayout(aspect)
+
+  return (
+    <AbsoluteFill
+      className="outname-video-root"
+      style={{
+        background: '#ffffff',
+        overflow: 'hidden',
+      }}
+    >
+      <AgentConfigColdOpen aspect={aspect} frame={frame} layout={layout} />
+      <AgentConfigSplit aspect={aspect} frame={frame} layout={layout} />
+      <AgentModelZoom aspect={aspect} frame={frame} layout={layout} />
+      <AgentIdentityCut aspect={aspect} frame={frame} layout={layout} />
+      <AgentScheduleCut aspect={aspect} frame={frame} layout={layout} />
+      <AgentAssembly aspect={aspect} frame={frame} layout={layout} />
+      <FilmEndCard
+        aspect={aspect}
+        endFrame={600}
+        enterFrame={550}
+        frame={frame}
+        layout={layout}
+        startFrame={536}
+      />
+    </AbsoluteFill>
+  )
+}
+
+function AgentConfigColdOpen({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: AgentConfigFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 0, 86, 12)
+  const drift = ease(frame, 0, 76, [0, 1])
+  const isWide = aspect === '16x9'
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#ffffff',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          background: '#ff3000',
+          height: isWide ? '60%' : '54%',
+          left: layout.edge,
+          position: 'absolute',
+          top: layout.edge,
+          transform: `scaleY(${ease(frame, 8, 34, [0, 1])})`,
+          transformOrigin: 'top',
+          width: Math.max(8, layout.monoSize * 0.55),
+        }}
+      />
+      <div
+        style={{
+          background: '#000000',
+          height: isWide ? '52%' : '44%',
+          left: '50%',
+          position: 'absolute',
+          top: '50%',
+          transform: `translate(-50%, -50%) rotate(${-4 + drift * 2}deg) scale(${0.92 + drift * 0.18})`,
+          width: isWide ? '58%' : '68%',
+        }}
+      />
+      <h2
+        style={{
+          color: '#ffffff',
+          fontSize: layout.giantSize,
+          fontWeight: 950,
+          left: '50%',
+          letterSpacing: 0,
+          lineHeight: 0.82,
+          margin: 0,
+          opacity: appear(frame, 14, 24),
+          position: 'absolute',
+          textAlign: 'center',
+          textTransform: 'uppercase',
+          top: '50%',
+          transform: `translate(-50%, -50%) scale(${0.94 + drift * 0.08})`,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        TOO GENERIC
+      </h2>
+      <div
+        style={{
+          background: '#ff3000',
+          bottom: layout.edge,
+          height: Math.max(6, layout.monoSize * 0.42),
+          left: layout.edge,
+          opacity: ease(frame, 40, 72, [0, 1]),
+          position: 'absolute',
+          transform: `scaleX(${ease(frame, 40, 72, [0, 1])})`,
+          transformOrigin: 'left',
+          width: aspectLineWidth(layout),
+        }}
+      />
+    </AbsoluteFill>
+  )
+}
+
+function AgentConfigSplit({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: AgentConfigFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 66, 190, 14)
+  const isWide = aspect === '16x9'
+  const pieces = [
+    {
+      color: '#000000',
+      delay: 78,
+      text: 'MODEL',
+      x: isWide ? -260 : -92,
+      y: isWide ? -116 : -212,
+    },
+    {
+      color: '#ff3000',
+      delay: 96,
+      text: 'IDENTITY',
+      x: isWide ? 188 : 82,
+      y: isWide ? 18 : 0,
+    },
+    {
+      color: '#000000',
+      delay: 130,
+      text: 'SCHEDULE',
+      x: isWide ? -112 : -44,
+      y: isWide ? 152 : 212,
+    },
+  ] as const
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#ffffff',
+        opacity: scene,
+      }}
+    >
+      {pieces.map((piece, index) => {
+        const enter = appear(frame, piece.delay, 24)
+        const settle = ease(frame, piece.delay + 12, piece.delay + 40, [0, 1])
+        const width = piece.text === 'IDENTITY' ? 390 : 330
+        const height = piece.text === 'SCHEDULE' ? 128 : 118
+
+        return (
+          <div
+            key={piece.text}
+            style={{
+              alignItems: 'center',
+              background: piece.color,
+              border: `4px solid ${piece.color === '#ff3000' ? '#000000' : '#ffffff'}`,
+              color: piece.color === '#ff3000' ? '#000000' : '#ffffff',
+              display: 'flex',
+              height,
+              justifyContent: 'center',
+              left: '50%',
+              opacity: enter,
+              position: 'absolute',
+              top: '50%',
+              transform: `translate(calc(-50% + ${piece.x * settle}px), calc(-50% + ${piece.y * settle}px)) rotate(${(1 - enter) * (index === 1 ? 5 : -5)}deg) scale(${0.82 + enter * 0.18})`,
+              transformOrigin: 'center',
+              width: isWide ? width * 1.12 : width,
+            }}
+          >
+            <strong
+              style={{
+                fontSize: layout.labelSize,
+                fontWeight: 950,
+                letterSpacing: 0,
+                lineHeight: 1,
+                textTransform: 'uppercase',
+              }}
+            >
+              {piece.text}
+            </strong>
+          </div>
+        )
+      })}
+      <div
+        style={{
+          background: '#ff3000',
+          height: Math.max(8, layout.monoSize * 0.48),
+          left: layout.edge,
+          opacity: ease(frame, 142, 178, [0, 1]),
+          position: 'absolute',
+          top: layout.edge,
+          transform: `scaleX(${ease(frame, 142, 178, [0, 1])})`,
+          transformOrigin: 'left',
+          width: isWide ? '30%' : '42%',
+        }}
+      />
+    </AbsoluteFill>
+  )
+}
+
+function AgentModelZoom({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: AgentConfigFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 168, 304, 16)
+  const zoom = ease(frame, 178, 286, [0, 1])
+  const options = [
+    { delay: 206, text: 'FAST' },
+    { delay: 226, text: 'DEEP' },
+    { delay: 246, text: 'CHEAP' },
+  ] as const
+  const isWide = aspect === '16x9'
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#000000',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          color: '#ffffff',
+          left: layout.edge,
+          position: 'absolute',
+          top: layout.edge,
+          transform: `translate3d(${zoom * (isWide ? 78 : 24)}px, ${zoom * 22}px, 0) scale(${1 + zoom * 0.12})`,
+          transformOrigin: 'left top',
+        }}
+      >
+        <span
+          style={{
+            color: '#ff3000',
+            fontFamily: 'var(--font-mono)',
+            fontSize: layout.captionSize,
+            fontWeight: 900,
+            letterSpacing: '0.16em',
+            textTransform: 'uppercase',
+          }}
+        >
+          model
+        </span>
+        <h2
+          style={{
+            fontSize: layout.giantSize * (isWide ? 1 : 0.74),
+            fontWeight: 950,
+            letterSpacing: 0,
+            lineHeight: 0.82,
+            margin: `${layout.edge * 0.22}px 0 0`,
+            textTransform: 'uppercase',
+          }}
+        >
+          PICK THE
+          <br />
+          ENGINE
+        </h2>
+      </div>
+      <div
+        style={{
+          display: 'grid',
+          gap: layout.edge * 0.22,
+          position: 'absolute',
+          right: layout.edge,
+          top: isWide ? layout.edge * 1.05 : layout.edge * 6.25,
+          width: isWide ? '38%' : '72%',
+        }}
+      >
+        {options.map((option) => {
+          const enter = appear(frame, option.delay, 18)
+          const selected = option.text === 'DEEP'
+          const sweep = selected ? ease(frame, 250, 286, [0, 1]) : 0
+
+          return (
+            <div
+              key={option.text}
+              style={{
+                background: selected ? '#ff3000' : '#ffffff',
+                border: '4px solid #ffffff',
+                color: '#000000',
+                opacity: enter,
+                overflow: 'hidden',
+                padding: `${layout.edge * 0.22}px ${layout.edge * 0.3}px`,
+                position: 'relative',
+                transform: `translateX(${(1 - enter) * 66 - sweep * 18}px) scale(${1 + sweep * 0.05})`,
+                transformOrigin: 'right center',
+              }}
+            >
+              <strong
+                style={{
+                  fontSize: layout.optionSize,
+                  fontWeight: 950,
+                  lineHeight: 1,
+                  textTransform: 'uppercase',
+                }}
+              >
+                {option.text}
+              </strong>
+              {selected ? (
+                <div
+                  style={{
+                    background: '#ffffff',
+                    bottom: 0,
+                    height: Math.max(5, layout.monoSize * 0.32),
+                    left: 0,
+                    position: 'absolute',
+                    transform: `scaleX(${sweep})`,
+                    transformOrigin: 'left',
+                    width: '100%',
+                  }}
+                />
+              ) : null}
+            </div>
+          )
+        })}
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+function AgentIdentityCut({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: AgentConfigFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 282, 420, 16)
+  const enter = appear(frame, 298, 28)
+  const cut = ease(frame, 318, 398, [0, 1])
+  const isWide = aspect === '16x9'
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#ffffff',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          background: '#ff3000',
+          bottom: layout.edge,
+          position: 'absolute',
+          right: layout.edge,
+          top: layout.edge,
+          transform: `scaleY(${enter})`,
+          transformOrigin: 'bottom',
+          width: Math.max(10, layout.monoSize * 0.64),
+        }}
+      />
+      <div
+        style={{
+          background: '#000000',
+          color: '#ffffff',
+          left: '50%',
+          minHeight: isWide ? 420 : 520,
+          padding: layout.edge * 0.62,
+          position: 'absolute',
+          top: '50%',
+          transform: `translate(-50%, -50%) translateX(${(1 - enter) * -96}px) scale(${0.96 + enter * 0.04 + cut * 0.03})`,
+          transformOrigin: 'center',
+          width: isWide ? '62%' : '76%',
+        }}
+      >
+        <span
+          style={{
+            color: '#ff3000',
+            fontFamily: 'var(--font-mono)',
+            fontSize: layout.captionSize,
+            fontWeight: 900,
+            letterSpacing: '0.16em',
+            textTransform: 'uppercase',
+          }}
+        >
+          identity
+        </span>
+        <div
+          style={{
+            display: 'grid',
+            gap: layout.edge * 0.34,
+            marginTop: layout.edge * 0.55,
+          }}
+        >
+          <IdentityLine
+            delay={324}
+            frame={frame}
+            label="role"
+            size={layout.labelSize}
+            value="RESEARCH OPERATOR"
+          />
+          <IdentityLine
+            delay={356}
+            frame={frame}
+            label="tone"
+            size={layout.labelSize}
+            value="DIRECT"
+          />
+        </div>
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+function IdentityLine({
+  delay,
+  frame,
+  label,
+  size,
+  value,
+}: {
+  delay: number
+  frame: number
+  label: string
+  size: number
+  value: string
+}) {
+  const enter = appear(frame, delay, 18)
+
+  return (
+    <div
+      style={{
+        borderTop: '4px solid #ffffff',
+        opacity: enter,
+        paddingTop: 16,
+        transform: `translateY(${(1 - enter) * 28}px)`,
+      }}
+    >
+      <span
+        style={{
+          color: '#ff3000',
+          fontFamily: 'var(--font-mono)',
+          fontSize: size * 0.34,
+          fontWeight: 900,
+          letterSpacing: '0.16em',
+          textTransform: 'uppercase',
+        }}
+      >
+        {label}
+      </span>
+      <strong
+        style={{
+          display: 'block',
+          fontSize: size,
+          fontWeight: 950,
+          lineHeight: 0.92,
+          marginTop: 10,
+          textTransform: 'uppercase',
+        }}
+      >
+        {value}
+      </strong>
+    </div>
+  )
+}
+
+function AgentScheduleCut({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: AgentConfigFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 400, 494, 14)
+  const enter = appear(frame, 410, 22)
+  const tick = ease(frame, 436, 470, [0, 1])
+  const isWide = aspect === '16x9'
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#000000',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          color: '#ffffff',
+          left: layout.edge,
+          position: 'absolute',
+          top: layout.edge,
+          transform: `translateY(${(1 - enter) * 38}px)`,
+        }}
+      >
+        <span
+          style={{
+            color: '#ff3000',
+            fontFamily: 'var(--font-mono)',
+            fontSize: layout.captionSize,
+            fontWeight: 900,
+            letterSpacing: '0.16em',
+            textTransform: 'uppercase',
+          }}
+        >
+          schedule
+        </span>
+        <h2
+          style={{
+            fontSize: layout.giantSize * (isWide ? 0.96 : 0.82),
+            fontWeight: 950,
+            letterSpacing: 0,
+            lineHeight: 0.84,
+            margin: `${layout.edge * 0.24}px 0 0`,
+            textTransform: 'uppercase',
+          }}
+        >
+          08:30
+        </h2>
+      </div>
+      <div
+        style={{
+          bottom: layout.edge * 2.2,
+          left: layout.edge,
+          position: 'absolute',
+          right: layout.edge,
+        }}
+      >
+        <div
+          style={{
+            background: '#ffffff',
+            height: 5,
+            transform: `scaleX(${enter})`,
+            transformOrigin: 'left',
+            width: '100%',
+          }}
+        />
+        {[0.18, 0.5, 0.82].map((position, index) => {
+          const isActive = index === 1
+
+          return (
+            <div
+              key={position}
+              style={{
+                background: isActive ? '#ff3000' : '#ffffff',
+                height: isActive ? 76 : 52,
+                left: `${position * 100}%`,
+                position: 'absolute',
+                top: isActive ? -35 : -24,
+                transform: `translateX(-50%) scaleY(${isActive ? tick : enter})`,
+                transformOrigin: 'center',
+                width: isActive ? 18 : 10,
+              }}
+            />
+          )
+        })}
+        <strong
+          style={{
+            color: '#ff3000',
+            fontFamily: 'var(--font-mono)',
+            fontSize: layout.captionSize * 1.35,
+            fontWeight: 950,
+            left: '50%',
+            letterSpacing: '0.12em',
+            opacity: tick,
+            position: 'absolute',
+            textTransform: 'uppercase',
+            top: 74,
+            transform: 'translateX(-50%)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          MON / WED / FRI
+        </strong>
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+function AgentAssembly({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: AgentConfigFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 476, 552, 14)
+  const assemble = ease(frame, 486, 526, [0, 1])
+  const textIn = appear(frame, 512, 22)
+  const clearBlocks = ease(frame, 512, 532, [0, 1])
+  const isWide = aspect === '16x9'
+  const blocks = [
+    { color: '#ffffff', text: 'MODEL', x: -1, y: -1 },
+    { color: '#ff3000', text: 'IDENTITY', x: 1, y: -0.2 },
+    { color: '#ffffff', text: 'SCHEDULE', x: -0.2, y: 1 },
+  ] as const
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#ffffff',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          background: '#000000',
+          bottom: layout.edge,
+          left: layout.edge,
+          overflow: 'hidden',
+          position: 'absolute',
+          right: layout.edge,
+          top: layout.edge,
+          transform: `scale(${0.96 + assemble * 0.04})`,
+          transformOrigin: 'center',
+        }}
+      >
+        {blocks.map((block) => (
+          <div
+            key={block.text}
+            style={{
+              background: block.color,
+              border: '4px solid #ffffff',
+              color: '#000000',
+              left: '50%',
+              opacity: 1 - clearBlocks,
+              padding: `${layout.edge * 0.18}px ${layout.edge * 0.28}px`,
+              position: 'absolute',
+              top: '50%',
+              transform: `translate(calc(-50% + ${block.x * (1 - assemble) * (isWide ? 420 : 260)}px), calc(-50% + ${block.y * (1 - assemble) * (isWide ? 250 : 290)}px)) scale(${0.82 + assemble * 0.12})`,
+              transformOrigin: 'center',
+            }}
+          >
+            <strong
+              style={{
+                fontSize: layout.captionSize * 1.3,
+                fontWeight: 950,
+                lineHeight: 1,
+                textTransform: 'uppercase',
+              }}
+            >
+              {block.text}
+            </strong>
+          </div>
+        ))}
+        <div
+          style={{
+            color: '#ffffff',
+            left: '50%',
+            opacity: textIn,
+            position: 'absolute',
+            textAlign: 'center',
+            top: '50%',
+            transform: `translate(-50%, -50%) translateY(${(1 - textIn) * 34}px)`,
+            width: isWide ? '62%' : '76%',
+          }}
+        >
+          <h2
+            style={{
+              fontSize: layout.thesisSize * (isWide ? 0.82 : 0.72),
+              fontWeight: 950,
+              letterSpacing: 0,
+              lineHeight: 0.86,
+              margin: 0,
+              textTransform: 'uppercase',
+            }}
+          >
+            AGENT
+            <br />
+            CONFIGURED
+          </h2>
+          <p
+            style={{
+              color: '#ff3000',
+              fontFamily: 'var(--font-mono)',
+              fontSize: layout.captionSize * 1.08,
+              fontWeight: 900,
+              letterSpacing: '0.12em',
+              margin: `${layout.edge * 0.34}px 0 0`,
+              textTransform: 'uppercase',
+            }}
+          >
+            built for one job
+          </p>
+        </div>
+      </div>
     </AbsoluteFill>
   )
 }
@@ -642,8 +1356,35 @@ function WhyEndCard({
   frame: number
   layout: WhyFilmLayout
 }) {
-  const scene = sceneOpacity(frame, 696, 780, 18)
-  const enter = appear(frame, 714, 26)
+  return (
+    <FilmEndCard
+      aspect={aspect}
+      endFrame={780}
+      enterFrame={714}
+      frame={frame}
+      layout={layout}
+      startFrame={696}
+    />
+  )
+}
+
+function FilmEndCard({
+  aspect,
+  endFrame,
+  enterFrame,
+  frame,
+  layout,
+  startFrame,
+}: {
+  aspect: LaunchVideoAspect
+  endFrame: number
+  enterFrame: number
+  frame: number
+  layout: WhyFilmLayout
+  startFrame: number
+}) {
+  const scene = sceneOpacity(frame, startFrame, endFrame, 18)
+  const enter = appear(frame, enterFrame, 26)
   const isWide = aspect === '16x9'
 
   return (
@@ -2591,6 +3332,56 @@ function getWhyFilmLayout(aspect: LaunchVideoAspect): WhyFilmLayout {
     fragmentSize: 72,
     giantSize: 78,
     monoSize: 17,
+    thesisSize: 68,
+  }
+}
+
+function getAgentConfigFilmLayout(
+  aspect: LaunchVideoAspect
+): AgentConfigFilmLayout {
+  if (aspect === '16x9') {
+    return {
+      captionSize: 22,
+      edge: 70,
+      finalCaptionSize: 20,
+      finalLogoSize: 156,
+      finalWordmarkSize: 112,
+      fragmentSize: 116,
+      giantSize: 118,
+      labelSize: 44,
+      monoSize: 21,
+      optionSize: 54,
+      thesisSize: 108,
+    }
+  }
+
+  if (aspect === '4x5') {
+    return {
+      captionSize: 19,
+      edge: 64,
+      finalCaptionSize: 17,
+      finalLogoSize: 180,
+      finalWordmarkSize: 86,
+      fragmentSize: 84,
+      giantSize: 86,
+      labelSize: 40,
+      monoSize: 18,
+      optionSize: 48,
+      thesisSize: 78,
+    }
+  }
+
+  return {
+    captionSize: 17,
+    edge: 56,
+    finalCaptionSize: 15,
+    finalLogoSize: 152,
+    finalWordmarkSize: 74,
+    fragmentSize: 72,
+    giantSize: 76,
+    labelSize: 34,
+    monoSize: 17,
+    optionSize: 42,
     thesisSize: 68,
   }
 }
