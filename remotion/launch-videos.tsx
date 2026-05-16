@@ -83,6 +83,13 @@ interface ComposableFilmLayout extends WhyFilmLayout {
   smallSize: number
 }
 
+interface VercelStackFilmLayout extends WhyFilmLayout {
+  layerSize: number
+  moduleSize: number
+  smallSize: number
+  tickSize: number
+}
+
 const CTA_START_FRAME = 420
 const BODY_START_FRAME = 76
 const BRAND_CLOSE_FRAME = 488
@@ -91,6 +98,7 @@ const AGENT_CONFIGURATION_SLUG = '2026-05-20-agent-configuration'
 const AUTONOMOUS_RUN_SLUG = '2026-05-22-autonomous-run'
 const MEMORY_OVER_TIME_SLUG = '2026-05-26-memory-over-time'
 const COMPOSABLE_CHANNELS_SLUG = '2026-05-28-composable-channels'
+const VERCEL_STACK_SLUG = '2026-05-20-vercel-stack'
 
 const videoMeta: Record<LaunchVideoSlug, VideoMeta> = {
   '2026-05-18-why-outname-exists': {
@@ -156,6 +164,10 @@ export function LaunchVideo(props: LaunchVideoProps) {
 
   if (slug === COMPOSABLE_CHANNELS_SLUG) {
     return <ComposableChannelsFilm aspect={aspect} frame={frame} />
+  }
+
+  if (slug === VERCEL_STACK_SLUG) {
+    return <VercelStackFilm aspect={aspect} frame={frame} />
   }
 
   return (
@@ -2994,6 +3006,758 @@ function getComposableSubagentPanelWidth(isParent: boolean, isWide: boolean) {
   return isWide ? '28%' : '48%'
 }
 
+function VercelStackFilm({
+  aspect,
+  frame,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+}) {
+  const layout = getVercelStackFilmLayout(aspect)
+
+  return (
+    <AbsoluteFill
+      className="outname-video-root"
+      style={{
+        background: '#ffffff',
+        overflow: 'hidden',
+      }}
+    >
+      <VercelPlatformOpen aspect={aspect} frame={frame} layout={layout} />
+      <VercelAiSdkLayer aspect={aspect} frame={frame} layout={layout} />
+      <VercelWorkflowLayer aspect={aspect} frame={frame} layout={layout} />
+      <VercelCronsLayer aspect={aspect} frame={frame} layout={layout} />
+      <VercelSandboxLayer aspect={aspect} frame={frame} layout={layout} />
+      <VercelChatLayer aspect={aspect} frame={frame} layout={layout} />
+      <VercelStackPayoff aspect={aspect} frame={frame} layout={layout} />
+      <FilmEndCard
+        aspect={aspect}
+        endFrame={540}
+        enterFrame={516}
+        frame={frame}
+        layout={layout}
+        startFrame={500}
+      />
+    </AbsoluteFill>
+  )
+}
+
+function VercelPlatformOpen({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: VercelStackFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 0, 94, 12)
+  const signal = ease(frame, 4, 34, [0, 1])
+  const expand = ease(frame, 20, 82, [0, 1])
+  const titleIn = appear(frame, 16, 22)
+  const isWide = aspect === '16x9'
+  const layers = [
+    { color: '#000000', delay: 26, y: isWide ? 56 : 60 },
+    { color: '#ff3000', delay: 34, y: isWide ? 46 : 49 },
+    { color: '#000000', delay: 42, y: isWide ? 66 : 70 },
+  ] as const
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#ffffff',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          background: '#ff3000',
+          bottom: layout.edge,
+          left: layout.edge,
+          position: 'absolute',
+          top: layout.edge,
+          transform: `scaleY(${signal})`,
+          transformOrigin: 'top',
+          width: Math.max(10, layout.monoSize * 0.58),
+        }}
+      />
+      <div
+        style={{
+          left: layout.edge + layout.monoSize * 1.5,
+          position: 'absolute',
+          top: layout.edge,
+          transform: `translateY(${(1 - titleIn) * 42}px) scale(${0.96 + expand * 0.05})`,
+          transformOrigin: 'left top',
+        }}
+      >
+        <h2
+          style={{
+            color: '#000000',
+            fontSize: layout.giantSize,
+            fontWeight: 950,
+            letterSpacing: 0,
+            lineHeight: 0.82,
+            margin: 0,
+            opacity: titleIn,
+            textTransform: 'uppercase',
+          }}
+        >
+          ONE PLATFORM
+          <br />
+          <span style={{ color: '#ff3000' }}>MANY</span> LAYERS
+        </h2>
+      </div>
+      {layers.map((layer, index) => {
+        const layerIn = appear(frame, layer.delay, 20)
+        const width = isWide ? 50 - index * 4 : 70 - index * 5
+        const left = isWide ? 48 + index * 7 : 18 + index * 5
+
+        return (
+          <div
+            key={`${layer.color}-${layer.y}`}
+            style={{
+              background: layer.color,
+              height: layout.edge * (isWide ? 0.48 : 0.38),
+              left: `${left}%`,
+              opacity: layerIn,
+              position: 'absolute',
+              top: `${layer.y}%`,
+              transform: `translateY(-50%) translateX(${(1 - layerIn) * 260}px) scaleX(${0.74 + expand * 0.26})`,
+              transformOrigin: 'right center',
+              width: `${width}%`,
+            }}
+          />
+        )
+      })}
+      <div
+        style={{
+          background: '#ff3000',
+          bottom: layout.edge,
+          height: Math.max(6, layout.monoSize * 0.44),
+          left: layout.edge,
+          opacity: ease(frame, 52, 86, [0, 1]),
+          position: 'absolute',
+          transform: `scaleX(${ease(frame, 52, 86, [0, 1])})`,
+          transformOrigin: 'left',
+          width: aspectLineWidth(layout),
+        }}
+      />
+    </AbsoluteFill>
+  )
+}
+
+function VercelAiSdkLayer({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: VercelStackFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 66, 178, 14)
+  const enter = appear(frame, 74, 22)
+  const zoom = ease(frame, 76, 166, [0, 1])
+  const isWide = aspect === '16x9'
+  const modules = [
+    { accent: false, delay: 98, label: 'REASONING', x: -22, y: -18 },
+    { accent: true, delay: 116, label: 'TOOLS', x: 24, y: 0 },
+    { accent: false, delay: 134, label: 'STREAMING', x: -14, y: 22 },
+  ] as const
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#000000',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          background: '#ff3000',
+          height: Math.max(8, layout.monoSize * 0.48),
+          left: layout.edge,
+          opacity: enter,
+          position: 'absolute',
+          top: layout.edge,
+          transform: `scaleX(${ease(frame, 82, 154, [0.16, 1])})`,
+          transformOrigin: 'left',
+          width: aspectLineWidth(layout),
+        }}
+      />
+      <h2
+        style={{
+          color: '#ffffff',
+          fontSize: layout.thesisSize * (isWide ? 0.86 : 0.92),
+          fontWeight: 950,
+          left: layout.edge,
+          letterSpacing: 0,
+          lineHeight: 0.84,
+          margin: 0,
+          opacity: enter,
+          position: 'absolute',
+          textTransform: 'uppercase',
+          top: isWide ? layout.edge * 1.38 : layout.edge * 1.55,
+          transform: `translateY(${(1 - enter) * 38}px) scale(${0.98 + zoom * 0.04})`,
+        }}
+      >
+        AI SDK
+      </h2>
+      <div
+        style={{
+          background: '#ffffff',
+          height: isWide ? layout.edge * 2.8 : layout.edge * 2.55,
+          left: isWide ? '66%' : '50%',
+          overflow: 'hidden',
+          position: 'absolute',
+          top: isWide ? '56%' : '58%',
+          transform: `translate(-50%, -50%) rotate(${(1 - enter) * -5 + zoom * 2}deg) scale(${0.8 + enter * 0.2 + zoom * 0.08})`,
+          transformOrigin: 'center',
+          width: isWide ? '38%' : '66%',
+        }}
+      >
+        <div
+          style={{
+            background: '#ff3000',
+            bottom: 0,
+            left: 0,
+            position: 'absolute',
+            top: 0,
+            width: Math.max(10, layout.monoSize * 0.58),
+          }}
+        />
+      </div>
+      {modules.map((module, index) => {
+        const moduleIn = appear(frame, module.delay, 16)
+        const drift = ease(frame, module.delay, 170, [0, 1])
+        const left = isWide ? 62 + module.x * 0.9 : 50 + module.x * 0.8
+        const top = isWide ? 56 + module.y * 1.04 : 58 + module.y * 0.96
+
+        return (
+          <VercelLayerPill
+            accent={module.accent}
+            key={module.label}
+            label={module.label}
+            layout={layout}
+            style={{
+              left: `${left}%`,
+              opacity: moduleIn,
+              top: `${top}%`,
+              transform: `translate(-50%, -50%) translateX(${(1 - moduleIn) * (index === 1 ? 220 : -220)}px) scale(${0.92 + drift * 0.1})`,
+            }}
+          />
+        )
+      })}
+    </AbsoluteFill>
+  )
+}
+
+function VercelWorkflowLayer({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: VercelStackFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 150, 274, 16)
+  const enter = appear(frame, 158, 22)
+  const rail = ease(frame, 168, 250, [0, 1])
+  const isWide = aspect === '16x9'
+  const blocks = ['RUN 01', 'WAIT', 'RESUME', 'RETURN'] as const
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#ffffff',
+        opacity: scene,
+      }}
+    >
+      <h2
+        style={{
+          color: '#000000',
+          fontSize: layout.thesisSize * (isWide ? 0.74 : 0.78),
+          fontWeight: 950,
+          left: layout.edge,
+          letterSpacing: 0,
+          lineHeight: 0.84,
+          margin: 0,
+          opacity: enter,
+          position: 'absolute',
+          textTransform: 'uppercase',
+          top: layout.edge,
+          transform: `translateY(${(1 - enter) * 34}px)`,
+          width: isWide ? '48%' : '82%',
+        }}
+      >
+        WORKFLOW
+        <br />
+        <span style={{ color: '#ff3000' }}>KEEPS RUNS</span>
+        <br />
+        ALIVE
+      </h2>
+      <div
+        style={{
+          background: '#000000',
+          height: isWide ? layout.edge * 2.2 : layout.edge * 2.35,
+          left: isWide ? '42%' : layout.edge,
+          overflow: 'hidden',
+          position: 'absolute',
+          right: layout.edge,
+          top: isWide ? '52%' : '58%',
+          transform: `translateY(${(1 - enter) * 44}px) scale(${0.96 + rail * 0.04})`,
+          transformOrigin: 'center',
+        }}
+      >
+        <div
+          style={{
+            background: '#ff3000',
+            height: Math.max(10, layout.monoSize * 0.66),
+            left: 0,
+            position: 'absolute',
+            top: '50%',
+            transform: `translateY(-50%) scaleX(${rail})`,
+            transformOrigin: 'left',
+            width: '100%',
+          }}
+        />
+        {blocks.map((block, index) => {
+          const blockIn = appear(frame, 176 + index * 14, 16)
+          const travel = ease(frame, 180 + index * 8, 258, [0, 1])
+
+          return (
+            <div
+              key={block}
+              style={{
+                alignItems: 'center',
+                background: index === 2 ? '#ff3000' : '#ffffff',
+                color: '#000000',
+                display: 'flex',
+                fontFamily: 'var(--font-mono)',
+                fontSize: layout.tickSize,
+                fontWeight: 950,
+                height: layout.edge * (isWide ? 0.96 : 0.88),
+                justifyContent: 'center',
+                left: `${12 + index * (isWide ? 18 : 20) + travel * 8}%`,
+                letterSpacing: '0.06em',
+                opacity: blockIn,
+                position: 'absolute',
+                textTransform: 'uppercase',
+                top: `${32 + (index % 2) * 36}%`,
+                transform: `translate(-50%, -50%) scale(${0.9 + travel * 0.1})`,
+                width: isWide ? '19%' : '31%',
+              }}
+            >
+              {block}
+            </div>
+          )
+        })}
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+function VercelCronsLayer({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: VercelStackFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 246, 354, 16)
+  const enter = appear(frame, 256, 22)
+  const sweep = ease(frame, 270, 338, [0, 1])
+  const isWide = aspect === '16x9'
+  const ticks = ['00', '15', '30', '45'] as const
+  const dialSize = isWide ? layout.edge * 5.1 : layout.edge * 5.4
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#000000',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          border: `${Math.max(5, layout.monoSize * 0.3)}px solid #ffffff`,
+          height: dialSize,
+          left: isWide ? '32%' : '50%',
+          position: 'absolute',
+          top: isWide ? '54%' : '59%',
+          transform: `translate(-50%, -50%) rotate(${sweep * 18}deg) scale(${0.86 + enter * 0.14})`,
+          transformOrigin: 'center',
+          width: dialSize,
+        }}
+      >
+        <div
+          style={{
+            background: '#ff3000',
+            height: Math.max(8, layout.monoSize * 0.52),
+            left: '50%',
+            position: 'absolute',
+            top: '50%',
+            transform: `translate(-2%, -50%) rotate(${sweep * 300}deg)`,
+            transformOrigin: 'left center',
+            width: '43%',
+          }}
+        />
+        {ticks.map((tick, index) => {
+          const tickIn = appear(frame, 268 + index * 10, 14)
+          const angle = index * 90
+
+          return (
+            <div
+              key={tick}
+              style={{
+                color: index === 1 ? '#ff3000' : '#ffffff',
+                fontFamily: 'var(--font-mono)',
+                fontSize: layout.tickSize,
+                fontWeight: 950,
+                left: '50%',
+                letterSpacing: '0.08em',
+                opacity: tickIn,
+                position: 'absolute',
+                textTransform: 'uppercase',
+                top: '50%',
+                transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(${-dialSize * 0.43}px) rotate(${-angle}deg)`,
+              }}
+            >
+              {tick}
+            </div>
+          )
+        })}
+      </div>
+      <h2
+        style={{
+          color: '#ffffff',
+          fontSize: layout.thesisSize * (isWide ? 0.72 : 0.74),
+          fontWeight: 950,
+          left: isWide ? '55%' : layout.edge,
+          letterSpacing: 0,
+          lineHeight: 0.84,
+          margin: 0,
+          opacity: enter,
+          position: 'absolute',
+          textTransform: 'uppercase',
+          top: isWide ? '31%' : layout.edge,
+          transform: `translateY(${(1 - enter) * 34}px)`,
+          width: isWide ? '38%' : '82%',
+        }}
+      >
+        CRONS
+        <br />
+        BRING IT
+        <br />
+        <span style={{ color: '#ff3000' }}>BACK</span>
+      </h2>
+    </AbsoluteFill>
+  )
+}
+
+function VercelSandboxLayer({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: VercelStackFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 326, 442, 16)
+  const enter = appear(frame, 336, 22)
+  const chamber = ease(frame, 348, 426, [0, 1])
+  const isWide = aspect === '16x9'
+  const jobs = ['PLAN', 'RUN TOOL', 'WRITE FILE'] as const
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#ffffff',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          background: '#000000',
+          bottom: isWide ? layout.edge * 0.78 : layout.edge,
+          left: isWide ? '42%' : layout.edge,
+          overflow: 'hidden',
+          position: 'absolute',
+          right: layout.edge,
+          top: isWide ? layout.edge * 0.82 : '38%',
+          transform: `perspective(900px) rotateX(${10 - chamber * 10}deg) rotateY(${-8 + chamber * 8}deg) scale(${0.88 + chamber * 0.12})`,
+          transformOrigin: 'center',
+        }}
+      >
+        <div
+          style={{
+            background: '#ff3000',
+            bottom: 0,
+            height: Math.max(12, layout.monoSize * 0.74),
+            left: 0,
+            position: 'absolute',
+            transform: `scaleX(${chamber})`,
+            transformOrigin: 'left',
+            width: '100%',
+          }}
+        />
+        {jobs.map((job, index) => {
+          const jobIn = appear(frame, 354 + index * 14, 16)
+          const settle = ease(frame, 364 + index * 10, 432, [0, 1])
+
+          return (
+            <div
+              key={job}
+              style={{
+                background: index === 1 ? '#ff3000' : '#ffffff',
+                color: '#000000',
+                fontFamily: 'var(--font-mono)',
+                fontSize: layout.tickSize * (isWide ? 1.28 : 1.18),
+                fontWeight: 950,
+                left: `${17 + index * 25}%`,
+                letterSpacing: '0.06em',
+                lineHeight: 1,
+                minWidth: layout.edge * (isWide ? 2.6 : 2.35),
+                opacity: jobIn,
+                padding: `${layout.edge * 0.34}px ${layout.edge * 0.42}px`,
+                position: 'absolute',
+                textAlign: 'center',
+                textTransform: 'uppercase',
+                top: `${22 + index * 19}%`,
+                transform: `translate(${(1 - jobIn) * 80}px, ${(1 - jobIn) * 42}px) rotate(${(-4 + index * 3) * (1 - settle)}deg) scale(${0.9 + settle * 0.1})`,
+                transformOrigin: 'center',
+              }}
+            >
+              {job}
+            </div>
+          )
+        })}
+      </div>
+      <h2
+        style={{
+          color: '#000000',
+          fontSize: layout.thesisSize * (isWide ? 0.72 : 0.76),
+          fontWeight: 950,
+          left: layout.edge,
+          letterSpacing: 0,
+          lineHeight: 0.84,
+          margin: 0,
+          opacity: enter,
+          position: 'absolute',
+          textTransform: 'uppercase',
+          top: layout.edge,
+          transform: `translateY(${(1 - enter) * 34}px)`,
+          width: isWide ? '38%' : '82%',
+        }}
+      >
+        SANDBOX
+        <br />
+        RUNS THE
+        <br />
+        <span style={{ color: '#ff3000' }}>WORK</span>
+      </h2>
+    </AbsoluteFill>
+  )
+}
+
+function VercelChatLayer({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: VercelStackFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 414, 498, 14)
+  const enter = appear(frame, 420, 20)
+  const stack = ease(frame, 428, 486, [0, 1])
+  const isWide = aspect === '16x9'
+  const channels = [
+    { color: '#ffffff', label: 'SLACK', x: -26, y: 18 },
+    { color: '#ff3000', label: 'DISCORD', x: 22, y: -16 },
+    { color: '#ffffff', label: 'TELEGRAM', x: -12, y: -2 },
+    { color: '#ffffff', label: 'GITHUB', x: 27, y: 18 },
+  ] as const
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#000000',
+        opacity: scene,
+      }}
+    >
+      {channels.map((channel, index) => {
+        const channelIn = appear(frame, 424 + index * 7, 16)
+        const x = channel.x * (1 - stack * 0.22)
+        const y = channel.y * (1 - stack * 0.34)
+
+        return (
+          <div
+            key={channel.label}
+            style={{
+              background: channel.color,
+              color: '#000000',
+              fontFamily: 'var(--font-mono)',
+              fontSize: layout.tickSize * (isWide ? 1.14 : 1.02),
+              fontWeight: 950,
+              height: layout.edge * (isWide ? 1.18 : 0.98),
+              left: `${50 + x}%`,
+              letterSpacing: '0.06em',
+              lineHeight: 1,
+              opacity: channelIn,
+              padding: layout.edge * 0.22,
+              position: 'absolute',
+              textAlign: 'center',
+              textTransform: 'uppercase',
+              top: `${54 + y}%`,
+              transform: `translate(-50%, -50%) rotate(${(index - 1.5) * 4 * (1 - stack)}deg) scale(${0.86 + stack * 0.14})`,
+              transformOrigin: 'center',
+              width: isWide ? '26%' : '36%',
+            }}
+          >
+            {channel.label}
+          </div>
+        )
+      })}
+      <div
+        style={{
+          background: '#ff3000',
+          bottom: layout.edge,
+          height: Math.max(9, layout.monoSize * 0.56),
+          left: layout.edge,
+          opacity: enter,
+          position: 'absolute',
+          transform: `scaleX(${stack})`,
+          transformOrigin: 'left',
+          width: aspectLineWidth(layout),
+        }}
+      />
+      <h2
+        style={{
+          color: '#ffffff',
+          fontSize: layout.thesisSize * (isWide ? 0.68 : 0.72),
+          fontWeight: 950,
+          left: isWide ? layout.edge : '50%',
+          letterSpacing: 0,
+          lineHeight: 0.84,
+          margin: 0,
+          opacity: enter,
+          position: 'absolute',
+          textAlign: isWide ? 'left' : 'center',
+          textTransform: 'uppercase',
+          top: isWide ? layout.edge : layout.edge,
+          transform: isWide
+            ? `translateY(${(1 - enter) * 34}px)`
+            : `translateX(-50%) translateY(${(1 - enter) * 34}px)`,
+          width: isWide ? '42%' : '86%',
+        }}
+      >
+        CHAT SDK
+        <br />
+        MANY
+        <br />
+        <span style={{ color: '#ff3000' }}>SURFACES</span>
+      </h2>
+    </AbsoluteFill>
+  )
+}
+
+function VercelStackPayoff({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: VercelStackFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 474, 512, 10)
+  const enter = appear(frame, 478, 16)
+  const isWide = aspect === '16x9'
+
+  return (
+    <AbsoluteFill
+      style={{
+        alignItems: 'center',
+        background: '#ffffff',
+        display: 'flex',
+        justifyContent: 'center',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          background: '#ff3000',
+          height: Math.max(10, layout.monoSize * 0.58),
+          left: layout.edge,
+          position: 'absolute',
+          top: layout.edge,
+          transform: `scaleX(${enter})`,
+          transformOrigin: 'left',
+          width: aspectLineWidth(layout),
+        }}
+      />
+      <h2
+        style={{
+          color: '#000000',
+          fontSize: layout.thesisSize * (isWide ? 0.76 : 0.8),
+          fontWeight: 950,
+          letterSpacing: 0,
+          lineHeight: 0.84,
+          margin: 0,
+          opacity: enter,
+          textAlign: 'center',
+          textTransform: 'uppercase',
+          transform: `translateY(${(1 - enter) * 28}px) scale(${0.95 + enter * 0.05})`,
+        }}
+      >
+        VERCEL-NATIVE
+        <br />
+        <span style={{ color: '#ff3000' }}>AGENT</span> RUNTIME
+      </h2>
+    </AbsoluteFill>
+  )
+}
+
+function VercelLayerPill({
+  accent,
+  label,
+  layout,
+  style,
+}: {
+  accent: boolean
+  label: string
+  layout: VercelStackFilmLayout
+  style: CSSProperties
+}) {
+  return (
+    <div
+      style={{
+        background: accent ? '#ff3000' : '#ffffff',
+        color: '#000000',
+        fontFamily: 'var(--font-mono)',
+        fontSize: layout.moduleSize,
+        fontWeight: 950,
+        letterSpacing: '0.06em',
+        lineHeight: 1,
+        padding: `${layout.edge * 0.24}px ${layout.edge * 0.3}px`,
+        position: 'absolute',
+        textAlign: 'center',
+        textTransform: 'uppercase',
+        transformOrigin: 'center',
+        ...style,
+      }}
+    >
+      {label}
+    </div>
+  )
+}
+
 function ColdOpen({ frame, layout }: { frame: number; layout: WhyFilmLayout }) {
   const scene = sceneOpacity(frame, 0, 96, 12)
   const drift = ease(frame, 0, 90, [0, 1])
@@ -5656,6 +6420,59 @@ function getComposableFilmLayout(
     monoSize: 17,
     smallSize: 14,
     thesisSize: 72,
+  }
+}
+
+function getVercelStackFilmLayout(
+  aspect: LaunchVideoAspect
+): VercelStackFilmLayout {
+  if (aspect === '16x9') {
+    return {
+      edge: 72,
+      finalCaptionSize: 20,
+      finalLogoSize: 156,
+      finalWordmarkSize: 112,
+      fragmentSize: 112,
+      giantSize: 116,
+      layerSize: 42,
+      moduleSize: 40,
+      monoSize: 21,
+      smallSize: 18,
+      thesisSize: 108,
+      tickSize: 30,
+    }
+  }
+
+  if (aspect === '4x5') {
+    return {
+      edge: 64,
+      finalCaptionSize: 17,
+      finalLogoSize: 180,
+      finalWordmarkSize: 86,
+      fragmentSize: 84,
+      giantSize: 88,
+      layerSize: 36,
+      moduleSize: 32,
+      monoSize: 18,
+      smallSize: 16,
+      thesisSize: 82,
+      tickSize: 24,
+    }
+  }
+
+  return {
+    edge: 56,
+    finalCaptionSize: 15,
+    finalLogoSize: 152,
+    finalWordmarkSize: 74,
+    fragmentSize: 72,
+    giantSize: 78,
+    layerSize: 32,
+    moduleSize: 30,
+    monoSize: 17,
+    smallSize: 14,
+    thesisSize: 72,
+    tickSize: 23,
   }
 }
 
