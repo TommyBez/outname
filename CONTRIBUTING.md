@@ -22,8 +22,9 @@ Notes:
 - Use Node.js 22 or newer.
 - This repository is a single Next.js application, not a monorepo.
 - The database is remote, so no local Postgres instance is required.
-- Sign-up is disabled; use the seeded test credentials from
-  `TEST_USER_EMAIL` and `TEST_USER_PASSWORD`.
+- Sign-up is disabled; provision a user through the waitlist flow or use the
+  provisioned test address from `TEST_USER_EMAIL`, then request an email OTP
+  from `/login`.
 
 ## Development workflow
 

@@ -1,8 +1,12 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { admin as adminPlugin } from 'better-auth/plugins'
+import { admin as adminPlugin, emailOTP } from 'better-auth/plugins'
+import { createElement } from 'react'
 import { ac, roles } from '@/auth/access-control'
+import { AuthSignInOtpEmail } from '@/emails/auth-sign-in-otp-email'
 import { db } from '@/shared/db'
+import { sendTransactionalEmail } from '@/shared/server/resend'
+import { siteConfig } from '@/shared/server/site-metadata'
 
 // Production uses Better Auth defaults. Non-production must trust the incoming
 // origin and issue `SameSite=None` cookies so sign-in still works inside the
@@ -57,16 +61,25 @@ function devTrustedOriginsList(request: Request | undefined): string[] {
   return origins
 }
 
+const AUTH_EMAIL_OTP_LENGTH = 6
+const AUTH_EMAIL_OTP_EXPIRES_IN_SECONDS = 60 * 10
+
+function getBaseUrl(): string {
+  return process.env.BETTER_AUTH_URL || siteConfig.url
+}
+
+function getEmailLogoUrl(): string {
+  return `${getBaseUrl()}/email/outna-logo.png`
+}
+
+function createOtpIdempotencyKey(email: string, otp: string): string {
+  return `auth-email-otp/${encodeURIComponent(email.toLowerCase())}/${otp}`
+}
+
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: 'pg',
   }),
-  emailAndPassword: {
-    enabled: true,
-    autoSignIn: true,
-    // Registration stays disabled; the seeded admin is created out of band.
-    disableSignUp: true,
-  },
   session: {
     expiresIn: 60 * 60 * 24 * 30, // 30 days
     updateAge: 60 * 60 * 24, // 1 day
@@ -96,6 +109,30 @@ export const auth = betterAuth({
       roles,
       adminUserIds: parseAdminUserIds(),
       defaultRole: 'user',
+    }),
+    emailOTP({
+      allowedAttempts: 5,
+      disableSignUp: true,
+      expiresIn: AUTH_EMAIL_OTP_EXPIRES_IN_SECONDS,
+      otpLength: AUTH_EMAIL_OTP_LENGTH,
+      resendStrategy: 'rotate',
+      async sendVerificationOTP({ email, otp, type }) {
+        if (type !== 'sign-in') {
+          return
+        }
+
+        await sendTransactionalEmail({
+          idempotencyKey: createOtpIdempotencyKey(email, otp),
+          subject: 'Your OUTNA.ME sign-in code',
+          to: email,
+          react: createElement(AuthSignInOtpEmail, {
+            code: otp,
+            expiresInMinutes: AUTH_EMAIL_OTP_EXPIRES_IN_SECONDS / 60,
+            loginUrl: `${getBaseUrl()}/login`,
+            logoUrl: getEmailLogoUrl(),
+          }),
+        })
+      },
     }),
   ],
 })

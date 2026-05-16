@@ -47,8 +47,8 @@ async function ConfirmContent({
     content = (
       <div className="mt-8 space-y-4">
         <p className="text-sm leading-relaxed">
-          Your email is confirmed. We&apos;ll reach out when your access is
-          ready.
+          Your email is confirmed. We&apos;ll reach out when access is ready and
+          prepare your account automatically.
         </p>
         <Link
           className="inline-flex min-h-11 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.14em] transition-colors hover:bg-foreground hover:text-background"
