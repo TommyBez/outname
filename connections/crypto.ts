@@ -29,9 +29,10 @@ function getWebCrypto(): Crypto {
 async function getAesKey(): Promise<CryptoKey> {
   if (!cachedAesKey) {
     const subtle = getSubtleCrypto()
+    const rawKey = Uint8Array.from(getConnectionEncryptionKey())
     cachedAesKey = subtle.importKey(
       'raw',
-      getConnectionEncryptionKey(),
+      rawKey,
       { name: 'AES-GCM' },
       false,
       ['encrypt', 'decrypt']
@@ -100,7 +101,7 @@ export async function decryptCredential<T = unknown>(
         tagLength: TAG_LEN * 8,
       },
       key,
-      concatBytes([ciphertext, tag])
+      Uint8Array.from(concatBytes([ciphertext, tag]))
     )
   )
   return JSON.parse(new TextDecoder().decode(plaintext)) as T
