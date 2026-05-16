@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import {
   AbsoluteFill,
   Easing,
@@ -70,12 +70,19 @@ interface AutonomousRunFilmLayout extends WhyFilmLayout {
   taskSize: number
 }
 
+interface MemoryFilmLayout extends WhyFilmLayout {
+  captionSize: number
+  fileSize: number
+  microSize: number
+}
+
 const CTA_START_FRAME = 420
 const BODY_START_FRAME = 76
 const BRAND_CLOSE_FRAME = 488
 const WHY_OUTNAME_SLUG = '2026-05-18-why-outname-exists'
 const AGENT_CONFIGURATION_SLUG = '2026-05-20-agent-configuration'
 const AUTONOMOUS_RUN_SLUG = '2026-05-22-autonomous-run'
+const MEMORY_OVER_TIME_SLUG = '2026-05-26-memory-over-time'
 
 const videoMeta: Record<LaunchVideoSlug, VideoMeta> = {
   '2026-05-18-why-outname-exists': {
@@ -133,6 +140,10 @@ export function LaunchVideo(props: LaunchVideoProps) {
 
   if (slug === AUTONOMOUS_RUN_SLUG) {
     return <AutonomousRunFilm aspect={aspect} frame={frame} />
+  }
+
+  if (slug === MEMORY_OVER_TIME_SLUG) {
+    return <MemoryOverTimeFilm aspect={aspect} frame={frame} />
   }
 
   return (
@@ -1553,6 +1564,698 @@ function RunNextRun({
         <span style={{ color: '#ff3000' }}>STARTS AHEAD</span>
       </h2>
     </AbsoluteFill>
+  )
+}
+
+function MemoryOverTimeFilm({
+  aspect,
+  frame,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+}) {
+  const layout = getMemoryFilmLayout(aspect)
+
+  return (
+    <AbsoluteFill
+      className="outname-video-root"
+      style={{
+        background: '#ffffff',
+        overflow: 'hidden',
+      }}
+    >
+      <MemoryRunOne aspect={aspect} frame={frame} layout={layout} />
+      <MemoryFilesEnter aspect={aspect} frame={frame} layout={layout} />
+      <MemoryStateChanges aspect={aspect} frame={frame} layout={layout} />
+      <MemoryDreaming aspect={aspect} frame={frame} layout={layout} />
+      <MemoryRunTwo aspect={aspect} frame={frame} layout={layout} />
+      <MemoryLearningClose aspect={aspect} frame={frame} layout={layout} />
+      <FilmEndCard
+        aspect={aspect}
+        endFrame={540}
+        enterFrame={506}
+        frame={frame}
+        layout={layout}
+        startFrame={486}
+      />
+    </AbsoluteFill>
+  )
+}
+
+function MemoryRunOne({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: MemoryFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 0, 78, 12)
+  const enter = appear(frame, 4, 26)
+  const drift = ease(frame, 28, 70, [0, 1])
+  const isWide = aspect === '16x9'
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#000000',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          background: '#ffffff',
+          color: '#000000',
+          height: isWide ? '56%' : '48%',
+          left: '50%',
+          overflow: 'hidden',
+          padding: layout.edge * 0.68,
+          position: 'absolute',
+          top: '50%',
+          transform: `translate(-50%, -50%) translateX(${(1 - enter) * 480 - drift * (isWide ? 120 : 76)}px) scale(${1.08 - drift * 0.04})`,
+          transformOrigin: 'center',
+          width: isWide ? '64%' : '82%',
+        }}
+      >
+        <div
+          style={{
+            background: '#ff3000',
+            bottom: 0,
+            left: 0,
+            position: 'absolute',
+            top: 0,
+            transform: `scaleY(${enter})`,
+            transformOrigin: 'top',
+            width: Math.max(12, layout.monoSize * 0.68),
+          }}
+        />
+        <strong
+          style={{
+            display: 'block',
+            fontFamily: 'var(--font-mono)',
+            fontSize: layout.giantSize * (isWide ? 0.68 : 0.72),
+            fontWeight: 950,
+            letterSpacing: 0,
+            lineHeight: 0.92,
+            marginLeft: layout.edge * 0.36,
+            textTransform: 'uppercase',
+          }}
+        >
+          RUN 01
+        </strong>
+        <span
+          style={{
+            display: 'block',
+            fontFamily: 'var(--font-mono)',
+            fontSize: layout.microSize,
+            fontWeight: 900,
+            letterSpacing: '0.14em',
+            marginLeft: layout.edge * 0.42,
+            marginTop: layout.edge * 0.34,
+            textTransform: 'uppercase',
+          }}
+        >
+          starts with what it knows
+        </span>
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+function MemoryFilesEnter({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: MemoryFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 52, 166, 14)
+  const isWide = aspect === '16x9'
+  const files = [
+    { accent: '#ff3000', label: 'MEMORY', x: isWide ? -20 : -10, y: -20 },
+    { accent: '#ffffff', label: 'TASKS', x: isWide ? 2 : 4, y: 2 },
+    { accent: '#ff3000', label: 'GOAL', x: isWide ? 24 : 15, y: 24 },
+  ] as const
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#ffffff',
+        opacity: scene,
+      }}
+    >
+      {files.map((file, index) => {
+        const fileIn = appear(frame, 62 + index * 18, 20)
+        const focus = ease(frame, 98 + index * 8, 154, [0, 1])
+        const direction = index === 1 ? 1 : -1
+
+        return (
+          <MemoryStateFile
+            accent={file.accent}
+            background={index === 1 ? '#ff3000' : '#000000'}
+            color={index === 1 ? '#000000' : '#ffffff'}
+            frame={frame}
+            key={file.label}
+            label={file.label}
+            lineColor={index === 1 ? '#000000' : '#ffffff'}
+            lineProgress={fileIn}
+            style={{
+              left: `${50 + file.x}%`,
+              minHeight: layout.edge * (isWide ? 3.32 : 3.46),
+              opacity: fileIn,
+              padding: layout.edge * 0.52,
+              position: 'absolute',
+              top: `${50 + file.y}%`,
+              transform: `translate(-50%, -50%) translateX(${(1 - fileIn) * direction * 520}px) rotate(${(index - 1) * 3 + (1 - fileIn) * direction * 8}deg) scale(${0.96 + focus * 0.06})`,
+              transformOrigin: 'center',
+              width: isWide ? '40%' : '78%',
+            }}
+          />
+        )
+      })}
+    </AbsoluteFill>
+  )
+}
+
+function MemoryStateChanges({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: MemoryFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 138, 248, 14)
+  const enter = appear(frame, 148, 22)
+  const sweep = ease(frame, 168, 228, [0, 1])
+  const isWide = aspect === '16x9'
+  const rows = ['MEMORY', 'TASKS', 'GOAL'] as const
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#ffffff',
+        opacity: scene,
+      }}
+    >
+      <h2
+        style={{
+          color: '#000000',
+          fontSize: layout.fileSize * (isWide ? 0.92 : 0.78),
+          fontWeight: 950,
+          left: layout.edge,
+          letterSpacing: 0,
+          lineHeight: 0.84,
+          margin: 0,
+          opacity: enter,
+          position: 'absolute',
+          textTransform: 'uppercase',
+          top: layout.edge,
+          transform: `translateY(${(1 - enter) * 34}px)`,
+        }}
+      >
+        STATE
+        <br />
+        CHANGES
+      </h2>
+      <span
+        style={{
+          color: '#ff3000',
+          fontFamily: 'var(--font-mono)',
+          fontSize: layout.microSize,
+          fontWeight: 900,
+          left: layout.edge,
+          letterSpacing: '0.14em',
+          opacity: enter,
+          position: 'absolute',
+          textTransform: 'uppercase',
+          top: layout.edge + layout.fileSize * (isWide ? 1.7 : 1.48),
+        }}
+      >
+        memory / tasks / goal
+      </span>
+      <div
+        style={{
+          background: '#000000',
+          bottom: layout.edge * 0.72,
+          left: isWide ? '42%' : layout.edge * 0.72,
+          overflow: 'hidden',
+          padding: layout.edge * 0.5,
+          position: 'absolute',
+          right: layout.edge * 0.72,
+          top: isWide ? layout.edge * 0.72 : '42%',
+          transform: `translateX(${(1 - enter) * 72}px) scale(${0.95 + enter * 0.05})`,
+          transformOrigin: 'center',
+        }}
+      >
+        {rows.map((row, index) => {
+          const rowIn = appear(frame, 160 + index * 12, 16)
+          const active = index === 1
+
+          return (
+            <div
+              key={row}
+              style={{
+                alignItems: 'center',
+                background: active ? '#ff3000' : '#ffffff',
+                color: '#000000',
+                display: 'grid',
+                fontFamily: 'var(--font-mono)',
+                fontSize: layout.captionSize * 1.18,
+                fontWeight: 950,
+                gridTemplateColumns: 'auto 1fr',
+                marginBottom: layout.edge * 0.22,
+                opacity: rowIn,
+                padding: `${layout.edge * 0.2}px ${layout.edge * 0.26}px`,
+                textTransform: 'uppercase',
+                transform: `translateX(${(1 - rowIn) * 50}px)`,
+              }}
+            >
+              <span
+                style={{
+                  background: active ? '#000000' : '#ff3000',
+                  display: 'block',
+                  height: Math.max(16, layout.monoSize * 0.9),
+                  marginRight: layout.edge * 0.22,
+                  width: Math.max(16, layout.monoSize * 0.9),
+                }}
+              />
+              <span>{row}</span>
+            </div>
+          )
+        })}
+        <div
+          style={{
+            background: '#ff3000',
+            bottom: 0,
+            height: Math.max(12, layout.monoSize * 0.76),
+            left: 0,
+            position: 'absolute',
+            transform: `scaleX(${sweep})`,
+            transformOrigin: 'left',
+            width: '100%',
+          }}
+        />
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+function MemoryDreaming({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: MemoryFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 224, 336, 16)
+  const enter = appear(frame, 236, 24)
+  const consolidate = ease(frame, 256, 318, [0, 1])
+  const isWide = aspect === '16x9'
+  const fragments = [
+    { label: 'MEMORY', x: -24, y: -22 },
+    { label: 'TASKS', x: 18, y: -4 },
+    { label: 'GOAL', x: -6, y: 22 },
+  ] as const
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#000000',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          background: '#ff3000',
+          bottom: layout.edge,
+          left: '50%',
+          position: 'absolute',
+          top: layout.edge,
+          transform: `translateX(-50%) scaleY(${0.12 + consolidate * 0.88}) scaleX(${1 + consolidate * 0.24})`,
+          transformOrigin: 'center',
+          width: Math.max(18, layout.monoSize),
+        }}
+      />
+      {fragments.map((fragment, index) => {
+        const inFrame = appear(frame, 238 + index * 8, 18)
+        const left = 50 + fragment.x * (1 - consolidate)
+        const top = 50 + fragment.y * (1 - consolidate)
+        const fragmentFade = Math.max(0, 1 - consolidate * 2.2)
+
+        return (
+          <div
+            key={fragment.label}
+            style={{
+              background: '#ffffff',
+              color: '#000000',
+              fontFamily: 'var(--font-mono)',
+              fontSize: layout.microSize,
+              fontWeight: 950,
+              left: `${left}%`,
+              letterSpacing: '0.12em',
+              opacity: inFrame * fragmentFade,
+              padding: `${layout.edge * 0.16}px ${layout.edge * 0.26}px`,
+              position: 'absolute',
+              textTransform: 'uppercase',
+              top: `${top}%`,
+              transform: `translate(-50%, -50%) rotate(${(index - 1) * 5 * (1 - consolidate)}deg) scale(${1 - consolidate * 0.18})`,
+              transformOrigin: 'center',
+            }}
+          >
+            {fragment.label}
+          </div>
+        )
+      })}
+      <div
+        style={{
+          color: '#ffffff',
+          left: '50%',
+          opacity: enter,
+          position: 'absolute',
+          textAlign: 'center',
+          top: '50%',
+          transform: `translate(-50%, -50%) scale(${0.94 + consolidate * 0.08})`,
+          width: isWide ? '64%' : '82%',
+        }}
+      >
+        <h2
+          style={{
+            fontSize: layout.giantSize * (isWide ? 0.72 : 0.74),
+            fontWeight: 950,
+            letterSpacing: 0,
+            lineHeight: 0.84,
+            margin: 0,
+            textTransform: 'uppercase',
+          }}
+        >
+          DREAMING
+        </h2>
+        <p
+          style={{
+            background: '#000000',
+            color: '#ff3000',
+            display: 'inline-block',
+            fontFamily: 'var(--font-mono)',
+            fontSize: layout.microSize,
+            fontWeight: 900,
+            letterSpacing: '0.14em',
+            margin: `${layout.edge * 0.34}px 0 0`,
+            padding: `0 ${layout.edge * 0.18}px`,
+            textTransform: 'uppercase',
+          }}
+        >
+          the agent consolidates
+        </p>
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+function MemoryRunTwo({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: MemoryFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 312, 432, 14)
+  const enter = appear(frame, 324, 24)
+  const settle = ease(frame, 350, 414, [0, 1])
+  const isWide = aspect === '16x9'
+  const rows = ['MEMORY', 'TASKS', 'GOAL'] as const
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#ffffff',
+        opacity: scene,
+      }}
+    >
+      <div
+        style={{
+          color: '#000000',
+          left: layout.edge,
+          opacity: enter,
+          position: 'absolute',
+          top: layout.edge,
+          transform: `translateY(${(1 - enter) * 30}px)`,
+        }}
+      >
+        <strong
+          style={{
+            display: 'block',
+            fontFamily: 'var(--font-mono)',
+            fontSize: layout.fileSize * (isWide ? 0.82 : 0.72),
+            fontWeight: 950,
+            letterSpacing: 0,
+            lineHeight: 0.86,
+            textTransform: 'uppercase',
+          }}
+        >
+          RUN 02
+        </strong>
+        <span
+          style={{
+            color: '#ff3000',
+            display: 'block',
+            fontFamily: 'var(--font-mono)',
+            fontSize: layout.microSize,
+            fontWeight: 900,
+            letterSpacing: '0.14em',
+            marginTop: layout.edge * 0.22,
+            textTransform: 'uppercase',
+          }}
+        >
+          starts from updated state
+        </span>
+      </div>
+      <div
+        style={{
+          background: '#000000',
+          bottom: isWide ? layout.edge : layout.edge * 0.86,
+          left: isWide ? '40%' : layout.edge * 0.72,
+          overflow: 'hidden',
+          padding: layout.edge * 0.46,
+          position: 'absolute',
+          right: layout.edge * 0.72,
+          top: isWide ? layout.edge : layout.edge * 3.26,
+          transform: `translateX(${(1 - enter) * 88}px) scale(${0.96 + settle * 0.04})`,
+          transformOrigin: 'center',
+        }}
+      >
+        {rows.map((row, index) => {
+          const rowIn = appear(frame, 346 + index * 12, 16)
+          const selected = index === 0
+
+          return (
+            <div
+              key={row}
+              style={{
+                alignItems: 'center',
+                background: selected ? '#ff3000' : '#ffffff',
+                color: '#000000',
+                display: 'grid',
+                fontFamily: 'var(--font-mono)',
+                fontSize: layout.captionSize * 1.16,
+                fontWeight: 950,
+                gridTemplateColumns: 'auto 1fr',
+                marginBottom: layout.edge * 0.2,
+                opacity: rowIn,
+                padding: `${layout.edge * 0.22}px ${layout.edge * 0.3}px`,
+                textTransform: 'uppercase',
+                transform: `translateX(${(1 - rowIn) * -46}px)`,
+              }}
+            >
+              <span
+                style={{
+                  background: selected ? '#000000' : '#ff3000',
+                  display: 'block',
+                  height: Math.max(17, layout.monoSize * 0.95),
+                  marginRight: layout.edge * 0.2,
+                  width: Math.max(17, layout.monoSize * 0.95),
+                }}
+              />
+              <span>{row}</span>
+            </div>
+          )
+        })}
+        <div
+          style={{
+            background: '#ff3000',
+            bottom: 0,
+            height: Math.max(12, layout.monoSize * 0.76),
+            left: 0,
+            position: 'absolute',
+            transform: `scaleX(${settle})`,
+            transformOrigin: 'left',
+            width: '100%',
+          }}
+        />
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+function MemoryLearningClose({
+  aspect,
+  frame,
+  layout,
+}: {
+  aspect: LaunchVideoAspect
+  frame: number
+  layout: MemoryFilmLayout
+}) {
+  const scene = sceneOpacity(frame, 406, 502, 14)
+  const enter = appear(frame, 418, 24)
+  const lock = ease(frame, 430, 486, [0, 1])
+  const isWide = aspect === '16x9'
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: '#000000',
+        opacity: scene,
+      }}
+    >
+      {['MEMORY', 'TASKS', 'GOAL'].map((item, index) => {
+        const itemIn = appear(frame, 414 + index * 8, 18)
+
+        return (
+          <div
+            key={item}
+            style={{
+              background: index === 1 ? '#ff3000' : '#ffffff',
+              height: Math.max(18, layout.monoSize),
+              left: `${16 + index * 15 + lock * (22 - index * 9)}%`,
+              opacity: itemIn * (1 - lock * 0.28),
+              position: 'absolute',
+              top: `${68 - index * 8 + lock * (4 + index * 2)}%`,
+              transform: `scaleX(${0.58 + lock * 1.1})`,
+              transformOrigin: 'left',
+              width: isWide ? '28%' : '34%',
+            }}
+          />
+        )
+      })}
+      <h2
+        style={{
+          color: '#ffffff',
+          fontSize: layout.thesisSize * (isWide ? 0.78 : 0.78),
+          fontWeight: 950,
+          left: '50%',
+          letterSpacing: 0,
+          lineHeight: 0.84,
+          margin: 0,
+          opacity: enter,
+          position: 'absolute',
+          textAlign: 'center',
+          textTransform: 'uppercase',
+          top: '46%',
+          transform: `translate(-50%, -50%) translateY(${(1 - enter) * 30}px) scale(${0.96 + lock * 0.04})`,
+          width: isWide ? '72%' : '86%',
+        }}
+      >
+        AGENTS THAT
+        <br />
+        <span style={{ color: '#ff3000' }}>KEEP</span>
+        <br />
+        LEARNING
+      </h2>
+    </AbsoluteFill>
+  )
+}
+
+function MemoryStateFile({
+  accent,
+  background,
+  color,
+  frame,
+  label,
+  lineColor,
+  lineProgress,
+  style,
+}: {
+  accent: string
+  background: string
+  color: string
+  frame: number
+  label: string
+  lineColor: string
+  lineProgress: number
+  style: CSSProperties
+}) {
+  const widths = [0.86, 0.64, 0.74] as const
+
+  return (
+    <div
+      style={{
+        background,
+        color,
+        minHeight: 210,
+        overflow: 'hidden',
+        padding: 34,
+        ...style,
+      }}
+    >
+      <div
+        style={{
+          background: accent,
+          height: 12,
+          left: 0,
+          position: 'absolute',
+          right: 0,
+          top: 0,
+          transform: `scaleX(${lineProgress})`,
+          transformOrigin: 'left',
+        }}
+      />
+      <strong
+        style={{
+          display: 'block',
+          fontSize: 54,
+          fontWeight: 950,
+          letterSpacing: 0,
+          lineHeight: 0.86,
+          textTransform: 'uppercase',
+        }}
+      >
+        {label}
+      </strong>
+      <div
+        style={{
+          display: 'grid',
+          gap: 13,
+          marginTop: 34,
+        }}
+      >
+        {widths.map((width, index) => {
+          const line = appear(frame, 78 + index * 8, 12)
+
+          return (
+            <div
+              key={`${label}-line-${width}`}
+              style={{
+                background: lineColor,
+                height: index === 1 ? 8 : 11,
+                opacity: line * (index === 1 ? 0.48 : 0.82),
+                transform: `scaleX(${lineProgress})`,
+                transformOrigin: 'left',
+                width: `${width * 100}%`,
+              }}
+            />
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
@@ -4116,6 +4819,54 @@ function getAutonomousRunFilmLayout(
     microSize: 14,
     monoSize: 17,
     taskSize: 66,
+    thesisSize: 68,
+  }
+}
+
+function getMemoryFilmLayout(aspect: LaunchVideoAspect): MemoryFilmLayout {
+  if (aspect === '16x9') {
+    return {
+      captionSize: 22,
+      edge: 70,
+      fileSize: 100,
+      finalCaptionSize: 20,
+      finalLogoSize: 156,
+      finalWordmarkSize: 112,
+      fragmentSize: 112,
+      giantSize: 116,
+      microSize: 18,
+      monoSize: 21,
+      thesisSize: 104,
+    }
+  }
+
+  if (aspect === '4x5') {
+    return {
+      captionSize: 19,
+      edge: 64,
+      fileSize: 92,
+      finalCaptionSize: 17,
+      finalLogoSize: 180,
+      finalWordmarkSize: 86,
+      fragmentSize: 84,
+      giantSize: 90,
+      microSize: 16,
+      monoSize: 18,
+      thesisSize: 78,
+    }
+  }
+
+  return {
+    captionSize: 17,
+    edge: 56,
+    fileSize: 76,
+    finalCaptionSize: 15,
+    finalLogoSize: 152,
+    finalWordmarkSize: 74,
+    fragmentSize: 72,
+    giantSize: 78,
+    microSize: 14,
+    monoSize: 17,
     thesisSize: 68,
   }
 }

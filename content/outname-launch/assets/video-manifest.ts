@@ -104,7 +104,7 @@ export const launchVideoManifest = [
   },
   {
     description:
-      'Feature video about memory as a way for agents to adapt after repeated runs.',
+      'Feature video about agents updating MEMORY, TASKS, and GOAL over time through repeated runs and dreaming.',
     durationInFrames: FPS_18_SECONDS,
     linkedPosts: [
       'content/outname-launch/LinkedIn/2026-05-26_10-30.md',
