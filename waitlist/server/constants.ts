@@ -11,14 +11,12 @@ export type WaitlistEntryStatus = (typeof WAITLIST_ENTRY_STATUSES)[number]
 export const WAITLIST_PRIMARY_INTERESTS = [
   'early-access',
   'open-source-release',
-  'self-host-vercel',
   'architecture-notes',
 ] as const
 
 export const WAITLIST_PRIMARY_INTEREST_OPTIONS = [
   { label: 'Try early access', value: 'early-access' },
   { label: 'Get the open-source release', value: 'open-source-release' },
-  { label: 'Self-host on Vercel', value: 'self-host-vercel' },
   { label: 'Architecture/build notes', value: 'architecture-notes' },
 ] as const
 
