@@ -48,7 +48,7 @@ const sourcePolicySchema = z
       (value.exclude_domains?.length ?? 0)
     if (total > 200) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         message:
           'Combined include_domains and exclude_domains entries cannot exceed 200.',
         path: ['exclude_domains'],
@@ -202,7 +202,7 @@ export const advancedSettingsSchema = z
 
     if (total > 200) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         message:
           'Combined include_domains and exclude_domains entries cannot exceed 200.',
         path: ['exclude_domains'],

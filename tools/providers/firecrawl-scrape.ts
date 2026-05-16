@@ -13,7 +13,7 @@ import {
 const FIRECRAWL_API_BASE = 'https://api.firecrawl.dev'
 
 const firecrawlScrapeInputSchema = z.object({
-  url: z.string().url().describe('The page URL to scrape.'),
+  url: z.url().describe('The page URL to scrape.'),
   formats: z
     .array(z.string())
     .min(1)
