@@ -3,6 +3,7 @@ import {
   eventActivityNamespace,
   replyNamespaceForEvent,
 } from '@/agent-runtime/server/agent-event-keys'
+import type { AgentEventPayloads } from '@/agent-runtime/server/agent-event-store'
 import { getAgentEvent } from '@/agent-runtime/server/agent-event-store'
 import type { AgentChatChunk } from '@/agent-runtime/server/chat-status'
 import type { RunEvent } from '@/agent-runtime/server/run-events'
@@ -30,7 +31,7 @@ export async function GET(
   const namespace =
     streamKind === 'activity'
       ? eventActivityNamespace(event.workflowRunId)
-      : replyNamespaceForEvent(event.id)
+      : outputNamespaceForEvent(event)
   const source = getRun(event.workflowRunId).getReadable<
     AgentChatChunk | RunEvent
   >({
@@ -63,6 +64,21 @@ function readStreamKind(request: Request): 'activity' | 'output' {
     return 'activity'
   }
   return 'output'
+}
+
+function outputNamespaceForEvent(
+  event: Awaited<ReturnType<typeof getAgentEvent>>
+) {
+  if (event?.type === 'invocation') {
+    const payload = event.payload as AgentEventPayloads['invocation']
+    if (
+      typeof payload?.streamToken === 'string' &&
+      payload.streamToken.length > 0
+    ) {
+      return payload.streamToken
+    }
+  }
+  return replyNamespaceForEvent(event.id)
 }
 
 function jsonError(status: number, error: string): Response {
