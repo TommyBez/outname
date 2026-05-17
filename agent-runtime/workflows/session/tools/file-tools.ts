@@ -13,17 +13,10 @@ const MAX_GREP_RESULTS = 200
 
 export type { FileToolsContext } from './file-tools/types'
 
-export interface FileToolAvailability {
-  grepFiles?: boolean
-  listFiles?: boolean
-  writeFile?: boolean
-}
-
 export function createFileTools(
-  ctx: FileToolsContextType,
-  availability: FileToolAvailability = {}
+  ctx: FileToolsContextType
 ): Record<string, Tool> {
-  const tools: Record<string, Tool> = {
+  return {
     readFile: tool({
       description: 'Read the contents of a file from the system sandbox.',
       inputSchema: z.object({
@@ -32,10 +25,7 @@ export function createFileTools(
       execute: async ({ path }, options) =>
         readFileViaBashTool({ agentId: ctx.agentId, options, path }),
     }),
-  }
-
-  if (availability.writeFile !== false) {
-    tools.writeFile = tool({
+    writeFile: tool({
       description:
         'Write content to a file in the system sandbox. Creates parent directories if needed.',
       inputSchema: z.object({
@@ -49,11 +39,8 @@ export function createFileTools(
           options,
           path,
         }),
-    })
-  }
-
-  if (availability.listFiles !== false) {
-    tools.listFiles = tool({
+    }),
+    listFiles: tool({
       description:
         'List files in the persistent system sandbox. Paths are relative to /vercel/sandbox.',
       inputSchema: z.object({
@@ -76,11 +63,8 @@ export function createFileTools(
           maxResults: maxResults ?? 200,
           pathPrefix: pathPrefix ?? '',
         }),
-    })
-  }
-
-  if (availability.grepFiles !== false) {
-    tools.grepFiles = tool({
+    }),
+    grepFiles: tool({
       description:
         'Search text files in the persistent system sandbox with internal fixed-argv grep. No shell is exposed.',
       inputSchema: z.object({
@@ -129,8 +113,6 @@ export function createFileTools(
           pathPrefix: pathPrefix ?? '',
           pattern,
         }),
-    })
+    }),
   }
-
-  return tools
 }

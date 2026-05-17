@@ -71,16 +71,7 @@ export async function buildAgent(
     reconnects: attached.reconnects,
   })
 
-  const fileTools = await createFileTools(
-    { agentId },
-    args.eventKind === 'invocation'
-      ? {
-          grepFiles: false,
-          listFiles: false,
-          writeFile: false,
-        }
-      : {}
-  )
+  const fileTools = await createFileTools({ agentId })
   const tools = {
     ...fileTools,
     ...attached.tools,

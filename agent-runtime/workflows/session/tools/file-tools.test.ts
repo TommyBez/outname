@@ -11,16 +11,3 @@ test('createFileTools exposes the full sandbox file toolset by default', () => {
     'writeFile',
   ])
 })
-
-test('createFileTools can disable runCommand-backed tools for invocation runs', () => {
-  const tools = createFileTools(
-    { agentId: 'agent_123' },
-    {
-      grepFiles: false,
-      listFiles: false,
-      writeFile: false,
-    }
-  )
-
-  expect(Object.keys(tools)).toEqual(['readFile'])
-})
