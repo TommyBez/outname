@@ -160,10 +160,9 @@ function payloadAs<T>(event: WorkflowAgentEvent): T {
 function currentWorkflowRunId(fallback: string | null): string | null {
   try {
     const metadata = getWorkflowMetadata() as {
-      runId?: string
       workflowRunId?: string
     }
-    return metadata.runId ?? metadata.workflowRunId ?? fallback
+    return metadata.workflowRunId ?? fallback
   } catch {
     return fallback
   }

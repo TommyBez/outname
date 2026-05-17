@@ -120,7 +120,7 @@ describe('agentEventWorkflow', () => {
     })
 
     mockGetWorkflowMetadata.mockReturnValue({
-      runId: 'wrun_runtime',
+      workflowRunId: 'wrun_runtime',
     })
     mockLoadAgentEventStep.mockResolvedValue(event)
     mockStart.mockResolvedValue({
