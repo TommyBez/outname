@@ -1,10 +1,14 @@
 import type { UIMessage } from 'ai'
 import { generateText } from 'ai'
+import { eq } from 'drizzle-orm'
 import { revalidateTag } from 'next/cache'
 import {
   getConversationForAgent,
   setConversationTitleIfUnset,
 } from '@/chat/server/chat'
+import { db } from '@/shared/db'
+import { agent } from '@/shared/db/schema'
+import { getUserModelForGateway } from '@/shared/server/ai-gateway-byok'
 import { conversationListTag } from '@/shared/server/cache-tags'
 
 function extractText(message: UIMessage | undefined): string {
@@ -46,10 +50,21 @@ export async function maybeGenerateConversationTitle(input: {
   }
 
   const fallback = firstUserText.slice(0, 60).trim() || 'New chat'
+  const [agentRow] = await db
+    .select({ userId: agent.userId })
+    .from(agent)
+    .where(eq(agent.id, input.agentId))
+    .limit(1)
+  if (!agentRow) {
+    return
+  }
 
   try {
     const { text } = await generateText({
-      model: 'openai/gpt-5.4-nano',
+      model: await getUserModelForGateway({
+        modelId: 'openai/gpt-5.4-nano',
+        userId: agentRow.userId,
+      }),
       system: [
         'You name chat conversations.',
         'Return a concise 3-6 word title summarising what the user is asking.',

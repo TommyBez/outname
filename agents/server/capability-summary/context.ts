@@ -25,6 +25,7 @@ export async function loadSummaryContext(input: {
     .select({
       capabilitySummary: agent.capabilitySummary,
       name: agent.name,
+      userId: agent.userId,
     })
     .from(agent)
     .where(eq(agent.id, input.agentId))
@@ -43,6 +44,7 @@ export async function loadSummaryContext(input: {
     attached,
     name: row.name,
     previousSummary: row.capabilitySummary,
+    userId: row.userId,
   }
 }
 
