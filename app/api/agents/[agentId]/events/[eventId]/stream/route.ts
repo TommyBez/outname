@@ -67,8 +67,8 @@ function readStreamKind(request: Request): 'activity' | 'output' {
 }
 
 function outputNamespaceForEvent(
-  event: Awaited<ReturnType<typeof getAgentEvent>>
-) {
+  event: NonNullable<Awaited<ReturnType<typeof getAgentEvent>>>
+): string {
   if (event?.type === 'invocation') {
     const payload = event.payload as AgentEventPayloads['invocation']
     if (
