@@ -85,8 +85,8 @@ export function AgentEventsWorkspace({
   }
 
   return (
-    <div className="grid min-h-[38rem] gap-6 xl:grid-cols-[24rem_minmax(0,1fr)]">
-      <aside className="flex h-[42rem] min-h-0 min-w-0 flex-col overflow-hidden border-2 border-foreground bg-background">
+    <div className="grid gap-6 xl:grid-cols-[24rem_minmax(0,1fr)]">
+      <aside className="flex h-[min(42rem,calc(100svh-12rem))] min-h-[20rem] min-w-0 flex-col overflow-hidden border-2 border-foreground bg-background xl:h-[42rem]">
         <div className="flex shrink-0 items-center justify-between gap-4 border-foreground border-b-2 px-4 py-3">
           <div>
             <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
@@ -150,7 +150,7 @@ export function AgentEventsWorkspace({
         </div>
       </aside>
 
-      <section className="flex h-[42rem] min-h-0 min-w-0 flex-col border-2 border-foreground bg-background">
+      <section className="flex h-[min(42rem,calc(100svh-10rem))] min-h-[24rem] min-w-0 flex-col border-2 border-foreground bg-background xl:h-[42rem]">
         <EventTranscriptHeader
           event={selectedEvent ?? null}
           onSelectEvent={selectEvent}
