@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/shared/db'
 import { agent } from '@/shared/db/schema'
 import { systemSandboxTags } from '@/shared/server/vercel-sandbox-config'
+import { resolveExplicitSandboxCredentials } from '@/shared/server/vercel-sandbox-credentials'
 
 // Keep this surface narrower than the full SDK union so callers only see the
 // create-by-runtime options that matter for system sandboxes.
@@ -10,11 +11,14 @@ export interface CreateOptions {
   env?: Record<string, string>
   networkPolicy?: NetworkPolicy
   ports?: number[]
+  projectId?: string
   resources?: { vcpus: number }
   runtime?: string
   snapshotExpiration?: number
   tags?: Record<string, string>
+  teamId?: string
   timeout?: number
+  token?: string
 }
 
 // Persistent root for bootstrap files, memory files, logs, and any other
@@ -69,11 +73,15 @@ export async function ensureSystemSandbox(
   // stores that stable name rather than an opaque SDK id.
   const persistedName = await readSandboxId(agentId)
   const desiredName = nameFor(agentId)
+  const credentials = resolveExplicitSandboxCredentials()
   let sandbox: Sandbox | null = null
 
   if (persistedName) {
     try {
-      sandbox = await Sandbox.get({ name: persistedName })
+      sandbox = await Sandbox.get({
+        ...(credentials ?? {}),
+        name: persistedName,
+      })
     } catch {
       sandbox = null
     }
@@ -83,6 +91,7 @@ export async function ensureSystemSandbox(
   if (!sandbox) {
     sandbox = await Sandbox.create({
       ...SYSTEM_SANDBOX_CREATE_OPTIONS,
+      ...(credentials ?? {}),
       name: desiredName,
       tags: systemSandboxTags(agentId),
     })
@@ -137,7 +146,11 @@ export async function getSystemSandbox(agentId: string): Promise<Sandbox> {
       `Agent ${agentId} has no system sandbox yet — startupSystemSandbox must run first.`
     )
   }
-  return Sandbox.get({ name, resume: true })
+  return Sandbox.get({
+    ...(resolveExplicitSandboxCredentials() ?? {}),
+    name,
+    resume: true,
+  })
 }
 
 // Best-effort stop so the next operation resumes a fresh SDK session.
@@ -157,7 +170,11 @@ export async function destroyAgentSandboxes(agentId: string): Promise<void> {
     return
   }
   try {
-    const sb = await Sandbox.get({ name, resume: false })
+    const sb = await Sandbox.get({
+      ...(resolveExplicitSandboxCredentials() ?? {}),
+      name,
+      resume: false,
+    })
     await sb.delete()
   } catch {
     /* already gone or unreachable */

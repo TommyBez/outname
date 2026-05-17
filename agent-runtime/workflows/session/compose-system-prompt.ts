@@ -48,6 +48,7 @@ export async function composeSystemPrompt(
 ): Promise<string> {
   'use step'
   const { agentId, agentName, nowIso } = args
+  const shouldListLivePaths = args.eventKind !== 'invocation'
 
   const systemSandbox = await getSystemSandbox(agentId)
 
@@ -56,7 +57,9 @@ export async function composeSystemPrompt(
     readLiveMemory(systemSandbox, 'IDENTITY.md'),
     readLiveMemory(systemSandbox, 'SOUL.md'),
     readLiveMemory(systemSandbox, 'USER.md'),
-    listTrackedArchitectureFiles(systemSandbox),
+    shouldListLivePaths
+      ? listTrackedArchitectureFiles(systemSandbox)
+      : Promise.resolve([]),
   ])
 
   const sections: string[] = [

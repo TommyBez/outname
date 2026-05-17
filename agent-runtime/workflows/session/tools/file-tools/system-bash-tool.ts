@@ -78,10 +78,16 @@ async function ensureParentDirectories(
   )
 
   for (const dir of dirs) {
-    const result = await sandbox.runCommand({
-      args: ['-p', dir],
-      cmd: 'mkdir',
-    })
+    let result: Awaited<ReturnType<typeof sandbox.runCommand>>
+    try {
+      result = await sandbox.runCommand({
+        args: ['-p', dir],
+        cmd: 'mkdir',
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      throw new Error(`writeFile: ${message}`)
+    }
     if (result.exitCode !== 0) {
       const stderr = await result.stderr()
       throw new Error(
