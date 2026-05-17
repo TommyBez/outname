@@ -83,7 +83,7 @@ export function AgentWorkspaceHeader({ agent }: { agent: HeaderAgent }) {
                   {`Dreaming ${agent.dreamingEnabled ? 'daily' : 'off'}`}
                 </Badge>
               </div>
-              <h1 className="text-pretty font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter md:text-7xl">
+              <h1 className="text-pretty font-black font-serif text-4xl uppercase leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl xl:text-7xl">
                 {agent.name}
               </h1>
             </div>
@@ -110,7 +110,7 @@ export function AgentWorkspaceHeader({ agent }: { agent: HeaderAgent }) {
 
       <nav
         aria-label="Agent workspace"
-        className="sticky top-14 z-20 mt-8 flex overflow-x-auto border-foreground border-y-2 bg-background md:top-12"
+        className="sticky top-14 z-20 mt-8 flex overflow-x-auto border-foreground border-y-2 bg-background lg:top-12"
       >
         {WORKSPACE_TABS.map((tab) => {
           const href = tabHref(agent.id, tab.key)

@@ -18,7 +18,7 @@ interface AppShellProps {
 }
 
 const DEFAULT_MAIN_CLASS =
-  'mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-6 sm:py-12 md:px-10 md:py-16 lg:px-12 lg:py-20'
+  'mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 sm:py-10 md:px-8 md:py-12 lg:px-12 lg:py-20'
 
 export function AppShell({
   children,
@@ -40,10 +40,10 @@ export function AppShell({
         <AppSidebar sidebarExtras={sidebarExtras} />
       </Suspense>
       <SidebarInset className="swiss-grid-pattern min-w-0 bg-background">
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-foreground border-b-2 bg-background px-3 md:h-12 md:px-4">
-          <SidebarTrigger className="-ml-1 size-10 border-foreground md:size-9" />
+        <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-foreground border-b-2 bg-background px-3 lg:h-12 lg:px-4">
+          <SidebarTrigger className="-ml-1 size-10 border-foreground lg:size-9" />
           <Link
-            className="inline-flex min-h-11 items-center gap-2 font-bold text-sm uppercase tracking-[0.2em] transition-colors hover:text-accent md:hidden"
+            className="inline-flex min-h-11 items-center gap-2 font-bold text-sm uppercase tracking-[0.2em] transition-colors hover:text-accent lg:hidden"
             href="/dashboard"
           >
             <span aria-hidden className="inline-block size-3 bg-accent" />

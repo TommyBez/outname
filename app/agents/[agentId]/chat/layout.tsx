@@ -13,7 +13,7 @@ export default function ChatRouteLayout({
   params: Params
 }) {
   return (
-    <div className="flex h-[42rem] min-h-0 min-w-0 flex-col overflow-hidden">
+    <div className="flex h-[calc(100svh-17rem)] min-h-[22rem] min-w-0 flex-col overflow-hidden lg:h-[42rem]">
       <Suspense fallback={children}>
         <OwnershipGate params={params}>{children}</OwnershipGate>
       </Suspense>

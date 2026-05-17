@@ -13,7 +13,7 @@ export default function NewAgentPage() {
     <AppShell>
       <header className="mb-8 border-foreground border-t-4 pt-6">
         <p className="swiss-label mb-4 text-accent">03. New agent</p>
-        <h1 className="max-w-4xl font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter md:text-7xl">
+        <h1 className="max-w-4xl font-black font-serif text-4xl uppercase leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl xl:text-7xl">
           Create a new agent
         </h1>
         <p className="mt-4 max-w-2xl text-muted-foreground text-sm leading-relaxed">
@@ -25,7 +25,7 @@ export default function NewAgentPage() {
       <section className="border-foreground border-t-2 pt-6">
         <Suspense
           fallback={
-            <div className="h-[min(720px,calc(100vh-18rem))] min-h-[420px] border-2 border-foreground bg-muted" />
+            <div className="h-[min(720px,calc(100svh-14rem))] min-h-[24rem] border-2 border-foreground bg-muted" />
           }
         >
           <AgentCreationChat />

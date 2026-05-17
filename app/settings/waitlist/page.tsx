@@ -124,7 +124,7 @@ async function WaitlistSettingsContent({
         <p className="swiss-label mb-4 text-accent">10. Settings / Waitlist</p>
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="font-black font-serif text-6xl uppercase leading-[0.9] tracking-tighter md:text-8xl">
+            <h1 className="font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
               Waitlist
             </h1>
             <p className="mt-4 max-w-2xl text-muted-foreground text-sm leading-relaxed">

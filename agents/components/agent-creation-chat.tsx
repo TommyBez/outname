@@ -57,7 +57,7 @@ export function AgentCreationChat({ className }: AgentCreationChatProps) {
   return (
     <div
       className={cn(
-        'flex h-[min(720px,calc(100vh-18rem))] min-h-[420px] min-w-0 flex-col overflow-hidden border-2 border-foreground bg-background',
+        'flex h-[min(720px,calc(100svh-14rem))] min-h-[24rem] min-w-0 flex-col overflow-hidden border-2 border-foreground bg-background',
         className
       )}
     >
