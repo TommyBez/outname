@@ -163,16 +163,6 @@ async function recoverRunningEvents(
       counters.failedRecovered += 1
       continue
     }
-    if (status === 'not_found') {
-      await markEventTerminal({
-        eventId: event.id,
-        lastError: 'workflow run not found',
-        status: 'failed',
-      })
-      counters.failedRecovered += 1
-      continue
-    }
-
     const heartbeatAt = event.heartbeatAt ?? event.startedAt ?? event.queuedAt
     if (now.getTime() - heartbeatAt.getTime() > RUNNING_STALE_MS) {
       await markEventTerminal({
