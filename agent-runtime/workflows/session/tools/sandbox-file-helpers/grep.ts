@@ -39,10 +39,16 @@ export async function grepLiveFiles(
   }
   grepArgs.push('--', args.pattern, prefix.absPath)
 
-  const result = await sandbox.runCommand({
-    cmd: 'grep',
-    args: grepArgs,
-  })
+  let result: Awaited<ReturnType<Sandbox['runCommand']>>
+  try {
+    result = await sandbox.runCommand({
+      cmd: 'grep',
+      args: grepArgs,
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    throw new Error(`grepFiles: ${message}`)
+  }
   const stdout = await result.stdout()
   const stderr = await result.stderr()
   const { exitCode } = result

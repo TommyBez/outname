@@ -11,7 +11,7 @@ import { isWaitlistPublicEnabled } from '@/waitlist/server/public-config'
 
 export const metadata: Metadata = createPrivatePageMetadata(
   'Sign in',
-  "Access your OUTNA.ME agents, schedules, tools, and today's run."
+  "Access your OUTNA.ME agents, schedules, tools, and today's run with an email code."
 )
 
 export default function LoginPage({
@@ -30,7 +30,8 @@ export default function LoginPage({
             Sign in
           </h1>
           <p className="mt-4 border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
-            Access your scheduled agents and live dashboard.
+            Request a one-time code by email to access your scheduled agents and
+            live dashboard.
           </p>
         </div>
         <Suspense fallback={<LoginFormSkeleton />}>
@@ -77,10 +78,6 @@ function LoginFormSkeleton() {
     >
       <div className="flex flex-col gap-2">
         <Skeleton className="h-4 w-12" />
-        <Skeleton className="h-10 w-full border-2 border-border" />
-      </div>
-      <div className="flex flex-col gap-2">
-        <Skeleton className="h-4 w-20" />
         <Skeleton className="h-10 w-full border-2 border-border" />
       </div>
       <Skeleton className="mt-2 h-10 w-full border-2 border-border" />

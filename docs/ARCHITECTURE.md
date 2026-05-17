@@ -1,10 +1,77 @@
 # Architecture
 
-## Runtime Model
+This document describes the current architecture of `outname`. The application
+is a single Next.js control plane
+that orchestrates event-driven agent work through Vercel Workflow, persists
+application state in Neon Postgres, and keeps each agent's filesystem in a
+persistent Vercel Sandbox.
 
-Agent runtime is event-based. There is no per-agent workflow that stays alive
-waiting for hooks. Every unit of work is represented by one row in
-`agent_events` and, when started, one Vercel Workflow run.
+## System overview
+
+```mermaid
+flowchart LR
+  Browser[Browser UI] --> Next[Next.js App Router and API routes]
+  Slack[Slack webhooks and OAuth] --> Next
+  Cron[Vercel Cron] --> Next
+
+  Next --> Auth[Better Auth]
+  Next --> DB[(Neon Postgres)]
+  Next --> Redis[(Upstash Redis)]
+  Next --> Workflow[Vercel Workflow]
+  Next --> Resend[Resend]
+
+  Workflow --> Sandbox[Vercel Sandbox]
+  Workflow --> Gateway[Vercel AI Gateway]
+  Workflow --> DB
+  Workflow --> Redis
+  Workflow --> Tools[Tool catalog and providers]
+```
+
+## Runtime boundaries
+
+### Next.js control plane
+
+The Next.js application owns routing, authentication, configuration screens,
+browser chat APIs, Slack installation endpoints, waitlist endpoints, and
+scheduler ingress.
+
+Key files:
+
+- `app/` for pages and route handlers
+- `proxy.ts` for auth and waitlist gating
+- `auth/server/auth.ts` for Better Auth configuration
+- `app/api/cron/liveness/route.ts` for scheduler ingress
+
+### Agent runtime
+
+Agent work is event-scoped. There is no always-on per-agent process. Each unit
+of work becomes an `agent_events` row and, when runnable, one workflow run.
+
+Core responsibilities:
+
+- enqueueing and deduplicating events;
+- dispatching event handlers for chat, heartbeat, dreaming, and invocation;
+- managing per-event reply streams;
+- cleaning up ephemeral resources after each run;
+- starting the next queued event for a matching concurrency key.
+
+Key files:
+
+- `agent-runtime/server/agent-events.ts`
+- `agent-runtime/server/agent-event-store.ts`
+- `agent-runtime/workflows/events/workflow.ts`
+- `agent-runtime/workflows/session/handlers/*`
+
+### Agent filesystem
+
+Each agent has a named persistent Vercel Sandbox. The sandbox is the canonical
+filesystem for bootstrap files and durable agent-authored files.
+
+- UI-authored bootstrap edits write directly into the sandbox.
+- Redis only caches selected file reads for faster UI access.
+- If Redis and sandbox contents disagree, the sandbox is authoritative.
+
+## Event model
 
 Event types:
 
@@ -22,102 +89,106 @@ Event statuses:
 - `failed`
 - `cancelled`
 
-`idempotency_key` prevents duplicate channel/scheduler work.
-`concurrency_key` is nullable and only used where ordering matters. Different
-keys for the same agent can run concurrently.
+`idempotency_key` prevents duplicate work for retried or repeated ingress.
+`concurrency_key` is used only where ordering matters, such as Slack threads or
+scheduled buckets for the same agent.
 
-## Ingress
+## Request and event flow
 
 ```mermaid
-flowchart TD
-  Web[Web chat] --> Enqueue[enqueueAgentEvent]
-  Slack[Slack webhook] --> Enqueue
-  Manual[Manual trigger] --> Enqueue
-  Cron[Vercel Cron every 5m] --> Enqueue
-  SubAgent[Sub-agent tool call] --> Enqueue
+sequenceDiagram
+  participant Ingress as Browser, Slack, cron, or tool
+  participant Next as Next.js route
+  participant DB as Neon Postgres
+  participant W as agentEventWorkflow
+  participant S as Vercel Sandbox
+  participant M as AI Gateway and tools
 
-  Enqueue --> Ledger[(agent_events)]
-  Enqueue --> Start{Runnable now?}
-  Start -->|yes| Workflow[agentEventWorkflow]
-  Start -->|no| Queue[Remain queued]
+  Ingress->>Next: request or trigger
+  Next->>DB: validate ownership and persist visible input
+  Next->>DB: insert or reuse agent_events row
+  Next->>W: start workflow when runnable
+  W->>DB: mark running and heartbeat
+  W->>S: resume persistent sandbox
+  W->>M: execute model and tool work
+  W-->>Ingress: stream reply namespace
+  W->>DB: mark terminal status
+  W->>DB: start next queued event for same concurrency key
 ```
 
-Realtime ingress tries to start immediately. Cron is the fallback and scheduler.
+## Scheduler and liveness
 
-## Workflow
+`/api/cron/liveness` is both scheduler and liveness sweeper. `vercel.json`
+configures it to run every five minutes in deployed environments.
 
-`agentEventWorkflow(eventId)`:
+The scheduler:
 
-1. Reads the `agent_events` row.
-2. Marks it `running` and updates `heartbeat_at`.
-3. Starts a publisher workflow when the source is Slack.
-4. Dispatches to the existing chat, heartbeat/dreaming, or invocation handler.
-5. Marks the event terminal.
-6. Cleans up per-run tool sandboxes.
-7. Refreshes the Redis file cache best-effort.
-8. Starts the next queued event with the same `concurrency_key`.
+- acquires a Redis lock so only one sweep runs at a time;
+- enqueues due heartbeat and dreaming events;
+- starts queued events that are now runnable;
+- requeues expired `starting` events whose workflow never came up;
+- inspects `running` events and reconciles them with workflow status.
 
-The persistent system sandbox is not stopped at the end of every event. Vercel
-Sandbox beta persistence/autoresume handles idle compute. A future cleanup may
-stop idle sandboxes only after checking there are no `starting` or `running`
-events for that agent.
+Long-running Slack or realtime events are valid. Failure detection depends on
+stale heartbeat data or terminal workflow state, not just elapsed runtime.
 
-## Scheduler And Liveness
+## State ownership
 
-`/api/cron/liveness` is both scheduler and liveness sweeper. It runs every
-5 minutes and uses a Redis lock.
+| Concern | Source of truth | Notes |
+| --- | --- | --- |
+| Users, sessions, agents, tools, conversations | Neon Postgres | Stored through Drizzle ORM and Better Auth. |
+| Agent event ledger | Neon Postgres | `agent_events` drives orchestration and recovery. |
+| Agent filesystem and bootstrap files | Vercel Sandbox | Persistent per-agent filesystem. |
+| Cache and distributed coordination | Upstash Redis | Used for locks, scheduling, and cached file reads. |
+| Slack thread state | Postgres plus optional Redis | Redis-backed state is optional for Chat SDK coordination. |
 
-Responsibilities:
+## Key data model
 
-- enqueue due heartbeat events;
-- enqueue due dreaming events;
-- start queued events;
-- requeue expired `starting` events whose workflow is not alive;
-- mark terminal workflow runs reflected in `running` events;
-- fail only stale `running` events whose `heartbeat_at` exceeds the long
-  threshold.
+The main application tables are:
 
-Long Slack tasks are valid. Runtime age alone is not failure.
+- `agent` for configuration, model selection, schedules, and sandbox identity;
+- `agent_events` for durable runtime orchestration and retries;
+- `chat_conversation` and `chat_message` for transcripts;
+- `agent_tools` for tool attachments and sub-agent wiring;
+- `channel_installations`, `agent_channel_bindings`, and
+  `channel_thread_conversations` for Slack integration;
+- `user_connections` for user-provided provider credentials;
+- `waitlist_entry` for public waitlist capture.
 
-## Slack
+## External integrations
 
-Slack messages are persisted as chat turns, then enqueued with Slack-specific
-dedupe and ordering:
+| Service | Role in the system | Primary files |
+| --- | --- | --- |
+| Better Auth | Authentication and admin roles | `auth/server/auth.ts`, `app/api/auth/[...all]/route.ts` |
+| Neon Postgres | Primary relational database | `shared/db/index.ts`, `shared/db/schema/*` |
+| Vercel Workflow | Event execution and streaming | `next.config.ts`, `agent-runtime/workflows/events/workflow.ts` |
+| Vercel Sandbox | Persistent agent filesystem and tool execution | `agent-runtime/server/agent-sandbox.ts`, `tools/sandbox-runtime/*` |
+| Upstash Redis | Locks, cache, and scheduling coordination | `agent-runtime/server/redis-lock.ts`, `agent-runtime/server/file-cache.ts` |
+| Slack Chat SDK | Slack ingress, routing, and streaming replies | `channels/slack/server/*`, `app/api/channels/slack/*` |
+| Resend | Waitlist confirmation email delivery | `waitlist/server/email.ts` |
 
-- idempotency: `slack:{teamId}:{channelId}:{messageTs}:{agentId}`;
-- ordering: `slack:{teamId}:{channelId}:{threadTs}:{agentId}`.
+## Repository layout
 
-If the same Slack thread already has an active event, the new event remains
-`queued` and Slack receives a short acknowledgement.
+| Path | Purpose |
+| --- | --- |
+| `app/` | App Router pages and HTTP endpoints |
+| `agent-runtime/` | Event queue, scheduler, workflows, and runtime handlers |
+| `agents/` | Agent-facing UI and server helpers |
+| `auth/` | Auth configuration and access control |
+| `channels/` | Slack adapters and channel dispatching |
+| `chat/` | Conversation persistence and chat helpers |
+| `connections/` | User-managed provider credentials |
+| `shared/` | Shared database, metadata, and server utilities |
+| `tools/` | Tool catalog, providers, and sandbox execution helpers |
+| `waitlist/` | Public waitlist flow and email integration |
 
-Streaming is handled by `slackStreamForwarderWorkflow`. It stores only primitive
-Slack ids in the event payload, reconstructs the thread with Chat SDK outside
-the webhook, and passes the workflow reply stream to `thread.post(...)`.
+## Local versus deployed behavior
 
-## Files
+Local development uses the same Next.js application and database schema as the
+deployed app. For most product work, the local environment is enough. Vercel is
+mainly useful when you want to exercise hosted or scheduled behavior such as:
 
-The named Vercel Sandbox is the canonical agent filesystem.
-
-- UI bootstrap edits write directly to the sandbox.
-- Legacy database file mirrors and pending-write queues are gone.
-- Redis caches common markdown files for UI reads.
-- If cache and sandbox disagree, sandbox wins.
-
-The agent's own file tools still block writes to user-owned bootstrap files.
-
-## Operational Checks
-
-Run:
-
-```bash
-pnpm check
-pnpm exec tsc --noEmit
-```
-
-For deployed verification, also exercise:
-
-- web chat streaming;
-- Slack same-thread queueing and streaming;
-- manual heartbeat/dreaming trigger;
-- cron-created heartbeat/dreaming events;
-- sandbox file cache fallback by clearing Redis.
+- workflow execution and reply streaming;
+- persistent sandbox lifecycle;
+- scheduler execution through Vercel Cron;
+- Slack ingress and background streaming behavior.

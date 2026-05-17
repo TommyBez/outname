@@ -69,6 +69,13 @@ export function buildAgentTool(handle: AgentToolHandle) {
         })
         const { error, messages: childMessages } =
           await collectSubAgentMessages({
+            progress: {
+              childAgentId: handle.childAgentId,
+              childName: handle.childName,
+              streamNamespace: handle.streamNamespace ?? null,
+              toolCallId,
+              toolName: handle.parentToolId,
+            },
             sessionRunId,
             streamToken,
           })

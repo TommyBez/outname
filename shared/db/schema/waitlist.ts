@@ -5,6 +5,7 @@ import {
   timestamp,
   uniqueIndex,
 } from 'drizzle-orm/pg-core'
+import { user } from './auth'
 
 export const waitlistEntry = pgTable(
   'waitlist_entries',
@@ -13,12 +14,15 @@ export const waitlistEntry = pgTable(
     email: text('email').notNull(),
     name: text('name'),
     useCase: text('use_case'),
+    primaryInterest: text('primary_interest'),
+    profileType: text('profile_type'),
     status: text('status').notNull().default('pending'),
     source: text('source'),
     referrer: text('referrer'),
     utmSource: text('utm_source'),
     utmMedium: text('utm_medium'),
     utmCampaign: text('utm_campaign'),
+    utmContent: text('utm_content'),
     confirmationTokenHash: text('confirmation_token_hash'),
     confirmationTokenExpiresAt: timestamp('confirmation_token_expires_at', {
       withTimezone: true,
@@ -31,6 +35,10 @@ export const waitlistEntry = pgTable(
       withTimezone: true,
     }),
     invitedAt: timestamp('invited_at', { withTimezone: true }),
+    provisionedUserId: text('provisioned_user_id').references(() => user.id, {
+      onDelete: 'set null',
+    }),
+    provisionedAt: timestamp('provisioned_at', { withTimezone: true }),
     convertedAt: timestamp('converted_at', { withTimezone: true }),
     notes: text('notes'),
     createdAt: timestamp('created_at', { withTimezone: true })
@@ -48,6 +56,14 @@ export const waitlistEntry = pgTable(
     ),
     index('waitlist_entries_source_created_idx').on(
       t.source,
+      t.createdAt.desc()
+    ),
+    index('waitlist_entries_primary_interest_created_idx').on(
+      t.primaryInterest,
+      t.createdAt.desc()
+    ),
+    index('waitlist_entries_profile_type_created_idx').on(
+      t.profileType,
       t.createdAt.desc()
     ),
   ]

@@ -88,7 +88,7 @@ function flattenV0Tools(
 const v0SchemaDefinitions = flattenV0Tools(
   v0ToolsByCategory({
     apiKey: V0_CONFIGURED_API_KEY_PLACEHOLDER,
-  }) as Record<V0ToolCategory, Record<string, V0SdkTool>>
+  }) as unknown as Record<V0ToolCategory, Record<string, V0SdkTool>>
 )
 
 const v0ConfigSchema = z.object(
@@ -114,7 +114,7 @@ const v0ConfigSchema = z.object(
 
 function buildRuntimeTools(apiKey: string): Record<string, V0SdkTool> {
   const runtimeDefinitions = flattenV0Tools(
-    v0ToolsByCategory({ apiKey }) as Record<
+    v0ToolsByCategory({ apiKey }) as unknown as Record<
       V0ToolCategory,
       Record<string, V0SdkTool>
     >
