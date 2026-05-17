@@ -29,10 +29,12 @@ export async function handleInvocation(input: {
   agentId: string
   input: string
   streamToken: string
+  parentAgentId?: string | null
   parentRunId?: string | null
   parentToolId?: string | null
   parentToolCallId?: string | null
   parentStream?: WritableStream<UIMessageChunk> | null
+  reportBackToParent?: boolean
   replyToken?: string | null
   callStack: string[]
   depth: number
@@ -40,11 +42,13 @@ export async function handleInvocation(input: {
   const {
     agentId,
     input: instruction,
+    parentAgentId,
     streamToken,
     parentRunId,
     parentToolId,
     parentToolCallId,
     parentStream,
+    reportBackToParent,
     replyToken,
     callStack,
     depth,
@@ -151,6 +155,13 @@ export async function handleInvocation(input: {
     })
     await finishInvocationStreams(streamNamespaces)
     await forwardPromise
+    await maybeReportBackToParent({
+      childAgentId: agentId,
+      childName: built.meta.name,
+      finalText: extractFinalAssistantText(result.uiMessages),
+      parentAgentId: parentAgentId ?? null,
+      reportBackToParent: reportBackToParent ?? false,
+    })
   } catch (err) {
     await failInvocation({
       err,
@@ -161,6 +172,72 @@ export async function handleInvocation(input: {
     })
     throw err
   }
+}
+
+async function maybeReportBackToParent(input: {
+  childAgentId: string
+  childName: string
+  finalText: string | null
+  parentAgentId: string | null
+  reportBackToParent: boolean
+}): Promise<void> {
+  if (!input.reportBackToParent || !input.parentAgentId || !input.finalText) {
+    return
+  }
+  const { dispatchInvocation } = await import(
+    '@/agent-runtime/server/session-events'
+  )
+  await dispatchInvocation({
+    childAgentId: input.parentAgentId,
+    childUserId: await resolveAgentUserId(input.parentAgentId),
+    parentAgentId: input.childAgentId,
+    parentUserId: await resolveAgentUserId(input.parentAgentId),
+    parentRunId: null,
+    parentToolId: 'sub_agent_report_back',
+    instruction: [
+      `Sub-agent "${input.childName}" completed delegated async work.`,
+      `Result: ${input.finalText}`,
+    ].join('\n'),
+    streamToken: `report_back_${Date.now().toString(36)}`,
+    callStack: [input.parentAgentId],
+    depth: 0,
+  })
+}
+
+async function resolveAgentUserId(agentId: string): Promise<string> {
+  const { db } = await import('@/shared/db')
+  const { agent } = await import('@/shared/db/schema')
+  const { eq } = await import('drizzle-orm')
+  const [row] = await db.select().from(agent).where(eq(agent.id, agentId)).limit(1)
+  if (!row) {
+    throw new Error(`resolveAgentUserId: agent ${agentId} not found`)
+  }
+  return row.userId
+}
+
+function extractFinalAssistantText(
+  messages: readonly UIMessage[] | undefined
+): string | null {
+  if (!messages) {
+    return null
+  }
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i]
+    if (message.role !== 'assistant') {
+      continue
+    }
+    const chunks: string[] = []
+    for (const part of message.parts ?? []) {
+      if (part.type === 'text' && typeof part.text === 'string') {
+        chunks.push(part.text)
+      }
+    }
+    const text = chunks.join('').trim()
+    if (text.length > 0) {
+      return text
+    }
+  }
+  return null
 }
 
 async function finishInvocationStreams(

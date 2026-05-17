@@ -110,10 +110,12 @@ export async function dispatchInvocation(input: {
   childAgentId: string
   childUserId: string
   parentUserId: string
+  parentAgentId: string
   parentRunId: string | null
   parentToolId: string
   parentToolCallId?: string | null
   instruction: string
+  reportBackToParent?: boolean
   streamToken: string
   callStack: string[]
   depth: number
@@ -150,9 +152,11 @@ export async function dispatchInvocation(input: {
       callStack: input.callStack,
       depth: input.depth,
       input: input.instruction,
+      parentAgentId: input.parentAgentId,
       parentRunId: input.parentRunId,
       parentToolCallId: input.parentToolCallId ?? null,
       parentToolId: input.parentToolId,
+      reportBackToParent: input.reportBackToParent ?? false,
       streamToken: input.streamToken,
     },
     source: 'invocation',
