@@ -125,7 +125,7 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
                   'Enter the 6-digit code from your email to continue.'}
               </p>
             </div>
-            <button
+            <Button
               className="font-bold text-[11px] text-foreground uppercase tracking-[0.14em] underline underline-offset-4"
               onClick={() => {
                 setStep('request')
@@ -135,7 +135,7 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
               type="button"
             >
               Change email
-            </button>
+            </Button>
           </div>
 
           <div className="pt-1">

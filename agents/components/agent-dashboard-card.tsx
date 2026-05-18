@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/collapsible'
 import { cn } from '@/lib/utils'
 import type { AgentScheduleMode } from '@/shared/agent-schedule'
+import { Button } from '@/components/ui/button'
 
 export interface DashboardAgent {
   dreamingEnabled: boolean
@@ -59,7 +60,7 @@ export function AgentDashboardCard({
         )}
       >
         <CollapsibleTrigger asChild>
-          <button
+          <Button
             aria-label={`${open ? 'Collapse' : 'Expand'} ${agent.name} activity`}
             className="group grid w-full gap-6 px-0 py-8 text-left outline-none transition-colors focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background md:grid-cols-[minmax(0,7fr)_minmax(16rem,3fr)] md:px-4"
             type="button"
@@ -95,7 +96,7 @@ export function AgentDashboardCard({
                 {open ? 'Collapse' : 'Expand'} →
               </span>
             </div>
-          </button>
+          </Button>
         </CollapsibleTrigger>
 
         <CollapsibleContent>

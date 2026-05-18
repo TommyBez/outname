@@ -10,6 +10,7 @@ import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { BOOTSTRAP_FILE_OPTIONS, type BootstrapFileValue } from './options'
+import { Button } from '@/components/ui/button'
 
 interface BootstrapFilesProps {
   activeBootstrapFile: BootstrapFileValue
@@ -155,7 +156,7 @@ function BootstrapFilePicker({
         {BOOTSTRAP_FILE_OPTIONS.map((option) => {
           const isActive = activeBootstrapFile === option.value
           return (
-            <button
+            <Button
               aria-pressed={isActive}
               className={cn(
                 'flex min-h-16 flex-col items-start justify-between gap-2 border-2 px-4 py-3 text-left transition-colors',
@@ -173,7 +174,7 @@ function BootstrapFilePicker({
               <span className="font-mono text-[11px] tracking-normal">
                 {option.fileName}
               </span>
-            </button>
+            </Button>
           )
         })}
       </div>

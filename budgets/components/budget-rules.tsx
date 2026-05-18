@@ -9,6 +9,7 @@ import {
   upsertBudgetRuleAction,
 } from '@/budgets/server/actions'
 import type { BudgetPeriod } from '@/shared/db/schema'
+import { Button } from '@/components/ui/button'
 
 const PERIODS: readonly { id: BudgetPeriod; label: string }[] = [
   { id: 'daily', label: 'Daily' },
@@ -182,22 +183,22 @@ function BudgetRow({
         </div>
         {rule && (
           <div className="flex items-center gap-2">
-            <button
+            <Button
               className="h-9 border-2 border-foreground px-3 font-bold text-[11px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background disabled:opacity-50"
               disabled={pending}
               onClick={onToggle}
               type="button"
             >
               {rule.enabled ? 'Disable' : 'Enable'}
-            </button>
-            <button
+            </Button>
+            <Button
               className="h-9 border-2 border-destructive px-3 font-bold text-[11px] text-destructive uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-destructive-foreground disabled:opacity-50"
               disabled={pending}
               onClick={onRemove}
               type="button"
             >
               Remove
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -224,13 +225,13 @@ function BudgetRow({
           type="number"
           value={draftLimit}
         />
-        <button
+        <Button
           className="h-9 border-2 border-foreground px-3 font-bold text-[11px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background disabled:opacity-50"
           disabled={pending}
           type="submit"
         >
           {rule ? 'Update' : 'Set limit'}
-        </button>
+        </Button>
       </form>
     </div>
   )

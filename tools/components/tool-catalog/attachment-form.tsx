@@ -13,6 +13,7 @@ import type {
   ToolConfigField,
 } from './types'
 import { defaultValuesFor, submitButtonLabel } from './utils'
+import { Button } from '@/components/ui/button'
 
 interface AttachmentFormProps {
   agentId: string
@@ -114,13 +115,13 @@ export function AttachmentForm({
               value={values[field.name] ?? ''}
             />
           ))}
-          <button
+          <Button
             className="inline-flex h-10 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
             disabled={pending}
             type="submit"
           >
             {submitButtonLabel(pending, isAttached)}
-          </button>
+          </Button>
         </form>
       )}
     </div>

@@ -22,6 +22,7 @@ import {
 import { AgentChatTranscript } from '@/chat/components/agent-chat-transcript'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
 interface AgentEventsWorkspaceProps {
   agentId: string
@@ -108,7 +109,7 @@ export function AgentEventsWorkspace({
             <ul className="divide-y-2 divide-foreground">
               {ledgerEvents.map((event) => (
                 <li key={event.id}>
-                  <button
+                  <Button
                     aria-pressed={selectedEvent?.id === event.id}
                     className={cn(
                       'grid w-full gap-3 px-4 py-4 text-left transition-colors hover:bg-accent',
@@ -142,7 +143,7 @@ export function AgentEventsWorkspace({
                     >
                       {formatDate(event.queuedAt)}
                     </span>
-                  </button>
+                  </Button>
                 </li>
               ))}
             </ul>
@@ -215,13 +216,13 @@ function EventTranscriptHeader({
         </div>
       )}
       {blockedByEventId && (
-        <button
+        <Button
           className="mt-4 border-2 border-foreground px-3 py-2 font-bold text-xs uppercase tracking-[0.14em] transition-colors hover:bg-accent"
           onClick={() => onSelectEvent(blockedByEventId)}
           type="button"
         >
           Open active event
-        </button>
+        </Button>
       )}
     </div>
   )

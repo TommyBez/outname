@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { disconnectSlackInstallationAction } from '@/channels/slack/server/actions'
 import type { InstallationView } from './types'
+import { Button } from '@/components/ui/button'
 
 export function InstallationsBlock({
   installHref = '/api/channels/slack/install',
@@ -56,7 +57,7 @@ export function InstallationsBlock({
                   {install.teamId}
                 </p>
               </div>
-              <button
+              <Button
                 className="inline-flex h-9 items-center justify-center border-2 border-foreground px-3 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
                 disabled={pending && pendingTeamId === install.teamId}
                 onClick={() => disconnect(install.teamId)}
@@ -65,7 +66,7 @@ export function InstallationsBlock({
                 {pending && pendingTeamId === install.teamId
                   ? '…'
                   : 'Disconnect'}
-              </button>
+              </Button>
             </li>
           ))}
         </ul>

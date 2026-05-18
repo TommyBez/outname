@@ -73,7 +73,7 @@ export function TriggerButton({
 
   if (variant === 'link') {
     return (
-      <button
+      <Button
         className={cn(
           'text-muted-foreground text-sm transition-colors hover:text-foreground disabled:opacity-50',
           className
@@ -83,7 +83,7 @@ export function TriggerButton({
         type="button"
       >
         {isLoading ? 'Starting…' : label}
-      </button>
+      </Button>
     )
   }
 

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useTransition } from 'react'
 import { toast } from 'sonner'
 import { attachSubAgentAction, detachToolAction } from '@/tools/actions'
+import { Button } from '@/components/ui/button'
 
 export interface SubAgentCatalogEntry {
   agentId: string
@@ -143,24 +144,24 @@ function SubAgentRow({
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {!attached && (
-          <button
+          <Button
             className="inline-flex h-10 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
             disabled={pending}
             onClick={handleAttach}
             type="button"
           >
             {pending ? '...' : 'Attach'}
-          </button>
+          </Button>
         )}
         {attached && (
-          <button
+          <Button
             className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
             disabled={pending}
             onClick={handleDetach}
             type="button"
           >
             {pending ? '...' : 'Detach'}
-          </button>
+          </Button>
         )}
         {attached && (
           <span

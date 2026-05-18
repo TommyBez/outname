@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { deleteSlackBindingAction } from '@/channels/slack/server/actions'
 import type { InstallationView, SlackBindingView } from './types'
 import { KIND_LABEL, workspaceLabel } from './utils'
+import { Button } from '@/components/ui/button'
 
 export function BindingsBlock({
   agentId,
@@ -103,7 +104,7 @@ function BindingRow({
           </p>
         </div>
       </div>
-      <button
+      <Button
         aria-label="Remove binding"
         className="inline-flex h-9 w-9 items-center justify-center border-2 border-foreground transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
         disabled={disabled}
@@ -111,7 +112,7 @@ function BindingRow({
         type="button"
       >
         <Trash2 aria-hidden className="size-3.5" />
-      </button>
+      </Button>
     </li>
   )
 }
