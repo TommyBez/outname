@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
   mockGetWorkflowMetadata,
@@ -91,6 +91,11 @@ function createEvent(overrides: Record<string, unknown> = {}) {
 }
 
 describe('agentEventWorkflow', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGetWorkflowMetadata.mockReturnValue({})
+  })
+
   it('returns early when the event record is gone', async () => {
     mockLoadAgentEventStep.mockResolvedValue(null)
 
@@ -169,7 +174,7 @@ describe('agentEventWorkflow', () => {
     })
   })
 
-  it('falls back to the persisted workflow run id when metadata is unavailable', async () => {
+  it('falls back to the persisted workflow run id when metadata omits run ids', async () => {
     const event = createEvent({
       payload: {
         manual: true,
@@ -180,9 +185,7 @@ describe('agentEventWorkflow', () => {
       workflowRunId: 'wrun_saved',
     })
 
-    mockGetWorkflowMetadata.mockImplementation(() => {
-      throw new Error('outside workflow runtime')
-    })
+    mockGetWorkflowMetadata.mockReturnValue({})
     mockLoadAgentEventStep.mockResolvedValue(event)
 
     await agentEventWorkflow({ eventId: event.id })

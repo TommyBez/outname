@@ -10,17 +10,13 @@ export async function beginHeartbeatRun(input: {
 }
 
 function currentWorkflowRunId(agentId: string): string {
-  try {
-    const metadata = getWorkflowMetadata() as {
-      runId?: string
-      workflowRunId?: string
-    }
-    const runId = metadata.runId ?? metadata.workflowRunId
-    if (runId) {
-      return runId
-    }
-  } catch {
-    // Outside workflow context, fall back to a stable-enough id.
+  const metadata = getWorkflowMetadata() as {
+    runId?: string
+    workflowRunId?: string
+  }
+  const runId = metadata.runId ?? metadata.workflowRunId
+  if (runId) {
+    return runId
   }
   return agentId
 }

@@ -19,17 +19,13 @@ function currentWorkflowRunId(input: {
   agentId: string
   streamToken: string
 }): string {
-  try {
-    const metadata = getWorkflowMetadata() as {
-      runId?: string
-      workflowRunId?: string
-    }
-    const runId = metadata.runId ?? metadata.workflowRunId
-    if (runId) {
-      return runId
-    }
-  } catch {
-    // Outside a workflow context, keep a deterministic local fallback.
+  const metadata = getWorkflowMetadata() as {
+    runId?: string
+    workflowRunId?: string
+  }
+  const runId = metadata.runId ?? metadata.workflowRunId
+  if (runId) {
+    return runId
   }
   return input.streamToken
 }
