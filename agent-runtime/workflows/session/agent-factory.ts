@@ -72,7 +72,7 @@ export async function buildAgent(
     reconnects: attached.reconnects,
   })
 
-  const fileTools = await createFileTools({ agentId })
+  const fileTools = createFileTools({ agentId })
   const tools = {
     ...fileTools,
     ...attached.tools,
