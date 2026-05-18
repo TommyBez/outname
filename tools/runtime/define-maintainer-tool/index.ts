@@ -240,7 +240,7 @@ function buildChildTool<TInput, TConfig, TData>(input: {
     | DefineMaintainerToolArgs<TInput, TConfig, TData>
     | BundleChildToolArgs<TConfig>
   description: string
-  inputSchema: z.ZodType<TInput, z.ZodTypeDef, unknown>
+  inputSchema: z.ZodType<TInput, unknown>
   sandboxManifestId?: string
   toolId: string
 }) {

@@ -9,6 +9,10 @@ export interface AgentCreationSchedule {
   times: string[]
 }
 
+export interface AgentCreationDreaming {
+  enabled: boolean
+}
+
 export interface AgentCreationStepLimit {
   custom: number | null
   mode: StepLimitMode
@@ -42,7 +46,7 @@ export interface AgentCreationBudget {
 export interface AgentCreationRequest {
   behavior: string
   budget: AgentCreationBudget
-  dreaming: AgentCreationSchedule
+  dreaming: AgentCreationDreaming
   heartbeat: AgentCreationSchedule
   identityCard?: string
   instructions?: string

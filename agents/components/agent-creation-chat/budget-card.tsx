@@ -1,10 +1,15 @@
-import { AlertTriangleIcon, CircleDashedIcon } from 'lucide-react'
 import { useState } from 'react'
 import {
   type AgentBudgetValues,
   AgentBudgetWidget,
   formatBudgetSummary,
 } from '@/agents/components/agent-budget-widget'
+import {
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolOutput,
+} from '@/components/ai-elements/tool'
 import type { ProposeBudgetToolPart, SendMessageFn } from './types'
 
 export function ProposeBudgetCard({
@@ -22,26 +27,27 @@ export function ProposeBudgetCard({
   const rationale = part.output?.rationale ?? part.input?.rationale ?? ''
   const [submitted, setSubmitted] = useState(false)
 
+  // Streaming states show only the Tool header with its built-in
+  // "Pending"/"Running" badge — no redundant loading panel.
   if (part.state === 'input-streaming' || part.state === 'input-available') {
     return (
-      <div className="w-full border-2 border-foreground bg-muted p-4">
-        <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-[0.16em]">
-          <CircleDashedIcon className="size-4 animate-spin" />
-          Drafting budget suggestion
-        </div>
-      </div>
+      <Tool>
+        <ToolHeader state={part.state} type={part.type} />
+      </Tool>
     )
   }
 
   if (part.state === 'output-error') {
     return (
-      <div className="w-full border-2 border-destructive bg-destructive/5 p-4 text-destructive text-sm">
-        <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-[0.16em]">
-          <AlertTriangleIcon className="size-4" />
-          Budget proposal failed
-        </div>
-        <p className="mt-2">{part.errorText ?? 'Unknown error.'}</p>
-      </div>
+      <Tool defaultOpen>
+        <ToolHeader state={part.state} type={part.type} />
+        <ToolContent>
+          <ToolOutput
+            errorText={part.errorText ?? 'Budget proposal failed.'}
+            output={undefined}
+          />
+        </ToolContent>
+      </Tool>
     )
   }
 
@@ -61,12 +67,17 @@ export function ProposeBudgetCard({
   }
 
   return (
-    <AgentBudgetWidget
-      onApply={submit}
-      onSkip={() => submit({ daily: null, weekly: null, monthly: null })}
-      proposed={proposed}
-      rationale={rationale}
-      submitted={submitted}
-    />
+    <Tool defaultOpen>
+      <ToolHeader state={part.state} type={part.type} />
+      <ToolContent>
+        <AgentBudgetWidget
+          onApply={submit}
+          onSkip={() => submit({ daily: null, weekly: null, monthly: null })}
+          proposed={proposed}
+          rationale={rationale}
+          submitted={submitted}
+        />
+      </ToolContent>
+    </Tool>
   )
 }

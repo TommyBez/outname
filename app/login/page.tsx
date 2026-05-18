@@ -1,15 +1,17 @@
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import { LoginForm } from '@/auth/components/login-form'
 import { auth } from '@/auth/server/auth'
 import { Skeleton } from '@/components/ui/skeleton'
 import { createPrivatePageMetadata } from '@/shared/server/site-metadata'
+import { isWaitlistPublicEnabled } from '@/waitlist/server/public-config'
 
 export const metadata: Metadata = createPrivatePageMetadata(
   'Sign in',
-  "Access your OUTNA.ME agents, schedules, tools, and today's run."
+  "Access your OUTNA.ME agents, schedules, tools, and today's run with an email code."
 )
 
 export default function LoginPage({
@@ -17,6 +19,8 @@ export default function LoginPage({
 }: {
   searchParams: Promise<{ from?: string }>
 }) {
+  const waitlistEnabled = isWaitlistPublicEnabled()
+
   return (
     <main className="swiss-grid-pattern grid min-h-svh place-items-center bg-background px-6">
       <div className="w-full max-w-md border-4 border-foreground bg-background p-8">
@@ -26,12 +30,26 @@ export default function LoginPage({
             Sign in
           </h1>
           <p className="mt-4 border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
-            Access your scheduled agents and live dashboard.
+            Request a one-time code by email to access your scheduled agents and
+            live dashboard.
           </p>
         </div>
         <Suspense fallback={<LoginFormSkeleton />}>
           <LoginGate searchParams={searchParams} />
         </Suspense>
+        {waitlistEnabled ? (
+          <div className="mt-8 border-foreground border-t-2 pt-5">
+            <p className="font-mono text-[11px] text-muted-foreground uppercase tracking-normal">
+              Need access first?
+            </p>
+            <Link
+              className="mt-3 inline-flex min-h-11 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+              href="/waitlist?source=login-page"
+            >
+              Join the waitlist
+            </Link>
+          </div>
+        ) : null}
       </div>
     </main>
   )
@@ -60,10 +78,6 @@ function LoginFormSkeleton() {
     >
       <div className="flex flex-col gap-2">
         <Skeleton className="h-4 w-12" />
-        <Skeleton className="h-10 w-full border-2 border-border" />
-      </div>
-      <div className="flex flex-col gap-2">
-        <Skeleton className="h-4 w-20" />
         <Skeleton className="h-10 w-full border-2 border-border" />
       </div>
       <Skeleton className="mt-2 h-10 w-full border-2 border-border" />

@@ -1,5 +1,4 @@
-import assert from 'node:assert/strict'
-import test from 'node:test'
+import { expect, test } from 'vitest'
 import { z } from 'zod'
 import { resolveBundleChildren, toBundleExposedTools } from './bundle-tools'
 import { defineToolBundle, toolSuccess } from './index'
@@ -28,25 +27,23 @@ const testTools: Record<string, BundleChildToolArgs<TestConfig>> = {
 }
 
 test('toBundleExposedTools filters disabled child tools from config', () => {
-  assert.deepEqual(
-    toBundleExposedTools(testTools).map((tool) => tool.toolId),
-    ['test_read', 'test_write']
-  )
-  assert.deepEqual(
+  expect(toBundleExposedTools(testTools).map((tool) => tool.toolId)).toEqual([
+    'test_read',
+    'test_write',
+  ])
+  expect(
     toBundleExposedTools(testTools, { enableWrite: false }).map(
       (tool) => tool.toolId
-    ),
-    ['test_read']
-  )
+    )
+  ).toEqual(['test_read'])
 })
 
 test('resolveBundleChildren only returns enabled child tools', () => {
-  assert.deepEqual(
+  expect(
     resolveBundleChildren(testTools, { enableWrite: false }).map(
       ([toolId]) => toolId
-    ),
-    ['test_read']
-  )
+    )
+  ).toEqual(['test_read'])
 })
 
 test('bundle child tools inherit the bundle sandbox manifest id', async () => {

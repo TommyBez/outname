@@ -1,7 +1,11 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Suspense } from 'react'
-import { getSession, requireSession } from '@/auth/server/auth-guard'
+import {
+  getSession,
+  hasWaitlistManageAccess,
+  requireSession,
+} from '@/auth/server/auth-guard'
 import {
   BudgetRules,
   type BudgetRuleView,
@@ -23,7 +27,7 @@ export default function SettingsPage() {
     <AppShell>
       <header className="mb-12 border-foreground border-t-4 pt-6 md:mb-16">
         <p className="swiss-label mb-4 text-accent">10. Settings</p>
-        <h1 className="font-black font-serif text-6xl uppercase leading-[0.9] tracking-tighter md:text-8xl">
+        <h1 className="font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
           Your assistant
         </h1>
       </header>
@@ -46,6 +50,10 @@ export default function SettingsPage() {
             <AccountSection />
           </Suspense>
         </Section>
+
+        <Suspense fallback={null}>
+          <WaitlistAdminSection />
+        </Suspense>
       </div>
     </AppShell>
   )
@@ -105,6 +113,41 @@ async function AccountSection() {
         {session?.user.email ?? '—'}
       </p>
     </Row>
+  )
+}
+
+async function WaitlistAdminSection() {
+  const session = await getSession()
+  if (!(session && (await hasWaitlistManageAccess(session.user.id)))) {
+    return null
+  }
+
+  return (
+    <Section title="Waitlist">
+      <WaitlistSection />
+    </Section>
+  )
+}
+
+function WaitlistSection() {
+  return (
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+      <div>
+        <p className="font-black font-serif text-xl uppercase tracking-[-0.04em]">
+          Manage waitlist confirmations and invites
+        </p>
+        <p className="mt-0.5 text-muted-foreground text-xs">
+          Review pending signups, resend confirmation emails, and send access
+          invites.
+        </p>
+      </div>
+      <Link
+        className="inline-flex h-11 shrink-0 items-center justify-center self-start border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background sm:self-auto"
+        href="/settings/waitlist"
+      >
+        Open waitlist →
+      </Link>
+    </div>
   )
 }
 

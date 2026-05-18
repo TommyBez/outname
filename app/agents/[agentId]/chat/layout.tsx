@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { requireSession } from '@/auth/server/auth-guard'
-import { ChatFrame } from '@/chat/components/chat-frame'
 import { getCachedAgentByIdForUser } from '@/shared/server/data'
 
 type Params = Promise<{ agentId: string }>
@@ -14,13 +13,15 @@ export default function ChatRouteLayout({
   params: Params
 }) {
   return (
-    <Suspense fallback={<ChatFrameSkeleton>{children}</ChatFrameSkeleton>}>
-      <ResolvedChatFrame params={params}>{children}</ResolvedChatFrame>
-    </Suspense>
+    <div className="flex h-[calc(100svh-17rem)] min-h-[22rem] min-w-0 flex-col overflow-hidden lg:h-[42rem]">
+      <Suspense fallback={children}>
+        <OwnershipGate params={params}>{children}</OwnershipGate>
+      </Suspense>
+    </div>
   )
 }
 
-async function ResolvedChatFrame({
+async function OwnershipGate({
   children,
   params,
 }: {
@@ -33,22 +34,5 @@ async function ResolvedChatFrame({
   if (!agent) {
     notFound()
   }
-
-  return (
-    <ChatFrame
-      agentId={agent.id}
-      agentName={agent.name}
-      enabled={agent.enabled}
-    >
-      {children}
-    </ChatFrame>
-  )
-}
-
-function ChatFrameSkeleton({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex h-[42rem] min-h-0 min-w-0 flex-col overflow-hidden">
-      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
-    </div>
-  )
+  return children
 }

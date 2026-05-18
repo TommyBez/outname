@@ -209,7 +209,7 @@ async function Resolved({ params }: { params: Params }) {
             <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
               {agent.name}
             </p>
-            <h1 className="font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter md:text-7xl">
+            <h1 className="font-black font-serif text-4xl uppercase leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl xl:text-7xl">
               Tools
             </h1>
             <p className="text-muted-foreground text-sm">

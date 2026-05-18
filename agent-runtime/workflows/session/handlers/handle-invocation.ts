@@ -16,7 +16,6 @@ import {
   recordTokenUsageStep,
 } from '../steps/budget'
 import { finishSuccessfulInvocation } from './handle-invocation/finish-success'
-import { startForwardingChildTrace } from './handle-invocation/forward-child-trace'
 import {
   beginInvocationRun,
   invocationMessageId,
@@ -58,7 +57,6 @@ export async function handleInvocation(input: {
   })
   const streamNamespace = streamToken
   const streamNamespaces = uniqueNamespaces(streamNamespace, replyToken ?? null)
-  const writable = createInvocationWritable(streamNamespaces)
   let forwardPromise = Promise.resolve([] as AgentChatMessage[])
 
   try {
@@ -98,6 +96,9 @@ export async function handleInvocation(input: {
     await emitActivity(runId, 'Sub-agent: Streaming model work', {
       model: built.meta.model,
     })
+    const writable = getWritable<UIMessageChunk>({
+      namespace: streamNamespace,
+    })
     const stepLimitInput = {
       mode: built.meta.stepLimitMode,
       custom: built.meta.stepLimitCustom,
@@ -110,15 +111,20 @@ export async function handleInvocation(input: {
     const modelMessages = await convertToModelMessages([userMessage])
 
     await emitStep(runId, 'read', 'start', 'Running sub-agent instruction')
-    forwardPromise = startForwardingChildTrace({
-      childAgentId: agentId,
-      childName: built.meta.name,
-      namespace: streamNamespace,
-      parentStream: parentStream ?? null,
-      parentToolCallId: parentToolCallId ?? null,
-      runId,
-      toolName: parentToolId ?? 'sub_agent',
-    })
+    if (parentStream && parentToolCallId) {
+      const { startForwardingChildTrace } = await import(
+        './handle-invocation/forward-child-trace'
+      )
+      forwardPromise = startForwardingChildTrace({
+        childAgentId: agentId,
+        childName: built.meta.name,
+        namespace: streamNamespace,
+        parentStream,
+        parentToolCallId,
+        runId,
+        toolName: parentToolId ?? 'sub_agent',
+      })
+    }
     const result = await built.agent.stream({
       messages: modelMessages,
       writable,
@@ -157,55 +163,13 @@ export async function handleInvocation(input: {
   }
 }
 
-function createInvocationWritable(
-  namespaces: readonly string[]
-): WritableStream<UIMessageChunk> {
-  if (namespaces.length === 1) {
-    return getWritable<UIMessageChunk>({ namespace: namespaces[0] })
-  }
-
-  const writables = namespaces.map((namespace) =>
-    getWritable<UIMessageChunk>({ namespace })
-  )
-
-  return new WritableStream<UIMessageChunk>({
-    async abort(reason) {
-      await Promise.all(
-        writables.map((writable) =>
-          writable.abort(reason).catch(() => undefined)
-        )
-      )
-    },
-    async close() {
-      await Promise.all(writables.map((writable) => writable.close()))
-    },
-    async write(chunk) {
-      await Promise.all(
-        writables.map((writable) => writeChunk(writable, chunk))
-      )
-    },
-  })
-}
-
-async function writeChunk(
-  writable: WritableStream<UIMessageChunk>,
-  chunk: UIMessageChunk
-): Promise<void> {
-  const writer = writable.getWriter()
-  try {
-    await writer.write(chunk)
-  } finally {
-    writer.releaseLock()
-  }
-}
-
 async function finishInvocationStreams(
   namespaces: readonly string[]
 ): Promise<void> {
   await Promise.all(
     namespaces.map((namespace) =>
       finishUiMessageStream(namespace).catch((err) => {
-        console.error('[v0] handleInvocation: failed to close transcript', err)
+        console.error('handleInvocation: failed to close transcript', err)
       })
     )
   )
@@ -284,7 +248,7 @@ async function failInvocation(input: {
     await emitRun(input.runId, 'failed', message)
   } catch (innerErr) {
     console.error(
-      '[v0] handleInvocation: failed to emit failure breadcrumbs',
+      'handleInvocation: failed to emit failure breadcrumbs',
       innerErr
     )
   }

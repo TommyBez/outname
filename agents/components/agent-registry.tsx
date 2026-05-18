@@ -9,9 +9,6 @@ import type { AgentScheduleMode } from '@/shared/agent-schedule'
 
 export interface RegistryAgent {
   dreamingEnabled: boolean
-  dreamingIntervalMinutes: number
-  dreamingScheduleMode: AgentScheduleMode
-  dreamingScheduleTimes: string[]
   enabled: boolean
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
@@ -117,14 +114,7 @@ function AgentRegistryRow({ agent }: { agent: RegistryAgent }) {
               times: agent.heartbeatScheduleTimes,
             })}`}
           </span>
-          <span>
-            {`Dreaming ${formatAgentScheduleInline({
-              enabled: agent.dreamingEnabled,
-              intervalMinutes: agent.dreamingIntervalMinutes,
-              mode: agent.dreamingScheduleMode,
-              times: agent.dreamingScheduleTimes,
-            })}`}
-          </span>
+          <span>{`Dreaming ${agent.dreamingEnabled ? 'daily' : 'off'}`}</span>
         </div>
       </div>
 

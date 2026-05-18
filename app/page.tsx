@@ -1,5 +1,6 @@
 import { LandingHomePage } from '@/marketing/components/landing-home-page'
 import { siteConfig } from '@/shared/server/site-metadata'
+import { isWaitlistPublicEnabled } from '@/waitlist/server/public-config'
 
 export const metadata = {
   title: {
@@ -11,5 +12,5 @@ export const metadata = {
 }
 
 export default function HomePage() {
-  return <LandingHomePage />
+  return <LandingHomePage waitlistEnabled={isWaitlistPublicEnabled()} />
 }

@@ -1,0 +1,5 @@
+.next
+.swc
+.workflow-data
+.workflow-vitest
+node_modules

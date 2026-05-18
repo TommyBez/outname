@@ -9,6 +9,7 @@ import {
 import { BotIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { ChatErrorBanner } from '@/chat/components/chat-error-banner'
 import {
   Conversation,
   ConversationContent,
@@ -58,7 +59,7 @@ export function AgentEditChat({ agentId, currentBudget }: AgentEditChatProps) {
   }
 
   return (
-    <div className="mt-8 flex h-[min(620px,calc(100vh-8rem))] min-h-[420px] min-w-0 flex-col overflow-hidden border-2 border-foreground bg-background">
+    <div className="mt-8 flex h-[min(620px,calc(100svh-10rem))] min-h-[24rem] min-w-0 flex-col overflow-hidden border-2 border-foreground bg-background">
       <div className="shrink-0 border-border border-b px-4 py-3 font-bold text-xs uppercase tracking-[0.14em]">
         Edit via chat
       </div>
@@ -93,12 +94,8 @@ export function AgentEditChat({ agentId, currentBudget }: AgentEditChatProps) {
         </ConversationContent>
         <ConversationScrollButton />
       </Conversation>
-      {error ? (
-        <p className="shrink-0 px-4 py-2 text-destructive text-xs">
-          {error.message}
-        </p>
-      ) : null}
-      <div className="shrink-0 border-border border-t p-4">
+      <div className="sticky bottom-0 z-10 shrink-0 border-border border-t bg-background p-4">
+        {error && <ChatErrorBanner message={error.message} />}
         <PromptInput onSubmit={handleSubmit}>
           <PromptInputTextarea
             disabled={isBusy}

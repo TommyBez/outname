@@ -1,20 +1,15 @@
-import { CheckIcon, XIcon } from 'lucide-react'
 import type { AgentCreationRequest } from '@/agents/server/creation-types'
-import { Button } from '@/components/ui/button'
 import {
   budgetReviewLines,
+  dreamingLabel,
   scheduleLabel,
   stepLimitLabel,
 } from './review-labels'
 
 export function FinalConfigurationCard({
   config,
-  onApprove,
-  onDeny,
 }: {
   config: AgentCreationRequest | undefined
-  onApprove: () => void
-  onDeny: () => void
 }) {
   if (!config) {
     return null
@@ -46,7 +41,7 @@ export function FinalConfigurationCard({
               `Model: ${config.model}`,
               `Step limit: ${stepLimitLabel(config.stepLimit)}`,
               `Heartbeat: ${scheduleLabel(config.heartbeat)}`,
-              `Dreaming: ${scheduleLabel(config.dreaming)}`,
+              `Dreaming: ${dreamingLabel(config.dreaming)}`,
             ].join('\n')}
           />
           <ReviewBlock
@@ -68,18 +63,8 @@ export function FinalConfigurationCard({
           />
         </div>
 
-        <aside className="space-y-4 border-foreground border-t-2 pt-4 md:border-t-0 md:border-l-2 md:pt-0 md:pl-4">
+        <aside className="border-foreground border-t-2 pt-4 md:border-t-0 md:border-l-2 md:pt-0 md:pl-4">
           <ToolList maintainerTools={maintainerTools} subAgents={subAgents} />
-          <div className="flex flex-col gap-2">
-            <Button onClick={onApprove} type="button">
-              <CheckIcon className="size-4" />
-              Create agent
-            </Button>
-            <Button onClick={onDeny} type="button" variant="outline">
-              <XIcon className="size-4" />
-              Keep editing
-            </Button>
-          </div>
         </aside>
       </div>
     </section>

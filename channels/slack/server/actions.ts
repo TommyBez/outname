@@ -32,7 +32,7 @@ const upsertSchema = z
   .superRefine((value, ctx) => {
     if (!value.externalKey) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         path: ['externalKey'],
         message:
           value.kind === 'channel'

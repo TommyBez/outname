@@ -111,7 +111,7 @@ export async function stopAllToolSandboxesForRun(): Promise<void> {
         await sandbox.stop()
       } catch (err) {
         console.error(
-          '[v0] stopAllToolSandboxesForRun: stop failed',
+          'stopAllToolSandboxesForRun: stop failed',
           manifestId,
           err
         )

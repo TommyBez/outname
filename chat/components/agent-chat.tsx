@@ -13,6 +13,7 @@ import {
   hasAssistantContentAfterLatestUser,
 } from '@/chat/components/agent-chat-transcript'
 import { revalidateConversations } from '@/chat/components/agent-sidebar-workspace/conversations'
+import { ChatErrorBanner } from '@/chat/components/chat-error-banner'
 import {
   PromptInput,
   PromptInputFooter,
@@ -117,14 +118,7 @@ export function AgentChat({
       />
 
       <div className="sticky bottom-0 z-10 shrink-0 bg-background pt-4">
-        {error && (
-          <p
-            className="mb-3 border-2 border-destructive bg-destructive px-3 py-2 font-bold text-destructive-foreground text-xs uppercase tracking-[0.12em]"
-            role="alert"
-          >
-            {error.message || 'Something went wrong. Try again.'}
-          </p>
-        )}
+        {error && <ChatErrorBanner message={error.message} />}
 
         <PromptInput onSubmit={handleSubmit}>
           <PromptInputTextarea

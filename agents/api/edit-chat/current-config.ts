@@ -20,9 +20,6 @@ export async function getCurrent(agentId: string, userId: string) {
     heartbeatScheduleTimes: agentRow.heartbeatScheduleTimes,
     heartbeatIntervalMinutes: agentRow.heartbeatIntervalMinutes,
     dreamingEnabled: agentRow.dreamingEnabled,
-    dreamingScheduleMode: agentRow.dreamingScheduleMode,
-    dreamingScheduleTimes: agentRow.dreamingScheduleTimes,
-    dreamingIntervalMinutes: agentRow.dreamingIntervalMinutes,
     stepLimitMode: (agentRow.stepLimitMode ?? 'medium') as
       | 'custom'
       | 'grind'

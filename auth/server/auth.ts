@@ -1,5 +1,8 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import { admin as adminPlugin, emailOTP } from 'better-auth/plugins'
+import { ac, roles } from '@/auth/access-control'
+import { sendAuthSignInOtpEmail } from '@/auth/server/auth-email'
 import { db } from '@/shared/db'
 
 // Production uses Better Auth defaults. Non-production must trust the incoming
@@ -16,6 +19,17 @@ const devTrustedOrigins = [
   'https://*.v0.dev',
   'https://*.vusercontent.net',
 ]
+
+function parseAdminUserIds(): string[] {
+  const raw = process.env.BETTER_AUTH_ADMIN_USER_IDS
+  if (!raw) {
+    return []
+  }
+  return raw
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
+}
 
 function productionTrustedOrigins(): string[] | undefined {
   const url = process.env.BETTER_AUTH_URL
@@ -44,16 +58,13 @@ function devTrustedOriginsList(request: Request | undefined): string[] {
   return origins
 }
 
+const AUTH_EMAIL_OTP_LENGTH = 6
+const AUTH_EMAIL_OTP_EXPIRES_IN_SECONDS = 60 * 10
+
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: 'pg',
   }),
-  emailAndPassword: {
-    enabled: true,
-    autoSignIn: true,
-    // Registration stays disabled; the seeded admin is created out of band.
-    disableSignUp: true,
-  },
   session: {
     expiresIn: 60 * 60 * 24 * 30, // 30 days
     updateAge: 60 * 60 * 24, // 1 day
@@ -77,6 +88,31 @@ export const auth = betterAuth({
           },
         },
       }),
+  plugins: [
+    adminPlugin({
+      ac,
+      roles,
+      adminUserIds: parseAdminUserIds(),
+      defaultRole: 'user',
+    }),
+    emailOTP({
+      allowedAttempts: 5,
+      disableSignUp: true,
+      expiresIn: AUTH_EMAIL_OTP_EXPIRES_IN_SECONDS,
+      otpLength: AUTH_EMAIL_OTP_LENGTH,
+      resendStrategy: 'rotate',
+      async sendVerificationOTP({ email, otp, type }) {
+        if (type !== 'sign-in') {
+          return
+        }
+
+        await sendAuthSignInOtpEmail({
+          email,
+          otp,
+        })
+      },
+    }),
+  ],
 })
 
 export type Session = typeof auth.$Infer.Session

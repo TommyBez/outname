@@ -43,11 +43,11 @@ const typefullyRequestInputSchema = z.object({
       `Relative Typefully path or Typefully media upload_url. ${TYPEFULLY_ENDPOINT_GUIDE}`
     ),
   query: z
-    .record(typefullyQueryValueSchema)
+    .record(z.string(), typefullyQueryValueSchema)
     .optional()
     .describe('Optional query string parameters.'),
   body: z
-    .record(z.unknown())
+    .record(z.string(), z.unknown())
     .optional()
     .describe('Optional JSON body for non-GET requests.'),
   maxResponseBytes: z

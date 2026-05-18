@@ -16,6 +16,7 @@ import {
   user,
   userConnections,
   verification,
+  waitlistEntry,
 } from './schema'
 
 const schema = {
@@ -34,6 +35,7 @@ const schema = {
   channelInstallations,
   agentChannelBindings,
   channelThreadConversations,
+  waitlistEntry,
 }
 
 type DB = ReturnType<typeof drizzle<typeof schema>>

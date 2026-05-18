@@ -21,9 +21,6 @@ export const HEARTBEAT_MAX = 1440
 
 export interface CreateAgentInput {
   dreamingEnabled: boolean
-  dreamingIntervalMinutes: number
-  dreamingScheduleMode?: AgentScheduleMode
-  dreamingScheduleTimes?: string[]
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
   heartbeatScheduleMode?: AgentScheduleMode
@@ -91,22 +88,13 @@ export async function createAgentForUser(
     ? input.model
     : DEFAULT_MODEL_ID
   const heartbeatIntervalMinutes = clampInterval(input.heartbeatIntervalMinutes)
-  const dreamingIntervalMinutes = clampInterval(input.dreamingIntervalMinutes)
   const heartbeatScheduleMode = normalizeAgentScheduleMode(
     input.heartbeatScheduleMode
-  )
-  const dreamingScheduleMode = normalizeAgentScheduleMode(
-    input.dreamingScheduleMode
   )
   const heartbeatScheduleTimes = normalizeScheduleTimesForMode({
     enabled: input.heartbeatEnabled,
     mode: heartbeatScheduleMode,
     times: input.heartbeatScheduleTimes,
-  })
-  const dreamingScheduleTimes = normalizeScheduleTimesForMode({
-    enabled: input.dreamingEnabled,
-    mode: dreamingScheduleMode,
-    times: input.dreamingScheduleTimes,
   })
   const id = input.idempotencyKey
     ? stableAgentIdForCreation({
@@ -128,9 +116,6 @@ export async function createAgentForUser(
       heartbeatScheduleTimes,
       heartbeatIntervalMinutes,
       dreamingEnabled: input.dreamingEnabled,
-      dreamingScheduleMode,
-      dreamingScheduleTimes,
-      dreamingIntervalMinutes,
       stepLimitMode: input.stepLimitMode,
       stepLimitCustom:
         input.stepLimitMode === 'custom'

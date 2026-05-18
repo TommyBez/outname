@@ -4,105 +4,27 @@ import { motion, useMotionValueEvent, useScroll } from 'motion/react'
 import { useRef, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { PrimaryLink } from '@/marketing/components/landing/landing-links'
+import {
+  PrimaryLink,
+  SecondaryLink,
+} from '@/marketing/components/landing/landing-links'
 import {
   revealVariants,
   staggerVariants,
 } from '@/marketing/components/landing/landing-motion'
-
-type HeartbeatKind =
-  | 'cron'
-  | 'slack'
-  | 'memory'
-  | 'heartbeat'
-  | 'cal'
-  | 'subagent'
-  | 'gmail'
-
-interface HeartbeatEvent {
-  detail: string
-  emphasis?: 'memory' | 'highlight'
-  event: string
-  kind: HeartbeatKind
-  time: string
-}
-
-const heartbeatStats = [
-  { label: 'Unprompted runs', value: '21' },
-  { label: 'Memory entries written', value: '+8' },
-  { label: 'Questions asked', value: '0' },
-] as const
-
-const heartbeatEvents: readonly HeartbeatEvent[] = [
-  {
-    detail: 'daily.triage queued',
-    event: 'cron.fire',
-    kind: 'cron',
-    time: '06:00',
-  },
-  {
-    detail: '14 threads scanned · 2 flagged',
-    event: 'slack.read',
-    kind: 'slack',
-    time: '06:00',
-  },
-  {
-    detail: '+ skip auto-summary on Sundays',
-    emphasis: 'memory',
-    event: 'memory.write',
-    kind: 'memory',
-    time: '06:01',
-  },
-  {
-    detail: 'calendar conflict spotted · draft sent',
-    event: 'heartbeat',
-    kind: 'heartbeat',
-    time: '09:14',
-  },
-  {
-    detail: 'tue 15:00 → wed 10:00 proposed',
-    event: 'cal.draft',
-    kind: 'cal',
-    time: '09:14',
-  },
-  {
-    detail: 'research-synthesizer · 4.2s',
-    event: 'subagent.call',
-    kind: 'subagent',
-    time: '11:02',
-  },
-  {
-    detail: '+ user prefers "Tomas" in replies',
-    emphasis: 'memory',
-    event: 'memory.write',
-    kind: 'memory',
-    time: '11:02',
-  },
-  {
-    detail: 'weekly.digest queued',
-    event: 'cron.fire',
-    kind: 'cron',
-    time: '14:00',
-  },
-  {
-    detail: '5 threads summarized · digest ready',
-    event: 'gmail.draft',
-    kind: 'gmail',
-    time: '14:01',
-  },
-  {
-    detail: 'weekly digest sent · 0 follow-ups',
-    emphasis: 'highlight',
-    event: 'gmail.send',
-    kind: 'gmail',
-    time: '18:00',
-  },
-]
+import {
+  type HeartbeatEvent,
+  type HeartbeatKind,
+  heartbeatEvents,
+  heartbeatStats,
+} from '@/marketing/data/heartbeat-demo'
 
 export function LandingHeartbeatCloser({
   shouldReduceMotion,
+  waitlistEnabled,
 }: {
   shouldReduceMotion: boolean
+  waitlistEnabled: boolean
 }) {
   return (
     <section
@@ -174,14 +96,21 @@ export function LandingHeartbeatCloser({
           variants={revealVariants}
         >
           <h3 className="home-display text-balance font-black text-6xl uppercase leading-[0.84] tracking-normal md:text-8xl">
-            Run yours.
+            Get early access.
           </h3>
           <div className="flex min-w-0 flex-col gap-3 md:items-end">
-            <PrimaryLink href="/login?from=/agents/new">
-              Create your agent
-            </PrimaryLink>
+            <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
+              {waitlistEnabled ? (
+                <PrimaryLink href="/waitlist?source=landing-closer">
+                  Join the waitlist
+                </PrimaryLink>
+              ) : null}
+              <SecondaryLink href="/login?from=/agents/new">
+                Login
+              </SecondaryLink>
+            </div>
             <p className="font-mono text-[11px] text-muted-foreground uppercase tracking-normal">
-              Smarter every day.
+              Confirm by email, then wait for invite.
             </p>
           </div>
         </motion.div>

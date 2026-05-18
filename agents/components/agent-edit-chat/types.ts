@@ -17,9 +17,6 @@ export interface AgentEditMarkdownFiles {
 
 export interface AgentEditSettings {
   dreamingEnabled: boolean
-  dreamingIntervalMinutes: number
-  dreamingScheduleMode: AgentScheduleMode
-  dreamingScheduleTimes: string[]
   heartbeatEnabled: boolean
   heartbeatIntervalMinutes: number
   heartbeatScheduleMode: AgentScheduleMode
@@ -47,9 +44,6 @@ export const SETTINGS_FIELDS = [
   { key: 'heartbeatScheduleTimes', label: 'Heartbeat times' },
   { key: 'heartbeatIntervalMinutes', label: 'Heartbeat interval' },
   { key: 'dreamingEnabled', label: 'Dreaming' },
-  { key: 'dreamingScheduleMode', label: 'Dreaming schedule mode' },
-  { key: 'dreamingScheduleTimes', label: 'Dreaming times' },
-  { key: 'dreamingIntervalMinutes', label: 'Dreaming interval' },
   { key: 'stepLimitMode', label: 'Step limit' },
   { key: 'stepLimitCustom', label: 'Custom step limit' },
 ] as const

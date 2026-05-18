@@ -1,5 +1,5 @@
 import 'server-only'
-import type { UIMessage } from 'ai'
+import type { ModelMessage, UIMessage } from 'ai'
 import { eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import {
@@ -70,6 +70,10 @@ export async function dispatchChatTurn(opts: {
   conversationId: string
   extraPayload?: Record<string, unknown>
   idempotencyKey?: string
+  // Pre-converted model messages, populated by channel adapters that own the
+  // thread (Chat SDK `toAiMessages`). When present, the workflow uses them
+  // directly and skips converting `uiMessages`.
+  modelMessages?: ModelMessage[]
   source?: 'chat' | 'slack'
   uiMessages: UIMessage[]
 }): Promise<{
@@ -87,6 +91,7 @@ export async function dispatchChatTurn(opts: {
     payload: {
       conversationId: opts.conversationId,
       ...(opts.extraPayload ?? {}),
+      modelMessages: opts.modelMessages,
       uiMessages: opts.uiMessages,
     },
     concurrencyKey: opts.concurrencyKey ?? null,

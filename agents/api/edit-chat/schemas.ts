@@ -16,9 +16,6 @@ export const updateSchema = z
     heartbeatScheduleTimes: scheduleTimesSchema,
     heartbeatIntervalMinutes: z.number().int().min(5).max(1440),
     dreamingEnabled: z.boolean(),
-    dreamingScheduleMode: scheduleModeSchema.default('interval'),
-    dreamingScheduleTimes: scheduleTimesSchema,
-    dreamingIntervalMinutes: z.number().int().min(5).max(1440),
     stepLimitMode: z.enum(['custom', 'grind', 'high', 'low', 'medium']),
     stepLimitCustom: z.number().int().min(1).nullable(),
     identityCard: z.string(),
@@ -33,27 +30,16 @@ export const updateSchema = z
       value.heartbeatScheduleTimes.length === 0
     ) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         message: 'Heartbeat daily schedule needs at least one time.',
         path: ['heartbeatScheduleTimes'],
-      })
-    }
-    if (
-      value.dreamingEnabled &&
-      value.dreamingScheduleMode === 'daily_times' &&
-      value.dreamingScheduleTimes.length === 0
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Dreaming daily schedule needs at least one time.',
-        path: ['dreamingScheduleTimes'],
       })
     }
   })
 
 export const attachMaintainerToolSchema = z.object({
   toolId: z.string().min(1),
-  config: z.record(z.unknown()).default({}),
+  config: z.record(z.string(), z.unknown()).default({}),
 })
 
 export const attachSubAgentToolSchema = z.object({

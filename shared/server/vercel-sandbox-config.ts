@@ -1,4 +1,4 @@
-const APP_TAG = 'personal-assistant-agent'
+const APP_TAG = 'outname'
 const DEFAULT_ENV_TAG = 'development'
 
 function sandboxEnv(): string {

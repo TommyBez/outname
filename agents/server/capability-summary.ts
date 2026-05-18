@@ -45,13 +45,13 @@ export async function refreshAgentCapabilitySummary(input: {
     } catch (err) {
       if (context.previousSummary) {
         console.error(
-          '[v0] refreshAgentCapabilitySummary: generation failed; keeping previous summary',
+          'refreshAgentCapabilitySummary: generation failed; keeping previous summary',
           err
         )
         return context.previousSummary
       }
       console.error(
-        '[v0] refreshAgentCapabilitySummary: generation failed; using fallback',
+        'refreshAgentCapabilitySummary: generation failed; using fallback',
         err
       )
     }
@@ -62,7 +62,7 @@ export async function refreshAgentCapabilitySummary(input: {
       .where(eq(agent.id, input.agentId))
     return summary
   } catch (err) {
-    console.error('[v0] refreshAgentCapabilitySummary failed', err)
+    console.error('refreshAgentCapabilitySummary failed', err)
     return null
   }
 }

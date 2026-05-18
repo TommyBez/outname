@@ -23,7 +23,7 @@ export default function AgentsListPage() {
         <div className="grid gap-8 md:grid-cols-[minmax(0,7fr)_minmax(14rem,3fr)] md:items-end">
           <div>
             <p className="swiss-label mb-4 text-accent">02. Agents</p>
-            <h1 className="font-black font-serif text-6xl uppercase leading-[0.9] tracking-tighter md:text-8xl">
+            <h1 className="font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
               Your agents
             </h1>
           </div>
@@ -104,8 +104,5 @@ function toRegistryAgent(agent: Agent): RegistryAgent {
     model: agent.model,
     name: agent.name,
     dreamingEnabled: agent.dreamingEnabled,
-    dreamingScheduleMode: agent.dreamingScheduleMode,
-    dreamingScheduleTimes: agent.dreamingScheduleTimes,
-    dreamingIntervalMinutes: agent.dreamingIntervalMinutes,
   }
 }
