@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { upsertSlackBindingAction } from '@/channels/slack/server/actions'
 import type { InstallationView } from './types'
 import { workspaceLabel } from './utils'
+import { Button } from '@/components/ui/button'
 
 type NewBindingKind = 'channel' | 'dm'
 
@@ -57,14 +58,14 @@ export function AddBindingForm({
         <p className="font-bold text-xs uppercase tracking-[0.16em]">
           New Slack binding
         </p>
-        <button
+        <Button
           aria-label="Cancel"
           className="inline-flex h-7 w-7 items-center justify-center border-2 border-foreground hover:bg-foreground hover:text-background"
           onClick={onCancel}
           type="button"
         >
           <X aria-hidden className="size-3.5" />
-        </button>
+        </Button>
       </div>
 
       <WorkspaceSelect
@@ -84,20 +85,20 @@ export function AddBindingForm({
       />
 
       <div className="flex items-center gap-2">
-        <button
+        <Button
           className="inline-flex h-10 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
           disabled={pending}
           type="submit"
         >
           {pending ? 'Saving…' : 'Save binding'}
-        </button>
-        <button
+        </Button>
+        <Button
           className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
           onClick={onCancel}
           type="button"
         >
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   )

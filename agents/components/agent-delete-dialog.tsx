@@ -1,5 +1,6 @@
 'use client'
 
+import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,12 +25,12 @@ export function AgentDeleteDialog({
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <button
+        <Button
           className="h-11 border-2 border-destructive px-4 font-bold text-destructive text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-destructive-foreground"
           type="button"
         >
           Delete agent
-        </button>
+        </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -43,12 +44,12 @@ export function AgentDeleteDialog({
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <form action={onDelete}>
             <AlertDialogAction asChild>
-              <button
+              <Button
                 className="inline-flex h-10 items-center justify-center bg-destructive px-4 font-semibold text-destructive-foreground text-sm hover:opacity-90"
                 type="submit"
               >
                 Confirm delete
-              </button>
+              </Button>
             </AlertDialogAction>
           </form>
         </AlertDialogFooter>

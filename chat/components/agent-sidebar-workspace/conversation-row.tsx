@@ -37,6 +37,7 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import {
   type ConversationSummary,
   revalidateConversations,
@@ -147,15 +148,15 @@ export function ConversationRow({
             ref={inputRef}
             value={draftTitle}
           />
-          <button
+          <Button
             aria-label="Save title"
             className="border border-transparent p-1 text-muted-foreground transition-colors hover:border-sidebar-border hover:bg-sidebar-accent hover:text-foreground disabled:opacity-50"
             disabled={isRenaming}
             type="submit"
           >
             <Check className="size-3.5" />
-          </button>
-          <button
+          </Button>
+          <Button
             aria-label="Cancel rename"
             className="border border-transparent p-1 text-muted-foreground transition-colors hover:border-sidebar-border hover:bg-sidebar-accent hover:text-foreground disabled:opacity-50"
             disabled={isRenaming}
@@ -166,7 +167,7 @@ export function ConversationRow({
             type="button"
           >
             <X className="size-3.5" />
-          </button>
+          </Button>
         </form>
       </SidebarMenuItem>
     )

@@ -8,6 +8,7 @@ import {
   saveApiKeyConnectionAction,
 } from '@/connections/actions'
 import type { ConnectionStatus } from '@/shared/db/schema'
+import { Button } from '@/components/ui/button'
 
 interface ConnectorSummary {
   apiKeyFields?: Array<{
@@ -216,22 +217,22 @@ function ApiKeyControls({
   return (
     <div className="flex shrink-0 flex-col items-stretch gap-2 md:items-end">
       <div className="flex items-center gap-2">
-        <button
+        <Button
           className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
           onClick={() => setOpen((v) => !v)}
           type="button"
         >
           {connection ? 'Replace key' : 'Connect'}
-        </button>
+        </Button>
         {connection && (
-          <button
+          <Button
             className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
             disabled={pending}
             onClick={handleDisconnect}
             type="button"
           >
             {pending ? '...' : 'Disconnect'}
-          </button>
+          </Button>
         )}
       </div>
       {open && (
@@ -256,13 +257,13 @@ function ApiKeyControls({
               />
             </label>
           ))}
-          <button
+          <Button
             className="inline-flex h-10 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
             disabled={pending}
             type="submit"
           >
             {pending ? 'Saving...' : 'Save'}
-          </button>
+          </Button>
         </form>
       )}
     </div>

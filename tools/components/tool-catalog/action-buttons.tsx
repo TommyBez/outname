@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Button } from '@/components/ui/button'
 
 interface CatalogActionButtonsProps {
   hasFields: boolean
@@ -51,14 +52,14 @@ export function CatalogActionButtons({
         </PrimaryActionButton>
       )}
       {isAttached && (
-        <button
+        <Button
           className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
           disabled={pending || isBuilding}
           onClick={onDetach}
           type="button"
         >
           {pending ? '...' : 'Detach'}
-        </button>
+        </Button>
       )}
       {isAttached && !isPending && (
         <span
@@ -94,14 +95,14 @@ function PrimaryActionButton({
   onClick: () => void
 }) {
   return (
-    <button
+    <Button
       className="inline-flex h-10 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
       disabled={disabled}
       onClick={onClick}
       type="button"
     >
       {children}
-    </button>
+    </Button>
   )
 }
 
@@ -115,13 +116,13 @@ function SecondaryActionButton({
   onClick: () => void
 }) {
   return (
-    <button
+    <Button
       className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background disabled:opacity-50"
       disabled={disabled}
       onClick={onClick}
       type="button"
     >
       {children}
-    </button>
+    </Button>
   )
 }

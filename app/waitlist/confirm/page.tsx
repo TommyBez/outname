@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Suspense } from 'react'
+import { Button } from '@/components/ui/button'
 
 export const metadata: Metadata = {
   title: 'Confirm waitlist request',
@@ -66,12 +67,12 @@ async function ConfirmContent({
         </p>
         <form action="/api/waitlist/confirm" method="post">
           <input name="token" type="hidden" value={token} />
-          <button
+          <Button
             className="inline-flex min-h-11 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.14em] transition-colors hover:bg-accent hover:text-foreground"
             type="submit"
           >
             Confirm waitlist request
-          </button>
+          </Button>
         </form>
       </div>
     )
