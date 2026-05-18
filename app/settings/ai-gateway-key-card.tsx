@@ -3,11 +3,11 @@
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
 import {
   removeAiGatewayKeyAction,
   saveAiGatewayKeyAction,
 } from '@/app/settings/actions'
+import { Button } from '@/components/ui/button'
 
 export function AiGatewayKeyCard({ hasKey }: { hasKey: boolean }) {
   const [apiKey, setApiKey] = useState('')

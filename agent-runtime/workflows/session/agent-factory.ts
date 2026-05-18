@@ -79,11 +79,14 @@ export async function buildAgent(
   }
 
   const durableAgent = new DurableAgent({
-    model: async () =>
-      await getUserModelForGateway({
+    model: async () => {
+      'use step'
+      const model = await getUserModelForGateway({
         modelId: row.model,
         userId: row.userId,
-      }),
+      })
+      return model
+    },
     system: systemPrompt,
     tools,
   })
