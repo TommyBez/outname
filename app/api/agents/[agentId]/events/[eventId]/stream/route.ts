@@ -27,14 +27,22 @@ export async function GET(
     return jsonError(409, 'event has not started yet')
   }
 
+  const run = getRun(event.workflowRunId)
+  try {
+    await run.status
+  } catch (err) {
+    if (!(err instanceof Error && err.name === 'WorkflowRunNotFoundError')) {
+      throw err
+    }
+    return jsonError(409, 'workflow unavailable in this environment')
+  }
+
   const streamKind = readStreamKind(request)
   const namespace =
     streamKind === 'activity'
       ? eventActivityNamespace(event.workflowRunId)
       : outputNamespaceForEvent(event)
-  const source = getRun(event.workflowRunId).getReadable<
-    AgentChatChunk | RunEvent
-  >({
+  const source = run.getReadable<AgentChatChunk | RunEvent>({
     namespace,
     startIndex: 0,
   })

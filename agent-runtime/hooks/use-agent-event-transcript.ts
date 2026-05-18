@@ -1,7 +1,14 @@
 'use client'
 
 import { readUIMessageStream } from 'ai'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import {
+  backoffMs,
+  resolveTranscriptOutcome,
+  STREAM_MAX_ATTEMPTS,
+  STREAM_PENDING_RETRY_MS,
+  shouldRetryAfterStreamEnd,
+} from '@/agent-runtime/hooks/agent-event-stream-outcome'
 import type {
   AgentChatChunk,
   AgentChatMessage,
@@ -34,8 +41,11 @@ export interface UseAgentEventTranscriptResult {
   error: string | null
   messages: AgentChatMessage[]
   status: AgentEventTranscriptStatus
+  warning: string | null
   workflowStatus: WorkflowStatusData | null
 }
+
+const NDJSON_OPTIONS = { skipInvalidLines: true } as const
 
 export function useAgentEventTranscript(input: {
   agentId: string
@@ -58,8 +68,10 @@ export function useAgentEventTranscript(input: {
   const [status, setStatus] =
     useState<AgentEventTranscriptStatus>('unavailable')
   const [error, setError] = useState<string | null>(null)
+  const [warning, setWarning] = useState<string | null>(null)
   const [workflowStatus, setWorkflowStatus] =
     useState<WorkflowStatusData | null>(null)
+  const latestActivityRef = useRef<WorkflowStatusData | null>(null)
 
   useEffect(() => {
     if (
@@ -75,7 +87,9 @@ export function useAgentEventTranscript(input: {
       setMessages([])
       setStatus('unavailable')
       setError(null)
+      setWarning(null)
       setWorkflowStatus(null)
+      latestActivityRef.current = null
       return
     }
     const currentEvent: AgentEventSummary = {
@@ -96,7 +110,9 @@ export function useAgentEventTranscript(input: {
     const controller = new AbortController()
     setMessages([])
     setError(null)
-    setWorkflowStatus(eventSummaryToWorkflowStatus(currentEvent))
+    setWarning(null)
+    latestActivityRef.current = eventSummaryToWorkflowStatus(currentEvent)
+    setWorkflowStatus(latestActivityRef.current)
 
     if (!currentEvent.workflowRunId) {
       setStatus(statusForEventWithoutRun(currentEvent))
@@ -105,59 +121,112 @@ export function useAgentEventTranscript(input: {
 
     setStatus('connecting')
 
-    const outputPromise = consumeOutputStream({
-      agentId,
-      eventId: currentEvent.id,
-      signal: controller.signal,
-      onMessage: (message) => {
-        if (!controller.signal.aborted) {
-          setStatus('streaming')
-          setWorkflowStatus(null)
-          setMessages((current) => upsertMessage(current, message))
-        }
-      },
-    })
-
-    const activityPromise = consumeActivityStream({
-      agentId,
-      eventId: currentEvent.id,
-      signal: controller.signal,
-      onEvent: (runEvent) => {
-        if (!controller.signal.aborted) {
-          setStatus('streaming')
-          setWorkflowStatus(runEventToWorkflowStatus(runEvent))
-        }
-      },
-    })
-
     let active = true
+    let messageCount = 0
+    const streamErrors = {
+      activity: null as string | null,
+      output: null as string | null,
+    }
+
+    const applyActivityStatus = (statusData: WorkflowStatusData): void => {
+      latestActivityRef.current = statusData
+      if (!controller.signal.aborted) {
+        setWorkflowStatus(statusData)
+      }
+    }
+
+    const outputPromise = runStreamWithRetry({
+      signal: controller.signal,
+      shouldContinue: () => active && !controller.signal.aborted,
+      run: async () => {
+        await consumeOutputStream({
+          agentId,
+          eventId: currentEvent.id,
+          signal: controller.signal,
+          onMessage: (message) => {
+            if (!controller.signal.aborted) {
+              messageCount += 1
+              setStatus('streaming')
+              setWorkflowStatus(latestActivityRef.current)
+              setMessages((current) => upsertMessage(current, message))
+            }
+          },
+        })
+      },
+      shouldRetryAfterEnd: () => shouldRetryAfterStreamEnd(currentEvent),
+    }).then(
+      () => undefined,
+      (reason: unknown) => {
+        if (active && !controller.signal.aborted) {
+          streamErrors.output = readErrorMessage(reason)
+        }
+      }
+    )
+
+    const activityPromise = runStreamWithRetry({
+      signal: controller.signal,
+      shouldContinue: () => active && !controller.signal.aborted,
+      run: async () => {
+        await consumeActivityStream({
+          agentId,
+          eventId: currentEvent.id,
+          signal: controller.signal,
+          onEvent: (runEvent) => {
+            if (!controller.signal.aborted) {
+              setStatus('streaming')
+              applyActivityStatus(runEventToWorkflowStatus(runEvent))
+            }
+          },
+        })
+      },
+      shouldRetryAfterEnd: () => shouldRetryAfterStreamEnd(currentEvent),
+    }).then(
+      () => undefined,
+      (reason: unknown) => {
+        if (active && !controller.signal.aborted) {
+          streamErrors.activity = readErrorMessage(reason)
+        }
+      }
+    )
 
     const settleStreams = async (): Promise<void> => {
-      const results = await Promise.allSettled([outputPromise, activityPromise])
+      await Promise.all([outputPromise, activityPromise])
       if (!(active && !controller.signal.aborted)) {
         return
       }
 
-      const rejected = results.find(
-        (result): result is PromiseRejectedResult =>
-          result.status === 'rejected'
-      )
-      if (rejected) {
-        const reason = rejected.reason
-        if (reason instanceof StreamPendingError) {
-          setStatus(statusForEventWithoutRun(currentEvent))
-          setWorkflowStatus(eventSummaryToWorkflowStatus(currentEvent))
-          return
-        }
-        const message = readErrorMessage(reason)
-        setError(message)
+      const outcome = resolveTranscriptOutcome({
+        activityError: streamErrors.activity,
+        event: currentEvent,
+        hasMessages: messageCount > 0,
+        outputError: streamErrors.output,
+      })
+
+      if (outcome.kind === 'failed') {
+        setError(outcome.message)
+        setWarning(null)
         setStatus('failed')
-        setWorkflowStatus(terminalErrorToWorkflowStatus(message))
+        setWorkflowStatus(terminalErrorToWorkflowStatus(outcome.message))
         return
       }
 
+      if (outcome.kind === 'partial') {
+        setError(null)
+        setWarning(outcome.warning)
+        setStatus(statusForTerminalEvent(currentEvent))
+        setWorkflowStatus(
+          latestActivityRef.current ??
+            eventSummaryToWorkflowStatus(currentEvent)
+        )
+        return
+      }
+
+      setError(null)
+      setWarning(null)
       setStatus(statusForTerminalEvent(currentEvent))
-      setWorkflowStatus(eventSummaryToWorkflowStatus(currentEvent))
+      setWorkflowStatus(
+        latestActivityRef.current ?? eventSummaryToWorkflowStatus(currentEvent)
+      )
     }
 
     settleStreams().catch((reason: unknown) => {
@@ -166,6 +235,7 @@ export function useAgentEventTranscript(input: {
       }
       const message = readErrorMessage(reason)
       setError(message)
+      setWarning(null)
       setStatus('failed')
       setWorkflowStatus(terminalErrorToWorkflowStatus(message))
     })
@@ -190,7 +260,43 @@ export function useAgentEventTranscript(input: {
     eventWorkflowRunId,
   ])
 
-  return { error, messages, status, workflowStatus }
+  return { error, messages, status, warning, workflowStatus }
+}
+
+async function runStreamWithRetry(input: {
+  run: () => Promise<void>
+  shouldContinue: () => boolean
+  shouldRetryAfterEnd: () => boolean
+  signal: AbortSignal
+}): Promise<void> {
+  let attempt = 0
+
+  while (input.shouldContinue()) {
+    try {
+      await input.run()
+      if (!(input.shouldRetryAfterEnd() && input.shouldContinue())) {
+        return
+      }
+      attempt += 1
+      if (attempt >= STREAM_MAX_ATTEMPTS) {
+        throw new Error('Event stream ended before the run finished.')
+      }
+    } catch (reason) {
+      if (input.signal.aborted || !input.shouldContinue()) {
+        return
+      }
+      if (reason instanceof StreamPendingError) {
+        await sleep(STREAM_PENDING_RETRY_MS, input.signal)
+        continue
+      }
+      attempt += 1
+      if (attempt >= STREAM_MAX_ATTEMPTS) {
+        throw reason
+      }
+    }
+
+    await sleep(backoffMs(attempt - 1), input.signal)
+  }
 }
 
 async function consumeOutputStream(input: {
@@ -280,7 +386,8 @@ function ndjsonReadable<T>(
           }
           const parsed = parseNdjsonChunk<T>(
             buffer,
-            decoder.decode(value, { stream: true })
+            decoder.decode(value, { stream: true }),
+            NDJSON_OPTIONS
           )
           buffer = parsed.buffer
           for (const item of parsed.values) {
@@ -289,13 +396,14 @@ function ndjsonReadable<T>(
         }
         const tail = decoder.decode()
         if (tail.length > 0) {
-          const parsed = parseNdjsonChunk<T>(buffer, tail)
+          const parsed = parseNdjsonChunk<T>(buffer, tail, NDJSON_OPTIONS)
           buffer = parsed.buffer
           for (const item of parsed.values) {
             controller.enqueue(item)
           }
         }
-        for (const item of flushNdjsonBuffer<T>(buffer)) {
+        for (const item of flushNdjsonBuffer<T>(buffer, NDJSON_OPTIONS)
+          .values) {
           controller.enqueue(item)
         }
         controller.close()
@@ -353,6 +461,24 @@ function readErrorMessage(reason: unknown): string {
     return reason.message
   }
   return 'Event transcript is unavailable.'
+}
+
+function sleep(ms: number, signal: AbortSignal): Promise<void> {
+  if (signal.aborted) {
+    return Promise.resolve()
+  }
+  return new Promise((resolve) => {
+    const timer = window.setTimeout(() => {
+      signal.removeEventListener('abort', onAbort)
+      resolve()
+    }, ms)
+    const onAbort = (): void => {
+      window.clearTimeout(timer)
+      signal.removeEventListener('abort', onAbort)
+      resolve()
+    }
+    signal.addEventListener('abort', onAbort, { once: true })
+  })
 }
 
 class StreamPendingError extends Error {

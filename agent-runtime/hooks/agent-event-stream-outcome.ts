@@ -1,0 +1,62 @@
+import type { AgentEventSummary } from '@/agent-runtime/shared/event-types'
+import { isTerminalAgentEventStatus } from '@/agent-runtime/shared/event-types'
+
+export const STREAM_MAX_ATTEMPTS = 5
+export const STREAM_PENDING_RETRY_MS = 1500
+export const STREAM_BACKOFF_MS = [1000, 2000, 4000, 8000] as const
+
+export interface ResolveTranscriptOutcomeInput {
+  activityError: string | null
+  event: AgentEventSummary
+  hasMessages: boolean
+  outputError: string | null
+}
+
+export type TranscriptOutcome =
+  | { kind: 'failed'; message: string }
+  | { kind: 'partial'; message: string | null; warning: string }
+  | { kind: 'ready' }
+
+export function backoffMs(attempt: number): number {
+  const index = Math.min(attempt, STREAM_BACKOFF_MS.length - 1)
+  return STREAM_BACKOFF_MS[index] ?? STREAM_BACKOFF_MS.at(-1) ?? 8000
+}
+
+export function shouldRetryAfterStreamEnd(event: AgentEventSummary): boolean {
+  return !isTerminalAgentEventStatus(event.status)
+}
+
+export function resolveTranscriptOutcome(
+  input: ResolveTranscriptOutcomeInput
+): TranscriptOutcome {
+  const { activityError, event, hasMessages, outputError } = input
+
+  if (outputError && !hasMessages) {
+    if (isTerminalAgentEventStatus(event.status)) {
+      return { kind: 'ready' }
+    }
+    return { kind: 'failed', message: outputError }
+  }
+
+  if (outputError && hasMessages && isTerminalAgentEventStatus(event.status)) {
+    return { kind: 'ready' }
+  }
+
+  if (outputError && hasMessages) {
+    return {
+      kind: 'partial',
+      message: null,
+      warning: outputError,
+    }
+  }
+
+  if (activityError && !outputError) {
+    return {
+      kind: 'partial',
+      message: null,
+      warning: activityError,
+    }
+  }
+
+  return { kind: 'ready' }
+}

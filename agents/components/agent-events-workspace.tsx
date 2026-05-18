@@ -36,6 +36,7 @@ export function AgentEventsWorkspace({
   const searchParams = useSearchParams()
   const queryEventId = searchParams.get('event')
   const [events, setEvents] = useState<AgentEventSummary[]>(initialEvents)
+  const [ledgerStale, setLedgerStale] = useState(false)
   const pollMs = useMemo(() => (hasLiveEvents(events) ? 2500 : 6000), [events])
   const sortedEvents = useMemo(() => sortEvents(events), [events])
   const ledgerEvents = useMemo(
@@ -59,14 +60,20 @@ export function AgentEventsWorkspace({
           cache: 'no-store',
         })
         if (!response.ok) {
+          if (!cancelled) {
+            setLedgerStale(true)
+          }
           return
         }
         const body = (await response.json()) as AgentEventsListResponse
         if (!cancelled) {
           setEvents(body.events)
+          setLedgerStale(false)
         }
       } catch {
-        // Event list refresh is best-effort; the selected stream reports errors.
+        if (!cancelled) {
+          setLedgerStale(true)
+        }
       }
     }
 
@@ -96,7 +103,14 @@ export function AgentEventsWorkspace({
               Events
             </h2>
           </div>
-          <Badge variant="outline">{ledgerEvents.length}</Badge>
+          <div className="flex items-center gap-2">
+            {ledgerStale && (
+              <span className="font-bold text-[10px] text-amber-600 uppercase tracking-[0.14em]">
+                Stale
+              </span>
+            )}
+            <Badge variant="outline">{ledgerEvents.length}</Badge>
+          </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
@@ -163,6 +177,14 @@ export function AgentEventsWorkspace({
           messages={transcript.messages}
           workflowStatus={transcript.workflowStatus}
         />
+        {transcript.warning && !transcript.error && (
+          <p
+            className="mx-4 mb-2 border-2 border-amber-500 bg-amber-500/10 px-3 py-2 font-bold text-amber-800 text-xs uppercase tracking-[0.12em] dark:text-amber-200"
+            role="status"
+          >
+            {transcript.warning}
+          </p>
+        )}
         {transcript.error && (
           <p
             className="mx-4 mb-4 border-2 border-destructive bg-destructive/10 px-3 py-2 font-bold text-destructive text-xs uppercase tracking-[0.12em]"
