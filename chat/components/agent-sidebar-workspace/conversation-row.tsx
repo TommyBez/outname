@@ -37,6 +37,7 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import {
 import { Button } from '@/components/ui/button'
   type ConversationSummary,
