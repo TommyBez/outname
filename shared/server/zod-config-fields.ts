@@ -22,13 +22,13 @@ function unwrap(schema: z.ZodTypeAny): {
   for (let i = 0; i < 8; i++) {
     if (s instanceof z.ZodOptional || s instanceof z.ZodNullable) {
       optional = true
-      s = s.unwrap()
+      s = unwrapInnerType(s)
       continue
     }
     if (s instanceof z.ZodDefault) {
       optional = true
       defaultValue = readDefaultValue(s)
-      s = s.unwrap()
+      s = unwrapInnerType(s)
       continue
     }
     break
@@ -107,7 +107,9 @@ function getShape(schema: z.ZodTypeAny): Record<string, z.ZodTypeAny> | null {
   return typeof def.shape === 'function' ? def.shape() : def.shape
 }
 
-function readDefaultValue(schema: z.ZodDefault<z.ZodTypeAny>): unknown {
+function readDefaultValue(schema: {
+  _def?: { defaultValue?: unknown }
+}): unknown {
   const def = (
     schema as unknown as {
       _def?: {
@@ -124,4 +126,8 @@ function readDefaultValue(schema: z.ZodDefault<z.ZodTypeAny>): unknown {
     }
   }
   return value
+}
+
+function unwrapInnerType(schema: { unwrap: () => unknown }): z.ZodTypeAny {
+  return schema.unwrap() as z.ZodTypeAny
 }
