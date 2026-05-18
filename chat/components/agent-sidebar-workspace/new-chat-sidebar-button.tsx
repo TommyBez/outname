@@ -2,6 +2,7 @@
 
 import { MessageSquarePlus } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
+import { newDraftConversationId } from '@/chat/lib/draft-conversation-id'
 import { SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar'
 import { isNewChatPath, newChatPath } from './conversations'
 
@@ -14,9 +15,10 @@ export function NewChatSidebarButton({ agentId }: NewChatSidebarButtonProps) {
   const pathname = usePathname()
 
   function handleNewChat() {
-    // A unique `draft` query forces navigation even when the App Router still
-    // considers us on `/chat/new` after `history.replaceState` promoted the URL.
-    router.push(newChatPath(agentId, Date.now().toString(36)))
+    // Pick the draft id on the client so navigation does not depend on a fresh
+    // server render, and use `draft` in the URL to bust App Router cache.
+    const conversationId = newDraftConversationId()
+    router.push(newChatPath(agentId, conversationId))
   }
 
   return (

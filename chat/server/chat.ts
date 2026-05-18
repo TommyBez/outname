@@ -2,6 +2,7 @@ import 'server-only'
 import type { UIMessage } from 'ai'
 import { and, asc, desc, eq, isNull } from 'drizzle-orm'
 import { cacheLife, cacheTag } from 'next/cache'
+import { newDraftConversationId } from '@/chat/lib/draft-conversation-id'
 import { db } from '@/shared/db'
 import {
   type ChatConversation,
@@ -13,11 +14,7 @@ import {
 import { conversationListTag } from '@/shared/server/cache-tags'
 
 export function newChatConversationId() {
-  return (
-    'cc_' +
-    Math.random().toString(36).slice(2) +
-    Date.now().toString(36).slice(-4)
-  )
+  return newDraftConversationId()
 }
 
 // Draft `/chat/new` routes stay DB-free until the first user message creates the row.

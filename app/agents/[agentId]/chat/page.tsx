@@ -1,6 +1,7 @@
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { requireSession } from '@/auth/server/auth-guard'
+import { ChatIndexRedirect } from '@/chat/components/chat-index-redirect'
 import { getMostRecentConversationForAgent } from '@/chat/server/chat'
 import { getCachedAgentByIdForUser } from '@/shared/server/data'
 
@@ -23,9 +24,11 @@ async function ResolveChatIndex({ params }: { params: Params }) {
   }
 
   const mostRecent = await getMostRecentConversationForAgent(agent.id)
-  if (mostRecent) {
-    redirect(`/agents/${agent.id}/chat/${mostRecent.id}`)
-  }
-  redirect(`/agents/${agent.id}/chat/new`)
-  return null
+
+  return (
+    <ChatIndexRedirect
+      agentId={agent.id}
+      mostRecentConversationId={mostRecent?.id ?? null}
+    />
+  )
 }
