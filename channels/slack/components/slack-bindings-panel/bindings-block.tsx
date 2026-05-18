@@ -4,9 +4,9 @@ import { Hash, Trash2, User as UserIcon } from 'lucide-react'
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { deleteSlackBindingAction } from '@/channels/slack/server/actions'
+import { Button } from '@/components/ui/button'
 import type { InstallationView, SlackBindingView } from './types'
 import { KIND_LABEL, workspaceLabel } from './utils'
-import { Button } from '@/components/ui/button'
 
 export function BindingsBlock({
   agentId,

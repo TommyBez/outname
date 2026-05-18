@@ -13,6 +13,7 @@ import { TriggerButton } from '@/agents/components/trigger-button'
 import { formatAgentSchedule } from '@/agents/format'
 import { BudgetIndicator } from '@/budgets/components/budget-indicator'
 import type { BudgetSummaryEntry } from '@/budgets/server/types'
+import { Button } from '@/components/ui/button'
 import {
   Collapsible,
   CollapsibleContent,
@@ -20,7 +21,6 @@ import {
 } from '@/components/ui/collapsible'
 import { cn } from '@/lib/utils'
 import type { AgentScheduleMode } from '@/shared/agent-schedule'
-import { Button } from '@/components/ui/button'
 
 export interface DashboardAgent {
   dreamingEnabled: boolean

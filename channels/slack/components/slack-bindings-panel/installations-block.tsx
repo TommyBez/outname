@@ -4,8 +4,8 @@ import { Plus } from 'lucide-react'
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { disconnectSlackInstallationAction } from '@/channels/slack/server/actions'
-import type { InstallationView } from './types'
 import { Button } from '@/components/ui/button'
+import type { InstallationView } from './types'
 
 export function InstallationsBlock({
   installHref = '/api/channels/slack/install',

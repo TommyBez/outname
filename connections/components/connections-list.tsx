@@ -3,12 +3,12 @@
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
 import {
   disconnectConnectionAction,
   saveApiKeyConnectionAction,
 } from '@/connections/actions'
 import type { ConnectionStatus } from '@/shared/db/schema'
-import { Button } from '@/components/ui/button'
 
 interface ConnectorSummary {
   apiKeyFields?: Array<{

@@ -3,8 +3,8 @@
 import { useRouter } from 'next/navigation'
 import { useTransition } from 'react'
 import { toast } from 'sonner'
-import { attachSubAgentAction, detachToolAction } from '@/tools/actions'
 import { Button } from '@/components/ui/button'
+import { attachSubAgentAction, detachToolAction } from '@/tools/actions'
 
 export interface SubAgentCatalogEntry {
   agentId: string

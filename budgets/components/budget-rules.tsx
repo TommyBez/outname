@@ -8,8 +8,8 @@ import {
   setBudgetRuleEnabledAction,
   upsertBudgetRuleAction,
 } from '@/budgets/server/actions'
-import type { BudgetPeriod } from '@/shared/db/schema'
 import { Button } from '@/components/ui/button'
+import type { BudgetPeriod } from '@/shared/db/schema'
 
 const PERIODS: readonly { id: BudgetPeriod; label: string }[] = [
   { id: 'daily', label: 'Daily' },

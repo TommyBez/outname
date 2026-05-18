@@ -25,6 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,9 +38,7 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
 import {
-import { Button } from '@/components/ui/button'
   type ConversationSummary,
   revalidateConversations,
 } from './conversations'

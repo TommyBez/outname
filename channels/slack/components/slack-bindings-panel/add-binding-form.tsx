@@ -5,9 +5,9 @@ import type { FormEvent } from 'react'
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { upsertSlackBindingAction } from '@/channels/slack/server/actions'
+import { Button } from '@/components/ui/button'
 import type { InstallationView } from './types'
 import { workspaceLabel } from './utils'
-import { Button } from '@/components/ui/button'
 
 type NewBindingKind = 'channel' | 'dm'
 

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import type { FormEvent } from 'react'
 import { useMemo, useState, useTransition } from 'react'
 import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
 import { attachToolAction, detachToolAction } from '@/tools/actions'
 import { CatalogActionButtons } from './action-buttons'
 import { ConfigField } from './config-field'
@@ -13,7 +14,6 @@ import type {
   ToolConfigField,
 } from './types'
 import { defaultValuesFor, submitButtonLabel } from './utils'
-import { Button } from '@/components/ui/button'
 
 interface AttachmentFormProps {
   agentId: string

@@ -14,10 +14,9 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
 } from '@/components/ai-elements/prompt-input'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
 import {
-import { Button } from '@/components/ui/button'
   revealVariants,
   staggerVariants,
 } from '@/marketing/components/landing/landing-motion'

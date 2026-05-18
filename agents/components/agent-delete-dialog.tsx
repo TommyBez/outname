@@ -1,8 +1,6 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
 import {
-import { Button } from '@/components/ui/button'
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -13,6 +11,7 @@ import { Button } from '@/components/ui/button'
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
 
 interface AgentDeleteDialogProps {
   agentName: string

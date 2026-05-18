@@ -21,8 +21,8 @@ import {
 } from '@/agent-runtime/shared/event-types'
 import { AgentChatTranscript } from '@/chat/components/agent-chat-transcript'
 import { Badge } from '@/components/ui/badge'
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 interface AgentEventsWorkspaceProps {
   agentId: string

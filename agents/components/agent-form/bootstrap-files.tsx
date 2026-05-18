@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -10,7 +11,6 @@ import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { BOOTSTRAP_FILE_OPTIONS, type BootstrapFileValue } from './options'
-import { Button } from '@/components/ui/button'
 
 interface BootstrapFilesProps {
   activeBootstrapFile: BootstrapFileValue

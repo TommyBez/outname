@@ -3,6 +3,7 @@
 import { Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
+import { Button } from '@/components/ui/button'
 import { AddBindingForm } from './slack-bindings-panel/add-binding-form'
 import { BindingsBlock } from './slack-bindings-panel/bindings-block'
 import { InstallationsBlock } from './slack-bindings-panel/installations-block'
@@ -11,7 +12,6 @@ import type {
   SlackBindingsPanelProps as SlackBindingsPanelPropsType,
 } from './slack-bindings-panel/types'
 import { SlackNotConfiguredNotice } from './slack-not-configured-notice'
-import { Button } from '@/components/ui/button'
 
 export type { SlackBindingsPanelProps } from './slack-bindings-panel/types'
 
