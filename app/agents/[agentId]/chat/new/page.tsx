@@ -33,6 +33,7 @@ async function DraftChat({ params }: { params: Params }) {
       conversationId={draftConversationId}
       initialMessages={[]}
       isDraft
+      key={draftConversationId}
     />
   )
 }

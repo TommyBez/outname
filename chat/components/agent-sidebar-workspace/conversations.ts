@@ -10,6 +10,18 @@ export function conversationsSwrKey(agentId: string): string {
   return `/api/agents/${agentId}/conversations`
 }
 
+export function newChatPath(agentId: string, draftNonce?: string) {
+  const base = `/agents/${agentId}/chat/new`
+  if (!draftNonce) {
+    return base
+  }
+  return `${base}?draft=${encodeURIComponent(draftNonce)}`
+}
+
+export function isNewChatPath(pathname: string | null, agentId: string) {
+  return pathname === `/agents/${agentId}/chat/new`
+}
+
 export function revalidateConversations(agentId: string) {
   return swrMutate(conversationsSwrKey(agentId))
 }
