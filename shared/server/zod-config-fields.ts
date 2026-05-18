@@ -11,8 +11,19 @@ export interface ConfigField {
   type: 'text' | 'number' | 'boolean'
 }
 
+interface Zod4Def {
+  defaultValue?: unknown
+  innerType?: z.ZodTypeAny
+  shape?: Record<string, z.ZodTypeAny>
+  type?: string
+}
+
+function getDef(schema: z.ZodTypeAny): Zod4Def | undefined {
+  return (schema as unknown as { _def?: Zod4Def })._def
+}
+
 // Zod exposes no stable public introspection API here, so this stays
-// best-effort and reads `_def` directly.
+// best-effort and reads the Zod 4 `_def` shape directly.
 function unwrap(schema: z.ZodTypeAny): {
   inner: z.ZodTypeAny
   optional: boolean
@@ -22,33 +33,23 @@ function unwrap(schema: z.ZodTypeAny): {
   let optional = false
   let defaultValue: unknown
   for (let i = 0; i < 8; i++) {
-    const def = (
-      s as unknown as {
-        _def?: {
-          typeName?: string
-          defaultValue?: () => unknown
-          innerType?: z.ZodTypeAny
-        }
-      }
-    )._def
+    const def = getDef(s)
     if (!def) {
       break
     }
-    if (def.typeName === 'ZodOptional' || def.typeName === 'ZodNullable') {
+    if (def.type === 'optional' || def.type === 'nullable') {
       optional = true
       if (def.innerType) {
         s = def.innerType
       } else {
         break
       }
-    } else if (def.typeName === 'ZodDefault') {
+    } else if (def.type === 'default') {
       optional = true
-      if (typeof def.defaultValue === 'function') {
-        try {
-          defaultValue = def.defaultValue()
-        } catch {
-          defaultValue = undefined
-        }
+      try {
+        defaultValue = def.defaultValue
+      } catch {
+        defaultValue = undefined
       }
       if (def.innerType) {
         s = def.innerType
@@ -63,11 +64,11 @@ function unwrap(schema: z.ZodTypeAny): {
 }
 
 function classify(inner: z.ZodTypeAny): 'text' | 'number' | 'boolean' {
-  const def = (inner as unknown as { _def?: { typeName?: string } })._def
-  switch (def?.typeName) {
-    case 'ZodNumber':
+  const def = getDef(inner)
+  switch (def?.type) {
+    case 'number':
       return 'number'
-    case 'ZodBoolean':
+    case 'boolean':
       return 'boolean'
     default:
       return 'text'
@@ -87,16 +88,12 @@ export function describeConfigSchema(
   if (!schema) {
     return []
   }
-  const def = (
-    schema as unknown as {
-      _def?: { typeName?: string; shape?: () => Record<string, z.ZodTypeAny> }
-    }
-  )._def
-  if (def?.typeName !== 'ZodObject' || !def.shape) {
+  const def = getDef(schema)
+  if (def?.type !== 'object' || !def.shape) {
     return []
   }
 
-  const shape = def.shape()
+  const shape = def.shape
   const fields: ConfigField[] = []
   for (const [name, raw] of Object.entries(shape)) {
     const { inner, optional, defaultValue } = unwrap(raw)

@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import type { FormEvent } from 'react'
+import type { FormEventHandler } from 'react'
 import { useMemo, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { attachToolAction, detachToolAction } from '@/tools/actions'
@@ -43,8 +43,7 @@ export function AttachmentForm({
   const [open, setOpen] = useState(false)
   const hasFields = entry.configFields.length > 0
 
-  function handleAttach(event?: FormEvent<HTMLFormElement>) {
-    event?.preventDefault()
+  function handleAttach() {
     const config: Record<string, unknown> = {}
     for (const field of entry.configFields) {
       const value = coerceFieldValue(field, values[field.name] ?? '')
@@ -66,6 +65,11 @@ export function AttachmentForm({
       setOpen(false)
       router.refresh()
     })
+  }
+
+  const handleAttachSubmit: FormEventHandler<HTMLFormElement> = (event) => {
+    event.preventDefault()
+    handleAttach()
   }
 
   function handleDetach() {
@@ -98,7 +102,7 @@ export function AttachmentForm({
       {open && hasFields && (
         <form
           className="flex w-full max-w-lg flex-col gap-3 border-2 border-foreground bg-muted p-4"
-          onSubmit={handleAttach}
+          onSubmit={handleAttachSubmit}
         >
           {entry.configFields.map((field) => (
             <ConfigField
