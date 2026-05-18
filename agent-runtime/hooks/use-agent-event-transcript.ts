@@ -4,6 +4,8 @@ import { readUIMessageStream } from 'ai'
 import { useEffect, useRef, useState } from 'react'
 import {
   backoffMs,
+  isEventStreamPendingHttpStatus,
+  isEventStreamUnavailableHttpStatus,
   resolveTranscriptOutcome,
   STREAM_MAX_ATTEMPTS,
   STREAM_PENDING_RETRY_MS,
@@ -263,6 +265,29 @@ export function useAgentEventTranscript(input: {
   return { error, messages, status, warning, workflowStatus }
 }
 
+async function processStreamAttemptError(input: {
+  attempt: number
+  reason: unknown
+  signal: AbortSignal
+  shouldContinue: () => boolean
+}): Promise<number | 'pending' | null> {
+  if (input.signal.aborted || !input.shouldContinue()) {
+    return null
+  }
+  if (input.reason instanceof StreamPendingError) {
+    await sleep(STREAM_PENDING_RETRY_MS, input.signal)
+    return 'pending'
+  }
+  if (input.reason instanceof StreamUnavailableError) {
+    throw input.reason
+  }
+  const nextAttempt = input.attempt + 1
+  if (nextAttempt >= STREAM_MAX_ATTEMPTS) {
+    throw input.reason
+  }
+  return nextAttempt
+}
+
 async function runStreamWithRetry(input: {
   run: () => Promise<void>
   shouldContinue: () => boolean
@@ -282,17 +307,19 @@ async function runStreamWithRetry(input: {
         throw new Error('Event stream ended before the run finished.')
       }
     } catch (reason) {
-      if (input.signal.aborted || !input.shouldContinue()) {
+      const nextAttempt = await processStreamAttemptError({
+        attempt,
+        reason,
+        signal: input.signal,
+        shouldContinue: input.shouldContinue,
+      })
+      if (nextAttempt === null) {
         return
       }
-      if (reason instanceof StreamPendingError) {
-        await sleep(STREAM_PENDING_RETRY_MS, input.signal)
+      if (nextAttempt === 'pending') {
         continue
       }
-      attempt += 1
-      if (attempt >= STREAM_MAX_ATTEMPTS) {
-        throw reason
-      }
+      attempt = nextAttempt
     }
 
     await sleep(backoffMs(attempt - 1), input.signal)
@@ -358,8 +385,14 @@ async function openEventStream<T>(input: {
       signal: input.signal,
     }
   )
-  if (response.status === 409) {
+  if (isEventStreamPendingHttpStatus(response.status)) {
     throw new StreamPendingError()
+  }
+  if (isEventStreamUnavailableHttpStatus(response.status)) {
+    const message = await readStreamErrorMessage(response)
+    throw new StreamUnavailableError(
+      message ?? 'Workflow is unavailable in this environment.'
+    )
   }
   if (!response.ok) {
     throw new Error(`Event stream failed with HTTP ${response.status}`)
@@ -485,5 +518,23 @@ class StreamPendingError extends Error {
   constructor() {
     super('Event stream is not ready yet.')
     this.name = 'StreamPendingError'
+  }
+}
+
+class StreamUnavailableError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'StreamUnavailableError'
+  }
+}
+
+async function readStreamErrorMessage(
+  response: Response
+): Promise<string | null> {
+  try {
+    const body = (await response.json()) as { error?: string }
+    return typeof body.error === 'string' ? body.error : null
+  } catch {
+    return null
   }
 }

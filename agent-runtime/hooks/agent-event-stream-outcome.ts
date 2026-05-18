@@ -26,6 +26,16 @@ export function shouldRetryAfterStreamEnd(event: AgentEventSummary): boolean {
   return !isTerminalAgentEventStatus(event.status)
 }
 
+/** Transient: event or workflow not ready to stream yet. */
+export function isEventStreamPendingHttpStatus(status: number): boolean {
+  return status === 409
+}
+
+/** Permanent in this environment: workflow run cannot be read. */
+export function isEventStreamUnavailableHttpStatus(status: number): boolean {
+  return status === 503
+}
+
 export function resolveTranscriptOutcome(
   input: ResolveTranscriptOutcomeInput
 ): TranscriptOutcome {

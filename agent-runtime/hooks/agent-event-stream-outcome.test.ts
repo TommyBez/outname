@@ -2,6 +2,8 @@ import { expect, test } from 'vitest'
 import type { AgentEventSummary } from '@/agent-runtime/shared/event-types'
 import {
   backoffMs,
+  isEventStreamPendingHttpStatus,
+  isEventStreamUnavailableHttpStatus,
   resolveTranscriptOutcome,
   shouldRetryAfterStreamEnd,
 } from './agent-event-stream-outcome'
@@ -67,4 +69,11 @@ test('resolveTranscriptOutcome warns when only activity stream fails', () => {
 test('backoffMs caps at the final interval', () => {
   expect(backoffMs(0)).toBe(1000)
   expect(backoffMs(99)).toBe(8000)
+})
+
+test('stream HTTP status distinguishes pending from unavailable workflow', () => {
+  expect(isEventStreamPendingHttpStatus(409)).toBe(true)
+  expect(isEventStreamPendingHttpStatus(503)).toBe(false)
+  expect(isEventStreamUnavailableHttpStatus(503)).toBe(true)
+  expect(isEventStreamUnavailableHttpStatus(409)).toBe(false)
 })

@@ -34,7 +34,8 @@ export async function GET(
     if (!(err instanceof Error && err.name === 'WorkflowRunNotFoundError')) {
       throw err
     }
-    return jsonError(409, 'workflow unavailable in this environment')
+    // 503 (not 409) so clients do not treat a missing run as "still starting".
+    return jsonError(503, 'workflow unavailable in this environment')
   }
 
   const streamKind = readStreamKind(request)
