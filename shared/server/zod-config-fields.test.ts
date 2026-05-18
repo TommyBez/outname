@@ -14,8 +14,8 @@ test('describeConfigSchema extracts v4 object fields and wrapper metadata', () =
       .describe('Maximum wait before aborting.'),
     writeAccess: z
       .boolean()
-      .describe('Allow write operations for this attachment.')
-      .optional(),
+      .optional()
+      .describe('Allow write operations for this attachment.'),
   })
 
   expect(describeConfigSchema(schema)).toEqual([
