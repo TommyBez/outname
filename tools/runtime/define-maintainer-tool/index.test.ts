@@ -86,9 +86,6 @@ test('bundle child tools inherit the bundle sandbox manifest id', async () => {
   >
 
   const result = await built.test_run.execute({})
-  assert.equal(result.ok, false)
-  assert.equal(
-    result.message,
-    'Unknown tool sandbox manifest: missing-manifest'
-  )
+  expect(result.ok).toBe(false)
+  expect(result.message).toBe('Unknown tool sandbox manifest: missing-manifest')
 })
