@@ -14,4 +14,5 @@ export interface SummaryContext {
   attached: AttachedCapability[]
   name: string
   previousSummary: string | null
+  userId: string
 }

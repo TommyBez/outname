@@ -1,25 +1,13 @@
 import 'server-only'
-import { Redis } from '@upstash/redis'
 import { nanoid } from 'nanoid'
-
-let redisClient: Redis | null | undefined
-
-function getRedis(): Redis | null {
-  if (redisClient !== undefined) {
-    return redisClient
-  }
-  const url = process.env.UPSTASH_REDIS_REST_URL
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN
-  redisClient = url && token ? new Redis({ token, url }) : null
-  return redisClient
-}
+import { getUpstashRedis } from '@/shared/server/upstash-redis'
 
 export async function withRedisLock<T>(
   key: string,
   ttlSeconds: number,
   fn: () => Promise<T>
 ): Promise<T | null> {
-  const redis = getRedis()
+  const redis = getUpstashRedis()
   if (!redis) {
     return await fn()
   }

@@ -9,6 +9,7 @@ export const user = pgTable('user', {
   image: text('image'),
   timezone: text('timezone').notNull().default('UTC'),
   role: text('role').notNull().default('user'),
+  aiGatewayApiKey: text('ai_gateway_api_key'),
   banned: boolean('banned').notNull().default(false),
   banReason: text('banReason'),
   banExpires: timestamp('banExpires', { withTimezone: true }),
