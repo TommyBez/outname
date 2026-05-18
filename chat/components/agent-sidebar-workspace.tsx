@@ -1,8 +1,8 @@
 'use client'
 
-import { Bot } from 'lucide-react'
+import { Bot, MessageSquarePlus } from 'lucide-react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import {
   SidebarGroup,
@@ -19,7 +19,6 @@ import {
   conversationsSwrKey,
   fetchConversations,
 } from './agent-sidebar-workspace/conversations'
-import { NewChatSidebarButton } from './agent-sidebar-workspace/new-chat-sidebar-button'
 
 interface AgentSidebarWorkspaceProps {
   agentId: string
@@ -94,11 +93,34 @@ function ChatHistoryGroup({
   conversations: ConversationSummary[]
   pathname: string | null
 }) {
+  const router = useRouter()
+
   return (
     <div className="mt-4 border-sidebar-border border-t pt-3">
       <SidebarGroupLabel>Chats</SidebarGroupLabel>
       <SidebarMenu>
-        <NewChatSidebarButton agentId={agentId} />
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            asChild
+            className="text-muted-foreground hover:text-foreground"
+            isActive={pathname === `/agents/${agentId}/chat/new`}
+            tooltip="New chat"
+          >
+            <Link
+              href={`/agents/${agentId}/chat/new`}
+              onClick={(event) => {
+                if (pathname !== `/agents/${agentId}/chat/new`) {
+                  return
+                }
+                event.preventDefault()
+                router.refresh()
+              }}
+            >
+              <MessageSquarePlus aria-hidden />
+              <span>New chat</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
 
         {conversations.length === 0 ? (
           <li className="px-2 py-3 text-center font-mono text-[10px] text-muted-foreground/70 uppercase tracking-[0.15em]">

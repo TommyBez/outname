@@ -2,6 +2,7 @@
 
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
+import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import {
   type AgentChatMessage,
@@ -43,6 +44,7 @@ export function AgentChat({
   const [input, setInput] = useState('')
   const [workflowStatus, setWorkflowStatus] =
     useState<WorkflowStatusData | null>(null)
+  const router = useRouter()
   const didPromoteDraftRef = useRef(false)
   const { messages, sendMessage, status, error, stop } =
     useChat<AgentChatMessage>({
@@ -61,30 +63,14 @@ export function AgentChat({
         // Revalidate just the sidebar list so soft navigation does not strand
         // the freshly streamed reply out of view.
         await revalidateConversations(agentId)
+        if (isDraft && !didPromoteDraftRef.current) {
+          didPromoteDraftRef.current = true
+          router.replace(`/agents/${agentId}/chat/${conversationId}`, {
+            scroll: false,
+          })
+        }
       },
     })
-
-  // Use `history.replaceState` instead of `router.replace` so the first
-  // in-flight `useChat` stream survives the draft -> persisted URL swap.
-  useEffect(() => {
-    if (!isDraft) {
-      return
-    }
-    if (didPromoteDraftRef.current) {
-      return
-    }
-    if (messages.length === 0) {
-      return
-    }
-    didPromoteDraftRef.current = true
-    if (typeof window !== 'undefined') {
-      window.history.replaceState(
-        null,
-        '',
-        `/agents/${agentId}/chat/${conversationId}`
-      )
-    }
-  }, [agentId, conversationId, isDraft, messages.length])
 
   const isBusy = status === 'submitted' || status === 'streaming'
   const showWorkflowStatus = isBusy && workflowStatus !== null
