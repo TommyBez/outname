@@ -98,9 +98,17 @@ function createRepoWorkspaceSandboxAdapter(input: {
     async readFile(path) {
       const safe = normalizeRepoWorkspacePath(path, input.rootPath)
       assertReadableRepoWorkspacePath(safe)
-      const content = await input.sandbox
-        .readFileToBuffer({ path: safe.absPath })
-        .catch(() => null)
+      let content: Buffer | null
+      try {
+        content = await input.sandbox.readFileToBuffer({ path: safe.absPath })
+      } catch (error) {
+        if (isMissingFileError(error)) {
+          throw new RepoWorkspaceProviderError(
+            `readFile: file not found: ${safe.relPath}`
+          )
+        }
+        throw error
+      }
       if (content === null) {
         throw new RepoWorkspaceProviderError(
           `readFile: file not found: ${safe.relPath}`
@@ -139,6 +147,24 @@ function createRepoWorkspaceSandboxAdapter(input: {
       )
     },
   }
+}
+
+function isMissingFileError(error: unknown): boolean {
+  if (!(typeof error === 'object' && error !== null)) {
+    return false
+  }
+
+  if ('code' in error && error.code === 'ENOENT') {
+    return true
+  }
+
+  return (
+    'response' in error &&
+    typeof error.response === 'object' &&
+    error.response !== null &&
+    'status' in error.response &&
+    error.response.status === 404
+  )
 }
 
 async function ensureParentDirectories(
