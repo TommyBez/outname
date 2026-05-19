@@ -1,5 +1,4 @@
 import type { Sandbox as VercelSandbox } from '@vercel/sandbox'
-import { createBashTool } from 'bash-tool'
 import { RepoWorkspaceProviderError } from './errors'
 import {
   assertReadableRepoWorkspacePath,
@@ -45,6 +44,18 @@ export async function createRepoWorkspaceBashTool(input: {
     }
   })
 
+  const { createBashTool } = (await import(
+    bashToolModuleName()
+  )) as unknown as {
+    createBashTool(args: {
+      destination: string
+      maxFiles: number
+      maxOutputLength: number
+      promptOptions: { toolPrompt: string }
+      sandbox: RepoWorkspaceBashToolSandbox
+    }): Promise<RepoWorkspaceBashToolkit>
+  }
+
   return (await createBashTool({
     destination: rootPath,
     maxFiles: 0,
@@ -58,6 +69,10 @@ export async function createRepoWorkspaceBashTool(input: {
       sandbox: input.sandbox,
     }),
   })) as unknown as RepoWorkspaceBashToolkit
+}
+
+function bashToolModuleName(): string {
+  return process.env.CURSOR_BASH_TOOL_MODULE ?? 'bash-tool'
 }
 
 function createRepoWorkspaceSandboxAdapter(input: {

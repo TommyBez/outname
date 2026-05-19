@@ -73,6 +73,7 @@ If a field is secret, it does not belong in `configSchema`. For SDK-backed tools
 - Use `defineApiPassthroughTool` when the tool is mostly "validated input -> authenticated HTTP request -> normalized response"
 - Use `defineSandboxTool` when the tool runs a CLI or process inside a tool sandbox snapshot
 - When a tool combines provider APIs, sandbox lifecycle, and repository/file operations, keep `tools/providers/<tool>.ts` declarative and move reusable mechanics into provider-agnostic runtime helpers instead of tool-specific helper files
+- For repo-oriented sandbox tools, prefer exposing the `bash-tool` adapter surface (`bash`, `readFile`, `writeFile`) before inventing provider-specific `git`, `grep`, branch, or PR sub-tools; add specialized wrappers only when the adapter surface is insufficient
 - Prefer `tools/runtime/define-maintainer-tool/provider-response.ts` when several brokered HTTP tools need the same clipped-error / response-body plumbing
 - Prefer `tools/runtime/define-maintainer-tool/sdk-step.ts` when a workflow step needs connector-backed SDK credentials without hand-rolling `readBrokeredCredential` error mapping
 - For sandbox manifests in this repo, keep installer bytes in `tools/sandboxes/<id>/setup.ts` and expose them through `tools/sandboxes/registry.ts`; do not rely on runtime reads of repo-relative `.sh` files

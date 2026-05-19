@@ -13,8 +13,8 @@ import {
   RepoWorkspaceProviderError,
   RepoWorkspaceUnavailableError,
 } from './errors'
-import { initializeRepoWorkspaceCheckout } from './git'
 import { REPO_WORKSPACE_ROOT } from './paths'
+import { shellQuote } from './shell'
 import type { RepoWorkspace } from './types'
 
 interface CachedRepoWorkspace {
@@ -199,10 +199,22 @@ async function initializeWorkspaceCheckout(
   workspace: RepoWorkspace
 ): Promise<void> {
   try {
-    await initializeRepoWorkspaceCheckout({
-      repoUrl,
-      workspace,
+    const cloneCommand = [
+      'test -d .git',
+      `git clone --depth 1 ${shellQuote(repoUrl)} .`,
+    ].join(' || ')
+    const result = await workspace.bashTool.bash.execute({
+      command: [
+        cloneCommand,
+        `git config --local --add safe.directory ${shellQuote(workspace.rootPath)}`,
+        `git config user.name ${shellQuote(DEFAULT_COMMIT_AUTHOR_NAME)}`,
+        `git config user.email ${shellQuote(DEFAULT_COMMIT_AUTHOR_EMAIL)}`,
+      ].join(' && '),
     })
+    assertWorkspaceCommandSucceeded(
+      result,
+      'Failed to initialize the repo workspace checkout.'
+    )
   } catch (error) {
     if (error instanceof RepoWorkspaceProviderError) {
       throw error
@@ -214,6 +226,24 @@ async function initializeWorkspaceCheckout(
     )
   }
 }
+
+function assertWorkspaceCommandSucceeded(
+  result: { exitCode: number; stderr: string; stdout: string },
+  fallbackMessage: string
+): void {
+  if (result.exitCode === 0) {
+    return
+  }
+
+  const details = result.stderr.trim() || result.stdout.trim()
+  throw new RepoWorkspaceProviderError(
+    details ? `${fallbackMessage} ${details}` : fallbackMessage
+  )
+}
+
+const DEFAULT_COMMIT_AUTHOR_EMAIL =
+  'cursor-maintainer-tool@users.noreply.github.com'
+const DEFAULT_COMMIT_AUTHOR_NAME = 'Cursor Maintainer Tool'
 
 async function stopWorkspaceSandbox(sandbox: Sandbox | null): Promise<void> {
   if (!sandbox) {

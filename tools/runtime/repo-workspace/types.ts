@@ -47,27 +47,3 @@ export interface RepoWorkspace {
   rootPath: string
   sandbox: Sandbox
 }
-
-export interface RepoWorkspaceFileWrite {
-  content: string
-  path: string
-}
-
-export interface RepoWorkspaceListInput {
-  maxResults?: number
-  pathPrefix?: string
-}
-
-export interface RepoWorkspaceGrepInput {
-  caseInsensitive: boolean
-  fixedString: boolean
-  maxResults: number
-  pathPrefix?: string
-  pattern: string
-}
-
-export interface RepoWorkspaceGrepMatch {
-  line: number
-  path: string
-  text: string
-}
