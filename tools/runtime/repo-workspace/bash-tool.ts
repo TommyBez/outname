@@ -127,10 +127,7 @@ function createRepoWorkspaceSandboxAdapter(input: {
         const safe = normalizeRepoWorkspacePath(file.path, input.rootPath)
         assertWritableRepoWorkspacePath(safe)
         return {
-          content:
-            typeof file.content === 'string'
-              ? file.content
-              : file.content.toString('utf8'),
+          content: normalizeWritableContent(file.content),
           safe,
         }
       })
@@ -141,7 +138,10 @@ function createRepoWorkspaceSandboxAdapter(input: {
       )
       await input.sandbox.writeFiles(
         prepared.map((file) => ({
-          content: Buffer.from(file.content, 'utf8'),
+          content:
+            typeof file.content === 'string'
+              ? Buffer.from(file.content, 'utf8')
+              : file.content,
           path: file.safe.absPath,
         }))
       )
@@ -164,6 +164,18 @@ function isMissingFileError(error: unknown): boolean {
     error.response !== null &&
     'status' in error.response &&
     error.response.status === 404
+  )
+}
+
+function normalizeWritableContent(content: string | Buffer): string | Buffer {
+  if (typeof content === 'string') {
+    return content
+  }
+  if (Buffer.isBuffer(content)) {
+    return content
+  }
+  throw new RepoWorkspaceProviderError(
+    'writeFile: content must be a UTF-8 string or Buffer.'
   )
 }
 
