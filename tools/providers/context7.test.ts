@@ -1,4 +1,7 @@
 import { expect, test, vi } from 'vitest'
+
+vi.mock('server-only', () => ({}))
+
 import type { ToolRuntimeContext } from '@/tools/runtime/define-maintainer-tool'
 import { executeGetContext, executeSearchLibraries } from './context7'
 
@@ -14,19 +17,21 @@ function createRuntimeContext(response: {
     agentId: 'agent_123',
     attachmentToolId: 'context7_docs',
     audit: {
-      async record() {},
+      async record() {
+        // Intentionally unused in these unit tests.
+      },
     },
     conversationId: null,
     credentials: {
-      async read() {
-        throw new Error('Not used in these tests.')
+      read() {
+        return Promise.reject(new Error('Not used in these tests.'))
       },
     },
     http: { request },
     runId: null,
     sandbox: {
-      async run() {
-        throw new Error('Not used in these tests.')
+      run() {
+        return Promise.reject(new Error('Not used in these tests.'))
       },
     },
     toolId: 'context7_docs',
