@@ -11,10 +11,7 @@ import {
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { useAgentEventTranscript } from '@/agent-runtime/hooks/use-agent-event-transcript'
-import {
-  compactLedgerEvents,
-  sortAgentEvents,
-} from '@/agent-runtime/shared/compact-ledger-events'
+import { sortAgentEvents } from '@/agent-runtime/shared/compact-ledger-events'
 import {
   type AgentEventStatus,
   type AgentEventSummary,
@@ -43,10 +40,7 @@ export function AgentEventsWorkspace({
   const [ledgerStale, setLedgerStale] = useState(false)
   const pollMs = useMemo(() => (hasLiveEvents(events) ? 2500 : 6000), [events])
   const sortedEvents = useMemo(() => sortAgentEvents(events), [events])
-  const ledgerEvents = useMemo(
-    () => compactLedgerEvents(sortedEvents),
-    [sortedEvents]
-  )
+  const ledgerEvents = sortedEvents
   const selectedEvent =
     sortedEvents.find((event) => event.id === queryEventId) ??
     pickDefaultEvent(ledgerEvents)

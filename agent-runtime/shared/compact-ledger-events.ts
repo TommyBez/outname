@@ -6,9 +6,16 @@ import {
 
 export const TERMINAL_LEDGER_EVENTS_PER_TYPE = 3
 
+export interface CompactLedgerEventsOptions {
+  terminalEventsPerType?: number
+}
+
 export function compactLedgerEvents(
-  events: readonly AgentEventSummary[]
+  events: readonly AgentEventSummary[],
+  options?: CompactLedgerEventsOptions
 ): AgentEventSummary[] {
+  const terminalEventsPerType =
+    options?.terminalEventsPerType ?? TERMINAL_LEDGER_EVENTS_PER_TYPE
   const live: AgentEventSummary[] = []
   const terminalByType = new Map<
     AgentEventSummary['type'],
@@ -30,7 +37,9 @@ export function compactLedgerEvents(
 
   const terminal: AgentEventSummary[] = []
   for (const typeEvents of terminalByType.values()) {
-    terminal.push(...pickMostRecentTerminalEvents(typeEvents))
+    terminal.push(
+      ...pickMostRecentTerminalEvents(typeEvents, terminalEventsPerType)
+    )
   }
 
   return sortAgentEvents([...live, ...terminal])
@@ -51,14 +60,15 @@ export function sortAgentEvents(
 }
 
 function pickMostRecentTerminalEvents(
-  events: readonly AgentEventSummary[]
+  events: readonly AgentEventSummary[],
+  limit: number
 ): AgentEventSummary[] {
   return [...events]
     .sort(
       (first, second) =>
         new Date(second.queuedAt).getTime() - new Date(first.queuedAt).getTime()
     )
-    .slice(0, TERMINAL_LEDGER_EVENTS_PER_TYPE)
+    .slice(0, limit)
 }
 
 function statusWeight(status: AgentEventStatus): number {

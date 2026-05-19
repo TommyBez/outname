@@ -1,5 +1,6 @@
 import 'server-only'
 import { and, asc, eq, inArray } from 'drizzle-orm'
+import { compactLedgerEvents } from '@/agent-runtime/shared/compact-ledger-events'
 import type {
   AgentEventSource,
   AgentEventSummary,
@@ -15,9 +16,12 @@ import {
 } from './agent-event-store'
 
 const PREVIEW_LIMIT = 160
+
 export async function listAgentEventSummaries(input: {
   agentId: string
   limit?: number
+  /** When set, returns a ledger-shaped list: all live events plus this many recent terminal events per type. */
+  terminalEventsPerType?: number
 }): Promise<AgentEventSummary[]> {
   const [liveEvents, recentEvents] = await Promise.all([
     listLiveAgentEvents(input.agentId),
@@ -28,9 +32,15 @@ export async function listAgentEventSummaries(input: {
   ])
   const events = mergeEvents(liveEvents, recentEvents)
   const blockers = await findQueuedEventBlockers(events)
-  return events.map((event) =>
+  const summaries = events.map((event) =>
     summarizeAgentEvent(event, blockers.get(event.id) ?? null)
   )
+  if (input.terminalEventsPerType === undefined) {
+    return summaries
+  }
+  return compactLedgerEvents(summaries, {
+    terminalEventsPerType: input.terminalEventsPerType,
+  })
 }
 
 export function summarizeAgentEvent(
