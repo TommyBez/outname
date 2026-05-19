@@ -72,7 +72,7 @@ export async function createRepoWorkspaceBashTool(input: {
 }
 
 function bashToolModuleName(): string {
-  return process.env.CURSOR_BASH_TOOL_MODULE ?? 'bash-tool'
+  return 'bash-tool'
 }
 
 function createRepoWorkspaceSandboxAdapter(input: {
