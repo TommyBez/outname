@@ -12,6 +12,10 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { useAgentEventTranscript } from '@/agent-runtime/hooks/use-agent-event-transcript'
 import {
+  compactLedgerEvents,
+  sortAgentEvents,
+} from '@/agent-runtime/shared/compact-ledger-events'
+import {
   type AgentEventStatus,
   type AgentEventSummary,
   type AgentEventsListResponse,
@@ -38,7 +42,7 @@ export function AgentEventsWorkspace({
   const [events, setEvents] = useState<AgentEventSummary[]>(initialEvents)
   const [ledgerStale, setLedgerStale] = useState(false)
   const pollMs = useMemo(() => (hasLiveEvents(events) ? 2500 : 6000), [events])
-  const sortedEvents = useMemo(() => sortEvents(events), [events])
+  const sortedEvents = useMemo(() => sortAgentEvents(events), [events])
   const ledgerEvents = useMemo(
     () => compactLedgerEvents(sortedEvents),
     [sortedEvents]
@@ -301,63 +305,6 @@ function pickDefaultEvent(
     events[0] ??
     null
   )
-}
-
-function sortEvents(events: readonly AgentEventSummary[]): AgentEventSummary[] {
-  return [...events].sort((first, second) => {
-    const statusDelta = statusWeight(first.status) - statusWeight(second.status)
-    if (statusDelta !== 0) {
-      return statusDelta
-    }
-    return (
-      new Date(second.queuedAt).getTime() - new Date(first.queuedAt).getTime()
-    )
-  })
-}
-
-function compactLedgerEvents(
-  events: readonly AgentEventSummary[]
-): AgentEventSummary[] {
-  const seenTypes = new Set<AgentEventSummary['type']>()
-  const compacted: AgentEventSummary[] = []
-
-  for (const event of events) {
-    if (event.type === 'chat') {
-      continue
-    }
-    if (!isTerminalAgentEventStatus(event.status)) {
-      compacted.push(event)
-      continue
-    }
-    if (seenTypes.has(event.type)) {
-      continue
-    }
-    seenTypes.add(event.type)
-    compacted.push(event)
-  }
-
-  return compacted
-}
-
-function statusWeight(status: AgentEventStatus): number {
-  switch (status) {
-    case 'running':
-      return 0
-    case 'starting':
-      return 1
-    case 'queued':
-      return 2
-    case 'failed':
-      return 3
-    case 'completed':
-      return 4
-    case 'cancelled':
-      return 5
-    default: {
-      const exhaustive: never = status
-      return exhaustive
-    }
-  }
 }
 
 function formatEventLabel(event: AgentEventSummary): string {
