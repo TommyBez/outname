@@ -5,6 +5,7 @@ import { defineConnector } from './define-connector'
 const BEARER_PREFIX_PATTERN = /^bearer(?:\s+|$)/i
 const GITHUB_API_BASE = 'https://api.github.com'
 const GITHUB_API_VERSION = '2022-11-28'
+const GITHUB_VALIDATE_TIMEOUT_MS = 3000
 const WHITESPACE_PATTERN = /\s/
 
 const githubTokenSchema = z.preprocess(
@@ -89,30 +90,53 @@ export const githubConnector = defineConnector('github', {
     maxResponseBytes: 64 * 1024,
   },
   async validate(values) {
-    const response = await fetch(`${GITHUB_API_BASE}/user`, {
-      headers: {
-        accept: 'application/vnd.github+json',
-        authorization: `Bearer ${values.token}`,
-        'x-github-api-version': GITHUB_API_VERSION,
-      },
-    })
-    if (!response.ok) {
+    const controller = new AbortController()
+    const timer = setTimeout(
+      () => controller.abort(),
+      GITHUB_VALIDATE_TIMEOUT_MS
+    )
+
+    try {
+      const response = await fetch(`${GITHUB_API_BASE}/user`, {
+        headers: {
+          accept: 'application/vnd.github+json',
+          authorization: `Bearer ${values.token}`,
+          'x-github-api-version': GITHUB_API_VERSION,
+        },
+        signal: controller.signal,
+      })
+      if (!response.ok) {
+        return {
+          ok: false,
+          error: `GitHub rejected the token (HTTP ${response.status}). Verify the token scopes and try again.`,
+        }
+      }
+
+      const user = (await response.json()) as {
+        email?: string | null
+        id?: number
+        login?: string
+        name?: string | null
+      }
+
+      return {
+        ok: true,
+        metadata: metadataFromGitHubUser(user),
+      }
+    } catch (error) {
+      if (controller.signal.aborted) {
+        return {
+          ok: false,
+          error: `Network error validating token: request to ${GITHUB_API_BASE}/user timed out after ${GITHUB_VALIDATE_TIMEOUT_MS}ms.`,
+        }
+      }
+
       return {
         ok: false,
-        error: `GitHub rejected the token (HTTP ${response.status}). Verify the token scopes and try again.`,
+        error: `Network error validating token: ${error instanceof Error ? error.message : String(error)}`,
       }
-    }
-
-    const user = (await response.json()) as {
-      email?: string | null
-      id?: number
-      login?: string
-      name?: string | null
-    }
-
-    return {
-      ok: true,
-      metadata: metadataFromGitHubUser(user),
+    } finally {
+      clearTimeout(timer)
     }
   },
 })
