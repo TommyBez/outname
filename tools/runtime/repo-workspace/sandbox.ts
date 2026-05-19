@@ -1,18 +1,10 @@
 import 'server-only'
 
-import { Sandbox } from '@vercel/sandbox'
-import { eq } from 'drizzle-orm'
-import { db } from '@/shared/db'
-import { toolSandboxSnapshots } from '@/shared/db/schema'
+import { type NetworkPolicy, Sandbox } from '@vercel/sandbox'
 import { repoWorkspaceSandboxTags } from '@/shared/server/vercel-sandbox-config'
-import { createInjectedHeadersNetworkPolicy } from '@/tools/runtime/network-policy'
 import { currentToolRuntimeRunId } from '@/tools/runtime/run-id'
-import { getToolSandboxManifest } from '@/tools/sandboxes/registry'
 import { createRepoWorkspaceBashTool } from './bash-tool'
-import {
-  RepoWorkspaceProviderError,
-  RepoWorkspaceUnavailableError,
-} from './errors'
+import { RepoWorkspaceProviderError } from './errors'
 import { REPO_WORKSPACE_ROOT } from './paths'
 import { shellQuote } from './shell'
 import type { RepoWorkspace } from './types'
@@ -23,9 +15,11 @@ interface CachedRepoWorkspace {
 
 interface RepoWorkspaceCreateInput {
   attachmentToolId: string
-  authenticatedHosts: readonly string[]
-  injectedHeaders: Record<string, string>
-  manifestId: string
+  gitCredentials: {
+    password: string
+    username: string
+  }
+  networkPolicy: NetworkPolicy
   repoUrl: string
   runId: string
   vercelCredentials?: {
@@ -39,9 +33,11 @@ const repoWorkspaceCache = new Map<string, Map<string, CachedRepoWorkspace>>()
 
 export async function getOrCreateRepoWorkspace(input: {
   attachmentToolId: string
-  authenticatedHosts: readonly string[]
-  injectedHeaders: Record<string, string>
-  manifestId: string
+  gitCredentials: {
+    password: string
+    username: string
+  }
+  networkPolicy: NetworkPolicy
   repoUrl: string
   vercelCredentials?: {
     projectId: string
@@ -50,11 +46,7 @@ export async function getOrCreateRepoWorkspace(input: {
   }
 }): Promise<RepoWorkspace> {
   const runId = currentToolRuntimeRunId()
-  const workspaceKey = [
-    input.manifestId,
-    input.attachmentToolId,
-    input.repoUrl,
-  ].join('::')
+  const workspaceKey = [input.attachmentToolId, input.repoUrl].join('::')
 
   let perRun = repoWorkspaceCache.get(runId)
   if (!perRun) {
@@ -112,17 +104,9 @@ export async function stopAllRepoWorkspacesForRun(): Promise<void> {
 async function createRepoWorkspace(
   input: RepoWorkspaceCreateInput
 ): Promise<RepoWorkspace> {
-  getToolSandboxManifest(input.manifestId)
-  const snapshotId = await readSnapshotId(input.manifestId)
-  if (!snapshotId) {
-    throw new RepoWorkspaceUnavailableError(
-      `Tool sandbox snapshot for manifest "${input.manifestId}" is not built yet.`
-    )
-  }
-
   let sandbox: Sandbox | null = null
   try {
-    sandbox = await createWorkspaceSandbox(input, snapshotId)
+    sandbox = await createWorkspaceSandbox(input)
     const bashTool = await createWorkspaceBashTool(sandbox)
 
     const workspace: RepoWorkspace = {
@@ -131,41 +115,42 @@ async function createRepoWorkspace(
       sandbox,
     }
 
-    await initializeWorkspaceCheckout(input.repoUrl, workspace)
+    await refreshWorkspaceCheckout(workspace)
 
     return workspace
   } catch (error) {
     await stopWorkspaceSandbox(sandbox)
 
-    if (
-      error instanceof RepoWorkspaceProviderError ||
-      error instanceof RepoWorkspaceUnavailableError
-    ) {
+    if (error instanceof RepoWorkspaceProviderError) {
       throw error
     }
 
     throw new RepoWorkspaceProviderError(
-      error instanceof Error
-        ? error.message
-        : 'Failed to create the repo workspace.'
+      withFailureDetails('Failed to create the repo workspace.', error)
     )
   }
 }
 
 async function createWorkspaceSandbox(
-  input: RepoWorkspaceCreateInput,
-  snapshotId: string
+  input: RepoWorkspaceCreateInput
 ): Promise<Sandbox> {
   try {
     return await Sandbox.create({
-      source: { type: 'snapshot', snapshotId },
+      source: {
+        type: 'git',
+        url: input.repoUrl,
+        username: input.gitCredentials.username,
+        password: input.gitCredentials.password,
+        depth: 1,
+      },
       persistent: false,
+      ports: [3000],
+      runtime: 'node22',
       timeout: 600_000,
       resources: { vcpus: 1 },
-      networkPolicy: createInjectedHeadersNetworkPolicy({
-        authenticatedHosts: input.authenticatedHosts,
-        injectedHeaders: input.injectedHeaders,
-      }),
+      // Source credentials authenticate the initial clone; the explicit
+      // policy brokers GitHub credentials for later git and API calls.
+      networkPolicy: input.networkPolicy,
       tags: repoWorkspaceSandboxTags({
         attachmentToolId: input.attachmentToolId,
         runId: input.runId,
@@ -187,42 +172,39 @@ async function createWorkspaceBashTool(sandbox: Sandbox) {
     })
   } catch (error) {
     throw new RepoWorkspaceProviderError(
-      error instanceof Error
-        ? `Failed to initialize the repo workspace bash toolkit. ${error.message}`
-        : 'Failed to initialize the repo workspace bash toolkit.'
+      withFailureDetails(
+        'Failed to initialize the repo workspace bash toolkit.',
+        error
+      )
     )
   }
 }
 
-async function initializeWorkspaceCheckout(
-  repoUrl: string,
+async function refreshWorkspaceCheckout(
   workspace: RepoWorkspace
 ): Promise<void> {
   try {
-    const cloneCommand = [
-      'test -d .git',
-      `git clone --depth 1 ${shellQuote(repoUrl)} .`,
-    ].join(' || ')
     const result = await workspace.bashTool.bash.execute({
       command: [
-        cloneCommand,
         `git config --local --add safe.directory ${shellQuote(workspace.rootPath)}`,
         `git config user.name ${shellQuote(DEFAULT_COMMIT_AUTHOR_NAME)}`,
         `git config user.email ${shellQuote(DEFAULT_COMMIT_AUTHOR_EMAIL)}`,
+        'git pull --ff-only',
       ].join(' && '),
     })
     assertWorkspaceCommandSucceeded(
       result,
-      'Failed to initialize the repo workspace checkout.'
+      'Failed to refresh the repo workspace checkout.'
     )
   } catch (error) {
     if (error instanceof RepoWorkspaceProviderError) {
       throw error
     }
     throw new RepoWorkspaceProviderError(
-      error instanceof Error
-        ? `Failed to initialize the repo workspace checkout. ${error.message}`
-        : 'Failed to initialize the repo workspace checkout.'
+      withFailureDetails(
+        'Failed to refresh the repo workspace checkout.',
+        error
+      )
     )
   }
 }
@@ -281,13 +263,48 @@ function describeSandboxApiError(error: unknown): string {
   return status ? `${message} (HTTP ${status}).${json}` : `${message}.${json}`
 }
 
-async function readSnapshotId(manifestId: string): Promise<string | null> {
-  'use step'
-  const [row] = await db
-    .select({ snapshotId: toolSandboxSnapshots.snapshotId })
-    .from(toolSandboxSnapshots)
-    .where(eq(toolSandboxSnapshots.manifestId, manifestId))
-    .limit(1)
+function withFailureDetails(prefix: string, error: unknown): string {
+  const details = describeUnknownError(error)
+  return details ? `${prefix} ${details}` : prefix
+}
 
-  return row?.snapshotId ?? null
+function describeUnknownError(error: unknown): string {
+  if (error === null || error === undefined) {
+    return ''
+  }
+  if (error instanceof Error) {
+    return error.message
+  }
+  if (typeof error === 'string') {
+    return error
+  }
+  if (typeof error !== 'object' || error === null) {
+    return String(error)
+  }
+
+  const message =
+    'message' in error && typeof error.message === 'string'
+      ? error.message
+      : null
+  const code =
+    'code' in error && typeof error.code === 'string' ? error.code : null
+  const status =
+    'response' in error &&
+    typeof error.response === 'object' &&
+    error.response !== null &&
+    'status' in error.response
+      ? String(error.response.status)
+      : null
+  const details = [message, code ? `code ${code}` : null, status].filter(
+    (part): part is string => Boolean(part)
+  )
+  if (details.length > 0) {
+    return details.join(' ')
+  }
+
+  try {
+    return JSON.stringify(error)
+  } catch {
+    return String(error)
+  }
 }

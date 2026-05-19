@@ -1,4 +1,5 @@
 import 'server-only'
+import type { NetworkPolicy, NetworkPolicyRule } from '@vercel/sandbox'
 import { z } from 'zod'
 import { defineConnector } from './define-connector'
 
@@ -28,13 +29,34 @@ const githubCredentialSchema = z.object({
 
 export type GitHubCredential = z.infer<typeof githubCredentialSchema>
 
-export async function githubGitInjectedHeaders(
+export async function githubRepoNetworkPolicy(
   credential: GitHubCredential
-): Promise<Record<string, string>> {
+): Promise<NetworkPolicy> {
+  const bearerHeaders = {
+    Authorization: `Bearer ${credential.token}`,
+  }
+  const allow: Record<string, NetworkPolicyRule[]> = {
+    'api.github.com': [{ transform: [{ headers: bearerHeaders }] }],
+    'uploads.github.com': [{ transform: [{ headers: bearerHeaders }] }],
+    'codeload.github.com': [{ transform: [{ headers: bearerHeaders }] }],
+    'github.com': [
+      {
+        transform: [
+          {
+            headers: {
+              Authorization: `Basic ${await encodeGitBasicAuth(
+                `x-access-token:${credential.token}`
+              )}`,
+            },
+          },
+        ],
+      },
+    ],
+    '*': [],
+  }
+
   return {
-    authorization: `Basic ${await encodeGitBasicAuth(
-      `x-access-token:${credential.token}`
-    )}`,
+    allow,
   }
 }
 

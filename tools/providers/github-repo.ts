@@ -3,7 +3,7 @@ import 'server-only'
 import { z } from 'zod'
 import {
   type GitHubCredential,
-  githubGitInjectedHeaders,
+  githubRepoNetworkPolicy,
 } from '@/connections/github'
 import type { MaintainerTool } from '@/tools/catalog/types'
 import {
@@ -19,9 +19,8 @@ import type {
   RepoWorkspaceWriteFileResult,
 } from '@/tools/runtime/repo-workspace/types'
 
-const GITHUB_AUTH_HOSTS = ['github.com', 'api.github.com'] as const
-const GITHUB_REPO_MANIFEST_ID = 'github-repo'
 const GITHUB_REPO_TOOL_ID = 'github_repo'
+const GITHUB_REPO_GIT_USERNAME = 'x-access-token'
 const GITHUB_REPO_URL_GUIDE =
   'Use an HTTPS GitHub repository URL such as https://github.com/owner/repo.git.'
 
@@ -118,9 +117,11 @@ async function getGitHubRepoWorkspace(input: {
     await input.ctx.credentials.read<GitHubCredential>('github')
   return await getOrCreateRepoWorkspace({
     attachmentToolId: input.ctx.attachmentToolId,
-    authenticatedHosts: GITHUB_AUTH_HOSTS,
-    injectedHeaders: await githubGitInjectedHeaders(credential),
-    manifestId: GITHUB_REPO_MANIFEST_ID,
+    gitCredentials: {
+      password: credential.token,
+      username: GITHUB_REPO_GIT_USERNAME,
+    },
+    networkPolicy: await githubRepoNetworkPolicy(credential),
     repoUrl: repo.cloneUrl,
   })
 }
@@ -178,11 +179,7 @@ export const githubRepoTool: MaintainerTool = defineToolBundle({
   displayName: 'GitHub · Repo Workspace',
   description:
     'Clone a configured private GitHub repository into a sandboxed repo workspace and expose the bash-tool adapter so the agent can run git, grep, tests, builds, scripts, and file edits directly inside the repository.',
-  capabilities: [
-    { kind: 'brokered_http', provider: 'github' },
-    { kind: 'tool_sandbox', manifest: GITHUB_REPO_MANIFEST_ID },
-  ],
+  capabilities: [{ kind: 'brokered_http', provider: 'github' }],
   configSchema: githubRepoConfigSchema,
-  sandboxManifestId: GITHUB_REPO_MANIFEST_ID,
   tools: githubRepoTools,
 })

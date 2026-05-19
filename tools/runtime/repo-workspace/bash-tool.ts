@@ -44,6 +44,78 @@ export async function createRepoWorkspaceBashTool(input: {
     }
   })
 
+  const bash: RepoWorkspaceBashToolkit['bash'] = {
+    execute: async ({ command }) =>
+      await executeRepoWorkspaceBashTool({
+        command,
+        rootPath,
+        sandbox: input.sandbox,
+      }),
+  }
+
+  return {
+    bash,
+    tools: {
+      bash,
+      readFile: {
+        execute: async ({ path }) =>
+          await executeRepoWorkspaceReadFileTool({
+            path,
+            rootPath,
+            sandbox: input.sandbox,
+          }),
+      },
+      writeFile: {
+        execute: async ({ content, path }) =>
+          await executeRepoWorkspaceWriteFileTool({
+            content,
+            path,
+            rootPath,
+            sandbox: input.sandbox,
+          }),
+      },
+    },
+  }
+}
+
+async function executeRepoWorkspaceBashTool(input: {
+  command: string
+  rootPath: string
+  sandbox: VercelSandbox
+}) {
+  'use step'
+  const bashTool = await createStepBashTool(input)
+  return await bashTool.bash.execute({ command: input.command })
+}
+
+async function executeRepoWorkspaceReadFileTool(input: {
+  path: string
+  rootPath: string
+  sandbox: VercelSandbox
+}) {
+  'use step'
+  const bashTool = await createStepBashTool(input)
+  return await bashTool.tools.readFile.execute({ path: input.path })
+}
+
+async function executeRepoWorkspaceWriteFileTool(input: {
+  content: string
+  path: string
+  rootPath: string
+  sandbox: VercelSandbox
+}) {
+  'use step'
+  const bashTool = await createStepBashTool(input)
+  return await bashTool.tools.writeFile.execute({
+    content: input.content,
+    path: input.path,
+  })
+}
+
+async function createStepBashTool(input: {
+  rootPath: string
+  sandbox: VercelSandbox
+}): Promise<RepoWorkspaceBashToolkit> {
   const { createBashTool } = (await import(
     bashToolModuleName()
   )) as unknown as {
@@ -56,19 +128,16 @@ export async function createRepoWorkspaceBashTool(input: {
     }): Promise<RepoWorkspaceBashToolkit>
   }
 
-  return (await createBashTool({
-    destination: rootPath,
+  return await createBashTool({
+    destination: input.rootPath,
     maxFiles: 0,
     maxOutputLength: MAX_BASH_OUTPUT_CHARS,
     promptOptions: {
       toolPrompt:
         'This bash toolkit is used internally by repo workspace maintainer tools.',
     },
-    sandbox: createRepoWorkspaceSandboxAdapter({
-      rootPath,
-      sandbox: input.sandbox,
-    }),
-  })) as unknown as RepoWorkspaceBashToolkit
+    sandbox: createRepoWorkspaceSandboxAdapter(input),
+  })
 }
 
 function bashToolModuleName(): string {

@@ -1,6 +1,6 @@
 import { RepoWorkspaceInputError } from './errors'
 
-export const REPO_WORKSPACE_ROOT = '/vercel/sandbox/repo'
+export const REPO_WORKSPACE_ROOT = '/vercel/sandbox'
 
 const MAX_PATH_CHARS = 512
 const LEADING_SLASHES_RE = /^\/+/
