@@ -116,13 +116,18 @@ async function checkSandboxRequirement(
     }
   }
 
+  const desiredHash = await manifestHashStep({ manifestId })
   const [snapshot] = await db
     .select()
     .from(toolSandboxSnapshots)
-    .where(eq(toolSandboxSnapshots.manifestId, manifestId))
+    .where(
+      and(
+        eq(toolSandboxSnapshots.manifestId, manifestId),
+        eq(toolSandboxSnapshots.manifestHash, desiredHash)
+      )
+    )
     .limit(1)
 
-  const desiredHash = await manifestHashStep({ manifestId })
   if (snapshot && snapshot.manifestHash === desiredHash) {
     return null
   }

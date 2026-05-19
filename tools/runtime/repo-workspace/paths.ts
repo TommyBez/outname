@@ -15,7 +15,11 @@ export function normalizeRepoWorkspacePath(
   rawPath: string,
   rootPath = REPO_WORKSPACE_ROOT
 ): NormalizedRepoWorkspacePath {
-  const normalized = normalizeRepoWorkspacePathInternal(rawPath, rootPath)
+  const normalizedRootPath = normalizeRepoWorkspaceRootPath(rootPath)
+  const normalized = normalizeRepoWorkspacePathInternal(
+    rawPath,
+    normalizedRootPath
+  )
   if (normalized.relPath.length === 0) {
     throw new RepoWorkspaceInputError(
       'path must refer to a file, not the repository root'
@@ -28,10 +32,11 @@ export function normalizeRepoWorkspacePrefix(
   rawPath?: string,
   rootPath = REPO_WORKSPACE_ROOT
 ): NormalizedRepoWorkspacePath {
+  const normalizedRootPath = normalizeRepoWorkspaceRootPath(rootPath)
   if (rawPath === undefined || rawPath.length === 0 || rawPath === '.') {
-    return { absPath: rootPath, relPath: '' }
+    return { absPath: normalizedRootPath, relPath: '' }
   }
-  return normalizeRepoWorkspacePathInternal(rawPath, rootPath)
+  return normalizeRepoWorkspacePathInternal(rawPath, normalizedRootPath)
 }
 
 export function assertReadableRepoWorkspacePath(
@@ -77,11 +82,15 @@ export function relativeToRepoWorkspaceRoot(
   rootPath = REPO_WORKSPACE_ROOT
 ): string {
   const normalized = normalizePosixPath(absPath)
-  if (normalized === rootPath) {
+  const normalizedRootPath = normalizeRepoWorkspaceRootPath(rootPath)
+  if (normalized === normalizedRootPath) {
     return ''
   }
-  if (normalized.startsWith(`${rootPath}/`)) {
-    return normalized.slice(rootPath.length + 1)
+  if (normalizedRootPath === '/' && normalized.startsWith('/')) {
+    return normalized.slice(1)
+  }
+  if (normalized.startsWith(`${normalizedRootPath}/`)) {
+    return normalized.slice(normalizedRootPath.length + 1)
   }
   return `../${normalized.replace(LEADING_SLASHES_RE, '')}`
 }
@@ -112,6 +121,10 @@ function normalizeRepoWorkspacePathInternal(
   }
 
   return { absPath, relPath }
+}
+
+function normalizeRepoWorkspaceRootPath(rootPath: string): string {
+  return normalizePosixPath(rootPath)
 }
 
 function isGitMetadataPath(relPath: string): boolean {
