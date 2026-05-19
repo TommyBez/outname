@@ -59,27 +59,34 @@ export const context7Connector = defineConnector('context7', {
     }),
   },
   async validate(values) {
-    const response = await fetch(CONTEXT7_POLICIES_URL, {
-      headers: {
-        authorization: `Bearer ${values.apiKey}`,
-      },
-    })
+    try {
+      const response = await fetch(CONTEXT7_POLICIES_URL, {
+        headers: {
+          authorization: `Bearer ${values.apiKey}`,
+        },
+      })
 
-    if (!response.ok) {
+      if (!response.ok) {
+        return {
+          ok: false,
+          error: `Context7 rejected the API key (HTTP ${response.status}). Verify the key and try again.`,
+        }
+      }
+
+      const policies = (await response.json()) as {
+        accessibleLibraryCount?: unknown
+        libraryFilters?: { mode?: unknown }
+      }
+
+      return {
+        ok: true,
+        metadata: metadataFromPolicies(policies),
+      }
+    } catch (error) {
       return {
         ok: false,
-        error: `Context7 rejected the API key (HTTP ${response.status}). Verify the key and try again.`,
+        error: `Context7 validation failed: ${error instanceof Error ? error.message : String(error)}`,
       }
-    }
-
-    const policies = (await response.json()) as {
-      accessibleLibraryCount?: unknown
-      libraryFilters?: { mode?: unknown }
-    }
-
-    return {
-      ok: true,
-      metadata: metadataFromPolicies(policies),
     }
   },
 })
