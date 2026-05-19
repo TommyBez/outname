@@ -1,5 +1,5 @@
 import 'server-only'
-import type { z } from 'zod'
+import { z } from 'zod'
 
 export interface ConfigField {
   defaultValue?: string | number | boolean
@@ -11,19 +11,6 @@ export interface ConfigField {
   type: 'text' | 'number' | 'boolean'
 }
 
-interface Zod4Def {
-  defaultValue?: unknown
-  innerType?: z.ZodTypeAny
-  shape?: Record<string, z.ZodTypeAny>
-  type?: string
-}
-
-function getDef(schema: z.ZodTypeAny): Zod4Def | undefined {
-  return (schema as unknown as { _def?: Zod4Def })._def
-}
-
-// Zod exposes no stable public introspection API here, so this stays
-// best-effort and reads the Zod 4 `_def` shape directly.
 function unwrap(schema: z.ZodTypeAny): {
   inner: z.ZodTypeAny
   optional: boolean
@@ -33,46 +20,30 @@ function unwrap(schema: z.ZodTypeAny): {
   let optional = false
   let defaultValue: unknown
   for (let i = 0; i < 8; i++) {
-    const def = getDef(s)
-    if (!def) {
-      break
-    }
-    if (def.type === 'optional' || def.type === 'nullable') {
+    if (s instanceof z.ZodOptional || s instanceof z.ZodNullable) {
       optional = true
-      if (def.innerType) {
-        s = def.innerType
-      } else {
-        break
-      }
-    } else if (def.type === 'default') {
-      optional = true
-      try {
-        defaultValue = def.defaultValue
-      } catch {
-        defaultValue = undefined
-      }
-      if (def.innerType) {
-        s = def.innerType
-      } else {
-        break
-      }
-    } else {
-      break
+      s = unwrapInnerType(s)
+      continue
     }
+    if (s instanceof z.ZodDefault) {
+      optional = true
+      defaultValue = readDefaultValue(s)
+      s = unwrapInnerType(s)
+      continue
+    }
+    break
   }
   return { inner: s, optional, defaultValue }
 }
 
 function classify(inner: z.ZodTypeAny): 'text' | 'number' | 'boolean' {
-  const def = getDef(inner)
-  switch (def?.type) {
-    case 'number':
-      return 'number'
-    case 'boolean':
-      return 'boolean'
-    default:
-      return 'text'
+  if (inner instanceof z.ZodNumber) {
+    return 'number'
   }
+  if (inner instanceof z.ZodBoolean) {
+    return 'boolean'
+  }
+  return 'text'
 }
 
 function humanize(name: string): string {
@@ -88,16 +59,16 @@ export function describeConfigSchema(
   if (!schema) {
     return []
   }
-  const def = getDef(schema)
-  if (def?.type !== 'object' || !def.shape) {
+  const shape = getShape(schema)
+  if (!shape) {
     return []
   }
-
-  const shape = def.shape
   const fields: ConfigField[] = []
   for (const [name, raw] of Object.entries(shape)) {
     const { inner, optional, defaultValue } = unwrap(raw)
-    const description = (raw as unknown as { description?: string }).description
+    const description =
+      (raw as unknown as { description?: string }).description ??
+      (inner as unknown as { description?: string }).description
     const type = classify(inner)
 
     fields.push({
@@ -115,4 +86,48 @@ export function describeConfigSchema(
     })
   }
   return fields
+}
+
+function getShape(schema: z.ZodTypeAny): Record<string, z.ZodTypeAny> | null {
+  if (schema instanceof z.ZodObject) {
+    return schema.shape
+  }
+  const def = (
+    schema as unknown as {
+      _def?: {
+        shape?:
+          | Record<string, z.ZodTypeAny>
+          | (() => Record<string, z.ZodTypeAny>)
+      }
+    }
+  )._def
+  if (!def?.shape) {
+    return null
+  }
+  return typeof def.shape === 'function' ? def.shape() : def.shape
+}
+
+function readDefaultValue(schema: {
+  _def?: { defaultValue?: unknown }
+}): unknown {
+  const def = (
+    schema as unknown as {
+      _def?: {
+        defaultValue?: unknown | (() => unknown)
+      }
+    }
+  )._def
+  const value = def?.defaultValue
+  if (typeof value === 'function') {
+    try {
+      return value()
+    } catch {
+      return
+    }
+  }
+  return value
+}
+
+function unwrapInnerType(schema: { unwrap: () => unknown }): z.ZodTypeAny {
+  return schema.unwrap() as z.ZodTypeAny
 }

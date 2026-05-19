@@ -92,6 +92,13 @@
       "when": 1779600000000,
       "tag": "0009_waitlist_segmentation",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1779700000000,
+      "tag": "0010_user_ai_gateway_key",
+      "breakpoints": true
     }
   ]
 }

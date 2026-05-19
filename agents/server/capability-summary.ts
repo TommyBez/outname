@@ -4,6 +4,7 @@ import { generateText } from 'ai'
 import { eq } from 'drizzle-orm'
 import { db } from '@/shared/db'
 import { agent } from '@/shared/db/schema'
+import { getUserModelForGateway } from '@/shared/server/ai-gateway-byok'
 import { loadSummaryContext } from './capability-summary/context'
 import {
   cleanSummary,
@@ -29,7 +30,10 @@ export async function refreshAgentCapabilitySummary(input: {
 
     try {
       const { text } = await generateText({
-        model: SUMMARY_MODEL,
+        model: await getUserModelForGateway({
+          modelId: SUMMARY_MODEL,
+          userId: context.userId,
+        }),
         system: [
           'You write model-facing descriptions for AI sub-agents.',
           'Return one short paragraph, 1-2 sentences, maximum 450 characters.',

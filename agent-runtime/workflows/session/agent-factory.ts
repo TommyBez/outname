@@ -1,6 +1,7 @@
 import { DurableAgent } from '@workflow/ai/agent'
 import type { Tool } from 'ai'
 import { getAgentById } from '@/agent-runtime/server/start-agent-run'
+import { getUserModelForGateway } from '@/shared/server/ai-gateway-byok'
 import { buildAttachedTools } from '@/tools/runtime/build-attached-tools'
 import { composeSystemPrompt } from './compose-system-prompt'
 import { resolveToolPlan } from './steps/resolve-tool-plan'
@@ -71,14 +72,21 @@ export async function buildAgent(
     reconnects: attached.reconnects,
   })
 
-  const fileTools = await createFileTools({ agentId })
+  const fileTools = createFileTools({ agentId })
   const tools = {
     ...fileTools,
     ...attached.tools,
   }
 
   const durableAgent = new DurableAgent({
-    model: row.model,
+    model: async () => {
+      'use step'
+      const model = await getUserModelForGateway({
+        modelId: row.model,
+        userId: row.userId,
+      })
+      return model
+    },
     system: systemPrompt,
     tools,
   })
