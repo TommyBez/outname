@@ -133,6 +133,35 @@ test('executeSearchLibraries rejects truncated responses', async () => {
   })
 })
 
+test('executeSearchLibraries normalizes thrown request errors', async () => {
+  const { ctx } = createRuntimeContext({
+    ok: true,
+    status: 200,
+    truncated: false,
+    headers: {
+      'content-type': 'application/json',
+    },
+    bodyText: '{}',
+  })
+  ctx.http.request = vi.fn().mockRejectedValue(new Error('socket hang up'))
+
+  const result = await executeSearchLibraries({
+    ctx,
+    input: {
+      libraryName: 'react',
+      query: 'How do I use hooks?',
+      fast: false,
+      maxResponseBytes: 48 * 1024,
+    },
+  })
+
+  expect(result).toEqual({
+    ok: false,
+    code: 'provider_error',
+    message: 'Context7 search libraries failed: socket hang up',
+  })
+})
+
 test('executeGetContext returns unavailable for unfinalized libraries', async () => {
   const { ctx } = createRuntimeContext({
     ok: true,
@@ -163,6 +192,36 @@ test('executeGetContext returns unavailable for unfinalized libraries', async ()
     code: 'unavailable',
     message:
       'Context7 has not finalized this library yet. Retry later or request a different library/version.',
+  })
+})
+
+test('executeGetContext normalizes thrown request errors', async () => {
+  const { ctx } = createRuntimeContext({
+    ok: true,
+    status: 200,
+    truncated: false,
+    headers: {
+      'content-type': 'application/json',
+    },
+    bodyText: '{}',
+  })
+  ctx.http.request = vi.fn().mockRejectedValue(new Error('upstream reset'))
+
+  const result = await executeGetContext({
+    ctx,
+    input: {
+      libraryId: '/vercel/next.js',
+      query: 'How do I implement auth middleware?',
+      type: 'json',
+      fast: false,
+      maxResponseBytes: 128 * 1024,
+    },
+  })
+
+  expect(result).toEqual({
+    ok: false,
+    code: 'provider_error',
+    message: 'Context7 get context failed: upstream reset',
   })
 })
 

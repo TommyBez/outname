@@ -191,95 +191,127 @@ function truncatedResponseError(message: string) {
   return toolError('provider_error', message)
 }
 
+function providerRuntimeError(label: string, error: unknown) {
+  const message = error instanceof Error ? error.message : String(error)
+  return toolError('provider_error', `${label} failed: ${message}`)
+}
+
 export async function executeSearchLibraries(input: {
   ctx: ToolRuntimeContext
   input: Context7SearchLibraryInput
 }) {
-  const response = await input.ctx.http.request('context7', {
-    method: 'GET',
-    url: buildContext7Url('/v2/libs/search', {
+  try {
+    const response = await input.ctx.http.request('context7', {
+      method: 'GET',
+      url: buildContext7Url('/v2/libs/search', {
+        libraryName: input.input.libraryName,
+        query: input.input.query,
+        fast: input.input.fast ? 'true' : undefined,
+      }),
+      maxResponseBytes: input.input.maxResponseBytes,
+    })
+
+    if (!response.ok) {
+      return toolErrorFromProviderResponse(response, {
+        label: 'Context7 search libraries',
+        errorCodeForStatus: context7ErrorCodeForStatus,
+      })
+    }
+
+    if (response.truncated) {
+      return truncatedResponseError(
+        'Context7 search results exceeded the tool response limit. Retry with a narrower libraryName or larger maxResponseBytes.'
+      )
+    }
+
+    const parsed = parseJsonBody(
+      response.bodyText,
+      context7SearchResponseSchema
+    )
+    if (parsed === null) {
+      return toolError(
+        'provider_error',
+        'Context7 search libraries returned an empty or unexpected JSON response.'
+      )
+    }
+
+    return toolSuccess({
       libraryName: input.input.libraryName,
       query: input.input.query,
-      fast: input.input.fast ? 'true' : undefined,
-    }),
-    maxResponseBytes: input.input.maxResponseBytes,
-  })
-
-  if (!response.ok) {
-    return toolErrorFromProviderResponse(response, {
-      label: 'Context7 search libraries',
-      errorCodeForStatus: context7ErrorCodeForStatus,
+      resultCount: parsed.results.length,
+      searchFilterApplied: parsed.searchFilterApplied,
+      results: parsed.results,
     })
+  } catch (error) {
+    return providerRuntimeError('Context7 search libraries', error)
   }
-
-  if (response.truncated) {
-    return truncatedResponseError(
-      'Context7 search results exceeded the tool response limit. Retry with a narrower libraryName or larger maxResponseBytes.'
-    )
-  }
-
-  const parsed = parseJsonBody(response.bodyText, context7SearchResponseSchema)
-  if (parsed === null) {
-    return toolError(
-      'provider_error',
-      'Context7 search libraries returned an empty or unexpected JSON response.'
-    )
-  }
-
-  return toolSuccess({
-    libraryName: input.input.libraryName,
-    query: input.input.query,
-    resultCount: parsed.results.length,
-    searchFilterApplied: parsed.searchFilterApplied,
-    results: parsed.results,
-  })
 }
 
 export async function executeGetContext(input: {
   ctx: ToolRuntimeContext
   input: Context7GetContextInput
 }) {
-  const response = await input.ctx.http.request('context7', {
-    method: 'GET',
-    url: buildContext7Url('/v2/context', {
-      libraryId: input.input.libraryId,
-      query: input.input.query,
-      type: input.input.type,
-      fast: input.input.fast ? 'true' : undefined,
-    }),
-    headers: {
-      accept: input.input.type === 'txt' ? 'text/plain' : 'application/json',
-    },
-    maxResponseBytes: input.input.maxResponseBytes,
-  })
-
-  if (response.status === 202) {
-    return toolError(
-      'unavailable',
-      'Context7 has not finalized this library yet. Retry later or request a different library/version.'
-    )
-  }
-
-  if (!response.ok) {
-    return toolErrorFromProviderResponse(response, {
-      label: 'Context7 get context',
-      errorCodeForStatus: context7ErrorCodeForStatus,
+  try {
+    const response = await input.ctx.http.request('context7', {
+      method: 'GET',
+      url: buildContext7Url('/v2/context', {
+        libraryId: input.input.libraryId,
+        query: input.input.query,
+        type: input.input.type,
+        fast: input.input.fast ? 'true' : undefined,
+      }),
+      headers: {
+        accept: input.input.type === 'txt' ? 'text/plain' : 'application/json',
+      },
+      maxResponseBytes: input.input.maxResponseBytes,
     })
-  }
 
-  if (response.truncated) {
-    return truncatedResponseError(
-      input.input.type === 'txt'
-        ? 'Context7 text context exceeded the tool response limit. Retry with a narrower query or larger maxResponseBytes.'
-        : 'Context7 JSON context exceeded the tool response limit. Retry with a narrower query, type="txt", or larger maxResponseBytes.'
+    if (response.status === 202) {
+      return toolError(
+        'unavailable',
+        'Context7 has not finalized this library yet. Retry later or request a different library/version.'
+      )
+    }
+
+    if (!response.ok) {
+      return toolErrorFromProviderResponse(response, {
+        label: 'Context7 get context',
+        errorCodeForStatus: context7ErrorCodeForStatus,
+      })
+    }
+
+    if (response.truncated) {
+      return truncatedResponseError(
+        input.input.type === 'txt'
+          ? 'Context7 text context exceeded the tool response limit. Retry with a narrower query or larger maxResponseBytes.'
+          : 'Context7 JSON context exceeded the tool response limit. Retry with a narrower query, type="txt", or larger maxResponseBytes.'
+      )
+    }
+
+    if (input.input.type === 'txt') {
+      if (response.bodyText.trim().length === 0) {
+        return toolError(
+          'provider_error',
+          'Context7 returned an empty text context response.'
+        )
+      }
+
+      return toolSuccess({
+        libraryId: input.input.libraryId,
+        query: input.input.query,
+        responseType: input.input.type,
+        context: response.bodyText,
+      })
+    }
+
+    const parsed = parseJsonBody(
+      response.bodyText,
+      context7ContextResponseSchema
     )
-  }
-
-  if (input.input.type === 'txt') {
-    if (response.bodyText.trim().length === 0) {
+    if (parsed === null) {
       return toolError(
         'provider_error',
-        'Context7 returned an empty text context response.'
+        'Context7 get context returned an empty or unexpected JSON response.'
       )
     }
 
@@ -287,28 +319,15 @@ export async function executeGetContext(input: {
       libraryId: input.input.libraryId,
       query: input.input.query,
       responseType: input.input.type,
-      context: response.bodyText,
+      codeSnippetCount: parsed.codeSnippets.length,
+      infoSnippetCount: parsed.infoSnippets.length,
+      codeSnippets: parsed.codeSnippets,
+      infoSnippets: parsed.infoSnippets,
+      rules: parsed.rules,
     })
+  } catch (error) {
+    return providerRuntimeError('Context7 get context', error)
   }
-
-  const parsed = parseJsonBody(response.bodyText, context7ContextResponseSchema)
-  if (parsed === null) {
-    return toolError(
-      'provider_error',
-      'Context7 get context returned an empty or unexpected JSON response.'
-    )
-  }
-
-  return toolSuccess({
-    libraryId: input.input.libraryId,
-    query: input.input.query,
-    responseType: input.input.type,
-    codeSnippetCount: parsed.codeSnippets.length,
-    infoSnippetCount: parsed.infoSnippets.length,
-    codeSnippets: parsed.codeSnippets,
-    infoSnippets: parsed.infoSnippets,
-    rules: parsed.rules,
-  })
 }
 
 export const context7DocsTool = defineToolBundle({
