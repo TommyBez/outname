@@ -27,15 +27,20 @@ const githubCredentialSchema = z.object({
 
 export type GitHubCredential = z.infer<typeof githubCredentialSchema>
 
-export function githubGitInjectedHeaders(
+export async function githubGitInjectedHeaders(
   credential: GitHubCredential
-): Record<string, string> {
+): Promise<Record<string, string>> {
   return {
-    authorization: `Basic ${Buffer.from(
-      `x-access-token:${credential.token}`,
-      'utf8'
-    ).toString('base64')}`,
+    authorization: `Basic ${await encodeGitBasicAuth(
+      `x-access-token:${credential.token}`
+    )}`,
   }
+}
+
+async function encodeGitBasicAuth(value: string): Promise<string> {
+  'use step'
+  await Promise.resolve()
+  return Buffer.from(value, 'utf8').toString('base64')
 }
 
 function metadataFromGitHubUser(payload: {

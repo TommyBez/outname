@@ -1,3 +1,4 @@
+import { createBashTool } from 'bash-tool'
 import {
   getSystemSandbox,
   SYSTEM_SANDBOX_ROOT,
@@ -24,29 +25,8 @@ interface BashToolSandboxAdapter {
   ): Promise<void>
 }
 
-interface SystemBashTool {
-  tools: {
-    readFile: {
-      execute(input: { path: string }): Promise<unknown>
-    }
-    writeFile: {
-      execute(input: { content: string; path: string }): Promise<unknown>
-    }
-  }
-}
-
 export async function createSystemBashTool(input: { agentId: string }) {
   const sandbox = await getSystemSandbox(input.agentId)
-  const { createBashTool } = (await import(
-    bashToolModuleName()
-  )) as unknown as {
-    createBashTool(args: {
-      destination: string
-      maxFiles: number
-      promptOptions: { toolPrompt: string }
-      sandbox: BashToolSandboxAdapter
-    }): Promise<SystemBashTool>
-  }
   return await createBashTool({
     destination: SYSTEM_SANDBOX_ROOT,
     maxFiles: 0,
@@ -56,10 +36,6 @@ export async function createSystemBashTool(input: { agentId: string }) {
     },
     sandbox: createSystemSandboxAdapter({ sandbox }),
   })
-}
-
-function bashToolModuleName(): string {
-  return process.env.CURSOR_BASH_TOOL_MODULE ?? 'bash-tool'
 }
 
 function createSystemSandboxAdapter(input: {

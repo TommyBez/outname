@@ -23,6 +23,7 @@ export async function readBrokeredCredential(args: {
   provider: string
   userId: string
 }): Promise<RawCredential> {
+  'use step'
   const connector = getConnector(args.provider)
   if (!connector) {
     throw new BrokerCredentialUnavailableError(

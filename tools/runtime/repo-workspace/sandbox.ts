@@ -252,6 +252,7 @@ function describeSandboxApiError(error: unknown): string {
 }
 
 async function readSnapshotId(manifestId: string): Promise<string | null> {
+  'use step'
   const [row] = await db
     .select({ snapshotId: toolSandboxSnapshots.snapshotId })
     .from(toolSandboxSnapshots)

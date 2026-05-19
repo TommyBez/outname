@@ -342,7 +342,7 @@ async function getGitHubRepoWorkspace(input: {
   return await getOrCreateRepoWorkspace({
     attachmentToolId: input.ctx.attachmentToolId,
     authenticatedHosts: [GITHUB_GIT_HOST],
-    injectedHeaders: githubGitInjectedHeaders(credential),
+    injectedHeaders: await githubGitInjectedHeaders(credential),
     manifestId: GITHUB_REPO_MANIFEST_ID,
     repoUrl: repo.cloneUrl,
   })
