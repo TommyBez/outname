@@ -4,6 +4,7 @@ import type { MaintainerTool } from '@/tools/catalog/types'
 import { agentBrowserTool } from '@/tools/providers/agent-browser'
 import { agentBrowserLightTool } from '@/tools/providers/agent-browser-light'
 import { calcomRequestTool } from '@/tools/providers/calcom'
+import { context7DocsTool } from '@/tools/providers/context7'
 import { firecrawlScrapeTool } from '@/tools/providers/firecrawl-scrape'
 import { parallelSearchTool } from '@/tools/providers/parallel'
 import { posthogRequestTool } from '@/tools/providers/posthog'
@@ -20,6 +21,7 @@ import { getToolSandboxManifest } from '@/tools/sandboxes/registry'
 const TOOLS: MaintainerTool[] = [
   resendSendTool,
   calcomRequestTool,
+  context7DocsTool,
   firecrawlScrapeTool,
   parallelSearchTool,
   posthogRequestTool,
