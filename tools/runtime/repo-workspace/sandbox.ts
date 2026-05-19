@@ -91,7 +91,7 @@ export async function stopAllRepoWorkspacesForRun(): Promise<void> {
         const workspace = await workspacePromise
         await workspace.sandbox.stop()
       } catch (error) {
-        console.error('[v0] stopAllRepoWorkspacesForRun: stop failed', {
+        console.error('[repo-workspace] stopAllRepoWorkspacesForRun failed', {
           error,
         })
       }
@@ -115,7 +115,7 @@ async function createRepoWorkspace(
       sandbox,
     }
 
-    await refreshWorkspaceCheckout(workspace)
+    await configureWorkspaceCheckout(workspace)
 
     return workspace
   } catch (error) {
@@ -156,7 +156,7 @@ async function createWorkspaceSandbox(
         runId: input.runId,
       }),
       ...(input.vercelCredentials ?? {}),
-    } as never)
+    })
   } catch (error) {
     throw new RepoWorkspaceProviderError(
       `Failed to create the repo workspace sandbox. ${describeSandboxApiError(error)}`
@@ -180,7 +180,7 @@ async function createWorkspaceBashTool(sandbox: Sandbox) {
   }
 }
 
-async function refreshWorkspaceCheckout(
+async function configureWorkspaceCheckout(
   workspace: RepoWorkspace
 ): Promise<void> {
   try {
@@ -189,12 +189,11 @@ async function refreshWorkspaceCheckout(
         `git config --local --add safe.directory ${shellQuote(workspace.rootPath)}`,
         `git config user.name ${shellQuote(DEFAULT_COMMIT_AUTHOR_NAME)}`,
         `git config user.email ${shellQuote(DEFAULT_COMMIT_AUTHOR_EMAIL)}`,
-        'git pull --ff-only',
       ].join(' && '),
     })
     assertWorkspaceCommandSucceeded(
       result,
-      'Failed to refresh the repo workspace checkout.'
+      'Failed to configure the repo workspace checkout.'
     )
   } catch (error) {
     if (error instanceof RepoWorkspaceProviderError) {
@@ -202,7 +201,7 @@ async function refreshWorkspaceCheckout(
     }
     throw new RepoWorkspaceProviderError(
       withFailureDetails(
-        'Failed to refresh the repo workspace checkout.',
+        'Failed to configure the repo workspace checkout.',
         error
       )
     )

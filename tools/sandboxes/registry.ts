@@ -3,8 +3,6 @@ import { agentBrowserManifest } from './agent-browser/manifest'
 import { agentBrowserSetupScript } from './agent-browser/setup'
 import { agentBrowserLightManifest } from './agent-browser-light/manifest'
 import { agentBrowserLightSetupScript } from './agent-browser-light/setup'
-import { githubRepoManifest } from './github-repo/manifest'
-import { githubRepoSetupScript } from './github-repo/setup'
 import type { ToolSandboxManifest } from './types'
 
 interface RegistryEntry {
@@ -20,10 +18,6 @@ const REGISTRY: Record<string, RegistryEntry> = {
   [agentBrowserLightManifest.id]: {
     manifest: agentBrowserLightManifest,
     setupScript: agentBrowserLightSetupScript,
-  },
-  [githubRepoManifest.id]: {
-    manifest: githubRepoManifest,
-    setupScript: githubRepoSetupScript,
   },
 }
 

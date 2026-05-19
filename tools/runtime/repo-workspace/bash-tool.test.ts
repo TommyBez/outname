@@ -80,4 +80,39 @@ describe('createRepoWorkspaceBashTool', () => {
       cmd: 'mkdir',
     })
   })
+
+  it('creates parent directories relative to a custom workspace root', async () => {
+    const rootPath = '/custom/root'
+    const sandbox: FakeSandbox = {
+      mkDir: vi.fn(async () => undefined),
+      readFileToBuffer: vi.fn(async () => null),
+      runCommand: vi.fn(async () => ({
+        exitCode: 0,
+        stderr: async () => '',
+        stdout: async () => '',
+      })),
+      writeFiles: vi.fn(async () => undefined),
+    }
+
+    const toolkit = await createRepoWorkspaceBashTool({
+      rootPath,
+      sandbox: asSandbox(sandbox),
+    })
+
+    await toolkit.tools.writeFile.execute({
+      content: 'hello',
+      path: 'src/index.ts',
+    })
+
+    expect(sandbox.runCommand).toHaveBeenCalledWith({
+      args: ['-p', `${rootPath}/src`],
+      cmd: 'mkdir',
+    })
+    expect(sandbox.writeFiles).toHaveBeenCalledWith([
+      {
+        content: Buffer.from('hello', 'utf8'),
+        path: `${rootPath}/src/index.ts`,
+      },
+    ])
+  })
 })

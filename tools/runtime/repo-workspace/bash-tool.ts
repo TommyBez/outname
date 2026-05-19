@@ -203,6 +203,7 @@ function createRepoWorkspaceSandboxAdapter(input: {
 
       await ensureParentDirectories(
         input.sandbox,
+        input.rootPath,
         prepared.map((file) => file.safe)
       )
       await input.sandbox.writeFiles(
@@ -250,12 +251,13 @@ function normalizeWritableContent(content: string | Buffer): string | Buffer {
 
 async function ensureParentDirectories(
   sandbox: VercelSandbox,
+  rootPath: string,
   files: NormalizedRepoWorkspacePath[]
 ): Promise<void> {
   const dirs = new Set(
     files
-      .map((file) => pathDirname(file.absPath))
-      .filter((dir) => dir !== REPO_WORKSPACE_ROOT)
+      .map((file) => pathDirname(file.absPath, rootPath))
+      .filter((dir) => dir !== rootPath)
   )
 
   for (const dir of dirs) {
@@ -272,6 +274,6 @@ async function ensureParentDirectories(
   }
 }
 
-function pathDirname(absPath: string): string {
-  return absPath.slice(0, absPath.lastIndexOf('/')) || REPO_WORKSPACE_ROOT
+function pathDirname(absPath: string, rootPath: string): string {
+  return absPath.slice(0, absPath.lastIndexOf('/')) || rootPath
 }
