@@ -1,7 +1,7 @@
 import { Sandbox } from '@vercel/sandbox'
 import { getWritable } from 'workflow'
 import { toolBuildSandboxTags } from '@/shared/server/vercel-sandbox-config'
-import { getToolSandboxManifest } from '@/tools/sandboxes'
+import { getToolSandboxManifest } from '@/tools/sandboxes/registry'
 import {
   buildToolSandboxNamespace,
   type ToolSandboxBuildEvent,

@@ -6,26 +6,41 @@ import { newChatConversationId } from '@/chat/server/chat'
 import { getCachedAgentByIdForUser } from '@/shared/server/data'
 
 type Params = Promise<{ agentId: string }>
+type SearchParams = Promise<{ draft?: string }>
 
-export default function NewAgentChatPage({ params }: { params: Params }) {
+export default function NewAgentChatPage({
+  params,
+  searchParams,
+}: {
+  params: Params
+  searchParams: SearchParams
+}) {
   return (
     <Suspense fallback={<ChatSkeleton />}>
-      <DraftChat params={params} />
+      <DraftChat params={params} searchParams={searchParams} />
     </Suspense>
   )
 }
 
-async function DraftChat({ params }: { params: Params }) {
+async function DraftChat({
+  params,
+  searchParams,
+}: {
+  params: Params
+  searchParams: SearchParams
+}) {
   const { agentId } = await params
+  const { draft } = await searchParams
   const session = await requireSession()
   const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
   if (!agent) {
     notFound()
   }
 
-  // Draft ids stay DB-free until the first send persists the conversation.
-  // The client then `replaceState()`s to `/chat/[conversationId]` without remounting `useChat`.
-  const draftConversationId = newChatConversationId()
+  const draftConversationId =
+    typeof draft === 'string' && draft.startsWith('cc_')
+      ? draft
+      : newChatConversationId()
 
   return (
     <AgentChat
@@ -33,6 +48,7 @@ async function DraftChat({ params }: { params: Params }) {
       conversationId={draftConversationId}
       initialMessages={[]}
       isDraft
+      key={draftConversationId}
     />
   )
 }

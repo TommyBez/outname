@@ -1,6 +1,6 @@
 ---
 name: maintainer-tool-implementation
-description: Implement a new maintainer tool in this codebase's tool catalog. Use when adding a tool under `tools/providers/`, wiring a provider-backed integration, wrapping an official SDK as AI tools or tool bundles, creating a `tool_sandbox` tool, updating `tools/catalog/registry.ts`, or when the user mentions maintainer tools, `define-maintainer-tool`, `defineActionTool`, `defineToolBundle`, `defineApiPassthroughTool`, `defineSandboxTool`, brokered HTTP, SDK-backed tools, or catalog tool attachments.
+description: Implement a new maintainer tool in this codebase's tool catalog. Use when adding a tool under `tools/providers/`, wiring a provider-backed integration, wrapping an official SDK as AI tools or tool bundles, creating a `tool_sandbox` or `repo_workspace` tool, updating `tools/catalog/registry.ts`, or when the user mentions maintainer tools, `define-maintainer-tool`, `defineActionTool`, `defineToolBundle`, `defineApiPassthroughTool`, `defineSandboxTool`, brokered HTTP, SDK-backed tools, repo workspaces, or catalog tool attachments.
 metadata:
   version: 1.1.7
 ---
@@ -23,6 +23,7 @@ Default references:
 - `tools/providers/resend.ts` for a custom action tool using brokered HTTP
 - `tools/providers/calcom.ts` for an API passthrough tool with policies
 - `tools/providers/agent-browser.ts` for a sandbox-backed CLI tool
+- `tools/providers/github-repo.ts` for a connector-backed live repository workspace bundle with `capabilities: [{ kind: 'repo_workspace', provider: 'github' }]`
 - `tools/providers/v0.ts` for a connector-backed SDK tool bundle with `capabilities: [{ kind: 'sdk', provider: 'v0' }]`
 - `tools/runtime/define-maintainer-tool/provider-response.ts` for shared brokered HTTP response helpers
 - `tools/runtime/define-maintainer-tool/sdk-step.ts` for connector-backed SDK credential reads inside workflow steps
@@ -46,7 +47,7 @@ Deliver a tool that:
 
 - has a stable registry id and clear catalog label
 - exposes a model-friendly input schema with useful field descriptions
-- uses the correct capability surface: `brokered_http`, `sdk`, `tool_sandbox`, or `none`
+- uses the correct capability surface: `brokered_http`, `sdk`, `tool_sandbox`, `repo_workspace`, or `none`
 - keeps authenticated credentials outside tool code and the sandbox VM boundary
 - returns structured `toolSuccess(...)` / `toolError(...)` results
 - is registered in `tools/catalog/registry.ts` so it becomes attachable automatically
@@ -72,6 +73,8 @@ If a field is secret, it does not belong in `configSchema`. For SDK-backed tools
 - Use `defineToolBundle` when one attachment should expose many AI SDK child tools directly (for example, flattening an SDK-provided tool map into namespaced child tool ids)
 - Use `defineApiPassthroughTool` when the tool is mostly "validated input -> authenticated HTTP request -> normalized response"
 - Use `defineSandboxTool` when the tool runs a CLI or process inside a tool sandbox snapshot
+- When a tool combines provider APIs, sandbox lifecycle, and repository/file operations, keep `tools/providers/<tool>.ts` declarative and move reusable mechanics into provider-agnostic runtime helpers instead of tool-specific helper files
+- For repo-oriented sandbox tools, prefer exposing the `bash-tool` adapter surface (`bash`, `readFile`, `writeFile`) before inventing provider-specific `git`, `grep`, branch, or PR sub-tools; add specialized wrappers only when the adapter surface is insufficient
 - Prefer `tools/runtime/define-maintainer-tool/provider-response.ts` when several brokered HTTP tools need the same clipped-error / response-body plumbing
 - Prefer `tools/runtime/define-maintainer-tool/sdk-step.ts` when a workflow step needs connector-backed SDK credentials without hand-rolling `readBrokeredCredential` error mapping
 - For sandbox manifests in this repo, keep installer bytes in `tools/sandboxes/<id>/setup.ts` and expose them through `tools/sandboxes/registry.ts`; do not rely on runtime reads of repo-relative `.sh` files
@@ -112,7 +115,7 @@ Copy this checklist and work through it:
 Implementation checklist:
 - [ ] Pick the tool pattern (`defineActionTool`, `defineApiPassthroughTool`, or `defineSandboxTool`)
 - [ ] Decide whether the attachment should expose one tool or a bundle of child tools
-- [ ] Decide capability needs (`brokered_http`, `sdk`, `tool_sandbox`, or `none`)
+- [ ] Decide capability needs (`brokered_http`, `sdk`, `tool_sandbox`, `repo_workspace`, or `none`)
 - [ ] Separate credentials vs attachment config vs per-call args
 - [ ] If using an SDK instead of direct HTTP, confirm whether auth comes from a connector-backed `sdk` capability or trusted server env `none`
 - [ ] For authenticated tools, enforce Secret Injection pattern and restricted network policy
@@ -161,7 +164,9 @@ Only add a new category ordering entry if the category is actually new.
 - New SDK-backed tool with connector: ensure the connector/provider exists in `connections/registry.ts`, the tool uses `capabilities: [{ kind: 'sdk', provider: '<name>' }]`, credentials are read only at execute time from the connector runtime, and secrets never flow through attachment config or child tool ids
 - New SDK-backed tool with no connector: ensure the SDK runs entirely in trusted server code, uses `capabilities: [{ kind: 'none' }]`, and does not push secrets into attachment config or sandbox args
 - New bundled tool: ensure one attachment row can expose multiple child tool ids cleanly, and keep child ids namespaced to avoid collisions in the runtime tool dictionary
+- New bundled sandbox tool: ensure bundle child tools inherit the bundle-level sandbox manifest cleanly and add a focused test for that runtime path
 - New sandbox tool: ensure the manifest exists in `tools/sandboxes/<id>/{manifest.ts, setup.ts}`, the manifest id matches exactly, the registry exposes bundled setup-script bytes, and any authenticated egress uses a restricted network policy plus Secret Injection
+- New live repo workspace tool: use `defineToolBundle` with `capabilities: [{ kind: 'repo_workspace', provider: '<connector>' }]`, do not add a sandbox manifest, do not use `ctx.sandbox.run`, read connector credentials only at execute time, sanitize any Git remote before exposing bash, and ensure cleanup goes through the repo-workspace runtime
 - New runtime behavior: only then inspect `tools/runtime/build-attached-tools.ts`, `agent-runtime/workflows/session/steps/resolve-tool-plan`, or other runtime files
 
 Do not edit `buildAttachedTools`, `agent-factory`, or `agents/server/capability-summary.ts` just to "hook up" a normal tool. Registry wiring is enough for standard tools.
@@ -176,6 +181,7 @@ At minimum:
 - confirm connector-backed SDK tools read credentials only at execute time and never during tool build
 - confirm the chosen `maxResponseBytes` matches the tool's expected payload shape and size
 - confirm `response.truncated` is handled intentionally for brokered HTTP tools
+- if you introduced a new runtime abstraction, confirm it is provider-agnostic and reusable by similar future tools rather than nested under one provider-specific implementation path
 - run `pnpm check` if the change is substantial or touches shared runtime types
 - mention any unimplemented prerequisite such as a missing connector, missing sandbox manifest, or missing product rule instead of guessing
 

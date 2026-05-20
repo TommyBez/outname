@@ -1,9 +1,10 @@
 import { and, desc, eq, inArray } from 'drizzle-orm'
 import { db } from '@/shared/db'
 import { toolSandboxBuilds, toolSandboxSnapshots } from '@/shared/db/schema'
+import { providerBackedCapabilities } from '@/tools/catalog/capabilities'
 import { getMaintainerTool } from '@/tools/catalog/registry'
 import type { MaintainerTool, Reconnect } from '@/tools/catalog/types'
-import { getToolSandboxManifest, manifestHash } from '@/tools/sandboxes'
+import { getToolSandboxManifest } from '@/tools/sandboxes/registry'
 import type { MaintainerRow, PlannedTool } from './types'
 
 type MaintainerOutcome =
@@ -40,20 +41,12 @@ export async function resolveMaintainerRow(
     planned: {
       toolId: row.toolId,
       config: parsed.config,
-      providerRequirements: tool.capabilities
-        .filter(
-          (
-            requirement
-          ): requirement is {
-            kind: 'brokered_http' | 'sdk'
-            provider: string
-          } =>
-            requirement.kind === 'brokered_http' || requirement.kind === 'sdk'
-        )
-        .map((requirement) => ({
+      providerRequirements: providerBackedCapabilities(tool.capabilities).map(
+        (requirement) => ({
           provider: requirement.provider,
           toolId: row.toolId,
-        })),
+        })
+      ),
     },
   }
 }
@@ -116,13 +109,18 @@ async function checkSandboxRequirement(
     }
   }
 
+  const desiredHash = await manifestHashStep({ manifestId })
   const [snapshot] = await db
     .select()
     .from(toolSandboxSnapshots)
-    .where(eq(toolSandboxSnapshots.manifestId, manifestId))
+    .where(
+      and(
+        eq(toolSandboxSnapshots.manifestId, manifestId),
+        eq(toolSandboxSnapshots.manifestHash, desiredHash)
+      )
+    )
     .limit(1)
 
-  const desiredHash = manifestHash(manifestId)
   if (snapshot && snapshot.manifestHash === desiredHash) {
     return null
   }
@@ -154,4 +152,12 @@ async function checkSandboxRequirement(
     manifest: manifestId,
     message: `No ready snapshot for "${manifestId}"`,
   }
+}
+
+async function manifestHashStep(input: {
+  manifestId: string
+}): Promise<string> {
+  'use step'
+  const { manifestHash } = await import('@/tools/sandboxes')
+  return manifestHash(input.manifestId)
 }

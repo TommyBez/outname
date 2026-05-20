@@ -199,6 +199,8 @@ export async function readManifestSetupScript(input: {
   manifestId: string
 }): Promise<{ setup: string }> {
   'use step'
-  const { manifestSetupScript } = await import('@/tools/sandboxes')
-  return { setup: manifestSetupScript(input.manifestId) }
+  const { getToolSandboxSetupScript } = await import(
+    '@/tools/sandboxes/registry'
+  )
+  return { setup: getToolSandboxSetupScript(input.manifestId) }
 }
