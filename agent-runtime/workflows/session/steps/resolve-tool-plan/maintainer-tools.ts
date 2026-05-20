@@ -4,6 +4,11 @@ import { toolSandboxBuilds, toolSandboxSnapshots } from '@/shared/db/schema'
 import { providerBackedCapabilities } from '@/tools/catalog/capabilities'
 import { getMaintainerTool } from '@/tools/catalog/registry'
 import type { MaintainerTool, Reconnect } from '@/tools/catalog/types'
+import {
+  stripApiKeyOverride,
+  toConfigRecord,
+  withApiKeyOverride,
+} from '@/tools/runtime/define-maintainer-tool/api-key-override'
 import { getToolSandboxManifest } from '@/tools/sandboxes/registry'
 import type { MaintainerRow, PlannedTool } from './types'
 
@@ -12,7 +17,11 @@ type MaintainerOutcome =
   | { kind: 'reconnect'; reconnects: Reconnect[] }
 
 type ParsedConfig =
-  | { kind: 'parsed'; config: Record<string, unknown> }
+  | {
+      kind: 'parsed'
+      config: Record<string, unknown>
+      toolConfig: Record<string, unknown>
+    }
   | { kind: 'reconnect'; reconnects: Reconnect[] }
 
 export async function resolveMaintainerRow(
@@ -41,6 +50,7 @@ export async function resolveMaintainerRow(
     planned: {
       toolId: row.toolId,
       config: parsed.config,
+      toolConfig: parsed.toolConfig,
       providerRequirements: providerBackedCapabilities(tool.capabilities).map(
         (requirement) => ({
           provider: requirement.provider,
@@ -56,9 +66,15 @@ function parseMaintainerConfig(
   row: MaintainerRow
 ): ParsedConfig {
   if (!tool.configSchema) {
-    return { kind: 'parsed', config: {} }
+    return {
+      kind: 'parsed',
+      config: {},
+      toolConfig: withApiKeyOverride({}, row.config),
+    }
   }
-  const result = tool.configSchema.safeParse(row.config ?? {})
+  const result = tool.configSchema.safeParse(
+    stripApiKeyOverride(row.config ?? {})
+  )
   if (!result.success) {
     return {
       kind: 'reconnect',
@@ -75,7 +91,12 @@ function parseMaintainerConfig(
       ],
     }
   }
-  return { kind: 'parsed', config: result.data as Record<string, unknown> }
+  const config = toConfigRecord(result.data)
+  return {
+    kind: 'parsed',
+    config,
+    toolConfig: withApiKeyOverride(config, row.config),
+  }
 }
 
 async function checkSandboxRequirements(

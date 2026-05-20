@@ -4,6 +4,11 @@ import { db } from '@/shared/db'
 import { agentTools } from '@/shared/db/schema'
 import { getMaintainerTool } from '@/tools/catalog/registry'
 import type { MaintainerTool } from '@/tools/catalog/types'
+import {
+  stripApiKeyOverride,
+  toConfigRecord,
+  withApiKeyOverride,
+} from '@/tools/runtime/define-maintainer-tool/api-key-override'
 import { ensureToolSandboxBuild } from '@/tools/sandbox-runtime/build'
 import { manifestHash } from '@/tools/sandboxes'
 import {
@@ -84,10 +89,10 @@ function parseMaintainerToolConfig(
   rawConfig: Record<string, unknown>
 ): ConfigParseResult {
   if (!tool.configSchema) {
-    return { ok: true, config: {} }
+    return { ok: true, config: withApiKeyOverride({}, rawConfig) }
   }
 
-  const parsed = tool.configSchema.safeParse(rawConfig)
+  const parsed = tool.configSchema.safeParse(stripApiKeyOverride(rawConfig))
   if (!parsed.success) {
     return {
       ok: false,
@@ -96,10 +101,10 @@ function parseMaintainerToolConfig(
   }
 
   const config = parsed.data
-  if (typeof config === 'object' && config !== null && !Array.isArray(config)) {
-    return { ok: true, config: config as Record<string, unknown> }
+  return {
+    ok: true,
+    config: withApiKeyOverride(toConfigRecord(config), rawConfig),
   }
-  return { ok: true, config: {} }
 }
 
 async function resolveSandboxAttachState(

@@ -59,9 +59,59 @@ describe('resolveMaintainerRow', () => {
             toolId: 'github_repo',
           },
         ],
+        toolConfig: {
+          allowExternalNetwork: true,
+          readOnly: true,
+          repoUrl: 'https://github.com/acme/repo.git',
+        },
         toolId: 'github_repo',
       },
     })
     expect(mockDbSelect).not.toHaveBeenCalled()
+  })
+
+  it('preserves apiKeyOverride outside the parsed execution config', async () => {
+    const tool: MaintainerTool = {
+      build: vi.fn(),
+      capabilities: [{ kind: 'brokered_http', provider: 'x' }],
+      category: 'social',
+      configSchema: z.strictObject({
+        readOnly: z.boolean().default(false),
+      }),
+      description: 'Call X API endpoints.',
+      displayName: 'X API',
+      exposedTools: [],
+      id: 'x_api_request',
+      resolveExposedTools: vi.fn(() => []),
+    }
+    mockGetMaintainerTool.mockReturnValue(tool)
+
+    await expect(
+      resolveMaintainerRow({
+        config: {
+          apiKeyOverride: '  override-token  ',
+          readOnly: true,
+        },
+        toolId: 'x_api_request',
+      })
+    ).resolves.toEqual({
+      kind: 'planned',
+      planned: {
+        config: {
+          readOnly: true,
+        },
+        providerRequirements: [
+          {
+            provider: 'x',
+            toolId: 'x_api_request',
+          },
+        ],
+        toolConfig: {
+          apiKeyOverride: 'override-token',
+          readOnly: true,
+        },
+        toolId: 'x_api_request',
+      },
+    })
   })
 })

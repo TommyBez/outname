@@ -4,6 +4,7 @@ import type { Reconnect } from '@/tools/catalog/types'
 export interface PlannedTool {
   config: Record<string, unknown>
   providerRequirements: ProviderRequirement[]
+  toolConfig: Record<string, unknown>
   toolId: string
 }
 

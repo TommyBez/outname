@@ -3,14 +3,12 @@ import type {
   BrokeredHttpRequest,
   BrokeredHttpResponse,
 } from '../brokered-http/types'
+import { readApiKeyOverride } from './api-key-override'
 
 export interface BrokeredHttpClient {
   request(
     provider: string,
-    request: BrokeredHttpRequest,
-    options?: {
-      apiKeyOverride?: string
-    }
+    request: BrokeredHttpRequest
   ): Promise<BrokeredHttpResponse>
 }
 
@@ -141,15 +139,4 @@ export function createRuntimeContext(input: {
       },
     },
   }
-}
-
-function readApiKeyOverride(config: Record<string, unknown> | undefined) {
-  if (!config) {
-    return
-  }
-
-  const value = config.apiKeyOverride
-  return typeof value === 'string' && value.trim().length > 0
-    ? value.trim()
-    : undefined
 }

@@ -52,6 +52,7 @@ function buildOne(args: {
       userId,
       toolId: p.toolId,
       config: p.config,
+      toolConfig: p.toolConfig,
       runId,
       conversationId,
     })

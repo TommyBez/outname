@@ -1,8 +1,22 @@
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { z } from 'zod'
 import { resolveBundleChildren, toBundleExposedTools } from './bundle-tools'
-import { defineToolBundle, toolSuccess } from './index'
+import {
+  defineApiPassthroughTool,
+  defineToolBundle,
+  toolSuccess,
+} from './index'
 import type { BundleChildToolArgs } from './types'
+
+const { mockBrokeredHttpRequest } = vi.hoisted(() => ({
+  mockBrokeredHttpRequest: vi.fn(),
+}))
+
+vi.mock('server-only', () => ({}))
+
+vi.mock('../brokered-http', () => ({
+  brokeredHttpRequest: mockBrokeredHttpRequest,
+}))
 
 interface TestConfig {
   enableWrite: boolean
@@ -74,7 +88,7 @@ test('bundle child tools inherit the bundle sandbox manifest id', async () => {
     runId: 'run_test',
     toolId: 'test_bundle',
     userId: 'user_test',
-  }) as Record<
+  }) as unknown as Record<
     string,
     {
       execute(input: Record<string, never>): Promise<{
@@ -88,4 +102,68 @@ test('bundle child tools inherit the bundle sandbox manifest id', async () => {
   const result = await built.test_run.execute({})
   expect(result.ok).toBe(false)
   expect(result.message).toBe('Unknown tool sandbox manifest: missing-manifest')
+})
+
+test('brokered tools receive apiKeyOverride from preserved tool config', async () => {
+  let executeConfig: unknown
+  mockBrokeredHttpRequest.mockResolvedValueOnce({
+    bodyText: '{}',
+    headers: {},
+    ok: true,
+    status: 200,
+    truncated: false,
+  })
+
+  const apiTool = defineApiPassthroughTool({
+    id: 'test_api',
+    category: 'test',
+    displayName: 'Test API',
+    description: 'Brokered API tool.',
+    provider: 'x',
+    configSchema: z.strictObject({
+      readOnly: z.boolean().default(false),
+    }),
+    inputSchema: z.object({}),
+    toRequest(args) {
+      executeConfig = args.config
+      return {
+        method: 'GET',
+        url: 'https://api.x.com/2/users/me',
+      }
+    },
+    handleResponse(response) {
+      return toolSuccess(response.status)
+    },
+  })
+
+  const built = apiTool.build({
+    agentId: 'agent_test',
+    config: {
+      apiKeyOverride: '  override-token  ',
+      readOnly: true,
+    },
+    conversationId: null,
+    runId: 'run_test',
+    toolId: 'test_api',
+    userId: 'user_test',
+  }) as unknown as {
+    execute(input: Record<string, never>): Promise<{
+      data?: number
+      ok: boolean
+    }>
+  }
+
+  await expect(built.execute({})).resolves.toEqual({
+    data: 200,
+    ok: true,
+  })
+  expect(executeConfig).toEqual({ readOnly: true })
+  expect(mockBrokeredHttpRequest).toHaveBeenCalledWith(
+    expect.objectContaining({
+      apiKeyOverride: 'override-token',
+      attachmentToolId: 'test_api',
+      provider: 'x',
+      toolId: 'test_api',
+    })
+  )
 })

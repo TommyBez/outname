@@ -37,6 +37,7 @@ export interface ToolBuildContext {
   config: Record<string, unknown>
   conversationId: string | null
   runId: string | null
+  toolConfig?: Record<string, unknown>
   toolId: string
   userId: string
 }
