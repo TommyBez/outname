@@ -1,5 +1,4 @@
 import 'server-only'
-import { createHash } from 'node:crypto'
 import {
   getSystemSandbox,
   SYSTEM_SANDBOX_ROOT,
@@ -35,7 +34,7 @@ export async function refreshAgentFileCache(
     files.push({
       content,
       path,
-      sha256: createHash('sha256').update(content).digest('hex'),
+      sha256: await sha256Hex(content),
       updatedAt: new Date(),
     })
   }
@@ -64,7 +63,7 @@ export async function readAgentFileFromSandbox(input: {
   const file = {
     content,
     path: input.path,
-    sha256: createHash('sha256').update(content).digest('hex'),
+    sha256: await sha256Hex(content),
     updatedAt: new Date(),
   }
   await writeCachedAgentFiles(input.agentId, [file], { merge: true })
@@ -162,4 +161,10 @@ function fromCached(file: CachedAgentMemoryFile): AgentMemoryFile {
     ...file,
     updatedAt: new Date(file.updatedAt),
   }
+}
+
+async function sha256Hex(content: string): Promise<string> {
+  const encoded = new TextEncoder().encode(content)
+  const digest = await crypto.subtle.digest('SHA-256', encoded)
+  return Buffer.from(digest).toString('hex')
 }

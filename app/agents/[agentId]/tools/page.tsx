@@ -10,6 +10,7 @@ import {
   getCachedUserConnections,
 } from '@/shared/server/data'
 import { describeConfigSchema } from '@/shared/server/zod-config-fields'
+import { providerBackedCapabilities } from '@/tools/catalog/capabilities'
 import { listMaintainerTools } from '@/tools/catalog/registry'
 import {
   SubAgentCatalog,
@@ -59,16 +60,9 @@ async function Resolved({ params }: { params: Params }) {
 
   const catalog: ToolCatalogEntry[] = listMaintainerTools().map((t) => {
     const attachedRow = attachedByMaintainerToolId.get(t.id)
-    const providers = t.capabilities
-      .filter(
-        (
-          r
-        ): r is {
-          kind: 'brokered_http' | 'sdk'
-          provider: string
-        } => r.kind === 'brokered_http' || r.kind === 'sdk'
-      )
-      .map((r) => r.provider)
+    const providers = providerBackedCapabilities(t.capabilities).map(
+      (r) => r.provider
+    )
     const sandboxManifest =
       t.capabilities.find((r) => r.kind === 'tool_sandbox')?.manifest ?? null
     return {
