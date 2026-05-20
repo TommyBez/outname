@@ -19,7 +19,17 @@ describe('validateConnectorInfrastructureForEnv', () => {
       validateConnectorInfrastructureForEnv([oauthConnector], {
         NODE_ENV: 'development',
       })
-    ).toThrow('OAuth connectors require KV_REST_API_URL')
+    ).toThrow('OAuth connectors require UPSTASH_REDIS_REST_URL')
+  })
+
+  it('accepts Upstash Redis env vars for OAuth connectors', () => {
+    expect(() =>
+      validateConnectorInfrastructureForEnv([oauthConnector], {
+        NODE_ENV: 'development',
+        UPSTASH_REDIS_REST_TOKEN: 'token_test',
+        UPSTASH_REDIS_REST_URL: 'https://redis.test',
+      })
+    ).not.toThrow()
   })
 
   it('accepts Vercel KV Redis env vars for OAuth connectors', () => {

@@ -67,7 +67,9 @@ for (const connector of CONNECTORS) {
   CONNECTOR_BY_ID.set(connector.connectorId, connector)
 }
 
-validateConnectorInfrastructureForEnv(CONNECTORS, process.env)
+if (process.env.NEXT_PHASE !== 'phase-production-build') {
+  validateConnectorInfrastructureForEnv(CONNECTORS, process.env)
+}
 
 export function listConnectors(): readonly Connector[] {
   return CONNECTORS
@@ -81,14 +83,16 @@ export function validateConnectorInfrastructureForEnv(
   connectors: readonly Connector[],
   env: Record<string, string | undefined>
 ): void {
-  const hasUpstashRedis = Boolean(env.KV_REST_API_URL && env.KV_REST_API_TOKEN)
+  const hasUpstashRedis =
+    Boolean(env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN) ||
+    Boolean(env.KV_REST_API_URL && env.KV_REST_API_TOKEN)
   if (
     env.NODE_ENV !== 'test' &&
     connectors.some((connector) => connector.authKind === 'oauth2') &&
     !hasUpstashRedis
   ) {
     throw new Error(
-      'OAuth connectors require KV_REST_API_URL/KV_REST_API_TOKEN.'
+      'OAuth connectors require UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN or KV_REST_API_URL/KV_REST_API_TOKEN.'
     )
   }
 }

@@ -7,6 +7,7 @@ import {
   disconnectConnectionAction,
   saveApiKeyConnectionAction,
 } from '@/connections/actions'
+import type { ScopeDescriptor } from '@/connections/types'
 import type { ConnectionStatus } from '@/shared/db/schema'
 
 interface ConnectorSummary {
@@ -21,7 +22,7 @@ interface ConnectorSummary {
   description: string
   displayName: string
   providerGroup: string
-  scopeCatalog?: Array<{ label: string; scope: string }>
+  scopeCatalog?: readonly ScopeDescriptor[]
 }
 
 interface ConnectionView {
@@ -308,7 +309,7 @@ function ScopesSummary({
   connectorId: string
   displayName: string
   grantedScopes: string[]
-  scopeCatalog: Array<{ label: string; scope: string }>
+  scopeCatalog: readonly ScopeDescriptor[]
 }) {
   const granted = new Set(grantedScopes)
   const labelByScope = new Map(
