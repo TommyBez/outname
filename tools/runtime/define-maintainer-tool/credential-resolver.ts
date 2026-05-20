@@ -37,7 +37,7 @@ export async function readConnectorCredentialSnapshot(input: {
     return {
       credential: override,
       credentialSource: 'override',
-      tokenFingerprint: credentialFingerprint(override),
+      tokenFingerprint: await credentialFingerprint(override),
     }
   }
 

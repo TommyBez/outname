@@ -1,7 +1,6 @@
 import 'server-only'
 
 import { Buffer } from 'node:buffer'
-import { createHash, randomInt } from 'node:crypto'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { and, eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
@@ -81,7 +80,7 @@ export async function readConnectorCredential(args: {
     }
     return {
       credential: parsed.data,
-      tokenFingerprint: credentialFingerprint(parsed.data),
+      tokenFingerprint: await credentialFingerprint(parsed.data),
     }
   }
 
@@ -95,7 +94,7 @@ export async function readConnectorCredential(args: {
   })
   return {
     credential: refreshed,
-    tokenFingerprint: tokenFingerprint(refreshed.accessToken),
+    tokenFingerprint: await tokenFingerprint(refreshed.accessToken),
   }
 }
 
@@ -238,7 +237,7 @@ async function withOAuthRefreshSingleFlight(input: {
       }
     }
 
-    await sleep(REFRESH_WAIT_BASE_MS + randomInt(0, 150))
+    await sleep(REFRESH_WAIT_BASE_MS + randomJitterMs())
     const row = await readConnectionRow(input)
     if (!row || row.status === 'invalid') {
       throw new BrokerCredentialUnavailableError(
@@ -449,12 +448,16 @@ function normalizeScopes(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === 'string')
 }
 
-export function tokenFingerprint(token: string): string {
+export async function tokenFingerprint(token: string): Promise<string> {
+  'use step'
+  const { createHash } = await import('node:crypto')
   return createHash('sha256').update(token).digest('hex').slice(0, 8)
 }
 
-export function credentialFingerprint(credential: unknown): string {
-  return tokenFingerprint(stableCredentialPayload(credential))
+export async function credentialFingerprint(
+  credential: unknown
+): Promise<string> {
+  return await tokenFingerprint(stableCredentialPayload(credential))
 }
 
 function stableCredentialPayload(value: unknown): string {
@@ -472,4 +475,8 @@ function stableCredentialPayload(value: unknown): string {
       (key) => `${JSON.stringify(key)}:${stableCredentialPayload(record[key])}`
     )
   return `{${entries.join(',')}}`
+}
+
+function randomJitterMs(): number {
+  return Math.floor(Math.random() * 150)
 }
