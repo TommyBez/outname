@@ -6,7 +6,6 @@ import {
   markEventTerminal,
 } from './agent-event-store'
 import { isWorkflowRunAlive, readWorkflowRunStatus } from './workflow-runs'
-import { isPastWorkflowStreamRetention } from './workflow-stream-retention'
 
 export const RUNNING_STALE_MS = 90 * 60_000
 
@@ -23,10 +22,7 @@ export async function reconcileActiveAgentEvent(
   return event
 }
 
-async function reconcileStartingEvent(
-  event: AgentEvent,
-  now: Date
-): Promise<AgentEvent> {
+async function reconcileStartingEvent(event: AgentEvent): Promise<AgentEvent> {
   const alive = event.workflowRunId
     ? await isWorkflowRunAlive(event.workflowRunId)
     : false
@@ -44,7 +40,7 @@ async function reconcileStartingEvent(
 
   const status = await readWorkflowRunStatus(event.workflowRunId)
   if (status === 'not_found') {
-    return await reconcileMissingWorkflowRun(event, now)
+    return await reconcileMissingWorkflowRun(event)
   }
 
   return event
@@ -71,7 +67,7 @@ async function reconcileRunningEvent(
     return (await getAgentEvent(event.id)) ?? event
   }
   if (status === 'not_found') {
-    return await reconcileMissingWorkflowRun(event, now)
+    return await reconcileMissingWorkflowRun(event)
   }
 
   const heartbeatAt = event.heartbeatAt ?? event.startedAt ?? event.queuedAt
@@ -88,15 +84,8 @@ async function reconcileRunningEvent(
 }
 
 async function reconcileMissingWorkflowRun(
-  event: AgentEvent,
-  now: Date
+  event: AgentEvent
 ): Promise<AgentEvent> {
-  if (!isPastWorkflowStreamRetention(event, now)) {
-    // Stream may still exist on another deployment, or the run is younger than
-    // the platform retention window — do not infer failure from a missing run.
-    return event
-  }
-
   await markEventTerminal({ eventId: event.id, status: 'completed' })
   return (await getAgentEvent(event.id)) ?? event
 }

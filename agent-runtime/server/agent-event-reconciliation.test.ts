@@ -15,14 +15,9 @@ vi.mock('./workflow-runs', () => ({
   readWorkflowRunStatus: vi.fn(),
 }))
 
-vi.mock('./workflow-stream-retention', () => ({
-  isPastWorkflowStreamRetention: vi.fn(),
-}))
-
 import { reconcileActiveAgentEvent } from './agent-event-reconciliation'
 import { getAgentEvent, markEventTerminal } from './agent-event-store'
 import { readWorkflowRunStatus } from './workflow-runs'
-import { isPastWorkflowStreamRetention } from './workflow-stream-retention'
 
 const baseEvent: AgentEvent = {
   agentId: 'agent_1',
@@ -47,22 +42,11 @@ const baseEvent: AgentEvent = {
   workflowRunId: 'run_1',
 }
 
-test('missing workflow run within retention leaves event unchanged', async () => {
+test('missing workflow run marks event completed even when recent', async () => {
   vi.mocked(readWorkflowRunStatus).mockResolvedValue('not_found')
-  vi.mocked(isPastWorkflowStreamRetention).mockReturnValue(false)
-
-  const result = await reconcileActiveAgentEvent(baseEvent)
-
-  expect(result).toBe(baseEvent)
-  expect(markEventTerminal).not.toHaveBeenCalled()
-})
-
-test('missing workflow run after retention marks event completed', async () => {
-  vi.mocked(readWorkflowRunStatus).mockResolvedValue('not_found')
-  vi.mocked(isPastWorkflowStreamRetention).mockReturnValue(true)
   vi.mocked(getAgentEvent).mockResolvedValue({
     ...baseEvent,
-    completedAt: new Date('2026-05-20T09:01:00.000Z'),
+    completedAt: new Date('2026-05-14T09:05:00.000Z'),
     status: 'completed',
   })
 

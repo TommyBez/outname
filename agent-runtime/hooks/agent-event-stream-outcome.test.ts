@@ -71,14 +71,12 @@ test('resolveTranscriptOutcome treats unavailable stream as partial for live eve
     activityError: null,
     event: baseEvent,
     hasMessages: false,
-    outputError:
-      'Workflow stream is no longer available. Vercel retains workflow streams for 1–30 days depending on your plan; configure WORKFLOW_STREAM_RETENTION_DAYS to match yours.',
+    outputError: 'Workflow stream is no longer available on this platform.',
   })
   expect(outcome).toEqual({
     kind: 'partial',
     message: null,
-    warning:
-      'Workflow stream is no longer available. Vercel retains workflow streams for 1–30 days depending on your plan; configure WORKFLOW_STREAM_RETENTION_DAYS to match yours.',
+    warning: 'Workflow stream is no longer available on this platform.',
   })
 })
 
