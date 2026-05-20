@@ -8,6 +8,7 @@ import type {
 } from '@/agent-runtime/shared/event-types'
 import { db } from '@/shared/db'
 import { type AgentEvent, agentEvents } from '@/shared/db/schema'
+import { reconcileActiveAgentEvent } from './agent-event-reconciliation'
 import {
   ACTIVE_EVENT_STATUSES,
   type AgentEventPayloads,
@@ -31,8 +32,16 @@ export async function listAgentEventSummaries(input: {
     }),
   ])
   const events = mergeEvents(liveEvents, recentEvents)
-  const blockers = await findQueuedEventBlockers(events)
-  const summaries = events.map((event) =>
+  const reconciledEvents = await Promise.all(
+    events.map(async (event) => {
+      if (event.status === 'starting' || event.status === 'running') {
+        return await reconcileActiveAgentEvent(event)
+      }
+      return event
+    })
+  )
+  const blockers = await findQueuedEventBlockers(reconciledEvents)
+  const summaries = reconciledEvents.map((event) =>
     summarizeAgentEvent(event, blockers.get(event.id) ?? null)
   )
   if (input.terminalEventsPerType === undefined) {

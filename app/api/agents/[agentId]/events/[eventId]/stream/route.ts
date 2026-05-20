@@ -3,6 +3,7 @@ import {
   eventActivityNamespace,
   replyNamespaceForEvent,
 } from '@/agent-runtime/server/agent-event-keys'
+import { reconcileActiveAgentEvent } from '@/agent-runtime/server/agent-event-reconciliation'
 import type { AgentEventPayloads } from '@/agent-runtime/server/agent-event-store'
 import { getAgentEvent } from '@/agent-runtime/server/agent-event-store'
 import type { AgentChatChunk } from '@/agent-runtime/server/chat-status'
@@ -33,6 +34,9 @@ export async function GET(
   } catch (err) {
     if (!(err instanceof Error && err.name === 'WorkflowRunNotFoundError')) {
       throw err
+    }
+    if (event.status === 'starting' || event.status === 'running') {
+      await reconcileActiveAgentEvent(event)
     }
     // 503 (not 409) so clients do not treat a missing run as "still starting".
     return jsonError(503, 'workflow unavailable in this environment')

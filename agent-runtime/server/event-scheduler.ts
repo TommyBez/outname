@@ -4,29 +4,23 @@ import {
   scheduledConcurrencyKey,
   scheduledDailyKey,
 } from '@/agent-runtime/server/agent-event-keys'
+import { reconcileActiveAgentEvent } from '@/agent-runtime/server/agent-event-reconciliation'
 import {
   listExpiredStartingEvents,
   listQueuedEvents,
   listRunningEvents,
-  markEventRunning,
-  markEventTerminal,
   resetStartingEvent,
 } from '@/agent-runtime/server/agent-event-store'
 import {
   enqueueAgentEvent,
   tryStartAgentEvent,
 } from '@/agent-runtime/server/agent-events'
-import {
-  isWorkflowRunAlive,
-  readWorkflowRunStatus,
-} from '@/agent-runtime/server/workflow-runs'
+import { isWorkflowRunAlive } from '@/agent-runtime/server/workflow-runs'
 import { normalizeAgentScheduleMode } from '@/shared/agent-schedule'
 import { db } from '@/shared/db'
 import { agent, user } from '@/shared/db/schema'
 import { localDateKey } from '@/shared/server/timezone'
 import { resolveDailyScheduleDue } from './schedule-due'
-
-const RUNNING_STALE_MS = 90 * 60_000
 
 export interface SchedulerCounters {
   completedRecovered: number
@@ -122,14 +116,14 @@ async function recoverExpiredStartingEvents(
 ): Promise<void> {
   const events = await listExpiredStartingEvents(now)
   for (const event of events) {
+    const reconciled = await reconcileActiveAgentEvent(event, now)
+    if (reconciled.status !== 'starting') {
+      continue
+    }
     const alive = event.workflowRunId
       ? await isWorkflowRunAlive(event.workflowRunId)
       : false
     if (alive) {
-      await markEventRunning({
-        eventId: event.id,
-        workflowRunId: event.workflowRunId,
-      })
       continue
     }
     await resetStartingEvent({
@@ -146,44 +140,27 @@ async function recoverRunningEvents(
 ): Promise<void> {
   const events = await listRunningEvents()
   for (const event of events) {
-    const status = event.workflowRunId
-      ? await readWorkflowRunStatus(event.workflowRunId)
-      : null
-    if (status === 'completed') {
-      await markEventTerminal({ eventId: event.id, status: 'completed' })
+    const beforeStatus = event.status
+    const beforeError = event.lastError
+    const reconciled = await reconcileActiveAgentEvent(event, now)
+    if (
+      reconciled.status === beforeStatus &&
+      reconciled.lastError === beforeError
+    ) {
+      counters.runningHealthy += 1
+      continue
+    }
+    if (reconciled.status === 'completed') {
       counters.completedRecovered += 1
       continue
     }
-    if (status === 'failed' || status === 'cancelled') {
-      await markEventTerminal({
-        eventId: event.id,
-        lastError: `workflow ${status}`,
-        status: 'failed',
-      })
-      counters.failedRecovered += 1
-      continue
+    if (reconciled.status === 'failed') {
+      if (reconciled.lastError === 'running event heartbeat is stale') {
+        counters.runningStaleFailed += 1
+      } else {
+        counters.failedRecovered += 1
+      }
     }
-    if (status === 'not_found') {
-      await markEventTerminal({
-        eventId: event.id,
-        lastError: 'workflow run not found',
-        status: 'failed',
-      })
-      counters.failedRecovered += 1
-      continue
-    }
-
-    const heartbeatAt = event.heartbeatAt ?? event.startedAt ?? event.queuedAt
-    if (now.getTime() - heartbeatAt.getTime() > RUNNING_STALE_MS) {
-      await markEventTerminal({
-        eventId: event.id,
-        lastError: 'running event heartbeat is stale',
-        status: 'failed',
-      })
-      counters.runningStaleFailed += 1
-      continue
-    }
-    counters.runningHealthy += 1
   }
 }
 

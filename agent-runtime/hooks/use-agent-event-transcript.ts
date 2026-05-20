@@ -52,8 +52,9 @@ const NDJSON_OPTIONS = { skipInvalidLines: true } as const
 export function useAgentEventTranscript(input: {
   agentId: string
   event: AgentEventSummary | null
+  onWorkflowUnavailable?: () => void
 }): UseAgentEventTranscriptResult {
-  const { agentId, event } = input
+  const { agentId, event, onWorkflowUnavailable } = input
   const eventAttempt = event?.attempt ?? null
   const eventBlockedByEventId = event?.blockedByEventId ?? null
   const eventCompletedAt = event?.completedAt ?? null
@@ -74,6 +75,8 @@ export function useAgentEventTranscript(input: {
   const [workflowStatus, setWorkflowStatus] =
     useState<WorkflowStatusData | null>(null)
   const latestActivityRef = useRef<WorkflowStatusData | null>(null)
+  const onWorkflowUnavailableRef = useRef(onWorkflowUnavailable)
+  onWorkflowUnavailableRef.current = onWorkflowUnavailable
 
   useEffect(() => {
     if (
@@ -121,6 +124,15 @@ export function useAgentEventTranscript(input: {
       return () => controller.abort()
     }
 
+    if (
+      currentEvent.status === 'failed' ||
+      currentEvent.status === 'cancelled'
+    ) {
+      setStatus(currentEvent.status === 'failed' ? 'failed' : 'completed')
+      setWorkflowStatus(eventSummaryToWorkflowStatus(currentEvent))
+      return () => controller.abort()
+    }
+
     setStatus('connecting')
 
     let active = true
@@ -140,6 +152,7 @@ export function useAgentEventTranscript(input: {
     const outputPromise = runStreamWithRetry({
       signal: controller.signal,
       shouldContinue: () => active && !controller.signal.aborted,
+      onWorkflowUnavailable: () => onWorkflowUnavailableRef.current?.(),
       run: async () => {
         await consumeOutputStream({
           agentId,
@@ -168,6 +181,7 @@ export function useAgentEventTranscript(input: {
     const activityPromise = runStreamWithRetry({
       signal: controller.signal,
       shouldContinue: () => active && !controller.signal.aborted,
+      onWorkflowUnavailable: () => onWorkflowUnavailableRef.current?.(),
       run: async () => {
         await consumeActivityStream({
           agentId,
@@ -267,6 +281,7 @@ export function useAgentEventTranscript(input: {
 
 async function processStreamAttemptError(input: {
   attempt: number
+  onWorkflowUnavailable?: () => void
   reason: unknown
   signal: AbortSignal
   shouldContinue: () => boolean
@@ -279,6 +294,7 @@ async function processStreamAttemptError(input: {
     return 'pending'
   }
   if (input.reason instanceof StreamUnavailableError) {
+    input.onWorkflowUnavailable?.()
     throw input.reason
   }
   const nextAttempt = input.attempt + 1
@@ -289,6 +305,7 @@ async function processStreamAttemptError(input: {
 }
 
 async function runStreamWithRetry(input: {
+  onWorkflowUnavailable?: () => void
   run: () => Promise<void>
   shouldContinue: () => boolean
   shouldRetryAfterEnd: () => boolean
@@ -309,6 +326,7 @@ async function runStreamWithRetry(input: {
     } catch (reason) {
       const nextAttempt = await processStreamAttemptError({
         attempt,
+        onWorkflowUnavailable: input.onWorkflowUnavailable,
         reason,
         signal: input.signal,
         shouldContinue: input.shouldContinue,

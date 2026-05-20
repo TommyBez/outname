@@ -9,7 +9,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAgentEventTranscript } from '@/agent-runtime/hooks/use-agent-event-transcript'
 import { sortAgentEvents } from '@/agent-runtime/shared/compact-ledger-events'
 import {
@@ -44,9 +44,15 @@ export function AgentEventsWorkspace({
   const selectedEvent =
     sortedEvents.find((event) => event.id === queryEventId) ??
     pickDefaultEvent(ledgerEvents)
+  const refreshEventsRef = useRef<() => Promise<void>>(async () => {
+    await Promise.resolve()
+  })
   const transcript = useAgentEventTranscript({
     agentId,
     event: selectedEvent ?? null,
+    onWorkflowUnavailable: () => {
+      refreshEventsRef.current().catch(() => undefined)
+    },
   })
 
   useEffect(() => {
@@ -75,6 +81,7 @@ export function AgentEventsWorkspace({
       }
     }
 
+    refreshEventsRef.current = refreshEvents
     refreshEvents().catch(() => undefined)
     const interval = window.setInterval(refreshEvents, pollMs)
     return () => {
