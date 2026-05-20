@@ -3,6 +3,7 @@ import type {
   BrokeredHttpRequest,
   BrokeredHttpResponse,
 } from '../brokered-http/types'
+import { readProviderCredential } from './credential-resolver'
 
 export interface BrokeredHttpClient {
   request(
@@ -49,6 +50,7 @@ export interface ToolRuntimeContext {
   http: BrokeredHttpClient
   runId: string | null
   sandbox: ToolSandboxRunner
+  toolConfig?: Record<string, unknown>
   toolId: string
   userId: string
 }
@@ -58,6 +60,7 @@ export function createRuntimeContext(input: {
   attachmentToolId?: string
   conversationId: string | null
   runId: string | null
+  toolConfig?: Record<string, unknown>
   sandboxManifestId?: string
   toolId: string
   userId: string
@@ -67,6 +70,7 @@ export function createRuntimeContext(input: {
     attachmentToolId,
     conversationId,
     runId,
+    toolConfig,
     sandboxManifestId,
     toolId,
     userId,
@@ -76,14 +80,16 @@ export function createRuntimeContext(input: {
     attachmentToolId: attachmentToolId ?? toolId,
     conversationId,
     runId,
+    toolConfig,
     toolId,
     userId,
     credentials: {
       async read<T = unknown>(provider: string): Promise<T> {
-        const { readBrokeredCredential } = await import(
-          '@/connections/runtime/credential'
-        )
-        return (await readBrokeredCredential({ provider, userId })) as T
+        return (await readProviderCredential({
+          provider,
+          toolConfig,
+          userId,
+        })) as T
       },
     },
     http: {
@@ -91,10 +97,12 @@ export function createRuntimeContext(input: {
         const { brokeredHttpRequest } = await import('../brokered-http')
         return await brokeredHttpRequest({
           agentId,
+          attachmentToolId: attachmentToolId ?? toolId,
           toolId,
           userId,
           provider,
           request,
+          toolConfig,
         })
       },
     },

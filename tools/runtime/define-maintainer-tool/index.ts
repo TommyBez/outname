@@ -8,6 +8,11 @@ import type {
   MaintainerTool,
   ToolErrorCode,
 } from '@/tools/catalog/types'
+import {
+  stripCredentialOverrides,
+  toConfigRecord,
+  withStoredCredentialOverrides,
+} from './api-key-override'
 import { resolveBundleChildren, toBundleExposedTools } from './bundle-tools'
 import { createRuntimeContext } from './runtime-context'
 import {
@@ -81,12 +86,17 @@ export function defineMaintainerTool<
       return exposedTools
     },
     build(ctx) {
-      const config = configSchema.parse(ctx.config)
+      const config = configSchema.parse(stripCredentialOverrides(ctx.config))
+      const toolConfig = withStoredCredentialOverrides(
+        toConfigRecord(config),
+        ctx.toolConfig ?? ctx.config
+      )
       return buildChildTool({
         attachmentToolId: ctx.toolId,
         definition,
         inputSchema: definition.inputSchema,
         config,
+        toolConfig,
         ctx,
         description: definition.description,
         toolId: definition.id,
@@ -117,13 +127,17 @@ export function defineToolBundle<TConfig = Record<string, never>>(
       if (rawConfig === undefined) {
         return exposedTools
       }
-      const parsed = configSchema.safeParse(rawConfig)
+      const parsed = configSchema.safeParse(stripCredentialOverrides(rawConfig))
       return parsed.success
         ? toBundleExposedTools(definition.tools, parsed.data)
         : exposedTools
     },
     build(ctx): BuiltMaintainerTool {
-      const config = configSchema.parse(ctx.config)
+      const config = configSchema.parse(stripCredentialOverrides(ctx.config))
+      const toolConfig = withStoredCredentialOverrides(
+        toConfigRecord(config),
+        ctx.toolConfig ?? ctx.config
+      )
       return Object.fromEntries(
         resolveBundleChildren(definition.tools, config).map(
           ([toolId, child]) => [
@@ -133,6 +147,7 @@ export function defineToolBundle<TConfig = Record<string, never>>(
               definition: child,
               inputSchema: child.inputSchema,
               config,
+              toolConfig,
               ctx,
               description: child.description,
               sandboxManifestId: definition.sandboxManifestId,
@@ -242,6 +257,7 @@ function buildChildTool<TInput, TConfig, TData>(input: {
   description: string
   inputSchema: z.ZodType<TInput, unknown>
   sandboxManifestId?: string
+  toolConfig: Record<string, unknown>
   toolId: string
 }) {
   return tool({
@@ -259,6 +275,7 @@ function buildChildTool<TInput, TConfig, TData>(input: {
           'sandboxManifestId' in input.definition
             ? input.definition.sandboxManifestId
             : input.sandboxManifestId,
+        toolConfig: input.toolConfig,
       })
       return await executeWithPolicies({
         config: input.config,

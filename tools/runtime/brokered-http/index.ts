@@ -2,6 +2,7 @@ import 'server-only'
 
 import { Buffer } from 'node:buffer'
 import { getConnector } from '@/connections/registry'
+import { hasCredentialOverride } from '@/tools/runtime/define-maintainer-tool/api-key-override'
 import { DEFAULT_TIMEOUT_MS, FETCH_RUNNER, MAX_STDERR_BYTES } from './constants'
 import {
   createBrokerSandbox,
@@ -22,8 +23,10 @@ import {
 
 export async function brokeredHttpRequest(input: {
   agentId: string
+  attachmentToolId: string
   provider: string
   request: BrokeredHttpRequestType
+  toolConfig?: Record<string, unknown>
   toolId: string
   userId: string
 }): Promise<BrokeredHttpResponseType> {
@@ -56,17 +59,24 @@ export async function brokeredHttpRequest(input: {
     ),
   }
   const runId = currentRunId()
+  const credentialSource = hasCredentialOverride({
+    config: input.toolConfig,
+    provider: input.provider,
+  })
+    ? 'override'
+    : 'connection'
   const sandbox = await getOrCreateBrokerSandbox({
     runId,
     provider:
       mode === 'authenticated'
-        ? input.provider
+        ? `${input.provider}:${input.attachmentToolId}:${credentialSource}`
         : `${input.provider}:unauthenticated:${url.hostname}`,
     createSandbox: () =>
       createBrokerSandbox({
         connector,
         provider: input.provider,
         runId,
+        toolConfig: input.toolConfig,
         unauthenticatedHosts: mode === 'authenticated' ? [] : [url.hostname],
         userId: input.userId,
       }),

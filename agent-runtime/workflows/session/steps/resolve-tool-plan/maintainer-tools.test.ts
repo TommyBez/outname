@@ -59,9 +59,68 @@ describe('resolveMaintainerRow', () => {
             toolId: 'github_repo',
           },
         ],
+        toolConfig: {
+          allowExternalNetwork: true,
+          readOnly: true,
+          repoUrl: 'https://github.com/acme/repo.git',
+        },
         toolId: 'github_repo',
       },
     })
     expect(mockDbSelect).not.toHaveBeenCalled()
+  })
+
+  it('preserves encrypted credential overrides and skips connection requirements for them', async () => {
+    const tool: MaintainerTool = {
+      build: vi.fn(),
+      capabilities: [{ kind: 'brokered_http', provider: 'x' }],
+      category: 'social',
+      configSchema: z.strictObject({
+        readOnly: z.boolean().default(false),
+      }),
+      description: 'Call X API endpoints.',
+      displayName: 'X API',
+      exposedTools: [],
+      id: 'x_api_request',
+      resolveExposedTools: vi.fn(() => []),
+    }
+    mockGetMaintainerTool.mockReturnValue(tool)
+
+    await expect(
+      resolveMaintainerRow({
+        config: {
+          _secrets: {
+            credentialOverrides: {
+              x: {
+                encrypted: 'encrypted-token',
+                version: 1,
+              },
+            },
+          },
+          readOnly: true,
+        },
+        toolId: 'x_api_request',
+      })
+    ).resolves.toEqual({
+      kind: 'planned',
+      planned: {
+        config: {
+          readOnly: true,
+        },
+        providerRequirements: [],
+        toolConfig: {
+          _secrets: {
+            credentialOverrides: {
+              x: {
+                encrypted: 'encrypted-token',
+                version: 1,
+              },
+            },
+          },
+          readOnly: true,
+        },
+        toolId: 'x_api_request',
+      },
+    })
   })
 })

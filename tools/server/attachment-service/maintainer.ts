@@ -1,9 +1,16 @@
 import 'server-only'
 
+import { and, eq } from 'drizzle-orm'
 import { db } from '@/shared/db'
 import { agentTools } from '@/shared/db/schema'
+import { providerBackedCapabilities } from '@/tools/catalog/capabilities'
 import { getMaintainerTool } from '@/tools/catalog/registry'
 import type { MaintainerTool } from '@/tools/catalog/types'
+import {
+  stripCredentialOverrides,
+  toConfigRecord,
+  withEncryptedCredentialOverrides,
+} from '@/tools/runtime/define-maintainer-tool/api-key-override'
 import { ensureToolSandboxBuild } from '@/tools/sandbox-runtime/build'
 import { manifestHash } from '@/tools/sandboxes'
 import {
@@ -50,7 +57,15 @@ export async function attachMaintainerToolForUser(
     return { ok: false, error: 'Unknown tool.' }
   }
 
-  const parsed = parseMaintainerToolConfig(tool, input.rawConfig)
+  const existingConfig = await readExistingMaintainerToolConfig({
+    agentId: input.agentId,
+    toolId: input.toolId,
+  })
+  const parsed = await parseMaintainerToolConfig(
+    tool,
+    input.rawConfig,
+    existingConfig
+  )
   if (!parsed.ok) {
     return { ok: false, error: parsed.error }
   }
@@ -79,15 +94,29 @@ export async function attachMaintainerToolForUser(
   return { ok: true, pendingBuildId: sandbox.state.pendingBuildId }
 }
 
-function parseMaintainerToolConfig(
+async function parseMaintainerToolConfig(
   tool: MaintainerTool,
-  rawConfig: Record<string, unknown>
-): ConfigParseResult {
+  rawConfig: Record<string, unknown>,
+  existingConfig: unknown
+): Promise<ConfigParseResult> {
+  const allowedProviders = new Set(
+    providerBackedCapabilities(tool.capabilities).map(
+      (capability) => capability.provider
+    )
+  )
+
   if (!tool.configSchema) {
-    return { ok: true, config: {} }
+    return await withEncryptedCredentialOverrides({
+      allowedProviders,
+      config: {},
+      source: rawConfig,
+      fallbackSource: existingConfig,
+    })
   }
 
-  const parsed = tool.configSchema.safeParse(rawConfig)
+  const parsed = tool.configSchema.safeParse(
+    stripCredentialOverrides(rawConfig)
+  )
   if (!parsed.success) {
     return {
       ok: false,
@@ -96,10 +125,30 @@ function parseMaintainerToolConfig(
   }
 
   const config = parsed.data
-  if (typeof config === 'object' && config !== null && !Array.isArray(config)) {
-    return { ok: true, config: config as Record<string, unknown> }
-  }
-  return { ok: true, config: {} }
+  return await withEncryptedCredentialOverrides({
+    allowedProviders,
+    config: toConfigRecord(config),
+    source: rawConfig,
+    fallbackSource: existingConfig,
+  })
+}
+
+async function readExistingMaintainerToolConfig(input: {
+  agentId: string
+  toolId: string
+}): Promise<unknown> {
+  const [row] = await db
+    .select({ config: agentTools.config })
+    .from(agentTools)
+    .where(
+      and(
+        eq(agentTools.agentId, input.agentId),
+        eq(agentTools.kind, 'maintainer'),
+        eq(agentTools.toolId, input.toolId)
+      )
+    )
+    .limit(1)
+  return row?.config
 }
 
 async function resolveSandboxAttachState(

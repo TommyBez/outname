@@ -41,16 +41,11 @@ export function AttachmentForm({
   )
   const [values, setValues] = useState<Record<string, string>>(initial)
   const [open, setOpen] = useState(false)
-  const hasFields = entry.configFields.length > 0
+  const hasFields =
+    entry.configFields.length > 0 || entry.credentialOverrideFields.length > 0
 
   function handleAttach() {
-    const config: Record<string, unknown> = {}
-    for (const field of entry.configFields) {
-      const value = coerceFieldValue(field, values[field.name] ?? '')
-      if (value !== undefined && value !== '') {
-        config[field.name] = value
-      }
-    }
+    const config = buildToolConfig(entry, values)
     startTransition(async () => {
       const result = await attachToolAction(agentId, entry.toolId, config)
       if (!result.ok) {
@@ -62,6 +57,22 @@ export function AttachmentForm({
       } else {
         toast.success(isAttached ? 'Tool updated.' : 'Tool attached.')
       }
+      setOpen(false)
+      router.refresh()
+    })
+  }
+
+  function handleClearOverride(provider: string) {
+    const config = buildToolConfig(entry, values, {
+      clearCredentialOverrideProvider: provider,
+    })
+    startTransition(async () => {
+      const result = await attachToolAction(agentId, entry.toolId, config)
+      if (!result.ok) {
+        toast.error(result.error ?? 'Clear override failed.')
+        return
+      }
+      toast.success('Credential override cleared.')
       setOpen(false)
       router.refresh()
     })
@@ -118,6 +129,45 @@ export function AttachmentForm({
               value={values[field.name] ?? ''}
             />
           ))}
+          {entry.credentialOverrideFields.map((group) => (
+            <div className="flex flex-col gap-3" key={group.provider}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-black font-mono text-xs uppercase tracking-[0.08em]">
+                  {group.displayName} credential override
+                </p>
+                {group.hasOverride && (
+                  <button
+                    className="inline-flex h-8 items-center justify-center border-2 border-foreground px-3 font-bold text-[10px] uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
+                    disabled={pending}
+                    onClick={() => handleClearOverride(group.provider)}
+                    type="button"
+                  >
+                    Clear override
+                  </button>
+                )}
+              </div>
+              {group.fields.map((field) => {
+                const valueKey = credentialOverrideValueKey(
+                  group.provider,
+                  field.name
+                )
+                return (
+                  <ConfigField
+                    field={field}
+                    key={valueKey}
+                    onChange={(value) =>
+                      setValues((current) => ({
+                        ...current,
+                        [valueKey]: value,
+                      }))
+                    }
+                    toolId={`${entry.toolId}-${group.provider}-credential`}
+                    value={values[valueKey] ?? ''}
+                  />
+                )
+              })}
+            </div>
+          ))}
           <button
             className="inline-flex h-10 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
             disabled={pending}
@@ -129,6 +179,71 @@ export function AttachmentForm({
       )}
     </div>
   )
+}
+
+function buildToolConfig(
+  entry: ToolCatalogEntry,
+  values: Record<string, string>,
+  options?: {
+    clearCredentialOverrideProvider?: string
+  }
+): Record<string, unknown> {
+  const config: Record<string, unknown> = {}
+  for (const field of entry.configFields) {
+    const value = coerceFieldValue(field, values[field.name] ?? '')
+    if (value !== undefined && value !== '') {
+      config[field.name] = value
+    }
+  }
+
+  const credentialOverrides = collectCredentialOverrides(
+    entry,
+    values,
+    options?.clearCredentialOverrideProvider
+  )
+  if (credentialOverrides) {
+    config.credentialOverrides = credentialOverrides
+  }
+  if (options?.clearCredentialOverrideProvider) {
+    config.credentialOverrideRemovals = [
+      options.clearCredentialOverrideProvider,
+    ]
+  }
+  return config
+}
+
+function collectCredentialOverrides(
+  entry: ToolCatalogEntry,
+  values: Record<string, string>,
+  omittedProvider?: string
+): Record<string, Record<string, string>> | undefined {
+  const credentialOverrides: Record<string, Record<string, string>> = {}
+
+  for (const group of entry.credentialOverrideFields) {
+    if (group.provider === omittedProvider) {
+      continue
+    }
+    const providerFields: Record<string, string> = {}
+    for (const field of group.fields) {
+      const value =
+        values[credentialOverrideValueKey(group.provider, field.name)]
+      if (value && value.trim().length > 0) {
+        providerFields[field.name] = value
+      }
+    }
+
+    if (Object.keys(providerFields).length > 0) {
+      credentialOverrides[group.provider] = providerFields
+    }
+  }
+
+  return Object.keys(credentialOverrides).length > 0
+    ? credentialOverrides
+    : undefined
+}
+
+function credentialOverrideValueKey(provider: string, fieldName: string) {
+  return `credentialOverride:${provider}:${fieldName}`
 }
 
 function coerceFieldValue(field: ToolConfigField, raw: string) {

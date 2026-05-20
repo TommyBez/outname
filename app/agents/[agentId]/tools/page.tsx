@@ -18,6 +18,10 @@ import {
 } from '@/tools/components/sub-agent-catalog'
 import { ToolCatalog } from '@/tools/components/tool-catalog'
 import type { ToolCatalogEntry } from '@/tools/components/tool-catalog/types'
+import {
+  hasCredentialOverride,
+  redactCredentialOverrides,
+} from '@/tools/runtime/define-maintainer-tool/api-key-override'
 import { getLatestBuildForManifest } from '@/tools/sandbox-runtime/build'
 import {
   childAgentIdFromSubAgentRow,
@@ -60,25 +64,45 @@ async function Resolved({ params }: { params: Params }) {
 
   const catalog: ToolCatalogEntry[] = listMaintainerTools().map((t) => {
     const attachedRow = attachedByMaintainerToolId.get(t.id)
-    const providers = providerBackedCapabilities(t.capabilities).map(
-      (r) => r.provider
+    const attachedConfig = attachedRow
+      ? redactCredentialOverrides(attachedRow.config)
+      : undefined
+    const providers = Array.from(
+      new Set(providerBackedCapabilities(t.capabilities).map((r) => r.provider))
     )
+    const credentialOverrideFields = providers.flatMap((provider) => {
+      const connector = getConnector(provider)
+      if (!connector) {
+        return []
+      }
+      return [
+        {
+          provider,
+          displayName: connector.displayName,
+          hasOverride: attachedRow
+            ? hasCredentialOverride({
+                config: attachedRow.config,
+                provider,
+              })
+            : false,
+          fields: connector.apiKey.fields.map((field) => ({
+            ...field,
+            required: false,
+          })),
+        },
+      ]
+    })
     const sandboxManifest =
       t.capabilities.find((r) => r.kind === 'tool_sandbox')?.manifest ?? null
     return {
       toolId: t.id,
       displayName: t.displayName,
       description: t.description,
-      exposedTools: [
-        ...t.resolveExposedTools(
-          (attachedRow?.config ?? undefined) as
-            | Record<string, unknown>
-            | undefined
-        ),
-      ],
+      exposedTools: [...t.resolveExposedTools(attachedConfig)],
       providers,
       toolSandboxManifest: sandboxManifest,
       configFields: describeConfigSchema(t.configSchema),
+      credentialOverrideFields,
     }
   })
 
@@ -149,7 +173,7 @@ async function Resolved({ params }: { params: Params }) {
 
   const attached = maintainerAttachedRows.map((r) => ({
     toolId: r.toolId,
-    config: (r.config ?? {}) as Record<string, unknown>,
+    config: redactCredentialOverrides(r.config),
     status: (r.status as 'connected' | 'pending') ?? 'connected',
     pendingBuildId:
       r.status === 'pending' && r.toolSandboxManifest

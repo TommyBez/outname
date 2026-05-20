@@ -95,7 +95,10 @@ describe('repo workspace sandbox', () => {
       })
     )
 
-    const command = bashExecute.mock.calls[0][0].command
+    const command = (
+      bashExecute.mock.calls as unknown as [{ command: string }][]
+    ).at(0)?.[0].command
+    expect(command).toBeDefined()
     expect(command).toContain(
       "git remote set-url origin 'https://github.com/acme/repo.git'"
     )

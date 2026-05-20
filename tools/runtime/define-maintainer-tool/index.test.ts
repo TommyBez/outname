@@ -1,8 +1,28 @@
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { z } from 'zod'
 import { resolveBundleChildren, toBundleExposedTools } from './bundle-tools'
-import { defineToolBundle, toolSuccess } from './index'
+import {
+  defineApiPassthroughTool,
+  defineToolBundle,
+  toolSuccess,
+} from './index'
 import type { BundleChildToolArgs } from './types'
+
+const { mockBrokeredHttpRequest, mockDecryptCredential } = vi.hoisted(() => ({
+  mockBrokeredHttpRequest: vi.fn(),
+  mockDecryptCredential: vi.fn(),
+}))
+
+vi.mock('server-only', () => ({}))
+
+vi.mock('@/connections/crypto', () => ({
+  decryptCredential: mockDecryptCredential,
+  encryptCredential: vi.fn(),
+}))
+
+vi.mock('../brokered-http', () => ({
+  brokeredHttpRequest: mockBrokeredHttpRequest,
+}))
 
 interface TestConfig {
   enableWrite: boolean
@@ -46,6 +66,36 @@ test('resolveBundleChildren only returns enabled child tools', () => {
   ).toEqual(['test_read'])
 })
 
+test('bundle exposed tools ignore credential override fields when parsing strict config', () => {
+  const bundle = defineToolBundle({
+    id: 'test_bundle_exposed_tools',
+    category: 'test',
+    displayName: 'Test Bundle Exposed Tools',
+    description: 'Bundle used to verify exposed tool resolution.',
+    capabilities: [{ kind: 'brokered_http', provider: 'x' }],
+    configSchema: z.strictObject({
+      enableWrite: z.boolean().default(false),
+    }),
+    tools: testTools,
+  })
+
+  expect(
+    bundle.resolveExposedTools({
+      apiKeyOverride: 'live-token',
+      credentialOverrides: {
+        x: { bearerToken: 'live-token' },
+      },
+      enableWrite: false,
+    })
+  ).toEqual([
+    {
+      description: 'Read-only child tool.',
+      displayName: 'Test Read',
+      toolId: 'test_read',
+    },
+  ])
+})
+
 test('bundle child tools inherit the bundle sandbox manifest id', async () => {
   const bundle = defineToolBundle({
     id: 'test_bundle',
@@ -74,7 +124,7 @@ test('bundle child tools inherit the bundle sandbox manifest id', async () => {
     runId: 'run_test',
     toolId: 'test_bundle',
     userId: 'user_test',
-  }) as Record<
+  }) as unknown as Record<
     string,
     {
       execute(input: Record<string, never>): Promise<{
@@ -88,4 +138,85 @@ test('bundle child tools inherit the bundle sandbox manifest id', async () => {
   const result = await built.test_run.execute({})
   expect(result.ok).toBe(false)
   expect(result.message).toBe('Unknown tool sandbox manifest: missing-manifest')
+})
+
+test('brokered tools receive encrypted credential overrides in preserved tool config', async () => {
+  let executeConfig: unknown
+  mockBrokeredHttpRequest.mockResolvedValueOnce({
+    bodyText: '{}',
+    headers: {},
+    ok: true,
+    status: 200,
+    truncated: false,
+  })
+
+  const apiTool = defineApiPassthroughTool({
+    id: 'test_api',
+    category: 'test',
+    displayName: 'Test API',
+    description: 'Brokered API tool.',
+    provider: 'x',
+    configSchema: z.strictObject({
+      readOnly: z.boolean().default(false),
+    }),
+    inputSchema: z.object({}),
+    toRequest(args) {
+      executeConfig = args.config
+      return {
+        method: 'GET',
+        url: 'https://api.x.com/2/users/me',
+      }
+    },
+    handleResponse(response) {
+      return toolSuccess(response.status)
+    },
+  })
+
+  const built = apiTool.build({
+    agentId: 'agent_test',
+    config: {
+      _secrets: {
+        credentialOverrides: {
+          x: {
+            encrypted: 'encrypted-token',
+            version: 1,
+          },
+        },
+      },
+      readOnly: true,
+    },
+    conversationId: null,
+    runId: 'run_test',
+    toolId: 'test_api',
+    userId: 'user_test',
+  }) as unknown as {
+    execute(input: Record<string, never>): Promise<{
+      data?: number
+      ok: boolean
+    }>
+  }
+
+  await expect(built.execute({})).resolves.toEqual({
+    data: 200,
+    ok: true,
+  })
+  expect(executeConfig).toEqual({ readOnly: true })
+  expect(mockBrokeredHttpRequest).toHaveBeenCalledWith(
+    expect.objectContaining({
+      attachmentToolId: 'test_api',
+      provider: 'x',
+      toolConfig: {
+        _secrets: {
+          credentialOverrides: {
+            x: {
+              encrypted: 'encrypted-token',
+              version: 1,
+            },
+          },
+        },
+        readOnly: true,
+      },
+      toolId: 'test_api',
+    })
+  )
 })
