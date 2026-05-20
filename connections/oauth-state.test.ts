@@ -7,11 +7,13 @@ import {
   encodeOAuthState,
   normalizeConnectionReturnTo,
   OAUTH_STATE_TTL_SECONDS,
+  oauthScopeHash,
   pkceCookieOptions,
   signedPkceCookieValue,
   unexpectedGrantedScopes,
   verifySignedPkceCookie,
 } from './oauth-state'
+import { X_OAUTH_SCOPES } from './x-oauth-scopes'
 
 describe('OAuth state helpers', () => {
   beforeEach(() => {
@@ -31,7 +33,7 @@ describe('OAuth state helpers', () => {
       nonce: 'nonce_test',
       pkceHash: 'pkce_hash',
       returnTo: '/connections',
-      scopes: ['tweet.read'],
+      scopeHash: oauthScopeHash(['tweet.read']),
       userId: 'user_test',
     })
 
@@ -67,6 +69,19 @@ describe('OAuth state helpers', () => {
       path: '/api/connections/oauth/',
       sameSite: 'lax',
     })
+  })
+
+  it('keeps the signed state under the X OAuth limit with the full scope bundle', () => {
+    const state = encodeOAuthState({
+      connectorId: 'x.oauth2_user',
+      nonce: 'nonce_test',
+      pkceHash: 'pkce_hash',
+      returnTo: '/connections',
+      scopeHash: oauthScopeHash(X_OAUTH_SCOPES),
+      userId: 'user_123456789012345678901234567890',
+    })
+
+    expect(state.length).toBeLessThanOrEqual(500)
   })
 
   it('detects provider-granted scopes outside the signed request', () => {

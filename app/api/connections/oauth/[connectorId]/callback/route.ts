@@ -6,6 +6,7 @@ import {
   decodeOAuthState,
   oauthPkceCookieName,
   oauthRedirectUri,
+  oauthScopeHash,
   pkceCookieOptions,
   pkceHash,
   unexpectedGrantedScopes,
@@ -52,11 +53,12 @@ export async function GET(
   }
   if (
     decoded.userId !== session.user.id ||
-    decoded.connectorId !== connectorId
+    decoded.connectorId !== connectorId ||
+    decoded.scopeHash !== oauthScopeHash(connector.oauth2.defaultScopes)
   ) {
     return redirectWithCookieClear(request, connectorId, returnTo, {
       connection: 'error',
-      reason: 'state does not match session user or connector',
+      reason: 'state does not match session user, connector, or scopes',
     })
   }
 
@@ -97,7 +99,7 @@ export async function GET(
     }
     const unexpectedScopes = unexpectedGrantedScopes(
       token.grantedScopes,
-      decoded.scopes
+      connector.oauth2.defaultScopes
     )
     if (unexpectedScopes.length > 0) {
       throw new Error(

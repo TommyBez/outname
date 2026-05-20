@@ -17,7 +17,7 @@ export interface OAuthState {
   nonce: string
   pkceHash: string
   returnTo: string
-  scopes: string[]
+  scopeHash: string
   userId: string
 }
 
@@ -62,9 +62,9 @@ export function decodeOAuthState(raw: string): OAuthState | null {
       typeof payload.returnTo !== 'string' ||
       typeof payload.nonce !== 'string' ||
       typeof payload.pkceHash !== 'string' ||
+      typeof payload.scopeHash !== 'string' ||
       typeof payload.exp !== 'number' ||
-      !Array.isArray(payload.scopes) ||
-      !payload.scopes.every((scope) => typeof scope === 'string')
+      ('scopes' in payload && payload.scopes !== undefined)
     ) {
       return null
     }
@@ -77,7 +77,7 @@ export function decodeOAuthState(raw: string): OAuthState | null {
       returnTo: normalizeConnectionReturnTo(payload.returnTo),
       nonce: payload.nonce,
       pkceHash: payload.pkceHash,
-      scopes: payload.scopes,
+      scopeHash: payload.scopeHash,
       exp: payload.exp,
     }
   } catch {
@@ -91,6 +91,10 @@ export function createPkceVerifier(): string {
 
 export function pkceHash(verifier: string): string {
   return createHash('sha256').update(verifier).digest('base64url')
+}
+
+export function oauthScopeHash(scopes: readonly string[]): string {
+  return createHash('sha256').update(scopes.join('\n')).digest('base64url')
 }
 
 export function signedPkceCookieValue(verifier: string): string {

@@ -81,13 +81,16 @@ export function validateConnectorInfrastructureForEnv(
   connectors: readonly Connector[],
   env: Record<string, string | undefined>
 ): void {
+  const hasUpstashRedis =
+    Boolean(env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN) ||
+    Boolean(env.KV_REST_API_URL && env.KV_REST_API_TOKEN)
   if (
     env.NODE_ENV !== 'test' &&
     connectors.some((connector) => connector.authKind === 'oauth2') &&
-    !(env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN)
+    !hasUpstashRedis
   ) {
     throw new Error(
-      'OAuth connectors require UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.'
+      'OAuth connectors require UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN or KV_REST_API_URL/KV_REST_API_TOKEN.'
     )
   }
 }

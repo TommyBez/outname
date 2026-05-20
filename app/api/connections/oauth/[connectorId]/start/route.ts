@@ -9,6 +9,7 @@ import {
   OAUTH_STATE_TTL_SECONDS,
   oauthPkceCookieName,
   oauthRedirectUri,
+  oauthScopeHash,
   pkceCookieOptions,
   pkceHash,
   signedPkceCookieValue,
@@ -65,7 +66,7 @@ export async function GET(
     connectorId,
     returnTo,
     nonce,
-    scopes,
+    scopeHash: oauthScopeHash(scopes),
     pkceHash: pkceHash(verifier),
   })
   const authorizeUrl = new URL(connector.oauth2.authorizationUrl)

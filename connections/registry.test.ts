@@ -22,6 +22,16 @@ describe('validateConnectorInfrastructureForEnv', () => {
     ).toThrow('OAuth connectors require UPSTASH_REDIS_REST_URL')
   })
 
+  it('accepts Vercel KV Redis env vars for OAuth connectors', () => {
+    expect(() =>
+      validateConnectorInfrastructureForEnv([oauthConnector], {
+        KV_REST_API_TOKEN: 'token_test',
+        KV_REST_API_URL: 'https://redis.test',
+        NODE_ENV: 'development',
+      })
+    ).not.toThrow()
+  })
+
   it('does not require Redis when no OAuth connector is registered', () => {
     expect(() =>
       validateConnectorInfrastructureForEnv([apiKeyConnector], {
