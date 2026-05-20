@@ -94,6 +94,7 @@ function ChatHistoryGroup({
   pathname: string | null
 }) {
   const router = useRouter()
+  const newChatPath = `/agents/${agentId}/chat/new`
 
   return (
     <div className="mt-4 border-sidebar-border border-t pt-3">
@@ -101,30 +102,16 @@ function ChatHistoryGroup({
       <SidebarMenu>
         <SidebarMenuItem>
           <SidebarMenuButton
-            asChild
             className="text-muted-foreground hover:text-foreground"
-            isActive={pathname === `/agents/${agentId}/chat/new`}
+            isActive={pathname === newChatPath}
+            onClick={() => {
+              router.push(`${newChatPath}?draft=${createDraftConversationId()}`)
+            }}
             tooltip="New chat"
+            type="button"
           >
-            <Link
-              href={`/agents/${agentId}/chat/new`}
-              onClick={(event) => {
-                const newChatHref = `/agents/${agentId}/chat/new`
-                const onNewChatRoute = pathname === newChatHref
-                const urlMismatch =
-                  typeof window !== 'undefined' &&
-                  window.location.pathname !== pathname
-
-                if (!(onNewChatRoute || urlMismatch)) {
-                  return
-                }
-                event.preventDefault()
-                router.refresh()
-              }}
-            >
-              <MessageSquarePlus aria-hidden />
-              <span>New chat</span>
-            </Link>
+            <MessageSquarePlus aria-hidden />
+            <span>New chat</span>
           </SidebarMenuButton>
         </SidebarMenuItem>
 
@@ -156,4 +143,12 @@ function isActive(
     return false
   }
   return pathname === `/agents/${agentId}/chat/${conversationId}`
+}
+
+function createDraftConversationId() {
+  return (
+    'cc_' +
+    Math.random().toString(36).slice(2) +
+    Date.now().toString(36).slice(-4)
+  )
 }
