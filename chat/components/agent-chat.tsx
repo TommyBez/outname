@@ -2,7 +2,6 @@
 
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
-import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import {
   type AgentChatMessage,
@@ -13,7 +12,7 @@ import {
   AgentChatTranscript,
   hasAssistantContentAfterLatestUser,
 } from '@/chat/components/agent-chat-transcript'
-import { revalidateConversations } from '@/chat/components/agent-sidebar-workspace/conversations'
+import { refreshConversationList } from '@/chat/components/agent-sidebar-workspace/conversations'
 import { ChatErrorBanner } from '@/chat/components/chat-error-banner'
 import {
   PromptInput,
@@ -44,7 +43,6 @@ export function AgentChat({
   const [input, setInput] = useState('')
   const [workflowStatus, setWorkflowStatus] =
     useState<WorkflowStatusData | null>(null)
-  const router = useRouter()
   const didPromoteDraftRef = useRef(false)
   const { messages, sendMessage, status, error, stop } =
     useChat<AgentChatMessage>({
@@ -60,17 +58,33 @@ export function AgentChat({
       },
       onFinish: async () => {
         setWorkflowStatus(null)
-        // Revalidate just the sidebar list so soft navigation does not strand
-        // the freshly streamed reply out of view.
-        await revalidateConversations(agentId)
-        if (isDraft && !didPromoteDraftRef.current) {
-          didPromoteDraftRef.current = true
-          router.replace(`/agents/${agentId}/chat/${conversationId}`, {
-            scroll: false,
-          })
-        }
+        // Refresh the sidebar list; title generation can finish slightly after the
+        // stream closes, so we retry until the row has a title or attempts exhaust.
+        await refreshConversationList(agentId, { conversationId })
       },
     })
+
+  // Use `history.replaceState` instead of `router.replace` so the URL updates
+  // without remounting `useChat` or flashing the chat surface.
+  useEffect(() => {
+    if (!isDraft) {
+      return
+    }
+    if (didPromoteDraftRef.current) {
+      return
+    }
+    if (messages.length === 0) {
+      return
+    }
+    didPromoteDraftRef.current = true
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(
+        null,
+        '',
+        `/agents/${agentId}/chat/${conversationId}`
+      )
+    }
+  }, [agentId, conversationId, isDraft, messages.length])
 
   const isBusy = status === 'submitted' || status === 'streaming'
   const showWorkflowStatus = isBusy && workflowStatus !== null

@@ -109,7 +109,13 @@ function ChatHistoryGroup({
             <Link
               href={`/agents/${agentId}/chat/new`}
               onClick={(event) => {
-                if (pathname !== `/agents/${agentId}/chat/new`) {
+                const newChatHref = `/agents/${agentId}/chat/new`
+                const onNewChatRoute = pathname === newChatHref
+                const urlMismatch =
+                  typeof window !== 'undefined' &&
+                  window.location.pathname !== pathname
+
+                if (!(onNewChatRoute || urlMismatch)) {
                   return
                 }
                 event.preventDefault()
