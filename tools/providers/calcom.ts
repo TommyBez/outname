@@ -30,11 +30,11 @@ const calcomRequestInputSchema = z.object({
     .min(1)
     .describe(`Relative Cal.com API v2 path. ${CALCOM_ENDPOINT_GUIDE}`),
   query: z
-    .record(z.string())
+    .record(z.string(), z.string())
     .optional()
     .describe('Optional query parameters appended as strings.'),
   body: z
-    .record(z.unknown())
+    .record(z.string(), z.unknown())
     .optional()
     .describe('Optional JSON request body for non-GET requests.'),
   confirmIrreversible: z

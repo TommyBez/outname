@@ -7,6 +7,7 @@ import {
 } from 'ai'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { ChatErrorBanner } from '@/chat/components/chat-error-banner'
 import {
   PromptInput,
   PromptInputFooter,
@@ -56,7 +57,7 @@ export function AgentCreationChat({ className }: AgentCreationChatProps) {
   return (
     <div
       className={cn(
-        'flex h-[min(720px,calc(100vh-18rem))] min-h-[420px] min-w-0 flex-col overflow-hidden border-2 border-foreground bg-background',
+        'flex h-[min(720px,calc(100svh-14rem))] min-h-[24rem] min-w-0 flex-col overflow-hidden border-2 border-foreground bg-background',
         className
       )}
     >
@@ -67,14 +68,7 @@ export function AgentCreationChat({ className }: AgentCreationChatProps) {
       />
 
       <div className="sticky bottom-0 z-10 shrink-0 bg-background px-4 pt-4 pb-4">
-        {error && (
-          <p
-            className="mb-3 border-2 border-destructive bg-destructive px-3 py-2 font-bold text-destructive-foreground text-xs uppercase tracking-[0.12em]"
-            role="alert"
-          >
-            {error.message || 'Something went wrong. Try again.'}
-          </p>
-        )}
+        {error && <ChatErrorBanner message={error.message} />}
 
         <PromptInput onSubmit={handleSubmit}>
           <PromptInputTextarea

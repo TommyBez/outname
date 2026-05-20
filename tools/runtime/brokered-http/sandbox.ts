@@ -1,10 +1,11 @@
 import 'server-only'
 
-import { type NetworkPolicy, Sandbox } from '@vercel/sandbox'
-import { getWorkflowMetadata } from 'workflow'
+import { Sandbox } from '@vercel/sandbox'
 import type { getConnector } from '@/connections/registry'
 import { readBrokeredCredential } from '@/connections/runtime/credential'
 import { brokeredHttpSandboxTags } from '@/shared/server/vercel-sandbox-config'
+import { createInjectedHeadersNetworkPolicy } from '@/tools/runtime/network-policy'
+import { currentToolRuntimeRunId } from '@/tools/runtime/run-id'
 import { validateInjectedHeaders } from './validation'
 
 interface CachedBrokerSandbox {
@@ -15,7 +16,7 @@ interface CachedBrokerSandbox {
 const brokerSandboxCache = new Map<string, Map<string, CachedBrokerSandbox>>()
 
 export function currentRunId(): string {
-  return getWorkflowMetadata().workflowRunId
+  return currentToolRuntimeRunId()
 }
 
 export async function getOrCreateBrokerSandbox(input: {
@@ -64,11 +65,11 @@ export async function createBrokerSandbox(input: {
     input.connector.broker.injectedHeaderNames,
     input.connector.broker.injectedHeaders(credential)
   )
-  const networkPolicy = createNetworkPolicy(
-    input.connector.broker.allowedHosts,
+  const networkPolicy = createInjectedHeadersNetworkPolicy({
+    authenticatedHosts: input.connector.broker.allowedHosts,
     injectedHeaders,
-    input.unauthenticatedHosts
-  )
+    unauthenticatedHosts: input.unauthenticatedHosts,
+  })
   return await Sandbox.create({
     runtime: 'node24',
     timeout: 600_000,
@@ -110,22 +111,4 @@ export async function stopAllBrokeredHttpSandboxesForRun(): Promise<void> {
     })
   )
   brokerSandboxCache.delete(runId)
-}
-
-function createNetworkPolicy(
-  allowedHosts: readonly string[],
-  injectedHeaders: Record<string, string>,
-  unauthenticatedHosts: readonly string[] = []
-): NetworkPolicy {
-  const allow: Record<
-    string,
-    { transform: { headers: Record<string, string> }[] }[]
-  > = {}
-  for (const host of allowedHosts) {
-    allow[host] = [{ transform: [{ headers: injectedHeaders }] }]
-  }
-  for (const host of unauthenticatedHosts) {
-    allow[host] = []
-  }
-  return { allow } as NetworkPolicy
 }

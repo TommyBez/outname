@@ -1,15 +1,20 @@
 import 'server-only'
 
 import { createElement, type ReactElement } from 'react'
-import { Resend } from 'resend'
 import { WaitlistConfirmationEmail } from '@/emails/waitlist-confirmation-email'
 import { WaitlistInviteEmail } from '@/emails/waitlist-invite-email'
+import { sendResendReactEmail } from '@/shared/server/resend'
 import { siteConfig } from '@/shared/server/site-metadata'
-
-let resendClient: Resend | null = null
 
 function getBaseUrl(): string {
   return process.env.BETTER_AUTH_URL || siteConfig.url
+}
+
+function createWaitlistEmailIdempotencyKey(
+  eventType: 'waitlist-confirmation' | 'waitlist-invite',
+  entityId: string
+): string {
+  return `${eventType}/${encodeURIComponent(entityId.toLowerCase())}`
 }
 
 function getWaitlistFromEmail(): string {
@@ -20,32 +25,12 @@ function getWaitlistFromEmail(): string {
   return fromEmail
 }
 
-function getResendApiKey(): string {
-  const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey) {
-    throw new Error('RESEND_API_KEY is not set')
+function getWaitlistReplyTo(): string {
+  const replyTo = process.env.WAITLIST_REPLY_TO
+  if (!replyTo) {
+    throw new Error('WAITLIST_REPLY_TO is not set')
   }
-  return apiKey
-}
-
-function getResendClient(): Resend {
-  if (resendClient) {
-    return resendClient
-  }
-
-  resendClient = new Resend(getResendApiKey())
-  return resendClient
-}
-
-function getWaitlistReplyTo(): string | undefined {
-  return process.env.WAITLIST_REPLY_TO || undefined
-}
-
-function createWaitlistEmailIdempotencyKey(
-  eventType: 'waitlist-confirmation' | 'waitlist-invite',
-  entityId: string
-): string {
-  return `${eventType}/${encodeURIComponent(entityId.toLowerCase())}`
+  return replyTo
 }
 
 async function sendResendEmail(input: {
@@ -54,25 +39,11 @@ async function sendResendEmail(input: {
   subject: string
   to: string
 }) {
-  const { error } = await getResendClient().emails.send(
-    {
-      from: getWaitlistFromEmail(),
-      replyTo: getWaitlistReplyTo(),
-      subject: input.subject,
-      to: [input.to],
-      react: input.react,
-    },
-    {
-      idempotencyKey: input.idempotencyKey,
-    }
-  )
-
-  if (error) {
-    const statusCodeSuffix = error.statusCode ? ` (${error.statusCode})` : ''
-    throw new Error(
-      `Resend email send failed [${error.name}]${statusCodeSuffix}: ${error.message}`
-    )
-  }
+  await sendResendReactEmail({
+    ...input,
+    from: getWaitlistFromEmail(),
+    replyTo: getWaitlistReplyTo(),
+  })
 }
 
 function getWaitlistLogoUrl(): string {

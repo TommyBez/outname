@@ -114,9 +114,7 @@ function AgentRegistryRow({ agent }: { agent: RegistryAgent }) {
               times: agent.heartbeatScheduleTimes,
             })}`}
           </span>
-          <span>
-            {`Dreaming ${agent.dreamingEnabled ? 'daily' : 'off'}`}
-          </span>
+          <span>{`Dreaming ${agent.dreamingEnabled ? 'daily' : 'off'}`}</span>
         </div>
       </div>
 

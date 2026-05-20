@@ -1,10 +1,13 @@
 import 'server-only'
 import { getConnector } from '@/connections/registry'
+import { isProviderBackedCapability } from '@/tools/catalog/capabilities'
 import type { MaintainerTool } from '@/tools/catalog/types'
 import { agentBrowserTool } from '@/tools/providers/agent-browser'
 import { agentBrowserLightTool } from '@/tools/providers/agent-browser-light'
 import { calcomRequestTool } from '@/tools/providers/calcom'
+import { context7DocsTool } from '@/tools/providers/context7'
 import { firecrawlScrapeTool } from '@/tools/providers/firecrawl-scrape'
+import { githubRepoTool } from '@/tools/providers/github-repo'
 import { parallelSearchTool } from '@/tools/providers/parallel'
 import { posthogRequestTool } from '@/tools/providers/posthog'
 import { resendSendTool } from '@/tools/providers/resend'
@@ -20,7 +23,9 @@ import { getToolSandboxManifest } from '@/tools/sandboxes/registry'
 const TOOLS: MaintainerTool[] = [
   resendSendTool,
   calcomRequestTool,
+  context7DocsTool,
   firecrawlScrapeTool,
+  githubRepoTool,
   parallelSearchTool,
   posthogRequestTool,
   agentBrowserTool,
@@ -39,7 +44,7 @@ for (const tool of TOOLS) {
   }
   for (const capability of tool.capabilities) {
     if (
-      (capability.kind === 'brokered_http' || capability.kind === 'sdk') &&
+      isProviderBackedCapability(capability) &&
       !getConnector(capability.provider)
     ) {
       throw new Error(
@@ -68,6 +73,7 @@ export const TOOL_CATEGORY_ORDER = [
   'analytics',
   'social',
   'browser',
+  'developer',
   'deployment',
   'database',
 ] as const

@@ -145,11 +145,16 @@ BETTER_AUTH_SECRET=<from env>
 BETTER_AUTH_URL=http://localhost:3000
 CONNECTION_ENCRYPTION_KEY=<from env>
 AI_GATEWAY_API_KEY=<from env>
+RESEND_API_KEY=<from env>
+AUTH_FROM_EMAIL=<verified sender>
+AUTH_REPLY_TO=<verified reply-to sender>
+WAITLIST_FROM_EMAIL=<verified sender for waitlist emails>
+WAITLIST_REPLY_TO=<reply-to sender for waitlist emails>
 ```
 
 ### Known caveats
 
-- **Sign-up is disabled** at the Better Auth level (`auth/server/auth.ts`); new users are provisioned via a seed script. The data model is multi-user — every user-owned table is scoped by `user_id` and routes verify ownership. Use `TEST_USER_EMAIL` and `TEST_USER_PASSWORD` env vars to log in as the seeded user in dev.
+- **Sign-up is disabled** at the Better Auth level (`auth/server/auth.ts`); new users are provisioned from the waitlist and sign in with email OTP codes. The data model is multi-user — every user-owned table is scoped by `user_id` and routes verify ownership. Use a provisioned address such as `TEST_USER_EMAIL` to request a login code in dev.
 - **`drizzle-kit push`** requires a TTY for confirmation prompts. Use `drizzle-kit push --force` or run interactively if schema changes are needed.
 - **Do not commit `pnpm-workspace.yaml` allow-build overrides.** They make the production build fail in this app.
-- **No automated test suite** exists in this repo currently. Testing is manual via the UI.
+- **UI/auth changes should be tested manually** via the browser. There is no comprehensive automated product test suite for waitlist and authentication flows.

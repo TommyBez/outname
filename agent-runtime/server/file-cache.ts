@@ -1,12 +1,11 @@
 import 'server-only'
-import { createHash } from 'node:crypto'
-import { Redis } from '@upstash/redis'
 import {
   getSystemSandbox,
   SYSTEM_SANDBOX_ROOT,
 } from '@/agent-runtime/server/agent-sandbox'
 import { mergeCachedAgentFilePaths } from '@/agent-runtime/shared/file-cache-index'
 import { listTrackedArchitectureFiles } from '@/agent-runtime/workflows/session/tools/sandbox-file-helpers/list'
+import { getUpstashRedis } from '@/shared/server/upstash-redis'
 
 export interface AgentMemoryFile {
   content: string
@@ -16,19 +15,6 @@ export interface AgentMemoryFile {
 }
 
 const FILE_INDEX_SUFFIX = 'files:index'
-
-let redisClient: Redis | null | undefined
-
-function getRedis(): Redis | null {
-  if (redisClient !== undefined) {
-    return redisClient
-  }
-
-  const url = process.env.UPSTASH_REDIS_REST_URL
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN
-  redisClient = url && token ? new Redis({ token, url }) : null
-  return redisClient
-}
 
 export async function refreshAgentFileCache(
   agentId: string
@@ -48,7 +34,7 @@ export async function refreshAgentFileCache(
     files.push({
       content,
       path,
-      sha256: createHash('sha256').update(content).digest('hex'),
+      sha256: await sha256Hex(content),
       updatedAt: new Date(),
     })
   }
@@ -77,7 +63,7 @@ export async function readAgentFileFromSandbox(input: {
   const file = {
     content,
     path: input.path,
-    sha256: createHash('sha256').update(content).digest('hex'),
+    sha256: await sha256Hex(content),
     updatedAt: new Date(),
   }
   await writeCachedAgentFiles(input.agentId, [file], { merge: true })
@@ -93,7 +79,7 @@ export async function listAgentFilesFromSandbox(
 export async function readCachedAgentFiles(
   agentId: string
 ): Promise<AgentMemoryFile[]> {
-  const redis = getRedis()
+  const redis = getUpstashRedis()
   if (!redis) {
     return []
   }
@@ -115,7 +101,7 @@ export async function readCachedAgentFile(input: {
   agentId: string
   path: string
 }): Promise<AgentMemoryFile | null> {
-  const redis = getRedis()
+  const redis = getUpstashRedis()
   if (!redis) {
     return null
   }
@@ -130,7 +116,7 @@ export async function writeCachedAgentFiles(
   files: AgentMemoryFile[],
   options: { merge?: boolean } = {}
 ): Promise<void> {
-  const redis = getRedis()
+  const redis = getUpstashRedis()
   if (!redis) {
     return
   }
@@ -175,4 +161,10 @@ function fromCached(file: CachedAgentMemoryFile): AgentMemoryFile {
     ...file,
     updatedAt: new Date(file.updatedAt),
   }
+}
+
+async function sha256Hex(content: string): Promise<string> {
+  const encoded = new TextEncoder().encode(content)
+  const digest = await crypto.subtle.digest('SHA-256', encoded)
+  return Buffer.from(digest).toString('hex')
 }

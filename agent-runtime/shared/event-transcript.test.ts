@@ -18,7 +18,19 @@ test('ndjson parser handles split chunks and trailing buffers', () => {
   expect(second.values).toEqual([{ id: 2 }])
   expect(second.buffer).toBe('')
 
-  expect(flushNdjsonBuffer<{ id: number }>('{"id":3}')).toEqual([{ id: 3 }])
+  expect(flushNdjsonBuffer<{ id: number }>('{"id":3}').values).toEqual([
+    { id: 3 },
+  ])
+})
+
+test('ndjson parser can skip malformed lines', () => {
+  const parsed = parseNdjsonChunk<{ id: number }>(
+    '',
+    '{"id":1}\nnot-json\n{"id":2}\n',
+    { skipInvalidLines: true }
+  )
+  expect(parsed.values).toEqual([{ id: 1 }, { id: 2 }])
+  expect(parsed.skippedLines).toBe(1)
 })
 
 test('run events map to compact transcript activity messages', () => {

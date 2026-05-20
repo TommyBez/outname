@@ -16,7 +16,7 @@ const resendConfigSchema = z.object({
 })
 
 const resendSendInputSchema = z.object({
-  to: z.string().email().describe('Recipient email address.'),
+  to: z.email().describe('Recipient email address.'),
   subject: z.string().min(1),
   text: z
     .string()

@@ -1,6 +1,8 @@
 import 'server-only'
 import { calcomConnector } from './calcom'
+import { context7Connector } from './context7'
 import { firecrawlConnector } from './firecrawl'
+import { githubConnector } from './github'
 import { parallelConnector } from './parallel'
 import { posthogConnector } from './posthog'
 import { resendConnector } from './resend'
@@ -19,7 +21,9 @@ import { xConnector } from './x'
 const CONNECTORS: Connector[] = [
   resendConnector,
   calcomConnector,
+  context7Connector,
   firecrawlConnector,
+  githubConnector,
   parallelConnector,
   posthogConnector,
   xConnector,

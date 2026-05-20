@@ -78,6 +78,27 @@
       "when": 1779500000000,
       "tag": "0008_simplify_dreaming_schedule",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1779580000000,
+      "tag": "0009_waitlist_provisioned_user",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1779600000000,
+      "tag": "0009_waitlist_segmentation",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1779700000000,
+      "tag": "0010_user_ai_gateway_key",
+      "breakpoints": true
     }
   ]
 }

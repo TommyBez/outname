@@ -36,7 +36,7 @@ export function defineConnector<
     description: args.description,
     broker: args.broker,
     apiKey: {
-      formSchema: args.credential,
+      formSchema: args.credential as unknown as z.ZodType<z.infer<TSchema>>,
       fields: args.fields,
       validate,
     },

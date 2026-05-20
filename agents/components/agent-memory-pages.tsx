@@ -188,7 +188,7 @@ function MemorySectionHeader({
   return (
     <header className="mb-12">
       <p className="swiss-label mb-4 text-accent">{eyebrow}</p>
-      <h1 className="font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter md:text-7xl">
+      <h1 className="font-black font-serif text-4xl uppercase leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl xl:text-7xl">
         {title}
       </h1>
       <p className="mt-5 max-w-2xl border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">

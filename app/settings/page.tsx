@@ -14,8 +14,10 @@ import { listGeneralBudgetRulesForUser } from '@/budgets/server/rules'
 import { sumSpendUsd } from '@/budgets/server/spend'
 import { AppShell } from '@/shared/components/layout/app-shell'
 import { AccountSkeleton } from '@/shared/components/skeletons'
+import { hasUserAiGatewayApiKey } from '@/shared/server/ai-gateway-byok'
 import { getCachedAgentsForUser } from '@/shared/server/data'
 import { createPrivatePageMetadata } from '@/shared/server/site-metadata'
+import { AiGatewayKeyCard } from './ai-gateway-key-card'
 
 export const metadata: Metadata = createPrivatePageMetadata(
   'Settings',
@@ -27,7 +29,7 @@ export default function SettingsPage() {
     <AppShell>
       <header className="mb-12 border-foreground border-t-4 pt-6 md:mb-16">
         <p className="swiss-label mb-4 text-accent">10. Settings</p>
-        <h1 className="font-black font-serif text-6xl uppercase leading-[0.9] tracking-tighter md:text-8xl">
+        <h1 className="font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
           Your assistant
         </h1>
       </header>
@@ -51,12 +53,24 @@ export default function SettingsPage() {
           </Suspense>
         </Section>
 
+        <Section title="AI Gateway (BYOK)">
+          <Suspense fallback={<div className="h-10" />}>
+            <AiGatewaySection />
+          </Suspense>
+        </Section>
+
         <Suspense fallback={null}>
           <WaitlistAdminSection />
         </Suspense>
       </div>
     </AppShell>
   )
+}
+
+async function AiGatewaySection() {
+  const session = await requireSession()
+  const hasKey = await hasUserAiGatewayApiKey(session.user.id)
+  return <AiGatewayKeyCard hasKey={hasKey} />
 }
 
 async function BudgetSection() {

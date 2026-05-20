@@ -37,7 +37,7 @@ export default function DashboardPage() {
             <p className="swiss-label mb-4 text-accent">
               01. <TodayDate />
             </p>
-            <h1 className="text-balance font-black font-serif text-6xl uppercase leading-[0.86] tracking-tighter md:text-[clamp(4.5rem,7vw,7rem)]">
+            <h1 className="text-balance font-black font-serif text-5xl uppercase leading-[0.86] tracking-tighter sm:text-6xl lg:text-[clamp(4.5rem,7vw,7rem)]">
               Dashboard
             </h1>
           </div>

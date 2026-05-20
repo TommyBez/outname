@@ -30,7 +30,7 @@ export const updateSchema = z
       value.heartbeatScheduleTimes.length === 0
     ) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         message: 'Heartbeat daily schedule needs at least one time.',
         path: ['heartbeatScheduleTimes'],
       })
@@ -39,7 +39,7 @@ export const updateSchema = z
 
 export const attachMaintainerToolSchema = z.object({
   toolId: z.string().min(1),
-  config: z.record(z.unknown()).default({}),
+  config: z.record(z.string(), z.unknown()).default({}),
 })
 
 export const attachSubAgentToolSchema = z.object({

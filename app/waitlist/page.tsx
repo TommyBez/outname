@@ -17,6 +17,7 @@ export default async function WaitlistPage({
   searchParams: Promise<{
     source?: string
     utm_campaign?: string
+    utm_content?: string
     utm_medium?: string
     utm_source?: string
   }>
@@ -38,6 +39,7 @@ async function WaitlistPageContent({
   searchParams: Promise<{
     source?: string
     utm_campaign?: string
+    utm_content?: string
     utm_medium?: string
     utm_source?: string
   }>
@@ -48,7 +50,7 @@ async function WaitlistPageContent({
     <>
       <div className="mb-10 border-foreground border-t-4 pt-5">
         <p className="swiss-label text-accent">00. early access</p>
-        <h1 className="mt-4 font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter md:text-6xl">
+        <h1 className="mt-4 font-black font-serif text-4xl uppercase leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl">
           Join the waitlist
         </h1>
         <p className="mt-4 max-w-xl border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
@@ -60,6 +62,7 @@ async function WaitlistPageContent({
       <WaitlistSignupForm
         initialSource={params.source ?? 'waitlist-page'}
         utmCampaign={params.utm_campaign}
+        utmContent={params.utm_content}
         utmMedium={params.utm_medium}
         utmSource={params.utm_source}
       />

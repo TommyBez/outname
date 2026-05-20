@@ -41,10 +41,16 @@ async function listAllLiveFilePaths(
   pathPrefix?: string
 ): Promise<string[]> {
   const prefix = normalizeSandboxPrefix(pathPrefix)
-  const list = await sandbox.runCommand({
-    cmd: 'find',
-    args: [FILE_TOOL_SANDBOX_ROOT, '-type', 'f', '-print'],
-  })
+  let list: Awaited<ReturnType<Sandbox['runCommand']>>
+  try {
+    list = await sandbox.runCommand({
+      cmd: 'find',
+      args: [FILE_TOOL_SANDBOX_ROOT, '-type', 'f', '-print'],
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    throw new Error(`listFiles: ${message}`)
+  }
   const stdout = await list.stdout()
   return stdout
     .split('\n')

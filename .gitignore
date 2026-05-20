@@ -16,3 +16,9 @@ node_modules
 .DS_Store
 .vercel
 *.tsbuildinfo
+
+# Typefully config (contains API key)
+.typefully/
+
+.workflow-data
+.workflow-vitest

@@ -17,8 +17,8 @@
       "!components/ui/*",
       "!components/ai-elements/*",
       "!next-env.d.ts",
-      ".agents/**/*",
-      ".claude/**/*"
+      "!.agents",
+      "!.claude"
     ]
   }
 }

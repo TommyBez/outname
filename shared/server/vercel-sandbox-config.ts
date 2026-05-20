@@ -1,4 +1,4 @@
-const APP_TAG = 'personal-assistant-agent'
+const APP_TAG = 'outname'
 const DEFAULT_ENV_TAG = 'development'
 
 function sandboxEnv(): string {
@@ -57,6 +57,18 @@ export function brokeredHttpSandboxTags(input: {
     ...baseSandboxTags(),
     kind: 'brokered-http',
     provider: input.provider,
+    runId: input.runId,
+  }
+}
+
+export function repoWorkspaceSandboxTags(input: {
+  attachmentToolId: string
+  runId: string
+}): Record<string, string> {
+  return {
+    ...baseSandboxTags(),
+    kind: 'repo-workspace',
+    attachmentToolId: input.attachmentToolId,
     runId: input.runId,
   }
 }

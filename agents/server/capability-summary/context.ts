@@ -8,7 +8,9 @@ import {
 import { db } from '@/shared/db'
 import { agent, agentTools } from '@/shared/db/schema'
 import { getAgentMemoryFile } from '@/shared/server/data'
+import { providerBackedCapabilities } from '@/tools/catalog/capabilities'
 import { getMaintainerTool } from '@/tools/catalog/registry'
+import type { MaintainerTool } from '@/tools/catalog/types'
 import { childAgentIdFromSubAgentRow } from '@/tools/sub-agents/sub-agent-tool-name'
 import type {
   AttachedCapability,
@@ -25,6 +27,7 @@ export async function loadSummaryContext(input: {
     .select({
       capabilitySummary: agent.capabilitySummary,
       name: agent.name,
+      userId: agent.userId,
     })
     .from(agent)
     .where(eq(agent.id, input.agentId))
@@ -43,6 +46,7 @@ export async function loadSummaryContext(input: {
     attached,
     name: row.name,
     previousSummary: row.capabilitySummary,
+    userId: row.userId,
   }
 }
 
@@ -90,10 +94,7 @@ async function loadAttachedCapabilities(
     if (row.kind === 'maintainer') {
       const tool = getMaintainerTool(row.toolId)
       if (tool) {
-        attached.push({
-          name: tool.displayName,
-          description: tool.description,
-        })
+        attached.push(describeMaintainerCapability(tool))
       }
       continue
     }
@@ -111,6 +112,61 @@ async function loadAttachedCapabilities(
     attached.push(subAgent)
   }
   return attached
+}
+
+function describeMaintainerCapability(
+  tool: MaintainerTool
+): AttachedCapability {
+  const providerNote = providerConnectionNote(tool)
+  const repoWorkspace = tool.capabilities.find(
+    (capability) => capability.kind === 'repo_workspace'
+  )
+  if (!repoWorkspace) {
+    return {
+      name: tool.displayName,
+      description: appendCapabilityNotes(tool.description, providerNote),
+    }
+  }
+
+  return {
+    name: tool.displayName,
+    description: appendCapabilityNotes(
+      tool.description,
+      providerNote,
+      'Creates a live repository workspace at execute time; it is not snapshot-backed. GitHub HTTPS auth is brokered by the sandbox network policy when writable, so no token, username, password, or credential env var is available or needed inside the workspace.'
+    ),
+  }
+}
+
+function providerConnectionNote(tool: MaintainerTool): string | null {
+  const providers = providerBackedCapabilities(tool.capabilities).map(
+    (capability) => capability.provider
+  )
+  if (providers.length === 0) {
+    return null
+  }
+
+  return `Uses ${formatProviderList(providers)} connection${providers.length === 1 ? '' : 's'}; credentials are brokered and are not available as tool input or environment variables.`
+}
+
+function appendCapabilityNotes(
+  description: string,
+  ...notes: Array<string | null>
+): string {
+  return [description, ...notes.filter((note): note is string => Boolean(note))]
+    .join(' ')
+    .trim()
+}
+
+function formatProviderList(providers: string[]): string {
+  const unique = Array.from(new Set(providers))
+  if (unique.length === 1) {
+    return `the ${unique[0]}`
+  }
+  if (unique.length === 2) {
+    return `the ${unique[0]} and ${unique[1]}`
+  }
+  return `the ${unique.slice(0, -1).join(', ')}, and ${unique.at(-1)}`
 }
 
 async function loadSubAgentCapabilities(

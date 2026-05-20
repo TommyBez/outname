@@ -3,9 +3,12 @@ import {
   eventActivityNamespace,
   replyNamespaceForEvent,
 } from '@/agent-runtime/server/agent-event-keys'
+import { reconcileActiveAgentEvent } from '@/agent-runtime/server/agent-event-reconciliation'
+import type { AgentEventPayloads } from '@/agent-runtime/server/agent-event-store'
 import { getAgentEvent } from '@/agent-runtime/server/agent-event-store'
 import type { AgentChatChunk } from '@/agent-runtime/server/chat-status'
 import type { RunEvent } from '@/agent-runtime/server/run-events'
+import { WORKFLOW_STREAM_UNAVAILABLE_MESSAGE } from '@/agent-runtime/shared/workflow-stream-messages'
 import { getSession } from '@/auth/server/auth-guard'
 
 export async function GET(
@@ -26,14 +29,26 @@ export async function GET(
     return jsonError(409, 'event has not started yet')
   }
 
+  const run = getRun(event.workflowRunId)
+  try {
+    await run.status
+  } catch (err) {
+    if (!(err instanceof Error && err.name === 'WorkflowRunNotFoundError')) {
+      throw err
+    }
+    if (event.status === 'starting' || event.status === 'running') {
+      await reconcileActiveAgentEvent(event)
+    }
+    // 503 (not 409) so clients do not treat a missing run as "still starting".
+    return jsonError(503, WORKFLOW_STREAM_UNAVAILABLE_MESSAGE)
+  }
+
   const streamKind = readStreamKind(request)
   const namespace =
     streamKind === 'activity'
       ? eventActivityNamespace(event.workflowRunId)
-      : replyNamespaceForEvent(event.id)
-  const source = getRun(event.workflowRunId).getReadable<
-    AgentChatChunk | RunEvent
-  >({
+      : outputNamespaceForEvent(event)
+  const source = run.getReadable<AgentChatChunk | RunEvent>({
     namespace,
     startIndex: 0,
   })
@@ -63,6 +78,21 @@ function readStreamKind(request: Request): 'activity' | 'output' {
     return 'activity'
   }
   return 'output'
+}
+
+function outputNamespaceForEvent(
+  event: NonNullable<Awaited<ReturnType<typeof getAgentEvent>>>
+): string {
+  if (event?.type === 'invocation') {
+    const payload = event.payload as AgentEventPayloads['invocation']
+    if (
+      typeof payload?.streamToken === 'string' &&
+      payload.streamToken.length > 0
+    ) {
+      return payload.streamToken
+    }
+  }
+  return replyNamespaceForEvent(event.id)
 }
 
 function jsonError(status: number, error: string): Response {
