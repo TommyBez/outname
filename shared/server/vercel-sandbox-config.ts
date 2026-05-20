@@ -60,3 +60,15 @@ export function brokeredHttpSandboxTags(input: {
     runId: input.runId,
   }
 }
+
+export function repoWorkspaceSandboxTags(input: {
+  attachmentToolId: string
+  runId: string
+}): Record<string, string> {
+  return {
+    ...baseSandboxTags(),
+    kind: 'repo-workspace',
+    attachmentToolId: input.attachmentToolId,
+    runId: input.runId,
+  }
+}

@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
 import { listAgentEventSummaries } from '@/agent-runtime/server/agent-event-summaries'
+import { TERMINAL_LEDGER_EVENTS_PER_TYPE } from '@/agent-runtime/shared/compact-ledger-events'
 import { AgentEventsWorkspace } from '@/agents/components/agent-events-workspace'
 import { requireSession } from '@/auth/server/auth-guard'
 import { getCachedAgentByIdForUser } from '@/shared/server/data'
@@ -20,6 +21,7 @@ export default async function AgentEventsPage({ params }: { params: Params }) {
   const events = await listAgentEventSummaries({
     agentId: agent.id,
     limit: 50,
+    terminalEventsPerType: TERMINAL_LEDGER_EVENTS_PER_TYPE,
   })
 
   return (

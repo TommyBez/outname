@@ -5,6 +5,7 @@ import type { z } from 'zod'
 // `configSchema`, and per-call decisions in `inputSchema`.
 export type ToolCapability =
   | { kind: 'brokered_http'; provider: string }
+  | { kind: 'repo_workspace'; provider: string }
   | { kind: 'sdk'; provider: string }
   | { kind: 'tool_sandbox'; manifest: string }
   | { kind: 'none' }
