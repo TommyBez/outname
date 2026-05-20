@@ -22,7 +22,7 @@ describe('validateConnectorInfrastructureForEnv', () => {
     ).toThrow('OAuth connectors require KV_REST_API_URL')
   })
 
-  it('accepts Vercel KV Redis env vars for OAuth connectors', () => {
+  it('accepts KV_REST_API Redis env vars for OAuth connectors', () => {
     expect(() =>
       validateConnectorInfrastructureForEnv([oauthConnector], {
         KV_REST_API_TOKEN: 'token_test',

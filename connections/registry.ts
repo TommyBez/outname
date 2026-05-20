@@ -81,11 +81,11 @@ export function validateConnectorInfrastructureForEnv(
   connectors: readonly Connector[],
   env: Record<string, string | undefined>
 ): void {
-  const hasUpstashRedis = Boolean(env.KV_REST_API_URL && env.KV_REST_API_TOKEN)
+  const hasKvRedis = Boolean(env.KV_REST_API_URL && env.KV_REST_API_TOKEN)
   if (
     env.NODE_ENV !== 'test' &&
     connectors.some((connector) => connector.authKind === 'oauth2') &&
-    !hasUpstashRedis
+    !hasKvRedis
   ) {
     throw new Error(
       'OAuth connectors require KV_REST_API_URL/KV_REST_API_TOKEN.'
