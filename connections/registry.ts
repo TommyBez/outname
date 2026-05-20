@@ -67,9 +67,7 @@ for (const connector of CONNECTORS) {
   CONNECTOR_BY_ID.set(connector.connectorId, connector)
 }
 
-if (process.env.NEXT_PHASE !== 'phase-production-build') {
-  validateConnectorInfrastructureForEnv(CONNECTORS, process.env)
-}
+validateConnectorInfrastructureForEnv(CONNECTORS, process.env)
 
 export function listConnectors(): readonly Connector[] {
   return CONNECTORS
