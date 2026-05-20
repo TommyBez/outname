@@ -1,20 +1,41 @@
 import 'server-only'
 
 import { createElement, type ReactElement } from 'react'
+import { WaitlistAdminSignupEmail } from '@/emails/waitlist-admin-signup-email'
 import { WaitlistConfirmationEmail } from '@/emails/waitlist-confirmation-email'
 import { WaitlistInviteEmail } from '@/emails/waitlist-invite-email'
 import { sendResendReactEmail } from '@/shared/server/resend'
 import { siteConfig } from '@/shared/server/site-metadata'
+import { getWaitlistAdminEmail } from '@/waitlist/server/admin-email-config'
+import {
+  WAITLIST_PRIMARY_INTEREST_OPTIONS,
+  WAITLIST_PROFILE_TYPE_OPTIONS,
+  type WaitlistPrimaryInterest,
+  type WaitlistProfileType,
+} from '@/waitlist/server/constants'
 
 function getBaseUrl(): string {
   return process.env.BETTER_AUTH_URL || siteConfig.url
 }
 
 function createWaitlistEmailIdempotencyKey(
-  eventType: 'waitlist-confirmation' | 'waitlist-invite',
+  eventType:
+    | 'waitlist-admin-signup'
+    | 'waitlist-confirmation'
+    | 'waitlist-invite',
   entityId: string
 ): string {
   return `${eventType}/${encodeURIComponent(entityId.toLowerCase())}`
+}
+
+function getWaitlistOptionLabel<T extends { label: string; value: string }>(
+  options: readonly T[],
+  value?: string | null
+): string | null {
+  if (!value) {
+    return null
+  }
+  return options.find((option) => option.value === value)?.label ?? value
 }
 
 function getWaitlistFromEmail(): string {
@@ -86,6 +107,57 @@ export async function sendWaitlistInviteEmail(input: { email: string }) {
     react: createElement(WaitlistInviteEmail, {
       loginUrl: `${getBaseUrl()}/login`,
       logoUrl: getWaitlistLogoUrl(),
+    }),
+  })
+}
+
+export interface WaitlistAdminSignupNotificationInput {
+  email: string
+  entryId: string
+  name?: string | null
+  primaryInterest?: WaitlistPrimaryInterest | null
+  profileType?: WaitlistProfileType | null
+  source?: string | null
+  useCase?: string | null
+  utmCampaign?: string | null
+  utmMedium?: string | null
+  utmSource?: string | null
+}
+
+export async function sendWaitlistAdminSignupNotification(
+  input: WaitlistAdminSignupNotificationInput
+) {
+  const adminEmail = getWaitlistAdminEmail()
+  if (!adminEmail) {
+    return
+  }
+
+  const adminUrl = new URL('/settings/waitlist', getBaseUrl()).toString()
+  await sendResendEmail({
+    idempotencyKey: createWaitlistEmailIdempotencyKey(
+      'waitlist-admin-signup',
+      input.entryId
+    ),
+    to: adminEmail,
+    subject: `New waitlist signup: ${input.email}`,
+    react: createElement(WaitlistAdminSignupEmail, {
+      adminUrl,
+      email: input.email,
+      logoUrl: getWaitlistLogoUrl(),
+      name: input.name,
+      primaryInterestLabel: getWaitlistOptionLabel(
+        WAITLIST_PRIMARY_INTEREST_OPTIONS,
+        input.primaryInterest
+      ),
+      profileTypeLabel: getWaitlistOptionLabel(
+        WAITLIST_PROFILE_TYPE_OPTIONS,
+        input.profileType
+      ),
+      source: input.source,
+      useCase: input.useCase,
+      utmCampaign: input.utmCampaign,
+      utmMedium: input.utmMedium,
+      utmSource: input.utmSource,
     }),
   })
 }

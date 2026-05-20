@@ -5,7 +5,10 @@ import {
   WAITLIST_PRIMARY_INTERESTS,
   WAITLIST_PROFILE_TYPES,
 } from '@/waitlist/server/constants'
-import { sendWaitlistConfirmationEmail } from '@/waitlist/server/email'
+import {
+  sendWaitlistAdminSignupNotification,
+  sendWaitlistConfirmationEmail,
+} from '@/waitlist/server/email'
 import { isWaitlistPublicEnabled } from '@/waitlist/server/public-config'
 import { getWaitlistRateLimiter } from '@/waitlist/server/rate-limit'
 import { submitWaitlistEntry } from '@/waitlist/server/service'
@@ -100,6 +103,17 @@ export async function POST(request: NextRequest) {
       } catch (error) {
         console.error(
           '[waitlist] confirmation email send failed',
+          result.entryId,
+          error
+        )
+      }
+    }
+    if (result.adminNotification) {
+      try {
+        await sendWaitlistAdminSignupNotification(result.adminNotification)
+      } catch (error) {
+        console.error(
+          '[waitlist] admin signup notification failed',
           result.entryId,
           error
         )
