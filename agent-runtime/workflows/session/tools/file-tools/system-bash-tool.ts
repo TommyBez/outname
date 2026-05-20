@@ -1,4 +1,3 @@
-import type { Sandbox as BashToolSandbox } from 'bash-tool'
 import {
   getSystemSandbox,
   SYSTEM_SANDBOX_ROOT,
@@ -10,9 +9,40 @@ import {
 } from '../sandbox-file-helpers/paths'
 import { readLiveFile } from '../sandbox-file-helpers/read'
 
+interface BashToolSandboxAdapter {
+  executeCommand(command: string): Promise<{
+    exitCode: number
+    stderr: string
+    stdout: string
+  }>
+  readFile(path: string): Promise<string>
+  writeFiles(
+    files: Array<{
+      content: string | Buffer
+      path: string
+    }>
+  ): Promise<void>
+}
+
 export async function createSystemBashTool(input: { agentId: string }) {
   const sandbox = await getSystemSandbox(input.agentId)
-  const { createBashTool } = await import('bash-tool')
+  const { createBashTool } = (await import(
+    bashToolModuleName()
+  )) as unknown as {
+    createBashTool(args: {
+      destination: string
+      maxFiles: number
+      promptOptions: { toolPrompt: string }
+      sandbox: BashToolSandboxAdapter
+    }): Promise<{
+      tools: {
+        readFile: { execute(input: { path: string }): Promise<unknown> }
+        writeFile: {
+          execute(input: { content: string; path: string }): Promise<unknown>
+        }
+      }
+    }>
+  }
   return await createBashTool({
     destination: SYSTEM_SANDBOX_ROOT,
     maxFiles: 0,
@@ -24,9 +54,13 @@ export async function createSystemBashTool(input: { agentId: string }) {
   })
 }
 
+function bashToolModuleName(): string {
+  return 'bash-tool'
+}
+
 function createSystemSandboxAdapter(input: {
   sandbox: Awaited<ReturnType<typeof getSystemSandbox>>
-}): BashToolSandbox {
+}): BashToolSandboxAdapter {
   return {
     executeCommand() {
       return Promise.resolve({

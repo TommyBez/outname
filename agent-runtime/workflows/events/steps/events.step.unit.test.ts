@@ -9,6 +9,7 @@ const {
   mockSetEventPublisherWorkflowRunId,
   mockStartNextQueuedForConcurrencyKey,
   mockStopAllBrokeredHttpSandboxesForRun,
+  mockStopAllRepoWorkspacesForRun,
   mockStopAllToolSandboxesForRun,
 } = vi.hoisted(() => ({
   mockGetAgentEvent: vi.fn(),
@@ -19,8 +20,11 @@ const {
   mockSetEventPublisherWorkflowRunId: vi.fn(),
   mockStartNextQueuedForConcurrencyKey: vi.fn(),
   mockStopAllBrokeredHttpSandboxesForRun: vi.fn(),
+  mockStopAllRepoWorkspacesForRun: vi.fn(),
   mockStopAllToolSandboxesForRun: vi.fn(),
 }))
+
+vi.mock('server-only', () => ({}))
 
 vi.mock('@/agent-runtime/server/agent-event-store', () => ({
   getAgentEvent: mockGetAgentEvent,
@@ -40,6 +44,10 @@ vi.mock('@/agent-runtime/server/agent-events', () => ({
 
 vi.mock('@/tools/runtime/brokered-http/sandbox', () => ({
   stopAllBrokeredHttpSandboxesForRun: mockStopAllBrokeredHttpSandboxesForRun,
+}))
+
+vi.mock('@/tools/runtime/repo-workspace/sandbox', () => ({
+  stopAllRepoWorkspacesForRun: mockStopAllRepoWorkspacesForRun,
 }))
 
 vi.mock('@/tools/sandbox-runtime/runtime', () => ({
@@ -132,6 +140,7 @@ describe('cleanupEventResources', () => {
 
     expect(mockStopAllToolSandboxesForRun).toHaveBeenCalledTimes(1)
     expect(mockStopAllBrokeredHttpSandboxesForRun).toHaveBeenCalledTimes(1)
+    expect(mockStopAllRepoWorkspacesForRun).toHaveBeenCalledTimes(1)
     expect(mockRefreshAgentFileCache).toHaveBeenCalledWith('agent_123')
   })
 

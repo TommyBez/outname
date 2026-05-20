@@ -1,6 +1,7 @@
 import { getConnector } from '@/connections/registry'
 import { getAgentsForUser, getUserConnections } from '@/shared/server/data'
 import { describeConfigSchema } from '@/shared/server/zod-config-fields'
+import { providerBackedCapabilities } from '@/tools/catalog/capabilities'
 import { listMaintainerTools } from '@/tools/catalog/registry'
 
 export async function listAvailableTools(userId: string) {
@@ -14,16 +15,9 @@ export async function listAvailableTools(userId: string) {
 
   return {
     maintainerTools: listMaintainerTools().map((tool) => {
-      const providers = tool.capabilities
-        .filter(
-          (
-            capability
-          ): capability is {
-            kind: 'brokered_http' | 'sdk'
-            provider: string
-          } => capability.kind === 'brokered_http' || capability.kind === 'sdk'
-        )
-        .map((capability) => capability.provider)
+      const providers = providerBackedCapabilities(tool.capabilities).map(
+        (capability) => capability.provider
+      )
       return {
         toolId: tool.id,
         displayName: tool.displayName,
