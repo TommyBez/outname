@@ -1,5 +1,6 @@
 import type { AgentEventSummary } from '@/agent-runtime/shared/event-types'
 import { isTerminalAgentEventStatus } from '@/agent-runtime/shared/event-types'
+import { isWorkflowStreamUnavailableMessage } from '@/agent-runtime/shared/workflow-stream-messages'
 
 export const STREAM_MAX_ATTEMPTS = 5
 export const STREAM_PENDING_RETRY_MS = 1500
@@ -44,6 +45,13 @@ export function resolveTranscriptOutcome(
   if (outputError && !hasMessages) {
     if (isTerminalAgentEventStatus(event.status)) {
       return { kind: 'ready' }
+    }
+    if (isWorkflowStreamUnavailableMessage(outputError)) {
+      return {
+        kind: 'partial',
+        message: null,
+        warning: outputError,
+      }
     }
     return { kind: 'failed', message: outputError }
   }

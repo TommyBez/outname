@@ -3,11 +3,11 @@ import {
   eventActivityNamespace,
   replyNamespaceForEvent,
 } from '@/agent-runtime/server/agent-event-keys'
-import { reconcileActiveAgentEvent } from '@/agent-runtime/server/agent-event-reconciliation'
 import type { AgentEventPayloads } from '@/agent-runtime/server/agent-event-store'
 import { getAgentEvent } from '@/agent-runtime/server/agent-event-store'
 import type { AgentChatChunk } from '@/agent-runtime/server/chat-status'
 import type { RunEvent } from '@/agent-runtime/server/run-events'
+import { WORKFLOW_STREAM_UNAVAILABLE_MESSAGE } from '@/agent-runtime/shared/workflow-stream-messages'
 import { getSession } from '@/auth/server/auth-guard'
 
 export async function GET(
@@ -35,11 +35,8 @@ export async function GET(
     if (!(err instanceof Error && err.name === 'WorkflowRunNotFoundError')) {
       throw err
     }
-    if (event.status === 'starting' || event.status === 'running') {
-      await reconcileActiveAgentEvent(event)
-    }
     // 503 (not 409) so clients do not treat a missing run as "still starting".
-    return jsonError(503, 'workflow unavailable in this environment')
+    return jsonError(503, WORKFLOW_STREAM_UNAVAILABLE_MESSAGE)
   }
 
   const streamKind = readStreamKind(request)

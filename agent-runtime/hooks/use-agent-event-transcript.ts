@@ -30,6 +30,7 @@ import {
   flushNdjsonBuffer,
   parseNdjsonChunk,
 } from '@/agent-runtime/shared/ndjson'
+import { WORKFLOW_STREAM_UNAVAILABLE_MESSAGE } from '@/agent-runtime/shared/workflow-stream-messages'
 
 export type AgentEventTranscriptStatus =
   | 'queued'
@@ -409,7 +410,7 @@ async function openEventStream<T>(input: {
   if (isEventStreamUnavailableHttpStatus(response.status)) {
     const message = await readStreamErrorMessage(response)
     throw new StreamUnavailableError(
-      message ?? 'Workflow is unavailable in this environment.'
+      message ?? WORKFLOW_STREAM_UNAVAILABLE_MESSAGE
     )
   }
   if (!response.ok) {

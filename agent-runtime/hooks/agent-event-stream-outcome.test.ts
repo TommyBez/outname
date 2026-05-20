@@ -66,6 +66,22 @@ test('resolveTranscriptOutcome warns when only activity stream fails', () => {
   })
 })
 
+test('resolveTranscriptOutcome treats unavailable stream as partial for live events', () => {
+  const outcome = resolveTranscriptOutcome({
+    activityError: null,
+    event: baseEvent,
+    hasMessages: false,
+    outputError:
+      'Workflow stream is no longer available. Vercel retains workflow streams for 1–30 days depending on your plan; configure WORKFLOW_STREAM_RETENTION_DAYS to match yours.',
+  })
+  expect(outcome).toEqual({
+    kind: 'partial',
+    message: null,
+    warning:
+      'Workflow stream is no longer available. Vercel retains workflow streams for 1–30 days depending on your plan; configure WORKFLOW_STREAM_RETENTION_DAYS to match yours.',
+  })
+})
+
 test('backoffMs caps at the final interval', () => {
   expect(backoffMs(0)).toBe(1000)
   expect(backoffMs(99)).toBe(8000)
