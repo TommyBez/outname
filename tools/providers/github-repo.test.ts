@@ -40,7 +40,7 @@ const buildGithubRepoTool = (config: Record<string, unknown>) =>
     runId: 'run_test',
     toolId: 'github_repo',
     userId: 'user_test',
-  }) as Record<string, BuiltTool>
+  }) as unknown as Record<string, BuiltTool>
 
 describe('githubRepoTool', () => {
   beforeEach(() => {

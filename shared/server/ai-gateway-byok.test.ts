@@ -30,7 +30,13 @@ const {
   const mockDbUpdateSet = vi.fn(() => ({ where: mockDbUpdateWhere }))
   const mockDbUpdate = vi.fn(() => ({ set: mockDbUpdateSet }))
 
-  const mockGetUpstashRedis = vi.fn(() => ({
+  const mockGetUpstashRedis = vi.fn<
+    () => {
+      del: typeof mockRedisDel
+      get: typeof mockRedisGet
+      set: typeof mockRedisSet
+    } | null
+  >(() => ({
     del: mockRedisDel,
     get: mockRedisGet,
     set: mockRedisSet,

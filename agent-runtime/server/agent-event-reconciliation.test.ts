@@ -25,6 +25,7 @@ const baseEvent: AgentEvent = {
   claimExpiresAt: null,
   completedAt: null,
   concurrencyKey: 'heartbeat:agent_1',
+  createdAt: new Date('2026-05-14T09:00:00.000Z'),
   heartbeatAt: null,
   id: 'evt_1',
   idempotencyKey: 'key_1',
