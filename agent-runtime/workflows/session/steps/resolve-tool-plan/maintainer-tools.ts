@@ -7,7 +7,7 @@ import type { MaintainerTool, Reconnect } from '@/tools/catalog/types'
 import {
   stripApiKeyOverride,
   toConfigRecord,
-  withApiKeyOverride,
+  withStoredApiKeyOverride,
 } from '@/tools/runtime/define-maintainer-tool/api-key-override'
 import { getToolSandboxManifest } from '@/tools/sandboxes/registry'
 import type { MaintainerRow, PlannedTool } from './types'
@@ -69,7 +69,7 @@ function parseMaintainerConfig(
     return {
       kind: 'parsed',
       config: {},
-      toolConfig: withApiKeyOverride({}, row.config),
+      toolConfig: withStoredApiKeyOverride({}, row.config),
     }
   }
   const result = tool.configSchema.safeParse(
@@ -95,7 +95,7 @@ function parseMaintainerConfig(
   return {
     kind: 'parsed',
     config,
-    toolConfig: withApiKeyOverride(config, row.config),
+    toolConfig: withStoredApiKeyOverride(config, row.config),
   }
 }
 

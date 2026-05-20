@@ -92,7 +92,7 @@ export function createRuntimeContext(input: {
     http: {
       async request(provider, request) {
         const { brokeredHttpRequest } = await import('../brokered-http')
-        const apiKeyOverride = readApiKeyOverride(toolConfig)
+        const apiKeyOverride = await readApiKeyOverride(toolConfig)
         return await brokeredHttpRequest({
           agentId,
           attachmentToolId: attachmentToolId ?? toolId,

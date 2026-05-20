@@ -8,11 +8,17 @@ import {
 } from './index'
 import type { BundleChildToolArgs } from './types'
 
-const { mockBrokeredHttpRequest } = vi.hoisted(() => ({
+const { mockBrokeredHttpRequest, mockDecryptCredential } = vi.hoisted(() => ({
   mockBrokeredHttpRequest: vi.fn(),
+  mockDecryptCredential: vi.fn(),
 }))
 
 vi.mock('server-only', () => ({}))
+
+vi.mock('@/connections/crypto', () => ({
+  decryptCredential: mockDecryptCredential,
+  encryptCredential: vi.fn(),
+}))
 
 vi.mock('../brokered-http', () => ({
   brokeredHttpRequest: mockBrokeredHttpRequest,
@@ -106,6 +112,7 @@ test('bundle child tools inherit the bundle sandbox manifest id', async () => {
 
 test('brokered tools receive apiKeyOverride from preserved tool config', async () => {
   let executeConfig: unknown
+  mockDecryptCredential.mockResolvedValueOnce('override-token')
   mockBrokeredHttpRequest.mockResolvedValueOnce({
     bodyText: '{}',
     headers: {},
@@ -139,7 +146,12 @@ test('brokered tools receive apiKeyOverride from preserved tool config', async (
   const built = apiTool.build({
     agentId: 'agent_test',
     config: {
-      apiKeyOverride: '  override-token  ',
+      _secrets: {
+        apiKeyOverride: {
+          encrypted: 'encrypted-token',
+          version: 1,
+        },
+      },
       readOnly: true,
     },
     conversationId: null,

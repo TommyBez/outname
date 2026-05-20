@@ -17,7 +17,11 @@ import {
   type SubAgentCatalogEntry,
 } from '@/tools/components/sub-agent-catalog'
 import { ToolCatalog } from '@/tools/components/tool-catalog'
-import type { ToolCatalogEntry } from '@/tools/components/tool-catalog/types'
+import type {
+  ToolCatalogEntry,
+  ToolConfigField,
+} from '@/tools/components/tool-catalog/types'
+import { redactApiKeyOverride } from '@/tools/runtime/define-maintainer-tool/api-key-override'
 import { getLatestBuildForManifest } from '@/tools/sandbox-runtime/build'
 import {
   childAgentIdFromSubAgentRow,
@@ -26,6 +30,16 @@ import {
 } from '@/tools/sub-agents/sub-agent-tool-name'
 
 type Params = Promise<{ agentId: string }>
+
+const API_KEY_OVERRIDE_FIELD: ToolConfigField = {
+  name: 'apiKeyOverride',
+  label: 'API Key Override',
+  type: 'password',
+  required: false,
+  placeholder: 'Leave blank to keep the saved override',
+  description:
+    'Optional per-attachment API key. The value is encrypted at rest and is never shown after saving.',
+}
 
 export default function AgentToolsPage({ params }: { params: Params }) {
   return (
@@ -60,8 +74,14 @@ async function Resolved({ params }: { params: Params }) {
 
   const catalog: ToolCatalogEntry[] = listMaintainerTools().map((t) => {
     const attachedRow = attachedByMaintainerToolId.get(t.id)
+    const attachedConfig = attachedRow
+      ? redactApiKeyOverride(attachedRow.config)
+      : undefined
     const providers = providerBackedCapabilities(t.capabilities).map(
       (r) => r.provider
+    )
+    const hasBrokeredHttp = t.capabilities.some(
+      (r) => r.kind === 'brokered_http'
     )
     const sandboxManifest =
       t.capabilities.find((r) => r.kind === 'tool_sandbox')?.manifest ?? null
@@ -69,16 +89,12 @@ async function Resolved({ params }: { params: Params }) {
       toolId: t.id,
       displayName: t.displayName,
       description: t.description,
-      exposedTools: [
-        ...t.resolveExposedTools(
-          (attachedRow?.config ?? undefined) as
-            | Record<string, unknown>
-            | undefined
-        ),
-      ],
+      exposedTools: [...t.resolveExposedTools(attachedConfig)],
       providers,
       toolSandboxManifest: sandboxManifest,
-      configFields: describeConfigSchema(t.configSchema),
+      configFields: hasBrokeredHttp
+        ? [...describeConfigSchema(t.configSchema), API_KEY_OVERRIDE_FIELD]
+        : describeConfigSchema(t.configSchema),
     }
   })
 
@@ -149,7 +165,7 @@ async function Resolved({ params }: { params: Params }) {
 
   const attached = maintainerAttachedRows.map((r) => ({
     toolId: r.toolId,
-    config: (r.config ?? {}) as Record<string, unknown>,
+    config: redactApiKeyOverride(r.config),
     status: (r.status as 'connected' | 'pending') ?? 'connected',
     pendingBuildId:
       r.status === 'pending' && r.toolSandboxManifest

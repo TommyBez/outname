@@ -43,10 +43,22 @@ export function ConfigField({
           onChange={(event) => onChange(event.target.value)}
           placeholder={field.placeholder}
           required={field.required}
-          type={field.type === 'number' ? 'number' : 'text'}
+          type={inputTypeFor(field.type)}
           value={value}
         />
       )}
     </div>
   )
+}
+
+function inputTypeFor(
+  type: ToolConfigField['type']
+): 'number' | 'password' | 'text' {
+  if (type === 'number') {
+    return 'number'
+  }
+  if (type === 'password') {
+    return 'password'
+  }
+  return 'text'
 }

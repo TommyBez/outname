@@ -11,7 +11,7 @@ import type {
 import {
   stripApiKeyOverride,
   toConfigRecord,
-  withApiKeyOverride,
+  withStoredApiKeyOverride,
 } from './api-key-override'
 import { resolveBundleChildren, toBundleExposedTools } from './bundle-tools'
 import { createRuntimeContext } from './runtime-context'
@@ -87,7 +87,7 @@ export function defineMaintainerTool<
     },
     build(ctx) {
       const config = configSchema.parse(stripApiKeyOverride(ctx.config))
-      const toolConfig = withApiKeyOverride(
+      const toolConfig = withStoredApiKeyOverride(
         toConfigRecord(config),
         ctx.toolConfig ?? ctx.config
       )
@@ -134,7 +134,7 @@ export function defineToolBundle<TConfig = Record<string, never>>(
     },
     build(ctx): BuiltMaintainerTool {
       const config = configSchema.parse(stripApiKeyOverride(ctx.config))
-      const toolConfig = withApiKeyOverride(
+      const toolConfig = withStoredApiKeyOverride(
         toConfigRecord(config),
         ctx.toolConfig ?? ctx.config
       )

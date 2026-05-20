@@ -7,7 +7,7 @@ export interface ToolConfigField {
   name: string
   placeholder?: string
   required: boolean
-  type: 'text' | 'number' | 'boolean'
+  type: 'text' | 'number' | 'boolean' | 'password'
 }
 
 export interface ToolCatalogEntry {
