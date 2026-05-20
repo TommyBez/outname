@@ -19,3 +19,6 @@ node_modules
 
 # Typefully config (contains API key)
 .typefully/
+
+.workflow-data
+.workflow-vitest

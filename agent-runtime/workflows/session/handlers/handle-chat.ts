@@ -4,7 +4,7 @@ import {
   type UIMessage,
   type UIMessageChunk,
 } from 'ai'
-import { getWorkflowMetadata, getWritable } from 'workflow'
+import { getWritable } from 'workflow'
 import { startupSystemSandbox } from '@/agent-runtime/server/agent-sandbox'
 import { emitActivity } from '@/agent-runtime/server/run-events'
 import { getAgentById } from '@/agent-runtime/server/start-agent-run'
@@ -12,6 +12,7 @@ import { formatBudgetExceededMessage } from '@/budgets/server/errors'
 import { compactSubAgentToolOutputsForModel } from '@/chat/server/chat-model'
 import { maybeGenerateConversationTitle } from '@/chat/workflows/steps/generate-conversation-title'
 import { persistAssistantTurn } from '@/chat/workflows/steps/persist-assistant-turn'
+import { currentWorkflowRunId } from '@/shared/server/workflow-run-id'
 import { buildAgent } from '../agent-factory'
 import {
   appendStepLimitNoticeToMessages,
@@ -43,7 +44,7 @@ export async function handleChat(input: {
 }): Promise<void> {
   const { agentId, conversationId, modelMessages, replyToken, uiMessages } =
     input
-  const sessionRunId = await currentSessionRunId(conversationId)
+  const sessionRunId = currentWorkflowRunId()
 
   const writable = getWritable<UIMessageChunk>({
     namespace: replyToken,
@@ -200,20 +201,6 @@ export async function handleChat(input: {
         // Best-effort close so client streams do not hang on failures.
       })
     }
-  }
-}
-
-async function currentSessionRunId(fallback: string): Promise<string> {
-  'use step'
-  await Promise.resolve()
-  try {
-    const metadata = getWorkflowMetadata() as {
-      runId?: string
-      workflowRunId?: string
-    }
-    return metadata.runId ?? metadata.workflowRunId ?? fallback
-  } catch {
-    return fallback
   }
 }
 

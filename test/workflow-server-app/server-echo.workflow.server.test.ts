@@ -17,6 +17,7 @@ describe('serverEchoWorkflow', () => {
     await expect(run.returnValue).resolves.toEqual({
       documentId: 'doc-server',
       doubled: 42,
+      workflowRunId: run.runId,
     })
     await expect(run.status).resolves.toBe('completed')
   })

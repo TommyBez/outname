@@ -58,10 +58,14 @@ describe('describeConfigSchema', () => {
         .number()
         .default(30)
         .describe('Maximum wait before aborting.'),
-      writeAccess: z
+      writeAccessInnerDescription: z
         .boolean()
         .describe('Allow write operations for this attachment.')
         .optional(),
+      writeAccessOuterDescription: z
+        .boolean()
+        .optional()
+        .describe('Allow write operations for this attachment after optional.'),
     })
 
     expect(describeConfigSchema(schema)).toEqual([
@@ -84,8 +88,17 @@ describe('describeConfigSchema', () => {
       {
         defaultValue: undefined,
         description: 'Allow write operations for this attachment.',
-        label: 'Write Access',
-        name: 'writeAccess',
+        label: 'Write Access Inner Description',
+        name: 'writeAccessInnerDescription',
+        required: false,
+        type: 'boolean',
+      },
+      {
+        defaultValue: undefined,
+        description:
+          'Allow write operations for this attachment after optional.',
+        label: 'Write Access Outer Description',
+        name: 'writeAccessOuterDescription',
         required: false,
         type: 'boolean',
       },
