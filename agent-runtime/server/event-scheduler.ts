@@ -120,14 +120,14 @@ async function recoverExpiredStartingEvents(
     if (reconciled.status !== 'starting') {
       continue
     }
-    const alive = event.workflowRunId
-      ? await isWorkflowRunAlive(event.workflowRunId)
+    const alive = reconciled.workflowRunId
+      ? await isWorkflowRunAlive(reconciled.workflowRunId)
       : false
     if (alive) {
       continue
     }
     await resetStartingEvent({
-      eventId: event.id,
+      eventId: reconciled.id,
       error: 'starting claim expired before workflow became healthy',
     })
     counters.startingRequeued += 1
