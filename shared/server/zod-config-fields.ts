@@ -66,7 +66,9 @@ export function describeConfigSchema(
   const fields: ConfigField[] = []
   for (const [name, raw] of Object.entries(shape)) {
     const { inner, optional, defaultValue } = unwrap(raw)
-    const description = (raw as unknown as { description?: string }).description
+    const description =
+      (raw as unknown as { description?: string }).description ??
+      (inner as unknown as { description?: string }).description
     const type = classify(inner)
 
     fields.push({
