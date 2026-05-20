@@ -131,6 +131,7 @@ export async function executeV0Operation(args: {
   childToolId: string
   input: unknown
   operation: string
+  toolConfig?: Record<string, unknown>
   userId: string
 }) {
   'use step'
@@ -138,6 +139,7 @@ export async function executeV0Operation(args: {
   // deployment's step bundle.
   const credentialResult = await readSdkCredentialResult<V0Credential>({
     provider: V0_PROVIDER,
+    toolConfig: args.toolConfig,
     userId: args.userId,
   })
   if (!credentialResult.ok) {
@@ -204,6 +206,7 @@ const v0BundleTools = Object.fromEntries(
           childToolId: definition.childToolId,
           input,
           operation: definition.operation,
+          toolConfig: ctx.toolConfig,
           userId: ctx.userId,
         })
       },

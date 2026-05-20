@@ -1,126 +1,302 @@
 import 'server-only'
 
 import { decryptCredential, encryptCredential } from '@/connections/crypto'
+import { getConnector } from '@/connections/registry'
+import type { RawCredential } from '@/connections/types'
 
-const API_KEY_OVERRIDE_FIELD = 'apiKeyOverride'
+const LEGACY_API_KEY_OVERRIDE_FIELD = 'apiKeyOverride'
+const CREDENTIAL_OVERRIDES_FIELD = 'credentialOverrides'
+const CREDENTIAL_OVERRIDE_REMOVALS_FIELD = 'credentialOverrideRemovals'
 const SECRETS_FIELD = '_secrets'
-const ENCRYPTED_API_KEY_OVERRIDE_FIELD = 'apiKeyOverride'
+const STORED_CREDENTIAL_OVERRIDES_FIELD = 'credentialOverrides'
 
-interface StoredApiKeyOverride {
+interface StoredCredentialOverride {
   encrypted: string
   version: 1
 }
 
-function normalizeApiKeyOverride(value: unknown): string | undefined {
-  if (typeof value !== 'string') {
-    return
-  }
+type StoredCredentialOverrides = Record<string, StoredCredentialOverride>
+type CredentialOverrideFields = Record<string, string>
+type CredentialOverrideInput = Record<string, CredentialOverrideFields>
 
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : undefined
+export type CredentialOverrideConfigResult =
+  | { config: Record<string, unknown>; ok: true }
+  | { error: string; ok: false }
+
+export class CredentialOverrideUnavailableError extends Error {
+  readonly code = 'connection_unavailable' as const
+  readonly provider: string
+
+  constructor(provider: string, message: string) {
+    super(message)
+    this.provider = provider
+    this.name = 'CredentialOverrideUnavailableError'
+  }
 }
 
-function readPlainApiKeyOverride(config: unknown): string | undefined {
-  if (!isConfigRecord(config)) {
-    return
-  }
-
-  return normalizeApiKeyOverride(config[API_KEY_OVERRIDE_FIELD])
-}
-
-export async function readApiKeyOverride(
+export async function readCredentialOverride(input: {
   config: unknown
-): Promise<string | undefined> {
-  const plainOverride = readPlainApiKeyOverride(config)
-  if (plainOverride) {
-    return plainOverride
-  }
-
-  const storedOverride = readStoredApiKeyOverride(config)
+  provider: string
+}): Promise<RawCredential | undefined> {
+  const storedOverride = readStoredCredentialOverride(
+    input.config,
+    input.provider
+  )
   if (!storedOverride) {
     return
   }
 
-  return await decryptCredential<string>(storedOverride.encrypted)
+  const connector = getConnector(input.provider)
+  if (!connector) {
+    throw new CredentialOverrideUnavailableError(
+      input.provider,
+      `Unknown provider: ${input.provider}`
+    )
+  }
+
+  let decrypted: unknown
+  try {
+    decrypted = await decryptCredential(storedOverride.encrypted)
+  } catch (error) {
+    throw new CredentialOverrideUnavailableError(
+      input.provider,
+      error instanceof Error
+        ? error.message
+        : 'Stored credential override could not decrypt.'
+    )
+  }
+  const parsed = connector.apiKey.formSchema.safeParse(decrypted)
+  if (!parsed.success) {
+    throw new CredentialOverrideUnavailableError(
+      input.provider,
+      parsed.error.issues[0]?.message ??
+        'Stored credential override is invalid.'
+    )
+  }
+
+  return parsed.data
+}
+
+export function hasCredentialOverride(input: {
+  config: unknown
+  provider: string
+}): boolean {
+  return Boolean(readStoredCredentialOverride(input.config, input.provider))
 }
 
 export function toConfigRecord(config: unknown): Record<string, unknown> {
   return isConfigRecord(config) ? config : {}
 }
 
-export function stripApiKeyOverride(config: unknown): unknown {
+export function stripCredentialOverrides(config: unknown): unknown {
   if (!isConfigRecord(config)) {
     return config
   }
 
   const sanitized = { ...config }
-  delete sanitized[API_KEY_OVERRIDE_FIELD]
+  delete sanitized[CREDENTIAL_OVERRIDES_FIELD]
+  delete sanitized[CREDENTIAL_OVERRIDE_REMOVALS_FIELD]
+  delete sanitized[LEGACY_API_KEY_OVERRIDE_FIELD]
   delete sanitized[SECRETS_FIELD]
   return sanitized
 }
 
-export function redactApiKeyOverride(config: unknown): Record<string, unknown> {
-  return toConfigRecord(stripApiKeyOverride(config))
+export function redactCredentialOverrides(
+  config: unknown
+): Record<string, unknown> {
+  return toConfigRecord(stripCredentialOverrides(config))
 }
 
-export async function withEncryptedApiKeyOverride(
+export async function withEncryptedCredentialOverrides(input: {
+  allowedProviders: ReadonlySet<string>
+  config: Record<string, unknown>
+  fallbackSource?: unknown
+  source: unknown
+}): Promise<CredentialOverrideConfigResult> {
+  const rawOverrides = readRawCredentialOverrides(input.source)
+  const overrideRemovals = readCredentialOverrideRemovals(input.source)
+  const storedOverrides = readStoredCredentialOverrides(input.fallbackSource)
+  const nextStoredOverrides: StoredCredentialOverrides = {}
+
+  for (const [provider, storedOverride] of Object.entries(storedOverrides)) {
+    if (input.allowedProviders.has(provider)) {
+      nextStoredOverrides[provider] = storedOverride
+    }
+  }
+
+  for (const provider of overrideRemovals) {
+    if (!input.allowedProviders.has(provider)) {
+      return {
+        ok: false,
+        error: `Credential override is not supported for provider "${provider}" on this tool.`,
+      }
+    }
+    delete nextStoredOverrides[provider]
+  }
+
+  for (const [provider, rawOverride] of Object.entries(rawOverrides)) {
+    if (overrideRemovals.has(provider)) {
+      continue
+    }
+    if (!input.allowedProviders.has(provider)) {
+      return {
+        ok: false,
+        error: `Credential override is not supported for provider "${provider}" on this tool.`,
+      }
+    }
+
+    const connector = getConnector(provider)
+    if (!connector) {
+      return {
+        ok: false,
+        error: `Unknown credential override provider: ${provider}.`,
+      }
+    }
+
+    const parsed = connector.apiKey.formSchema.safeParse(rawOverride)
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0]
+      const issuePath =
+        issue && issue.path.length > 0 ? ` (${issue.path.join('.')})` : ''
+      return {
+        ok: false,
+        error: `Invalid ${connector.displayName} credential override${issuePath}: ${issue?.message ?? 'Invalid credential.'}`,
+      }
+    }
+
+    nextStoredOverrides[provider] = {
+      encrypted: await encryptCredential(parsed.data),
+      version: 1,
+    }
+  }
+
+  return {
+    ok: true,
+    config: withStoredCredentialOverrides(input.config, {
+      [SECRETS_FIELD]: {
+        [STORED_CREDENTIAL_OVERRIDES_FIELD]: nextStoredOverrides,
+      },
+    }),
+  }
+}
+
+export function withStoredCredentialOverrides(
   config: Record<string, unknown>,
   source: unknown,
-  fallbackSource?: unknown
-): Promise<Record<string, unknown>> {
-  const apiKeyOverride = readPlainApiKeyOverride(source)
-  if (!apiKeyOverride) {
-    return withStoredApiKeyOverride(config, fallbackSource)
-  }
-
-  const storedOverride: StoredApiKeyOverride = {
-    encrypted: await encryptCredential(apiKeyOverride),
-    version: 1,
-  }
-
-  return withStoredApiKeyOverride(config, {
-    [SECRETS_FIELD]: {
-      [ENCRYPTED_API_KEY_OVERRIDE_FIELD]: storedOverride,
-    },
-  })
-}
-
-export function withStoredApiKeyOverride(
-  config: Record<string, unknown>,
-  source: unknown
+  allowedProviders?: ReadonlySet<string>
 ): Record<string, unknown> {
-  const storedOverride = readStoredApiKeyOverride(source)
-  if (!storedOverride) {
+  const storedOverrides = readStoredCredentialOverrides(source)
+  const filteredOverrides: StoredCredentialOverrides = {}
+
+  for (const [provider, storedOverride] of Object.entries(storedOverrides)) {
+    if (!allowedProviders || allowedProviders.has(provider)) {
+      filteredOverrides[provider] = storedOverride
+    }
+  }
+
+  if (Object.keys(filteredOverrides).length === 0) {
     return config
   }
+
   return {
     ...config,
     [SECRETS_FIELD]: {
-      [ENCRYPTED_API_KEY_OVERRIDE_FIELD]: storedOverride,
+      [STORED_CREDENTIAL_OVERRIDES_FIELD]: filteredOverrides,
     },
   }
 }
 
-function readStoredApiKeyOverride(
-  config: unknown
-): StoredApiKeyOverride | undefined {
-  if (!isConfigRecord(config)) {
-    return
+function readRawCredentialOverrides(source: unknown): CredentialOverrideInput {
+  if (!isConfigRecord(source)) {
+    return {}
   }
+
+  const rawOverrides = source[CREDENTIAL_OVERRIDES_FIELD]
+  if (!isConfigRecord(rawOverrides)) {
+    return {}
+  }
+
+  const overrides: CredentialOverrideInput = {}
+  for (const [provider, value] of Object.entries(rawOverrides)) {
+    if (!isConfigRecord(value)) {
+      continue
+    }
+
+    const fields: CredentialOverrideFields = {}
+    for (const [fieldName, rawFieldValue] of Object.entries(value)) {
+      if (
+        typeof rawFieldValue === 'string' &&
+        rawFieldValue.trim().length > 0
+      ) {
+        fields[fieldName] = rawFieldValue
+      }
+    }
+
+    if (Object.keys(fields).length > 0) {
+      overrides[provider] = fields
+    }
+  }
+
+  return overrides
+}
+
+function readCredentialOverrideRemovals(source: unknown): Set<string> {
+  if (!isConfigRecord(source)) {
+    return new Set()
+  }
+
+  const rawRemovals = source[CREDENTIAL_OVERRIDE_REMOVALS_FIELD]
+  if (!Array.isArray(rawRemovals)) {
+    return new Set()
+  }
+
+  const removals = new Set<string>()
+  for (const rawProvider of rawRemovals) {
+    if (typeof rawProvider === 'string' && rawProvider.trim().length > 0) {
+      removals.add(rawProvider.trim())
+    }
+  }
+  return removals
+}
+
+function readStoredCredentialOverride(
+  config: unknown,
+  provider: string
+): StoredCredentialOverride | undefined {
+  return readStoredCredentialOverrides(config)[provider]
+}
+
+function readStoredCredentialOverrides(
+  config: unknown
+): StoredCredentialOverrides {
+  if (!isConfigRecord(config)) {
+    return {}
+  }
+
   const secrets = config[SECRETS_FIELD]
   if (!isConfigRecord(secrets)) {
-    return
+    return {}
   }
-  const stored = secrets[ENCRYPTED_API_KEY_OVERRIDE_FIELD]
-  if (!isConfigRecord(stored)) {
-    return
+
+  const storedOverrides = secrets[STORED_CREDENTIAL_OVERRIDES_FIELD]
+  if (!isConfigRecord(storedOverrides)) {
+    return {}
   }
-  return stored.version === 1 && typeof stored.encrypted === 'string'
-    ? {
+
+  const overrides: StoredCredentialOverrides = {}
+  for (const [provider, stored] of Object.entries(storedOverrides)) {
+    if (!isConfigRecord(stored)) {
+      continue
+    }
+    if (stored.version === 1 && typeof stored.encrypted === 'string') {
+      overrides[provider] = {
         encrypted: stored.encrypted,
         version: 1,
       }
-    : undefined
+    }
+  }
+
+  return overrides
 }
 
 function isConfigRecord(value: unknown): value is Record<string, unknown> {

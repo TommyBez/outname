@@ -1,16 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { mockGetOrCreateRepoWorkspace, mockReadBrokeredCredential } = vi.hoisted(
-  () => ({
-    mockGetOrCreateRepoWorkspace: vi.fn(),
-    mockReadBrokeredCredential: vi.fn(),
-  })
-)
+const {
+  mockDecryptCredential,
+  mockGetOrCreateRepoWorkspace,
+  mockReadBrokeredCredential,
+} = vi.hoisted(() => ({
+  mockDecryptCredential: vi.fn(),
+  mockGetOrCreateRepoWorkspace: vi.fn(),
+  mockReadBrokeredCredential: vi.fn(),
+}))
 
 vi.mock('server-only', () => ({}))
 
 vi.mock('@/connections/runtime/credential', () => ({
   readBrokeredCredential: mockReadBrokeredCredential,
+}))
+
+vi.mock('@/connections/crypto', () => ({
+  decryptCredential: mockDecryptCredential,
 }))
 
 vi.mock('@/tools/runtime/define-maintainer-tool/audit', () => ({
@@ -44,6 +51,7 @@ const buildGithubRepoTool = (config: Record<string, unknown>) =>
 
 describe('githubRepoTool', () => {
   beforeEach(() => {
+    mockDecryptCredential.mockReset()
     mockGetOrCreateRepoWorkspace.mockReset()
     mockReadBrokeredCredential.mockReset()
   })
@@ -135,6 +143,51 @@ describe('githubRepoTool', () => {
     expect(bashExecute).toHaveBeenCalledWith({
       command: 'git push --force-with-lease origin main',
     })
+  })
+
+  it('uses attachment credential override for repo workspace credentials', async () => {
+    const bashExecute = vi.fn(async () => ({
+      exitCode: 0,
+      stderr: '',
+      stdout: '',
+    }))
+    mockDecryptCredential.mockResolvedValue({ token: 'ghp_override-token' })
+    mockGetOrCreateRepoWorkspace.mockResolvedValue({
+      bashTool: {
+        bash: { execute: bashExecute },
+        tools: {
+          readFile: { execute: vi.fn() },
+          writeFile: { execute: vi.fn() },
+        },
+      },
+    })
+    const built = buildGithubRepoTool({
+      _secrets: {
+        credentialOverrides: {
+          github: {
+            encrypted: 'encrypted-github-token',
+            version: 1,
+          },
+        },
+      },
+      repoUrl: 'https://github.com/acme/repo.git',
+      readOnly: false,
+    })
+
+    await expect(
+      built.github_repo_bash.execute({ command: 'git status' })
+    ).resolves.toMatchObject({
+      ok: true,
+    })
+    expect(mockReadBrokeredCredential).not.toHaveBeenCalled()
+    expect(mockGetOrCreateRepoWorkspace).toHaveBeenCalledWith(
+      expect.objectContaining({
+        gitCredentials: {
+          password: 'ghp_override-token',
+          username: 'x-access-token',
+        },
+      })
+    )
   })
 
   it('allows local cleanup commands in the ephemeral workspace', async () => {

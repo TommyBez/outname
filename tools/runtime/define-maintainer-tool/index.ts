@@ -9,9 +9,9 @@ import type {
   ToolErrorCode,
 } from '@/tools/catalog/types'
 import {
-  stripApiKeyOverride,
+  stripCredentialOverrides,
   toConfigRecord,
-  withStoredApiKeyOverride,
+  withStoredCredentialOverrides,
 } from './api-key-override'
 import { resolveBundleChildren, toBundleExposedTools } from './bundle-tools'
 import { createRuntimeContext } from './runtime-context'
@@ -86,8 +86,8 @@ export function defineMaintainerTool<
       return exposedTools
     },
     build(ctx) {
-      const config = configSchema.parse(stripApiKeyOverride(ctx.config))
-      const toolConfig = withStoredApiKeyOverride(
+      const config = configSchema.parse(stripCredentialOverrides(ctx.config))
+      const toolConfig = withStoredCredentialOverrides(
         toConfigRecord(config),
         ctx.toolConfig ?? ctx.config
       )
@@ -127,14 +127,14 @@ export function defineToolBundle<TConfig = Record<string, never>>(
       if (rawConfig === undefined) {
         return exposedTools
       }
-      const parsed = configSchema.safeParse(rawConfig)
+      const parsed = configSchema.safeParse(stripCredentialOverrides(rawConfig))
       return parsed.success
         ? toBundleExposedTools(definition.tools, parsed.data)
         : exposedTools
     },
     build(ctx): BuiltMaintainerTool {
-      const config = configSchema.parse(stripApiKeyOverride(ctx.config))
-      const toolConfig = withStoredApiKeyOverride(
+      const config = configSchema.parse(stripCredentialOverrides(ctx.config))
+      const toolConfig = withStoredCredentialOverrides(
         toConfigRecord(config),
         ctx.toolConfig ?? ctx.config
       )

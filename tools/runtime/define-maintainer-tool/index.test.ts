@@ -66,6 +66,36 @@ test('resolveBundleChildren only returns enabled child tools', () => {
   ).toEqual(['test_read'])
 })
 
+test('bundle exposed tools ignore credential override fields when parsing strict config', () => {
+  const bundle = defineToolBundle({
+    id: 'test_bundle_exposed_tools',
+    category: 'test',
+    displayName: 'Test Bundle Exposed Tools',
+    description: 'Bundle used to verify exposed tool resolution.',
+    capabilities: [{ kind: 'brokered_http', provider: 'x' }],
+    configSchema: z.strictObject({
+      enableWrite: z.boolean().default(false),
+    }),
+    tools: testTools,
+  })
+
+  expect(
+    bundle.resolveExposedTools({
+      apiKeyOverride: 'live-token',
+      credentialOverrides: {
+        x: { bearerToken: 'live-token' },
+      },
+      enableWrite: false,
+    })
+  ).toEqual([
+    {
+      description: 'Read-only child tool.',
+      displayName: 'Test Read',
+      toolId: 'test_read',
+    },
+  ])
+})
+
 test('bundle child tools inherit the bundle sandbox manifest id', async () => {
   const bundle = defineToolBundle({
     id: 'test_bundle',
@@ -110,9 +140,8 @@ test('bundle child tools inherit the bundle sandbox manifest id', async () => {
   expect(result.message).toBe('Unknown tool sandbox manifest: missing-manifest')
 })
 
-test('brokered tools receive apiKeyOverride from preserved tool config', async () => {
+test('brokered tools receive encrypted credential overrides in preserved tool config', async () => {
   let executeConfig: unknown
-  mockDecryptCredential.mockResolvedValueOnce('override-token')
   mockBrokeredHttpRequest.mockResolvedValueOnce({
     bodyText: '{}',
     headers: {},
@@ -147,9 +176,11 @@ test('brokered tools receive apiKeyOverride from preserved tool config', async (
     agentId: 'agent_test',
     config: {
       _secrets: {
-        apiKeyOverride: {
-          encrypted: 'encrypted-token',
-          version: 1,
+        credentialOverrides: {
+          x: {
+            encrypted: 'encrypted-token',
+            version: 1,
+          },
         },
       },
       readOnly: true,
@@ -172,9 +203,19 @@ test('brokered tools receive apiKeyOverride from preserved tool config', async (
   expect(executeConfig).toEqual({ readOnly: true })
   expect(mockBrokeredHttpRequest).toHaveBeenCalledWith(
     expect.objectContaining({
-      apiKeyOverride: 'override-token',
       attachmentToolId: 'test_api',
       provider: 'x',
+      toolConfig: {
+        _secrets: {
+          credentialOverrides: {
+            x: {
+              encrypted: 'encrypted-token',
+              version: 1,
+            },
+          },
+        },
+        readOnly: true,
+      },
       toolId: 'test_api',
     })
   )

@@ -70,7 +70,7 @@ describe('resolveMaintainerRow', () => {
     expect(mockDbSelect).not.toHaveBeenCalled()
   })
 
-  it('preserves encrypted apiKeyOverride outside the parsed execution config', async () => {
+  it('preserves encrypted credential overrides and skips connection requirements for them', async () => {
     const tool: MaintainerTool = {
       build: vi.fn(),
       capabilities: [{ kind: 'brokered_http', provider: 'x' }],
@@ -90,9 +90,11 @@ describe('resolveMaintainerRow', () => {
       resolveMaintainerRow({
         config: {
           _secrets: {
-            apiKeyOverride: {
-              encrypted: 'encrypted-token',
-              version: 1,
+            credentialOverrides: {
+              x: {
+                encrypted: 'encrypted-token',
+                version: 1,
+              },
             },
           },
           readOnly: true,
@@ -105,17 +107,14 @@ describe('resolveMaintainerRow', () => {
         config: {
           readOnly: true,
         },
-        providerRequirements: [
-          {
-            provider: 'x',
-            toolId: 'x_api_request',
-          },
-        ],
+        providerRequirements: [],
         toolConfig: {
           _secrets: {
-            apiKeyOverride: {
-              encrypted: 'encrypted-token',
-              version: 1,
+            credentialOverrides: {
+              x: {
+                encrypted: 'encrypted-token',
+                version: 1,
+              },
             },
           },
           readOnly: true,

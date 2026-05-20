@@ -2,8 +2,8 @@ import 'server-only'
 
 import { Sandbox } from '@vercel/sandbox'
 import type { getConnector } from '@/connections/registry'
-import { readBrokeredCredential } from '@/connections/runtime/credential'
 import { brokeredHttpSandboxTags } from '@/shared/server/vercel-sandbox-config'
+import { readProviderCredential } from '@/tools/runtime/define-maintainer-tool/credential-resolver'
 import { createInjectedHeadersNetworkPolicy } from '@/tools/runtime/network-policy'
 import { currentToolRuntimeRunId } from '@/tools/runtime/run-id'
 import { validateInjectedHeaders } from './validation'
@@ -47,19 +47,18 @@ export async function getOrCreateBrokerSandbox(input: {
 }
 
 export async function createBrokerSandbox(input: {
-  apiKeyOverride?: string
   connector: NonNullable<ReturnType<typeof getConnector>>
   provider: string
   runId: string
+  toolConfig?: Record<string, unknown>
   unauthenticatedHosts?: readonly string[]
   userId: string
 }): Promise<Sandbox> {
-  const credential = input.apiKeyOverride
-    ? ({ apiKey: input.apiKeyOverride } as const)
-    : await readBrokeredCredential({
-        provider: input.provider,
-        userId: input.userId,
-      })
+  const credential = await readProviderCredential({
+    provider: input.provider,
+    toolConfig: input.toolConfig,
+    userId: input.userId,
+  })
   const injectedHeaders = validateInjectedHeaders(
     input.provider,
     input.connector.broker.injectedHeaderNames,

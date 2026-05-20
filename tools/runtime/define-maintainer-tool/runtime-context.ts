@@ -3,7 +3,7 @@ import type {
   BrokeredHttpRequest,
   BrokeredHttpResponse,
 } from '../brokered-http/types'
-import { readApiKeyOverride } from './api-key-override'
+import { readProviderCredential } from './credential-resolver'
 
 export interface BrokeredHttpClient {
   request(
@@ -50,6 +50,7 @@ export interface ToolRuntimeContext {
   http: BrokeredHttpClient
   runId: string | null
   sandbox: ToolSandboxRunner
+  toolConfig?: Record<string, unknown>
   toolId: string
   userId: string
 }
@@ -79,20 +80,21 @@ export function createRuntimeContext(input: {
     attachmentToolId: attachmentToolId ?? toolId,
     conversationId,
     runId,
+    toolConfig,
     toolId,
     userId,
     credentials: {
       async read<T = unknown>(provider: string): Promise<T> {
-        const { readBrokeredCredential } = await import(
-          '@/connections/runtime/credential'
-        )
-        return (await readBrokeredCredential({ provider, userId })) as T
+        return (await readProviderCredential({
+          provider,
+          toolConfig,
+          userId,
+        })) as T
       },
     },
     http: {
       async request(provider, request) {
         const { brokeredHttpRequest } = await import('../brokered-http')
-        const apiKeyOverride = await readApiKeyOverride(toolConfig)
         return await brokeredHttpRequest({
           agentId,
           attachmentToolId: attachmentToolId ?? toolId,
@@ -100,7 +102,7 @@ export function createRuntimeContext(input: {
           userId,
           provider,
           request,
-          apiKeyOverride,
+          toolConfig,
         })
       },
     },

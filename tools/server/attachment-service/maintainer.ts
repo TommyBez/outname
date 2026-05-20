@@ -3,12 +3,13 @@ import 'server-only'
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/shared/db'
 import { agentTools } from '@/shared/db/schema'
+import { providerBackedCapabilities } from '@/tools/catalog/capabilities'
 import { getMaintainerTool } from '@/tools/catalog/registry'
 import type { MaintainerTool } from '@/tools/catalog/types'
 import {
-  stripApiKeyOverride,
+  stripCredentialOverrides,
   toConfigRecord,
-  withEncryptedApiKeyOverride,
+  withEncryptedCredentialOverrides,
 } from '@/tools/runtime/define-maintainer-tool/api-key-override'
 import { ensureToolSandboxBuild } from '@/tools/sandbox-runtime/build'
 import { manifestHash } from '@/tools/sandboxes'
@@ -98,14 +99,24 @@ async function parseMaintainerToolConfig(
   rawConfig: Record<string, unknown>,
   existingConfig: unknown
 ): Promise<ConfigParseResult> {
+  const allowedProviders = new Set(
+    providerBackedCapabilities(tool.capabilities).map(
+      (capability) => capability.provider
+    )
+  )
+
   if (!tool.configSchema) {
-    return {
-      ok: true,
-      config: await withEncryptedApiKeyOverride({}, rawConfig, existingConfig),
-    }
+    return await withEncryptedCredentialOverrides({
+      allowedProviders,
+      config: {},
+      source: rawConfig,
+      fallbackSource: existingConfig,
+    })
   }
 
-  const parsed = tool.configSchema.safeParse(stripApiKeyOverride(rawConfig))
+  const parsed = tool.configSchema.safeParse(
+    stripCredentialOverrides(rawConfig)
+  )
   if (!parsed.success) {
     return {
       ok: false,
@@ -114,14 +125,12 @@ async function parseMaintainerToolConfig(
   }
 
   const config = parsed.data
-  return {
-    ok: true,
-    config: await withEncryptedApiKeyOverride(
-      toConfigRecord(config),
-      rawConfig,
-      existingConfig
-    ),
-  }
+  return await withEncryptedCredentialOverrides({
+    allowedProviders,
+    config: toConfigRecord(config),
+    source: rawConfig,
+    fallbackSource: existingConfig,
+  })
 }
 
 async function readExistingMaintainerToolConfig(input: {

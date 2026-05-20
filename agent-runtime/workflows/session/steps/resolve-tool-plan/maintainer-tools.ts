@@ -5,9 +5,10 @@ import { providerBackedCapabilities } from '@/tools/catalog/capabilities'
 import { getMaintainerTool } from '@/tools/catalog/registry'
 import type { MaintainerTool, Reconnect } from '@/tools/catalog/types'
 import {
-  stripApiKeyOverride,
+  hasCredentialOverride,
+  stripCredentialOverrides,
   toConfigRecord,
-  withStoredApiKeyOverride,
+  withStoredCredentialOverrides,
 } from '@/tools/runtime/define-maintainer-tool/api-key-override'
 import { getToolSandboxManifest } from '@/tools/sandboxes/registry'
 import type { MaintainerRow, PlannedTool } from './types'
@@ -51,12 +52,18 @@ export async function resolveMaintainerRow(
       toolId: row.toolId,
       config: parsed.config,
       toolConfig: parsed.toolConfig,
-      providerRequirements: providerBackedCapabilities(tool.capabilities).map(
-        (requirement) => ({
+      providerRequirements: providerBackedCapabilities(tool.capabilities)
+        .filter(
+          (requirement) =>
+            !hasCredentialOverride({
+              config: parsed.toolConfig,
+              provider: requirement.provider,
+            })
+        )
+        .map((requirement) => ({
           provider: requirement.provider,
           toolId: row.toolId,
-        })
-      ),
+        })),
     },
   }
 }
@@ -69,11 +76,11 @@ function parseMaintainerConfig(
     return {
       kind: 'parsed',
       config: {},
-      toolConfig: withStoredApiKeyOverride({}, row.config),
+      toolConfig: withStoredCredentialOverrides({}, row.config),
     }
   }
   const result = tool.configSchema.safeParse(
-    stripApiKeyOverride(row.config ?? {})
+    stripCredentialOverrides(row.config ?? {})
   )
   if (!result.success) {
     return {
@@ -95,7 +102,7 @@ function parseMaintainerConfig(
   return {
     kind: 'parsed',
     config,
-    toolConfig: withStoredApiKeyOverride(config, row.config),
+    toolConfig: withStoredCredentialOverrides(config, row.config),
   }
 }
 

@@ -17,11 +17,11 @@ import {
   type SubAgentCatalogEntry,
 } from '@/tools/components/sub-agent-catalog'
 import { ToolCatalog } from '@/tools/components/tool-catalog'
-import type {
-  ToolCatalogEntry,
-  ToolConfigField,
-} from '@/tools/components/tool-catalog/types'
-import { redactApiKeyOverride } from '@/tools/runtime/define-maintainer-tool/api-key-override'
+import type { ToolCatalogEntry } from '@/tools/components/tool-catalog/types'
+import {
+  hasCredentialOverride,
+  redactCredentialOverrides,
+} from '@/tools/runtime/define-maintainer-tool/api-key-override'
 import { getLatestBuildForManifest } from '@/tools/sandbox-runtime/build'
 import {
   childAgentIdFromSubAgentRow,
@@ -30,16 +30,6 @@ import {
 } from '@/tools/sub-agents/sub-agent-tool-name'
 
 type Params = Promise<{ agentId: string }>
-
-const API_KEY_OVERRIDE_FIELD: ToolConfigField = {
-  name: 'apiKeyOverride',
-  label: 'API Key Override',
-  type: 'password',
-  required: false,
-  placeholder: 'Leave blank to keep the saved override',
-  description:
-    'Optional per-attachment API key. The value is encrypted at rest and is never shown after saving.',
-}
 
 export default function AgentToolsPage({ params }: { params: Params }) {
   return (
@@ -75,14 +65,33 @@ async function Resolved({ params }: { params: Params }) {
   const catalog: ToolCatalogEntry[] = listMaintainerTools().map((t) => {
     const attachedRow = attachedByMaintainerToolId.get(t.id)
     const attachedConfig = attachedRow
-      ? redactApiKeyOverride(attachedRow.config)
+      ? redactCredentialOverrides(attachedRow.config)
       : undefined
-    const providers = providerBackedCapabilities(t.capabilities).map(
-      (r) => r.provider
+    const providers = Array.from(
+      new Set(providerBackedCapabilities(t.capabilities).map((r) => r.provider))
     )
-    const hasBrokeredHttp = t.capabilities.some(
-      (r) => r.kind === 'brokered_http'
-    )
+    const credentialOverrideFields = providers.flatMap((provider) => {
+      const connector = getConnector(provider)
+      if (!connector) {
+        return []
+      }
+      return [
+        {
+          provider,
+          displayName: connector.displayName,
+          hasOverride: attachedRow
+            ? hasCredentialOverride({
+                config: attachedRow.config,
+                provider,
+              })
+            : false,
+          fields: connector.apiKey.fields.map((field) => ({
+            ...field,
+            required: false,
+          })),
+        },
+      ]
+    })
     const sandboxManifest =
       t.capabilities.find((r) => r.kind === 'tool_sandbox')?.manifest ?? null
     return {
@@ -92,9 +101,8 @@ async function Resolved({ params }: { params: Params }) {
       exposedTools: [...t.resolveExposedTools(attachedConfig)],
       providers,
       toolSandboxManifest: sandboxManifest,
-      configFields: hasBrokeredHttp
-        ? [...describeConfigSchema(t.configSchema), API_KEY_OVERRIDE_FIELD]
-        : describeConfigSchema(t.configSchema),
+      configFields: describeConfigSchema(t.configSchema),
+      credentialOverrideFields,
     }
   })
 
@@ -165,7 +173,7 @@ async function Resolved({ params }: { params: Params }) {
 
   const attached = maintainerAttachedRows.map((r) => ({
     toolId: r.toolId,
-    config: redactApiKeyOverride(r.config),
+    config: redactCredentialOverrides(r.config),
     status: (r.status as 'connected' | 'pending') ?? 'connected',
     pendingBuildId:
       r.status === 'pending' && r.toolSandboxManifest

@@ -10,8 +10,16 @@ export interface ToolConfigField {
   type: 'text' | 'number' | 'boolean' | 'password'
 }
 
+export interface CredentialOverrideFieldGroup {
+  displayName: string
+  fields: ToolConfigField[]
+  hasOverride: boolean
+  provider: string
+}
+
 export interface ToolCatalogEntry {
   configFields: ToolConfigField[]
+  credentialOverrideFields: CredentialOverrideFieldGroup[]
   description: string
   displayName: string
   exposedTools: Array<{

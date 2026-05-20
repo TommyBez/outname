@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { readProviderCredential } from './credential-resolver'
 import { type ToolFailure, toolError } from './tool-result'
 
 interface ConnectionUnavailableError {
@@ -9,6 +10,7 @@ interface ConnectionUnavailableError {
 
 export async function readSdkCredentialResult<T>(args: {
   provider: string
+  toolConfig?: Record<string, unknown>
   userId: string
 }): Promise<
   | { ok: true; credential: T }
@@ -18,12 +20,9 @@ export async function readSdkCredentialResult<T>(args: {
     }
 > {
   try {
-    const { readBrokeredCredential } = await import(
-      '@/connections/runtime/credential'
-    )
     return {
       ok: true,
-      credential: (await readBrokeredCredential(args)) as T,
+      credential: (await readProviderCredential(args)) as T,
     }
   } catch (error) {
     if (isConnectionUnavailableError(error)) {
