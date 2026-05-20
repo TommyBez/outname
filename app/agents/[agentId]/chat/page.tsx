@@ -27,4 +27,5 @@ async function ResolveChatIndex({ params }: { params: Params }) {
     redirect(`/agents/${agent.id}/chat/${mostRecent.id}`)
   }
   redirect(`/agents/${agent.id}/chat/new`)
+  return null
 }
