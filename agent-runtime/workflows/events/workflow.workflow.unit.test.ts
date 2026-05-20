@@ -36,6 +36,8 @@ vi.mock('workflow', () => ({
   getWorkflowMetadata: mockGetWorkflowMetadata,
 }))
 
+vi.mock('server-only', () => ({}))
+
 vi.mock('workflow/api', () => ({
   start: mockStart,
 }))
@@ -93,7 +95,9 @@ function createEvent(overrides: Record<string, unknown> = {}) {
 describe('agentEventWorkflow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockGetWorkflowMetadata.mockReturnValue({})
+    mockGetWorkflowMetadata.mockReturnValue({
+      workflowRunId: 'wrun_default',
+    })
   })
 
   it('returns early when the event record is gone', async () => {
@@ -125,7 +129,7 @@ describe('agentEventWorkflow', () => {
     })
 
     mockGetWorkflowMetadata.mockReturnValue({
-      runId: 'wrun_runtime',
+      workflowRunId: 'wrun_runtime',
     })
     mockLoadAgentEventStep.mockResolvedValue(event)
     mockStart.mockResolvedValue({
@@ -172,36 +176,6 @@ describe('agentEventWorkflow', () => {
     expect(mockStartNextQueuedEvent).toHaveBeenCalledWith({
       concurrencyKey: 'key_123',
     })
-  })
-
-  it('falls back to the persisted workflow run id when metadata omits run ids', async () => {
-    const event = createEvent({
-      payload: {
-        manual: true,
-        scheduledAt: '2026-05-14T20:30:00.000Z',
-      },
-      status: 'running',
-      type: 'heartbeat',
-      workflowRunId: 'wrun_saved',
-    })
-
-    mockGetWorkflowMetadata.mockReturnValue({})
-    mockLoadAgentEventStep.mockResolvedValue(event)
-
-    await agentEventWorkflow({ eventId: event.id })
-
-    expect(mockMarkAgentEventRunningStep).toHaveBeenCalledWith({
-      eventId: event.id,
-      workflowRunId: 'wrun_saved',
-    })
-    expect(mockHandleHeartbeat).toHaveBeenCalledWith({
-      agentId: 'agent_123',
-      manual: true,
-      mode: 'normal',
-      replyToken: 'reply:evt_123',
-      scheduledAt: '2026-05-14T20:30:00.000Z',
-    })
-    expect(mockStart).not.toHaveBeenCalled()
   })
 
   it('dispatches dreaming events in dreaming mode', async () => {

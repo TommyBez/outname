@@ -8,6 +8,7 @@ import {
   emitStep,
 } from '@/agent-runtime/server/run-events'
 import { formatBudgetExceededMessage } from '@/budgets/server/errors'
+import { currentWorkflowRunId } from '@/shared/server/workflow-run-id'
 import { buildAgent } from '../agent-factory'
 import { resolveStepLimit } from '../step-limit'
 import {
@@ -16,10 +17,7 @@ import {
   recordTokenUsageStep,
 } from '../steps/budget'
 import { finishSuccessfulInvocation } from './handle-invocation/finish-success'
-import {
-  beginInvocationRun,
-  invocationMessageId,
-} from './handle-invocation/run-helpers'
+import { invocationMessageId } from './handle-invocation/run-helpers'
 import {
   finishUiMessageStream,
   writeUiMessageStreamError,
@@ -49,12 +47,7 @@ export async function handleInvocation(input: {
     callStack,
     depth,
   } = input
-  const runId = await beginInvocationRun({
-    agentId,
-    parentRunId: parentRunId ?? null,
-    parentToolId: parentToolId ?? null,
-    streamToken,
-  })
+  const runId = currentWorkflowRunId()
   const streamNamespace = streamToken
   const streamNamespaces = uniqueNamespaces(streamNamespace, replyToken ?? null)
   let forwardPromise = Promise.resolve([] as AgentChatMessage[])

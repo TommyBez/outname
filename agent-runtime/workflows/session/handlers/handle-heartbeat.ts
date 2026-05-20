@@ -2,6 +2,7 @@ import type { StepResult, ToolSet, UIMessageChunk } from 'ai'
 import { getWritable } from 'workflow'
 import { startupSystemSandbox } from '@/agent-runtime/server/agent-sandbox'
 import { emitActivity } from '@/agent-runtime/server/run-events'
+import { currentWorkflowRunId } from '@/shared/server/workflow-run-id'
 import {
   buildAgent,
   buildDreamingKickoff,
@@ -12,7 +13,6 @@ import {
   resolveStepLimit,
   resolveStepLimitCount,
 } from '../step-limit'
-import { beginHeartbeatRun } from '../steps/begin-heartbeat-run'
 import { extractTotalUsage, recordTokenUsageStep } from '../steps/budget'
 import { finalizeRun } from '../steps/finalize-run'
 import { initRun } from '../steps/init-run'
@@ -43,7 +43,7 @@ export async function handleHeartbeat(input: {
   const mode = input.mode ?? 'normal'
   const nowIso = input.scheduledAt ?? new Date().toISOString()
   const dreamingLocalDate = input.localDate ?? nowIso.slice(0, 10)
-  const { runId } = await beginHeartbeatRun({ agentId })
+  const runId = currentWorkflowRunId()
   const outputNamespace = input.replyToken ?? runId
   const writable = getWritable<UIMessageChunk>({ namespace: outputNamespace })
 
