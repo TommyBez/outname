@@ -111,25 +111,12 @@ async function upsertConnection(args: {
   userId: string
 }): Promise<void> {
   const credentialsB64 = await encryptCredential(args.credentials)
-  const existing = await hasConnectionRow(args)
   const expiresAt = args.expiresAt ?? null
   const grantedScopes = [...(args.grantedScopes ?? [])]
   const metadata = args.metadata ?? {}
-  if (existing) {
-    await db
-      .update(userConnections)
-      .set({
-        credentials: credentialsB64,
-        metadata,
-        grantedScopes,
-        status: 'active',
-        expiresAt,
-        lastError: null,
-        updatedAt: new Date(),
-      })
-      .where(connectionFilter(args))
-  } else {
-    await db.insert(userConnections).values({
+  await db
+    .insert(userConnections)
+    .values({
       userId: args.userId,
       connectorId: args.connectorId,
       credentials: credentialsB64,
@@ -138,7 +125,18 @@ async function upsertConnection(args: {
       status: 'active',
       expiresAt,
     })
-  }
+    .onConflictDoUpdate({
+      target: [userConnections.userId, userConnections.connectorId],
+      set: {
+        credentials: credentialsB64,
+        metadata,
+        grantedScopes,
+        status: 'active',
+        expiresAt,
+        lastError: null,
+        updatedAt: new Date(),
+      },
+    })
   revalidateConnection(args.userId)
 }
 
@@ -187,18 +185,6 @@ export async function listUserConnections(
     expiresAt: row.expiresAt,
     createdAt: row.createdAt,
   }))
-}
-
-async function hasConnectionRow(args: {
-  connectorId: string
-  userId: string
-}): Promise<boolean> {
-  const [row] = await db
-    .select({ connectorId: userConnections.connectorId })
-    .from(userConnections)
-    .where(connectionFilter(args))
-    .limit(1)
-  return Boolean(row)
 }
 
 function revalidateConnection(userId: string): void {

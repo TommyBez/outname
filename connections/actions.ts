@@ -15,6 +15,8 @@ import {
 import type { StoredOAuth2CredentialBlob } from '@/connections/types'
 import { userConnectionsTag } from '@/shared/server/cache-tags'
 
+const OAUTH_REVOKE_TIMEOUT_MS = 8000
+
 interface SaveApiKeyResult {
   error?: string
   ok: boolean
@@ -115,14 +117,32 @@ async function revokeOAuthConnection(input: {
     token,
     client_id: client.credentials.clientId,
   })
-  await fetch(connector.oauth2.revokeUrl, {
-    body,
-    headers: buildOAuthClientAuthHeaders(
-      client.credentials.clientId,
-      client.credentials.clientSecret
-    ),
-    method: 'POST',
-  })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), OAUTH_REVOKE_TIMEOUT_MS)
+  try {
+    const response = await fetch(connector.oauth2.revokeUrl, {
+      body,
+      headers: buildOAuthClientAuthHeaders(
+        client.credentials.clientId,
+        client.credentials.clientSecret
+      ),
+      method: 'POST',
+      signal: controller.signal,
+    })
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw new Error(
+        `OAuth revoke failed with HTTP ${response.status}${text ? `: ${text}` : ''}`
+      )
+    }
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('OAuth revoke timed out.')
+    }
+    throw error
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 function updateConnectionSurfaces(userId: string): void {

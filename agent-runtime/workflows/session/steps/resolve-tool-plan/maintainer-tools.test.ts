@@ -22,7 +22,7 @@ vi.mock('@/tools/catalog/registry', () => ({
 import { resolveMaintainerRow } from './maintainer-tools'
 
 describe('resolveMaintainerRow', () => {
-  it('treats repo_workspace as provider-backed without checking snapshots', async () => {
+  it('treats repo_workspace as connector-backed without checking snapshots', async () => {
     const tool: MaintainerTool = {
       build: vi.fn(),
       capabilities: [

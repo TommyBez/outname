@@ -5,7 +5,7 @@ import type { z } from 'zod'
 export type RawCredential = unknown
 
 export type ConnectorCredential<TConnector> =
-  TConnector extends ApiKeyConnector<infer TCredential, string>
+  TConnector extends BaseConnector<infer TCredential, string>
     ? TCredential
     : never
 

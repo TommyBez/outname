@@ -30,8 +30,13 @@ function migrateConfig(config: unknown): {
 
   let changed = false
   const nextOverrides: Record<string, unknown> = {}
+  const originalKeys = new Set(Object.keys(overrides))
   for (const [key, value] of Object.entries(overrides)) {
     const connectorId = legacyProviderToConnectorId(key)
+    if (connectorId !== key && originalKeys.has(connectorId)) {
+      nextOverrides[key] = value
+      continue
+    }
     nextOverrides[connectorId] = value
     changed ||= connectorId !== key
   }

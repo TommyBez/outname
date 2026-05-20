@@ -21,16 +21,19 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ connectorId: string }> }
 ): Promise<Response> {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-  }
-
   const { connectorId } = await params
-  const connector = getConnector(connectorId)
   const stateParam = request.nextUrl.searchParams.get('state')
   const decoded = stateParam ? decodeOAuthState(stateParam) : null
   const returnTo = decoded?.returnTo ?? '/connections'
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session) {
+    return redirectWithCookieClear(request, connectorId, returnTo, {
+      connection: 'error',
+      reason: 'unauthorized',
+    })
+  }
+
+  const connector = getConnector(connectorId)
 
   const error = request.nextUrl.searchParams.get('error')
   if (error) {

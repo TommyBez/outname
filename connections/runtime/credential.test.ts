@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 
-const TOKEN_FINGERPRINT_PATTERN = /^[a-f0-9]{8}$/
+const TOKEN_FINGERPRINT_PATTERN = /^[a-f0-9]{16}$/
 
 const {
   mockDbSelect,
@@ -269,6 +269,90 @@ describe('readConnectorCredential', () => {
       })
     )
     expect(mockMarkInvalid).not.toHaveBeenCalled()
+  })
+
+  it('uses an unexpired OAuth token without a refresh token inside the pre-refresh window', async () => {
+    mockGetConnector.mockReturnValue(oauthConnector)
+    mockConnectionRow({
+      expiresAt: new Date(Date.now() + 60_000),
+      grantedScopes: ['tweet.read'],
+      status: 'active',
+    })
+    mockDecryptCredential.mockResolvedValue({
+      kind: 'oauth2',
+      version: 1,
+      accessToken: 'still-valid-access-token',
+      tokenType: 'Bearer',
+    })
+
+    const result = await readConnectorCredential({
+      connectorId: 'x.oauth2_user',
+      userId: 'user_test',
+    })
+
+    expect(result.credential).toMatchObject({
+      accessToken: 'still-valid-access-token',
+    })
+    expect(mockFetch).not.toHaveBeenCalled()
+    expect(mockMarkInvalid).not.toHaveBeenCalled()
+  })
+
+  it('marks expired OAuth tokens without refresh tokens invalid', async () => {
+    mockGetConnector.mockReturnValue(oauthConnector)
+    mockConnectionRow({
+      expiresAt: new Date(Date.now() - 1000),
+      grantedScopes: ['tweet.read'],
+      status: 'active',
+    })
+    mockDecryptCredential.mockResolvedValue({
+      kind: 'oauth2',
+      version: 1,
+      accessToken: 'expired-access-token',
+      tokenType: 'Bearer',
+    })
+
+    await expect(
+      readConnectorCredential({
+        connectorId: 'x.oauth2_user',
+        userId: 'user_test',
+      })
+    ).rejects.toThrow(
+      'X API · OAuth User token is expired and has no refresh token.'
+    )
+
+    expect(mockMarkInvalid).toHaveBeenCalledWith({
+      connectorId: 'x.oauth2_user',
+      error: 'X API · OAuth User token is expired and has no refresh token.',
+      userId: 'user_test',
+    })
+    expect(mockFetch).not.toHaveBeenCalled()
+  })
+
+  it('marks malformed stored OAuth credentials invalid', async () => {
+    mockGetConnector.mockReturnValue(oauthConnector)
+    mockConnectionRow({
+      expiresAt: null,
+      grantedScopes: ['tweet.read'],
+      status: 'active',
+    })
+    mockDecryptCredential.mockResolvedValue({
+      kind: 'oauth2',
+      version: 1,
+      tokenType: 'Bearer',
+    })
+
+    await expect(
+      readConnectorCredential({
+        connectorId: 'x.oauth2_user',
+        userId: 'user_test',
+      })
+    ).rejects.toThrow('Stored OAuth credential shape is invalid.')
+
+    expect(mockMarkInvalid).toHaveBeenCalledWith({
+      connectorId: 'x.oauth2_user',
+      error: 'Stored OAuth credential shape is invalid.',
+      userId: 'user_test',
+    })
   })
 
   it('keeps a rotated refresh token returned by the OAuth provider', async () => {

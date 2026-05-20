@@ -9,6 +9,7 @@ import type {
 const SCOPE_SPLIT_PATTERN = /\s+/
 const BASE64_ALPHABET =
   'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+const OAUTH_TOKEN_REQUEST_TIMEOUT_MS = 8000
 
 type OAuth2Connector = Extract<Connector, { authKind: 'oauth2' }>
 
@@ -93,6 +94,7 @@ export async function exchangeAuthorizationCode(
     invalidResponseMessage:
       'OAuth provider returned an invalid token response.',
     permanentFailure: () => false,
+    timeoutMessage: `${connector.displayName} OAuth token exchange timed out.`,
   })
 }
 
@@ -116,6 +118,7 @@ export async function refreshAccessToken(
     fallbackErrorMessage: 'OAuth refresh failed.',
     invalidResponseMessage: `${connector.displayName} returned an invalid refresh response.`,
     permanentFailure: isPermanentOAuthRefreshFailure,
+    timeoutMessage: `${connector.displayName} OAuth refresh timed out.`,
   })
 }
 
@@ -151,10 +154,11 @@ export function parseOAuth2TokenResponse(
     invalidResponseMessage: string
   }
 ): { ok: true; token: NormalizedTokenResponse } | { error: string; ok: false } {
-  if (
-    typeof payload.access_token !== 'string' ||
-    (payload.token_type !== undefined && payload.token_type !== 'Bearer')
-  ) {
+  const invalidTokenType =
+    payload.token_type !== undefined &&
+    (typeof payload.token_type !== 'string' ||
+      payload.token_type.toLowerCase() !== 'bearer')
+  if (typeof payload.access_token !== 'string' || invalidTokenType) {
     return { ok: false, error: options.invalidResponseMessage }
   }
 
@@ -196,8 +200,14 @@ async function requestOAuthToken(
     fallbackScopes: readonly string[]
     invalidResponseMessage: string
     permanentFailure(status: number, error: unknown): boolean
+    timeoutMessage: string
   }
 ): Promise<TokenExchangeResult> {
+  const controller = new AbortController()
+  const timeout = setTimeout(
+    () => controller.abort(),
+    OAUTH_TOKEN_REQUEST_TIMEOUT_MS
+  )
   try {
     const response = await fetch(connector.oauth2.tokenUrl, {
       body: input.body,
@@ -206,10 +216,14 @@ async function requestOAuthToken(
         input.client.clientSecret
       ),
       method: 'POST',
+      signal: controller.signal,
     })
-    const payload = (await response
-      .json()
-      .catch(() => ({}))) as OAuth2TokenResponse
+    const payload = (await response.json().catch((error) => {
+      if (isAbortError(error)) {
+        throw error
+      }
+      return {}
+    })) as OAuth2TokenResponse
     if (!response.ok) {
       return {
         ok: false,
@@ -230,10 +244,31 @@ async function requestOAuthToken(
     return {
       ok: false,
       permanent: false,
-      error:
-        error instanceof Error ? error.message : input.fallbackErrorMessage,
+      error: oauthRequestErrorMessage(error, input),
     }
+  } finally {
+    clearTimeout(timeout)
   }
+}
+
+function oauthRequestErrorMessage(
+  error: unknown,
+  input: {
+    fallbackErrorMessage: string
+    timeoutMessage: string
+  }
+): string {
+  if (isAbortError(error)) {
+    return input.timeoutMessage
+  }
+  if (error instanceof Error) {
+    return error.message
+  }
+  return input.fallbackErrorMessage
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError'
 }
 
 function base64Encode(value: string): string {

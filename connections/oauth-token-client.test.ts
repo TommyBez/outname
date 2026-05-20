@@ -79,7 +79,7 @@ describe('oauth-token-client', () => {
     const result = parseOAuth2TokenResponse(
       {
         access_token: 'access-token',
-        token_type: 'Bearer',
+        token_type: 'bearer',
       },
       {
         fallbackScopes: ['tweet.read'],
@@ -108,6 +108,18 @@ describe('oauth-token-client', () => {
     expect(
       parseOAuth2TokenResponse(
         { token_type: 'Bearer' },
+        {
+          fallbackScopes: [],
+          invalidResponseMessage: 'invalid response',
+        }
+      )
+    ).toEqual({ ok: false, error: 'invalid response' })
+  })
+
+  it('rejects non-Bearer token type values', () => {
+    expect(
+      parseOAuth2TokenResponse(
+        { access_token: 'access-token', token_type: 'mac' },
         {
           fallbackScopes: [],
           invalidResponseMessage: 'invalid response',
@@ -215,6 +227,20 @@ describe('oauth-token-client', () => {
       ok: false,
       permanent: false,
       error: 'network down',
+    })
+  })
+
+  it('returns a clear timeout error when refresh fetch aborts', async () => {
+    const abortError = new Error('aborted')
+    abortError.name = 'AbortError'
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(abortError))
+
+    await expect(
+      refreshAccessToken(connector, 'refresh-token')
+    ).resolves.toEqual({
+      ok: false,
+      permanent: false,
+      error: 'X API · OAuth User OAuth refresh timed out.',
     })
   })
 })

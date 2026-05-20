@@ -21,6 +21,7 @@ const OAUTH_PRE_REFRESH_WINDOW_MS = 20 * 60 * 1000
 const REFRESH_LOCK_TTL_SECONDS = 10
 const REFRESH_WAIT_ATTEMPTS = 50
 const REFRESH_WAIT_BASE_MS = 250
+const FINGERPRINT_HEX_LENGTH = 16
 
 export class BrokerCredentialUnavailableError extends Error {
   readonly code = 'connection_unavailable' as const
@@ -84,7 +85,11 @@ export async function readConnectorCredential(args: {
     }
   }
 
-  const credential = extractOAuth2Credential(raw, args.connectorId)
+  const credential = await extractOAuth2CredentialOrMarkInvalid({
+    raw,
+    connectorId: args.connectorId,
+    userId: args.userId,
+  })
   const refreshed = await refreshOAuth2IfNeeded({
     connector,
     credential,
@@ -173,6 +178,27 @@ function extractOAuth2Credential(
   )
 }
 
+async function extractOAuth2CredentialOrMarkInvalid(input: {
+  raw: RawCredential
+  connectorId: string
+  userId: string
+}): Promise<StoredOAuth2CredentialBlob> {
+  try {
+    return extractOAuth2Credential(input.raw, input.connectorId)
+  } catch (err) {
+    const message =
+      err instanceof Error
+        ? err.message
+        : 'Stored OAuth credential shape is invalid.'
+    await markInvalid({
+      userId: input.userId,
+      connectorId: input.connectorId,
+      error: message,
+    })
+    throw err
+  }
+}
+
 async function refreshOAuth2IfNeeded(input: {
   connector: Extract<Connector, { authKind: 'oauth2' }>
   credential: StoredOAuth2CredentialBlob
@@ -184,9 +210,18 @@ async function refreshOAuth2IfNeeded(input: {
     return input.credential
   }
   if (!input.credential.refreshToken) {
+    if (!isExpired(input.expiresAt)) {
+      return input.credential
+    }
+    const message = `${input.connector.displayName} token is expired and has no refresh token.`
+    await markInvalid({
+      userId: input.userId,
+      connectorId: input.connector.connectorId,
+      error: message,
+    })
     throw new BrokerCredentialUnavailableError(
       input.connector.connectorId,
-      `${input.connector.displayName} token is expired and has no refresh token.`
+      message
     )
   }
 
@@ -202,6 +237,10 @@ function shouldRefresh(expiresAt: Date | null): boolean {
     return false
   }
   return expiresAt.getTime() < Date.now() + OAUTH_PRE_REFRESH_WINDOW_MS
+}
+
+function isExpired(expiresAt: Date | null): boolean {
+  return expiresAt !== null && expiresAt.getTime() <= Date.now()
 }
 
 async function withOAuthRefreshSingleFlight(input: {
@@ -246,7 +285,11 @@ async function withOAuthRefreshSingleFlight(input: {
         connectorId: input.connectorId,
         userId: input.userId,
       })
-      return extractOAuth2Credential(raw, input.connectorId)
+      return await extractOAuth2CredentialOrMarkInvalid({
+        raw,
+        connectorId: input.connectorId,
+        userId: input.userId,
+      })
     }
   }
 
@@ -278,7 +321,11 @@ async function refreshOAuth2Credential(input: {
       connectorId: input.connector.connectorId,
       userId: input.userId,
     })
-    return extractOAuth2Credential(latestRaw, input.connector.connectorId)
+    return await extractOAuth2CredentialOrMarkInvalid({
+      raw: latestRaw,
+      connectorId: input.connector.connectorId,
+      userId: input.userId,
+    })
   }
 
   const tokenResponse = await refreshAccessToken(
@@ -323,7 +370,10 @@ async function refreshOAuth2Credential(input: {
 export async function tokenFingerprint(token: string): Promise<string> {
   'use step'
   const { createHash } = await import('node:crypto')
-  return createHash('sha256').update(token).digest('hex').slice(0, 8)
+  return createHash('sha256')
+    .update(token)
+    .digest('hex')
+    .slice(0, FINGERPRINT_HEX_LENGTH)
 }
 
 export async function credentialFingerprint(

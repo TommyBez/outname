@@ -19,7 +19,7 @@ describe('validateConnectorInfrastructureForEnv', () => {
       validateConnectorInfrastructureForEnv([oauthConnector], {
         NODE_ENV: 'development',
       })
-    ).toThrow('OAuth connectors require UPSTASH_REDIS_REST_URL')
+    ).toThrow('OAuth connectors require KV_REST_API_URL')
   })
 
   it('accepts Vercel KV Redis env vars for OAuth connectors', () => {

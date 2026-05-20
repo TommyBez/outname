@@ -9,9 +9,7 @@ export function isConnectorBackedCapability(
   capability: ToolCapability
 ): capability is ConnectorBackedCapability {
   return (
-    capability.kind === 'brokered_http' ||
-    capability.kind === 'repo_workspace' ||
-    capability.kind === 'sdk'
+    'connectorId' in capability && typeof capability.connectorId === 'string'
   )
 }
 
