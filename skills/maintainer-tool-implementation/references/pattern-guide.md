@@ -9,6 +9,7 @@ Use this file to pick the right helper before writing the tool.
 | Authenticated HTTP call with request/response normalization | `defineApiPassthroughTool` | `brokered_http` | `tools/providers/calcom.ts` |
 | Custom execution flow with parsing, multiple steps, or mixed concerns | `defineActionTool` | `brokered_http`, `tool_sandbox`, `none`, or a mix | `tools/providers/resend.ts` |
 | One attachment exposing several related child tools that share config and capabilities | `defineToolBundle` | `brokered_http`, `sdk`, `tool_sandbox`, or a mix | `tools/providers/v0.ts` |
+| Repo cloned live per run, connector-backed creds, no snapshot | `defineToolBundle` | `repo_workspace` | `tools/providers/github-repo.ts` |
 | CLI or process executed inside a snapshot-backed sandbox | `defineSandboxTool` | `tool_sandbox` | `tools/providers/agent-browser.ts` |
 
 ## Authenticated Integrations: Required Security Pattern
@@ -24,7 +25,7 @@ Translate that into repo-level implementation rules:
 - Prefer exact domains; use wildcards only when the provider genuinely requires them
 - If sandboxed code or a CLI needs authenticated outbound HTTP, the auth material must be injected by the network policy layer rather than exposed to the process itself
 
-For `brokered_http` tools in this repo, that means the provider/connector runtime should own authenticated egress. For `tool_sandbox` tools, the sandbox manifest and runtime policy must enforce the same rule.
+For `brokered_http` tools in this repo, that means the provider/connector runtime should own authenticated egress. For `repo_workspace` tools, the repo-workspace runtime creates the sandbox and network policy at execute time. For `tool_sandbox` tools, the sandbox manifest and runtime policy must enforce the same rule.
 
 ## `defineActionTool`
 
@@ -123,6 +124,22 @@ export const exampleTool = defineApiPassthroughTool({
 })
 ```
 
+## Live repo-workspace sandbox
+
+Use `capabilities: [{ kind: 'repo_workspace', provider: '<connector>' }]` when a tool clones a repository live for a run with connector-backed credentials and no prebuilt snapshot.
+
+This pattern is exclusive with snapshot-backed sandbox tools:
+
+- It uses `defineToolBundle`, usually exposing bash/readFile/writeFile child tools.
+- It does not take a sandbox `manifest`.
+- It does not use `ctx.sandbox.run`.
+- It does not use prebuilt snapshots or files under `tools/sandboxes/<id>`.
+- It uses `ctx.credentials` only at execute time to create the sandbox and network policy.
+- When writable, GitHub HTTPS auth is brokered by the sandbox network policy for git and HTTPS API requests; the sandbox should not receive env tokens, passwords, or credentialized remote URLs.
+- Git remotes must be sanitized before exposing bash so connector tokens are not readable from `.git/config`.
+- Agents should use the repo workspace child tools for repository files; generic system-sandbox file tools write to a different filesystem.
+- Run/event cleanup must go through `tools/runtime/repo-workspace`.
+
 ## `defineSandboxTool`
 
 Use when the tool must run inside a pre-built sandbox snapshot.
@@ -184,6 +201,7 @@ Always touch:
 Touch only when required:
 
 - connector/provider code for a brand new `brokered_http` provider, usually under `connections/` plus `connections/registry.ts`
+- live repo workspace network policy and cleanup wiring for a brand new `repo_workspace` provider-backed runtime
 - `tools/sandboxes/<id>/manifest.ts`, `tools/sandboxes/<id>/setup.ts`, and `tools/sandboxes/registry.ts` for a brand new sandbox manifest
 - sandbox network policy/auth injection setup when an authenticated CLI or runtime is introduced
 - provider-agnostic runtime helpers when the repository does not yet have a reusable pattern for a new class of maintainer tool; do not hide those helpers under one provider-specific directory unless they are truly provider-specific

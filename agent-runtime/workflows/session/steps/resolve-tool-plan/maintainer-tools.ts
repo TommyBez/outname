@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray } from 'drizzle-orm'
 import { db } from '@/shared/db'
 import { toolSandboxBuilds, toolSandboxSnapshots } from '@/shared/db/schema'
+import { providerBackedCapabilities } from '@/tools/catalog/capabilities'
 import { getMaintainerTool } from '@/tools/catalog/registry'
 import type { MaintainerTool, Reconnect } from '@/tools/catalog/types'
 import { getToolSandboxManifest } from '@/tools/sandboxes/registry'
@@ -40,20 +41,12 @@ export async function resolveMaintainerRow(
     planned: {
       toolId: row.toolId,
       config: parsed.config,
-      providerRequirements: tool.capabilities
-        .filter(
-          (
-            requirement
-          ): requirement is {
-            kind: 'brokered_http' | 'sdk'
-            provider: string
-          } =>
-            requirement.kind === 'brokered_http' || requirement.kind === 'sdk'
-        )
-        .map((requirement) => ({
+      providerRequirements: providerBackedCapabilities(tool.capabilities).map(
+        (requirement) => ({
           provider: requirement.provider,
           toolId: row.toolId,
-        })),
+        })
+      ),
     },
   }
 }

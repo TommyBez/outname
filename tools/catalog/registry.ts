@@ -1,5 +1,6 @@
 import 'server-only'
 import { getConnector } from '@/connections/registry'
+import { isProviderBackedCapability } from '@/tools/catalog/capabilities'
 import type { MaintainerTool } from '@/tools/catalog/types'
 import { agentBrowserTool } from '@/tools/providers/agent-browser'
 import { agentBrowserLightTool } from '@/tools/providers/agent-browser-light'
@@ -41,7 +42,7 @@ for (const tool of TOOLS) {
   }
   for (const capability of tool.capabilities) {
     if (
-      (capability.kind === 'brokered_http' || capability.kind === 'sdk') &&
+      isProviderBackedCapability(capability) &&
       !getConnector(capability.provider)
     ) {
       throw new Error(

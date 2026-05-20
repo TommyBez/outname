@@ -29,30 +29,47 @@ const githubCredentialSchema = z.object({
 
 export type GitHubCredential = z.infer<typeof githubCredentialSchema>
 
-export async function githubRepoNetworkPolicy(
+const GITHUB_REPO_WORKSPACE_HOSTS = [
+  'api.github.com',
+  'uploads.github.com',
+  'codeload.github.com',
+  'github.com',
+] as const
+
+export async function githubRepoNetworkPolicy(input: {
+  allowExternalNetwork: boolean
   credential: GitHubCredential
-): Promise<NetworkPolicy> {
-  const bearerHeaders = {
-    Authorization: `Bearer ${credential.token}`,
+  readOnly: boolean
+}): Promise<NetworkPolicy> {
+  const allow: Record<string, NetworkPolicyRule[]> = {}
+  for (const host of GITHUB_REPO_WORKSPACE_HOSTS) {
+    allow[host] = []
   }
-  const allow: Record<string, NetworkPolicyRule[]> = {
-    'api.github.com': [{ transform: [{ headers: bearerHeaders }] }],
-    'uploads.github.com': [{ transform: [{ headers: bearerHeaders }] }],
-    'codeload.github.com': [{ transform: [{ headers: bearerHeaders }] }],
-    'github.com': [
+
+  if (!input.readOnly) {
+    const bearerHeaders = {
+      Authorization: `Bearer ${input.credential.token}`,
+    }
+    allow['api.github.com'] = [{ transform: [{ headers: bearerHeaders }] }]
+    allow['uploads.github.com'] = [{ transform: [{ headers: bearerHeaders }] }]
+    allow['codeload.github.com'] = [{ transform: [{ headers: bearerHeaders }] }]
+    allow['github.com'] = [
       {
         transform: [
           {
             headers: {
               Authorization: `Basic ${await encodeGitBasicAuth(
-                `x-access-token:${credential.token}`
+                `x-access-token:${input.credential.token}`
               )}`,
             },
           },
         ],
       },
-    ],
-    '*': [],
+    ]
+  }
+
+  if (input.allowExternalNetwork) {
+    allow['*'] = []
   }
 
   return {

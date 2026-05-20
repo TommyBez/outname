@@ -13,11 +13,6 @@ import {
 } from '@/tools/runtime/define-maintainer-tool'
 import type { BundleChildToolArgs } from '@/tools/runtime/define-maintainer-tool/types'
 import { getOrCreateRepoWorkspace } from '@/tools/runtime/repo-workspace/sandbox'
-import type {
-  RepoWorkspaceCommandResult,
-  RepoWorkspaceReadFileResult,
-  RepoWorkspaceWriteFileResult,
-} from '@/tools/runtime/repo-workspace/types'
 
 const GITHUB_REPO_TOOL_ID = 'github_repo'
 const GITHUB_REPO_GIT_USERNAME = 'x-access-token'
@@ -39,6 +34,18 @@ const githubRepoConfigSchema = z.object({
     .describe(
       'HTTPS GitHub repository URL to clone into the sandboxed repo workspace.'
     ),
+  readOnly: z
+    .boolean()
+    .default(true)
+    .describe(
+      'When enabled, the sandbox does not receive brokered GitHub auth after the initial clone and writeFile is hidden.'
+    ),
+  allowExternalNetwork: z
+    .boolean()
+    .default(true)
+    .describe(
+      'When enabled, the repo workspace may reach non-GitHub hosts without injected credentials.'
+    ),
 })
 
 const bashInputSchema = z.object({
@@ -46,7 +53,7 @@ const bashInputSchema = z.object({
     .string()
     .min(1)
     .describe(
-      'Bash command to execute from the repository root. Use this for git, grep, tests, builds, scripts, and curl-based GitHub API calls.'
+      'Bash command to execute from the repository root. Use this for git, grep, tests, builds, scripts, and curl-based GitHub API calls. When readOnly is false, GitHub HTTPS auth is brokered by the sandbox network policy; do not look for env tokens or embed credentials in commands or URLs.'
     ),
 })
 
@@ -66,11 +73,29 @@ const writeFileInputSchema = z.object({
 })
 
 type GitHubRepoConfig = z.infer<typeof githubRepoConfigSchema>
-type BashInput = z.infer<typeof bashInputSchema>
-type ReadFileInput = z.infer<typeof readFileInputSchema>
-type WriteFileInput = z.infer<typeof writeFileInputSchema>
 
-type ToolExecute<TInput, TOutput> = (input: TInput) => Promise<TOutput>
+const DANGEROUS_BASH_PATTERNS: Array<{
+  description: string
+  pattern: RegExp
+}> = [
+  {
+    description: 'git push with force flags',
+    pattern: /\bgit\s+push\b[\s\S]*(?:--force\b(?!-with-lease)|-f\b)/i,
+  },
+  {
+    description: 'git push --mirror',
+    pattern: /\bgit\s+push\b[\s\S]*--mirror\b/i,
+  },
+  {
+    description: 'git branch force-delete',
+    pattern:
+      /\bgit\s+branch\b[\s\S]*(?:-D\b|--delete\b[\s\S]*--force\b|--force\b[\s\S]*--delete\b)/i,
+  },
+  {
+    description: 'git reset --hard',
+    pattern: /\bgit\s+reset\b[\s\S]*--hard\b/i,
+  },
+]
 
 function parseGitHubRepoUrl(rawUrl: string): { cloneUrl: string } {
   let url: URL
@@ -121,53 +146,74 @@ async function getGitHubRepoWorkspace(input: {
       password: credential.token,
       username: GITHUB_REPO_GIT_USERNAME,
     },
-    networkPolicy: await githubRepoNetworkPolicy(credential),
+    networkPolicy: await githubRepoNetworkPolicy({
+      allowExternalNetwork: input.config.allowExternalNetwork,
+      credential,
+      readOnly: input.config.readOnly,
+    }),
     repoUrl: repo.cloneUrl,
   })
+}
+
+function denyDangerousBashCommand(input: {
+  input: unknown
+}): { ok: true } | { ok: false; message: string } {
+  const command = bashInputSchema.safeParse(input.input)
+  if (!command.success) {
+    return { ok: true }
+  }
+
+  const matched = DANGEROUS_BASH_PATTERNS.find(({ pattern }) =>
+    pattern.test(command.data.command)
+  )
+  if (!matched) {
+    return { ok: true }
+  }
+
+  return {
+    ok: false,
+    message: `Blocked high-risk repo workspace command: ${matched.description}.`,
+  }
 }
 
 const githubRepoTools: Record<string, BundleChildToolArgs<GitHubRepoConfig>> = {
   github_repo_bash: {
     displayName: 'GitHub Repo · Bash',
     description:
-      'Execute bash commands from the cloned repository root inside the sandbox. Use this for git, grep, builds, tests, scripts, and curl-based GitHub API calls.',
+      'Execute bash commands from the cloned GitHub repository root inside the repo workspace. Use this for git, grep, builds, tests, scripts, and curl-based GitHub API calls. When readOnly is false, GitHub HTTPS auth is brokered by the sandbox network policy; no token, username, password, or credential env var is available or needed.',
     inputSchema: bashInputSchema,
+    policies: [denyDangerousBashCommand],
     async execute({ config, ctx, input }) {
       const workspace = await getGitHubRepoWorkspace({ config, ctx })
-      const execute = workspace.bashTool.bash.execute as ToolExecute<
-        BashInput,
-        RepoWorkspaceCommandResult
-      >
-      return toolSuccess(await execute(input as BashInput))
+      return toolSuccess(
+        await workspace.bashTool.bash.execute(bashInputSchema.parse(input))
+      )
     },
   },
   github_repo_read_file: {
     displayName: 'GitHub Repo · Read File',
     description:
-      'Read a UTF-8 text file from the cloned repository using the bash-tool adapter.',
+      'Read a UTF-8 text file from the cloned GitHub repository using the repo workspace adapter.',
     inputSchema: readFileInputSchema,
     async execute({ config, ctx, input }) {
       const workspace = await getGitHubRepoWorkspace({ config, ctx })
-      const execute = workspace.bashTool.tools.readFile.execute as ToolExecute<
-        ReadFileInput,
-        RepoWorkspaceReadFileResult
-      >
-      const result = await execute(input as ReadFileInput)
+      const result = await workspace.bashTool.tools.readFile.execute(
+        readFileInputSchema.parse(input)
+      )
       return toolSuccess(result)
     },
   },
   github_repo_write_file: {
     displayName: 'GitHub Repo · Write File',
     description:
-      'Write a UTF-8 text file inside the cloned repository using the bash-tool adapter.',
+      'Write a UTF-8 text file inside the cloned GitHub repository using the repo workspace adapter. Use this for repository file edits instead of generic system-sandbox file tools.',
     inputSchema: writeFileInputSchema,
+    isEnabled: (config) => !config.readOnly,
     async execute({ config, ctx, input }) {
       const workspace = await getGitHubRepoWorkspace({ config, ctx })
-      const execute = workspace.bashTool.tools.writeFile.execute as ToolExecute<
-        WriteFileInput,
-        RepoWorkspaceWriteFileResult
-      >
-      const result = await execute(input as WriteFileInput)
+      const result = await workspace.bashTool.tools.writeFile.execute(
+        writeFileInputSchema.parse(input)
+      )
       return toolSuccess(result)
     },
   },
@@ -178,8 +224,8 @@ export const githubRepoTool: MaintainerTool = defineToolBundle({
   category: 'developer',
   displayName: 'GitHub · Repo Workspace',
   description:
-    'Clone a configured private GitHub repository into a sandboxed repo workspace and expose the bash-tool adapter so the agent can run git, grep, tests, builds, scripts, and file edits directly inside the repository.',
-  capabilities: [{ kind: 'brokered_http', provider: 'github' }],
+    'Clone a configured private GitHub repository into a sandboxed repo workspace and expose the bash-tool adapter so the agent can run git, grep, tests, builds, scripts, and file edits directly inside the repository. The repo workspace filesystem is separate from the system sandbox; use this bundle for repository files. When readOnly is false, GitHub HTTPS auth is brokered by the sandbox network policy, so no token, username, password, or credential env var is available or needed.',
+  capabilities: [{ kind: 'repo_workspace', provider: 'github' }],
   configSchema: githubRepoConfigSchema,
   tools: githubRepoTools,
 })

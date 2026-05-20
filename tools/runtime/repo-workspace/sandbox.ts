@@ -7,7 +7,13 @@ import { createRepoWorkspaceBashTool } from './bash-tool'
 import { RepoWorkspaceProviderError } from './errors'
 import { REPO_WORKSPACE_ROOT } from './paths'
 import { shellQuote } from './shell'
-import type { RepoWorkspace } from './types'
+import type {
+  RepoWorkspace,
+  RepoWorkspaceBashTool,
+  RepoWorkspaceBashToolkit,
+  RepoWorkspaceReadTool,
+  RepoWorkspaceWriteTool,
+} from './types'
 
 interface CachedRepoWorkspace {
   workspacePromise: Promise<RepoWorkspace>
@@ -22,14 +28,11 @@ interface RepoWorkspaceCreateInput {
   networkPolicy: NetworkPolicy
   repoUrl: string
   runId: string
-  vercelCredentials?: {
-    projectId: string
-    teamId: string
-    token: string
-  }
+  workspaceKey: string
 }
 
 const repoWorkspaceCache = new Map<string, Map<string, CachedRepoWorkspace>>()
+export const REPO_WORKSPACE_SANDBOX_TIMEOUT_MS = 60 * 60 * 1000
 
 export async function getOrCreateRepoWorkspace(input: {
   attachmentToolId: string
@@ -39,11 +42,6 @@ export async function getOrCreateRepoWorkspace(input: {
   }
   networkPolicy: NetworkPolicy
   repoUrl: string
-  vercelCredentials?: {
-    projectId: string
-    teamId: string
-    token: string
-  }
 }): Promise<RepoWorkspace> {
   const runId = currentToolRuntimeRunId()
   const workspaceKey = [input.attachmentToolId, input.repoUrl].join('::')
@@ -62,8 +60,9 @@ export async function getOrCreateRepoWorkspace(input: {
   const workspacePromise = createRepoWorkspace({
     ...input,
     runId,
+    workspaceKey,
   }).catch((error) => {
-    perRun?.delete(workspaceKey)
+    evictRepoWorkspace(runId, workspaceKey)
     throw error
   })
 
@@ -115,9 +114,16 @@ async function createRepoWorkspace(
       sandbox,
     }
 
-    await configureWorkspaceCheckout(workspace)
+    await configureWorkspaceCheckout(workspace, input.repoUrl)
 
-    return workspace
+    return {
+      ...workspace,
+      bashTool: wrapBashToolWithStoppedSandboxEviction({
+        bashTool,
+        runId: input.runId,
+        workspaceKey: input.workspaceKey,
+      }),
+    }
   } catch (error) {
     await stopWorkspaceSandbox(sandbox)
 
@@ -146,16 +152,15 @@ async function createWorkspaceSandbox(
       persistent: false,
       ports: [3000],
       runtime: 'node22',
-      timeout: 600_000,
+      timeout: REPO_WORKSPACE_SANDBOX_TIMEOUT_MS,
       resources: { vcpus: 1 },
-      // Source credentials authenticate the initial clone; the explicit
-      // policy brokers GitHub credentials for later git and API calls.
+      // Source credentials authenticate the initial clone. The remote URL is
+      // sanitized before the bash surface is returned to the model.
       networkPolicy: input.networkPolicy,
       tags: repoWorkspaceSandboxTags({
         attachmentToolId: input.attachmentToolId,
         runId: input.runId,
       }),
-      ...(input.vercelCredentials ?? {}),
     })
   } catch (error) {
     throw new RepoWorkspaceProviderError(
@@ -181,12 +186,14 @@ async function createWorkspaceBashTool(sandbox: Sandbox) {
 }
 
 async function configureWorkspaceCheckout(
-  workspace: RepoWorkspace
+  workspace: RepoWorkspace,
+  repoUrl: string
 ): Promise<void> {
   try {
     const result = await workspace.bashTool.bash.execute({
       command: [
         `git config --local --add safe.directory ${shellQuote(workspace.rootPath)}`,
+        `git remote set-url origin ${shellQuote(repoUrl)}`,
         `git config user.name ${shellQuote(DEFAULT_COMMIT_AUTHOR_NAME)}`,
         `git config user.email ${shellQuote(DEFAULT_COMMIT_AUTHOR_EMAIL)}`,
       ].join(' && '),
@@ -225,6 +232,132 @@ function assertWorkspaceCommandSucceeded(
 const DEFAULT_COMMIT_AUTHOR_EMAIL =
   'cursor-maintainer-tool@users.noreply.github.com'
 const DEFAULT_COMMIT_AUTHOR_NAME = 'Cursor Maintainer Tool'
+const STOPPED_SANDBOX_CODES = new Set(['sandbox_stopped', 'sandbox_stopping'])
+
+function wrapBashToolWithStoppedSandboxEviction(input: {
+  bashTool: RepoWorkspaceBashToolkit
+  runId: string
+  workspaceKey: string
+}): RepoWorkspaceBashToolkit {
+  const bash = wrapBashExecute(input.bashTool.bash, input)
+  return {
+    bash,
+    tools: {
+      bash,
+      readFile: wrapReadFileExecute(input.bashTool.tools.readFile, input),
+      writeFile: wrapWriteFileExecute(input.bashTool.tools.writeFile, input),
+    },
+  }
+}
+
+function wrapBashExecute(
+  tool: RepoWorkspaceBashTool,
+  cacheKey: { runId: string; workspaceKey: string }
+): RepoWorkspaceBashTool {
+  return {
+    execute: async (input) =>
+      await withStoppedSandboxEviction(cacheKey, () => tool.execute(input)),
+  }
+}
+
+function wrapReadFileExecute(
+  tool: RepoWorkspaceReadTool,
+  cacheKey: { runId: string; workspaceKey: string }
+): RepoWorkspaceReadTool {
+  return {
+    execute: async (input) =>
+      await withStoppedSandboxEviction(cacheKey, () => tool.execute(input)),
+  }
+}
+
+function wrapWriteFileExecute(
+  tool: RepoWorkspaceWriteTool,
+  cacheKey: { runId: string; workspaceKey: string }
+): RepoWorkspaceWriteTool {
+  return {
+    execute: async (input) =>
+      await withStoppedSandboxEviction(cacheKey, () => tool.execute(input)),
+  }
+}
+
+async function withStoppedSandboxEviction<TResult>(
+  cacheKey: { runId: string; workspaceKey: string },
+  operation: () => Promise<TResult>
+): Promise<TResult> {
+  try {
+    return await operation()
+  } catch (error) {
+    if (!isStoppedSandboxError(error)) {
+      throw error
+    }
+
+    evictRepoWorkspace(cacheKey.runId, cacheKey.workspaceKey)
+    throw new RepoWorkspaceProviderError(
+      'Repo workspace sandbox is stopped or expired. Local workspace state was discarded; retry the tool call to start a fresh checkout.'
+    )
+  }
+}
+
+function evictRepoWorkspace(runId: string, workspaceKey: string): void {
+  const perRun = repoWorkspaceCache.get(runId)
+  if (!perRun) {
+    return
+  }
+  perRun.delete(workspaceKey)
+  if (perRun.size === 0) {
+    repoWorkspaceCache.delete(runId)
+  }
+}
+
+function isStoppedSandboxError(error: unknown): boolean {
+  if (!(typeof error === 'object' && error !== null)) {
+    return false
+  }
+
+  if (
+    'code' in error &&
+    typeof error.code === 'string' &&
+    STOPPED_SANDBOX_CODES.has(error.code)
+  ) {
+    return true
+  }
+
+  const status = responseStatus(error)
+  if (status === null) {
+    return false
+  }
+  if (status === 410) {
+    return true
+  }
+
+  return status === 422 && sandboxApiErrorCode(error) === 'sandbox_stopping'
+}
+
+function responseStatus(error: object): number | null {
+  if (!('response' in error)) {
+    return null
+  }
+  const response = error.response
+  if (!(typeof response === 'object' && response !== null)) {
+    return null
+  }
+  if (!('status' in response) || typeof response.status !== 'number') {
+    return null
+  }
+  return response.status
+}
+
+function sandboxApiErrorCode(error: object): string | null {
+  if (!('json' in error)) {
+    return null
+  }
+  const json = error.json
+  if (!(typeof json === 'object' && json !== null)) {
+    return null
+  }
+  const body = json as { error?: { code?: unknown } }
+  return typeof body.error?.code === 'string' ? body.error.code : null
+}
 
 async function stopWorkspaceSandbox(sandbox: Sandbox | null): Promise<void> {
   if (!sandbox) {
