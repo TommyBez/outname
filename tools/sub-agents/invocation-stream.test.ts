@@ -42,6 +42,7 @@ describe('collectSubAgentMessages', () => {
     })
     mockReadUIMessageStream.mockReturnValue(
       (async function* () {
+        await Promise.resolve()
         yield {
           id: 'msg_1',
           parts: [],

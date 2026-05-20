@@ -9,8 +9,9 @@ import {
   XCircle,
 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAgentEventTranscript } from '@/agent-runtime/hooks/use-agent-event-transcript'
+import { sortAgentEvents } from '@/agent-runtime/shared/compact-ledger-events'
 import {
   type AgentEventStatus,
   type AgentEventSummary,
@@ -36,18 +37,22 @@ export function AgentEventsWorkspace({
   const searchParams = useSearchParams()
   const queryEventId = searchParams.get('event')
   const [events, setEvents] = useState<AgentEventSummary[]>(initialEvents)
+  const [ledgerStale, setLedgerStale] = useState(false)
   const pollMs = useMemo(() => (hasLiveEvents(events) ? 2500 : 6000), [events])
-  const sortedEvents = useMemo(() => sortEvents(events), [events])
-  const ledgerEvents = useMemo(
-    () => compactLedgerEvents(sortedEvents),
-    [sortedEvents]
-  )
+  const sortedEvents = useMemo(() => sortAgentEvents(events), [events])
+  const ledgerEvents = sortedEvents
   const selectedEvent =
     sortedEvents.find((event) => event.id === queryEventId) ??
     pickDefaultEvent(ledgerEvents)
+  const refreshEventsRef = useRef<() => Promise<void>>(async () => {
+    await Promise.resolve()
+  })
   const transcript = useAgentEventTranscript({
     agentId,
     event: selectedEvent ?? null,
+    onWorkflowUnavailable: () => {
+      refreshEventsRef.current().catch(() => undefined)
+    },
   })
 
   useEffect(() => {
@@ -59,17 +64,24 @@ export function AgentEventsWorkspace({
           cache: 'no-store',
         })
         if (!response.ok) {
+          if (!cancelled) {
+            setLedgerStale(true)
+          }
           return
         }
         const body = (await response.json()) as AgentEventsListResponse
         if (!cancelled) {
           setEvents(body.events)
+          setLedgerStale(false)
         }
       } catch {
-        // Event list refresh is best-effort; the selected stream reports errors.
+        if (!cancelled) {
+          setLedgerStale(true)
+        }
       }
     }
 
+    refreshEventsRef.current = refreshEvents
     refreshEvents().catch(() => undefined)
     const interval = window.setInterval(refreshEvents, pollMs)
     return () => {
@@ -96,7 +108,14 @@ export function AgentEventsWorkspace({
               Events
             </h2>
           </div>
-          <Badge variant="outline">{ledgerEvents.length}</Badge>
+          <div className="flex items-center gap-2">
+            {ledgerStale && (
+              <span className="font-bold text-[10px] text-amber-600 uppercase tracking-[0.14em]">
+                Stale
+              </span>
+            )}
+            <Badge variant="outline">{ledgerEvents.length}</Badge>
+          </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
@@ -163,6 +182,14 @@ export function AgentEventsWorkspace({
           messages={transcript.messages}
           workflowStatus={transcript.workflowStatus}
         />
+        {transcript.warning && !transcript.error && (
+          <p
+            className="mx-4 mb-2 border-2 border-amber-500 bg-amber-500/10 px-3 py-2 font-bold text-amber-800 text-xs uppercase tracking-[0.12em] dark:text-amber-200"
+            role="status"
+          >
+            {transcript.warning}
+          </p>
+        )}
         {transcript.error && (
           <p
             className="mx-4 mb-4 border-2 border-destructive bg-destructive/10 px-3 py-2 font-bold text-destructive text-xs uppercase tracking-[0.12em]"
@@ -279,63 +306,6 @@ function pickDefaultEvent(
     events[0] ??
     null
   )
-}
-
-function sortEvents(events: readonly AgentEventSummary[]): AgentEventSummary[] {
-  return [...events].sort((first, second) => {
-    const statusDelta = statusWeight(first.status) - statusWeight(second.status)
-    if (statusDelta !== 0) {
-      return statusDelta
-    }
-    return (
-      new Date(second.queuedAt).getTime() - new Date(first.queuedAt).getTime()
-    )
-  })
-}
-
-function compactLedgerEvents(
-  events: readonly AgentEventSummary[]
-): AgentEventSummary[] {
-  const seenTypes = new Set<AgentEventSummary['type']>()
-  const compacted: AgentEventSummary[] = []
-
-  for (const event of events) {
-    if (event.type === 'chat') {
-      continue
-    }
-    if (!isTerminalAgentEventStatus(event.status)) {
-      compacted.push(event)
-      continue
-    }
-    if (seenTypes.has(event.type)) {
-      continue
-    }
-    seenTypes.add(event.type)
-    compacted.push(event)
-  }
-
-  return compacted
-}
-
-function statusWeight(status: AgentEventStatus): number {
-  switch (status) {
-    case 'running':
-      return 0
-    case 'starting':
-      return 1
-    case 'queued':
-      return 2
-    case 'failed':
-      return 3
-    case 'completed':
-      return 4
-    case 'cancelled':
-      return 5
-    default: {
-      const exhaustive: never = status
-      return exhaustive
-    }
-  }
 }
 
 function formatEventLabel(event: AgentEventSummary): string {

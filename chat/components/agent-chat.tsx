@@ -12,7 +12,7 @@ import {
   AgentChatTranscript,
   hasAssistantContentAfterLatestUser,
 } from '@/chat/components/agent-chat-transcript'
-import { revalidateConversations } from '@/chat/components/agent-sidebar-workspace/conversations'
+import { refreshConversationList } from '@/chat/components/agent-sidebar-workspace/conversations'
 import { ChatErrorBanner } from '@/chat/components/chat-error-banner'
 import {
   PromptInput,
@@ -58,14 +58,14 @@ export function AgentChat({
       },
       onFinish: async () => {
         setWorkflowStatus(null)
-        // Revalidate just the sidebar list so soft navigation does not strand
-        // the freshly streamed reply out of view.
-        await revalidateConversations(agentId)
+        // Refresh the sidebar list; title generation can finish slightly after the
+        // stream closes, so we retry until the row has a title or attempts exhaust.
+        await refreshConversationList(agentId, { conversationId })
       },
     })
 
-  // Use `history.replaceState` instead of `router.replace` so the first
-  // in-flight `useChat` stream survives the draft -> persisted URL swap.
+  // Use `history.replaceState` instead of `router.replace` so the URL updates
+  // without remounting `useChat` or flashing the chat surface.
   useEffect(() => {
     if (!isDraft) {
       return

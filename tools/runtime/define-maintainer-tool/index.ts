@@ -135,6 +135,7 @@ export function defineToolBundle<TConfig = Record<string, never>>(
               config,
               ctx,
               description: child.description,
+              sandboxManifestId: definition.sandboxManifestId,
               toolId,
             }),
           ]
@@ -240,6 +241,7 @@ function buildChildTool<TInput, TConfig, TData>(input: {
     | BundleChildToolArgs<TConfig>
   description: string
   inputSchema: z.ZodType<TInput, unknown>
+  sandboxManifestId?: string
   toolId: string
 }) {
   return tool({
@@ -256,7 +258,7 @@ function buildChildTool<TInput, TConfig, TData>(input: {
         sandboxManifestId:
           'sandboxManifestId' in input.definition
             ? input.definition.sandboxManifestId
-            : undefined,
+            : input.sandboxManifestId,
       })
       return await executeWithPolicies({
         config: input.config,

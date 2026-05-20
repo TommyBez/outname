@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { listAgentEventSummaries } from '@/agent-runtime/server/agent-event-summaries'
+import { TERMINAL_LEDGER_EVENTS_PER_TYPE } from '@/agent-runtime/shared/compact-ledger-events'
 import { getSession } from '@/auth/server/auth-guard'
 import { getAgentByIdForUser } from '@/shared/server/data'
 
@@ -22,7 +23,11 @@ export async function GET(
   }
 
   const limit = readLimit(request)
-  const events = await listAgentEventSummaries({ agentId: agent.id, limit })
+  const events = await listAgentEventSummaries({
+    agentId: agent.id,
+    limit,
+    terminalEventsPerType: TERMINAL_LEDGER_EVENTS_PER_TYPE,
+  })
 
   return NextResponse.json(
     { events },
