@@ -17,7 +17,7 @@ vi.mock('./workflow-runs', () => ({
 
 import { reconcileActiveAgentEvent } from './agent-event-reconciliation'
 import { getAgentEvent, markEventTerminal } from './agent-event-store'
-import { readWorkflowRunStatus } from './workflow-runs'
+import { isWorkflowRunAlive, readWorkflowRunStatus } from './workflow-runs'
 
 const baseEvent: AgentEvent = {
   agentId: 'agent_1',
@@ -57,4 +57,47 @@ test('missing workflow run marks event completed even when recent', async () => 
     status: 'completed',
   })
   expect(result.status).toBe('completed')
+})
+
+test('starting event with terminal workflow is marked completed', async () => {
+  vi.mocked(isWorkflowRunAlive).mockResolvedValue(false)
+  vi.mocked(readWorkflowRunStatus).mockResolvedValue('completed')
+  vi.mocked(getAgentEvent).mockResolvedValue({
+    ...baseEvent,
+    completedAt: new Date('2026-05-14T09:05:00.000Z'),
+    status: 'completed',
+  })
+
+  const result = await reconcileActiveAgentEvent({
+    ...baseEvent,
+    status: 'starting',
+  })
+
+  expect(markEventTerminal).toHaveBeenCalledWith({
+    eventId: 'evt_1',
+    status: 'completed',
+  })
+  expect(result.status).toBe('completed')
+})
+
+test('starting event with failed workflow is marked failed', async () => {
+  vi.mocked(isWorkflowRunAlive).mockResolvedValue(false)
+  vi.mocked(readWorkflowRunStatus).mockResolvedValue('failed')
+  vi.mocked(getAgentEvent).mockResolvedValue({
+    ...baseEvent,
+    lastError: 'workflow failed',
+    status: 'failed',
+  })
+
+  const result = await reconcileActiveAgentEvent({
+    ...baseEvent,
+    status: 'starting',
+  })
+
+  expect(markEventTerminal).toHaveBeenCalledWith({
+    eventId: 'evt_1',
+    lastError: 'workflow failed',
+    status: 'failed',
+  })
+  expect(result.status).toBe('failed')
 })

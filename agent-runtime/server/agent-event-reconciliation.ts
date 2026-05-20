@@ -14,7 +14,7 @@ export async function reconcileActiveAgentEvent(
   now = new Date()
 ): Promise<AgentEvent> {
   if (event.status === 'starting') {
-    return await reconcileStartingEvent(event, now)
+    return await reconcileStartingEvent(event)
   }
   if (event.status === 'running') {
     return await reconcileRunningEvent(event, now)
@@ -39,8 +39,9 @@ async function reconcileStartingEvent(event: AgentEvent): Promise<AgentEvent> {
   }
 
   const status = await readWorkflowRunStatus(event.workflowRunId)
-  if (status === 'not_found') {
-    return await reconcileMissingWorkflowRun(event)
+  const reconciled = await reconcileKnownWorkflowStatus(event, status)
+  if (reconciled) {
+    return reconciled
   }
 
   return event
@@ -54,6 +55,28 @@ async function reconcileRunningEvent(
     ? await readWorkflowRunStatus(event.workflowRunId)
     : null
 
+  const reconciled = await reconcileKnownWorkflowStatus(event, status)
+  if (reconciled) {
+    return reconciled
+  }
+
+  const heartbeatAt = event.heartbeatAt ?? event.startedAt ?? event.queuedAt
+  if (now.getTime() - heartbeatAt.getTime() > RUNNING_STALE_MS) {
+    await markEventTerminal({
+      eventId: event.id,
+      lastError: 'running event heartbeat is stale',
+      status: 'failed',
+    })
+    return (await getAgentEvent(event.id)) ?? event
+  }
+
+  return event
+}
+
+async function reconcileKnownWorkflowStatus(
+  event: AgentEvent,
+  status: string | null
+): Promise<AgentEvent | null> {
   if (status === 'completed') {
     await markEventTerminal({ eventId: event.id, status: 'completed' })
     return (await getAgentEvent(event.id)) ?? event
@@ -69,18 +92,7 @@ async function reconcileRunningEvent(
   if (status === 'not_found') {
     return await reconcileMissingWorkflowRun(event)
   }
-
-  const heartbeatAt = event.heartbeatAt ?? event.startedAt ?? event.queuedAt
-  if (now.getTime() - heartbeatAt.getTime() > RUNNING_STALE_MS) {
-    await markEventTerminal({
-      eventId: event.id,
-      lastError: 'running event heartbeat is stale',
-      status: 'failed',
-    })
-    return (await getAgentEvent(event.id)) ?? event
-  }
-
-  return event
+  return null
 }
 
 async function reconcileMissingWorkflowRun(
