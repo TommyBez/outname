@@ -1,10 +1,11 @@
 import 'server-only'
 
-import { and, eq } from 'drizzle-orm'
 import { db } from '@/shared/db'
 import { userConnections } from '@/shared/db/schema'
 import type { Reconnect } from '@/tools/catalog/types'
 import { getConnector } from '../registry'
+import { connectionFilter } from './connection-query'
+import { normalizeScopes } from './scopes'
 import type { ConnectorRequirement } from './types'
 
 export interface ResolveConnectionAvailabilityResult {
@@ -78,12 +79,7 @@ async function resolveOneConnector(args: {
       grantedScopes: userConnections.grantedScopes,
     })
     .from(userConnections)
-    .where(
-      and(
-        eq(userConnections.userId, userId),
-        eq(userConnections.connectorId, connectorId)
-      )
-    )
+    .where(connectionFilter({ connectorId, userId }))
     .limit(1)
 
   if (!connection || connection.status === 'invalid') {
@@ -128,11 +124,4 @@ function fanOutMissingScopes(
   for (const toolId of toolIds) {
     reconnects.push({ connectorId, toolId, reason: 'missing_scopes', missing })
   }
-}
-
-function normalizeScopes(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return []
-  }
-  return value.filter((item): item is string => typeof item === 'string')
 }

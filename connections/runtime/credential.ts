@@ -1,26 +1,26 @@
 import 'server-only'
 
-import { Buffer } from 'node:buffer'
 import { setTimeout as sleep } from 'node:timers/promises'
-import { and, eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { decryptCredential } from '@/connections/crypto'
 import { db } from '@/shared/db'
 import { userConnections } from '@/shared/db/schema'
 import { getUpstashRedis } from '@/shared/server/upstash-redis'
+import { refreshAccessToken } from '../oauth-token-client'
 import { getConnector } from '../registry'
 import type {
   Connector,
   RawCredential,
   StoredOAuth2CredentialBlob,
 } from '../types'
+import { connectionFilter } from './connection-query'
+import { normalizeScopes } from './scopes'
 import { markInvalid, updateOAuth2ConnectionTokens } from './store'
 
 const OAUTH_PRE_REFRESH_WINDOW_MS = 20 * 60 * 1000
 const REFRESH_LOCK_TTL_SECONDS = 10
 const REFRESH_WAIT_ATTEMPTS = 50
 const REFRESH_WAIT_BASE_MS = 250
-const SCOPE_SPLIT_PATTERN = /\s+/
 
 export class BrokerCredentialUnavailableError extends Error {
   readonly code = 'connection_unavailable' as const
@@ -110,12 +110,7 @@ async function readConnectionRow(args: {
       status: userConnections.status,
     })
     .from(userConnections)
-    .where(
-      and(
-        eq(userConnections.userId, args.userId),
-        eq(userConnections.connectorId, args.connectorId)
-      )
-    )
+    .where(connectionFilter(args))
     .limit(1)
   return row ?? null
 }
@@ -286,7 +281,10 @@ async function refreshOAuth2Credential(input: {
     return extractOAuth2Credential(latestRaw, input.connector.connectorId)
   }
 
-  const tokenResponse = await requestRefreshToken(input)
+  const tokenResponse = await refreshAccessToken(
+    input.connector,
+    input.credential.refreshToken ?? ''
+  )
   if (!tokenResponse.ok) {
     if (tokenResponse.permanent) {
       await markInvalid({
@@ -320,132 +318,6 @@ async function refreshOAuth2Credential(input: {
     grantedScopes,
   })
   return nextCredential
-}
-
-type RefreshTokenResult =
-  | {
-      accessToken: string
-      expiresAt: Date | null
-      grantedScopes: string[]
-      ok: true
-      refreshToken?: string
-    }
-  | { error: string; ok: false; permanent: boolean }
-
-async function requestRefreshToken(input: {
-  connector: Extract<Connector, { authKind: 'oauth2' }>
-  credential: StoredOAuth2CredentialBlob
-}): Promise<RefreshTokenResult> {
-  const clientId = process.env[input.connector.oauth2.clientIdEnv]
-  const clientSecret = input.connector.oauth2.clientSecretEnv
-    ? process.env[input.connector.oauth2.clientSecretEnv]
-    : undefined
-  if (!clientId) {
-    return {
-      ok: false,
-      permanent: false,
-      error: `${input.connector.oauth2.clientIdEnv} is not configured.`,
-    }
-  }
-
-  const body = new URLSearchParams({
-    grant_type: 'refresh_token',
-    refresh_token: input.credential.refreshToken ?? '',
-    client_id: clientId,
-  })
-  const headers: Record<string, string> = {
-    accept: 'application/json',
-    'content-type': 'application/x-www-form-urlencoded',
-  }
-  if (clientSecret) {
-    headers.authorization = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
-  }
-
-  try {
-    const response = await fetch(input.connector.oauth2.tokenUrl, {
-      body,
-      headers,
-      method: 'POST',
-    })
-    const payload = (await response.json().catch(() => ({}))) as {
-      access_token?: unknown
-      error?: unknown
-      error_description?: unknown
-      expires_in?: unknown
-      refresh_token?: unknown
-      scope?: unknown
-      token_type?: unknown
-    }
-    if (!response.ok) {
-      const error = providerOAuthError(payload, response.status)
-      return {
-        ok: false,
-        permanent: isPermanentRefreshFailure(response.status, payload.error),
-        error,
-      }
-    }
-    if (
-      typeof payload.access_token !== 'string' ||
-      (payload.token_type !== undefined && payload.token_type !== 'Bearer')
-    ) {
-      return {
-        ok: false,
-        permanent: false,
-        error: `${input.connector.displayName} returned an invalid refresh response.`,
-      }
-    }
-    return {
-      ok: true,
-      accessToken: payload.access_token,
-      refreshToken:
-        typeof payload.refresh_token === 'string'
-          ? payload.refresh_token
-          : undefined,
-      expiresAt:
-        typeof payload.expires_in === 'number'
-          ? new Date(Date.now() + payload.expires_in * 1000)
-          : null,
-      grantedScopes:
-        typeof payload.scope === 'string'
-          ? payload.scope.split(SCOPE_SPLIT_PATTERN).filter(Boolean)
-          : [],
-    }
-  } catch (error) {
-    return {
-      ok: false,
-      permanent: false,
-      error: error instanceof Error ? error.message : 'OAuth refresh failed.',
-    }
-  }
-}
-
-function isPermanentRefreshFailure(status: number, rawError: unknown): boolean {
-  if (status === 401) {
-    return true
-  }
-  if (status !== 400 || typeof rawError !== 'string') {
-    return false
-  }
-  return rawError === 'invalid_grant' || rawError === 'invalid_request'
-}
-
-function providerOAuthError(
-  payload: { error?: unknown; error_description?: unknown },
-  status: number
-): string {
-  const error = typeof payload.error === 'string' ? payload.error : null
-  const description =
-    typeof payload.error_description === 'string'
-      ? payload.error_description
-      : null
-  return [error, description].filter(Boolean).join(': ') || `HTTP ${status}`
-}
-
-function normalizeScopes(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return []
-  }
-  return value.filter((item): item is string => typeof item === 'string')
 }
 
 export async function tokenFingerprint(token: string): Promise<string> {

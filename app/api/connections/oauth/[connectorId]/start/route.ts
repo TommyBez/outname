@@ -3,21 +3,21 @@ import { headers } from 'next/headers'
 import { type NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth/server/auth'
 import {
-  codeChallenge,
   createPkceVerifier,
   encodeOAuthState,
   normalizeConnectionReturnTo,
+  OAUTH_STATE_TTL_SECONDS,
   oauthPkceCookieName,
   oauthRedirectUri,
+  pkceCookieOptions,
   pkceHash,
   signedPkceCookieValue,
 } from '@/connections/oauth-state'
+import { readOAuthClientCredentials } from '@/connections/oauth-token-client'
 import {
   getConnector,
   validateConnectorRuntimeConfig,
 } from '@/connections/registry'
-
-const PKCE_COOKIE_MAX_AGE_SECONDS = 60 * 10
 
 export async function GET(
   request: NextRequest,
@@ -51,13 +51,9 @@ export async function GET(
     )
   }
 
-  const clientId = process.env[connector.oauth2.clientIdEnv]
-  if (!clientId) {
-    return redirectWithError(
-      request,
-      returnTo,
-      `${connector.oauth2.clientIdEnv} is not configured.`
-    )
+  const client = readOAuthClientCredentials(connector)
+  if (!client.ok) {
+    return redirectWithError(request, returnTo, client.error)
   }
 
   const verifier = createPkceVerifier()
@@ -75,11 +71,11 @@ export async function GET(
   const authorizeUrl = new URL(connector.oauth2.authorizationUrl)
   authorizeUrl.search = new URLSearchParams({
     response_type: 'code',
-    client_id: clientId,
+    client_id: client.credentials.clientId,
     redirect_uri: redirectUri,
     scope: scopes.join(' '),
     state,
-    code_challenge: codeChallenge(verifier),
+    code_challenge: pkceHash(verifier),
     code_challenge_method: connector.oauth2.pkce.method,
   }).toString()
 
@@ -87,11 +83,7 @@ export async function GET(
   response.cookies.set({
     name: oauthPkceCookieName(connectorId),
     value: signedPkceCookieValue(verifier),
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/api/connections/oauth/',
-    maxAge: PKCE_COOKIE_MAX_AGE_SECONDS,
+    ...pkceCookieOptions(OAUTH_STATE_TTL_SECONDS),
   })
   return response
 }

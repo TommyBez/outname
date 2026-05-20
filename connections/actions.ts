@@ -1,8 +1,11 @@
 'use server'
 
-import { Buffer } from 'node:buffer'
 import { revalidatePath, updateTag } from 'next/cache'
 import { requireUserId } from '@/auth/server/auth-guard'
+import {
+  buildOAuthClientAuthHeaders,
+  readOAuthClientCredentials,
+} from '@/connections/oauth-token-client'
 import { getConnector } from '@/connections/registry'
 import { readConnectorCredential } from '@/connections/runtime/credential'
 import {
@@ -104,23 +107,20 @@ async function revokeOAuthConnection(input: {
   const result = await readConnectorCredential(input)
   const credential = result.credential as StoredOAuth2CredentialBlob
   const token = credential.refreshToken ?? credential.accessToken
-  const clientId = process.env[connector.oauth2.clientIdEnv]
-  const clientSecret = connector.oauth2.clientSecretEnv
-    ? process.env[connector.oauth2.clientSecretEnv]
-    : undefined
-  if (!clientId) {
+  const client = readOAuthClientCredentials(connector)
+  if (!client.ok) {
     return
   }
-  const body = new URLSearchParams({ token, client_id: clientId })
-  const headers: Record<string, string> = {
-    'content-type': 'application/x-www-form-urlencoded',
-  }
-  if (clientSecret) {
-    headers.authorization = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
-  }
+  const body = new URLSearchParams({
+    token,
+    client_id: client.credentials.clientId,
+  })
   await fetch(connector.oauth2.revokeUrl, {
     body,
-    headers,
+    headers: buildOAuthClientAuthHeaders(
+      client.credentials.clientId,
+      client.credentials.clientSecret
+    ),
     method: 'POST',
   })
 }

@@ -1,3 +1,4 @@
+// Keep this provider mapping in sync with drizzle/0011_connector_connections.sql.
 export const LEGACY_PROVIDER_TO_CONNECTOR_ID = {
   calcom: 'calcom.api_key',
   context7: 'context7.api_key',

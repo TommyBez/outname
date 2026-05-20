@@ -17,6 +17,8 @@ vi.mock('@/tools/runtime/brokered-http', () => ({
   brokeredHttpRequest: mockBrokeredHttpRequest,
 }))
 
+import { xOAuthConnector } from '@/connections/x'
+import { X_OAUTH_SCOPES } from '@/connections/x-oauth-scopes'
 import { xUserApiRequestTool } from './x-api'
 
 interface BuiltTool {
@@ -41,6 +43,18 @@ describe('xUserApiRequestTool', () => {
   beforeEach(() => {
     mockBrokeredHttpRequest.mockReset()
     mockRecordToolInvocation.mockReset()
+  })
+
+  it('uses the shared X OAuth scope bundle for connector and tool requirements', () => {
+    const capability = xUserApiRequestTool.capabilities.find(
+      (item) => item.kind === 'brokered_http'
+    )
+
+    expect(xOAuthConnector.oauth2.defaultScopes).toEqual(X_OAUTH_SCOPES)
+    expect(capability).toMatchObject({
+      connectorId: 'x.oauth2_user',
+      requiredScopes: X_OAUTH_SCOPES,
+    })
   })
 
   it.each([

@@ -1,5 +1,6 @@
 import 'server-only'
 import { z } from 'zod'
+import { X_OAUTH_SCOPES } from '@/connections/x-oauth-scopes'
 import {
   defineApiPassthroughTool,
   type ToolPolicy,
@@ -14,19 +15,6 @@ const X_API_BASE = 'https://api.x.com'
 const X_API_DEFAULT_RESPONSE_BYTES = 12_000
 const X_API_MAX_RESPONSE_BYTES = 64 * 1024
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i
-const X_OAUTH_USER_SCOPES = [
-  'tweet.read',
-  'tweet.write',
-  'users.read',
-  'offline.access',
-  'like.read',
-  'like.write',
-  'follows.read',
-  'follows.write',
-  'bookmark.read',
-  'bookmark.write',
-  'media.write',
-] as const
 
 const X_ENDPOINT_GUIDE =
   'Use relative X API v2 paths such as /2/users/by/username/xdevelopers, /2/tweets/search/recent, /2/tweets, or /2/dm_conversations. Mutating calls require confirmMutation=true. Long-lived streaming response endpoints are not supported.'
@@ -274,7 +262,7 @@ export const xUserApiRequestTool = defineApiPassthroughTool({
   description:
     'Call X API v2 user-context endpoints on api.x.com for tweets, users/me, likes, follows, bookmarks, and media upload. Mutating calls require confirmMutation=true.',
   connectorId: 'x.oauth2_user',
-  requiredScopes: X_OAUTH_USER_SCOPES,
+  requiredScopes: X_OAUTH_SCOPES,
   configSchema: xApiConfigSchema,
   inputSchema: xApiRequestInputSchema,
   policies: [xUserApiSafetyPolicy],

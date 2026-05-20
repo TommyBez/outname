@@ -1,5 +1,6 @@
 ALTER TABLE "user_connections" ADD COLUMN "connector_id" text;
 
+-- Keep this provider mapping in sync with connections/legacy-provider-map.ts.
 UPDATE "user_connections"
 SET "connector_id" = CASE "provider"
   WHEN 'resend' THEN 'resend.api_key'

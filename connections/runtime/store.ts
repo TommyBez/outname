@@ -1,12 +1,14 @@
 import 'server-only'
 
-import { and, eq } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { revalidateTag } from 'next/cache'
 import { encryptCredential } from '@/connections/crypto'
 import { db } from '@/shared/db'
 import { userConnections } from '@/shared/db/schema'
 import { userConnectionsTag } from '@/shared/server/cache-tags'
 import type { RawCredential, StoredCredentialBlob } from '../types'
+import { connectionFilter } from './connection-query'
+import { normalizeScopes } from './scopes'
 import type {
   ConnectionStatus,
   ConnectionStatusView,
@@ -19,37 +21,15 @@ export async function persistApiKeyConnection(args: {
   raw: RawCredential
   metadata?: Record<string, unknown>
 }): Promise<void> {
-  const credentialsB64 = await encryptCredential({
-    kind: 'api_key',
-    values: args.raw,
-  } satisfies StoredCredentialBlob)
-  const metadata = args.metadata ?? {}
-  const existing = await hasConnectionRow(args)
-  if (existing) {
-    await db
-      .update(userConnections)
-      .set({
-        credentials: credentialsB64,
-        metadata,
-        grantedScopes: [],
-        status: 'active',
-        expiresAt: null,
-        lastError: null,
-        updatedAt: new Date(),
-      })
-      .where(connectionFilter(args))
-  } else {
-    await db.insert(userConnections).values({
-      userId: args.userId,
-      connectorId: args.connectorId,
-      credentials: credentialsB64,
-      metadata,
-      grantedScopes: [],
-      status: 'active',
-      expiresAt: null,
-    })
-  }
-  revalidateConnection(args.userId)
+  await upsertConnection({
+    ...args,
+    credentials: {
+      kind: 'api_key',
+      values: args.raw,
+    },
+    expiresAt: null,
+    grantedScopes: [],
+  })
 }
 
 export async function disconnectConnection(args: {
@@ -119,18 +99,31 @@ export async function persistOAuth2Connection(args: {
   metadata?: Record<string, unknown>
   userId: string
 }): Promise<void> {
+  await upsertConnection(args)
+}
+
+async function upsertConnection(args: {
+  connectorId: string
+  credentials: StoredCredentialBlob
+  expiresAt?: Date | null
+  grantedScopes?: readonly string[]
+  metadata?: Record<string, unknown>
+  userId: string
+}): Promise<void> {
   const credentialsB64 = await encryptCredential(args.credentials)
-  const metadata = args.metadata ?? {}
   const existing = await hasConnectionRow(args)
+  const expiresAt = args.expiresAt ?? null
+  const grantedScopes = [...(args.grantedScopes ?? [])]
+  const metadata = args.metadata ?? {}
   if (existing) {
     await db
       .update(userConnections)
       .set({
         credentials: credentialsB64,
         metadata,
-        grantedScopes: [...args.grantedScopes],
+        grantedScopes,
         status: 'active',
-        expiresAt: args.expiresAt,
+        expiresAt,
         lastError: null,
         updatedAt: new Date(),
       })
@@ -141,9 +134,9 @@ export async function persistOAuth2Connection(args: {
       connectorId: args.connectorId,
       credentials: credentialsB64,
       metadata,
-      grantedScopes: [...args.grantedScopes],
+      grantedScopes,
       status: 'active',
-      expiresAt: args.expiresAt,
+      expiresAt,
     })
   }
   revalidateConnection(args.userId)
@@ -208,20 +201,6 @@ async function hasConnectionRow(args: {
   return Boolean(row)
 }
 
-function connectionFilter(args: { connectorId: string; userId: string }) {
-  return and(
-    eq(userConnections.userId, args.userId),
-    eq(userConnections.connectorId, args.connectorId)
-  )
-}
-
 function revalidateConnection(userId: string): void {
   revalidateTag(userConnectionsTag(userId), 'max')
-}
-
-function normalizeScopes(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return []
-  }
-  return value.filter((item): item is string => typeof item === 'string')
 }

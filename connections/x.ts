@@ -2,36 +2,11 @@ import 'server-only'
 import { z } from 'zod'
 import { defineConnector, defineOAuth2Connector } from './define-connector'
 import type { StoredOAuth2CredentialBlob } from './types'
+import { X_OAUTH_SCOPE_CATALOG, X_OAUTH_SCOPES } from './x-oauth-scopes'
 
 const BEARER_PREFIX_PATTERN = /^bearer(?:\s+|$)/i
 const WHITESPACE_PATTERN = /\s/
 const X_API_BASE = 'https://api.x.com'
-const X_OAUTH_SCOPES = [
-  'tweet.read',
-  'tweet.write',
-  'users.read',
-  'offline.access',
-  'like.read',
-  'like.write',
-  'follows.read',
-  'follows.write',
-  'bookmark.read',
-  'bookmark.write',
-  'media.write',
-] as const
-const X_OAUTH_SCOPE_CATALOG = [
-  { scope: 'tweet.read', label: 'Read tweets' },
-  { scope: 'tweet.write', label: 'Post and manage tweets' },
-  { scope: 'users.read', label: 'Read user profiles' },
-  { scope: 'offline.access', label: 'Stay connected offline' },
-  { scope: 'like.read', label: 'Read likes' },
-  { scope: 'like.write', label: 'Like and unlike tweets' },
-  { scope: 'follows.read', label: 'Read follows' },
-  { scope: 'follows.write', label: 'Follow and unfollow accounts' },
-  { scope: 'bookmark.read', label: 'Read bookmarks' },
-  { scope: 'bookmark.write', label: 'Manage bookmarks' },
-  { scope: 'media.write', label: 'Upload media' },
-] as const
 
 const xBearerTokenSchema = z.preprocess(
   (value) =>

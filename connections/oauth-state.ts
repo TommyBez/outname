@@ -8,7 +8,7 @@ import {
   timingSafeEqual,
 } from 'node:crypto'
 
-const OAUTH_STATE_TTL_SECONDS = 60 * 10
+export const OAUTH_STATE_TTL_SECONDS = 60 * 10
 const TRAILING_SLASH = /\/$/
 
 export interface OAuthState {
@@ -50,12 +50,7 @@ export function decodeOAuthState(raw: string): OAuthState | null {
       return null
     }
     const expected = sign(encodedPayload)
-    const actualBuffer = Buffer.from(signature, 'utf8')
-    const expectedBuffer = Buffer.from(expected, 'utf8')
-    if (
-      actualBuffer.length !== expectedBuffer.length ||
-      !timingSafeEqual(actualBuffer, expectedBuffer)
-    ) {
+    if (!constantTimeStringEqual(signature, expected)) {
       return null
     }
     const payload = JSON.parse(
@@ -98,10 +93,6 @@ export function pkceHash(verifier: string): string {
   return createHash('sha256').update(verifier).digest('base64url')
 }
 
-export function codeChallenge(verifier: string): string {
-  return pkceHash(verifier)
-}
-
 export function signedPkceCookieValue(verifier: string): string {
   return `${verifier}.${sign(verifier)}`
 }
@@ -115,15 +106,20 @@ export function verifySignedPkceCookie(raw: string | undefined): string | null {
     return null
   }
   const expected = sign(verifier)
-  const actualBuffer = Buffer.from(signature, 'utf8')
-  const expectedBuffer = Buffer.from(expected, 'utf8')
-  if (
-    actualBuffer.length !== expectedBuffer.length ||
-    !timingSafeEqual(actualBuffer, expectedBuffer)
-  ) {
+  if (!constantTimeStringEqual(signature, expected)) {
     return null
   }
   return verifier
+}
+
+export function pkceCookieOptions(maxAge: number) {
+  return {
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    secure: process.env.NODE_ENV === 'production',
+    path: '/api/connections/oauth/',
+    maxAge,
+  }
 }
 
 export function oauthPkceCookieName(connectorId: string): string {
@@ -140,6 +136,15 @@ export function unexpectedGrantedScopes(
 ): string[] {
   const requested = new Set(requestedScopes)
   return grantedScopes.filter((scope) => !requested.has(scope))
+}
+
+function constantTimeStringEqual(actual: string, expected: string): boolean {
+  const actualBuffer = Buffer.from(actual, 'utf8')
+  const expectedBuffer = Buffer.from(expected, 'utf8')
+  return (
+    actualBuffer.length === expectedBuffer.length &&
+    timingSafeEqual(actualBuffer, expectedBuffer)
+  )
 }
 
 function sign(value: string): string {

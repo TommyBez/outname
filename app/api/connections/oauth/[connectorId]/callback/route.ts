@@ -1,4 +1,3 @@
-import { Buffer } from 'node:buffer'
 import { revalidatePath, updateTag } from 'next/cache'
 import { headers } from 'next/headers'
 import { type NextRequest, NextResponse } from 'next/server'
@@ -7,16 +6,15 @@ import {
   decodeOAuthState,
   oauthPkceCookieName,
   oauthRedirectUri,
+  pkceCookieOptions,
   pkceHash,
   unexpectedGrantedScopes,
   verifySignedPkceCookie,
 } from '@/connections/oauth-state'
+import { exchangeAuthorizationCode } from '@/connections/oauth-token-client'
 import { getConnector } from '@/connections/registry'
 import { persistOAuth2Connection } from '@/connections/runtime/store'
-import type { StoredOAuth2CredentialBlob } from '@/connections/types'
 import { userConnectionsTag } from '@/shared/server/cache-tags'
-
-const SCOPE_SPLIT_PATTERN = /\s+/
 
 export async function GET(
   request: NextRequest,
@@ -89,12 +87,14 @@ export async function GET(
   }
 
   try {
-    const token = await exchangeCode({
+    const token = await exchangeAuthorizationCode(connector, {
       code,
-      connector,
       redirectUri: oauthRedirectUri(baseUrl, connectorId),
       verifier,
     })
+    if (!token.ok) {
+      throw new Error(token.error)
+    }
     const unexpectedScopes = unexpectedGrantedScopes(
       token.grantedScopes,
       decoded.scopes
@@ -125,87 +125,6 @@ export async function GET(
   }
 }
 
-async function exchangeCode(input: {
-  code: string
-  connector: Extract<ReturnType<typeof getConnector>, { authKind: 'oauth2' }>
-  redirectUri: string
-  verifier: string
-}): Promise<{
-  accessToken: string
-  credentials: StoredOAuth2CredentialBlob
-  expiresAt: Date | null
-  grantedScopes: string[]
-}> {
-  const clientId = process.env[input.connector.oauth2.clientIdEnv]
-  const clientSecret = input.connector.oauth2.clientSecretEnv
-    ? process.env[input.connector.oauth2.clientSecretEnv]
-    : undefined
-  if (!clientId) {
-    throw new Error(`${input.connector.oauth2.clientIdEnv} is not configured.`)
-  }
-
-  const body = new URLSearchParams({
-    grant_type: 'authorization_code',
-    code: input.code,
-    redirect_uri: input.redirectUri,
-    code_verifier: input.verifier,
-    client_id: clientId,
-  })
-  const headers: Record<string, string> = {
-    accept: 'application/json',
-    'content-type': 'application/x-www-form-urlencoded',
-  }
-  if (clientSecret) {
-    headers.authorization = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
-  }
-
-  const response = await fetch(input.connector.oauth2.tokenUrl, {
-    body,
-    headers,
-    method: 'POST',
-  })
-  const payload = (await response.json().catch(() => ({}))) as {
-    access_token?: unknown
-    error?: unknown
-    error_description?: unknown
-    expires_in?: unknown
-    refresh_token?: unknown
-    scope?: unknown
-    token_type?: unknown
-  }
-  if (!response.ok) {
-    throw new Error(providerOAuthError(payload, response.status))
-  }
-  if (
-    typeof payload.access_token !== 'string' ||
-    (payload.token_type !== undefined && payload.token_type !== 'Bearer')
-  ) {
-    throw new Error('OAuth provider returned an invalid token response.')
-  }
-  const credentials: StoredOAuth2CredentialBlob = {
-    kind: 'oauth2',
-    version: 1,
-    tokenType: 'Bearer',
-    accessToken: payload.access_token,
-    refreshToken:
-      typeof payload.refresh_token === 'string'
-        ? payload.refresh_token
-        : undefined,
-  }
-  return {
-    accessToken: payload.access_token,
-    credentials,
-    expiresAt:
-      typeof payload.expires_in === 'number'
-        ? new Date(Date.now() + payload.expires_in * 1000)
-        : null,
-    grantedScopes:
-      typeof payload.scope === 'string'
-        ? payload.scope.split(SCOPE_SPLIT_PATTERN).filter(Boolean)
-        : [...input.connector.oauth2.defaultScopes],
-  }
-}
-
 async function readProfileMetadata(
   connector: Extract<ReturnType<typeof getConnector>, { authKind: 'oauth2' }>,
   accessToken: string
@@ -218,18 +137,6 @@ async function readProfileMetadata(
   } catch {
     return {}
   }
-}
-
-function providerOAuthError(
-  payload: { error?: unknown; error_description?: unknown },
-  status: number
-): string {
-  const error = typeof payload.error === 'string' ? payload.error : null
-  const description =
-    typeof payload.error_description === 'string'
-      ? payload.error_description
-      : null
-  return [error, description].filter(Boolean).join(': ') || `HTTP ${status}`
 }
 
 function redirectWithCookieClear(
@@ -246,11 +153,7 @@ function redirectWithCookieClear(
   response.cookies.set({
     name: oauthPkceCookieName(connectorId),
     value: '',
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/api/connections/oauth/',
-    maxAge: 0,
+    ...pkceCookieOptions(0),
   })
   return response
 }

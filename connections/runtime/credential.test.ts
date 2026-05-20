@@ -319,6 +319,7 @@ describe('readConnectorCredential', () => {
           accessToken: 'fresh-access-token',
           refreshToken: 'rotated-refresh-token',
         }),
+        grantedScopes: ['tweet.read'],
       })
     )
   })

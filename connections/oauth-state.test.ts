@@ -6,6 +6,8 @@ import {
   decodeOAuthState,
   encodeOAuthState,
   normalizeConnectionReturnTo,
+  OAUTH_STATE_TTL_SECONDS,
+  pkceCookieOptions,
   signedPkceCookieValue,
   unexpectedGrantedScopes,
   verifySignedPkceCookie,
@@ -56,6 +58,15 @@ describe('OAuth state helpers', () => {
 
     expect(verifySignedPkceCookie(cookie)).toBe('verifier_test')
     expect(verifySignedPkceCookie(`${cookie}x`)).toBeNull()
+  })
+
+  it('keeps PKCE cookie attributes aligned with the OAuth state TTL', () => {
+    expect(pkceCookieOptions(OAUTH_STATE_TTL_SECONDS)).toMatchObject({
+      httpOnly: true,
+      maxAge: 600,
+      path: '/api/connections/oauth/',
+      sameSite: 'lax',
+    })
   })
 
   it('detects provider-granted scopes outside the signed request', () => {
