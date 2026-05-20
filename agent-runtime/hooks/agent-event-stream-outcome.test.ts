@@ -1,9 +1,12 @@
 import { expect, test } from 'vitest'
 import type { AgentEventSummary } from '@/agent-runtime/shared/event-types'
 import {
+  applyObservedStreamTerminalStatus,
   backoffMs,
+  createObservedStreamTerminalState,
   isEventStreamPendingHttpStatus,
   isEventStreamUnavailableHttpStatus,
+  observeRunEventTerminalStatus,
   resolveTranscriptOutcome,
   shouldRetryAfterStreamEnd,
 } from './agent-event-stream-outcome'
@@ -78,6 +81,21 @@ test('resolveTranscriptOutcome treats unavailable stream as partial for live eve
     message: null,
     warning: 'Workflow stream is no longer available on this platform.',
   })
+})
+
+test('observed run terminal status stops retries for stale running events', () => {
+  const observed = createObservedStreamTerminalState()
+  observeRunEventTerminalStatus(observed, {
+    message: 'Heartbeat finished',
+    status: 'completed',
+    ts: 1,
+    type: 'run',
+  })
+
+  const effective = applyObservedStreamTerminalStatus(baseEvent, observed)
+
+  expect(effective.status).toBe('completed')
+  expect(shouldRetryAfterStreamEnd(effective)).toBe(false)
 })
 
 test('backoffMs caps at the final interval', () => {

@@ -1,3 +1,4 @@
+import type { RunEvent } from '@/agent-runtime/server/run-events'
 import type { AgentEventSummary } from '@/agent-runtime/shared/event-types'
 import { isTerminalAgentEventStatus } from '@/agent-runtime/shared/event-types'
 import { isWorkflowStreamUnavailableMessage } from '@/agent-runtime/shared/workflow-stream-messages'
@@ -5,6 +6,47 @@ import { isWorkflowStreamUnavailableMessage } from '@/agent-runtime/shared/workf
 export const STREAM_MAX_ATTEMPTS = 5
 export const STREAM_PENDING_RETRY_MS = 1500
 export const STREAM_BACKOFF_MS = [1000, 2000, 4000, 8000] as const
+
+export interface ObservedStreamTerminalState {
+  lastError: string | null
+  status: AgentEventSummary['status'] | null
+}
+
+export function createObservedStreamTerminalState(): ObservedStreamTerminalState {
+  return { lastError: null, status: null }
+}
+
+export function observeRunEventTerminalStatus(
+  observed: ObservedStreamTerminalState,
+  runEvent: RunEvent
+): void {
+  if (runEvent.type !== 'run') {
+    return
+  }
+  if (runEvent.status === 'completed') {
+    observed.status = 'completed'
+    observed.lastError = null
+    return
+  }
+  if (runEvent.status === 'failed') {
+    observed.status = 'failed'
+    observed.lastError = runEvent.message
+  }
+}
+
+export function applyObservedStreamTerminalStatus(
+  event: AgentEventSummary,
+  observed: ObservedStreamTerminalState
+): AgentEventSummary {
+  if (!observed.status) {
+    return event
+  }
+  return {
+    ...event,
+    lastError: observed.lastError ?? event.lastError,
+    status: observed.status,
+  }
+}
 
 export interface ResolveTranscriptOutcomeInput {
   activityError: string | null

@@ -3,9 +3,12 @@
 import { readUIMessageStream } from 'ai'
 import { useEffect, useRef, useState } from 'react'
 import {
+  applyObservedStreamTerminalStatus,
   backoffMs,
+  createObservedStreamTerminalState,
   isEventStreamPendingHttpStatus,
   isEventStreamUnavailableHttpStatus,
+  observeRunEventTerminalStatus,
   resolveTranscriptOutcome,
   STREAM_MAX_ATTEMPTS,
   STREAM_PENDING_RETRY_MS,
@@ -142,6 +145,11 @@ export function useAgentEventTranscript(input: {
       activity: null as string | null,
       output: null as string | null,
     }
+    const observedTerminal = createObservedStreamTerminalState()
+    const effectiveEvent = (): AgentEventSummary =>
+      applyObservedStreamTerminalStatus(currentEvent, observedTerminal)
+    const shouldRetryStreams = (): boolean =>
+      shouldRetryAfterStreamEnd(effectiveEvent())
 
     const applyActivityStatus = (statusData: WorkflowStatusData): void => {
       latestActivityRef.current = statusData
@@ -169,7 +177,7 @@ export function useAgentEventTranscript(input: {
           },
         })
       },
-      shouldRetryAfterEnd: () => shouldRetryAfterStreamEnd(currentEvent),
+      shouldRetryAfterEnd: shouldRetryStreams,
     }).then(
       () => undefined,
       (reason: unknown) => {
@@ -190,13 +198,14 @@ export function useAgentEventTranscript(input: {
           signal: controller.signal,
           onEvent: (runEvent) => {
             if (!controller.signal.aborted) {
+              observeRunEventTerminalStatus(observedTerminal, runEvent)
               setStatus('streaming')
               applyActivityStatus(runEventToWorkflowStatus(runEvent))
             }
           },
         })
       },
-      shouldRetryAfterEnd: () => shouldRetryAfterStreamEnd(currentEvent),
+      shouldRetryAfterEnd: shouldRetryStreams,
     }).then(
       () => undefined,
       (reason: unknown) => {
@@ -212,9 +221,10 @@ export function useAgentEventTranscript(input: {
         return
       }
 
+      const eventForOutcome = effectiveEvent()
       const outcome = resolveTranscriptOutcome({
         activityError: streamErrors.activity,
-        event: currentEvent,
+        event: eventForOutcome,
         hasMessages: messageCount > 0,
         outputError: streamErrors.output,
       })
@@ -230,19 +240,20 @@ export function useAgentEventTranscript(input: {
       if (outcome.kind === 'partial') {
         setError(null)
         setWarning(outcome.warning)
-        setStatus(statusForTerminalEvent(currentEvent))
+        setStatus(statusForTerminalEvent(eventForOutcome))
         setWorkflowStatus(
           latestActivityRef.current ??
-            eventSummaryToWorkflowStatus(currentEvent)
+            eventSummaryToWorkflowStatus(eventForOutcome)
         )
         return
       }
 
       setError(null)
       setWarning(null)
-      setStatus(statusForTerminalEvent(currentEvent))
+      setStatus(statusForTerminalEvent(eventForOutcome))
       setWorkflowStatus(
-        latestActivityRef.current ?? eventSummaryToWorkflowStatus(currentEvent)
+        latestActivityRef.current ??
+          eventSummaryToWorkflowStatus(eventForOutcome)
       )
     }
 
