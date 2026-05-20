@@ -69,7 +69,7 @@ export const firecrawlScrapeTool = defineApiPassthroughTool({
   displayName: 'Firecrawl · Scrape',
   description:
     'Scrape a single URL using Firecrawl Scrape API (v2) and return structured content such as markdown, html, links, screenshots, or JSON extraction.',
-  provider: 'firecrawl',
+  connectorId: 'firecrawl.api_key',
   inputSchema: firecrawlScrapeInputSchema,
   toRequest({ input }) {
     return {

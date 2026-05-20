@@ -24,7 +24,7 @@ function metadataFromMeResponse(payload: {
   return metadata
 }
 
-export const typefullyConnector = defineConnector('typefully', {
+export const typefullyConnector = defineConnector('typefully.api_key', {
   displayName: 'Typefully API',
   description:
     'Create, schedule, and publish social drafts via Typefully API v2.',

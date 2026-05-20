@@ -34,45 +34,48 @@ function metadataFromProjects(projects: unknown): Record<string, unknown> {
   }
 }
 
-export const supabaseConnector = defineConnector('supabase', {
-  displayName: 'Supabase',
-  description:
-    'Supabase Management API connector used by the supabase.request maintainer tool.',
-  credential: supabaseCredentialSchema,
-  fields: [
-    {
-      name: 'apiKey',
-      label: 'Personal access token',
-      type: 'password',
-      placeholder: 'sbp_... or your Supabase PAT',
-      description:
-        'Create a personal access token in Supabase account settings. The token is encrypted at rest before storage.',
-    },
-  ],
-  broker: {
-    allowedHosts: ['api.supabase.com'],
-    injectedHeaderNames: ['authorization'],
-    injectedHeaders: (credential: SupabaseCredential) => ({
-      authorization: `Bearer ${credential.apiKey}`,
-    }),
-  },
-  async validate(values) {
-    const res = await fetch('https://api.supabase.com/v1/projects', {
-      headers: {
-        authorization: `Bearer ${values.apiKey}`,
+export const supabaseConnector = defineConnector(
+  'supabase.personal_access_token',
+  {
+    displayName: 'Supabase',
+    description:
+      'Supabase Management API connector used by the supabase.request maintainer tool.',
+    credential: supabaseCredentialSchema,
+    fields: [
+      {
+        name: 'apiKey',
+        label: 'Personal access token',
+        type: 'password',
+        placeholder: 'sbp_... or your Supabase PAT',
+        description:
+          'Create a personal access token in Supabase account settings. The token is encrypted at rest before storage.',
       },
-    })
-    if (!res.ok) {
-      return {
-        ok: false,
-        error: `Supabase rejected the token (HTTP ${res.status}). Double-check it and try again.`,
+    ],
+    broker: {
+      allowedHosts: ['api.supabase.com'],
+      injectedHeaderNames: ['authorization'],
+      injectedHeaders: (credential: SupabaseCredential) => ({
+        authorization: `Bearer ${credential.apiKey}`,
+      }),
+    },
+    async validate(values) {
+      const res = await fetch('https://api.supabase.com/v1/projects', {
+        headers: {
+          authorization: `Bearer ${values.apiKey}`,
+        },
+      })
+      if (!res.ok) {
+        return {
+          ok: false,
+          error: `Supabase rejected the token (HTTP ${res.status}). Double-check it and try again.`,
+        }
       }
-    }
 
-    const projects = (await res.json()) as unknown
-    return {
-      ok: true,
-      metadata: metadataFromProjects(projects),
-    }
-  },
-})
+      const projects = (await res.json()) as unknown
+      return {
+        ok: true,
+        metadata: metadataFromProjects(projects),
+      }
+    },
+  }
+)

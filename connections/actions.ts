@@ -1,12 +1,15 @@
 'use server'
 
+import { Buffer } from 'node:buffer'
 import { revalidatePath, updateTag } from 'next/cache'
 import { requireUserId } from '@/auth/server/auth-guard'
 import { getConnector } from '@/connections/registry'
+import { readConnectorCredential } from '@/connections/runtime/credential'
 import {
-  disconnectProvider,
+  disconnectConnection,
   persistApiKeyConnection,
 } from '@/connections/runtime/store'
+import type { StoredOAuth2CredentialBlob } from '@/connections/types'
 import { userConnectionsTag } from '@/shared/server/cache-tags'
 
 interface SaveApiKeyResult {
@@ -17,14 +20,17 @@ interface SaveApiKeyResult {
 // Next.js Server Actions validate action ID and origin, so this form
 // needs no separate CSRF token.
 export async function saveApiKeyConnectionAction(
-  provider: string,
+  connectorId: string,
   values: Record<string, string>
 ): Promise<SaveApiKeyResult> {
   const userId = await requireUserId()
 
-  const connector = getConnector(provider)
+  const connector = getConnector(connectorId)
   if (!connector) {
-    return { ok: false, error: 'Unknown provider.' }
+    return { ok: false, error: 'Unknown connector.' }
+  }
+  if (connector.authKind !== 'api_key') {
+    return { ok: false, error: 'This connector does not accept API keys.' }
   }
 
   const parsed = connector.apiKey.formSchema.safeParse(values)
@@ -43,7 +49,7 @@ export async function saveApiKeyConnectionAction(
       }
       await persistApiKeyConnection({
         userId,
-        provider,
+        connectorId,
         raw: parsed.data,
         metadata: result.metadata ?? {},
       })
@@ -56,7 +62,7 @@ export async function saveApiKeyConnectionAction(
   } else {
     await persistApiKeyConnection({
       userId,
-      provider,
+      connectorId,
       raw: parsed.data,
       metadata: {},
     })
@@ -66,16 +72,57 @@ export async function saveApiKeyConnectionAction(
   return { ok: true }
 }
 
-export async function disconnectConnectionAction(provider: string) {
+export async function disconnectConnectionAction(connectorId: string) {
   const userId = await requireUserId()
 
-  if (!getConnector(provider)) {
-    return { ok: false, error: 'Unknown provider.' }
+  const connector = getConnector(connectorId)
+  if (!connector) {
+    return { ok: false, error: 'Unknown connector.' }
   }
 
-  await disconnectProvider({ userId, provider })
+  if (connector.authKind === 'oauth2') {
+    await revokeOAuthConnection({ connectorId, userId }).catch((err) => {
+      console.warn('disconnectConnectionAction: OAuth revoke failed', {
+        connectorId,
+        err,
+      })
+    })
+  }
+  await disconnectConnection({ userId, connectorId })
   updateConnectionSurfaces(userId)
   return { ok: true }
+}
+
+async function revokeOAuthConnection(input: {
+  connectorId: string
+  userId: string
+}): Promise<void> {
+  const connector = getConnector(input.connectorId)
+  if (connector?.authKind !== 'oauth2' || !connector.oauth2.revokeUrl) {
+    return
+  }
+  const result = await readConnectorCredential(input)
+  const credential = result.credential as StoredOAuth2CredentialBlob
+  const token = credential.refreshToken ?? credential.accessToken
+  const clientId = process.env[connector.oauth2.clientIdEnv]
+  const clientSecret = connector.oauth2.clientSecretEnv
+    ? process.env[connector.oauth2.clientSecretEnv]
+    : undefined
+  if (!clientId) {
+    return
+  }
+  const body = new URLSearchParams({ token, client_id: clientId })
+  const headers: Record<string, string> = {
+    'content-type': 'application/x-www-form-urlencoded',
+  }
+  if (clientSecret) {
+    headers.authorization = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
+  }
+  await fetch(connector.oauth2.revokeUrl, {
+    body,
+    headers,
+    method: 'POST',
+  })
 }
 
 function updateConnectionSurfaces(userId: string): void {

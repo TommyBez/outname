@@ -11,8 +11,14 @@ export function renderReconnect(r: Reconnect): ReconnectView {
     case 'connection_unavailable':
       return {
         title: `${r.toolId}: connection unavailable`,
-        body: `Provider "${r.provider}" is missing or unusable.`,
+        body: `Connector "${r.connectorId}" is missing or unusable.`,
         cta: 'Connect or replace it from settings.',
+      }
+    case 'missing_scopes':
+      return {
+        title: `${r.toolId}: connection scopes missing`,
+        body: `Connector "${r.connectorId}" is missing required scope${r.missing.length === 1 ? '' : 's'}: ${r.missing.join(', ')}.`,
+        cta: 'Reconnect it from settings.',
       }
     case 'config_invalid':
       return {

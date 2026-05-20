@@ -25,32 +25,38 @@ export type CredentialOverrideConfigResult =
 
 export class CredentialOverrideUnavailableError extends Error {
   readonly code = 'connection_unavailable' as const
-  readonly provider: string
+  readonly connectorId: string
 
-  constructor(provider: string, message: string) {
+  constructor(connectorId: string, message: string) {
     super(message)
-    this.provider = provider
+    this.connectorId = connectorId
     this.name = 'CredentialOverrideUnavailableError'
   }
 }
 
 export async function readCredentialOverride(input: {
   config: unknown
-  provider: string
+  connectorId: string
 }): Promise<RawCredential | undefined> {
   const storedOverride = readStoredCredentialOverride(
     input.config,
-    input.provider
+    input.connectorId
   )
   if (!storedOverride) {
     return
   }
 
-  const connector = getConnector(input.provider)
+  const connector = getConnector(input.connectorId)
   if (!connector) {
     throw new CredentialOverrideUnavailableError(
-      input.provider,
-      `Unknown provider: ${input.provider}`
+      input.connectorId,
+      `Unknown connector: ${input.connectorId}`
+    )
+  }
+  if (connector.authKind !== 'api_key') {
+    throw new CredentialOverrideUnavailableError(
+      input.connectorId,
+      'Credential overrides are only supported for API-key connectors.'
     )
   }
 
@@ -59,7 +65,7 @@ export async function readCredentialOverride(input: {
     decrypted = await decryptCredential(storedOverride.encrypted)
   } catch (error) {
     throw new CredentialOverrideUnavailableError(
-      input.provider,
+      input.connectorId,
       error instanceof Error
         ? error.message
         : 'Stored credential override could not decrypt.'
@@ -68,7 +74,7 @@ export async function readCredentialOverride(input: {
   const parsed = connector.apiKey.formSchema.safeParse(decrypted)
   if (!parsed.success) {
     throw new CredentialOverrideUnavailableError(
-      input.provider,
+      input.connectorId,
       parsed.error.issues[0]?.message ??
         'Stored credential override is invalid.'
     )
@@ -79,9 +85,9 @@ export async function readCredentialOverride(input: {
 
 export function hasCredentialOverride(input: {
   config: unknown
-  provider: string
+  connectorId: string
 }): boolean {
-  return Boolean(readStoredCredentialOverride(input.config, input.provider))
+  return Boolean(readStoredCredentialOverride(input.config, input.connectorId))
 }
 
 export function toConfigRecord(config: unknown): Record<string, unknown> {
@@ -125,11 +131,9 @@ export async function withEncryptedCredentialOverrides(input: {
   }
 
   for (const provider of overrideRemovals) {
-    if (!input.allowedProviders.has(provider)) {
-      return {
-        ok: false,
-        error: `Credential override is not supported for provider "${provider}" on this tool.`,
-      }
+    const validation = validateAllowedOverride(input.allowedProviders, provider)
+    if (!validation.ok) {
+      return validation
     }
     delete nextStoredOverrides[provider]
   }
@@ -138,36 +142,15 @@ export async function withEncryptedCredentialOverrides(input: {
     if (overrideRemovals.has(provider)) {
       continue
     }
-    if (!input.allowedProviders.has(provider)) {
-      return {
-        ok: false,
-        error: `Credential override is not supported for provider "${provider}" on this tool.`,
-      }
+    const encrypted = await encryptRawCredentialOverride({
+      allowedProviders: input.allowedProviders,
+      connectorId: provider,
+      rawOverride,
+    })
+    if (!encrypted.ok) {
+      return encrypted
     }
-
-    const connector = getConnector(provider)
-    if (!connector) {
-      return {
-        ok: false,
-        error: `Unknown credential override provider: ${provider}.`,
-      }
-    }
-
-    const parsed = connector.apiKey.formSchema.safeParse(rawOverride)
-    if (!parsed.success) {
-      const issue = parsed.error.issues[0]
-      const issuePath =
-        issue && issue.path.length > 0 ? ` (${issue.path.join('.')})` : ''
-      return {
-        ok: false,
-        error: `Invalid ${connector.displayName} credential override${issuePath}: ${issue?.message ?? 'Invalid credential.'}`,
-      }
-    }
-
-    nextStoredOverrides[provider] = {
-      encrypted: await encryptCredential(parsed.data),
-      version: 1,
-    }
+    nextStoredOverrides[provider] = encrypted.value
   }
 
   return {
@@ -177,6 +160,68 @@ export async function withEncryptedCredentialOverrides(input: {
         [STORED_CREDENTIAL_OVERRIDES_FIELD]: nextStoredOverrides,
       },
     }),
+  }
+}
+
+function validateAllowedOverride(
+  allowedProviders: ReadonlySet<string>,
+  connectorId: string
+): CredentialOverrideConfigResult {
+  if (!allowedProviders.has(connectorId)) {
+    return {
+      ok: false,
+      error: `Credential override is not supported for connector "${connectorId}" on this tool.`,
+    }
+  }
+  return { ok: true, config: {} }
+}
+
+async function encryptRawCredentialOverride(input: {
+  allowedProviders: ReadonlySet<string>
+  connectorId: string
+  rawOverride: CredentialOverrideFields
+}): Promise<
+  { ok: true; value: StoredCredentialOverride } | { error: string; ok: false }
+> {
+  const validation = validateAllowedOverride(
+    input.allowedProviders,
+    input.connectorId
+  )
+  if (!validation.ok) {
+    return validation
+  }
+
+  const connector = getConnector(input.connectorId)
+  if (!connector) {
+    return {
+      ok: false,
+      error: `Unknown credential override connector: ${input.connectorId}.`,
+    }
+  }
+  if (connector.authKind !== 'api_key') {
+    return {
+      ok: false,
+      error: `Credential overrides are not supported for OAuth connector "${input.connectorId}".`,
+    }
+  }
+
+  const parsed = connector.apiKey.formSchema.safeParse(input.rawOverride)
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0]
+    const issuePath =
+      issue && issue.path.length > 0 ? ` (${issue.path.join('.')})` : ''
+    return {
+      ok: false,
+      error: `Invalid ${connector.displayName} credential override${issuePath}: ${issue?.message ?? 'Invalid credential.'}`,
+    }
+  }
+
+  return {
+    ok: true,
+    value: {
+      encrypted: await encryptCredential(parsed.data),
+      version: 1,
+    },
   }
 }
 

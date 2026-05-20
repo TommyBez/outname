@@ -36,7 +36,7 @@ function metadataFromUser(payload: {
   return metadata
 }
 
-export const v0Connector = defineConnector('v0', {
+export const v0Connector = defineConnector('v0.api_key', {
   displayName: 'v0 Platform',
   description:
     'v0 Platform API connector used by the v0 Platform maintainer tool bundle.',

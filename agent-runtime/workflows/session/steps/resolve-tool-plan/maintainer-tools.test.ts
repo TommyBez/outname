@@ -25,7 +25,12 @@ describe('resolveMaintainerRow', () => {
   it('treats repo_workspace as provider-backed without checking snapshots', async () => {
     const tool: MaintainerTool = {
       build: vi.fn(),
-      capabilities: [{ kind: 'repo_workspace', provider: 'github' }],
+      capabilities: [
+        {
+          kind: 'repo_workspace',
+          connectorId: 'github.personal_access_token',
+        },
+      ],
       category: 'developer',
       configSchema: z.object({
         allowExternalNetwork: z.boolean().default(true),
@@ -53,9 +58,9 @@ describe('resolveMaintainerRow', () => {
           readOnly: true,
           repoUrl: 'https://github.com/acme/repo.git',
         },
-        providerRequirements: [
+        connectorRequirements: [
           {
-            provider: 'github',
+            connectorId: 'github.personal_access_token',
             toolId: 'github_repo',
           },
         ],
@@ -73,7 +78,7 @@ describe('resolveMaintainerRow', () => {
   it('preserves encrypted credential overrides and skips connection requirements for them', async () => {
     const tool: MaintainerTool = {
       build: vi.fn(),
-      capabilities: [{ kind: 'brokered_http', provider: 'x' }],
+      capabilities: [{ kind: 'brokered_http', connectorId: 'x.bearer_token' }],
       category: 'social',
       configSchema: z.strictObject({
         readOnly: z.boolean().default(false),
@@ -91,7 +96,7 @@ describe('resolveMaintainerRow', () => {
         config: {
           _secrets: {
             credentialOverrides: {
-              x: {
+              'x.bearer_token': {
                 encrypted: 'encrypted-token',
                 version: 1,
               },
@@ -107,11 +112,11 @@ describe('resolveMaintainerRow', () => {
         config: {
           readOnly: true,
         },
-        providerRequirements: [],
+        connectorRequirements: [],
         toolConfig: {
           _secrets: {
             credentialOverrides: {
-              x: {
+              'x.bearer_token': {
                 encrypted: 'encrypted-token',
                 version: 1,
               },

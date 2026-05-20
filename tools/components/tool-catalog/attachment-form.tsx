@@ -62,9 +62,9 @@ export function AttachmentForm({
     })
   }
 
-  function handleClearOverride(provider: string) {
+  function handleClearOverride(connectorId: string) {
     const config = buildToolConfig(entry, values, {
-      clearCredentialOverrideProvider: provider,
+      clearCredentialOverrideConnector: connectorId,
     })
     startTransition(async () => {
       const result = await attachToolAction(agentId, entry.toolId, config)
@@ -130,7 +130,7 @@ export function AttachmentForm({
             />
           ))}
           {entry.credentialOverrideFields.map((group) => (
-            <div className="flex flex-col gap-3" key={group.provider}>
+            <div className="flex flex-col gap-3" key={group.connectorId}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="font-black font-mono text-xs uppercase tracking-[0.08em]">
                   {group.displayName} credential override
@@ -139,7 +139,7 @@ export function AttachmentForm({
                   <button
                     className="inline-flex h-8 items-center justify-center border-2 border-foreground px-3 font-bold text-[10px] uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
                     disabled={pending}
-                    onClick={() => handleClearOverride(group.provider)}
+                    onClick={() => handleClearOverride(group.connectorId)}
                     type="button"
                   >
                     Clear override
@@ -148,7 +148,7 @@ export function AttachmentForm({
               </div>
               {group.fields.map((field) => {
                 const valueKey = credentialOverrideValueKey(
-                  group.provider,
+                  group.connectorId,
                   field.name
                 )
                 return (
@@ -161,7 +161,7 @@ export function AttachmentForm({
                         [valueKey]: value,
                       }))
                     }
-                    toolId={`${entry.toolId}-${group.provider}-credential`}
+                    toolId={`${entry.toolId}-${group.connectorId}-credential`}
                     value={values[valueKey] ?? ''}
                   />
                 )
@@ -185,7 +185,7 @@ function buildToolConfig(
   entry: ToolCatalogEntry,
   values: Record<string, string>,
   options?: {
-    clearCredentialOverrideProvider?: string
+    clearCredentialOverrideConnector?: string
   }
 ): Record<string, unknown> {
   const config: Record<string, unknown> = {}
@@ -199,14 +199,14 @@ function buildToolConfig(
   const credentialOverrides = collectCredentialOverrides(
     entry,
     values,
-    options?.clearCredentialOverrideProvider
+    options?.clearCredentialOverrideConnector
   )
   if (credentialOverrides) {
     config.credentialOverrides = credentialOverrides
   }
-  if (options?.clearCredentialOverrideProvider) {
+  if (options?.clearCredentialOverrideConnector) {
     config.credentialOverrideRemovals = [
-      options.clearCredentialOverrideProvider,
+      options.clearCredentialOverrideConnector,
     ]
   }
   return config
@@ -215,25 +215,25 @@ function buildToolConfig(
 function collectCredentialOverrides(
   entry: ToolCatalogEntry,
   values: Record<string, string>,
-  omittedProvider?: string
+  omittedConnector?: string
 ): Record<string, Record<string, string>> | undefined {
   const credentialOverrides: Record<string, Record<string, string>> = {}
 
   for (const group of entry.credentialOverrideFields) {
-    if (group.provider === omittedProvider) {
+    if (group.connectorId === omittedConnector) {
       continue
     }
-    const providerFields: Record<string, string> = {}
+    const connectorFields: Record<string, string> = {}
     for (const field of group.fields) {
       const value =
-        values[credentialOverrideValueKey(group.provider, field.name)]
+        values[credentialOverrideValueKey(group.connectorId, field.name)]
       if (value && value.trim().length > 0) {
-        providerFields[field.name] = value
+        connectorFields[field.name] = value
       }
     }
 
-    if (Object.keys(providerFields).length > 0) {
-      credentialOverrides[group.provider] = providerFields
+    if (Object.keys(connectorFields).length > 0) {
+      credentialOverrides[group.connectorId] = connectorFields
     }
   }
 
@@ -242,8 +242,8 @@ function collectCredentialOverrides(
     : undefined
 }
 
-function credentialOverrideValueKey(provider: string, fieldName: string) {
-  return `credentialOverride:${provider}:${fieldName}`
+function credentialOverrideValueKey(connectorId: string, fieldName: string) {
+  return `credentialOverride:${connectorId}:${fieldName}`
 }
 
 function coerceFieldValue(field: ToolConfigField, raw: string) {

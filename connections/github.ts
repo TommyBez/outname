@@ -105,7 +105,7 @@ function metadataFromGitHubUser(payload: {
   return metadata
 }
 
-export const githubConnector = defineConnector('github', {
+export const githubConnector = defineConnector('github.personal_access_token', {
   displayName: 'GitHub',
   description:
     'GitHub REST API connector used by maintainer tools that work with private repositories and pull requests.',

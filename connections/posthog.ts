@@ -9,7 +9,7 @@ const posthogCredentialSchema = z.object({
 
 export type PosthogCredential = z.infer<typeof posthogCredentialSchema>
 
-export const posthogConnector = defineConnector('posthog', {
+export const posthogConnector = defineConnector('posthog.api_key', {
   displayName: 'PostHog',
   description: 'PostHog API connector for analytics, events, and project data.',
   credential: posthogCredentialSchema,

@@ -50,13 +50,13 @@ export function toolBuildSandboxTags(input: {
 }
 
 export function brokeredHttpSandboxTags(input: {
-  provider: string
+  connectorId: string
   runId: string
 }): Record<string, string> {
   return {
     ...baseSandboxTags(),
     kind: 'brokered-http',
-    provider: input.provider,
+    connectorId: input.connectorId,
     runId: input.runId,
   }
 }

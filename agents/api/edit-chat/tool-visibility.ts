@@ -5,7 +5,7 @@ import {
   getUserConnections,
 } from '@/shared/server/data'
 import { describeConfigSchema } from '@/shared/server/zod-config-fields'
-import { providerBackedCapabilities } from '@/tools/catalog/capabilities'
+import { connectorBackedCapabilities } from '@/tools/catalog/capabilities'
 import { listMaintainerTools } from '@/tools/catalog/registry'
 import { childAgentIdFromSubAgentRow } from '@/tools/sub-agents/sub-agent-tool-name'
 
@@ -18,7 +18,7 @@ export function buildEditInstructions(toolVisibility: ToolVisibility): string {
     'For normal configuration, call apply_agent_edit with the complete final config. For maintainer tools, call attach_maintainer_tool. For user-owned agents used as tools, call attach_sub_agent_tool. For removals, call detach_agent_tool.',
     'Before any attach or detach operation, inspect get_available_agent_tools if the current conversation does not already include the exact current tool state. Never invent tool ids, config fields, or sub-agent ids.',
     'Attach and detach operations automatically request user approval. Do not ask the user to type a magic confirmation phrase; explain the operation and let the app approval UI handle approval.',
-    'If a required provider connection is missing or invalid, mention that the user may need to connect it in Settings. Attaching is still allowed if the user explicitly wants to pre-wire the tool.',
+    'If a required connector connection is missing or invalid, mention that the user may need to connect it in Settings. Attaching is still allowed if the user explicitly wants to pre-wire the tool.',
     'For per-agent budget changes (daily / weekly / monthly USD caps), first call get_agent_budget if you do not already know the current values, then call propose_agent_budget exactly once with sensible suggested defaults. The UI renders an inline editor with those values; the operator adjusts and submits, sending a follow-up message with the chosen values. Use those user-confirmed numbers to call set_agent_budget — pass `null` for any period the user wants cleared.',
     `Current tool snapshot: ${formatToolVisibilitySummary(toolVisibility)}`,
   ].join('\n')
@@ -39,16 +39,16 @@ export async function getAvailableAgentTools(agentId: string, userId: string) {
   const attachedByMaintainerToolId = new Map(
     maintainerAttachedRows.map((row) => [row.toolId, row])
   )
-  const connectionByProvider = new Map(
-    connectionRows.map((row) => [row.provider, row])
+  const connectionByConnector = new Map(
+    connectionRows.map((row) => [row.connectorId, row])
   )
   const catalogToolIds = new Set(listMaintainerTools().map((item) => item.id))
 
   return {
     maintainerTools: listMaintainerTools().map((item) => {
       const attached = attachedByMaintainerToolId.get(item.id)
-      const providerIds = providerBackedCapabilities(item.capabilities).map(
-        (capability) => capability.provider
+      const connectorIds = connectorBackedCapabilities(item.capabilities).map(
+        (capability) => capability.connectorId
       )
       return {
         kind: 'maintainer' as const,
@@ -61,12 +61,12 @@ export async function getAvailableAgentTools(agentId: string, userId: string) {
           item.capabilities.find(
             (capability) => capability.kind === 'tool_sandbox'
           )?.manifest ?? null,
-        providers: providerIds.map((provider) => {
-          const connection = connectionByProvider.get(provider)
-          const connector = getConnector(provider)
+        connectors: connectorIds.map((connectorId) => {
+          const connection = connectionByConnector.get(connectorId)
+          const connector = getConnector(connectorId)
           return {
-            provider,
-            displayName: connector?.displayName ?? provider,
+            connectorId,
+            displayName: connector?.displayName ?? connectorId,
             status: connection?.status ?? null,
           }
         }),
@@ -145,16 +145,16 @@ function formatToolVisibilitySummary(toolVisibility: ToolVisibility): string {
       const status = item.attached
         ? `attached:${item.attached.status}`
         : 'available'
-      const providers =
-        item.providers.length > 0
-          ? item.providers
+      const connectors =
+        item.connectors.length > 0
+          ? item.connectors
               .map(
-                (provider) =>
-                  `${provider.provider}:${provider.status ?? 'missing'}`
+                (connector) =>
+                  `${connector.connectorId}:${connector.status ?? 'missing'}`
               )
               .join(',')
-          : 'no-provider'
-      return `${item.toolId}(${status};${providers})`
+          : 'no-connector'
+      return `${item.toolId}(${status};${connectors})`
     })
     .join('; ')
   const removedTools = toolVisibility.removedMaintainerTools

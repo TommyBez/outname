@@ -72,7 +72,7 @@ test('bundle exposed tools ignore credential override fields when parsing strict
     category: 'test',
     displayName: 'Test Bundle Exposed Tools',
     description: 'Bundle used to verify exposed tool resolution.',
-    capabilities: [{ kind: 'brokered_http', provider: 'x' }],
+    capabilities: [{ kind: 'brokered_http', connectorId: 'x.bearer_token' }],
     configSchema: z.strictObject({
       enableWrite: z.boolean().default(false),
     }),
@@ -155,7 +155,7 @@ test('brokered tools receive encrypted credential overrides in preserved tool co
     category: 'test',
     displayName: 'Test API',
     description: 'Brokered API tool.',
-    provider: 'x',
+    connectorId: 'x.bearer_token',
     configSchema: z.strictObject({
       readOnly: z.boolean().default(false),
     }),
@@ -204,7 +204,7 @@ test('brokered tools receive encrypted credential overrides in preserved tool co
   expect(mockBrokeredHttpRequest).toHaveBeenCalledWith(
     expect.objectContaining({
       attachmentToolId: 'test_api',
-      provider: 'x',
+      connectorId: 'x.bearer_token',
       toolConfig: {
         _secrets: {
           credentialOverrides: {

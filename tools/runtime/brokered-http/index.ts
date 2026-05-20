@@ -2,7 +2,7 @@ import 'server-only'
 
 import { Buffer } from 'node:buffer'
 import { getConnector } from '@/connections/registry'
-import { hasCredentialOverride } from '@/tools/runtime/define-maintainer-tool/api-key-override'
+import { readConnectorCredentialSnapshot } from '@/tools/runtime/define-maintainer-tool/credential-resolver'
 import { DEFAULT_TIMEOUT_MS, FETCH_RUNNER, MAX_STDERR_BYTES } from './constants'
 import {
   createBrokerSandbox,
@@ -24,21 +24,21 @@ import {
 export async function brokeredHttpRequest(input: {
   agentId: string
   attachmentToolId: string
-  provider: string
+  connectorId: string
   request: BrokeredHttpRequestType
   toolConfig?: Record<string, unknown>
   toolId: string
   userId: string
 }): Promise<BrokeredHttpResponseType> {
   'use step'
-  const connector = getConnector(input.provider)
+  const connector = getConnector(input.connectorId)
   if (!connector) {
-    throw new BrokeredHttpError(`Unknown provider: ${input.provider}`)
+    throw new BrokeredHttpError(`Unknown connector: ${input.connectorId}`)
   }
 
   const method = input.request.method.toUpperCase()
   const { mode, url } = validateUrl(
-    input.provider,
+    input.connectorId,
     method,
     input.request.url,
     connector
@@ -59,22 +59,25 @@ export async function brokeredHttpRequest(input: {
     ),
   }
   const runId = currentRunId()
-  const credentialSource = hasCredentialOverride({
-    config: input.toolConfig,
-    provider: input.provider,
-  })
-    ? 'override'
-    : 'connection'
+  const credentialSnapshot =
+    mode === 'authenticated'
+      ? await readConnectorCredentialSnapshot({
+          connectorId: input.connectorId,
+          toolConfig: input.toolConfig,
+          userId: input.userId,
+        })
+      : null
+  const sandboxConnectorId = credentialSnapshot
+    ? `${input.connectorId}:${input.attachmentToolId}:${credentialSnapshot.credentialSource}:${credentialSnapshot.tokenFingerprint}`
+    : `${input.connectorId}:unauthenticated:${url.hostname}`
   const sandbox = await getOrCreateBrokerSandbox({
     runId,
-    provider:
-      mode === 'authenticated'
-        ? `${input.provider}:${input.attachmentToolId}:${credentialSource}`
-        : `${input.provider}:unauthenticated:${url.hostname}`,
+    connectorId: sandboxConnectorId,
     createSandbox: () =>
       createBrokerSandbox({
         connector,
-        provider: input.provider,
+        connectorId: input.connectorId,
+        credential: credentialSnapshot?.credential,
         runId,
         toolConfig: input.toolConfig,
         unauthenticatedHosts: mode === 'authenticated' ? [] : [url.hostname],

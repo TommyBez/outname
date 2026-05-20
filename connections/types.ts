@@ -9,6 +9,25 @@ export type ConnectorCredential<TConnector> =
     ? TCredential
     : never
 
+export type AuthKind = 'api_key' | 'oauth2'
+
+export interface StoredApiKeyCredentialBlob {
+  kind: 'api_key'
+  values: unknown
+}
+
+export interface StoredOAuth2CredentialBlob {
+  accessToken: string
+  kind: 'oauth2'
+  refreshToken?: string
+  tokenType: 'Bearer'
+  version: 1
+}
+
+export type StoredCredentialBlob =
+  | StoredApiKeyCredentialBlob
+  | StoredOAuth2CredentialBlob
+
 export interface ApiKeyFieldDescriptor {
   description?: string
   label: string
@@ -35,10 +54,20 @@ export interface ConnectorBroker<TCredential> {
   maxResponseBytes?: number
 }
 
+export interface BaseConnector<TCredential, TConnectorId extends string> {
+  authKind: AuthKind
+  broker: ConnectorBroker<TCredential>
+  connectorId: TConnectorId
+  description: string
+  displayName: string
+  providerGroup: string
+  surface: string
+}
+
 export interface ApiKeyConnector<
   TCredential = Record<string, unknown>,
-  TProvider extends string = string,
-> {
+  TConnectorId extends string = string,
+> extends BaseConnector<TCredential, TConnectorId> {
   apiKey: {
     // Only fields strictly required to authenticate belong here; per-tool
     // defaults stay in `tool.configSchema`.
@@ -47,14 +76,46 @@ export interface ApiKeyConnector<
     // Optional cheap probe to fail bad keys during form submit.
     validate?(values: Record<string, string>): Promise<ApiKeyValidateResult>
   }
-  broker: ConnectorBroker<TCredential>
-  description: string
-  displayName: string
-  kind: 'api_key'
-  provider: TProvider
+  authKind: 'api_key'
 }
 
-export type Connector = ApiKeyConnector<unknown, string>
+export interface ScopeDescriptor {
+  description?: string
+  label: string
+  scope: string
+}
+
+export interface OAuth2TokenResponse {
+  access_token?: unknown
+  error?: unknown
+  error_description?: unknown
+  expires_in?: unknown
+  refresh_token?: unknown
+  scope?: unknown
+  token_type?: unknown
+}
+
+export interface OAuth2Connector<TConnectorId extends string = string>
+  extends BaseConnector<StoredOAuth2CredentialBlob, TConnectorId> {
+  authKind: 'oauth2'
+  oauth2: {
+    authorizationUrl: string
+    clientIdEnv: string
+    clientSecretEnv?: string
+    defaultScopes: readonly string[]
+    pkce: { method: 'S256' }
+    profile?(
+      accessToken: string
+    ): Promise<Record<string, unknown>> | Record<string, unknown>
+    revokeUrl?: string
+    scopeCatalog: readonly ScopeDescriptor[]
+    tokenUrl: string
+  }
+}
+
+export type Connector =
+  | ApiKeyConnector<unknown, string>
+  | OAuth2Connector<string>
 
 // `Reconnect` stays in `tools/types.ts` so connectors and tool UI share one
 // canonical shape without creating a circular dependency.

@@ -1,7 +1,7 @@
 import { getConnector } from '@/connections/registry'
 import { getAgentsForUser, getUserConnections } from '@/shared/server/data'
 import { describeConfigSchema } from '@/shared/server/zod-config-fields'
-import { providerBackedCapabilities } from '@/tools/catalog/capabilities'
+import { connectorBackedCapabilities } from '@/tools/catalog/capabilities'
 import { listMaintainerTools } from '@/tools/catalog/registry'
 
 export async function listAvailableTools(userId: string) {
@@ -9,14 +9,14 @@ export async function listAvailableTools(userId: string) {
     getUserConnections(userId),
     getAgentsForUser(userId),
   ])
-  const connectionByProvider = new Map(
-    connectionRows.map((row) => [row.provider, row])
+  const connectionByConnector = new Map(
+    connectionRows.map((row) => [row.connectorId, row])
   )
 
   return {
     maintainerTools: listMaintainerTools().map((tool) => {
-      const providers = providerBackedCapabilities(tool.capabilities).map(
-        (capability) => capability.provider
+      const connectors = connectorBackedCapabilities(tool.capabilities).map(
+        (capability) => capability.connectorId
       )
       return {
         toolId: tool.id,
@@ -25,12 +25,12 @@ export async function listAvailableTools(userId: string) {
         description: tool.description,
         exposedTools: [...tool.resolveExposedTools()],
         configFields: describeConfigSchema(tool.configSchema),
-        providers: providers.map((provider) => {
-          const connector = getConnector(provider)
-          const connection = connectionByProvider.get(provider)
+        connectors: connectors.map((connectorId) => {
+          const connector = getConnector(connectorId)
+          const connection = connectionByConnector.get(connectorId)
           return {
-            provider,
-            displayName: connector?.displayName ?? provider,
+            connectorId,
+            displayName: connector?.displayName ?? connectorId,
             status: connection?.status ?? null,
           }
         }),

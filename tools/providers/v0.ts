@@ -13,7 +13,7 @@ import { clipProviderErrorMessage } from '@/tools/runtime/define-maintainer-tool
 import { readSdkCredentialResult } from '@/tools/runtime/define-maintainer-tool/sdk-step'
 
 const V0_CONFIGURED_API_KEY_PLACEHOLDER = 'schema-only-v0-api-key'
-const V0_PROVIDER = 'v0'
+const V0_CONNECTOR_ID = 'v0.api_key'
 const PROVIDER_ERROR_MESSAGE_LIMIT = 1000
 const V0_ATTACHMENT_TOOL_ID = 'v0_platform'
 const LEADING_CHARACTER_PATTERN = /^./
@@ -138,7 +138,7 @@ export async function executeV0Operation(args: {
   // Export this step so the workflow transform registers it in the
   // deployment's step bundle.
   const credentialResult = await readSdkCredentialResult<V0Credential>({
-    provider: V0_PROVIDER,
+    connectorId: V0_CONNECTOR_ID,
     toolConfig: args.toolConfig,
     userId: args.userId,
   })
@@ -220,7 +220,7 @@ export const v0PlatformTool = defineToolBundle({
   displayName: 'v0 · Platform',
   description:
     'Attach the official v0 Platform AI SDK tools directly for chats, projects, deployments, user info, and webhooks. Defaults to read-only mode.',
-  capabilities: [{ kind: 'sdk', provider: V0_PROVIDER }],
+  capabilities: [{ kind: 'sdk', connectorId: V0_CONNECTOR_ID }],
   configSchema: v0ConfigSchema,
   tools: v0BundleTools,
 })

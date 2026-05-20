@@ -15,6 +15,7 @@ import type { BundleChildToolArgs } from '@/tools/runtime/define-maintainer-tool
 import { getOrCreateRepoWorkspace } from '@/tools/runtime/repo-workspace/sandbox'
 
 const GITHUB_REPO_TOOL_ID = 'github_repo'
+const GITHUB_CONNECTOR_ID = 'github.personal_access_token'
 const GITHUB_REPO_GIT_USERNAME = 'x-access-token'
 const GITHUB_REPO_URL_GUIDE =
   'Use an HTTPS GitHub repository URL such as https://github.com/owner/repo.git.'
@@ -139,7 +140,7 @@ async function getGitHubRepoWorkspace(input: {
 }) {
   const repo = parseGitHubRepoUrl(input.config.repoUrl)
   const credential =
-    await input.ctx.credentials.read<GitHubCredential>('github')
+    await input.ctx.credentials.read<GitHubCredential>(GITHUB_CONNECTOR_ID)
   return await getOrCreateRepoWorkspace({
     attachmentToolId: input.ctx.attachmentToolId,
     gitCredentials: {
@@ -225,7 +226,7 @@ export const githubRepoTool: MaintainerTool = defineToolBundle({
   displayName: 'GitHub · Repo Workspace',
   description:
     'Clone a configured private GitHub repository into a sandboxed repo workspace and expose the bash-tool adapter so the agent can run git, grep, tests, builds, scripts, and file edits directly inside the repository. The repo workspace filesystem is separate from the system sandbox; use this bundle for repository files. When readOnly is false, GitHub HTTPS auth is brokered by the sandbox network policy, so no token, username, password, or credential env var is available or needed.',
-  capabilities: [{ kind: 'repo_workspace', provider: 'github' }],
+  capabilities: [{ kind: 'repo_workspace', connectorId: GITHUB_CONNECTOR_ID }],
   configSchema: githubRepoConfigSchema,
   tools: githubRepoTools,
 })

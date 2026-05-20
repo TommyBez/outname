@@ -77,17 +77,20 @@ async function ConnectionsSection() {
   const rows = await getCachedUserConnections(session.user.id)
 
   const connectors = listConnectors().map((c) => ({
-    provider: c.provider,
-    kind: c.kind,
+    connectorId: c.connectorId,
+    providerGroup: c.providerGroup,
+    authKind: c.authKind,
     displayName: c.displayName,
     description: c.description,
-    apiKeyFields: c.kind === 'api_key' ? c.apiKey.fields : undefined,
+    apiKeyFields: c.authKind === 'api_key' ? c.apiKey.fields : undefined,
+    scopeCatalog: c.authKind === 'oauth2' ? c.oauth2.scopeCatalog : undefined,
   }))
 
   const connections = rows.map((r) => ({
-    provider: r.provider,
+    connectorId: r.connectorId,
     status: r.status as 'active' | 'invalid',
     metadata: (r.metadata ?? {}) as Record<string, unknown>,
+    grantedScopes: r.grantedScopes as string[],
     lastError: r.lastError,
     connectedAt: r.createdAt.toISOString(),
   }))

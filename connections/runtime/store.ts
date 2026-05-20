@@ -6,7 +6,7 @@ import { encryptCredential } from '@/connections/crypto'
 import { db } from '@/shared/db'
 import { userConnections } from '@/shared/db/schema'
 import { userConnectionsTag } from '@/shared/server/cache-tags'
-import type { RawCredential } from '../types'
+import type { RawCredential, StoredCredentialBlob } from '../types'
 import type {
   ConnectionStatus,
   ConnectionStatusView,
@@ -14,12 +14,15 @@ import type {
 } from './types'
 
 export async function persistApiKeyConnection(args: {
+  connectorId: string
   userId: string
-  provider: string
   raw: RawCredential
   metadata?: Record<string, unknown>
 }): Promise<void> {
-  const credentialsB64 = await encryptCredential(args.raw)
+  const credentialsB64 = await encryptCredential({
+    kind: 'api_key',
+    values: args.raw,
+  } satisfies StoredCredentialBlob)
   const metadata = args.metadata ?? {}
   const existing = await hasConnectionRow(args)
   if (existing) {
@@ -28,6 +31,7 @@ export async function persistApiKeyConnection(args: {
       .set({
         credentials: credentialsB64,
         metadata,
+        grantedScopes: [],
         status: 'active',
         expiresAt: null,
         lastError: null,
@@ -37,9 +41,10 @@ export async function persistApiKeyConnection(args: {
   } else {
     await db.insert(userConnections).values({
       userId: args.userId,
-      provider: args.provider,
+      connectorId: args.connectorId,
       credentials: credentialsB64,
       metadata,
+      grantedScopes: [],
       status: 'active',
       expiresAt: null,
     })
@@ -47,17 +52,17 @@ export async function persistApiKeyConnection(args: {
   revalidateConnection(args.userId)
 }
 
-export async function disconnectProvider(args: {
+export async function disconnectConnection(args: {
+  connectorId: string
   userId: string
-  provider: string
 }): Promise<void> {
   await db.delete(userConnections).where(connectionFilter(args))
   revalidateConnection(args.userId)
 }
 
 export async function markInvalid(args: {
+  connectorId: string
   userId: string
-  provider: string
   error: string
 }): Promise<void> {
   await db
@@ -72,13 +77,14 @@ export async function markInvalid(args: {
 }
 
 export async function getConnectionStatus(args: {
+  connectorId: string
   userId: string
-  provider: string
 }): Promise<ConnectionStatusView | null> {
   const [row] = await db
     .select({
       status: userConnections.status,
       metadata: userConnections.metadata,
+      grantedScopes: userConnections.grantedScopes,
       lastError: userConnections.lastError,
       expiresAt: userConnections.expiresAt,
     })
@@ -90,6 +96,7 @@ export async function getConnectionStatus(args: {
       exists: false,
       status: null,
       metadata: {},
+      grantedScopes: [],
       lastError: null,
       expiresAt: null,
     }
@@ -98,9 +105,69 @@ export async function getConnectionStatus(args: {
     exists: true,
     status: row.status as ConnectionStatus,
     metadata: (row.metadata as Record<string, unknown>) ?? {},
+    grantedScopes: normalizeScopes(row.grantedScopes),
     lastError: row.lastError,
     expiresAt: row.expiresAt,
   }
+}
+
+export async function persistOAuth2Connection(args: {
+  connectorId: string
+  credentials: Extract<StoredCredentialBlob, { kind: 'oauth2' }>
+  expiresAt: Date | null
+  grantedScopes: readonly string[]
+  metadata?: Record<string, unknown>
+  userId: string
+}): Promise<void> {
+  const credentialsB64 = await encryptCredential(args.credentials)
+  const metadata = args.metadata ?? {}
+  const existing = await hasConnectionRow(args)
+  if (existing) {
+    await db
+      .update(userConnections)
+      .set({
+        credentials: credentialsB64,
+        metadata,
+        grantedScopes: [...args.grantedScopes],
+        status: 'active',
+        expiresAt: args.expiresAt,
+        lastError: null,
+        updatedAt: new Date(),
+      })
+      .where(connectionFilter(args))
+  } else {
+    await db.insert(userConnections).values({
+      userId: args.userId,
+      connectorId: args.connectorId,
+      credentials: credentialsB64,
+      metadata,
+      grantedScopes: [...args.grantedScopes],
+      status: 'active',
+      expiresAt: args.expiresAt,
+    })
+  }
+  revalidateConnection(args.userId)
+}
+
+export async function updateOAuth2ConnectionTokens(args: {
+  connectorId: string
+  credentials: Extract<StoredCredentialBlob, { kind: 'oauth2' }>
+  expiresAt: Date | null
+  grantedScopes: readonly string[]
+  userId: string
+}): Promise<void> {
+  await db
+    .update(userConnections)
+    .set({
+      credentials: await encryptCredential(args.credentials),
+      grantedScopes: [...args.grantedScopes],
+      expiresAt: args.expiresAt,
+      status: 'active',
+      lastError: null,
+      updatedAt: new Date(),
+    })
+    .where(connectionFilter(args))
+  revalidateConnection(args.userId)
 }
 
 export async function listUserConnections(
@@ -108,9 +175,10 @@ export async function listUserConnections(
 ): Promise<UserConnectionView[]> {
   const rows = await db
     .select({
-      provider: userConnections.provider,
+      connectorId: userConnections.connectorId,
       status: userConnections.status,
       metadata: userConnections.metadata,
+      grantedScopes: userConnections.grantedScopes,
       lastError: userConnections.lastError,
       expiresAt: userConnections.expiresAt,
       createdAt: userConnections.createdAt,
@@ -118,9 +186,10 @@ export async function listUserConnections(
     .from(userConnections)
     .where(eq(userConnections.userId, userId))
   return rows.map((row) => ({
-    provider: row.provider,
+    connectorId: row.connectorId,
     status: row.status as ConnectionStatus,
     metadata: (row.metadata as Record<string, unknown>) ?? {},
+    grantedScopes: normalizeScopes(row.grantedScopes),
     lastError: row.lastError,
     expiresAt: row.expiresAt,
     createdAt: row.createdAt,
@@ -128,24 +197,31 @@ export async function listUserConnections(
 }
 
 async function hasConnectionRow(args: {
+  connectorId: string
   userId: string
-  provider: string
 }): Promise<boolean> {
   const [row] = await db
-    .select({ provider: userConnections.provider })
+    .select({ connectorId: userConnections.connectorId })
     .from(userConnections)
     .where(connectionFilter(args))
     .limit(1)
   return Boolean(row)
 }
 
-function connectionFilter(args: { userId: string; provider: string }) {
+function connectionFilter(args: { connectorId: string; userId: string }) {
   return and(
     eq(userConnections.userId, args.userId),
-    eq(userConnections.provider, args.provider)
+    eq(userConnections.connectorId, args.connectorId)
   )
 }
 
 function revalidateConnection(userId: string): void {
   revalidateTag(userConnectionsTag(userId), 'max')
+}
+
+function normalizeScopes(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+  return value.filter((item): item is string => typeof item === 'string')
 }

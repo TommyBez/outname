@@ -167,10 +167,16 @@ export function defineApiPassthroughTool<
 >(args: ApiPassthroughToolArgs<TInput, TConfig, TData>): MaintainerTool {
   return defineMaintainerTool({
     ...args,
-    capabilities: [{ kind: 'brokered_http', provider: args.provider }],
+    capabilities: [
+      {
+        kind: 'brokered_http',
+        connectorId: args.connectorId,
+        requiredScopes: args.requiredScopes,
+      },
+    ],
     async execute(input) {
       const response = await input.ctx.http.request(
-        args.provider,
+        args.connectorId,
         args.toRequest(input)
       )
       return await args.handleResponse(response, input)

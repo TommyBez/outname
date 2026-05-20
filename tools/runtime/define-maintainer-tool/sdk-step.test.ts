@@ -1,37 +1,37 @@
 import { beforeEach, expect, test, vi } from 'vitest'
 
-const { mockReadProviderCredential } = vi.hoisted(() => ({
-  mockReadProviderCredential: vi.fn(),
+const { mockReadConnectorCredential } = vi.hoisted(() => ({
+  mockReadConnectorCredential: vi.fn(),
 }))
 
 vi.mock('server-only', () => ({}))
 
 vi.mock('./credential-resolver', () => ({
-  readProviderCredential: mockReadProviderCredential,
+  readConnectorCredential: mockReadConnectorCredential,
 }))
 
 import { readSdkCredentialResult } from './sdk-step'
 
 beforeEach(() => {
-  mockReadProviderCredential.mockReset()
+  mockReadConnectorCredential.mockReset()
 })
 
 test('SDK credential reads include the attachment tool config override source', async () => {
   const toolConfig = {
     _secrets: {
       credentialOverrides: {
-        v0: {
+        'v0.api_key': {
           encrypted: 'encrypted-v0-token',
           version: 1,
         },
       },
     },
   }
-  mockReadProviderCredential.mockResolvedValue({ apiKey: 'v0_override-token' })
+  mockReadConnectorCredential.mockResolvedValue({ apiKey: 'v0_override-token' })
 
   await expect(
     readSdkCredentialResult({
-      provider: 'v0',
+      connectorId: 'v0.api_key',
       toolConfig,
       userId: 'user_test',
     })
@@ -39,8 +39,8 @@ test('SDK credential reads include the attachment tool config override source', 
     ok: true,
     credential: { apiKey: 'v0_override-token' },
   })
-  expect(mockReadProviderCredential).toHaveBeenCalledWith({
-    provider: 'v0',
+  expect(mockReadConnectorCredential).toHaveBeenCalledWith({
+    connectorId: 'v0.api_key',
     toolConfig,
     userId: 'user_test',
   })

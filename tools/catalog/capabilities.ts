@@ -1,13 +1,13 @@
 import type { ToolCapability } from './types'
 
-export type ProviderBackedCapability = Extract<
+export type ConnectorBackedCapability = Extract<
   ToolCapability,
-  { provider: string }
+  { connectorId: string }
 >
 
-export function isProviderBackedCapability(
+export function isConnectorBackedCapability(
   capability: ToolCapability
-): capability is ProviderBackedCapability {
+): capability is ConnectorBackedCapability {
   return (
     capability.kind === 'brokered_http' ||
     capability.kind === 'repo_workspace' ||
@@ -15,8 +15,8 @@ export function isProviderBackedCapability(
   )
 }
 
-export function providerBackedCapabilities(
+export function connectorBackedCapabilities(
   capabilities: readonly ToolCapability[]
-): ProviderBackedCapability[] {
-  return capabilities.filter(isProviderBackedCapability)
+): ConnectorBackedCapability[] {
+  return capabilities.filter(isConnectorBackedCapability)
 }
