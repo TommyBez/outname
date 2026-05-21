@@ -159,7 +159,8 @@ export function normalizeUserTimeZone(timezone: string): string | null {
 }
 
 function safeTimeZone(timezone?: string | null): string {
-  const timeZone = timezone || DEFAULT_TIMEZONE
+  const candidate = (timezone ?? DEFAULT_TIMEZONE).trim()
+  const timeZone = candidate || DEFAULT_TIMEZONE
   return isValidIanaTimeZone(timeZone) ? timeZone : DEFAULT_TIMEZONE
 }
 

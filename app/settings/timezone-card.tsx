@@ -21,6 +21,13 @@ import {
   getBrowserIanaTimeZone,
 } from '@/shared/timezone-options'
 
+function timezoneActionErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+  return 'Unexpected error'
+}
+
 export function TimezoneCard({ timezone }: { timezone: string }) {
   const [value, setValue] = useState(timezone)
   const [pending, startTransition] = useTransition()
@@ -43,13 +50,17 @@ export function TimezoneCard({ timezone }: { timezone: string }) {
         onSubmit={(event) => {
           event.preventDefault()
           startTransition(async () => {
-            const result = await updateUserTimezoneAction(value)
-            if (!result.ok) {
-              toast.error(result.error)
-              return
+            try {
+              const result = await updateUserTimezoneAction(value)
+              if (!result.ok) {
+                toast.error(result.error)
+                return
+              }
+              toast.success('Timezone saved.')
+              router.refresh()
+            } catch (error) {
+              toast.error(timezoneActionErrorMessage(error))
             }
-            toast.success('Timezone saved.')
-            router.refresh()
           })
         }}
       >
@@ -82,19 +93,24 @@ export function TimezoneCard({ timezone }: { timezone: string }) {
             disabled={pending}
             onClick={() =>
               startTransition(async () => {
-                const browserTimezone = getBrowserIanaTimeZone()
-                if (!browserTimezone) {
-                  toast.error('Could not detect your device timezone.')
-                  return
+                try {
+                  const browserTimezone = getBrowserIanaTimeZone()
+                  if (!browserTimezone) {
+                    toast.error('Could not detect your device timezone.')
+                    return
+                  }
+                  setValue(browserTimezone)
+                  const result =
+                    await syncBrowserTimezoneAction(browserTimezone)
+                  if (!result.ok) {
+                    toast.error(result.error)
+                    return
+                  }
+                  toast.success('Timezone set from your device.')
+                  router.refresh()
+                } catch (error) {
+                  toast.error(timezoneActionErrorMessage(error))
                 }
-                setValue(browserTimezone)
-                const result = await syncBrowserTimezoneAction(browserTimezone)
-                if (!result.ok) {
-                  toast.error(result.error)
-                  return
-                }
-                toast.success('Timezone set from your device.')
-                router.refresh()
               })
             }
             size="sm"

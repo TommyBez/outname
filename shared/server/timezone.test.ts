@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest'
 import {
   isValidIanaTimeZone,
+  localDateKey,
   localDateTimeParts,
   localDateTimeToUtc,
   normalizeUserTimeZone,
@@ -33,6 +34,14 @@ test('localDateTimeToUtc converts a valid local slot to UTC', () => {
     timezone: 'Europe/Rome',
   })
   expect(utc?.toISOString()).toBe('2026-05-14T07:00:00.000Z')
+})
+
+test('localDateKey trims whitespace before validating timezone', () => {
+  const key = localDateKey(
+    new Date('2026-05-14T16:03:00.000Z'),
+    ' Europe/Rome '
+  )
+  expect(key).toBe('2026-05-14')
 })
 
 test('localDateTimeToUtc falls back to UTC for invalid timezone', () => {
