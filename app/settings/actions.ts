@@ -6,6 +6,26 @@ import {
   clearUserAiGatewayApiKey,
   setUserAiGatewayApiKey,
 } from '@/shared/server/ai-gateway-byok'
+import { setUserTimezone } from '@/shared/server/user-timezone'
+
+export async function updateUserTimezoneAction(timezone: string) {
+  const userId = await requireUserId()
+  const result = await setUserTimezone({ userId, timezone })
+  if (!result.ok) {
+    return result
+  }
+  revalidatePath('/settings')
+  revalidatePath('/dashboard')
+  return result
+}
+
+export async function syncBrowserTimezoneAction(browserTimezone: string) {
+  const detected = browserTimezone.trim()
+  if (!detected) {
+    return { ok: false as const, error: 'Could not detect a timezone.' }
+  }
+  return await updateUserTimezoneAction(detected)
+}
 
 export async function saveAiGatewayKeyAction(apiKey: string) {
   const userId = await requireUserId()

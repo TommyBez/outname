@@ -10,6 +10,7 @@ import {
   AppSidebar,
   AppSidebarFallback,
 } from '@/shared/components/layout/app-sidebar'
+import { TimezoneBootstrapLoader } from '@/shared/components/layout/timezone-bootstrap-loader'
 
 interface AppShellProps {
   children: React.ReactNode
@@ -38,6 +39,9 @@ export function AppShell({
       </a>
       <Suspense fallback={<AppSidebarFallback />}>
         <AppSidebar sidebarExtras={sidebarExtras} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <TimezoneBootstrapLoader />
       </Suspense>
       <SidebarInset className="swiss-grid-pattern min-w-0 bg-background">
         <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-foreground border-b-2 bg-background px-3 lg:h-12 lg:px-4">

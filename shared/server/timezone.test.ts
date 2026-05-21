@@ -1,5 +1,21 @@
 import { expect, test } from 'vitest'
-import { localDateTimeParts, localDateTimeToUtc } from './timezone'
+import {
+  isValidIanaTimeZone,
+  localDateTimeParts,
+  localDateTimeToUtc,
+  normalizeUserTimeZone,
+} from './timezone'
+
+test('isValidIanaTimeZone accepts IANA ids and rejects invalid values', () => {
+  expect(isValidIanaTimeZone('Europe/Rome')).toBe(true)
+  expect(isValidIanaTimeZone('Not/A_Zone')).toBe(false)
+  expect(isValidIanaTimeZone('')).toBe(false)
+})
+
+test('normalizeUserTimeZone trims and validates', () => {
+  expect(normalizeUserTimeZone(' Europe/Rome ')).toBe('Europe/Rome')
+  expect(normalizeUserTimeZone('bad')).toBeNull()
+})
 
 test('localDateTimeParts formats local date and time in timezone', () => {
   const parts = localDateTimeParts(
