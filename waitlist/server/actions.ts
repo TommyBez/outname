@@ -8,6 +8,7 @@ import {
   sendWaitlistInviteEmail,
 } from '@/waitlist/server/email'
 import {
+  adminEnsureInviteableEntry,
   adminMarkWaitlistInvited,
   adminPrepareWaitlistInvite,
   adminResendWaitlistConfirmation,
@@ -22,6 +23,11 @@ const entryIdSchema = z.object({
 const statusSchema = z.object({
   entryId: z.string().min(1),
   status: z.enum(['converted', 'unsubscribed']),
+})
+
+const inviteUserSchema = z.object({
+  email: z.string().trim().email(),
+  name: z.string().trim().max(120).optional(),
 })
 
 export type WaitlistAdminActionResult =
@@ -65,6 +71,37 @@ export async function resendWaitlistConfirmationAction(
         error,
         'Could not resend the confirmation email.'
       ),
+      ok: false,
+    }
+  }
+}
+
+export async function inviteUserToApplicationAction(
+  email: string,
+  name?: string
+): Promise<WaitlistAdminActionResult> {
+  await requireWaitlistManageAccess()
+  const parsed = inviteUserSchema.safeParse({
+    email,
+    name: name?.trim() ? name : undefined,
+  })
+  if (!parsed.success) {
+    return { error: 'Enter a valid email address to invite.', ok: false }
+  }
+
+  try {
+    const entry = await adminEnsureInviteableEntry(parsed.data)
+    await adminPrepareWaitlistInvite(entry.id)
+    await provisionWaitlistAccess(entry.id)
+    await sendWaitlistInviteEmail({
+      email: entry.email,
+    })
+    await adminMarkWaitlistInvited(entry.id)
+    revalidateWaitlistRoutes()
+    return { ok: true }
+  } catch (error) {
+    return {
+      error: getActionErrorMessage(error, 'Could not send the invite.'),
       ok: false,
     }
   }

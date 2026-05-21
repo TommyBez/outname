@@ -450,6 +450,83 @@ export async function adminResendWaitlistConfirmation(entryId: string) {
   }
 }
 
+export interface AdminDirectInviteInput {
+  email: string
+  name?: string | null
+}
+
+export async function adminEnsureInviteableEntry(
+  input: AdminDirectInviteInput
+) {
+  const normalizedEmail = normalizeWaitlistEmail(input.email)
+  const name = normalizeOptionalText(input.name)
+  const now = new Date()
+  const existing = await getWaitlistEntryByEmail(normalizedEmail)
+
+  if (existing?.status === 'unsubscribed') {
+    throw new Error('This address unsubscribed from the waitlist.')
+  }
+
+  if (existing) {
+    if (existing.status === 'pending') {
+      const [confirmed] = await db
+        .update(waitlistEntry)
+        .set({
+          status: 'confirmed',
+          confirmedAt: now,
+          confirmationTokenHash: null,
+          confirmationTokenExpiresAt: null,
+          name: name ?? existing.name,
+          source: existing.source ?? 'admin-invite',
+          updatedAt: now,
+        })
+        .where(eq(waitlistEntry.id, existing.id))
+        .returning()
+
+      if (!confirmed) {
+        throw new Error('Waitlist entry not found')
+      }
+
+      return confirmed
+    }
+
+    if (name && name !== existing.name) {
+      const [updated] = await db
+        .update(waitlistEntry)
+        .set({
+          name,
+          updatedAt: now,
+        })
+        .where(eq(waitlistEntry.id, existing.id))
+        .returning()
+
+      return updated ?? existing
+    }
+
+    return existing
+  }
+
+  const [created] = await db
+    .insert(waitlistEntry)
+    .values({
+      id: createWaitlistEntryId(),
+      email: normalizedEmail,
+      name,
+      status: 'confirmed',
+      confirmedAt: now,
+      source: 'admin-invite',
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning()
+
+  if (!created) {
+    throw new Error('Could not create waitlist entry for invite')
+  }
+
+  return created
+}
+
 export async function adminPrepareWaitlistInvite(entryId: string) {
   const entry = await getWaitlistEntryById(entryId)
   if (

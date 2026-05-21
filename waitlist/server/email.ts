@@ -103,7 +103,7 @@ export async function sendWaitlistInviteEmail(input: { email: string }) {
       input.email
     ),
     to: input.email,
-    subject: 'Your OUTNA.ME access is ready',
+    subject: `You're invited to ${siteConfig.name}`,
     react: createElement(WaitlistInviteEmail, {
       loginUrl: `${getBaseUrl()}/login`,
       logoUrl: getWaitlistLogoUrl(),
