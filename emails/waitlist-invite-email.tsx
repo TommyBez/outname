@@ -1,7 +1,7 @@
-import { Text } from 'react-email'
+import { Link, Text } from 'react-email'
+import { AiGatewaySetupNote } from '@/emails/components/ai-gateway-setup-note'
 import { WaitlistEmailLayout } from '@/emails/components/waitlist-email-layout'
 import { EMAIL_BRAND_NAME } from '@/emails/email-brand'
-import { siteConfig } from '@/shared/server/site-metadata'
 
 export interface WaitlistInviteEmailProps {
   loginUrl: string
@@ -15,37 +15,28 @@ export function WaitlistInviteEmail({
   return (
     <WaitlistEmailLayout
       ctaHref={loginUrl}
-      ctaLabel={`Open ${EMAIL_BRAND_NAME}`}
-      eyebrow={`${EMAIL_BRAND_NAME} / invitation`}
-      footerEyebrow={`${EMAIL_BRAND_NAME} / invitation`}
-      footerText={
-        <Text className="m-0 mt-[12px] text-[12px] text-subtle leading-[20px]">
-          You received this email because someone invited you to try{' '}
-          {EMAIL_BRAND_NAME}. If that was not you, you can safely ignore it.
-        </Text>
-      }
-      lead={siteConfig.shortDescription}
+      ctaLabel={`Sign in to ${EMAIL_BRAND_NAME}`}
+      eyebrow={`${EMAIL_BRAND_NAME} / access`}
+      lead="Your waitlist request has been approved and your account is now ready. Sign in with the same email address to receive a one-time code."
       logoUrl={logoUrl}
-      preview={`You're invited to ${EMAIL_BRAND_NAME}.`}
-      title="You're invited"
+      preview={`Your ${EMAIL_BRAND_NAME} access is ready.`}
+      title="Access ready"
     >
       <Text className="m-0 text-[14px] text-ink leading-[22px]">
-        {EMAIL_BRAND_NAME} is for work that should not stall when you step away:
-        follow-ups, research threads, recurring checks, and small tasks that
-        need continuity more than a one-off answer.
+        Your access is now available and your account has already been prepared
+        for you. Open the login page, enter the same email address used for the
+        waitlist confirmation, and we will send you a one-time code.
       </Text>
-      <Text className="m-0 mt-[16px] text-[14px] text-ink leading-[22px]">
-        You set up personal agents with memory, schedules, and tools. They keep
-        context between runs, can call other agents when useful, and return with
-        clear updates instead of making you restart from scratch.
-      </Text>
+      <AiGatewaySetupNote />
       <Text className="m-0 mt-[16px] text-[14px] text-subtle leading-[22px]">
-        Your account is ready. Use the button below, enter this email address,
-        and we will send you a one-time sign-in code.
+        If you were not expecting this message, ignore it or reply to this email
+        and we will help you sort it out.
       </Text>
-      <Text className="m-0 mt-[16px] text-[14px] text-subtle leading-[22px]">
-        If you were not expecting this invitation, ignore the message or reply
-        to this email and we will help.
+      <Text className="m-0 mt-[16px] text-[12px] text-subtle leading-[20px]">
+        Prefer a direct link?{' '}
+        <Link className="text-signal no-underline" href={loginUrl}>
+          {loginUrl}
+        </Link>
       </Text>
     </WaitlistEmailLayout>
   )

@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { createElement, type ReactElement } from 'react'
+import { ApplicationInviteEmail } from '@/emails/application-invite-email'
 import { WaitlistAdminSignupEmail } from '@/emails/waitlist-admin-signup-email'
 import { WaitlistConfirmationEmail } from '@/emails/waitlist-confirmation-email'
 import { WaitlistInviteEmail } from '@/emails/waitlist-invite-email'
@@ -20,6 +21,7 @@ function getBaseUrl(): string {
 
 function createWaitlistEmailIdempotencyKey(
   eventType:
+    | 'application-invite'
     | 'waitlist-admin-signup'
     | 'waitlist-confirmation'
     | 'waitlist-invite',
@@ -103,8 +105,23 @@ export async function sendWaitlistInviteEmail(input: { email: string }) {
       input.email
     ),
     to: input.email,
-    subject: `You're invited to ${siteConfig.name}`,
+    subject: 'Your OUTNA.ME access is ready',
     react: createElement(WaitlistInviteEmail, {
+      loginUrl: `${getBaseUrl()}/login`,
+      logoUrl: getWaitlistLogoUrl(),
+    }),
+  })
+}
+
+export async function sendApplicationInviteEmail(input: { email: string }) {
+  await sendResendEmail({
+    idempotencyKey: createWaitlistEmailIdempotencyKey(
+      'application-invite',
+      input.email
+    ),
+    to: input.email,
+    subject: `You're invited to ${siteConfig.name}`,
+    react: createElement(ApplicationInviteEmail, {
       loginUrl: `${getBaseUrl()}/login`,
       logoUrl: getWaitlistLogoUrl(),
     }),

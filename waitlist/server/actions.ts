@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { requireWaitlistManageAccess } from '@/auth/server/auth-guard'
 import {
+  sendApplicationInviteEmail,
   sendWaitlistConfirmationEmail,
   sendWaitlistInviteEmail,
 } from '@/waitlist/server/email'
@@ -93,7 +94,7 @@ export async function inviteUserToApplicationAction(
     const entry = await adminEnsureInviteableEntry(parsed.data)
     await adminPrepareWaitlistInvite(entry.id)
     await provisionWaitlistAccess(entry.id)
-    await sendWaitlistInviteEmail({
+    await sendApplicationInviteEmail({
       email: entry.email,
     })
     await adminMarkWaitlistInvited(entry.id)
