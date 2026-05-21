@@ -60,6 +60,8 @@ describe('xUserApiRequestTool', () => {
   it.each([
     '/2/dm_conversations',
     '/2/lists/123/tweets',
+    '/2/users/123/list_memberships',
+    '/2/users/123/followed_lists',
     '/2/users/123/blocking',
     '/2/users/123/muting',
     '/2/spaces/123',

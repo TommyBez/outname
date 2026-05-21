@@ -96,9 +96,14 @@ function isStreamingResponsePath(pathname: string): boolean {
 }
 
 function isBlockedUserContextPath(pathname: string): boolean {
+  const isUserNestedListPath =
+    pathname.startsWith('/2/users/') &&
+    (pathname.endsWith('/list_memberships') ||
+      pathname.endsWith('/followed_lists'))
   return (
     pathname.startsWith('/2/dm') ||
     pathname.startsWith('/2/lists') ||
+    isUserNestedListPath ||
     pathname.includes('/blocking') ||
     pathname.includes('/muting') ||
     pathname.startsWith('/2/spaces')

@@ -12,6 +12,8 @@ export const X_OAUTH_SCOPES = [
   'media.write',
 ] as const
 
+export type XOAuthScope = (typeof X_OAUTH_SCOPES)[number]
+
 export const X_OAUTH_SCOPE_CATALOG = [
   { scope: 'tweet.read', label: 'Read tweets' },
   { scope: 'tweet.write', label: 'Post and manage tweets' },
@@ -24,4 +26,4 @@ export const X_OAUTH_SCOPE_CATALOG = [
   { scope: 'bookmark.read', label: 'Read bookmarks' },
   { scope: 'bookmark.write', label: 'Manage bookmarks' },
   { scope: 'media.write', label: 'Upload media' },
-] as const
+] as const satisfies ReadonlyArray<{ label: string; scope: XOAuthScope }>

@@ -94,7 +94,9 @@ export function pkceHash(verifier: string): string {
 }
 
 export function oauthScopeHash(scopes: readonly string[]): string {
-  return createHash('sha256').update(scopes.join('\n')).digest('base64url')
+  return createHash('sha256')
+    .update([...scopes].sort().join('\n'))
+    .digest('base64url')
 }
 
 export function signedPkceCookieValue(verifier: string): string {

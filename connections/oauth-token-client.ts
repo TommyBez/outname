@@ -7,8 +7,6 @@ import type {
 } from './types'
 
 const SCOPE_SPLIT_PATTERN = /\s+/
-const BASE64_ALPHABET =
-  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 const OAUTH_TOKEN_REQUEST_TIMEOUT_MS = 8000
 
 type OAuth2Connector = Extract<Connector, { authKind: 'oauth2' }>
@@ -272,21 +270,5 @@ function isAbortError(error: unknown): boolean {
 }
 
 function base64Encode(value: string): string {
-  const bytes = new TextEncoder().encode(value)
-  let output = ''
-  for (let index = 0; index < bytes.length; index += 3) {
-    const first = bytes[index] ?? 0
-    const second = bytes[index + 1] ?? 0
-    const third = bytes[index + 2] ?? 0
-    const triplet = first * 65_536 + second * 256 + third
-    output += BASE64_ALPHABET.charAt(Math.floor(triplet / 262_144) % 64)
-    output += BASE64_ALPHABET.charAt(Math.floor(triplet / 4096) % 64)
-    output +=
-      index + 1 < bytes.length
-        ? BASE64_ALPHABET.charAt(Math.floor(triplet / 64) % 64)
-        : '='
-    output +=
-      index + 2 < bytes.length ? BASE64_ALPHABET.charAt(triplet % 64) : '='
-  }
-  return output
+  return Buffer.from(value).toString('base64')
 }

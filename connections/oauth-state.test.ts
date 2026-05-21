@@ -84,6 +84,12 @@ describe('OAuth state helpers', () => {
     expect(state.length).toBeLessThanOrEqual(500)
   })
 
+  it('hashes OAuth scopes deterministically regardless of order', () => {
+    expect(oauthScopeHash(['tweet.read', 'users.read'])).toBe(
+      oauthScopeHash(['users.read', 'tweet.read'])
+    )
+  })
+
   it('detects provider-granted scopes outside the signed request', () => {
     expect(
       unexpectedGrantedScopes(
