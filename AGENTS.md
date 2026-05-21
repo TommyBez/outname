@@ -150,6 +150,7 @@ AUTH_FROM_EMAIL=<verified sender>
 AUTH_REPLY_TO=<verified reply-to sender>
 WAITLIST_FROM_EMAIL=<verified sender for waitlist emails>
 WAITLIST_REPLY_TO=<reply-to sender for waitlist emails>
+WAITLIST_ADMIN_EMAIL=<admin inbox for new waitlist signup notifications>
 ```
 
 ### Known caveats

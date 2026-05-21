@@ -247,9 +247,23 @@ export async function provisionWaitlistAccessByEmail(email: string) {
   return ensureProvisionedWaitlistUser(entry.id)
 }
 
+export interface WaitlistAdminSignupNotification {
+  email: string
+  entryId: string
+  name: string | null
+  primaryInterest: WaitlistPrimaryInterest | null
+  profileType: WaitlistProfileType | null
+  source: string | null
+  useCase: string | null
+  utmCampaign: string | null
+  utmMedium: string | null
+  utmSource: string | null
+}
+
 export async function submitWaitlistEntry(
   input: WaitlistSubmissionInput
 ): Promise<{
+  adminNotification: WaitlistAdminSignupNotification | null
   emailToSend: { email: string; token: string } | null
   entryId: string
 }> {
@@ -286,6 +300,18 @@ export async function submitWaitlistEntry(
     return {
       entryId: created.id,
       emailToSend: { email: normalizedEmail, token: token.token },
+      adminNotification: {
+        entryId: created.id,
+        email: normalizedEmail,
+        name,
+        primaryInterest,
+        profileType,
+        source: metadataPatch.source,
+        useCase,
+        utmCampaign: metadataPatch.utmCampaign,
+        utmMedium: metadataPatch.utmMedium,
+        utmSource: metadataPatch.utmSource,
+      },
     }
   }
 
@@ -306,6 +332,7 @@ export async function submitWaitlistEntry(
       return {
         entryId: existing.id,
         emailToSend: null,
+        adminNotification: null,
       }
     }
 
@@ -328,6 +355,7 @@ export async function submitWaitlistEntry(
     return {
       entryId: existing.id,
       emailToSend: { email: normalizedEmail, token: token.token },
+      adminNotification: null,
     }
   }
 
@@ -350,6 +378,7 @@ export async function submitWaitlistEntry(
   return {
     entryId: existing.id,
     emailToSend: null,
+    adminNotification: null,
   }
 }
 
