@@ -24,16 +24,16 @@ beforeEach(() => {
   mockEncryptCredential.mockReset()
 })
 
-test('encrypts provider-shaped credential overrides before storing them in config', async () => {
+test('encrypts connector-shaped credential overrides before storing them in config', async () => {
   mockEncryptCredential.mockResolvedValue('encrypted-token')
 
   await expect(
     withEncryptedCredentialOverrides({
-      allowedProviders: new Set(['x']),
+      allowedProviders: new Set(['x.bearer_token']),
       config: { readOnly: true },
       source: {
         credentialOverrides: {
-          x: { bearerToken: '  Bearer live-token  ' },
+          'x.bearer_token': { bearerToken: '  Bearer live-token  ' },
         },
       },
     })
@@ -42,7 +42,7 @@ test('encrypts provider-shaped credential overrides before storing them in confi
     config: {
       _secrets: {
         credentialOverrides: {
-          x: {
+          'x.bearer_token': {
             encrypted: 'encrypted-token',
             version: 1,
           },
@@ -56,16 +56,16 @@ test('encrypts provider-shaped credential overrides before storing them in confi
   })
 })
 
-test('encrypts standard apiKey provider overrides', async () => {
+test('encrypts standard apiKey connector overrides', async () => {
   mockEncryptCredential.mockResolvedValue('encrypted-api-key')
 
   await expect(
     withEncryptedCredentialOverrides({
-      allowedProviders: new Set(['v0']),
+      allowedProviders: new Set(['v0.api_key']),
       config: {},
       source: {
         credentialOverrides: {
-          v0: { apiKey: 'v0_live-token' },
+          'v0.api_key': { apiKey: 'v0_live-token' },
         },
       },
     })
@@ -74,7 +74,7 @@ test('encrypts standard apiKey provider overrides', async () => {
     config: {
       _secrets: {
         credentialOverrides: {
-          v0: {
+          'v0.api_key': {
             encrypted: 'encrypted-api-key',
             version: 1,
           },
@@ -87,11 +87,11 @@ test('encrypts standard apiKey provider overrides', async () => {
   })
 })
 
-test('preserves existing encrypted provider overrides when no replacement is provided', async () => {
+test('preserves existing encrypted connector overrides when no replacement is provided', async () => {
   const existingConfig = {
     _secrets: {
       credentialOverrides: {
-        x: {
+        'x.bearer_token': {
           encrypted: 'existing-token',
           version: 1,
         },
@@ -101,7 +101,7 @@ test('preserves existing encrypted provider overrides when no replacement is pro
 
   await expect(
     withEncryptedCredentialOverrides({
-      allowedProviders: new Set(['x']),
+      allowedProviders: new Set(['x.bearer_token']),
       config: { readOnly: false },
       source: {},
       fallbackSource: existingConfig,
@@ -111,7 +111,7 @@ test('preserves existing encrypted provider overrides when no replacement is pro
     config: {
       _secrets: {
         credentialOverrides: {
-          x: {
+          'x.bearer_token': {
             encrypted: 'existing-token',
             version: 1,
           },
@@ -127,7 +127,7 @@ test('empty submitted override fields preserve the existing encrypted override',
   const existingConfig = {
     _secrets: {
       credentialOverrides: {
-        x: {
+        'x.bearer_token': {
           encrypted: 'existing-token',
           version: 1,
         },
@@ -137,11 +137,11 @@ test('empty submitted override fields preserve the existing encrypted override',
 
   await expect(
     withEncryptedCredentialOverrides({
-      allowedProviders: new Set(['x']),
+      allowedProviders: new Set(['x.bearer_token']),
       config: { readOnly: false },
       source: {
         credentialOverrides: {
-          x: { bearerToken: '   ' },
+          'x.bearer_token': { bearerToken: '   ' },
         },
       },
       fallbackSource: existingConfig,
@@ -151,7 +151,7 @@ test('empty submitted override fields preserve the existing encrypted override',
     config: {
       _secrets: {
         credentialOverrides: {
-          x: {
+          'x.bearer_token': {
             encrypted: 'existing-token',
             version: 1,
           },
@@ -163,15 +163,15 @@ test('empty submitted override fields preserve the existing encrypted override',
   expect(mockEncryptCredential).not.toHaveBeenCalled()
 })
 
-test('removes requested provider overrides while preserving the rest', async () => {
+test('removes requested connector overrides while preserving the rest', async () => {
   const existingConfig = {
     _secrets: {
       credentialOverrides: {
-        github: {
+        'github.personal_access_token': {
           encrypted: 'existing-github-token',
           version: 1,
         },
-        x: {
+        'x.bearer_token': {
           encrypted: 'existing-x-token',
           version: 1,
         },
@@ -181,10 +181,13 @@ test('removes requested provider overrides while preserving the rest', async () 
 
   await expect(
     withEncryptedCredentialOverrides({
-      allowedProviders: new Set(['github', 'x']),
+      allowedProviders: new Set([
+        'github.personal_access_token',
+        'x.bearer_token',
+      ]),
       config: { readOnly: true },
       source: {
-        credentialOverrideRemovals: ['x'],
+        credentialOverrideRemovals: ['x.bearer_token'],
       },
       fallbackSource: existingConfig,
     })
@@ -193,7 +196,7 @@ test('removes requested provider overrides while preserving the rest', async () 
     config: {
       _secrets: {
         credentialOverrides: {
-          github: {
+          'github.personal_access_token': {
             encrypted: 'existing-github-token',
             version: 1,
           },
@@ -208,11 +211,11 @@ test('removes requested provider overrides while preserving the rest', async () 
 test('rejects partial multi-field credential overrides', async () => {
   await expect(
     withEncryptedCredentialOverrides({
-      allowedProviders: new Set(['posthog']),
+      allowedProviders: new Set(['posthog.api_key']),
       config: {},
       source: {
         credentialOverrides: {
-          posthog: { apiKey: 'phx_test' },
+          'posthog.api_key': { apiKey: 'phx_test' },
         },
       },
     })
@@ -226,7 +229,7 @@ test('redacts raw, encrypted, and legacy override values for client-facing confi
   const config = {
     _secrets: {
       credentialOverrides: {
-        x: {
+        'x.bearer_token': {
           encrypted: 'encrypted-token',
           version: 1,
         },
@@ -234,9 +237,9 @@ test('redacts raw, encrypted, and legacy override values for client-facing confi
     },
     apiKeyOverride: 'legacy-plain-token',
     credentialOverrides: {
-      x: { bearerToken: 'plain-token' },
+      'x.bearer_token': { bearerToken: 'plain-token' },
     },
-    credentialOverrideRemovals: ['x'],
+    credentialOverrideRemovals: ['x.bearer_token'],
     readOnly: true,
   }
 
@@ -244,7 +247,7 @@ test('redacts raw, encrypted, and legacy override values for client-facing confi
   expect(stripCredentialOverrides(config)).toEqual({ readOnly: true })
 })
 
-test('decrypts stored provider overrides for runtime use', async () => {
+test('decrypts stored connector overrides for runtime use', async () => {
   mockDecryptCredential.mockResolvedValue({ token: 'ghp_test-token' })
 
   await expect(
@@ -252,14 +255,14 @@ test('decrypts stored provider overrides for runtime use', async () => {
       config: {
         _secrets: {
           credentialOverrides: {
-            github: {
+            'github.personal_access_token': {
               encrypted: 'encrypted-token',
               version: 1,
             },
           },
         },
       },
-      provider: 'github',
+      connectorId: 'github.personal_access_token',
     })
   ).resolves.toEqual({ token: 'ghp_test-token' })
   expect(mockDecryptCredential).toHaveBeenCalledWith('encrypted-token')

@@ -152,6 +152,7 @@
     "db:studio": "drizzle-kit studio",
     "vercel:sandboxes:audit": "tsx scripts/audit-vercel-sandboxes.ts",
     "vercel:sandboxes:destroy-all": "tsx scripts/destroy-vercel-sandboxes.ts",
+    "connections:migrate-overrides": "tsx scripts/migrate-credential-overrides.ts",
     "video:studio": "remotion studio remotion/index.ts",
     "video:render:launch": "tsx scripts/render-launch-videos.ts render",
     "video:still:launch": "tsx scripts/render-launch-videos.ts still",

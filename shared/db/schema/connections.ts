@@ -14,11 +14,12 @@ export const userConnections = pgTable(
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
-    provider: text('provider').notNull(),
+    connectorId: text('connector_id').notNull(),
     // Connector secrets stay encrypted at rest.
     credentials: text('credentials').notNull(),
     // Metadata is safe to read in the clear.
     metadata: jsonb('metadata').notNull().default({}),
+    grantedScopes: jsonb('granted_scopes').notNull().default([]),
     status: text('status').notNull().default('active'),
     expiresAt: timestamp('expires_at', { withTimezone: true }),
     lastError: text('last_error'),
@@ -30,7 +31,7 @@ export const userConnections = pgTable(
       .defaultNow(),
   },
   (t) => [
-    primaryKey({ columns: [t.userId, t.provider] }),
+    primaryKey({ columns: [t.userId, t.connectorId] }),
     index('user_connections_user_idx').on(t.userId),
   ]
 )

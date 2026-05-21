@@ -134,7 +134,7 @@ export const posthogRequestTool = defineApiPassthroughTool({
   displayName: 'PostHog · Request',
   description:
     'Call authenticated PostHog project API endpoints. Defaults to read-only mode for safer analytics retrieval.',
-  provider: 'posthog',
+  connectorId: 'posthog.api_key',
   configSchema: posthogConfigSchema,
   inputSchema: posthogRequestInputSchema,
   policies: [posthogSafetyPolicy],

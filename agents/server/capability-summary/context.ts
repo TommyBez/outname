@@ -8,7 +8,7 @@ import {
 import { db } from '@/shared/db'
 import { agent, agentTools } from '@/shared/db/schema'
 import { getAgentMemoryFile } from '@/shared/server/data'
-import { providerBackedCapabilities } from '@/tools/catalog/capabilities'
+import { connectorBackedCapabilities } from '@/tools/catalog/capabilities'
 import { getMaintainerTool } from '@/tools/catalog/registry'
 import type { MaintainerTool } from '@/tools/catalog/types'
 import { childAgentIdFromSubAgentRow } from '@/tools/sub-agents/sub-agent-tool-name'
@@ -139,14 +139,14 @@ function describeMaintainerCapability(
 }
 
 function providerConnectionNote(tool: MaintainerTool): string | null {
-  const providers = providerBackedCapabilities(tool.capabilities).map(
-    (capability) => capability.provider
+  const connectors = connectorBackedCapabilities(tool.capabilities).map(
+    (capability) => capability.connectorId
   )
-  if (providers.length === 0) {
+  if (connectors.length === 0) {
     return null
   }
 
-  return `Uses ${formatProviderList(providers)} connection${providers.length === 1 ? '' : 's'}; credentials are brokered and are not available as tool input or environment variables.`
+  return `Uses ${formatProviderList(connectors)} connection${connectors.length === 1 ? '' : 's'}; credentials are brokered and are not available as tool input or environment variables.`
 }
 
 function appendCapabilityNotes(

@@ -22,7 +22,7 @@ export const parallelSearchTool = defineApiPassthroughTool({
   displayName: 'Parallel · Search',
   description:
     'Search the live web through Parallel and return ranked, LLM-optimized excerpts for current research questions.',
-  provider: 'parallel',
+  connectorId: 'parallel.api_key',
   inputSchema: parallelSearchInputSchema,
   toRequest({ input }) {
     const advancedSettings = input.advanced_settings

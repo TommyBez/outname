@@ -214,7 +214,7 @@ export const typefullyRequestTool = defineApiPassthroughTool({
   displayName: 'Typefully · Request',
   description:
     'Call authenticated Typefully API v2 endpoints for drafts, social sets, media, tags, scheduling, and publishing workflows.',
-  provider: 'typefully',
+  connectorId: 'typefully.api_key',
   configSchema: typefullyConfigSchema,
   inputSchema: typefullyRequestInputSchema,
   policies: [typefullySafetyPolicy],

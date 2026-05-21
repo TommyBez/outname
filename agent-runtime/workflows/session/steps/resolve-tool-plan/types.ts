@@ -1,9 +1,9 @@
-import type { ProviderRequirement } from '@/connections/runtime/types'
+import type { ConnectorRequirement } from '@/connections/runtime/types'
 import type { Reconnect } from '@/tools/catalog/types'
 
 export interface PlannedTool {
   config: Record<string, unknown>
-  providerRequirements: ProviderRequirement[]
+  connectorRequirements: ConnectorRequirement[]
   toolConfig: Record<string, unknown>
   toolId: string
 }

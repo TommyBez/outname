@@ -157,7 +157,7 @@ export const supabaseRequestTool = defineApiPassthroughTool({
   category: 'database',
   displayName: 'Supabase · Request',
   description: `Call authenticated Supabase Management API endpoints on api.supabase.com for projects, organizations, branches, functions, secrets, and related resources. ${SUPABASE_ENDPOINT_GUIDE}`,
-  provider: 'supabase',
+  connectorId: 'supabase.personal_access_token',
   inputSchema: supabaseRequestInputSchema,
   policies: [supabaseSafetyPolicy],
   toRequest({ input }) {

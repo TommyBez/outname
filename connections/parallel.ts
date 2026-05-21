@@ -8,7 +8,7 @@ const parallelCredentialSchema = z.object({
 
 export type ParallelCredential = z.infer<typeof parallelCredentialSchema>
 
-export const parallelConnector = defineConnector('parallel', {
+export const parallelConnector = defineConnector('parallel.api_key', {
   displayName: 'Parallel',
   description:
     'Current web search and LLM-optimized excerpts via the Parallel Search API.',

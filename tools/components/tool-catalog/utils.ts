@@ -1,7 +1,7 @@
 import type { ConnectionStatus } from '@/shared/db/schema'
 import type {
   AttachedToolView,
-  ProviderConnectionView,
+  ConnectorConnectionView,
   ToolCatalogEntry,
 } from './types'
 
@@ -13,11 +13,12 @@ export function findAttached(
 }
 
 export function findConnection(
-  connections: ProviderConnectionView[],
-  provider: string
-): ProviderConnectionView | null {
+  connections: ConnectorConnectionView[],
+  connectorId: string
+): ConnectorConnectionView | null {
   return (
-    connections.find((connection) => connection.provider === provider) ?? null
+    connections.find((connection) => connection.connectorId === connectorId) ??
+    null
   )
 }
 
@@ -52,7 +53,7 @@ export function submitButtonLabel(
   return 'Attach'
 }
 
-export function providerBadgeClass(status: ConnectionStatus | null): string {
+export function connectorBadgeClass(status: ConnectionStatus | null): string {
   if (status === 'active') {
     return 'border-foreground bg-foreground text-background'
   }
@@ -62,7 +63,7 @@ export function providerBadgeClass(status: ConnectionStatus | null): string {
   return 'border-destructive text-destructive'
 }
 
-export function providerBadgeLabel(
+export function connectorBadgeLabel(
   displayName: string,
   status: ConnectionStatus | null
 ): string {

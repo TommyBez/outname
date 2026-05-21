@@ -1,19 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
+  mockCredentialFingerprint,
   mockDecryptCredential,
   mockGetOrCreateRepoWorkspace,
-  mockReadBrokeredCredential,
+  mockReadConnectorCredential,
 } = vi.hoisted(() => ({
+  mockCredentialFingerprint: vi.fn(),
   mockDecryptCredential: vi.fn(),
   mockGetOrCreateRepoWorkspace: vi.fn(),
-  mockReadBrokeredCredential: vi.fn(),
+  mockReadConnectorCredential: vi.fn(),
 }))
 
 vi.mock('server-only', () => ({}))
 
 vi.mock('@/connections/runtime/credential', () => ({
-  readBrokeredCredential: mockReadBrokeredCredential,
+  credentialFingerprint: mockCredentialFingerprint,
+  readConnectorCredential: mockReadConnectorCredential,
 }))
 
 vi.mock('@/connections/crypto', () => ({
@@ -51,9 +54,11 @@ const buildGithubRepoTool = (config: Record<string, unknown>) =>
 
 describe('githubRepoTool', () => {
   beforeEach(() => {
+    mockCredentialFingerprint.mockReset()
     mockDecryptCredential.mockReset()
     mockGetOrCreateRepoWorkspace.mockReset()
-    mockReadBrokeredCredential.mockReset()
+    mockReadConnectorCredential.mockReset()
+    mockCredentialFingerprint.mockReturnValue('credential-fingerprint')
   })
 
   it('hides writeFile from the exposed child tools in read-only mode', () => {
@@ -113,7 +118,9 @@ describe('githubRepoTool', () => {
       stderr: '',
       stdout: '',
     }))
-    mockReadBrokeredCredential.mockResolvedValue({ token: 'ghp_test-token' })
+    mockReadConnectorCredential.mockResolvedValue({
+      credential: { token: 'ghp_test-token' },
+    })
     mockGetOrCreateRepoWorkspace.mockResolvedValue({
       bashTool: {
         bash: { execute: bashExecute },
@@ -164,7 +171,7 @@ describe('githubRepoTool', () => {
     const built = buildGithubRepoTool({
       _secrets: {
         credentialOverrides: {
-          github: {
+          'github.personal_access_token': {
             encrypted: 'encrypted-github-token',
             version: 1,
           },
@@ -179,7 +186,7 @@ describe('githubRepoTool', () => {
     ).resolves.toMatchObject({
       ok: true,
     })
-    expect(mockReadBrokeredCredential).not.toHaveBeenCalled()
+    expect(mockReadConnectorCredential).not.toHaveBeenCalled()
     expect(mockGetOrCreateRepoWorkspace).toHaveBeenCalledWith(
       expect.objectContaining({
         gitCredentials: {
@@ -196,7 +203,9 @@ describe('githubRepoTool', () => {
       stderr: '',
       stdout: '',
     }))
-    mockReadBrokeredCredential.mockResolvedValue({ token: 'ghp_test-token' })
+    mockReadConnectorCredential.mockResolvedValue({
+      credential: { token: 'ghp_test-token' },
+    })
     mockGetOrCreateRepoWorkspace.mockResolvedValue({
       bashTool: {
         bash: { execute: bashExecute },
@@ -229,7 +238,9 @@ describe('githubRepoTool', () => {
   })
 
   it('returns non-zero bash exits as successful observable results', async () => {
-    mockReadBrokeredCredential.mockResolvedValue({ token: 'ghp_test-token' })
+    mockReadConnectorCredential.mockResolvedValue({
+      credential: { token: 'ghp_test-token' },
+    })
     mockGetOrCreateRepoWorkspace.mockResolvedValue({
       bashTool: {
         bash: {

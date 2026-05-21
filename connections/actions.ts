@@ -2,12 +2,20 @@
 
 import { revalidatePath, updateTag } from 'next/cache'
 import { requireUserId } from '@/auth/server/auth-guard'
-import { getConnector } from '@/connections/registry'
 import {
-  disconnectProvider,
+  buildOAuthClientAuthHeaders,
+  readOAuthClientCredentials,
+} from '@/connections/oauth-token-client'
+import { getConnector } from '@/connections/registry'
+import { readConnectorCredential } from '@/connections/runtime/credential'
+import {
+  disconnectConnection,
   persistApiKeyConnection,
 } from '@/connections/runtime/store'
+import type { StoredOAuth2CredentialBlob } from '@/connections/types'
 import { userConnectionsTag } from '@/shared/server/cache-tags'
+
+const OAUTH_REVOKE_TIMEOUT_MS = 8000
 
 interface SaveApiKeyResult {
   error?: string
@@ -17,14 +25,17 @@ interface SaveApiKeyResult {
 // Next.js Server Actions validate action ID and origin, so this form
 // needs no separate CSRF token.
 export async function saveApiKeyConnectionAction(
-  provider: string,
+  connectorId: string,
   values: Record<string, string>
 ): Promise<SaveApiKeyResult> {
   const userId = await requireUserId()
 
-  const connector = getConnector(provider)
+  const connector = getConnector(connectorId)
   if (!connector) {
-    return { ok: false, error: 'Unknown provider.' }
+    return { ok: false, error: 'Unknown connector.' }
+  }
+  if (connector.authKind !== 'api_key') {
+    return { ok: false, error: 'This connector does not accept API keys.' }
   }
 
   const parsed = connector.apiKey.formSchema.safeParse(values)
@@ -43,7 +54,7 @@ export async function saveApiKeyConnectionAction(
       }
       await persistApiKeyConnection({
         userId,
-        provider,
+        connectorId,
         raw: parsed.data,
         metadata: result.metadata ?? {},
       })
@@ -56,7 +67,7 @@ export async function saveApiKeyConnectionAction(
   } else {
     await persistApiKeyConnection({
       userId,
-      provider,
+      connectorId,
       raw: parsed.data,
       metadata: {},
     })
@@ -66,16 +77,72 @@ export async function saveApiKeyConnectionAction(
   return { ok: true }
 }
 
-export async function disconnectConnectionAction(provider: string) {
+export async function disconnectConnectionAction(connectorId: string) {
   const userId = await requireUserId()
 
-  if (!getConnector(provider)) {
-    return { ok: false, error: 'Unknown provider.' }
+  const connector = getConnector(connectorId)
+  if (!connector) {
+    return { ok: false, error: 'Unknown connector.' }
   }
 
-  await disconnectProvider({ userId, provider })
+  if (connector.authKind === 'oauth2') {
+    await revokeOAuthConnection({ connectorId, userId }).catch((err) => {
+      console.warn('disconnectConnectionAction: OAuth revoke failed', {
+        connectorId,
+        err,
+      })
+    })
+  }
+  await disconnectConnection({ userId, connectorId })
   updateConnectionSurfaces(userId)
   return { ok: true }
+}
+
+async function revokeOAuthConnection(input: {
+  connectorId: string
+  userId: string
+}): Promise<void> {
+  const connector = getConnector(input.connectorId)
+  if (connector?.authKind !== 'oauth2' || !connector.oauth2.revokeUrl) {
+    return
+  }
+  const result = await readConnectorCredential(input)
+  const credential = result.credential as StoredOAuth2CredentialBlob
+  const token = credential.refreshToken ?? credential.accessToken
+  const client = readOAuthClientCredentials(connector)
+  if (!client.ok) {
+    return
+  }
+  const body = new URLSearchParams({
+    token,
+    client_id: client.credentials.clientId,
+  })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), OAUTH_REVOKE_TIMEOUT_MS)
+  try {
+    const response = await fetch(connector.oauth2.revokeUrl, {
+      body,
+      headers: buildOAuthClientAuthHeaders(
+        client.credentials.clientId,
+        client.credentials.clientSecret
+      ),
+      method: 'POST',
+      signal: controller.signal,
+    })
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw new Error(
+        `OAuth revoke failed with HTTP ${response.status}${text ? `: ${text}` : ''}`
+      )
+    }
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('OAuth revoke timed out.')
+    }
+    throw error
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 function updateConnectionSurfaces(userId: string): void {

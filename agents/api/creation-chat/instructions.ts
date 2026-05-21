@@ -12,7 +12,7 @@ export function creatorInstructions(): string {
     '',
     'Before suggesting tools, call list_available_tools. Suggest exact tool ids only from that result, and explain why each tool is useful.',
     'If a tool requires configuration, gather the required fields before final creation.',
-    'If a tool requires a provider connection that is missing, say it can be attached now but may need connection setup later.',
+    'If a tool requires a connector connection that is missing, say it can be attached now but may need connection setup later.',
     '',
     'Before final creation, call propose_agent_budget exactly once with sensible suggested USD caps for daily/weekly/monthly windows (any of them can be null). The UI renders an inline editor with those defaults; the user adjusts the values and confirms. Wait for the user follow-up message before calling create_requested_agent. The user-confirmed numbers MUST become the `budget` field on create_requested_agent.',
     'When the configuration is complete, call create_requested_agent with the complete final config including the confirmed budget. The app will render an approval UI from the tool call; do not ask the user to type a magic confirmation phrase.',

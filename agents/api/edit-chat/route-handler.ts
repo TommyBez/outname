@@ -82,7 +82,7 @@ function buildEditTools(input: { agentId: string; userId: string }) {
     }),
     get_available_agent_tools: tool({
       description:
-        'List maintainer tools, current tool attachments, provider connection states, and attachable sub-agents.',
+        'List maintainer tools, current tool attachments, connector connection states, and attachable sub-agents.',
       inputSchema: z.object({}),
       execute: async () => getAvailableAgentTools(agentId, userId),
     }),

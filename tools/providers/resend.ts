@@ -34,7 +34,7 @@ export const resendSendTool = defineActionTool({
   displayName: 'Resend · Send',
   description:
     'Send a transactional email via Resend using the configured sender address.',
-  capabilities: [{ kind: 'brokered_http', provider: 'resend' }],
+  capabilities: [{ kind: 'brokered_http', connectorId: 'resend.api_key' }],
   configSchema: resendConfigSchema,
   inputSchema: resendSendInputSchema,
   async execute({ input, config, ctx }) {
