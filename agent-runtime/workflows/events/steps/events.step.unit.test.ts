@@ -72,9 +72,9 @@ describe('event step wrappers', () => {
       id: 'evt_123',
       payload: { foo: 'bar' },
       publisherWorkflowRunId: 'wrun_publisher',
-      source: 'slack',
+      source: 'manual',
       status: 'running',
-      type: 'chat',
+      type: 'heartbeat',
       workflowRunId: 'wrun_123',
     })
 
@@ -84,9 +84,9 @@ describe('event step wrappers', () => {
       id: 'evt_123',
       payload: { foo: 'bar' },
       publisherWorkflowRunId: 'wrun_publisher',
-      source: 'slack',
+      source: 'manual',
       status: 'running',
-      type: 'chat',
+      type: 'heartbeat',
       workflowRunId: 'wrun_123',
     })
   })

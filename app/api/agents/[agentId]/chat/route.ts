@@ -1,15 +1,8 @@
-import { createUIMessageStream, createUIMessageStreamResponse } from 'ai'
 import { revalidateTag } from 'next/cache'
 import { headers } from 'next/headers'
-import { type NextRequest, NextResponse } from 'next/server'
-import { getRun } from 'workflow/api'
-import {
-  type AgentChatChunk,
-  type AgentChatMessage,
-  CHAT_STATUS_PART_ID,
-  CHAT_STATUS_PART_TYPE,
-} from '@/agent-runtime/server/chat-status'
-import { dispatchChatTurn } from '@/agent-runtime/server/session-events'
+import { after, type NextRequest, NextResponse } from 'next/server'
+import type { AgentChatMessage } from '@/agent-runtime/server/chat-status'
+import { runRealtimeChatTurn } from '@/agent-runtime/server/realtime-chat-runner'
 import { getAgentById } from '@/agent-runtime/server/start-agent-run'
 import { auth } from '@/auth/server/auth'
 import {
@@ -19,8 +12,8 @@ import {
 import type { ChatRole } from '@/shared/db/schema'
 import { conversationListTag } from '@/shared/server/cache-tags'
 
-// Authenticate, persist the newest user turn, dispatch into an event workflow,
-// then pipe the per-turn reply stream back into `useChat`.
+// Authenticate, persist the newest user turn, then stream a realtime
+// ToolLoopAgent response back into `useChat`.
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ agentId: string }> }
@@ -89,47 +82,19 @@ export async function POST(
     revalidateTag(conversationListTag(agent.id), 'max')
   }
 
-  const stream = createUIMessageStream<AgentChatMessage>({
-    async execute({ writer }) {
-      writer.write({
-        type: CHAT_STATUS_PART_TYPE,
-        id: CHAT_STATUS_PART_ID,
-        data: {
-          message: 'Starting agent event...',
-          phase: 'agent-event',
-          timestamp: new Date().toISOString(),
-        },
-        transient: true,
-      })
-
-      const { sessionRunId, replyToken } = await dispatchChatTurn({
-        agent,
-        conversationId,
-        uiMessages,
-      })
-      if (!sessionRunId) {
-        writer.write({
-          type: CHAT_STATUS_PART_TYPE,
-          id: CHAT_STATUS_PART_ID,
-          data: {
-            message: 'Agent event queued...',
-            phase: 'agent-event',
-            timestamp: new Date().toISOString(),
-          },
-          transient: true,
-        })
-        return
-      }
-
-      // `handleChat` writes `UIMessageChunk`s into this reply-token namespace.
-      const readable = getRun(sessionRunId).getReadable<AgentChatChunk>({
-        namespace: replyToken,
-      })
-      writer.merge(readable)
+  return await runRealtimeChatTurn({
+    abortSignal: req.signal,
+    agentId,
+    conversationId,
+    delivery: {
+      scheduleBackgroundTask(task) {
+        after(task)
+      },
     },
-  })
-
-  return createUIMessageStreamResponse({
-    stream,
+    messages: uiMessages,
+    persistMode: 'ui-message-full',
+    runId: `rt_${crypto.randomUUID()}`,
+    source: 'chat',
+    userId: agent.userId,
   })
 }

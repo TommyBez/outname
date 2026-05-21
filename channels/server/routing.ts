@@ -10,18 +10,25 @@ import {
   type Agent,
   agent,
   agentChannelBindings,
+  type ChannelInstallation,
   channelThreadConversations,
   chatConversation,
 } from '@/shared/db/schema'
 import { getChannelInstallationsByTeam } from './installations'
 import type { ChannelId, ChannelRoute, IncomingChannelMessage } from './types'
 
+export interface ResolvedChannelRoute {
+  agent: Agent
+  installationCreatedAt: Date
+  installationUserId: string
+}
+
 // Resolve every agent that should receive this incoming thread. Multiple app
 // users may have installed the same workspace, so fan-out is scoped by
 // installation owner and then by that owner's binding.
-export async function resolveAgentsForIncomingMessage(
+export async function resolveRoutesForIncomingMessage(
   msg: IncomingChannelMessage
-): Promise<Agent[]> {
+): Promise<ResolvedChannelRoute[]> {
   if (!msg.teamId) {
     return []
   }
@@ -34,16 +41,45 @@ export async function resolveAgentsForIncomingMessage(
     return []
   }
 
-  const agents: Agent[] = []
+  const routes: ResolvedChannelRoute[] = []
   const seen = new Set<string>()
   for (const install of installations) {
     const candidate = await findCandidateAgentForUser(msg, install.userId)
     if (candidate && !seen.has(candidate.id)) {
       seen.add(candidate.id)
-      agents.push(candidate)
+      routes.push({
+        agent: candidate,
+        installationCreatedAt: install.createdAt,
+        installationUserId: install.userId,
+      })
     }
   }
-  return agents
+  return routes.sort(compareResolvedRoutes)
+}
+
+export async function resolveAgentsForIncomingMessage(
+  msg: IncomingChannelMessage
+): Promise<Agent[]> {
+  const routes = await resolveRoutesForIncomingMessage(msg)
+  return routes.map((route) => route.agent)
+}
+
+function compareResolvedRoutes(
+  left: ResolvedChannelRoute,
+  right: ResolvedChannelRoute
+): number {
+  const createdDelta =
+    left.installationCreatedAt.getTime() - right.installationCreatedAt.getTime()
+  if (createdDelta !== 0) {
+    return createdDelta
+  }
+  const userDelta = left.installationUserId.localeCompare(
+    right.installationUserId
+  )
+  if (userDelta !== 0) {
+    return userDelta
+  }
+  return left.agent.id.localeCompare(right.agent.id)
 }
 
 async function findCandidateAgentForUser(
@@ -121,6 +157,9 @@ async function loadAgent(agentId: string): Promise<Agent | null> {
 // best-effort delete the losing orphan conversation row.
 export async function ensureConversationForThread(input: {
   agent: Agent
+  installation?: ChannelInstallation | null
+  installationCreatedAt?: Date
+  installationUserId?: string
   message: IncomingChannelMessage
 }): Promise<ChannelRoute> {
   const { agent: agentRow, message } = input
@@ -141,7 +180,11 @@ export async function ensureConversationForThread(input: {
     )
     .limit(1)
   if (existing[0]) {
-    return { agent: agentRow, conversationId: existing[0].conversationId }
+    return {
+      agent: agentRow,
+      conversationId: existing[0].conversationId,
+      ...routeInstallationMetadata(input, agentRow),
+    }
   }
 
   const conversationId = newChatConversationId()
@@ -180,7 +223,11 @@ export async function ensureConversationForThread(input: {
     })
 
   if (inserted[0]) {
-    return { agent: agentRow, conversationId: inserted[0].conversationId }
+    return {
+      agent: agentRow,
+      conversationId: inserted[0].conversationId,
+      ...routeInstallationMetadata(input, agentRow),
+    }
   }
 
   // Another webhook won the unique-index race, so re-read the canonical
@@ -219,5 +266,27 @@ export async function ensureConversationForThread(input: {
     )
   }
 
-  return { agent: agentRow, conversationId: canonical.conversationId }
+  return {
+    agent: agentRow,
+    conversationId: canonical.conversationId,
+    ...routeInstallationMetadata(input, agentRow),
+  }
+}
+
+function routeInstallationMetadata(
+  input: {
+    installation?: ChannelInstallation | null
+    installationCreatedAt?: Date
+    installationUserId?: string
+  },
+  agentRow: Agent
+): Pick<ChannelRoute, 'installationCreatedAt' | 'installationUserId'> {
+  return {
+    installationCreatedAt:
+      input.installationCreatedAt ??
+      input.installation?.createdAt ??
+      new Date(0),
+    installationUserId:
+      input.installationUserId ?? input.installation?.userId ?? agentRow.userId,
+  }
 }

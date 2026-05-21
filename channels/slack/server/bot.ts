@@ -1,7 +1,13 @@
 import 'server-only'
 import { createSlackAdapter, type SlackAdapter } from '@chat-adapter/slack'
 import type { ModelMessage } from 'ai'
-import { Chat, type Message as ChatMessage, toAiMessages } from 'chat'
+import {
+  Chat,
+  type Message as ChatMessage,
+  type StreamEvent,
+  toAiMessages,
+} from 'chat'
+import { after } from 'next/server'
 import { runChannelChatTurn } from '@/channels/server/dispatch'
 import type { IncomingChannelMessage } from '@/channels/server/types'
 import { SlackHybridState } from './state'
@@ -42,11 +48,10 @@ function buildBundle(): SlackBotBundle {
   const bot: SlackChat = new Chat({
     userName,
     adapters: { slack: adapter },
-    // Persist owner-scoped installations in `channel_installations`; locks and
-    // subscriptions stay in Redis/memory via the inner backing adapter.
+    // Persist owner-scoped installations in `channel_installations`; locks,
+    // queue, dedupe, subscriptions, and ephemeral state stay in Redis via the
+    // inner backing adapter.
     state: new SlackHybridState(),
-    // The canonical queue lives in `agent_events`; this only protects webhook
-    // ingestion from overlapping handler work inside the Chat SDK.
     concurrency: 'queue',
   })
 
@@ -77,22 +82,23 @@ function slackThreadKey(channel: string, threadTs: string): string {
 }
 
 function registerHandlers(bot: SlackChat): void {
-  bot.onNewMention(async (thread, message) => {
+  bot.onNewMention(async (thread, message, context) => {
     await thread.subscribe()
-    await handleSlackMessage({ thread, message, kind: 'channel' })
+    await handleSlackMessage({ thread, message, kind: 'channel', context })
   })
 
-  bot.onDirectMessage(async (thread, message) => {
+  bot.onDirectMessage(async (thread, message, _channel, context) => {
     await thread.subscribe()
-    await handleSlackMessage({ thread, message, kind: 'dm' })
+    await handleSlackMessage({ thread, message, kind: 'dm', context })
   })
 
-  bot.onSubscribedMessage(async (thread, message) => {
+  bot.onSubscribedMessage(async (thread, message, context) => {
     // Reuse the routing kind captured when the thread subscription started.
     await handleSlackMessage({
       thread,
       message,
       kind: thread.isDM ? 'dm' : 'channel',
+      context,
     })
   })
 }
@@ -106,13 +112,71 @@ async function handleSlackMessage(input: {
   thread: SlackThread
   message: SlackMessage
   kind: 'channel' | 'dm'
+  context?: Parameters<Parameters<SlackChat['onNewMention']>[0]>[2]
 }): Promise<void> {
+  const { thread, message, kind, context } = input
+  const incoming = buildIncomingSlackMessage({
+    thread,
+    message,
+    kind,
+    loadModelMessages: () => collectThreadHistory(thread),
+  })
+  if (!incoming) {
+    return
+  }
+  incoming.skipped = (context?.skipped ?? [])
+    .map((skipped) =>
+      buildIncomingSlackMessage({
+        thread,
+        message: skipped as SlackMessage,
+        kind,
+      })
+    )
+    .filter((skipped): skipped is IncomingChannelMessage => Boolean(skipped))
+
+  const handled = await runChannelChatTurn({
+    message: incoming,
+    sink: {
+      postAgentStream: async (stream) => {
+        await thread.post(stream as AsyncIterable<string | StreamEvent>)
+      },
+      postText: async (text) => {
+        await thread.post(text)
+      },
+      postError: async (errorText) => {
+        await thread.post(errorText)
+      },
+      scheduleBackgroundTask(task) {
+        after(task)
+      },
+      startTyping: async (status) => {
+        await thread.startTyping(status)
+      },
+    },
+  })
+
+  if (!handled) {
+    console.warn('[slack] no agent binding for incoming message', {
+      channelId: readString(incoming.threadMetadata, 'slackChannel'),
+      teamId: incoming.teamId,
+      kind,
+      routingKey: incoming.externalRoutingKey,
+    })
+  }
+}
+
+function buildIncomingSlackMessage(input: {
+  thread: SlackThread
+  message: SlackMessage
+  kind: 'channel' | 'dm'
+  loadModelMessages?: () => Promise<ModelMessage[] | undefined>
+}): IncomingChannelMessage | null {
   const { thread, message, kind } = input
   const raw = message.raw as SlackRawMessage | undefined
   const trimmedText = message.text?.trim() ?? ''
   const attachmentSummary = describeSlackAttachments(raw)
   if (!(trimmedText || attachmentSummary)) {
-    return
+    return null
   }
   // Attachment-only messages still flow through routing/persistence; the model
   // receives the actual file bytes via `toAiMessages` in `loadModelMessages`.
@@ -126,7 +190,7 @@ async function handleSlackMessage(input: {
       channelId: thread.channelId,
       threadId: thread.id,
     })
-    return
+    return null
   }
   const { channelId, threadTs } = slackThread
   const messageTs = raw?.ts ?? threadTs
@@ -137,13 +201,13 @@ async function handleSlackMessage(input: {
       '[slack] dropping event with no team id; cannot owner-scope to an installation',
       { channelId, kind }
     )
-    return
+    return null
   }
 
   const externalRoutingKey =
     kind === 'dm' ? (message.author?.userId ?? channelId) : channelId
 
-  const incoming: IncomingChannelMessage = {
+  return {
     channel: 'slack',
     teamId,
     externalThreadKey: slackThreadKey(channelId, threadTs),
@@ -159,32 +223,7 @@ async function handleSlackMessage(input: {
       slackThreadTs: threadTs,
       slackTeamId: teamId,
     },
-    loadModelMessages: () => collectThreadHistory(thread),
-  }
-
-  const handled = await runChannelChatTurn({
-    message: incoming,
-    sink: {
-      postReply: async (content) => {
-        // The adapter throttles `chat.update` internally for streaming replies.
-        await thread.post(content)
-      },
-      postError: async (errorText) => {
-        await thread.post(errorText)
-      },
-      startTyping: async (status) => {
-        await thread.startTyping(status)
-      },
-    },
-  })
-
-  if (!handled) {
-    console.warn('[slack] no agent binding for incoming message', {
-      channelId,
-      teamId,
-      kind,
-      routingKey: externalRoutingKey,
-    })
+    loadModelMessages: input.loadModelMessages,
   }
 }
 
@@ -218,4 +257,12 @@ async function collectThreadHistory(
     })
     return
   }
+}
+
+function readString(
+  value: Record<string, unknown> | undefined,
+  key: string
+): string {
+  const item = value?.[key]
+  return typeof item === 'string' ? item : ''
 }

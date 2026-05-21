@@ -15,21 +15,6 @@ export const TERMINAL_EVENT_STATUSES = [
 ] as const
 
 export interface AgentEventPayloads {
-  chat: {
-    conversationId: string
-    // Pre-converted ModelMessage[] (AI SDK shape) from channel adapters that
-    // own the thread (e.g. Chat SDK `toAiMessages`). When present, the
-    // workflow uses these directly instead of converting `uiMessages`.
-    modelMessages?: unknown[]
-    slack?: {
-      channelId: string
-      messageTs: string
-      recipientUserId?: string
-      teamId: string
-      threadTs: string
-    }
-    uiMessages: unknown[]
-  }
   dreaming: {
     localDate: string
     manual?: boolean

@@ -1,10 +1,18 @@
 import { DurableAgent } from '@workflow/ai/agent'
 import type { Tool } from 'ai'
-import { getAgentById } from '@/agent-runtime/server/start-agent-run'
+import {
+  type AgentRuntimeMeta,
+  type AgentRuntimeSpec,
+  buildAgentRuntimeSpec,
+  runtimeMetaFromSpec,
+} from '@/agent-runtime/server/runtime-spec'
 import { getUserModelForGateway } from '@/shared/server/ai-gateway-byok'
 import { buildAttachedTools } from '@/tools/runtime/build-attached-tools'
-import { composeSystemPrompt } from './compose-system-prompt'
-import { resolveToolPlan } from './steps/resolve-tool-plan'
+import type { SubAgentProgressTarget } from '@/tools/sub-agents/progress-target'
+import {
+  noSubAgentProgressTarget,
+  workflowParentStreamTarget,
+} from '@/tools/sub-agents/progress-target'
 import { createFileTools } from './tools/file-tools'
 
 // Build one event-scoped agent: prompt from sandbox files, built-in file tools,
@@ -23,58 +31,49 @@ export interface BuildAgentArgs {
 
 export interface BuildAgentResult {
   agent: DurableAgent
-  meta: {
-    name: string
-    model: string
-    userId: string
-    stepLimitCustom: number | null
-    stepLimitMode: 'custom' | 'grind' | 'high' | 'low' | 'medium'
-  }
+  meta: AgentRuntimeMeta
   tools: Record<string, Tool>
 }
 
 export async function buildAgent(
   args: BuildAgentArgs
 ): Promise<BuildAgentResult> {
-  const { agentId, runId } = args
-  const callStack = args.callStack ?? []
-  const depth = args.depth ?? 0
-
-  const row = await getAgentById(agentId)
-  if (!row) {
-    throw new Error(`buildAgent: agent ${agentId} not found (run ${runId})`)
-  }
-
-  // Resolve reconnects before composing the prompt, and keep DB/decrypt work in
-  // `resolveToolPlan` so this workflow bundle stays free of `node:crypto`.
-  const plan = await resolveToolPlan({
-    agentId,
-    userId: row.userId,
-    callStack,
-    depth,
+  const spec = await buildAgentRuntimeSpec({
+    agentId: args.agentId,
+    callStack: args.callStack,
+    depth: args.depth,
+    eventKind: args.eventKind ?? 'heartbeat',
+    nowIso: args.nowIso,
+    runId: args.runId,
   })
-  const attached = buildAttachedTools({
-    agentId,
-    userId: row.userId,
-    plan,
-    callStack,
-    currentRunId: args.currentRunId,
+  return buildDurableAgentRuntime(spec, {
     conversationId: args.conversationId,
-    depth,
-    streamNamespace: args.streamNamespace,
+    currentRunId: args.currentRunId,
+    progressTarget: workflowParentStreamTarget(args.streamNamespace),
+  })
+}
+
+export function buildDurableAgentRuntime(
+  spec: AgentRuntimeSpec,
+  options: {
+    conversationId?: string | null
+    currentRunId?: string | null
+    progressTarget?: SubAgentProgressTarget
+  } = {}
+): BuildAgentResult {
+  const attached = buildAttachedTools({
+    agentId: spec.agentId,
+    userId: spec.userId,
+    plan: spec.toolPlan,
+    callStack: spec.callStack,
+    currentRunId: options.currentRunId,
+    conversationId: options.conversationId,
+    depth: spec.depth,
+    progressTarget: options.progressTarget ?? noSubAgentProgressTarget,
   })
 
-  const systemPrompt = await composeSystemPrompt({
-    agentId,
-    agentName: row.name,
-    eventKind: args.eventKind,
-    nowIso: args.nowIso ?? new Date().toISOString(),
-    reconnects: attached.reconnects,
-  })
-
-  const fileTools = createFileTools({ agentId })
   const tools = {
-    ...fileTools,
+    ...createFileTools({ agentId: spec.agentId }),
     ...attached.tools,
   }
 
@@ -82,30 +81,19 @@ export async function buildAgent(
     model: async () => {
       'use step'
       const model = await getUserModelForGateway({
-        modelId: row.model,
-        userId: row.userId,
+        modelId: spec.modelId,
+        userId: spec.userId,
       })
       return model
     },
-    system: systemPrompt,
+    system: spec.systemPrompt,
     tools,
   })
 
   return {
     agent: durableAgent,
     tools,
-    meta: {
-      name: row.name,
-      model: row.model,
-      userId: row.userId,
-      stepLimitCustom: row.stepLimitCustom,
-      stepLimitMode: row.stepLimitMode as
-        | 'custom'
-        | 'grind'
-        | 'high'
-        | 'low'
-        | 'medium',
-    },
+    meta: runtimeMetaFromSpec(spec),
   }
 }
 

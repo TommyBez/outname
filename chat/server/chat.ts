@@ -1,6 +1,6 @@
 import 'server-only'
 import type { UIMessage } from 'ai'
-import { and, asc, desc, eq, isNull } from 'drizzle-orm'
+import { and, asc, desc, eq, isNull, or } from 'drizzle-orm'
 import { cacheLife, cacheTag } from 'next/cache'
 import { db } from '@/shared/db'
 import {
@@ -145,7 +145,8 @@ export async function deleteConversation(
   return rows.length > 0
 }
 
-// `WHERE title IS NULL` makes title generation idempotent, so user renames always win.
+// Treat the generated placeholder as unset so greeting-only first turns do not
+// permanently block a later substantive title. Other user edits still win.
 export async function setConversationTitleIfUnset(
   conversationId: string,
   title: string
@@ -160,7 +161,11 @@ export async function setConversationTitleIfUnset(
     .where(
       and(
         eq(chatConversation.id, conversationId),
-        isNull(chatConversation.title)
+        or(
+          isNull(chatConversation.title),
+          eq(chatConversation.title, 'New Chat'),
+          eq(chatConversation.title, 'New chat')
+        )
       )
     )
 }
@@ -186,13 +191,25 @@ function rowToUIMessage(row: ChatMessage): UIMessage {
 }
 
 export async function insertChatMessage(input: {
+  createdAt?: Date
   conversationId: string
   id: string
   role: ChatRole
   parts: UIMessage['parts']
   metadata?: unknown
 }): Promise<void> {
-  await db
+  await insertChatMessageIfNew(input)
+}
+
+export async function insertChatMessageIfNew(input: {
+  createdAt?: Date
+  conversationId: string
+  id: string
+  role: ChatRole
+  parts: UIMessage['parts']
+  metadata?: unknown
+}): Promise<boolean> {
+  const inserted = await db
     .insert(chatMessage)
     .values({
       id: input.id,
@@ -200,13 +217,21 @@ export async function insertChatMessage(input: {
       role: input.role,
       parts: input.parts,
       metadata: input.metadata ?? null,
+      createdAt: input.createdAt,
     })
     .onConflictDoNothing({ target: chatMessage.id })
+    .returning({ id: chatMessage.id })
+
+  if (inserted.length === 0) {
+    return false
+  }
 
   await db
     .update(chatConversation)
     .set({ updatedAt: new Date() })
     .where(eq(chatConversation.id, input.conversationId))
+
+  return true
 }
 
 // Diff by message id so workflow retries do not double-insert chat turns.

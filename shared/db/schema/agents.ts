@@ -20,14 +20,9 @@ export type AgentEventStatus =
   | 'failed'
   | 'cancelled'
 
-export type AgentEventType = 'chat' | 'heartbeat' | 'dreaming' | 'invocation'
+export type AgentEventType = 'heartbeat' | 'dreaming' | 'invocation'
 
-export type AgentEventSource =
-  | 'chat'
-  | 'slack'
-  | 'scheduler'
-  | 'manual'
-  | 'invocation'
+export type AgentEventSource = 'scheduler' | 'manual' | 'invocation'
 
 export const agent = pgTable(
   'agent',

@@ -22,11 +22,13 @@ vi.mock('workflow', () => ({
   getWritable: mockGetWritable,
 }))
 
+vi.mock('server-only', () => ({}))
+
 vi.mock('@/shared/server/vercel-sandbox-config', () => ({
   toolBuildSandboxTags: mockToolBuildSandboxTags,
 }))
 
-vi.mock('@/tools/sandboxes', () => ({
+vi.mock('@/tools/sandboxes/registry', () => ({
   getToolSandboxManifest: mockGetToolSandboxManifest,
 }))
 

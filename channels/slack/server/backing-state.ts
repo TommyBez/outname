@@ -1,23 +1,13 @@
 import 'server-only'
-import { createMemoryState } from '@chat-adapter/state-memory'
 import { createRedisState } from '@chat-adapter/state-redis'
 import type { StateAdapter } from 'chat'
 
-let warned = false
-
 export function createSlackBackingState(): StateAdapter {
   const url = process.env.REDIS_URL
-  if (url) {
-    // Redis keeps locks and thread subscriptions shared across instances.
-    return createRedisState({ url, keyPrefix: 'slack-chat-sdk' })
+  if (!url) {
+    throw new Error('REDIS_URL is required for Slack Chat SDK state.')
   }
-  if (!warned) {
-    warned = true
-    console.warn(
-      '[slack-state] REDIS_URL not set — using in-memory state. ' +
-        'Locks and thread subscriptions will not survive across instances or cold starts. ' +
-        'Set REDIS_URL for multi-instance deployments.'
-    )
-  }
-  return createMemoryState()
+  // Redis keeps locks, queue, dedupe, subscriptions, and ephemeral state shared
+  // across Fluid Compute instances. SlackHybridState only intercepts installation keys.
+  return createRedisState({ url, keyPrefix: 'slack-chat-sdk' })
 }

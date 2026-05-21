@@ -6,12 +6,16 @@ import type {
   AgentChatMessage,
 } from '@/agent-runtime/server/chat-status'
 import type { SubAgentToolOutput } from '@/agent-runtime/server/sub-agent-tool-output'
+import {
+  progressStreamNamespace,
+  type SubAgentProgressTarget,
+} from './progress-target'
 
 export async function collectSubAgentMessages(input: {
   progress?: {
     childAgentId: string
     childName: string
-    streamNamespace: string | null
+    target: SubAgentProgressTarget
     toolCallId: string | null
     toolName: string
   }
@@ -48,19 +52,20 @@ async function emitProgressUpdate(input: {
   progress: {
     childAgentId: string
     childName: string
-    streamNamespace: string | null
+    target: SubAgentProgressTarget
     toolCallId: string | null
     toolName: string
   } | null
 }): Promise<void> {
   const progress = input.progress
-  if (!(progress?.streamNamespace && progress.toolCallId)) {
+  const streamNamespace = progressStreamNamespace(progress?.target)
+  if (!(streamNamespace && progress?.toolCallId)) {
     return
   }
 
   try {
     const writable = getWritable<UIMessageChunk>({
-      namespace: progress.streamNamespace,
+      namespace: streamNamespace,
     })
     const writer = writable.getWriter()
     try {

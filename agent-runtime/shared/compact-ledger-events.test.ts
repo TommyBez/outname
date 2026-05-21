@@ -26,16 +26,8 @@ function terminalEvent(input: {
   }
 }
 
-test('compactLedgerEvents keeps all live events and excludes chat', () => {
+test('compactLedgerEvents keeps all live events', () => {
   const events: AgentEventSummary[] = [
-    {
-      ...terminalEvent({
-        id: 'chat_1',
-        queuedAt: '2026-05-14T09:00:00.000Z',
-        type: 'chat',
-      }),
-      status: 'running',
-    },
     {
       ...terminalEvent({
         id: 'hb_live',

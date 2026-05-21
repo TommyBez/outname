@@ -14,9 +14,6 @@ importers:
       '@chat-adapter/slack':
         specifier: ^4.29.0
         version: 4.29.0(ai@6.0.184(zod@4.4.3))(zod@4.4.3)
-      '@chat-adapter/state-memory':
-        specifier: ^4.29.0
-        version: 4.29.0(ai@6.0.184(zod@4.4.3))(zod@4.4.3)
       '@chat-adapter/state-redis':
         specifier: ^4.29.0
         version: 4.29.0(@opentelemetry/api@1.9.1)(ai@6.0.184(zod@4.4.3))(zod@4.4.3)
@@ -723,10 +720,6 @@ packages:
 
   '@chat-adapter/slack@4.29.0':
     resolution: {integrity: sha512-s2DXAwkTpmiIKSATXgrO879s1pqFwS70Y0JPd+TRGRzDeh6nfqt5dnKt5Bug0P1zwkB6DoPurhnYS9nqhSmD/w==}
-    engines: {node: '>=20'}
-
-  '@chat-adapter/state-memory@4.29.0':
-    resolution: {integrity: sha512-+L5LPj9VkyXFXAcfFlTvf2JihuFfQV5U9TfXDlQeG7k6NMEA8irt4a0c6MTxFP7OI5YENknVwRGzmcUubvEWSw==}
     engines: {node: '>=20'}
 
   '@chat-adapter/state-redis@4.29.0':
@@ -8742,14 +8735,6 @@ snapshots:
       - debug
       - supports-color
       - utf-8-validate
-      - zod
-
-  '@chat-adapter/state-memory@4.29.0(ai@6.0.184(zod@4.4.3))(zod@4.4.3)':
-    dependencies:
-      chat: 4.29.0(ai@6.0.184(zod@4.4.3))(zod@4.4.3)
-    transitivePeerDependencies:
-      - ai
-      - supports-color
       - zod
 
   '@chat-adapter/state-redis@4.29.0(@opentelemetry/api@1.9.1)(ai@6.0.184(zod@4.4.3))(zod@4.4.3)':

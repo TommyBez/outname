@@ -48,7 +48,7 @@ export const resendSendTool = defineActionTool({
       body.html = input.html
     }
 
-    const response = await ctx.http.request('resend', {
+    const response = await ctx.http.request('resend.api_key', {
       method: 'POST',
       url: 'https://api.resend.com/emails',
       headers: { 'content-type': 'application/json' },

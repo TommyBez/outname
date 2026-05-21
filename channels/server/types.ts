@@ -20,6 +20,9 @@ export interface IncomingChannelMessage {
   // potentially paginated history fetch when no agent is bound to the thread.
   // Returning `undefined` falls back to the UIMessage conversion path.
   loadModelMessages?: () => Promise<ModelMessage[] | undefined>
+  // Burst/queue messages supplied by Chat SDK when this message is the latest
+  // queued turn for a locked thread.
+  skipped?: IncomingChannelMessage[]
   // Workspace scope used to keep installs and bindings owner-safe in multi-user deployments.
   teamId: string
   text: string
@@ -28,10 +31,14 @@ export interface IncomingChannelMessage {
 }
 
 export interface ChannelReplySink {
+  // AI SDK fullStream passed through to Chat SDK.
+  postAgentStream: (stream: AsyncIterable<unknown>) => Promise<void>
   // Notify the user that the turn failed. Kept best-effort.
   postError: (text: string) => Promise<void>
-  // May receive an async iterable when the adapter supports streaming replies.
-  postReply: (content: string | AsyncIterable<string>) => Promise<void>
+  // Plain follow-up message for budget/step-limit notices.
+  postText: (text: string) => Promise<void>
+  // Schedule work after the platform response/handler has settled.
+  scheduleBackgroundTask: (task: () => Promise<void>) => void
   // Optional typing/loading indicator.
   startTyping?: (status?: string) => Promise<void>
 }
@@ -39,4 +46,6 @@ export interface ChannelReplySink {
 export interface ChannelRoute {
   agent: Agent
   conversationId: string
+  installationCreatedAt: Date
+  installationUserId: string
 }

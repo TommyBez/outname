@@ -7,6 +7,10 @@ import type {
 import { getMaintainerTool } from '@/tools/catalog/registry'
 import type { BuiltMaintainerTool, Reconnect } from '@/tools/catalog/types'
 import { buildAgentTool } from '@/tools/sub-agents/agent-tool'
+import {
+  noSubAgentProgressTarget,
+  type SubAgentProgressTarget,
+} from '@/tools/sub-agents/progress-target'
 
 // Keep this module pure JS: I/O, DB, and crypto stay in `resolveToolPlan` so
 // the workflow bundle does not pull in `node:crypto`.
@@ -22,7 +26,7 @@ export interface BuildAttachedToolsArgs {
   currentRunId?: string | null
   depth?: number
   plan: ResolveToolPlanResult
-  streamNamespace?: string | null
+  progressTarget?: SubAgentProgressTarget
   userId: string
 }
 
@@ -75,7 +79,7 @@ function buildOne(args: {
 function buildSubAgentEntry(args: {
   parentAgentId: string
   parentRunId: string | null
-  streamNamespace: string | null
+  progressTarget: SubAgentProgressTarget
   parentToolId: string
   parentUserId: string
   callStack: string[]
@@ -86,7 +90,7 @@ function buildSubAgentEntry(args: {
   const {
     parentAgentId,
     parentRunId,
-    streamNamespace,
+    progressTarget,
     parentToolId,
     parentUserId,
     callStack,
@@ -105,7 +109,7 @@ function buildSubAgentEntry(args: {
         parentAgentId,
         parentUserId,
         parentRunId,
-        streamNamespace,
+        progressTarget,
         parentToolId,
         parentCallStack: callStack,
         parentDepth: depth,
@@ -129,7 +133,7 @@ export function buildAttachedTools(
   const currentRunId = args.currentRunId ?? null
   const conversationId = args.conversationId ?? null
   const depth = args.depth ?? 0
-  const streamNamespace = args.streamNamespace ?? null
+  const progressTarget = args.progressTarget ?? noSubAgentProgressTarget
 
   // Reuse reconnects from planning; this layer only adds `build_failed`.
   const reconnects: Reconnect[] = [...plan.reconnects]
@@ -163,7 +167,7 @@ export function buildAttachedTools(
     const built = buildSubAgentEntry({
       parentAgentId: agentId,
       parentRunId: currentRunId,
-      streamNamespace,
+      progressTarget,
       parentToolId: sub.toolId,
       parentUserId: userId,
       callStack,

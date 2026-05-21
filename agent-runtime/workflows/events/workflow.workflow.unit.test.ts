@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
   mockGetWorkflowMetadata,
-  mockHandleChat,
   mockHandleHeartbeat,
   mockHandleInvocation,
   mockCleanupEventResources,
@@ -10,13 +9,9 @@ const {
   mockMarkAgentEventHeartbeatStep,
   mockMarkAgentEventRunningStep,
   mockMarkAgentEventTerminalStep,
-  mockSetAgentEventPublisherWorkflowRunIdStep,
-  mockStart,
   mockStartNextQueuedEvent,
-  mockSlackStreamForwarderWorkflow,
 } = vi.hoisted(() => ({
   mockGetWorkflowMetadata: vi.fn(),
-  mockHandleChat: vi.fn(),
   mockHandleHeartbeat: vi.fn(),
   mockHandleInvocation: vi.fn(),
   mockCleanupEventResources: vi.fn(),
@@ -24,12 +19,7 @@ const {
   mockMarkAgentEventHeartbeatStep: vi.fn(),
   mockMarkAgentEventRunningStep: vi.fn(),
   mockMarkAgentEventTerminalStep: vi.fn(),
-  mockSetAgentEventPublisherWorkflowRunIdStep: vi.fn(),
-  mockStart: vi.fn(),
   mockStartNextQueuedEvent: vi.fn(),
-  mockSlackStreamForwarderWorkflow: {
-    name: 'slackStreamForwarderWorkflow',
-  },
 }))
 
 vi.mock('workflow', () => ({
@@ -37,18 +27,6 @@ vi.mock('workflow', () => ({
 }))
 
 vi.mock('server-only', () => ({}))
-
-vi.mock('workflow/api', () => ({
-  start: mockStart,
-}))
-
-vi.mock('@/channels/slack/server/stream-forwarder-workflow', () => ({
-  slackStreamForwarderWorkflow: mockSlackStreamForwarderWorkflow,
-}))
-
-vi.mock('../session/handlers/handle-chat', () => ({
-  handleChat: mockHandleChat,
-}))
 
 vi.mock('../session/handlers/handle-heartbeat', () => ({
   handleHeartbeat: mockHandleHeartbeat,
@@ -67,8 +45,6 @@ vi.mock('./steps/event-store', () => ({
   markAgentEventHeartbeatStep: mockMarkAgentEventHeartbeatStep,
   markAgentEventRunningStep: mockMarkAgentEventRunningStep,
   markAgentEventTerminalStep: mockMarkAgentEventTerminalStep,
-  setAgentEventPublisherWorkflowRunIdStep:
-    mockSetAgentEventPublisherWorkflowRunIdStep,
 }))
 
 vi.mock('./steps/start-next-event', () => ({
@@ -110,21 +86,14 @@ describe('agentEventWorkflow', () => {
     expect(mockStartNextQueuedEvent).not.toHaveBeenCalled()
   })
 
-  it('completes Slack chat events and starts the publisher workflow once', async () => {
+  it('dispatches heartbeat events', async () => {
     const event = createEvent({
       payload: {
-        conversationId: 'conv_123',
-        slack: {
-          channelId: 'C123',
-          recipientUserId: 'U123',
-          teamId: 'T123',
-          threadTs: '1715718300.000100',
-        },
-        uiMessages: [{ id: 'msg_1', parts: [], role: 'user' }],
+        manual: true,
+        scheduledAt: '2026-05-14T20:30:00.000Z',
       },
-      source: 'slack',
       status: 'running',
-      type: 'chat',
+      type: 'heartbeat',
       workflowRunId: 'wrun_saved',
     })
 
@@ -132,9 +101,6 @@ describe('agentEventWorkflow', () => {
       workflowRunId: 'wrun_runtime',
     })
     mockLoadAgentEventStep.mockResolvedValue(event)
-    mockStart.mockResolvedValue({
-      runId: 'wrun_publisher',
-    })
 
     await agentEventWorkflow({ eventId: event.id })
 
@@ -142,29 +108,15 @@ describe('agentEventWorkflow', () => {
       eventId: event.id,
       workflowRunId: 'wrun_runtime',
     })
-    expect(mockStart).toHaveBeenCalledWith(mockSlackStreamForwarderWorkflow, [
-      {
-        channelId: 'C123',
-        eventId: event.id,
-        recipientUserId: 'U123',
-        replyNamespace: 'reply:evt_123',
-        teamId: 'T123',
-        threadTs: '1715718300.000100',
-        workflowRunId: 'wrun_runtime',
-      },
-    ])
-    expect(mockSetAgentEventPublisherWorkflowRunIdStep).toHaveBeenCalledWith({
-      eventId: event.id,
-      publisherWorkflowRunId: 'wrun_publisher',
-    })
     expect(mockMarkAgentEventHeartbeatStep).toHaveBeenCalledWith({
       eventId: event.id,
     })
-    expect(mockHandleChat).toHaveBeenCalledWith({
+    expect(mockHandleHeartbeat).toHaveBeenCalledWith({
       agentId: 'agent_123',
-      conversationId: 'conv_123',
+      manual: true,
+      mode: 'normal',
       replyToken: 'reply:evt_123',
-      uiMessages: [{ id: 'msg_1', parts: [], role: 'user' }],
+      scheduledAt: '2026-05-14T20:30:00.000Z',
     })
     expect(mockMarkAgentEventTerminalStep).toHaveBeenCalledWith({
       eventId: event.id,

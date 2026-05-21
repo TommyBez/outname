@@ -1,5 +1,5 @@
 import 'server-only'
-import { and, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 import { db } from '@/shared/db'
 import {
   type ChannelInstallation,
@@ -38,6 +38,11 @@ export async function getChannelInstallationsByTeam(
         eq(channelInstallations.channel, channel),
         eq(channelInstallations.externalId, teamId)
       )
+    )
+    .orderBy(
+      asc(channelInstallations.createdAt),
+      asc(channelInstallations.userId),
+      asc(channelInstallations.id)
     )
 }
 
