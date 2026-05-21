@@ -9,6 +9,7 @@ import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/auth/server/auth'
+import { getUserModelForGateway } from '@/shared/server/ai-gateway-byok'
 import { listAvailableTools } from './available-tools'
 import { createRequestedAgent } from './create-requested-agent'
 import { CREATOR_MODEL, creatorInstructions } from './instructions'
@@ -25,8 +26,13 @@ export async function POST(req: Request) {
     return messages.response
   }
 
+  const model = await getUserModelForGateway({
+    modelId: CREATOR_MODEL,
+    userId: session.user.id,
+  })
+
   const agent = new ToolLoopAgent({
-    model: CREATOR_MODEL,
+    model,
     instructions: creatorInstructions(),
     stopWhen: stepCountIs(8),
     tools: {

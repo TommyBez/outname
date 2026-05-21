@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { updateAgentForUser } from '@/agents/server/update-service'
 import { auth } from '@/auth/server/auth'
+import { getUserModelForGateway } from '@/shared/server/ai-gateway-byok'
 import { getAgentByIdForUser } from '@/shared/server/data'
 import { detachToolForUser } from '@/tools/server/attachment-service/detach'
 import { attachMaintainerToolForUser } from '@/tools/server/attachment-service/maintainer'
@@ -54,9 +55,14 @@ export async function POST(
     return messages.response
   }
 
+  const model = await getUserModelForGateway({
+    modelId: EDIT_MODEL,
+    userId: session.user.id,
+  })
+
   const toolVisibility = await getAvailableAgentTools(agentId, session.user.id)
   const agent = new ToolLoopAgent({
-    model: EDIT_MODEL,
+    model,
     stopWhen: stepCountIs(8),
     instructions: buildEditInstructions(toolVisibility),
     tools: buildEditTools({ agentId, userId: session.user.id }),
