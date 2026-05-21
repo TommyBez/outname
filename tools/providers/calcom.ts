@@ -21,10 +21,19 @@ const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i
 const calcomMethodSchema = z.enum(['GET', 'POST', 'PATCH', 'PUT', 'DELETE'])
 
 const CALCOM_ENDPOINT_GUIDE =
-  'Allowed Cal.com API v2 paths: /me, /event-types, /bookings, /bookings/{uid}/cancel, /bookings/{uid}/reschedule, /slots, /schedules, /webhooks, /teams. Destructive or booking-mutating calls require confirmIrreversible=true.'
+  'Allowed Cal.com API v2 paths: /me, /event-types, /bookings, /bookings/{uid}/cancel, /bookings/{uid}/reschedule, /slots, /schedules, /webhooks, /teams.'
+
+const calcomConfigSchema = z.object({
+  readOnly: z
+    .boolean()
+    .default(true)
+    .describe(
+      'When true, only GET requests are allowed. Set false to allow POST, PATCH, PUT, and DELETE on allowlisted paths.'
+    ),
+})
 
 const calcomRequestInputSchema = z.object({
-  method: calcomMethodSchema.describe('HTTP method to use. DELETE is denied.'),
+  method: calcomMethodSchema.describe('HTTP method to use.'),
   path: z
     .string()
     .min(1)
@@ -37,16 +46,11 @@ const calcomRequestInputSchema = z.object({
     .record(z.string(), z.unknown())
     .optional()
     .describe('Optional JSON request body for non-GET requests.'),
-  confirmIrreversible: z
-    .boolean()
-    .default(false)
-    .describe(
-      'Set true only for booking-mutating calls such as create, cancel, or reschedule.'
-    ),
 })
 
 type CalcomHttpMethod = z.infer<typeof calcomMethodSchema>
 type CalcomRequestInput = z.infer<typeof calcomRequestInputSchema>
+type CalcomConfig = z.infer<typeof calcomConfigSchema>
 
 function normalizeCalcomPath(path: string): string {
   const trimmed = path.trim()
@@ -111,29 +115,19 @@ function isAllowedPath(pathname: string): boolean {
   )
 }
 
-function isIrreversible(input: CalcomRequestInput): boolean {
-  const pathname = normalizedCalcomPathname(input.path)
-  if (input.method === 'DELETE') {
-    return true
-  }
-  if (input.method === 'POST' && pathname === '/bookings') {
-    return true
-  }
-  return (
-    input.method === 'POST' &&
-    (pathname.endsWith('/cancel') || pathname.endsWith('/reschedule'))
-  )
-}
-
-const calcomSafetyPolicy: ToolPolicy<
-  CalcomRequestInput,
-  Record<string, never>
-> = ({ input }) => {
-  if (input.method === 'DELETE') {
-    return { ok: false, message: 'DELETE requests are not allowed.' }
-  }
+const calcomSafetyPolicy: ToolPolicy<CalcomRequestInput, CalcomConfig> = ({
+  config,
+  input,
+}) => {
   if (input.method === 'GET' && input.body !== undefined) {
     return { ok: false, message: 'GET requests cannot include a body.' }
+  }
+  if (config.readOnly && input.method !== 'GET') {
+    return {
+      ok: false,
+      message:
+        'This tool attachment is configured as read-only. Only GET requests are allowed.',
+    }
   }
   let pathname: string
   try {
@@ -150,13 +144,6 @@ const calcomSafetyPolicy: ToolPolicy<
       message: `Path "${pathname}" is outside the allowed Cal.com surface.`,
     }
   }
-  if (isIrreversible(input) && !input.confirmIrreversible) {
-    return {
-      ok: false,
-      message:
-        'This Cal.com call can change bookings and requires confirmIrreversible=true.',
-    }
-  }
   return { ok: true }
 }
 
@@ -166,6 +153,7 @@ export const calcomRequestTool = defineApiPassthroughTool({
   displayName: 'Cal.com · Request',
   description: `Call authenticated Cal.com API v2 endpoints for scheduling, bookings, event types, availability, and related resources. ${CALCOM_ENDPOINT_GUIDE}`,
   connectorId: 'calcom.api_key',
+  configSchema: calcomConfigSchema,
   inputSchema: calcomRequestInputSchema,
   policies: [calcomSafetyPolicy],
   toRequest({ input }) {

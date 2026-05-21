@@ -42,12 +42,6 @@ const vercelRequestInputSchema = z.object({
     .record(z.string(), z.unknown())
     .optional()
     .describe('Optional JSON request body for non-GET requests.'),
-  confirmIrreversible: z
-    .boolean()
-    .default(false)
-    .describe(
-      'Local safety confirmation flag (not sent to Vercel). Required true for any non-GET request when readOnly is disabled.'
-    ),
 })
 
 type VercelRequestInput = z.infer<typeof vercelRequestInputSchema>
@@ -81,17 +75,6 @@ const vercelSafetyPolicy: ToolPolicy<VercelRequestInput, VercelConfig> = ({
         'This tool attachment is configured as read-only. Only GET requests are allowed.',
     }
   }
-  if (
-    input.method !== 'GET' &&
-    !config.readOnly &&
-    !input.confirmIrreversible
-  ) {
-    return {
-      ok: false,
-      message:
-        'Non-GET requests require confirmIrreversible=true when readOnly is disabled.',
-    }
-  }
   try {
     normalizeVercelPath(input.path)
   } catch (err) {
@@ -108,7 +91,7 @@ export const vercelRequestTool = defineApiPassthroughTool({
   category: 'deployment',
   displayName: 'Vercel · Request',
   description:
-    'Call authenticated Vercel REST API endpoints. Supports read-only attachment mode and explicit local safety confirmation for write operations.',
+    'Call authenticated Vercel REST API endpoints. Supports read-only attachment mode.',
   connectorId: 'vercel.api_token',
   configSchema: vercelConfigSchema,
   inputSchema: vercelRequestInputSchema,
@@ -137,7 +120,6 @@ export const vercelRequestTool = defineApiPassthroughTool({
     return toolSuccess({
       status: response.status,
       readOnlyEnforced: config.readOnly,
-      confirmIrreversibleChecked: input.method !== 'GET',
       method: input.method,
       path: normalizeVercelPath(input.path),
       body: parseProviderResponseFromHttp(response),

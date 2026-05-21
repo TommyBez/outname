@@ -17,7 +17,7 @@ const X_API_MAX_RESPONSE_BYTES = 64 * 1024
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i
 
 const X_ENDPOINT_GUIDE =
-  'Use relative X API v2 paths such as /2/users/by/username/xdevelopers, /2/tweets/search/recent, /2/tweets, or /2/dm_conversations. Mutating calls require confirmMutation=true. Long-lived streaming response endpoints are not supported.'
+  'Use relative X API v2 paths such as /2/users/by/username/xdevelopers, /2/tweets/search/recent, /2/tweets, or /2/dm_conversations. Long-lived streaming response endpoints are not supported.'
 
 const xApiMethodSchema = z.enum(['GET', 'POST', 'PATCH', 'PUT', 'DELETE'])
 const xApiConfigSchema = z.object({
@@ -34,9 +34,7 @@ const xApiQueryValueSchema = z.union([z.string(), z.number(), z.boolean()])
 const xApiRequestInputSchema = z.object({
   method: xApiMethodSchema
     .default('GET')
-    .describe(
-      'HTTP method to use. GET is for read-only calls; POST, PATCH, PUT, and DELETE require confirmMutation=true.'
-    ),
+    .describe('HTTP method to use. GET is for read-only calls.'),
   path: z.string().min(1).describe(`Relative X API path. ${X_ENDPOINT_GUIDE}`),
   query: z
     .record(z.string(), xApiQueryValueSchema)
@@ -56,12 +54,6 @@ const xApiRequestInputSchema = z.object({
     .default(X_API_DEFAULT_RESPONSE_BYTES)
     .describe(
       'Maximum response body bytes to return, from 1000 to 65536. Increase for larger search or lookup responses.'
-    ),
-  confirmMutation: z
-    .boolean()
-    .default(false)
-    .describe(
-      'Set true only when intentionally creating, updating, deleting, posting, liking, following, sending DMs, changing stream rules, or otherwise mutating X state.'
     ),
 })
 
@@ -156,13 +148,6 @@ const xApiSafetyPolicy: ToolPolicy<XApiRequestInput, XApiConfig> = ({
     }
   }
 
-  if (isMutationMethod(input.method) && !input.confirmMutation) {
-    return {
-      ok: false,
-      message:
-        'This X API call can mutate X state and requires confirmMutation=true.',
-    }
-  }
   if (config.readOnly && isMutationMethod(input.method)) {
     return {
       ok: false,
@@ -265,7 +250,7 @@ export const xUserApiRequestTool = defineApiPassthroughTool({
   category: 'social',
   displayName: 'X API · OAuth User Request',
   description:
-    'Call X API v2 user-context endpoints on api.x.com for tweets, users/me, likes, follows, bookmarks, and media upload. Mutating calls require confirmMutation=true.',
+    'Call X API v2 user-context endpoints on api.x.com for tweets, users/me, likes, follows, bookmarks, and media upload.',
   connectorId: 'x.oauth2_user',
   requiredScopes: X_OAUTH_SCOPES,
   configSchema: xApiConfigSchema,

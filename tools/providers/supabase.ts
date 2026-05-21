@@ -14,9 +14,17 @@ const SUPABASE_API_BASE = 'https://api.supabase.com'
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i
 
 const SUPABASE_ENDPOINT_GUIDE =
-  'Allowed Supabase Management API paths begin with /v1/. Examples: /v1/projects, /v1/projects/{ref}, /v1/organizations, /v1/functions. Mutating calls require confirmMutation=true.'
+  'Allowed Supabase Management API paths begin with /v1/. Examples: /v1/projects, /v1/projects/{ref}, /v1/organizations, /v1/functions.'
 
 const supabaseMethodSchema = z.enum(['GET', 'POST', 'PATCH', 'PUT', 'DELETE'])
+const supabaseConfigSchema = z.object({
+  readOnly: z
+    .boolean()
+    .default(true)
+    .describe(
+      'When true, only GET requests are allowed. Set false to allow POST, PATCH, PUT, and DELETE on allowlisted paths.'
+    ),
+})
 
 const supabaseQueryValueSchema = z.union([z.string(), z.number(), z.boolean()])
 type SupabaseJsonValue =
@@ -39,11 +47,7 @@ const supabaseJsonBodySchema: z.ZodType<SupabaseJsonValue> = z.lazy(() =>
 )
 
 const supabaseRequestInputSchema = z.object({
-  method: supabaseMethodSchema
-    .default('GET')
-    .describe(
-      'HTTP method to use. POST, PATCH, PUT, and DELETE require confirmMutation=true.'
-    ),
+  method: supabaseMethodSchema.default('GET').describe('HTTP method to use.'),
   path: z
     .string()
     .min(1)
@@ -59,16 +63,10 @@ const supabaseRequestInputSchema = z.object({
     .describe(
       'Optional JSON request body for non-GET requests. Accepts objects, arrays, strings, numbers, booleans, and null.'
     ),
-  confirmMutation: z
-    .boolean()
-    .default(false)
-    .describe(
-      'Set true only when intentionally creating, updating, rotating, pausing, or deleting Supabase resources.'
-    ),
 })
 
-type SupabaseHttpMethod = z.infer<typeof supabaseMethodSchema>
 type SupabaseRequestInput = z.infer<typeof supabaseRequestInputSchema>
+type SupabaseConfig = z.infer<typeof supabaseConfigSchema>
 
 function normalizeSupabasePath(path: string): string {
   const trimmed = path.trim()
@@ -92,16 +90,19 @@ function isAllowedPath(pathname: string): boolean {
   return pathname === '/v1' || pathname.startsWith('/v1/')
 }
 
-function isMutationMethod(method: SupabaseHttpMethod): boolean {
-  return method !== 'GET'
-}
-
 const supabaseSafetyPolicy: ToolPolicy<
   SupabaseRequestInput,
-  Record<string, never>
-> = ({ input }) => {
+  SupabaseConfig
+> = ({ config, input }) => {
   if (input.method === 'GET' && input.body !== undefined) {
     return { ok: false, message: 'GET requests cannot include a body.' }
+  }
+  if (config.readOnly && input.method !== 'GET') {
+    return {
+      ok: false,
+      message:
+        'This tool attachment is configured as read-only. Only GET requests are allowed.',
+    }
   }
 
   let pathname: string
@@ -118,14 +119,6 @@ const supabaseSafetyPolicy: ToolPolicy<
     return {
       ok: false,
       message: `Path "${pathname}" is outside the allowed Supabase Management API surface.`,
-    }
-  }
-
-  if (isMutationMethod(input.method) && !input.confirmMutation) {
-    return {
-      ok: false,
-      message:
-        'This Supabase API call can mutate state and requires confirmMutation=true.',
     }
   }
 
@@ -158,6 +151,7 @@ export const supabaseRequestTool = defineApiPassthroughTool({
   displayName: 'Supabase · Request',
   description: `Call authenticated Supabase Management API endpoints on api.supabase.com for projects, organizations, branches, functions, secrets, and related resources. ${SUPABASE_ENDPOINT_GUIDE}`,
   connectorId: 'supabase.personal_access_token',
+  configSchema: supabaseConfigSchema,
   inputSchema: supabaseRequestInputSchema,
   policies: [supabaseSafetyPolicy],
   toRequest({ input }) {

@@ -42,10 +42,6 @@ const posthogRequestInputSchema = z.object({
     .record(z.string(), z.unknown())
     .optional()
     .describe('Optional JSON request body for non-GET requests.'),
-  confirmIrreversible: z
-    .boolean()
-    .default(false)
-    .describe('Set true for non-GET requests when readOnly is disabled.'),
 })
 
 type PosthogRequestInput = z.infer<typeof posthogRequestInputSchema>
@@ -112,17 +108,6 @@ const posthogSafetyPolicy: ToolPolicy<
     return {
       ok: false,
       message: 'This attachment is read-only. Use GET requests only.',
-    }
-  }
-  if (
-    !config.readOnly &&
-    input.method !== 'GET' &&
-    !input.confirmIrreversible
-  ) {
-    return {
-      ok: false,
-      message:
-        'Non-GET PostHog requests require confirmIrreversible=true when readOnly is disabled.',
     }
   }
   return { ok: true }

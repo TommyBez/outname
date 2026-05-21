@@ -137,7 +137,7 @@ Every important input and config field should have a `describe(...)` string. The
 
 ### 6. Guard destructive behavior
 
-If the tool can create, cancel, delete, send, post, mutate, or otherwise do something irreversible, add an explicit safety policy or confirmation flag instead of trusting the model to be cautious.
+If the tool can create, cancel, delete, send, post, mutate, or otherwise do something irreversible, use concrete safety boundaries such as `readOnly` attachment config, narrow path allowlists, explicit deny policies, more specific tool surfaces, or human confirmation outside the tool input schema.
 
 ### 7. Keep failures crisp
 

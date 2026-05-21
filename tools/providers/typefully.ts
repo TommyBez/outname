@@ -17,7 +17,7 @@ const TYPEFULLY_DEFAULT_RESPONSE_BYTES = 16_000
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i
 
 const TYPEFULLY_ENDPOINT_GUIDE =
-  'Use relative Typefully API v2 paths such as /v2/me, /v2/social-sets/{social_set_id}/drafts, /v2/drafts/{id}, /v2/media, and /v2/tags. For media uploads, PUT to the presigned HTTPS upload_url returned by /v2/social-sets/{social_set_id}/media/upload. Mutating calls require confirmMutation=true.'
+  'Use relative Typefully API v2 paths such as /v2/me, /v2/social-sets/{social_set_id}/drafts, /v2/drafts/{id}, /v2/media, and /v2/tags. For media uploads, PUT to the presigned HTTPS upload_url returned by /v2/social-sets/{social_set_id}/media/upload.'
 
 const typefullyMethodSchema = z.enum(['GET', 'POST', 'PATCH', 'PUT', 'DELETE'])
 const typefullyConfigSchema = z.object({
@@ -31,11 +31,7 @@ const typefullyConfigSchema = z.object({
 const typefullyQueryValueSchema = z.union([z.string(), z.number(), z.boolean()])
 
 const typefullyRequestInputSchema = z.object({
-  method: typefullyMethodSchema
-    .default('GET')
-    .describe(
-      'HTTP method to use. Non-GET methods require confirmMutation=true.'
-    ),
+  method: typefullyMethodSchema.default('GET').describe('HTTP method to use.'),
   path: z
     .string()
     .min(1)
@@ -57,12 +53,6 @@ const typefullyRequestInputSchema = z.object({
     .max(TYPEFULLY_MAX_RESPONSE_BYTES)
     .default(TYPEFULLY_DEFAULT_RESPONSE_BYTES)
     .describe('Maximum response bytes to return, from 1000 to 65536.'),
-  confirmMutation: z
-    .boolean()
-    .default(false)
-    .describe(
-      'Set true only when intentionally creating, updating, publishing, scheduling, or deleting content.'
-    ),
 })
 
 type TypefullyHttpMethod = z.infer<typeof typefullyMethodSchema>
@@ -185,14 +175,6 @@ const typefullySafetyPolicy: ToolPolicy<
     return {
       ok: false,
       message: `Path "${pathname}" is outside the allowed Typefully API v2 surface.`,
-    }
-  }
-
-  if (isMutationMethod(input.method) && !input.confirmMutation) {
-    return {
-      ok: false,
-      message:
-        'This Typefully API call can mutate state and requires confirmMutation=true.',
     }
   }
 
