@@ -12,14 +12,14 @@ importers:
         specifier: ^3.0.186
         version: 3.0.186(react@19.2.5)(zod@4.4.3)
       '@chat-adapter/slack':
-        specifier: ^4.28.1
-        version: 4.28.1
+        specifier: ^4.29.0
+        version: 4.29.0(ai@6.0.184(zod@4.4.3))(zod@4.4.3)
       '@chat-adapter/state-memory':
-        specifier: ^4.27.0
-        version: 4.27.0
+        specifier: ^4.29.0
+        version: 4.29.0(ai@6.0.184(zod@4.4.3))(zod@4.4.3)
       '@chat-adapter/state-redis':
-        specifier: ^4.27.0
-        version: 4.27.0(@opentelemetry/api@1.9.1)
+        specifier: ^4.29.0
+        version: 4.29.0(@opentelemetry/api@1.9.1)(ai@6.0.184(zod@4.4.3))(zod@4.4.3)
       '@hookform/resolvers':
         specifier: ^3.9.1
         version: 3.10.0(react-hook-form@7.71.1(react@19.2.5))
@@ -165,8 +165,8 @@ importers:
         specifier: ^1.6.11
         version: 1.6.11(@opentelemetry/api@1.9.1)(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@neondatabase/serverless@1.0.2)(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.38.0)(kysely@0.28.17)(sql.js@1.14.1))(next@16.2.4(@opentelemetry/api@1.9.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(vitest@4.1.6(@opentelemetry/api@1.9.1)(@types/node@22.19.11)(vite@8.0.12(@types/node@22.19.11)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)))
       chat:
-        specifier: ^4.27.0
-        version: 4.27.0
+        specifier: ^4.29.0
+        version: 4.29.0(ai@6.0.184(zod@4.4.3))(zod@4.4.3)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -717,17 +717,21 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@chat-adapter/shared@4.28.1':
-    resolution: {integrity: sha512-v7AcZMrvS2gxFlRiUO1o9Nta2iipnnmV54Gie8e3nQTQvnghENfSf7j7nimA5DOUWCgj+e4DV7LE0x1pakNtkA==}
+  '@chat-adapter/shared@4.29.0':
+    resolution: {integrity: sha512-ARqTDoHJHKN9rpytbFPJbNmqqx3fOg5xwsTZdlingQPAssOSeHDBdqrFJkgDhyCRGbmDtG09cuS0FkVzeoh2qg==}
+    engines: {node: '>=20'}
 
-  '@chat-adapter/slack@4.28.1':
-    resolution: {integrity: sha512-JxgV7+cRXXeKpj0MzS7nzG3JvpnfhIgnPo9r/sdEIzeWhIb8tUcT2PbLl/fpSu/cb+WkICS0bCENn1I0PS39Hg==}
+  '@chat-adapter/slack@4.29.0':
+    resolution: {integrity: sha512-s2DXAwkTpmiIKSATXgrO879s1pqFwS70Y0JPd+TRGRzDeh6nfqt5dnKt5Bug0P1zwkB6DoPurhnYS9nqhSmD/w==}
+    engines: {node: '>=20'}
 
-  '@chat-adapter/state-memory@4.27.0':
-    resolution: {integrity: sha512-kl6LilKa6pBGQroIDQy79CPfgkVcUS2Qr13JGvunU/gA1gtLpleoxXHOye9PTRvpv6URCN54Yy5UmgAI9uzXKg==}
+  '@chat-adapter/state-memory@4.29.0':
+    resolution: {integrity: sha512-+L5LPj9VkyXFXAcfFlTvf2JihuFfQV5U9TfXDlQeG7k6NMEA8irt4a0c6MTxFP7OI5YENknVwRGzmcUubvEWSw==}
+    engines: {node: '>=20'}
 
-  '@chat-adapter/state-redis@4.27.0':
-    resolution: {integrity: sha512-kmfCzNUQOCZ6MxBmd0azdJAmbAbgJ87JkW0/kQWEZ9vmlf8F5VlmRSfvn9jWhh4R90ThpLeflmIaHX8iK4x2dA==}
+  '@chat-adapter/state-redis@4.29.0':
+    resolution: {integrity: sha512-Nn/PMSrkavIwFbNt1yyIZ0VZ1b5hT8Gw0Ujcnvnv+JlfBGz44XEE0/+NRLRx07mDndov1MlUkGjBHuKPZcS1Tg==}
+    engines: {node: '>=20'}
 
   '@chevrotain/cst-dts-gen@12.0.0':
     resolution: {integrity: sha512-fSL4KXjTl7cDgf0B5Rip9Q05BOrYvkJV/RrBTE/bKDN096E4hN/ySpcBK5B24T76dlQ2i32Zc3PAE27jFnFrKg==}
@@ -4630,11 +4634,17 @@ packages:
   character-reference-invalid@2.0.1:
     resolution: {integrity: sha512-iBZ4F4wRbyORVsu0jPV7gXkOsGYjGHPmAyv+HiHG8gi5PtC9KI2j1+v8/tlibRvjoWX027ypmG/n0HtO5t7unw==}
 
-  chat@4.27.0:
-    resolution: {integrity: sha512-PrL4k263DSIlckhX8eHLT84RdTSznOBxCCfaDc5JVJtWaS0lJkCNctm/g3gIrI41AcDHcpc/3WDoUHVrbh0W4w==}
-
-  chat@4.28.1:
-    resolution: {integrity: sha512-oKBeLQ746rSmHWGoXmPgDOqMVdIe9cWFQBQ1G2pw0l2vV4sAsZgfEJmc1UYqSJR4kYy4PxKgRFy31pe4RJ644Q==}
+  chat@4.29.0:
+    resolution: {integrity: sha512-KdPfzaie5ivYytyRICTERg5xT+LeCbYefokvNAqTHe92eqkFaoTMXXkSitikxJVWhZIb2YoXF1b9UZHyzSzKzw==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      ai: ^6.0.182
+      zod: ^3.0.0 || ^4.0.0
+    peerDependenciesMeta:
+      ai:
+        optional: true
+      zod:
+        optional: true
 
   chevrotain-allstar@0.4.1:
     resolution: {integrity: sha512-PvVJm3oGqrveUVW2Vt/eZGeiAIsJszYweUcYwcskg9e+IubNYKKD+rHHem7A6XVO22eDAL+inxNIGAzZ/VIWlA==}
@@ -8712,38 +8722,46 @@ snapshots:
   '@cbor-extract/cbor-extract-win32-x64@2.2.2':
     optional: true
 
-  '@chat-adapter/shared@4.28.1':
+  '@chat-adapter/shared@4.29.0(ai@6.0.184(zod@4.4.3))(zod@4.4.3)':
     dependencies:
-      chat: 4.28.1
+      chat: 4.29.0(ai@6.0.184(zod@4.4.3))(zod@4.4.3)
     transitivePeerDependencies:
+      - ai
       - supports-color
+      - zod
 
-  '@chat-adapter/slack@4.28.1':
+  '@chat-adapter/slack@4.29.0(ai@6.0.184(zod@4.4.3))(zod@4.4.3)':
     dependencies:
-      '@chat-adapter/shared': 4.28.1
+      '@chat-adapter/shared': 4.29.0(ai@6.0.184(zod@4.4.3))(zod@4.4.3)
       '@slack/socket-mode': 2.0.7
       '@slack/web-api': 7.16.0
-      chat: 4.28.1
+      chat: 4.29.0(ai@6.0.184(zod@4.4.3))(zod@4.4.3)
     transitivePeerDependencies:
+      - ai
       - bufferutil
       - debug
       - supports-color
       - utf-8-validate
+      - zod
 
-  '@chat-adapter/state-memory@4.27.0':
+  '@chat-adapter/state-memory@4.29.0(ai@6.0.184(zod@4.4.3))(zod@4.4.3)':
     dependencies:
-      chat: 4.27.0
+      chat: 4.29.0(ai@6.0.184(zod@4.4.3))(zod@4.4.3)
     transitivePeerDependencies:
+      - ai
       - supports-color
+      - zod
 
-  '@chat-adapter/state-redis@4.27.0(@opentelemetry/api@1.9.1)':
+  '@chat-adapter/state-redis@4.29.0(@opentelemetry/api@1.9.1)(ai@6.0.184(zod@4.4.3))(zod@4.4.3)':
     dependencies:
-      chat: 4.27.0
+      chat: 4.29.0(ai@6.0.184(zod@4.4.3))(zod@4.4.3)
       redis: 5.12.1(@opentelemetry/api@1.9.1)
     transitivePeerDependencies:
       - '@node-rs/xxhash'
       - '@opentelemetry/api'
+      - ai
       - supports-color
+      - zod
 
   '@chevrotain/cst-dts-gen@12.0.0':
     dependencies:
@@ -12646,7 +12664,7 @@ snapshots:
 
   character-reference-invalid@2.0.1: {}
 
-  chat@4.27.0:
+  chat@4.29.0(ai@6.0.184(zod@4.4.3))(zod@4.4.3):
     dependencies:
       '@workflow/serde': 4.1.0-beta.2
       mdast-util-to-string: 4.0.0
@@ -12655,18 +12673,9 @@ snapshots:
       remark-stringify: 11.0.0
       remend: 1.3.0
       unified: 11.0.5
-    transitivePeerDependencies:
-      - supports-color
-
-  chat@4.28.1:
-    dependencies:
-      '@workflow/serde': 4.1.0-beta.2
-      mdast-util-to-string: 4.0.0
-      remark-gfm: 4.0.1
-      remark-parse: 11.0.0
-      remark-stringify: 11.0.0
-      remend: 1.3.0
-      unified: 11.0.5
+    optionalDependencies:
+      ai: 6.0.184(zod@4.4.3)
+      zod: 4.4.3
     transitivePeerDependencies:
       - supports-color
 
