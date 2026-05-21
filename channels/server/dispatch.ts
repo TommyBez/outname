@@ -201,7 +201,24 @@ function channelUserMessageId(input: {
 function slackExternalMessageKey(message: IncomingChannelMessage): string {
   const channelId = readString(message.threadMetadata, 'slackChannel')
   const messageTs = readString(message.threadMetadata, 'slackMessageTs')
-  return `${channelId}:${messageTs}`
+  if (channelId && messageTs) {
+    return `${channelId}:${messageTs}`
+  }
+  return `fallback:${channelMessageFingerprint(message)}`
+}
+
+function channelMessageFingerprint(message: IncomingChannelMessage): string {
+  const raw = JSON.stringify({
+    channel: message.channel,
+    externalRoutingKey: message.externalRoutingKey,
+    externalRoutingKind: message.externalRoutingKind,
+    externalThreadKey: message.externalThreadKey,
+    externalUserId: message.externalUserId,
+    teamId: message.teamId,
+    text: message.text,
+    threadMetadata: message.threadMetadata ?? null,
+  })
+  return createHash('sha256').update(raw).digest('base64url').slice(0, 16)
 }
 
 function channelMessageCreatedAt(
@@ -211,6 +228,9 @@ function channelMessageCreatedAt(
     return
   }
   const messageTs = readString(message.threadMetadata, 'slackMessageTs')
+  if (!messageTs) {
+    return
+  }
   return parseSlackTs(messageTs)
 }
 

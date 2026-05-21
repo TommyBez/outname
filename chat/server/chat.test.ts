@@ -91,4 +91,19 @@ describe('insertChatMessageIfNew', () => {
     expect(mocks.insertReturning).toHaveBeenCalledTimes(2)
     expect(mocks.update).toHaveBeenCalledTimes(1)
   })
+
+  it('exposes insertChatMessage as an explicit idempotent boolean wrapper', async () => {
+    mocks.insertReturning.mockResolvedValueOnce([])
+
+    const { insertChatMessage } = await import('./chat')
+    const inserted = await insertChatMessage({
+      conversationId: 'conv_123',
+      id: 'msg_123',
+      parts: [{ text: 'hello', type: 'text' }],
+      role: 'user',
+    })
+
+    expect(inserted).toBe(false)
+    expect(mocks.update).not.toHaveBeenCalled()
+  })
 })

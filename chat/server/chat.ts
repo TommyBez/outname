@@ -1,6 +1,6 @@
 import 'server-only'
 import type { UIMessage } from 'ai'
-import { and, asc, desc, eq, isNull, or } from 'drizzle-orm'
+import { and, asc, desc, eq, isNull, or, sql } from 'drizzle-orm'
 import { cacheLife, cacheTag } from 'next/cache'
 import { db } from '@/shared/db'
 import {
@@ -11,6 +11,9 @@ import {
   chatMessage,
 } from '@/shared/db/schema'
 import { conversationListTag } from '@/shared/server/cache-tags'
+
+const PLACEHOLDER_CHAT_TITLE = 'new chat'
+const WHITESPACE_PATTERN = '\\s+'
 
 export function newChatConversationId() {
   return (
@@ -163,8 +166,7 @@ export async function setConversationTitleIfUnset(
         eq(chatConversation.id, conversationId),
         or(
           isNull(chatConversation.title),
-          eq(chatConversation.title, 'New Chat'),
-          eq(chatConversation.title, 'New chat')
+          sql`lower(trim(regexp_replace(${chatConversation.title}, ${WHITESPACE_PATTERN}, ' ', 'g'))) = ${PLACEHOLDER_CHAT_TITLE}`
         )
       )
     )
@@ -190,6 +192,8 @@ function rowToUIMessage(row: ChatMessage): UIMessage {
   }
 }
 
+// Idempotent insert helper for retryable turn persistence. Returns false when
+// the message id already exists and the row was left untouched.
 export async function insertChatMessage(input: {
   createdAt?: Date
   conversationId: string
@@ -197,8 +201,8 @@ export async function insertChatMessage(input: {
   role: ChatRole
   parts: UIMessage['parts']
   metadata?: unknown
-}): Promise<void> {
-  await insertChatMessageIfNew(input)
+}): Promise<boolean> {
+  return await insertChatMessageIfNew(input)
 }
 
 export async function insertChatMessageIfNew(input: {

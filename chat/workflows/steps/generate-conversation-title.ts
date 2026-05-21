@@ -28,7 +28,7 @@ function extractText(message: UIMessage | undefined): string {
 const LEADING_GREETING_PATTERN =
   /^(?:ciao|salve|buongiorno|buonasera|hello|hi|hey|yo)(?:[!,.:;?—-]+|\s+)+/i
 const ONLY_GREETING_PATTERN =
-  /^(?:ciao|salve|buongiorno|buonasera|hello|hi|hey|yo)[!,.:;?—-\s]*$/i
+  /^(?:ciao|salve|buongiorno|buonasera|hello|hi|hey|yo)[!,.:;?—\s-]*$/i
 
 function isPlaceholderTitle(title: string): boolean {
   return title.trim().replace(/\s+/g, ' ').toLowerCase() === 'new chat'
@@ -88,6 +88,7 @@ export async function maybeGenerateConversationTitle(input: {
     return
   }
 
+  let didSetTitle = false
   try {
     const { text } = await generateText({
       model: await getUserModelForGateway({
@@ -111,13 +112,14 @@ export async function maybeGenerateConversationTitle(input: {
 
     if (cleaned && !isPlaceholderTitle(cleaned)) {
       await setConversationTitleIfUnset(input.conversationId, cleaned)
-      revalidateTag(conversationListTag(input.agentId), 'max')
-      return
+      didSetTitle = true
     }
-    await setConversationTitleIfUnset(input.conversationId, fallback)
   } catch {
-    await setConversationTitleIfUnset(input.conversationId, fallback)
+    // Keep title generation best-effort; fallback below preserves a useful label.
   }
 
+  if (!didSetTitle) {
+    await setConversationTitleIfUnset(input.conversationId, fallback)
+  }
   revalidateTag(conversationListTag(input.agentId), 'max')
 }

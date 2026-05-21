@@ -19,6 +19,7 @@ import {
   type AgentRuntimeSpec,
   buildAgentRuntimeSpec,
 } from '@/agent-runtime/server/runtime-spec'
+import { getAgentById } from '@/agent-runtime/server/start-agent-run'
 import { formatBudgetExceededMessage } from '@/budgets/server/errors'
 import {
   insertChatMessageIfNew,
@@ -124,6 +125,10 @@ export function tapFullStream(
 async function runRealtimeChatTurnInsideContext(
   input: RealtimeTextOnlyTurnInput
 ): Promise<undefined> {
+  await assertRealtimeAgentOwnership({
+    agentId: input.agentId,
+    userId: input.userId,
+  })
   const exceeded = await preflightBudget({
     userId: input.userId,
     rootAgentId: input.agentId,
@@ -156,6 +161,10 @@ async function streamUiMessageTurnInsideContext(input: {
   writer: UIMessageStreamWriter<UIMessage>
 }): Promise<void> {
   const { input: turn } = input
+  await assertRealtimeAgentOwnership({
+    agentId: turn.agentId,
+    userId: turn.userId,
+  })
   const exceeded = await preflightBudget({
     userId: turn.userId,
     rootAgentId: turn.agentId,
@@ -181,6 +190,19 @@ async function streamUiMessageTurnInsideContext(input: {
     )
   }
   await streamUiMessageTurn({ input: turn, spec, writer: input.writer })
+}
+
+async function assertRealtimeAgentOwnership(input: {
+  agentId: string
+  userId: string
+}): Promise<void> {
+  const row = await getAgentById(input.agentId)
+  if (row?.userId === input.userId) {
+    return
+  }
+  throw new Error(
+    `runRealtimeChatTurn: agent ${input.agentId} does not belong to user ${input.userId}`
+  )
 }
 
 async function streamUiMessageTurn(input: {
@@ -466,15 +488,23 @@ function scheduleUsageRecording(input: {
   userId: string
 }): void {
   input.delivery.scheduleBackgroundTask(async () => {
-    await recordTokenUsageStep({
-      userId: input.userId,
-      agentId: input.agentId,
-      rootAgentId: input.agentId,
-      sourceType: 'chat',
-      sourceId: input.conversationId,
-      model: input.model,
-      usage: extractTotalUsage(input.event),
-    })
+    try {
+      await recordTokenUsageStep({
+        userId: input.userId,
+        agentId: input.agentId,
+        rootAgentId: input.agentId,
+        sourceType: 'chat',
+        sourceId: input.conversationId,
+        model: input.model,
+        usage: extractTotalUsage(input.event),
+      })
+    } catch (err) {
+      console.error('[realtime-chat] usage recording failed', {
+        agentId: input.agentId,
+        conversationId: input.conversationId,
+        err,
+      })
+    }
   })
 }
 

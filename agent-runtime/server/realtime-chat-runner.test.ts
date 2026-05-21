@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   recordTokenUsageStep: vi.fn(),
   revalidateTag: vi.fn(),
   startupSystemSandbox: vi.fn(),
+  getAgentById: vi.fn(),
 }))
 
 vi.mock('server-only', () => ({}))
@@ -27,6 +28,10 @@ vi.mock('@/agent-runtime/server/agent-sandbox', () => ({
 
 vi.mock('@/agent-runtime/server/realtime-cleanup', () => ({
   cleanupRealtimeRun: mocks.cleanupRealtimeRun,
+}))
+
+vi.mock('@/agent-runtime/server/start-agent-run', () => ({
+  getAgentById: mocks.getAgentById,
 }))
 
 vi.mock('@/agent-runtime/server/runtime-spec', () => ({
@@ -118,6 +123,10 @@ describe('realtime chat runner persistence policy', () => {
     mocks.persistNewChatMessages.mockResolvedValue(undefined)
     mocks.recordTokenUsageStep.mockResolvedValue(undefined)
     mocks.startupSystemSandbox.mockResolvedValue(undefined)
+    mocks.getAgentById.mockResolvedValue({
+      id: 'agent_123',
+      userId: 'user_123',
+    })
   })
 
   it('persists normal and length-finished UI assistant messages and schedules title generation', async () => {
@@ -233,6 +242,37 @@ describe('realtime chat runner persistence policy', () => {
     expect(delivery.tasks).toHaveLength(0)
   })
 
+  it('validates ownership before budget checks and sandbox startup', async () => {
+    mocks.getAgentById.mockResolvedValue({
+      id: 'agent_123',
+      userId: 'user_other',
+    })
+    const delivery = buildDelivery()
+
+    const { runRealtimeChatTurn } = await import('./realtime-chat-runner')
+    await expect(
+      runRealtimeChatTurn({
+        abortSignal: new AbortController().signal,
+        agentId: 'agent_123',
+        assistantMessageId: 'msg_assistant',
+        conversationId: 'conv_123',
+        delivery,
+        messages: [],
+        persistMode: 'text-only',
+        runId: 'rt_123',
+        source: 'slack',
+        titleMessages: [userMessage('msg_user', 'hello')],
+        userId: 'user_123',
+      })
+    ).rejects.toThrow(
+      'runRealtimeChatTurn: agent agent_123 does not belong to user user_123'
+    )
+
+    expect(mocks.preflightBudget).not.toHaveBeenCalled()
+    expect(mocks.startupSystemSandbox).not.toHaveBeenCalled()
+    expect(mocks.buildAgentRuntimeSpec).not.toHaveBeenCalled()
+  })
+
   it('schedules text-only usage recording and persists accumulated assistant text', async () => {
     mocks.preflightBudget.mockResolvedValue(null)
     mocks.buildAgentRuntimeSpec.mockResolvedValue(runtimeSpec())
@@ -313,6 +353,77 @@ describe('realtime chat runner persistence policy', () => {
       },
       userId: 'user_123',
     })
+  })
+
+  it('contains usage recording failures inside the scheduled task', async () => {
+    mocks.preflightBudget.mockResolvedValue(null)
+    mocks.buildAgentRuntimeSpec.mockResolvedValue(runtimeSpec())
+    mocks.recordTokenUsageStep.mockRejectedValue(new Error('usage failed'))
+    mocks.buildRealtimeAgentRuntime.mockImplementation(
+      async (
+        _spec: AgentRuntimeSpec,
+        options: { onFinish?: (event: unknown) => void }
+      ) => {
+        await Promise.resolve()
+        options.onFinish?.({
+          steps: [],
+          totalUsage: {
+            inputTokens: 3,
+            outputTokens: 4,
+            totalTokens: 7,
+          },
+        })
+        return {
+          agent: {
+            stream: async () => ({
+              fullStream: streamFromChunks([
+                { text: 'hello', type: 'text-delta' },
+              ]),
+            }),
+          },
+          meta: {
+            model: 'openai/gpt-5.1',
+            name: 'Agent',
+            stepLimitCustom: null,
+            stepLimitMode: 'medium',
+            userId: 'user_123',
+          },
+          tools: {},
+        }
+      }
+    )
+    const delivery = buildDelivery()
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    try {
+      const { runRealtimeChatTurn } = await import('./realtime-chat-runner')
+      await runRealtimeChatTurn({
+        abortSignal: new AbortController().signal,
+        agentId: 'agent_123',
+        assistantMessageId: 'msg_assistant',
+        conversationId: 'conv_123',
+        delivery,
+        messages: [] satisfies ModelMessage[],
+        persistMode: 'text-only',
+        runId: 'rt_123',
+        source: 'slack',
+        titleMessages: [userMessage('msg_user', 'hello')],
+        userId: 'user_123',
+      })
+
+      await expect(delivery.tasks[0]()).resolves.toBeUndefined()
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[realtime-chat] usage recording failed',
+        expect.objectContaining({
+          agentId: 'agent_123',
+          conversationId: 'conv_123',
+        })
+      )
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
   })
 
   it('does not persist partial text when channel stream posting fails', async () => {

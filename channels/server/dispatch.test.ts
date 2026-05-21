@@ -233,6 +233,53 @@ describe('runChannelChatTurn', () => {
     ])
   })
 
+  it('uses distinct fallback ids when Slack message metadata is missing', async () => {
+    const agent = buildAgent({
+      id: 'agent_alpha',
+      name: 'Alpha',
+      userId: 'user_alpha',
+    })
+    mocks.resolveRoutesForIncomingMessage.mockResolvedValue([
+      {
+        agent,
+        installationCreatedAt: new Date('2026-05-01T00:00:00.000Z'),
+        installationUserId: agent.userId,
+      },
+    ])
+    mocks.ensureConversationForThread.mockResolvedValue({
+      agent,
+      conversationId: 'conv_alpha',
+      installationCreatedAt: new Date('2026-05-01T00:00:00.000Z'),
+      installationUserId: agent.userId,
+    })
+    mocks.insertChatMessageIfNew.mockResolvedValue(true)
+    mocks.runRealtimeChatTurn.mockResolvedValue(undefined)
+
+    await runChannelChatTurn({
+      message: buildSlackMessage({
+        includeThreadMetadata: false,
+        messageTs: '1710000000.100000',
+        text: 'first',
+      }),
+      sink: buildSink(),
+    })
+    await runChannelChatTurn({
+      message: buildSlackMessage({
+        includeThreadMetadata: false,
+        messageTs: '1710000001.200000',
+        text: 'second',
+      }),
+      sink: buildSink(),
+    })
+
+    const calls = mocks.insertChatMessageIfNew.mock.calls.map(
+      ([input]) => input
+    )
+    expect(calls.map((call) => call.id)).toHaveLength(2)
+    expect(new Set(calls.map((call) => call.id)).size).toBe(2)
+    expect(calls.map((call) => call.createdAt)).toEqual([undefined, undefined])
+  })
+
   it('falls back to now for malformed Slack timestamps', () => {
     const now = new Date('2026-05-21T10:11:12.000Z')
     vi.useFakeTimers()
@@ -261,6 +308,7 @@ function buildAgent(input: {
 
 function buildSlackMessage(
   input: {
+    includeThreadMetadata?: boolean
     messageTs?: string
     skipped?: IncomingChannelMessage[]
     text?: string
@@ -278,10 +326,13 @@ function buildSlackMessage(
     skipped: input.skipped,
     teamId: 'T123',
     text: input.text ?? 'hello',
-    threadMetadata: {
-      slackChannel: 'C123',
-      slackMessageTs: messageTs,
-    },
+    threadMetadata:
+      input.includeThreadMetadata === false
+        ? undefined
+        : {
+            slackChannel: 'C123',
+            slackMessageTs: messageTs,
+          },
   }
 }
 
