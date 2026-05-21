@@ -20,7 +20,7 @@ export function TimezoneBootstrap({
       return
     }
     started.current = true
-    syncBrowserTimezoneAction(browserTimezone).catch((error) => {
+    syncBrowserTimezoneAction(browserTimezone, 'auto').catch((error) => {
       console.error('Failed to sync browser timezone', error)
     })
   }, [allowAutoSync])

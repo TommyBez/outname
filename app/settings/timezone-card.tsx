@@ -43,7 +43,8 @@ export function TimezoneCard({ timezone }: { timezone: string }) {
     <div className="flex flex-col gap-3">
       <p className="text-muted-foreground text-xs">
         Heartbeat times of day and daily dreaming use this timezone. Interval
-        heartbeats are not affected.
+        heartbeats are not affected. Use device timezone saves your
+        browser&apos;s zone as an explicit account choice.
       </p>
       <form
         className="flex max-w-md flex-col gap-3"
