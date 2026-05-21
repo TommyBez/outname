@@ -33,7 +33,7 @@ function metadataFromProfile(profile: {
   return metadata
 }
 
-export const calcomConnector = defineConnector('calcom', {
+export const calcomConnector = defineConnector('calcom.api_key', {
   displayName: 'Cal.com',
   description: 'Scheduling and booking automation via the Cal.com API v2.',
   credential: calcomCredentialSchema,

@@ -7,6 +7,7 @@ import {
   disconnectConnectionAction,
   saveApiKeyConnectionAction,
 } from '@/connections/actions'
+import type { ScopeDescriptor } from '@/connections/types'
 import type { ConnectionStatus } from '@/shared/db/schema'
 
 interface ConnectorSummary {
@@ -16,17 +17,20 @@ interface ConnectorSummary {
     type: 'text' | 'password'
     placeholder?: string
   }>
+  authKind: 'api_key' | 'oauth2'
+  connectorId: string
   description: string
   displayName: string
-  kind: 'api_key'
-  provider: string
+  providerGroup: string
+  scopeCatalog?: readonly ScopeDescriptor[]
 }
 
 interface ConnectionView {
   connectedAt: string
+  connectorId: string
+  grantedScopes: string[]
   lastError: string | null
   metadata: Record<string, unknown>
-  provider: string
   status: ConnectionStatus
 }
 
@@ -40,8 +44,8 @@ interface ConnectorRowData {
   connector: ConnectorSummary
 }
 
-function findConnection(connections: ConnectionView[], provider: string) {
-  return connections.find((c) => c.provider === provider) ?? null
+function findConnection(connections: ConnectionView[], connectorId: string) {
+  return connections.find((c) => c.connectorId === connectorId) ?? null
 }
 
 function getConnectorRows({
@@ -49,7 +53,7 @@ function getConnectorRows({
   connectors,
 }: Props): ConnectorRowData[] {
   return connectors.map((connector) => ({
-    connection: findConnection(connections, connector.provider),
+    connection: findConnection(connections, connector.connectorId),
     connector,
   }))
 }
@@ -63,6 +67,11 @@ function describeIdentity(metadata: Record<string, unknown>): string | null {
     typeof metadata.accountId === 'string' ? metadata.accountId : null
   if (accountId) {
     return accountId
+  }
+  const username =
+    typeof metadata.username === 'string' ? metadata.username : null
+  if (username) {
+    return `@${username}`
   }
   return null
 }
@@ -101,7 +110,7 @@ function ConnectorSection({
       <h2 className="font-bold text-xs uppercase tracking-[0.18em]">{title}</h2>
       <ul className="flex flex-col divide-y-2 divide-foreground border-foreground border-y-2">
         {rows.map(({ connection, connector }) => (
-          <li className="py-6" key={connector.provider}>
+          <li className="py-6" key={connector.connectorId}>
             <ConnectorRow connection={connection} connector={connector} />
           </li>
         ))}
@@ -152,7 +161,7 @@ function ConnectorRow({
             </p>
           )}
         </div>
-        <ApiKeyControls connection={connection} connector={connector} />
+        <ConnectionControls connection={connection} connector={connector} />
       </div>
     </div>
   )
@@ -174,7 +183,7 @@ function StatusDot({ status }: { status: ConnectionStatus }) {
   )
 }
 
-function ApiKeyControls({
+function ConnectionControls({
   connector,
   connection,
 }: {
@@ -189,7 +198,10 @@ function ApiKeyControls({
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     startTransition(async () => {
-      const res = await saveApiKeyConnectionAction(connector.provider, values)
+      const res = await saveApiKeyConnectionAction(
+        connector.connectorId,
+        values
+      )
       if (!res.ok) {
         toast.error(res.error ?? 'Save failed.')
         return
@@ -203,7 +215,7 @@ function ApiKeyControls({
 
   function handleDisconnect() {
     startTransition(async () => {
-      const res = await disconnectConnectionAction(connector.provider)
+      const res = await disconnectConnectionAction(connector.connectorId)
       if (!res.ok) {
         toast.error(res.error ?? 'Disconnect failed.')
         return
@@ -216,13 +228,24 @@ function ApiKeyControls({
   return (
     <div className="flex shrink-0 flex-col items-stretch gap-2 md:items-end">
       <div className="flex items-center gap-2">
-        <button
-          className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
-          onClick={() => setOpen((v) => !v)}
-          type="button"
-        >
-          {connection ? 'Replace key' : 'Connect'}
-        </button>
+        {connector.authKind === 'api_key' ? (
+          <button
+            className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+            onClick={() => setOpen((v) => !v)}
+            type="button"
+          >
+            {connection ? 'Replace key' : 'Connect'}
+          </button>
+        ) : (
+          <a
+            className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+            href={`/api/connections/oauth/${encodeURIComponent(connector.connectorId)}/start?returnTo=/connections`}
+          >
+            {connection
+              ? `Reconnect ${connector.displayName}`
+              : `Connect ${connector.displayName}`}
+          </a>
+        )}
         {connection && (
           <button
             className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
@@ -234,7 +257,15 @@ function ApiKeyControls({
           </button>
         )}
       </div>
-      {open && (
+      {connection && connector.authKind === 'oauth2' && (
+        <ScopesSummary
+          connectorId={connector.connectorId}
+          displayName={connector.displayName}
+          grantedScopes={connection.grantedScopes}
+          scopeCatalog={connector.scopeCatalog ?? []}
+        />
+      )}
+      {open && connector.authKind === 'api_key' && (
         <form
           className="flex w-full max-w-sm flex-col gap-3 border-2 border-foreground bg-muted p-4"
           onSubmit={handleSubmit}
@@ -266,5 +297,53 @@ function ApiKeyControls({
         </form>
       )}
     </div>
+  )
+}
+
+function ScopesSummary({
+  connectorId,
+  displayName,
+  grantedScopes,
+  scopeCatalog,
+}: {
+  connectorId: string
+  displayName: string
+  grantedScopes: string[]
+  scopeCatalog: readonly ScopeDescriptor[]
+}) {
+  const granted = new Set(grantedScopes)
+  const labelByScope = new Map(
+    scopeCatalog.map((item) => [item.scope, item.label])
+  )
+  const grantedLabels = grantedScopes.map(
+    (scope) => labelByScope.get(scope) ?? scope
+  )
+  const missing = scopeCatalog.filter((item) => !granted.has(item.scope))
+  const reconnectHref = `/api/connections/oauth/${encodeURIComponent(connectorId)}/start?returnTo=/connections`
+  if (missing.length > 0) {
+    return (
+      <div
+        className="max-w-sm border-2 border-destructive bg-destructive/5 p-3 text-xs"
+        role="alert"
+      >
+        <p className="font-bold text-destructive uppercase tracking-[0.16em]">
+          Missing OAuth scopes
+        </p>
+        <p className="mt-1 text-muted-foreground">
+          Missing: {missing.map((item) => item.label).join(', ')}
+        </p>
+        <a
+          className="mt-3 inline-flex h-8 items-center border-2 border-destructive px-3 font-bold text-[10px] text-destructive uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background"
+          href={reconnectHref}
+        >
+          Reconnect {displayName}
+        </a>
+      </div>
+    )
+  }
+  return (
+    <p className="max-w-sm text-muted-foreground text-xs">
+      Scopes: {grantedLabels.length > 0 ? grantedLabels.join(', ') : 'none'}
+    </p>
   )
 }

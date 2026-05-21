@@ -108,7 +108,7 @@ async function resolveCredentialReconnects(input: {
   userId: string
 }): Promise<Reconnect[]> {
   const requirements = input.planned.flatMap(
-    (plan) => plan.providerRequirements
+    (plan) => plan.connectorRequirements
   )
   const { reconnects } = await resolveConnectionAvailability({
     userId: input.userId,

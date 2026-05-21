@@ -3,7 +3,7 @@ import 'server-only'
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/shared/db'
 import { agentTools } from '@/shared/db/schema'
-import { providerBackedCapabilities } from '@/tools/catalog/capabilities'
+import { connectorBackedCapabilities } from '@/tools/catalog/capabilities'
 import { getMaintainerTool } from '@/tools/catalog/registry'
 import type { MaintainerTool } from '@/tools/catalog/types'
 import {
@@ -100,8 +100,8 @@ async function parseMaintainerToolConfig(
   existingConfig: unknown
 ): Promise<ConfigParseResult> {
   const allowedProviders = new Set(
-    providerBackedCapabilities(tool.capabilities).map(
-      (capability) => capability.provider
+    connectorBackedCapabilities(tool.capabilities).map(
+      (capability) => capability.connectorId
     )
   )
 

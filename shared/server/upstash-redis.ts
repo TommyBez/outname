@@ -8,8 +8,8 @@ export function getUpstashRedis(): Redis | null {
     return upstashRedisClient
   }
 
-  const url = process.env.UPSTASH_REDIS_REST_URL
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN
+  const url = process.env.KV_REST_API_URL
+  const token = process.env.KV_REST_API_TOKEN
   upstashRedisClient = url && token ? new Redis({ token, url }) : null
   return upstashRedisClient
 }

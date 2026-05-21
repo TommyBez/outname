@@ -10,7 +10,7 @@ const firecrawlCredentialSchema = z.object({
 
 export type FirecrawlCredential = z.infer<typeof firecrawlCredentialSchema>
 
-export const firecrawlConnector = defineConnector('firecrawl', {
+export const firecrawlConnector = defineConnector('firecrawl.api_key', {
   displayName: 'Firecrawl API',
   description:
     'Scrape, crawl, and extract web content via Firecrawl API endpoints.',

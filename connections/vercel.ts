@@ -19,7 +19,7 @@ const vercelCredentialSchema = z.object({
 
 export type VercelCredential = z.infer<typeof vercelCredentialSchema>
 
-export const vercelConnector = defineConnector('vercel', {
+export const vercelConnector = defineConnector('vercel.api_token', {
   displayName: 'Vercel',
   description:
     'Vercel REST API connector used by the vercel.request maintainer tool.',

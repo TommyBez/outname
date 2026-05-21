@@ -73,7 +73,8 @@ export type ApiPassthroughToolArgs<TInput, TConfig, TData> = Omit<
     response: BrokeredHttpResponse,
     input: ExecuteArgs<TInput, TConfig>
   ): Promise<ToolResult<TData>> | ToolResult<TData>
-  provider: string
+  connectorId: string
+  requiredScopes?: readonly string[]
   toRequest(input: ExecuteArgs<TInput, TConfig>): BrokeredHttpRequest
 }
 

@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray } from 'drizzle-orm'
 import { db } from '@/shared/db'
 import { toolSandboxBuilds, toolSandboxSnapshots } from '@/shared/db/schema'
-import { providerBackedCapabilities } from '@/tools/catalog/capabilities'
+import { connectorBackedCapabilities } from '@/tools/catalog/capabilities'
 import { getMaintainerTool } from '@/tools/catalog/registry'
 import type { MaintainerTool, Reconnect } from '@/tools/catalog/types'
 import {
@@ -52,16 +52,17 @@ export async function resolveMaintainerRow(
       toolId: row.toolId,
       config: parsed.config,
       toolConfig: parsed.toolConfig,
-      providerRequirements: providerBackedCapabilities(tool.capabilities)
+      connectorRequirements: connectorBackedCapabilities(tool.capabilities)
         .filter(
           (requirement) =>
             !hasCredentialOverride({
               config: parsed.toolConfig,
-              provider: requirement.provider,
+              connectorId: requirement.connectorId,
             })
         )
         .map((requirement) => ({
-          provider: requirement.provider,
+          connectorId: requirement.connectorId,
+          requiredScopes: requirement.requiredScopes,
           toolId: row.toolId,
         })),
     },

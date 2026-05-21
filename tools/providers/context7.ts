@@ -336,7 +336,7 @@ export const context7DocsTool = defineToolBundle({
   displayName: 'Context7 · Docs',
   description:
     'Search Context7 libraries and retrieve up-to-date documentation context for specific implementation questions.',
-  capabilities: [{ kind: 'brokered_http', provider: 'context7' }],
+  capabilities: [{ kind: 'brokered_http', connectorId: 'context7.api_key' }],
   tools: {
     context7_search_libraries: {
       displayName: 'Context7 · Search Libraries',

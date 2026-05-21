@@ -165,7 +165,7 @@ export const calcomRequestTool = defineApiPassthroughTool({
   category: 'scheduling',
   displayName: 'Cal.com · Request',
   description: `Call authenticated Cal.com API v2 endpoints for scheduling, bookings, event types, availability, and related resources. ${CALCOM_ENDPOINT_GUIDE}`,
-  provider: 'calcom',
+  connectorId: 'calcom.api_key',
   inputSchema: calcomRequestInputSchema,
   policies: [calcomSafetyPolicy],
   toRequest({ input }) {

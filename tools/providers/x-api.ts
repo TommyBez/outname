@@ -1,5 +1,6 @@
 import 'server-only'
 import { z } from 'zod'
+import { X_OAUTH_SCOPES } from '@/connections/x-oauth-scopes'
 import {
   defineApiPassthroughTool,
   type ToolPolicy,
@@ -94,6 +95,30 @@ function isStreamingResponsePath(pathname: string): boolean {
   return pathname.endsWith('/stream')
 }
 
+function isBlockedUserContextPath(pathname: string): boolean {
+  const isUserNestedListPath =
+    pathname.startsWith('/2/users/') &&
+    (pathname.endsWith('/list_memberships') ||
+      pathname.endsWith('/followed_lists'))
+  return (
+    pathname.startsWith('/2/dm') ||
+    pathname.startsWith('/2/lists') ||
+    isUserNestedListPath ||
+    pathname.includes('/blocking') ||
+    pathname.includes('/muting') ||
+    pathname.startsWith('/2/spaces')
+  )
+}
+
+function isAllowedUserContextPath(pathname: string): boolean {
+  return (
+    pathname === '/2/openapi.json' ||
+    pathname.startsWith('/2/tweets') ||
+    pathname.startsWith('/2/users') ||
+    pathname.startsWith('/2/media')
+  )
+}
+
 function isMutationMethod(method: XApiHttpMethod): boolean {
   return method !== 'GET'
 }
@@ -149,6 +174,31 @@ const xApiSafetyPolicy: ToolPolicy<XApiRequestInput, XApiConfig> = ({
   return { ok: true }
 }
 
+const xUserApiSafetyPolicy: ToolPolicy<XApiRequestInput, XApiConfig> = ({
+  config,
+  input,
+  ctx,
+}) => {
+  const base = xApiSafetyPolicy({ config, input, ctx })
+  if (!base.ok) {
+    return base
+  }
+
+  const pathname = normalizedXApiPathname(input.path)
+  if (
+    !isAllowedUserContextPath(pathname) ||
+    isBlockedUserContextPath(pathname)
+  ) {
+    return {
+      ok: false,
+      message:
+        'This X OAuth user-context tool is limited to tweets, users/me, likes, follows, bookmarks, and media endpoints in v1. DM, list, mute, block, space, and other surfaces are not enabled.',
+    }
+  }
+
+  return { ok: true }
+}
+
 function errorCodeForStatus(status: number) {
   if (status === 429) {
     return 'rate_limited'
@@ -168,9 +218,9 @@ function appendQueryParams(
 export const xApiRequestTool = defineApiPassthroughTool({
   id: 'x_api_request',
   category: 'social',
-  displayName: 'X API · Request',
-  description: `Call authenticated X API v2 endpoints on api.x.com for posts, users, DMs, lists, trends, spaces, communities, media metadata, and related resources. ${X_ENDPOINT_GUIDE}`,
-  provider: 'x',
+  displayName: 'X API · App Request',
+  description: `Call X API v2 endpoints on api.x.com with the app Bearer token connector. This tool does not act as an X user. ${X_ENDPOINT_GUIDE}`,
+  connectorId: 'x.bearer_token',
   configSchema: xApiConfigSchema,
   inputSchema: xApiRequestInputSchema,
   policies: [xApiSafetyPolicy],
@@ -196,6 +246,53 @@ export const xApiRequestTool = defineApiPassthroughTool({
     if (!response.ok) {
       return toolErrorFromProviderResponse(response, {
         label: 'X API request',
+        errorCodeForStatus,
+      })
+    }
+
+    const normalizedPath = normalizeXApiPath(input.path)
+    return toolSuccess({
+      status: response.status,
+      normalizedPath,
+      body: parseProviderResponseFromHttp(response),
+      truncated: response.truncated,
+    })
+  },
+})
+
+export const xUserApiRequestTool = defineApiPassthroughTool({
+  id: 'x_user_api_request',
+  category: 'social',
+  displayName: 'X API · OAuth User Request',
+  description:
+    'Call X API v2 user-context endpoints on api.x.com for tweets, users/me, likes, follows, bookmarks, and media upload. Mutating calls require confirmMutation=true.',
+  connectorId: 'x.oauth2_user',
+  requiredScopes: X_OAUTH_SCOPES,
+  configSchema: xApiConfigSchema,
+  inputSchema: xApiRequestInputSchema,
+  policies: [xUserApiSafetyPolicy],
+  toRequest({ input }) {
+    const path = normalizeXApiPath(input.path)
+    const url = new URL(`${X_API_BASE}${path}`)
+    appendQueryParams(url, input.query)
+
+    const headers: Record<string, string> = {}
+    if (input.body !== undefined) {
+      headers['content-type'] = 'application/json'
+    }
+
+    return {
+      method: input.method,
+      url: url.toString(),
+      headers,
+      body: input.body,
+      maxResponseBytes: input.maxResponseBytes,
+    }
+  },
+  handleResponse(response, { input }) {
+    if (!response.ok) {
+      return toolErrorFromProviderResponse(response, {
+        label: 'X OAuth user request',
         errorCodeForStatus,
       })
     }

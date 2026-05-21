@@ -4,9 +4,17 @@ import type { z } from 'zod'
 // Keep secret bytes in connector forms, per-attachment defaults in
 // `configSchema`, and per-call decisions in `inputSchema`.
 export type ToolCapability =
-  | { kind: 'brokered_http'; provider: string }
-  | { kind: 'repo_workspace'; provider: string }
-  | { kind: 'sdk'; provider: string }
+  | {
+      connectorId: string
+      kind: 'brokered_http'
+      requiredScopes?: readonly string[]
+    }
+  | {
+      connectorId: string
+      kind: 'repo_workspace'
+      requiredScopes?: readonly string[]
+    }
+  | { connectorId: string; kind: 'sdk'; requiredScopes?: readonly string[] }
   | { kind: 'tool_sandbox'; manifest: string }
   | { kind: 'none' }
 
@@ -45,7 +53,13 @@ export interface ToolBuildContext {
 // Keep reconnect variants small: each one must be rendered by the prompt, the
 // tool catalog, and the settings surfaces.
 export type Reconnect =
-  | { provider: string; toolId: string; reason: 'connection_unavailable' }
+  | { connectorId: string; toolId: string; reason: 'connection_unavailable' }
+  | {
+      connectorId: string
+      missing: string[]
+      toolId: string
+      reason: 'missing_scopes'
+    }
   | { toolId: string; reason: 'config_invalid'; message: string }
   | { toolId: string; reason: 'build_failed'; message: string }
   | { toolId: string; reason: 'tool_removed' }

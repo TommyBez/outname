@@ -109,7 +109,7 @@ export const vercelRequestTool = defineApiPassthroughTool({
   displayName: 'Vercel · Request',
   description:
     'Call authenticated Vercel REST API endpoints. Supports read-only attachment mode and explicit local safety confirmation for write operations.',
-  provider: 'vercel',
+  connectorId: 'vercel.api_token',
   configSchema: vercelConfigSchema,
   inputSchema: vercelRequestInputSchema,
   policies: [vercelSafetyPolicy],

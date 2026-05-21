@@ -19,7 +19,12 @@ vi.mock('@/shared/db', () => ({
 
 import { resolveConnectionAvailability } from './availability'
 
-function mockConnectionRows(rows: Array<{ status: 'active' | 'invalid' }>) {
+function mockConnectionRows(
+  rows: Array<{
+    grantedScopes?: unknown
+    status: 'active' | 'invalid'
+  }>
+) {
   mockDbSelect.mockReturnValue({
     from: vi.fn(() => ({
       where: vi.fn(() => ({
@@ -41,16 +46,56 @@ describe('resolveConnectionAvailability', () => {
 
     await expect(
       resolveConnectionAvailability({
-        requirements: [{ provider: 'github', toolId: 'github_repo' }],
+        requirements: [
+          {
+            connectorId: 'github.personal_access_token',
+            toolId: 'github_repo',
+          },
+        ],
         userId: 'user_test',
       })
     ).resolves.toEqual({
-      readyProviders: new Set(),
+      readyConnectors: new Set(),
       reconnects: [
         {
-          provider: 'github',
+          connectorId: 'github.personal_access_token',
           reason: 'connection_unavailable',
           toolId: 'github_repo',
+        },
+      ],
+    })
+  })
+
+  it('returns missing_scopes when OAuth granted scopes do not cover tool requirements', async () => {
+    mockGetConnector.mockReturnValue({
+      authKind: 'oauth2',
+    })
+    mockConnectionRows([
+      {
+        status: 'active',
+        grantedScopes: ['tweet.read'],
+      },
+    ])
+
+    await expect(
+      resolveConnectionAvailability({
+        requirements: [
+          {
+            connectorId: 'x.oauth2_user',
+            requiredScopes: ['tweet.read', 'tweet.write'],
+            toolId: 'x_user_api_request',
+          },
+        ],
+        userId: 'user_test',
+      })
+    ).resolves.toEqual({
+      readyConnectors: new Set(),
+      reconnects: [
+        {
+          connectorId: 'x.oauth2_user',
+          missing: ['tweet.write'],
+          reason: 'missing_scopes',
+          toolId: 'x_user_api_request',
         },
       ],
     })

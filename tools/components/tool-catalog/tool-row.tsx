@@ -1,9 +1,9 @@
 import { AttachmentForm } from './attachment-form'
+import { ConnectorChip } from './connector-chip'
 import { PendingBuildStrip } from './pending-build-strip'
-import { ProviderChip } from './provider-chip'
 import type {
   AttachedToolView,
-  ProviderConnectionView,
+  ConnectorConnectionView,
   ToolCatalogEntry,
 } from './types'
 import { findConnection } from './utils'
@@ -17,7 +17,7 @@ export function ToolRow({
   agentId: string
   entry: ToolCatalogEntry
   attached: AttachedToolView | null
-  connections: ProviderConnectionView[]
+  connections: ConnectorConnectionView[]
 }) {
   const isAttached = attached !== null
   const isPending = attached?.status === 'pending'
@@ -25,12 +25,12 @@ export function ToolRow({
   const isFailedPending = Boolean(
     isPending && !attached?.pendingBuildId && attached?.toolSandboxError
   )
-  const providerStates = entry.providers.map((provider) => {
-    const connection = findConnection(connections, provider)
+  const connectorStates = entry.connectors.map((connectorId) => {
+    const connection = findConnection(connections, connectorId)
     return {
-      provider,
+      connectorId,
       status: connection?.status ?? null,
-      displayName: connection?.displayName ?? provider,
+      displayName: connection?.displayName ?? connectorId,
     }
   })
 
@@ -62,7 +62,7 @@ export function ToolRow({
             </div>
           )}
           <div className="mt-3 flex flex-wrap gap-3">
-            {providerStates.length === 0 &&
+            {connectorStates.length === 0 &&
               entry.toolSandboxManifest === null && (
                 <span className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
                   No connection required
@@ -73,8 +73,11 @@ export function ToolRow({
                 Sandbox: {entry.toolSandboxManifest}
               </span>
             )}
-            {providerStates.map((provider) => (
-              <ProviderChip key={provider.provider} provider={provider} />
+            {connectorStates.map((connector) => (
+              <ConnectorChip
+                connector={connector}
+                key={connector.connectorId}
+              />
             ))}
           </div>
         </div>

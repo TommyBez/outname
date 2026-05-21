@@ -3,7 +3,7 @@
 import { ToolRow } from '@/tools/components/tool-catalog/tool-row'
 import type {
   AttachedToolView as AttachedToolViewType,
-  ProviderConnectionView as ProviderConnectionViewType,
+  ConnectorConnectionView as ConnectorConnectionViewType,
   ToolCatalogEntry as ToolCatalogEntryType,
 } from '@/tools/components/tool-catalog/types'
 import { findAttached } from '@/tools/components/tool-catalog/utils'
@@ -12,7 +12,7 @@ interface Props {
   agentId: string
   attached: AttachedToolViewType[]
   catalog: ToolCatalogEntryType[]
-  connections: ProviderConnectionViewType[]
+  connections: ConnectorConnectionViewType[]
 }
 
 export function ToolCatalog({
@@ -61,7 +61,7 @@ function ToolCatalogSection({
 }: {
   agentId: string
   attached: AttachedToolViewType[]
-  connections: ProviderConnectionViewType[]
+  connections: ConnectorConnectionViewType[]
   emptyText: string
   entries: ToolCatalogEntryType[]
   title: string

@@ -10,7 +10,7 @@ import {
   getCachedUserConnections,
 } from '@/shared/server/data'
 import { describeConfigSchema } from '@/shared/server/zod-config-fields'
-import { providerBackedCapabilities } from '@/tools/catalog/capabilities'
+import { connectorBackedCapabilities } from '@/tools/catalog/capabilities'
 import { listMaintainerTools } from '@/tools/catalog/registry'
 import {
   SubAgentCatalog,
@@ -67,22 +67,24 @@ async function Resolved({ params }: { params: Params }) {
     const attachedConfig = attachedRow
       ? redactCredentialOverrides(attachedRow.config)
       : undefined
-    const providers = Array.from(
-      new Set(providerBackedCapabilities(t.capabilities).map((r) => r.provider))
+    const connectors = Array.from(
+      new Set(
+        connectorBackedCapabilities(t.capabilities).map((r) => r.connectorId)
+      )
     )
-    const credentialOverrideFields = providers.flatMap((provider) => {
-      const connector = getConnector(provider)
-      if (!connector) {
+    const credentialOverrideFields = connectors.flatMap((connectorId) => {
+      const connector = getConnector(connectorId)
+      if (!connector || connector.authKind !== 'api_key') {
         return []
       }
       return [
         {
-          provider,
+          connectorId,
           displayName: connector.displayName,
           hasOverride: attachedRow
             ? hasCredentialOverride({
                 config: attachedRow.config,
-                provider,
+                connectorId,
               })
             : false,
           fields: connector.apiKey.fields.map((field) => ({
@@ -99,7 +101,7 @@ async function Resolved({ params }: { params: Params }) {
       displayName: t.displayName,
       description: t.description,
       exposedTools: [...t.resolveExposedTools(attachedConfig)],
-      providers,
+      connectors,
       toolSandboxManifest: sandboxManifest,
       configFields: describeConfigSchema(t.configSchema),
       credentialOverrideFields,
@@ -182,14 +184,14 @@ async function Resolved({ params }: { params: Params }) {
     toolSandboxError: r.toolSandboxError ?? null,
   }))
 
-  const connectionMap = new Map(connectionRows.map((c) => [c.provider, c]))
-  const allProviders = new Set(catalog.flatMap((c) => c.providers))
-  const connections = Array.from(allProviders).map((provider) => {
-    const c = connectionMap.get(provider) ?? null
-    const connector = getConnector(provider)
+  const connectionMap = new Map(connectionRows.map((c) => [c.connectorId, c]))
+  const allConnectors = new Set(catalog.flatMap((c) => c.connectors))
+  const connections = Array.from(allConnectors).map((connectorId) => {
+    const c = connectionMap.get(connectorId) ?? null
+    const connector = getConnector(connectorId)
     return {
-      provider,
-      displayName: connector?.displayName ?? provider,
+      connectorId,
+      displayName: connector?.displayName ?? connectorId,
       status: c ? (c.status as 'active' | 'invalid') : null,
     }
   })

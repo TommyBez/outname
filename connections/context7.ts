@@ -36,7 +36,7 @@ function metadataFromPolicies(payload: {
   return metadata
 }
 
-export const context7Connector = defineConnector('context7', {
+export const context7Connector = defineConnector('context7.api_key', {
   displayName: 'Context7 API',
   description:
     'Search libraries and fetch up-to-date documentation context through the Context7 API.',

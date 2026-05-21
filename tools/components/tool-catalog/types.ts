@@ -11,14 +11,15 @@ export interface ToolConfigField {
 }
 
 export interface CredentialOverrideFieldGroup {
+  connectorId: string
   displayName: string
   fields: ToolConfigField[]
   hasOverride: boolean
-  provider: string
 }
 
 export interface ToolCatalogEntry {
   configFields: ToolConfigField[]
+  connectors: string[]
   credentialOverrideFields: CredentialOverrideFieldGroup[]
   description: string
   displayName: string
@@ -27,7 +28,6 @@ export interface ToolCatalogEntry {
     displayName: string
     toolId: string
   }>
-  providers: string[]
   toolId: string
   toolSandboxManifest: string | null
 }
@@ -40,14 +40,14 @@ export interface AttachedToolView {
   toolSandboxError: string | null
 }
 
-export interface ProviderConnectionView {
+export interface ConnectorConnectionView {
+  connectorId: string
   displayName: string
-  provider: string
   status: ConnectionStatus | null
 }
 
-export interface ProviderState {
+export interface ConnectorState {
+  connectorId: string
   displayName: string
-  provider: string
   status: ConnectionStatus | null
 }

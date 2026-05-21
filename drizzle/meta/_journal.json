@@ -99,6 +99,13 @@
       "when": 1779700000000,
       "tag": "0010_user_ai_gateway_key",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1779800000000,
+      "tag": "0011_connector_connections",
+      "breakpoints": true
     }
   ]
 }

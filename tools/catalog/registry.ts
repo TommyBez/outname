@@ -1,6 +1,7 @@
 import 'server-only'
 import { getConnector } from '@/connections/registry'
-import { isProviderBackedCapability } from '@/tools/catalog/capabilities'
+import type { Connector } from '@/connections/types'
+import { isConnectorBackedCapability } from '@/tools/catalog/capabilities'
 import type { MaintainerTool } from '@/tools/catalog/types'
 import { agentBrowserTool } from '@/tools/providers/agent-browser'
 import { agentBrowserLightTool } from '@/tools/providers/agent-browser-light'
@@ -15,7 +16,7 @@ import { supabaseRequestTool } from '@/tools/providers/supabase'
 import { typefullyRequestTool } from '@/tools/providers/typefully'
 import { v0PlatformTool } from '@/tools/providers/v0'
 import { vercelRequestTool } from '@/tools/providers/vercel'
-import { xApiRequestTool } from '@/tools/providers/x-api'
+import { xApiRequestTool, xUserApiRequestTool } from '@/tools/providers/x-api'
 import { getToolSandboxManifest } from '@/tools/sandboxes/registry'
 
 // Catalog order is UI order. Removing an entry is safe: existing rows degrade
@@ -31,6 +32,7 @@ const TOOLS: MaintainerTool[] = [
   agentBrowserTool,
   agentBrowserLightTool,
   xApiRequestTool,
+  xUserApiRequestTool,
   typefullyRequestTool,
   vercelRequestTool,
   supabaseRequestTool,
@@ -42,20 +44,40 @@ for (const tool of TOOLS) {
   if (TOOL_BY_ID.has(tool.id)) {
     throw new Error(`Duplicate maintainer tool id: ${tool.id}`)
   }
+  validateMaintainerToolCapabilities(tool)
+  TOOL_BY_ID.set(tool.id, tool)
+}
+
+export function validateMaintainerToolCapabilities(
+  tool: MaintainerTool,
+  resolveConnector: (
+    connectorId: string
+  ) => Connector | undefined = getConnector,
+  resolveSandboxManifest: (manifest: string) => unknown = getToolSandboxManifest
+): void {
   for (const capability of tool.capabilities) {
-    if (
-      isProviderBackedCapability(capability) &&
-      !getConnector(capability.provider)
-    ) {
-      throw new Error(
-        `Tool ${tool.id} references unknown provider: ${capability.provider}`
-      )
+    if (isConnectorBackedCapability(capability)) {
+      const connector = resolveConnector(capability.connectorId)
+      if (!connector) {
+        throw new Error(
+          `Tool ${tool.id} references unknown connector: ${capability.connectorId}`
+        )
+      }
+      if (
+        connector.authKind === 'oauth2' &&
+        capability.requiredScopes?.some(
+          (scope) => !connector.oauth2.defaultScopes.includes(scope)
+        )
+      ) {
+        throw new Error(
+          `Tool ${tool.id} requires OAuth scope outside ${capability.connectorId} default scope bundle.`
+        )
+      }
     }
     if (capability.kind === 'tool_sandbox') {
-      getToolSandboxManifest(capability.manifest)
+      resolveSandboxManifest(capability.manifest)
     }
   }
-  TOOL_BY_ID.set(tool.id, tool)
 }
 
 export function listMaintainerTools(): readonly MaintainerTool[] {

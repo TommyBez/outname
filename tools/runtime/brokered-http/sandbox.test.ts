@@ -1,8 +1,8 @@
 import { beforeEach, expect, test, vi } from 'vitest'
 import type { getConnector } from '@/connections/registry'
 
-const { mockReadProviderCredential, mockSandboxCreate } = vi.hoisted(() => ({
-  mockReadProviderCredential: vi.fn(),
+const { mockReadConnectorCredential, mockSandboxCreate } = vi.hoisted(() => ({
+  mockReadConnectorCredential: vi.fn(),
   mockSandboxCreate: vi.fn(),
 }))
 
@@ -19,13 +19,13 @@ vi.mock('@/shared/server/vercel-sandbox-config', () => ({
 }))
 
 vi.mock('@/tools/runtime/define-maintainer-tool/credential-resolver', () => ({
-  readProviderCredential: mockReadProviderCredential,
+  readConnectorCredential: mockReadConnectorCredential,
 }))
 
 import { createBrokerSandbox } from './sandbox'
 
 beforeEach(() => {
-  mockReadProviderCredential.mockReset()
+  mockReadConnectorCredential.mockReset()
   mockSandboxCreate.mockReset()
 })
 
@@ -43,7 +43,7 @@ test('brokered HTTP header injection receives connector-shaped override credenti
   const toolConfig = {
     _secrets: {
       credentialOverrides: {
-        x: {
+        'x.bearer_token': {
           encrypted: 'encrypted-token',
           version: 1,
         },
@@ -51,7 +51,7 @@ test('brokered HTTP header injection receives connector-shaped override credenti
     },
   }
   const sandbox = {}
-  mockReadProviderCredential.mockResolvedValue({
+  mockReadConnectorCredential.mockResolvedValue({
     bearerToken: 'override-token',
   })
   mockSandboxCreate.mockResolvedValue(sandbox)
@@ -59,15 +59,15 @@ test('brokered HTTP header injection receives connector-shaped override credenti
   await expect(
     createBrokerSandbox({
       connector,
-      provider: 'x',
+      connectorId: 'x.bearer_token',
       runId: 'run_test',
       toolConfig,
       userId: 'user_test',
     })
   ).resolves.toBe(sandbox)
 
-  expect(mockReadProviderCredential).toHaveBeenCalledWith({
-    provider: 'x',
+  expect(mockReadConnectorCredential).toHaveBeenCalledWith({
+    connectorId: 'x.bearer_token',
     toolConfig,
     userId: 'user_test',
   })
@@ -89,6 +89,43 @@ test('brokered HTTP header injection receives connector-shaped override credenti
               ],
             },
           ],
+        },
+      },
+    })
+  )
+})
+
+test('unauthenticated broker sandboxes skip credential lookup and injected headers', async () => {
+  const injectedHeaders = vi.fn((credential: { bearerToken: string }) => ({
+    authorization: `Bearer ${credential.bearerToken}`,
+  }))
+  const connector = {
+    broker: {
+      allowedHosts: ['api.x.com'],
+      injectedHeaderNames: ['authorization'],
+      injectedHeaders,
+    },
+  } as unknown as NonNullable<ReturnType<typeof getConnector>>
+  const sandbox = {}
+  mockSandboxCreate.mockResolvedValue(sandbox)
+
+  await expect(
+    createBrokerSandbox({
+      connector,
+      connectorId: 'x.bearer_token',
+      runId: 'run_test',
+      unauthenticatedHosts: ['cdn.x.com'],
+      userId: 'user_test',
+    })
+  ).resolves.toBe(sandbox)
+
+  expect(mockReadConnectorCredential).not.toHaveBeenCalled()
+  expect(injectedHeaders).not.toHaveBeenCalled()
+  expect(mockSandboxCreate).toHaveBeenCalledWith(
+    expect.objectContaining({
+      networkPolicy: {
+        allow: {
+          'cdn.x.com': [],
         },
       },
     })

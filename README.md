@@ -60,10 +60,9 @@ AUTH_REPLY_TO=
 ### Common optional integrations
 
 - Slack: `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, `SLACK_SIGNING_SECRET`
-- Redis coordination: `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
+- Redis (Upstash via Vercel KV): `KV_REST_API_URL`, `KV_REST_API_TOKEN`
 - Auth email: `RESEND_API_KEY`, `AUTH_FROM_EMAIL`, `AUTH_REPLY_TO`
 - Waitlist email: `WAITLIST_FROM_EMAIL`, `WAITLIST_REPLY_TO`
-- Waitlist rate limit: `KV_REST_API_URL`, `KV_REST_API_TOKEN`
 - Cron hardening: `CRON_SECRET`
 
 ## Local development

@@ -2,14 +2,15 @@ import 'server-only'
 
 import { Sandbox } from '@vercel/sandbox'
 import type { getConnector } from '@/connections/registry'
+import type { RawCredential } from '@/connections/types'
 import { brokeredHttpSandboxTags } from '@/shared/server/vercel-sandbox-config'
-import { readProviderCredential } from '@/tools/runtime/define-maintainer-tool/credential-resolver'
+import { readConnectorCredential } from '@/tools/runtime/define-maintainer-tool/credential-resolver'
 import { createInjectedHeadersNetworkPolicy } from '@/tools/runtime/network-policy'
 import { currentToolRuntimeRunId } from '@/tools/runtime/run-id'
 import { validateInjectedHeaders } from './validation'
 
 interface CachedBrokerSandbox {
-  provider: string
+  connectorId: string
   sandboxPromise: Promise<Sandbox>
 }
 
@@ -21,12 +22,12 @@ export function currentRunId(): string {
 
 export async function getOrCreateBrokerSandbox(input: {
   createSandbox: () => Promise<Sandbox>
-  provider: string
+  connectorId: string
   runId: string
 }): Promise<Sandbox> {
   let perRun = brokerSandboxCache.get(input.runId)
   if (perRun) {
-    const cached = perRun.get(input.provider)
+    const cached = perRun.get(input.connectorId)
     if (cached) {
       return await cached.sandboxPromise
     }
@@ -36,11 +37,11 @@ export async function getOrCreateBrokerSandbox(input: {
   }
 
   const sandboxPromise = input.createSandbox().catch((err) => {
-    perRun?.delete(input.provider)
+    perRun?.delete(input.connectorId)
     throw err
   })
-  perRun.set(input.provider, {
-    provider: input.provider,
+  perRun.set(input.connectorId, {
+    connectorId: input.connectorId,
     sandboxPromise,
   })
   return await sandboxPromise
@@ -48,24 +49,35 @@ export async function getOrCreateBrokerSandbox(input: {
 
 export async function createBrokerSandbox(input: {
   connector: NonNullable<ReturnType<typeof getConnector>>
-  provider: string
+  connectorId: string
+  credential?: RawCredential
   runId: string
   toolConfig?: Record<string, unknown>
   unauthenticatedHosts?: readonly string[]
   userId: string
 }): Promise<Sandbox> {
-  const credential = await readProviderCredential({
-    provider: input.provider,
-    toolConfig: input.toolConfig,
-    userId: input.userId,
-  })
-  const injectedHeaders = validateInjectedHeaders(
-    input.provider,
-    input.connector.broker.injectedHeaderNames,
-    input.connector.broker.injectedHeaders(credential)
-  )
+  const needsCredential = (input.unauthenticatedHosts?.length ?? 0) === 0
+  const credential =
+    input.credential ??
+    (needsCredential
+      ? await readConnectorCredential({
+          connectorId: input.connectorId,
+          toolConfig: input.toolConfig,
+          userId: input.userId,
+        })
+      : undefined)
+  const hasCredential = credential !== undefined
+  const injectedHeaders = hasCredential
+    ? validateInjectedHeaders(
+        input.connectorId,
+        input.connector.broker.injectedHeaderNames,
+        input.connector.broker.injectedHeaders(credential as never)
+      )
+    : {}
   const networkPolicy = createInjectedHeadersNetworkPolicy({
-    authenticatedHosts: input.connector.broker.allowedHosts,
+    authenticatedHosts: hasCredential
+      ? input.connector.broker.allowedHosts
+      : [],
     injectedHeaders,
     unauthenticatedHosts: input.unauthenticatedHosts,
   })
@@ -76,7 +88,7 @@ export async function createBrokerSandbox(input: {
     persistent: false,
     resources: { vcpus: 1 },
     tags: brokeredHttpSandboxTags({
-      provider: input.provider,
+      connectorId: input.connectorId,
       runId: input.runId,
     }),
   })
@@ -97,13 +109,13 @@ export async function stopAllBrokeredHttpSandboxesForRun(): Promise<void> {
   }
 
   await Promise.all(
-    Array.from(perRun.values()).map(async ({ provider, sandboxPromise }) => {
+    Array.from(perRun.values()).map(async ({ connectorId, sandboxPromise }) => {
       try {
         const sandbox = await sandboxPromise
         await sandbox.stop()
       } catch (err) {
         console.error('stopAllBrokeredHttpSandboxesForRun: stop failed', {
-          provider,
+          connectorId,
           err,
         })
       }

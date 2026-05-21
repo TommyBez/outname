@@ -1,98 +1,127 @@
 import 'server-only'
 
-import { and, eq } from 'drizzle-orm'
 import { db } from '@/shared/db'
 import { userConnections } from '@/shared/db/schema'
 import type { Reconnect } from '@/tools/catalog/types'
 import { getConnector } from '../registry'
-import type { ProviderRequirement } from './types'
+import { connectionFilter } from './connection-query'
+import { normalizeScopes } from './scopes'
+import type { ConnectorRequirement } from './types'
 
 export interface ResolveConnectionAvailabilityResult {
-  readyProviders: Set<string>
+  readyConnectors: Set<string>
   reconnects: Reconnect[]
 }
 
-interface ProviderBucket {
+interface ConnectorBucket {
+  requiredScopes: Set<string>
   toolIds: Set<string>
 }
 
 export async function resolveConnectionAvailability(args: {
   userId: string
-  requirements: ProviderRequirement[]
+  requirements: ConnectorRequirement[]
 }): Promise<ResolveConnectionAvailabilityResult> {
-  const readyProviders = new Set<string>()
+  const readyConnectors = new Set<string>()
   const reconnects: Reconnect[] = []
-  const byProvider = bucketRequirementsByProvider(args.requirements)
+  const byConnector = bucketRequirementsByConnector(args.requirements)
 
   await Promise.all(
-    Array.from(byProvider.entries()).map(([provider, bucket]) =>
-      resolveOneProvider({
+    Array.from(byConnector.entries()).map(([connectorId, bucket]) =>
+      resolveOneConnector({
         userId: args.userId,
-        provider,
+        connectorId,
         bucket,
-        readyProviders,
+        readyConnectors,
         reconnects,
       })
     )
   )
 
-  return { readyProviders, reconnects }
+  return { readyConnectors, reconnects }
 }
 
-function bucketRequirementsByProvider(
-  requirements: ProviderRequirement[]
-): Map<string, ProviderBucket> {
-  const byProvider = new Map<string, ProviderBucket>()
+function bucketRequirementsByConnector(
+  requirements: ConnectorRequirement[]
+): Map<string, ConnectorBucket> {
+  const byConnector = new Map<string, ConnectorBucket>()
   for (const req of requirements) {
-    let bucket = byProvider.get(req.provider)
+    let bucket = byConnector.get(req.connectorId)
     if (!bucket) {
-      bucket = { toolIds: new Set() }
-      byProvider.set(req.provider, bucket)
+      bucket = { requiredScopes: new Set(), toolIds: new Set() }
+      byConnector.set(req.connectorId, bucket)
     }
     bucket.toolIds.add(req.toolId)
+    for (const scope of req.requiredScopes ?? []) {
+      bucket.requiredScopes.add(scope)
+    }
   }
-  return byProvider
+  return byConnector
 }
 
-async function resolveOneProvider(args: {
+async function resolveOneConnector(args: {
   userId: string
-  provider: string
-  bucket: ProviderBucket
-  readyProviders: Set<string>
+  connectorId: string
+  bucket: ConnectorBucket
+  readyConnectors: Set<string>
   reconnects: Reconnect[]
 }): Promise<void> {
-  const { userId, provider, bucket, readyProviders, reconnects } = args
-  const connector = getConnector(provider)
+  const { userId, connectorId, bucket, readyConnectors, reconnects } = args
+  const connector = getConnector(connectorId)
   if (!connector) {
-    fanOutReconnect(reconnects, provider, bucket.toolIds)
+    fanOutReconnect(reconnects, connectorId, bucket.toolIds)
     return
   }
 
   const [connection] = await db
-    .select({ status: userConnections.status })
+    .select({
+      status: userConnections.status,
+      grantedScopes: userConnections.grantedScopes,
+    })
     .from(userConnections)
-    .where(
-      and(
-        eq(userConnections.userId, userId),
-        eq(userConnections.provider, provider)
-      )
-    )
+    .where(connectionFilter({ connectorId, userId }))
     .limit(1)
 
   if (!connection || connection.status === 'invalid') {
-    fanOutReconnect(reconnects, provider, bucket.toolIds)
+    fanOutReconnect(reconnects, connectorId, bucket.toolIds)
     return
   }
 
-  readyProviders.add(provider)
+  if (connector.authKind === 'oauth2' && bucket.requiredScopes.size > 0) {
+    const grantedScopes = new Set(normalizeScopes(connection.grantedScopes))
+    const missing = Array.from(bucket.requiredScopes).filter(
+      (scope) => !grantedScopes.has(scope)
+    )
+    if (missing.length > 0) {
+      fanOutMissingScopes(reconnects, connectorId, bucket.toolIds, missing)
+      return
+    }
+  }
+
+  readyConnectors.add(connectorId)
 }
 
 function fanOutReconnect(
   reconnects: Reconnect[],
-  provider: string,
+  connectorId: string,
   toolIds: Iterable<string>
 ): void {
   for (const toolId of toolIds) {
-    reconnects.push({ provider, toolId, reason: 'connection_unavailable' })
+    reconnects.push({
+      connectorId,
+      toolId,
+      reason: 'connection_unavailable',
+    })
+  }
+}
+
+function fanOutMissingScopes(
+  reconnects: Reconnect[],
+  connectorId: string,
+  toolIds: Iterable<string>,
+  missing: string[]
+): void {
+  for (const toolId of toolIds) {
+    reconnects.push({ connectorId, toolId, reason: 'missing_scopes', missing })
   }
 }
