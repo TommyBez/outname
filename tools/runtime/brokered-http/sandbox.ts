@@ -56,20 +56,28 @@ export async function createBrokerSandbox(input: {
   unauthenticatedHosts?: readonly string[]
   userId: string
 }): Promise<Sandbox> {
+  const needsCredential = (input.unauthenticatedHosts?.length ?? 0) === 0
   const credential =
     input.credential ??
-    (await readConnectorCredential({
-      connectorId: input.connectorId,
-      toolConfig: input.toolConfig,
-      userId: input.userId,
-    }))
-  const injectedHeaders = validateInjectedHeaders(
-    input.connectorId,
-    input.connector.broker.injectedHeaderNames,
-    input.connector.broker.injectedHeaders(credential as never)
-  )
+    (needsCredential
+      ? await readConnectorCredential({
+          connectorId: input.connectorId,
+          toolConfig: input.toolConfig,
+          userId: input.userId,
+        })
+      : undefined)
+  const hasCredential = credential !== undefined
+  const injectedHeaders = hasCredential
+    ? validateInjectedHeaders(
+        input.connectorId,
+        input.connector.broker.injectedHeaderNames,
+        input.connector.broker.injectedHeaders(credential as never)
+      )
+    : {}
   const networkPolicy = createInjectedHeadersNetworkPolicy({
-    authenticatedHosts: input.connector.broker.allowedHosts,
+    authenticatedHosts: hasCredential
+      ? input.connector.broker.allowedHosts
+      : [],
     injectedHeaders,
     unauthenticatedHosts: input.unauthenticatedHosts,
   })
