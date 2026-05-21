@@ -159,3 +159,6 @@ WAITLIST_ADMIN_EMAIL=<admin inbox for new waitlist signup notifications>
 - **`drizzle-kit push`** requires a TTY for confirmation prompts. Use `drizzle-kit push --force` or run interactively if schema changes are needed.
 - **Do not commit `pnpm-workspace.yaml` allow-build overrides.** They make the production build fail in this app.
 - **UI/auth changes should be tested manually** via the browser. There is no comprehensive automated product test suite for waitlist and authentication flows.
+- **`AI_GATEWAY_API_KEY` is per-user, not an app startup requirement.** The env var is not read by process.env; it's stored encrypted on the `user` table. The dev server starts fine without it.
+- **`drizzle-kit` does not read `.env.local`.** Export `DATABASE_URL` in your shell when running `drizzle-kit push --force` or other drizzle-kit commands.
+- **OTP sign-in endpoint** is `POST /api/auth/sign-in/email-otp` (body: `{email, otp}`). The `/api/auth/email-otp/verify-email` endpoint is for email-verification flows only, not sign-in.
