@@ -1,4 +1,4 @@
-import { revalidatePath, updateTag } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { headers } from 'next/headers'
 import { type NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth/server/auth'
@@ -164,6 +164,6 @@ function redirectWithCookieClear(
 }
 
 function updateConnectionSurfaces(userId: string): void {
-  updateTag(userConnectionsTag(userId))
+  revalidateTag(userConnectionsTag(userId), 'max')
   revalidatePath('/connections')
 }
