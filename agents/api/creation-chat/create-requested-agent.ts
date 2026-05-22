@@ -15,6 +15,7 @@ import {
   userAgentsTag,
   userBudgetTag,
 } from '@/shared/server/cache-tags'
+import { getUserTimezone } from '@/shared/server/user-timezone'
 import { attachMaintainerToolForUser } from '@/tools/server/attachment-service/maintainer'
 import { attachSubAgentForUser } from '@/tools/server/attachment-service/sub-agent'
 import type { AttachResult } from '@/tools/server/attachment-service/types'
@@ -24,9 +25,12 @@ export async function createRequestedAgent(input: {
   toolCallId: string
   userId: string
 }): Promise<AgentCreationResult> {
-  const identityCard = resolveIdentityCard(input.input)
-  const soul = resolveSoul(input.input)
-  const instructions = resolveInstructions(input.input)
+  const [timeZone, identityCard, soul] = await Promise.all([
+    getUserTimezone(input.userId),
+    Promise.resolve(resolveIdentityCard(input.input)),
+    Promise.resolve(resolveSoul(input.input)),
+  ])
+  const instructions = resolveInstructions(input.input, timeZone)
 
   const created = await createAgentForUser({
     userId: input.userId,
@@ -178,7 +182,10 @@ function resolveSoul(input: AgentCreationRequest): string {
   ].join('\n')
 }
 
-function resolveInstructions(input: AgentCreationRequest): string {
+function resolveInstructions(
+  input: AgentCreationRequest,
+  timeZone: string
+): string {
   const explicit = input.instructions?.trim()
   if (explicit) {
     return explicit
@@ -198,6 +205,7 @@ function resolveInstructions(input: AgentCreationRequest): string {
           enabled: input.heartbeat.enabled,
           intervalMinutes: input.heartbeat.intervalMinutes,
           mode: input.heartbeat.mode,
+          timeZone,
           times: input.heartbeat.times,
         })} and perform one useful, bounded action aligned with the role.`
       : 'Do not run proactive heartbeat work unless the user enables it later.',

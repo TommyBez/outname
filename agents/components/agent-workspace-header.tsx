@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { AgentScheduleMode } from '@/shared/agent-schedule'
+import { useUserTimezone } from '@/shared/components/user-timezone-context'
 
 interface HeaderAgent {
   dreamingEnabled: boolean
@@ -40,6 +41,7 @@ const WORKSPACE_TABS = [
 ] as const
 
 export function AgentWorkspaceHeader({ agent }: { agent: HeaderAgent }) {
+  const timeZone = useUserTimezone()
   const pathname = usePathname()
 
   return (
@@ -76,6 +78,7 @@ export function AgentWorkspaceHeader({ agent }: { agent: HeaderAgent }) {
                     enabled: agent.heartbeatEnabled,
                     intervalMinutes: agent.heartbeatIntervalMinutes,
                     mode: agent.heartbeatScheduleMode,
+                    timeZone,
                     times: agent.heartbeatScheduleTimes,
                   })}`}
                 </Badge>

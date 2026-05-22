@@ -1,4 +1,7 @@
+'use client'
+
 import type { AgentCreationRequest } from '@/agents/server/creation-types'
+import { useUserTimezone } from '@/shared/components/user-timezone-context'
 import {
   budgetReviewLines,
   dreamingLabel,
@@ -11,6 +14,7 @@ export function FinalConfigurationCard({
 }: {
   config: AgentCreationRequest | undefined
 }) {
+  const timeZone = useUserTimezone()
   if (!config) {
     return null
   }
@@ -40,7 +44,7 @@ export function FinalConfigurationCard({
             value={[
               `Model: ${config.model}`,
               `Step limit: ${stepLimitLabel(config.stepLimit)}`,
-              `Heartbeat: ${scheduleLabel(config.heartbeat)}`,
+              `Heartbeat: ${scheduleLabel(config.heartbeat, timeZone)}`,
               `Dreaming: ${dreamingLabel(config.dreaming)}`,
             ].join('\n')}
           />

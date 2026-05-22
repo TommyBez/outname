@@ -10,6 +10,7 @@ import {
   getCachedAgentMemoryFiles,
 } from '@/shared/server/data'
 import { formatRelative } from '@/shared/server/format'
+import { getUserTimezone } from '@/shared/server/user-timezone'
 
 type Params = Promise<{ agentId: string }>
 
@@ -48,7 +49,10 @@ async function ResolvedAgentMemoryFiles({ params }: { params: Params }) {
     notFound()
   }
 
-  const rows = await getCachedAgentMemoryFiles(agent.id)
+  const [rows, timeZone] = await Promise.all([
+    getCachedAgentMemoryFiles(agent.id),
+    getUserTimezone(session.user.id),
+  ])
 
   return (
     <>
@@ -79,7 +83,7 @@ async function ResolvedAgentMemoryFiles({ params }: { params: Params }) {
                   {row.path}
                 </h2>
                 <span className="font-mono text-muted-foreground text-xs">
-                  Updated {formatRelative(row.updatedAt)}
+                  Updated {formatRelative(row.updatedAt, { timeZone })}
                 </span>
               </header>
               <pre className="max-h-[480px] overflow-auto whitespace-pre-wrap border-2 border-border bg-muted p-4 font-mono text-xs leading-relaxed">
@@ -101,7 +105,10 @@ async function ResolvedAgentMemoryTimeline({ params }: { params: Params }) {
     notFound()
   }
 
-  const logs = await getCachedAgentLogFiles(agent.id)
+  const [logs, timeZone] = await Promise.all([
+    getCachedAgentLogFiles(agent.id),
+    getUserTimezone(session.user.id),
+  ])
 
   return (
     <>
@@ -125,7 +132,7 @@ async function ResolvedAgentMemoryTimeline({ params }: { params: Params }) {
                   {formatLogPath(log.path)}
                 </h2>
                 <span className="font-mono text-muted-foreground text-xs">
-                  Updated {formatRelative(log.updatedAt)}
+                  Updated {formatRelative(log.updatedAt, { timeZone })}
                 </span>
               </header>
               <RunResultView content={log.content} />

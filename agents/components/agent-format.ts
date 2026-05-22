@@ -1,9 +1,11 @@
-export function formatNullableAgentDate(value: Date | string | null): string {
+import { formatMediumDateTimeInTimeZone } from '@/shared/format-timezone'
+
+export function formatNullableAgentDate(
+  value: Date | string | null,
+  timeZone: string
+): string {
   if (!value) {
     return 'Never'
   }
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value))
+  return formatMediumDateTimeInTimeZone(value, timeZone)
 }

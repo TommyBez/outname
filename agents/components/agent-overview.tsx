@@ -12,6 +12,7 @@ import {
   getCachedAgentMemoryFile,
   getCachedAgentTools,
 } from '@/shared/server/data'
+import { getUserTimezone } from '@/shared/server/user-timezone'
 import { formatNullableAgentDate } from './agent-format'
 
 type Params = Promise<{ agentId: string }>
@@ -32,16 +33,18 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
     notFound()
   }
 
-  const [budgetEntries, tools, logs, dreams, recentEvents] = await Promise.all([
-    loadBudgetSummary({
-      userId: session.user.id,
-      scope: { type: 'agent', agentId: agent.id },
-    }),
-    getCachedAgentTools(agent.id),
-    getCachedAgentLogFiles(agent.id),
-    getCachedAgentMemoryFile({ agentId: agent.id, path: 'DREAMS.md' }),
-    listRecentAgentEvents({ agentId: agent.id, limit: 6 }),
-  ])
+  const [budgetEntries, tools, logs, dreams, recentEvents, timeZone] =
+    await Promise.all([
+      loadBudgetSummary({
+        userId: session.user.id,
+        scope: { type: 'agent', agentId: agent.id },
+      }),
+      getCachedAgentTools(agent.id),
+      getCachedAgentLogFiles(agent.id),
+      getCachedAgentMemoryFile({ agentId: agent.id, path: 'DREAMS.md' }),
+      listRecentAgentEvents({ agentId: agent.id, limit: 6 }),
+      getUserTimezone(session.user.id),
+    ])
 
   const connectedTools = tools.filter((tool) => tool.status === 'connected')
   const pendingTools = tools.filter((tool) => tool.status === 'pending')
@@ -67,12 +70,16 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
                     enabled: agent.heartbeatEnabled,
                     intervalMinutes: agent.heartbeatIntervalMinutes,
                     mode: agent.heartbeatScheduleMode,
+                    timeZone,
                     times: agent.heartbeatScheduleTimes,
                   }),
                 },
                 {
                   label: 'Last heartbeat',
-                  value: formatNullableAgentDate(agent.lastHeartbeatAt),
+                  value: formatNullableAgentDate(
+                    agent.lastHeartbeatAt,
+                    timeZone
+                  ),
                 },
                 {
                   label: 'Dreaming',
@@ -80,7 +87,10 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
                 },
                 {
                   label: 'Last dream',
-                  value: formatNullableAgentDate(agent.lastDreamingAt),
+                  value: formatNullableAgentDate(
+                    agent.lastDreamingAt,
+                    timeZone
+                  ),
                 },
               ]}
             />
@@ -121,7 +131,7 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
                 {
                   label: 'Latest log',
                   value: logs[0]
-                    ? formatNullableAgentDate(logs[0].updatedAt)
+                    ? formatNullableAgentDate(logs[0].updatedAt, timeZone)
                     : 'Never',
                 },
               ]}
@@ -211,7 +221,7 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
                     {event.type} · {event.source}
                   </span>
                   <span className="font-mono text-muted-foreground text-xs md:text-right">
-                    {formatNullableAgentDate(event.queuedAt)}
+                    {formatNullableAgentDate(event.queuedAt, timeZone)}
                   </span>
                 </Link>
               </li>

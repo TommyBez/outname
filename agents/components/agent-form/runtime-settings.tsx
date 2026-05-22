@@ -14,6 +14,7 @@ import {
   type AgentScheduleMode,
   MAX_DAILY_SCHEDULE_TIMES,
 } from '@/shared/agent-schedule'
+import { AccountTimezoneCaption } from '@/shared/components/account-timezone-caption'
 import { INTERVAL_OPTIONS, type StepLimitMode } from './options'
 
 export function StepLimitSettings({
@@ -290,7 +291,8 @@ function DailyTimesEditor({
         Add time
       </Button>
       <p className="text-muted-foreground text-xs">
-        Times use your account timezone and run on the first cron tick after the
+        Times use your account timezone (
+        <AccountTimezoneCaption />) and run on the first cron tick after the
         selected time.
       </p>
     </div>

@@ -23,6 +23,11 @@ import {
 import { AgentChatTranscript } from '@/chat/components/agent-chat-transcript'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { useUserTimezone } from '@/shared/components/user-timezone-context'
+import {
+  formatCompactDateTimeInTimeZone,
+  formatTimeInTimeZone,
+} from '@/shared/format-timezone'
 
 interface AgentEventsWorkspaceProps {
   agentId: string
@@ -33,6 +38,7 @@ export function AgentEventsWorkspace({
   agentId,
   initialEvents,
 }: AgentEventsWorkspaceProps) {
+  const timeZone = useUserTimezone()
   const router = useRouter()
   const searchParams = useSearchParams()
   const queryEventId = searchParams.get('event')
@@ -159,7 +165,10 @@ export function AgentEventsWorkspace({
                           : 'text-muted-foreground'
                       )}
                     >
-                      {formatDate(event.queuedAt)}
+                      {formatCompactDateTimeInTimeZone(
+                        event.queuedAt,
+                        timeZone
+                      )}
                     </span>
                   </button>
                 </li>
@@ -174,6 +183,7 @@ export function AgentEventsWorkspace({
           event={selectedEvent ?? null}
           onSelectEvent={selectEvent}
           streamStatus={transcript.status}
+          timeZone={timeZone}
         />
         <AgentChatTranscript
           className="min-h-0"
@@ -207,10 +217,12 @@ function EventTranscriptHeader({
   event,
   onSelectEvent,
   streamStatus,
+  timeZone,
 }: {
   event: AgentEventSummary | null
   onSelectEvent: (eventId: string) => void
   streamStatus: string
+  timeZone: string
 }) {
   const blockedByEventId = event?.blockedByEventId
 
@@ -229,8 +241,15 @@ function EventTranscriptHeader({
             </h2>
           </div>
           <div className="text-right font-mono text-muted-foreground text-xs">
-            <p>{formatDate(event.queuedAt)}</p>
-            {event.startedAt && <p>started {formatTime(event.startedAt)}</p>}
+            <p>{formatCompactDateTimeInTimeZone(event.queuedAt, timeZone)}</p>
+            {event.startedAt && (
+              <p>
+                started{' '}
+                {formatTimeInTimeZone(event.startedAt, timeZone, {
+                  includeSeconds: true,
+                })}
+              </p>
+            )}
           </div>
         </div>
       ) : (
@@ -312,21 +331,4 @@ function formatEventLabel(event: AgentEventSummary): string {
   const type = formatAgentEventTypeLabel(event.type)
   const source = formatAgentEventSourceLabel(event.source)
   return type === source ? type : `${type} / ${source}`
-}
-
-function formatDate(value: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    month: 'short',
-  }).format(new Date(value))
-}
-
-function formatTime(value: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  }).format(new Date(value))
 }

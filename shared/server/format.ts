@@ -1,6 +1,20 @@
-export function formatRelative(date: Date | string | null | undefined): string {
+import {
+  formatCompactDateTimeInTimeZone,
+  formatDateTimeInTimeZone,
+  formatLongDateInTimeZone,
+  formatRelativeInTimeZone,
+  formatTimeInTimeZone,
+} from '@/shared/format-timezone'
+
+export function formatRelative(
+  date: Date | string | null | undefined,
+  options?: { timeZone?: string }
+): string {
   if (!date) {
     return '—'
+  }
+  if (options?.timeZone) {
+    return formatRelativeInTimeZone(date, options.timeZone)
   }
   const d = typeof date === 'string' ? new Date(date) : date
   const diffMs = Date.now() - d.getTime()
@@ -23,9 +37,15 @@ export function formatRelative(date: Date | string | null | undefined): string {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
-export function formatDateTime(date: Date | string | null | undefined): string {
+export function formatDateTime(
+  date: Date | string | null | undefined,
+  options?: { timeZone?: string }
+): string {
   if (!date) {
     return '—'
+  }
+  if (options?.timeZone) {
+    return formatDateTimeInTimeZone(date, options.timeZone)
   }
   const d = typeof date === 'string' ? new Date(date) : date
   return d.toLocaleString(undefined, {
@@ -36,17 +56,35 @@ export function formatDateTime(date: Date | string | null | undefined): string {
   })
 }
 
-export function formatTime(date: Date | string | null | undefined): string {
+export function formatTime(
+  date: Date | string | null | undefined,
+  options?: { timeZone?: string; includeSeconds?: boolean }
+): string {
   if (!date) {
     return '—'
   }
+  if (options?.timeZone) {
+    return formatTimeInTimeZone(date, options.timeZone, {
+      includeSeconds: options.includeSeconds,
+    })
+  }
   const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleTimeString(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: options?.includeSeconds ? '2-digit' : undefined,
+  })
 }
 
-export function formatLongDate(date: Date | string | null | undefined): string {
+export function formatLongDate(
+  date: Date | string | null | undefined,
+  options?: { timeZone?: string }
+): string {
   if (!date) {
     return '—'
+  }
+  if (options?.timeZone) {
+    return formatLongDateInTimeZone(date, options.timeZone)
   }
   const d = typeof date === 'string' ? new Date(date) : date
   return d.toLocaleDateString(undefined, {
@@ -54,6 +92,25 @@ export function formatLongDate(date: Date | string | null | undefined): string {
     month: 'long',
     day: 'numeric',
   })
+}
+
+export function formatCompactDateTime(
+  date: Date | string | null | undefined,
+  options?: { timeZone?: string }
+): string {
+  if (!date) {
+    return '—'
+  }
+  if (options?.timeZone) {
+    return formatCompactDateTimeInTimeZone(date, options.timeZone)
+  }
+  const d = typeof date === 'string' ? new Date(date) : date
+  return new Intl.DateTimeFormat(undefined, {
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    month: 'short',
+  }).format(d)
 }
 
 const SENDER_EMAIL_LINE = /^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/
