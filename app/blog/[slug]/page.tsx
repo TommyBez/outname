@@ -106,15 +106,18 @@ function blogBlocksWithKeys(
   content: string
 ): Array<{ block: string; key: string }> {
   const seen = new Map<string, number>()
-  return content.split('\n\n').map((block) => {
-    const baseKey = block.startsWith('## ')
-      ? `heading:${block}`
-      : `paragraph:${block}`
-    const occurrence = seen.get(baseKey) ?? 0
-    seen.set(baseKey, occurrence + 1)
-    const key = occurrence === 0 ? baseKey : `${baseKey}:${occurrence}`
-    return { block, key }
-  })
+  return content
+    .split('\n\n')
+    .filter((block) => block.trim() !== '')
+    .map((block) => {
+      const baseKey = block.startsWith('## ')
+        ? `heading:${block}`
+        : `paragraph:${block}`
+      const occurrence = seen.get(baseKey) ?? 0
+      seen.set(baseKey, occurrence + 1)
+      const key = occurrence === 0 ? baseKey : `${baseKey}:${occurrence}`
+      return { block, key }
+    })
 }
 
 function BlogContent({ content }: { content: string }) {
