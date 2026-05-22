@@ -33,6 +33,20 @@ function nameFor(agentId: string): string {
   return `agent-${agentId}-system`
 }
 
+function missingSystemSandboxMessage(agentId: string): string {
+  return `Agent ${agentId} has no system sandbox yet — startupSystemSandbox must run first.`
+}
+
+export function isMissingSystemSandboxError(
+  error: unknown,
+  agentId: string
+): boolean {
+  return (
+    error instanceof Error &&
+    error.message === missingSystemSandboxMessage(agentId)
+  )
+}
+
 async function readSandboxId(agentId: string): Promise<string | null> {
   const [row] = await db
     .select({
@@ -133,9 +147,7 @@ export async function startupSystemSandbox(input: {
 export async function getSystemSandbox(agentId: string): Promise<Sandbox> {
   const name = await readSandboxId(agentId)
   if (!name) {
-    throw new Error(
-      `Agent ${agentId} has no system sandbox yet — startupSystemSandbox must run first.`
-    )
+    throw new Error(missingSystemSandboxMessage(agentId))
   }
   return Sandbox.get({ name, resume: true })
 }

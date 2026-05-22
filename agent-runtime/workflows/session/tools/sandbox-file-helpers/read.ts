@@ -15,9 +15,15 @@ export async function readLiveFileByPath(
   sandbox: Sandbox,
   safe: NormalizedSandboxPath
 ): Promise<string | null> {
-  const buf = await sandbox
-    .readFileToBuffer({ path: safe.absPath })
-    .catch(() => null)
+  let buf: Buffer | null
+  try {
+    buf = await sandbox.readFileToBuffer({ path: safe.absPath })
+  } catch (error) {
+    if (isMissingFileError(error)) {
+      return null
+    }
+    throw error
+  }
   if (!buf) {
     return null
   }
@@ -38,4 +44,22 @@ export function readLiveMemory(
   path: string
 ): Promise<string | null> {
   return readLiveFile(sandbox, path)
+}
+
+function isMissingFileError(error: unknown): boolean {
+  if (!(typeof error === 'object' && error !== null)) {
+    return false
+  }
+
+  if ('code' in error && error.code === 'ENOENT') {
+    return true
+  }
+
+  return (
+    'response' in error &&
+    typeof error.response === 'object' &&
+    error.response !== null &&
+    'status' in error.response &&
+    error.response.status === 404
+  )
 }

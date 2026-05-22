@@ -7,7 +7,11 @@ import {
   runtimeMetaFromSpec,
 } from '@/agent-runtime/server/runtime-spec'
 import { buildRuntimeToolset } from '@/agent-runtime/server/runtime-toolset'
-import { getUserModelForGateway } from '@/shared/server/ai-gateway-byok'
+import {
+  getUserModelForGateway,
+  MissingAiGatewayApiKeyError,
+} from '@/shared/server/ai-gateway-byok'
+import { nonRetryableStepErrorFromUnknown } from '@/shared/server/workflow-step-errors'
 import type { SubAgentProgressTarget } from '@/tools/sub-agents/progress-target'
 import { workflowParentStreamTarget } from '@/tools/sub-agents/progress-target'
 
@@ -62,11 +66,20 @@ export function buildDurableAgentRuntime(
   const durableAgent = new DurableAgent({
     model: async () => {
       'use step'
-      const model = await getUserModelForGateway({
-        modelId: spec.modelId,
-        userId: spec.userId,
-      })
-      return model
+      try {
+        return await getUserModelForGateway({
+          modelId: spec.modelId,
+          userId: spec.userId,
+        })
+      } catch (error) {
+        if (error instanceof MissingAiGatewayApiKeyError) {
+          throw nonRetryableStepErrorFromUnknown(
+            error,
+            'AI Gateway API key is missing'
+          )
+        }
+        throw error
+      }
     },
     system: spec.systemPrompt,
     tools,

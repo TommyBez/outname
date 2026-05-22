@@ -24,6 +24,24 @@ interface BashToolSandboxAdapter {
   ): Promise<void>
 }
 
+class SystemSandboxFileNotFoundError extends Error {
+  readonly relPath: string
+
+  constructor(relPath: string) {
+    super(`readFile: file not found: ${relPath}`)
+    this.name = 'SystemSandboxFileNotFoundError'
+    this.relPath = relPath
+  }
+}
+
+export function isSystemSandboxFileNotFoundError(
+  error: unknown
+): error is SystemSandboxFileNotFoundError {
+  return (
+    error instanceof Error && error.name === 'SystemSandboxFileNotFoundError'
+  )
+}
+
 export async function createSystemBashTool(input: { agentId: string }) {
   const sandbox = await getSystemSandbox(input.agentId)
   const { createBashTool } = (await import(
@@ -74,7 +92,7 @@ function createSystemSandboxAdapter(input: {
       const content = await readLiveFile(input.sandbox, path)
       if (content === null) {
         const safe = normalizeSandboxPath(path)
-        throw new Error(`readFile: file not found: ${safe.relPath}`)
+        throw new SystemSandboxFileNotFoundError(safe.relPath)
       }
       return content
     },

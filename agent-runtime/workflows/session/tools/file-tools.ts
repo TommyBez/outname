@@ -18,7 +18,8 @@ export function createFileTools(
 ): Record<string, Tool> {
   return {
     readFile: tool({
-      description: 'Read the contents of a file from the system sandbox.',
+      description:
+        'Read the contents of a file from the system sandbox. If the file does not exist, returns exists=false instead of failing.',
       inputSchema: z.object({
         path: z.string().describe('The path to the file to read'),
       }),

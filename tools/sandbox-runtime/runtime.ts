@@ -4,6 +4,10 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/shared/db'
 import { toolSandboxSnapshots } from '@/shared/db/schema'
 import { toolRuntimeSandboxTags } from '@/shared/server/vercel-sandbox-config'
+import {
+  nonRetryableStepError,
+  nonRetryableStepErrorFromUnknown,
+} from '@/shared/server/workflow-step-errors'
 import { currentToolRuntimeRunId } from '@/tools/runtime/run-id'
 import { getToolSandboxManifest } from '@/tools/sandboxes/registry'
 
@@ -14,23 +18,12 @@ export interface ToolSandboxHandle {
   runCommand: Sandbox['runCommand']
 }
 
+const cache = new Map<string, Map<string, CachedSandbox>>()
+
 interface CachedSandbox {
   manifestId: string
   sandbox: Sandbox
 }
-
-const cache = new Map<string, Map<string, CachedSandbox>>()
-
-class ToolSandboxUnavailableError extends Error {
-  readonly manifestId: string
-  constructor(manifestId: string, message: string) {
-    super(message)
-    this.manifestId = manifestId
-    this.name = 'ToolSandboxUnavailableError'
-  }
-}
-
-export { ToolSandboxUnavailableError }
 
 function currentRunId(): string {
   return currentToolRuntimeRunId()
@@ -61,12 +54,18 @@ export async function getOrStartToolSandbox(
     }
   }
 
-  // Refuse to spawn snapshots for manifests that were removed from the registry.
-  getToolSandboxManifest(manifestId)
+  try {
+    getToolSandboxManifest(manifestId)
+  } catch (error) {
+    throw nonRetryableStepErrorFromUnknown(
+      error,
+      `tool sandbox manifest unavailable for "${manifestId}"`
+    )
+  }
+
   const snapshotId = await readSnapshotId(manifestId)
   if (!snapshotId) {
-    throw new ToolSandboxUnavailableError(
-      manifestId,
+    throw nonRetryableStepError(
       `Tool sandbox snapshot for manifest "${manifestId}" is not built yet.`
     )
   }

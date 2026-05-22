@@ -1,10 +1,14 @@
-import { getSystemSandbox } from '@/agent-runtime/server/agent-sandbox'
+import {
+  getSystemSandbox,
+  isMissingSystemSandboxError,
+} from '@/agent-runtime/server/agent-sandbox'
 import {
   EAGER_CONTEXT_PATHS,
   READ_ONLY_FOR_AGENT,
 } from '@/agent-runtime/workflows/session/tools/persona-paths'
 import { listTrackedArchitectureFiles } from '@/agent-runtime/workflows/session/tools/sandbox-file-helpers/list'
 import { readLiveMemory } from '@/agent-runtime/workflows/session/tools/sandbox-file-helpers/read'
+import { nonRetryableStepErrorFromUnknown } from '@/shared/server/workflow-step-errors'
 import type { Reconnect } from '@/tools/catalog/types'
 import { reconnectPromptLine } from '@/tools/runtime/reconnect-renderer'
 
@@ -49,7 +53,18 @@ export async function composeSystemPrompt(
   'use step'
   const { agentId, agentName, nowIso } = args
 
-  const systemSandbox = await getSystemSandbox(agentId)
+  let systemSandbox: Awaited<ReturnType<typeof getSystemSandbox>>
+  try {
+    systemSandbox = await getSystemSandbox(agentId)
+  } catch (error) {
+    if (isMissingSystemSandboxError(error, agentId)) {
+      throw nonRetryableStepErrorFromUnknown(
+        error,
+        `system sandbox unavailable for agent "${agentId}"`
+      )
+    }
+    throw error
+  }
 
   const [agentsMd, identityMd, soulMd, userMd, livePaths] = await Promise.all([
     readLiveMemory(systemSandbox, 'AGENTS.md'),

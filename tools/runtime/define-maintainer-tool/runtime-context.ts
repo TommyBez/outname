@@ -1,3 +1,4 @@
+import { nonRetryableStepError } from '@/shared/server/workflow-step-errors'
 import type { ToolErrorCode } from '@/tools/catalog/types'
 import type {
   BrokeredHttpRequest,
@@ -110,7 +111,9 @@ export function createRuntimeContext(input: {
       async run(args) {
         const manifestId = args.manifestId ?? sandboxManifestId
         if (!manifestId) {
-          throw new Error('No tool sandbox manifest is bound for this tool.')
+          throw nonRetryableStepError(
+            'No tool sandbox manifest is bound for this tool.'
+          )
         }
         const { runToolSandboxCommand } = await import('../tool-sandbox-runner')
         return await runToolSandboxCommand({

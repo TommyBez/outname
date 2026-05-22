@@ -19,7 +19,24 @@ vi.mock('@vercel/sandbox', () => ({
 }))
 
 vi.mock('workflow', () => ({
+  FatalError: class FatalError extends Error {
+    fatal = true
+
+    constructor(message: string) {
+      super(message)
+      this.name = 'FatalError'
+    }
+  },
   getWritable: mockGetWritable,
+  RetryableError: class RetryableError extends Error {
+    retryAfter: Date
+
+    constructor(message: string) {
+      super(message)
+      this.name = 'RetryableError'
+      this.retryAfter = new Date()
+    }
+  },
 }))
 
 vi.mock('server-only', () => ({}))
@@ -204,6 +221,7 @@ describe('runSandboxBuild', () => {
       expect(error).toBeInstanceOf(Error)
       const message = error instanceof Error ? error.message : String(error)
 
+      expect(error).toMatchObject({ name: 'FatalError' })
       expect(message).toContain('setup script exited with code 7')
       expect(message).toContain('e'.repeat(4000))
       expect(message).not.toContain('e'.repeat(4001))
