@@ -1,10 +1,6 @@
-import type { ModelMessage, UIMessage } from 'ai'
-import { start } from 'workflow/api'
 import { replyNamespaceForEvent } from '@/agent-runtime/server/agent-event-keys'
 import type { AgentEventPayloads } from '@/agent-runtime/server/agent-event-store'
-import { slackStreamForwarderWorkflow } from '@/channels/slack/server/stream-forwarder-workflow'
 import { currentWorkflowRunId } from '@/shared/server/workflow-run-id'
-import { handleChat } from '../session/handlers/handle-chat'
 import { handleHeartbeat } from '../session/handlers/handle-heartbeat'
 import { handleInvocation } from '../session/handlers/handle-invocation'
 import { cleanupEventResources } from './steps/cleanup-event'
@@ -13,7 +9,6 @@ import {
   markAgentEventHeartbeatStep,
   markAgentEventRunningStep,
   markAgentEventTerminalStep,
-  setAgentEventPublisherWorkflowRunIdStep,
   type WorkflowAgentEvent,
 } from './steps/event-store'
 import { startNextQueuedEvent } from './steps/start-next-event'
@@ -31,16 +26,6 @@ export async function agentEventWorkflow(input: {
 
     const workflowRunId = currentWorkflowRunId()
     await markAgentEventRunningStep({ eventId: event.id, workflowRunId })
-    const publisherWorkflowRunId = await maybeStartPublisher({
-      event,
-      workflowRunId,
-    })
-    if (publisherWorkflowRunId) {
-      await setAgentEventPublisherWorkflowRunIdStep({
-        eventId: event.id,
-        publisherWorkflowRunId,
-      })
-    }
     await dispatchAgentEvent(event)
     await markAgentEventTerminalStep({
       eventId: event.id,
@@ -62,48 +47,10 @@ export async function agentEventWorkflow(input: {
   }
 }
 
-async function maybeStartPublisher(input: {
-  event: WorkflowAgentEvent
-  workflowRunId: string
-}): Promise<string | null> {
-  'use step'
-  const { event } = input
-  if (event.type !== 'chat' || event.source !== 'slack') {
-    return null
-  }
-  if (event.publisherWorkflowRunId) {
-    return null
-  }
-  const payload = payloadAs<AgentEventPayloads['chat']>(event)
-  if (!payload.slack) {
-    return null
-  }
-  const run = await start(slackStreamForwarderWorkflow, [
-    {
-      ...payload.slack,
-      eventId: event.id,
-      replyNamespace: replyNamespaceForEvent(event.id),
-      workflowRunId: input.workflowRunId,
-    },
-  ])
-  return run.runId
-}
-
 async function dispatchAgentEvent(event: WorkflowAgentEvent): Promise<void> {
   await markAgentEventHeartbeatStep({ eventId: event.id })
 
   switch (event.type) {
-    case 'chat': {
-      const payload = payloadAs<AgentEventPayloads['chat']>(event)
-      await handleChat({
-        agentId: event.agentId,
-        conversationId: payload.conversationId,
-        modelMessages: payload.modelMessages as ModelMessage[] | undefined,
-        replyToken: replyNamespaceForEvent(event.id),
-        uiMessages: payload.uiMessages as UIMessage[],
-      })
-      return
-    }
     case 'heartbeat': {
       const payload = payloadAs<AgentEventPayloads['heartbeat']>(event)
       await handleHeartbeat({

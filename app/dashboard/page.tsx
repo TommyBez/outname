@@ -298,11 +298,11 @@ function QuickAction({ href, label }: { href: string; label: string }) {
 }
 
 function isActiveDashboardEvent(event: AgentEventSummary): boolean {
-  return event.type !== 'chat' && !isTerminalAgentEventStatus(event.status)
+  return !isTerminalAgentEventStatus(event.status)
 }
 
 function isFailedDashboardEvent(event: AgentEventSummary): boolean {
-  return event.type !== 'chat' && event.status === 'failed'
+  return event.status === 'failed'
 }
 
 function isBudgetAttention(entry: BudgetSummaryEntry): boolean {

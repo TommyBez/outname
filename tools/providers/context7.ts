@@ -201,7 +201,7 @@ export async function executeSearchLibraries(input: {
   input: Context7SearchLibraryInput
 }) {
   try {
-    const response = await input.ctx.http.request('context7', {
+    const response = await input.ctx.http.request('context7.api_key', {
       method: 'GET',
       url: buildContext7Url('/v2/libs/search', {
         libraryName: input.input.libraryName,
@@ -252,7 +252,7 @@ export async function executeGetContext(input: {
   input: Context7GetContextInput
 }) {
   try {
-    const response = await input.ctx.http.request('context7', {
+    const response = await input.ctx.http.request('context7.api_key', {
       method: 'GET',
       url: buildContext7Url('/v2/context', {
         libraryId: input.input.libraryId,

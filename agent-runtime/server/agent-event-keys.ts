@@ -35,21 +35,3 @@ export function scheduledDailyKey(input: {
   const slot = input.time.replace(':', '')
   return `sched:${input.agentId}:${input.type}:daily:${input.localDate}:${slot}`
 }
-
-export function slackIdempotencyKey(input: {
-  agentId: string
-  channelId: string
-  messageTs: string
-  teamId: string
-}): string {
-  return `slack:${input.teamId}:${input.channelId}:${input.messageTs}:${input.agentId}`
-}
-
-export function slackConcurrencyKey(input: {
-  agentId: string
-  channelId: string
-  teamId: string
-  threadTs: string
-}): string {
-  return `slack:${input.teamId}:${input.channelId}:${input.threadTs}:${input.agentId}`
-}

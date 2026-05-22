@@ -1,5 +1,4 @@
 import 'server-only'
-import type { ModelMessage, UIMessage } from 'ai'
 import { eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import {
@@ -61,48 +60,6 @@ export async function pokeDreaming(opts: {
   return {
     eventId: result.eventId,
     sessionRunId: workflowRunIdOrNull(result),
-  }
-}
-
-export async function dispatchChatTurn(opts: {
-  agent: Agent
-  concurrencyKey?: string | null
-  conversationId: string
-  extraPayload?: Record<string, unknown>
-  idempotencyKey?: string
-  // Pre-converted model messages, populated by channel adapters that own the
-  // thread (Chat SDK `toAiMessages`). When present, the workflow uses them
-  // directly and skips converting `uiMessages`.
-  modelMessages?: ModelMessage[]
-  source?: 'chat' | 'slack'
-  uiMessages: UIMessage[]
-}): Promise<{
-  eventId: string
-  replyToken: string
-  sessionRunId: string | null
-  workflowRunId: string | null
-}> {
-  const messageId = opts.uiMessages.at(-1)?.id ?? nanoid(12)
-  const result = await enqueueAgentEvent({
-    agent: opts.agent,
-    idempotencyKey:
-      opts.idempotencyKey ??
-      `chat:${opts.agent.id}:${opts.conversationId}:${messageId}`,
-    payload: {
-      conversationId: opts.conversationId,
-      ...(opts.extraPayload ?? {}),
-      modelMessages: opts.modelMessages,
-      uiMessages: opts.uiMessages,
-    },
-    concurrencyKey: opts.concurrencyKey ?? null,
-    source: opts.source ?? 'chat',
-    type: 'chat',
-  })
-  return {
-    eventId: result.eventId,
-    replyToken: result.replyNamespace,
-    sessionRunId: workflowRunIdOrNull(result),
-    workflowRunId: result.workflowRunId,
   }
 }
 

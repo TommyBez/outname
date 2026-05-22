@@ -26,16 +26,8 @@ function terminalEvent(input: {
   }
 }
 
-test('compactLedgerEvents keeps all live events and excludes chat', () => {
+test('compactLedgerEvents keeps all live events', () => {
   const events: AgentEventSummary[] = [
-    {
-      ...terminalEvent({
-        id: 'chat_1',
-        queuedAt: '2026-05-14T09:00:00.000Z',
-        type: 'chat',
-      }),
-      status: 'running',
-    },
     {
       ...terminalEvent({
         id: 'hb_live',
@@ -44,10 +36,30 @@ test('compactLedgerEvents keeps all live events and excludes chat', () => {
       }),
       status: 'running',
     },
+    {
+      ...terminalEvent({
+        id: 'dream_live',
+        queuedAt: '2026-05-14T09:02:00.000Z',
+        type: 'dreaming',
+      }),
+      status: 'running',
+    },
+    {
+      ...terminalEvent({
+        id: 'inv_live',
+        queuedAt: '2026-05-14T09:03:00.000Z',
+        type: 'invocation',
+      }),
+      status: 'running',
+    },
   ]
 
   const compacted = compactLedgerEvents(events)
-  expect(compacted.map((event) => event.id)).toEqual(['hb_live'])
+  expect(compacted.map((event) => event.id)).toEqual([
+    'inv_live',
+    'dream_live',
+    'hb_live',
+  ])
 })
 
 test('compactLedgerEvents keeps the three most recent terminal events per type', () => {

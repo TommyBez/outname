@@ -97,7 +97,7 @@ export async function upsertSlackBindingAction(input: {
   await upsertAgentChannelBinding({
     agentId: parsed.data.agentId,
     channel: 'slack',
-    teamId: parsed.data.teamId,
+    externalScopeId: parsed.data.teamId,
     externalKey: parsed.data.externalKey,
     kind: parsed.data.kind,
   })
@@ -135,7 +135,7 @@ export async function deleteSlackBindingAction(input: {
   await deleteAgentChannelBinding({
     userId,
     channel: 'slack',
-    teamId: row.teamId,
+    externalScopeId: row.externalScopeId,
     externalKey: row.externalKey,
     kind: row.kind,
   })

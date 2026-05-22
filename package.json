@@ -28,7 +28,6 @@
   "dependencies": {
     "@ai-sdk/react": "^3.0.186",
     "@chat-adapter/slack": "^4.29.0",
-    "@chat-adapter/state-memory": "^4.29.0",
     "@chat-adapter/state-redis": "^4.29.0",
     "@hookform/resolvers": "^3.9.1",
     "@neondatabase/serverless": "^1.0.2",

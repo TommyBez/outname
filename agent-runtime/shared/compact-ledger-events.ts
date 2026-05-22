@@ -23,9 +23,6 @@ export function compactLedgerEvents(
   >()
 
   for (const event of events) {
-    if (event.type === 'chat') {
-      continue
-    }
     if (!isTerminalAgentEventStatus(event.status)) {
       live.push(event)
       continue

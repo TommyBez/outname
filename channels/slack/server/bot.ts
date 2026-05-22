@@ -1,20 +1,18 @@
 import 'server-only'
 import { createSlackAdapter, type SlackAdapter } from '@chat-adapter/slack'
-import type { ModelMessage } from 'ai'
-import { Chat, type Message as ChatMessage, toAiMessages } from 'chat'
+import { Chat, type StreamEvent } from 'chat'
+import { after } from 'next/server'
 import { runChannelChatTurn } from '@/channels/server/dispatch'
 import type { IncomingChannelMessage } from '@/channels/server/types'
-import { SlackHybridState } from './state'
 import {
-  describeSlackAttachments,
-  extractSlackTeamId,
-  extractSlackThread,
-  type SlackRawMessage,
-} from './thread-ids'
-
-type SlackChat = Chat<{ slack: SlackAdapter }>
-type SlackThread = Parameters<Parameters<SlackChat['onNewMention']>[0]>[0]
-type SlackMessage = Parameters<Parameters<SlackChat['onNewMention']>[0]>[1]
+  buildIncomingSlackMessage,
+  buildIncomingSlackTurn,
+  type SlackChat,
+  type SlackMessage,
+  type SlackMessageContext,
+  type SlackThread,
+} from './incoming-message'
+import { SlackHybridState } from './state'
 
 interface SlackBotBundle {
   adapter: SlackAdapter
@@ -42,11 +40,10 @@ function buildBundle(): SlackBotBundle {
   const bot: SlackChat = new Chat({
     userName,
     adapters: { slack: adapter },
-    // Persist owner-scoped installations in `channel_installations`; locks and
-    // subscriptions stay in Redis/memory via the inner backing adapter.
+    // Persist owner-scoped installations in `channel_installations`; locks,
+    // queue, dedupe, subscriptions, and ephemeral state stay in Redis via the
+    // inner backing adapter.
     state: new SlackHybridState(),
-    // The canonical queue lives in `agent_events`; this only protects webhook
-    // ingestion from overlapping handler work inside the Chat SDK.
     concurrency: 'queue',
   })
 
@@ -70,107 +67,68 @@ export function getSlackAdapter(): SlackAdapter {
   return ensureBundle().adapter
 }
 
-// Top-level messages use their own ts so direct replies still round-trip as a
-// stable synthetic thread.
-function slackThreadKey(channel: string, threadTs: string): string {
-  return `${channel}:${threadTs}`
-}
-
 function registerHandlers(bot: SlackChat): void {
-  bot.onNewMention(async (thread, message) => {
+  bot.onNewMention(async (thread, message, context) => {
     await thread.subscribe()
-    await handleSlackMessage({ thread, message, kind: 'channel' })
+    await handleSlackMessage({ thread, message, kind: 'channel', context })
   })
 
-  bot.onDirectMessage(async (thread, message) => {
+  bot.onDirectMessage(async (thread, message, _channel, context) => {
     await thread.subscribe()
-    await handleSlackMessage({ thread, message, kind: 'dm' })
+    await handleSlackMessage({ thread, message, kind: 'dm', context })
   })
 
-  bot.onSubscribedMessage(async (thread, message) => {
+  bot.onSubscribedMessage(async (thread, message, context) => {
     // Reuse the routing kind captured when the thread subscription started.
     await handleSlackMessage({
       thread,
       message,
       kind: thread.isDM ? 'dm' : 'channel',
+      context,
     })
   })
-}
-
-function extractTeamId(message: SlackMessage): string {
-  const raw = message.raw as SlackRawMessage | undefined
-  return extractSlackTeamId(raw)
 }
 
 async function handleSlackMessage(input: {
   thread: SlackThread
   message: SlackMessage
   kind: 'channel' | 'dm'
+  context?: SlackMessageContext
 }): Promise<void> {
-  const { thread, message, kind } = input
-  const raw = message.raw as SlackRawMessage | undefined
-  const trimmedText = message.text?.trim() ?? ''
-  const attachmentSummary = describeSlackAttachments(raw)
-  if (!(trimmedText || attachmentSummary)) {
-    return
-  }
-  // Attachment-only messages still flow through routing/persistence; the model
-  // receives the actual file bytes via `toAiMessages` in `loadModelMessages`.
-  const text = trimmedText || `(attachment: ${attachmentSummary})`
-
-  // Keep provider-native Slack ids out of routing keys; `slack:`-prefixed SDK
-  // ids should not leak into shared channel bindings.
-  const slackThread = extractSlackThread(thread, raw)
-  if (!slackThread) {
-    console.warn('[slack] thread missing slack ids; skipping', {
-      channelId: thread.channelId,
-      threadId: thread.id,
-    })
-    return
-  }
-  const { channelId, threadTs } = slackThread
-  const messageTs = raw?.ts ?? threadTs
-
-  const teamId = extractTeamId(message)
-  if (!teamId) {
-    console.warn(
-      '[slack] dropping event with no team id; cannot owner-scope to an installation',
-      { channelId, kind }
+  const { thread, message, kind, context } = input
+  const skipped = (context?.skipped ?? [])
+    .map((skipped) =>
+      buildIncomingSlackMessage({
+        thread,
+        message: skipped as SlackMessage,
+      })
     )
+    .filter((skipped): skipped is IncomingChannelMessage => Boolean(skipped))
+  const incoming = buildIncomingSlackTurn({
+    thread,
+    message,
+    kind,
+    providerHistory: () => collectThreadHistory(thread),
+    skipped,
+  })
+  if (!incoming) {
     return
-  }
-
-  const externalRoutingKey =
-    kind === 'dm' ? (message.author?.userId ?? channelId) : channelId
-
-  const incoming: IncomingChannelMessage = {
-    channel: 'slack',
-    teamId,
-    externalThreadKey: slackThreadKey(channelId, threadTs),
-    externalRoutingKey,
-    externalRoutingKind: kind,
-    externalUserId: message.author?.userId ?? 'unknown',
-    externalUserDisplayName:
-      message.author?.fullName ?? message.author?.userName,
-    text,
-    threadMetadata: {
-      slackChannel: channelId,
-      slackMessageTs: messageTs,
-      slackThreadTs: threadTs,
-      slackTeamId: teamId,
-    },
-    loadModelMessages: () => collectThreadHistory(thread),
   }
 
   const handled = await runChannelChatTurn({
-    message: incoming,
+    turn: incoming,
     sink: {
-      postReply: async (content) => {
-        // The adapter throttles `chat.update` internally for streaming replies.
-        await thread.post(content)
+      postAgentStream: async (stream) => {
+        await thread.post(stream as AsyncIterable<string | StreamEvent>)
+      },
+      postText: async (text) => {
+        await thread.post(text)
       },
       postError: async (errorText) => {
         await thread.post(errorText)
+      },
+      scheduleBackgroundTask(task) {
+        after(task)
       },
       startTyping: async (status) => {
         await thread.startTyping(status)
@@ -180,42 +138,40 @@ async function handleSlackMessage(input: {
 
   if (!handled) {
     console.warn('[slack] no agent binding for incoming message', {
-      channelId,
-      teamId,
+      externalScopeId: incoming.externalScopeId,
+      externalThreadId: incoming.externalThreadId,
       kind,
-      routingKey: externalRoutingKey,
+      routingKey: incoming.routing.key,
     })
   }
 }
 
-// Materialise the full Slack thread into AI SDK model messages. Chat SDK
-// auto-paginates and maps `author.isMe` to "assistant", so the LLM sees the
-// real conversation rather than just the latest user turn. Image and text-file
-// attachments come through as `FilePart`/`ImagePart` with inlined data, so the
-// model gets vision/file context too — pick a multimodal model for any agent
-// bound to channels where users share media.
+// Provider history is a best-effort import into the canonical Postgres
+// transcript. Runtime model context is loaded from `chat_message`, not from the
+// provider history directly.
 async function collectThreadHistory(
   thread: SlackThread
-): Promise<ModelMessage[] | undefined> {
+): Promise<IncomingChannelMessage[]> {
   try {
-    const messages: ChatMessage[] = []
+    const messages: IncomingChannelMessage[] = []
     for await (const m of thread.allMessages) {
-      messages.push(m)
+      if (m.author?.isMe || m.author?.isBot === true) {
+        continue
+      }
+      const incoming = buildIncomingSlackMessage({
+        thread,
+        message: m as SlackMessage,
+      })
+      if (incoming) {
+        messages.push(incoming)
+      }
     }
-    if (messages.length === 0) {
-      return
-    }
-    // `includeNames` prefixes user turns with `[name]:` so multi-user channels
-    // stay attributable. Harmless in 1:1 DMs.
-    const aiMessages = await toAiMessages(messages, { includeNames: true })
-    return aiMessages as ModelMessage[]
+    return messages
   } catch (err) {
-    // Fall back to "new turn only" — the workflow still works, just without
-    // history, which matches the pre-Chat-SDK-hydration behaviour.
-    console.warn('[slack] failed to hydrate thread history; falling back', {
+    console.warn('[slack] failed to import thread history; falling back', {
       err: err instanceof Error ? err.message : String(err),
       threadId: thread.id,
     })
-    return
+    return []
   }
 }

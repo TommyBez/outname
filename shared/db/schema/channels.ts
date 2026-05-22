@@ -53,7 +53,8 @@ export const agentChannelBindings = pgTable(
       .notNull()
       .references(() => agent.id, { onDelete: 'cascade' }),
     channel: text('channel').notNull(),
-    teamId: text('team_id').notNull().default(''),
+    // Smallest provider/account scope that disambiguates user-owned installs.
+    externalScopeId: text('external_scope_id').notNull().default(''),
     externalKey: text('external_key').notNull(),
     kind: text('kind').$type<'channel' | 'dm'>().notNull(),
     metadata: jsonb('metadata').notNull().default({}),
@@ -68,7 +69,7 @@ export const agentChannelBindings = pgTable(
     // Bindings are unique per user, so different users can target the same external channel.
     uniqueIndex('agent_channel_bindings_lookup_idx').on(
       t.channel,
-      t.teamId,
+      t.externalScopeId,
       t.externalKey,
       t.kind,
       t.userId
@@ -86,8 +87,9 @@ export const channelThreadConversations = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
     channel: text('channel').notNull(),
-    teamId: text('team_id').notNull().default(''),
-    externalThreadKey: text('external_thread_key').notNull(),
+    // Smallest provider/account scope that disambiguates user-owned installs.
+    externalScopeId: text('external_scope_id').notNull().default(''),
+    externalThreadId: text('external_thread_id').notNull(),
     conversationId: text('conversation_id')
       .notNull()
       .references(() => chatConversation.id, { onDelete: 'cascade' }),
@@ -103,8 +105,8 @@ export const channelThreadConversations = pgTable(
     // External threads are unique per agent so different users can map the same source thread separately.
     uniqueIndex('channel_thread_conversations_external_idx').on(
       t.channel,
-      t.teamId,
-      t.externalThreadKey,
+      t.externalScopeId,
+      t.externalThreadId,
       t.agentId
     ),
     index('channel_thread_conversations_conversation_idx').on(t.conversationId),

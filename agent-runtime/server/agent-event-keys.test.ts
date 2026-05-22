@@ -5,29 +5,7 @@ import {
   scheduledBucketKey,
   scheduledConcurrencyKey,
   scheduledDailyKey,
-  slackConcurrencyKey,
-  slackIdempotencyKey,
 } from './agent-event-keys'
-
-test('slack event keys isolate duplicate messages from same-thread ordering', () => {
-  expect(
-    slackIdempotencyKey({
-      agentId: 'agent_123',
-      channelId: 'C123',
-      messageTs: '1715680800.123456',
-      teamId: 'T123',
-    })
-  ).toBe('slack:T123:C123:1715680800.123456:agent_123')
-
-  expect(
-    slackConcurrencyKey({
-      agentId: 'agent_123',
-      channelId: 'C123',
-      teamId: 'T123',
-      threadTs: '1715680000.000001',
-    })
-  ).toBe('slack:T123:C123:1715680000.000001:agent_123')
-})
 
 test('scheduled event keys bucket heartbeat and dreaming independently', () => {
   const now = new Date('2026-05-14T09:07:12.000Z')

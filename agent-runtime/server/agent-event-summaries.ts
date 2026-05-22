@@ -1,11 +1,7 @@
 import 'server-only'
 import { and, asc, eq, inArray } from 'drizzle-orm'
 import { compactLedgerEvents } from '@/agent-runtime/shared/compact-ledger-events'
-import type {
-  AgentEventSource,
-  AgentEventSummary,
-  AgentEventType,
-} from '@/agent-runtime/shared/event-types'
+import type { AgentEventSummary } from '@/agent-runtime/shared/event-types'
 import { db } from '@/shared/db'
 import { type AgentEvent, agentEvents } from '@/shared/db/schema'
 import { reconcileActiveAgentEvent } from './agent-event-reconciliation'
@@ -64,10 +60,10 @@ export function summarizeAgentEvent(
     lastError: event.lastError,
     preview: previewAgentEvent(event),
     queuedAt: event.queuedAt.toISOString(),
-    source: event.source as AgentEventSource,
+    source: event.source,
     startedAt: dateToIso(event.startedAt),
     status: event.status,
-    type: event.type as AgentEventType,
+    type: event.type,
     workflowRunId: readableWorkflowRunId(event.workflowRunId),
   }
 }
@@ -147,8 +143,6 @@ function mergeEvents(
 
 function previewAgentEvent(event: AgentEvent): string | null {
   switch (event.type) {
-    case 'chat':
-      return previewChatEvent(payloadAs<AgentEventPayloads['chat']>(event))
     case 'dreaming':
       return previewScheduledEvent('Dreaming', event)
     case 'heartbeat':
@@ -160,28 +154,6 @@ function previewAgentEvent(event: AgentEvent): string | null {
       return exhaustive
     }
   }
-}
-
-function previewChatEvent(payload: AgentEventPayloads['chat']): string | null {
-  const lastMessage = payload.uiMessages.at(-1)
-  if (!isRecord(lastMessage)) {
-    return null
-  }
-  const parts = lastMessage.parts
-  if (!Array.isArray(parts)) {
-    return null
-  }
-
-  const text = parts
-    .map((part) => {
-      if (!isRecord(part) || part.type !== 'text') {
-        return ''
-      }
-      return typeof part.text === 'string' ? part.text : ''
-    })
-    .join(' ')
-    .trim()
-  return truncate(text)
 }
 
 function previewScheduledEvent(label: string, event: AgentEvent): string {
@@ -208,10 +180,6 @@ function truncate(value: string | null | undefined): string | null {
 
 function dateToIso(value: Date | null): string | null {
   return value?.toISOString() ?? null
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
 }
 
 function isString(value: string | null): value is string {

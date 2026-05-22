@@ -9,14 +9,9 @@ export const AGENT_EVENT_STATUSES = [
 
 export type AgentEventStatus = (typeof AGENT_EVENT_STATUSES)[number]
 
-export type AgentEventType = 'chat' | 'heartbeat' | 'dreaming' | 'invocation'
+export type AgentEventType = 'heartbeat' | 'dreaming' | 'invocation'
 
-export type AgentEventSource =
-  | 'chat'
-  | 'slack'
-  | 'scheduler'
-  | 'manual'
-  | 'invocation'
+export type AgentEventSource = 'scheduler' | 'manual' | 'invocation'
 
 export interface AgentEventSummary {
   attempt: number
@@ -43,10 +38,6 @@ export function isTerminalAgentEventStatus(status: AgentEventStatus): boolean {
 
 export function formatAgentEventSourceLabel(source: AgentEventSource): string {
   switch (source) {
-    case 'chat':
-      return 'chat'
-    case 'slack':
-      return 'slack'
     case 'scheduler':
       return 'scheduler'
     case 'manual':
@@ -62,8 +53,6 @@ export function formatAgentEventSourceLabel(source: AgentEventSource): string {
 
 export function formatAgentEventTypeLabel(type: AgentEventType): string {
   switch (type) {
-    case 'chat':
-      return 'chat'
     case 'heartbeat':
       return 'heartbeat'
     case 'dreaming':

@@ -25,6 +25,36 @@ function extractText(message: UIMessage | undefined): string {
   return chunks.join('\n').trim()
 }
 
+const LEADING_GREETING_PATTERN =
+  /^(?:ciao|salve|buongiorno|buonasera|hello|hi|hey|yo)(?:[!,.:;?—-]+|\s+)+/i
+const ONLY_GREETING_PATTERN =
+  /^(?:ciao|salve|buongiorno|buonasera|hello|hi|hey|yo)[!,.:;?—\s-]*$/i
+
+function isPlaceholderTitle(title: string): boolean {
+  return title.trim().replace(/\s+/g, ' ').toLowerCase() === 'new chat'
+}
+
+function stripLeadingGreeting(text: string): string {
+  const trimmed = text.trim()
+  if (ONLY_GREETING_PATTERN.test(trimmed)) {
+    return ''
+  }
+  return trimmed.replace(LEADING_GREETING_PATTERN, '').trim()
+}
+
+function selectTitleSeed(messages: UIMessage[]): string {
+  for (const message of messages) {
+    if (message.role !== 'user') {
+      continue
+    }
+    const text = stripLeadingGreeting(extractText(message))
+    if (text) {
+      return text
+    }
+  }
+  return ''
+}
+
 export async function maybeGenerateConversationTitle(input: {
   agentId: string
   conversationId: string
@@ -39,17 +69,16 @@ export async function maybeGenerateConversationTitle(input: {
   if (!conversation) {
     return
   }
-  if (conversation.title) {
+  if (conversation.title && !isPlaceholderTitle(conversation.title)) {
     return
   }
 
-  const firstUserMessage = input.uiMessages.find((m) => m.role === 'user')
-  const firstUserText = extractText(firstUserMessage)
-  if (!firstUserText) {
+  const titleSeed = selectTitleSeed(input.uiMessages)
+  if (!titleSeed) {
     return
   }
 
-  const fallback = firstUserText.slice(0, 60).trim() || 'New chat'
+  const fallback = titleSeed.slice(0, 60).trim()
   const [agentRow] = await db
     .select({ userId: agent.userId })
     .from(agent)
@@ -59,6 +88,7 @@ export async function maybeGenerateConversationTitle(input: {
     return
   }
 
+  let didSetTitle = false
   try {
     const { text } = await generateText({
       model: await getUserModelForGateway({
@@ -71,7 +101,7 @@ export async function maybeGenerateConversationTitle(input: {
         'Use title case. No quotes. No trailing punctuation.',
         "If the message is greeting-only, respond with 'New Chat'.",
       ].join('\n'),
-      prompt: firstUserText.slice(0, 2000),
+      prompt: titleSeed.slice(0, 2000),
     })
 
     const cleaned = text
@@ -80,10 +110,16 @@ export async function maybeGenerateConversationTitle(input: {
       .trim()
       .slice(0, 80)
 
-    await setConversationTitleIfUnset(input.conversationId, cleaned || fallback)
+    if (cleaned && !isPlaceholderTitle(cleaned)) {
+      await setConversationTitleIfUnset(input.conversationId, cleaned)
+      didSetTitle = true
+    }
   } catch {
-    await setConversationTitleIfUnset(input.conversationId, fallback)
+    // Keep title generation best-effort; fallback below preserves a useful label.
   }
 
+  if (!didSetTitle) {
+    await setConversationTitleIfUnset(input.conversationId, fallback)
+  }
   revalidateTag(conversationListTag(input.agentId), 'max')
 }

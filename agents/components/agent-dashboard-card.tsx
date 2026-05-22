@@ -201,7 +201,7 @@ function AgentActivityPanel({
   )
 }
 
-type DashboardEventType = Exclude<AgentEventType, 'chat'>
+type DashboardEventType = AgentEventType
 
 interface AttentionItem {
   detail: string
@@ -224,7 +224,7 @@ function EventStateList({
       <section className="border-foreground border-y-2 bg-background px-4 py-5">
         <p className="font-bold text-xs uppercase tracking-[0.16em]">Idle</p>
         <p className="mt-2 text-muted-foreground text-sm">
-          No active or queued non-chat events.
+          No active or queued events.
         </p>
       </section>
     )
@@ -401,7 +401,7 @@ function buildSchedule(agent: DashboardAgent) {
 function latestActiveEvents(
   events: readonly AgentEventSummary[]
 ): AgentEventSummary[] {
-  return nonChatEvents(events)
+  return operationalEvents(events)
     .filter((event) => !isTerminalAgentEventStatus(event.status))
     .sort(compareOperationalEvents)
 }
@@ -410,7 +410,7 @@ function latestTerminalEventsByType(
   events: readonly AgentEventSummary[]
 ): Map<DashboardEventType, AgentEventSummary> {
   const latest = new Map<DashboardEventType, AgentEventSummary>()
-  const terminalEvents = nonChatEvents(events)
+  const terminalEvents = operationalEvents(events)
     .filter((event) => isTerminalAgentEventStatus(event.status))
     .sort(compareNewestEvents)
 
@@ -438,7 +438,7 @@ function buildAttentionItems(input: {
     })
   }
 
-  const latestFailure = nonChatEvents(input.eventSummaries)
+  const latestFailure = operationalEvents(input.eventSummaries)
     .filter((event) => event.status === 'failed')
     .sort(compareNewestEvents)[0]
   if (latestFailure) {
@@ -479,13 +479,10 @@ function buildAttentionItems(input: {
   return items
 }
 
-function nonChatEvents(
+function operationalEvents(
   events: readonly AgentEventSummary[]
 ): Array<AgentEventSummary & { type: DashboardEventType }> {
-  return events.filter(
-    (event): event is AgentEventSummary & { type: DashboardEventType } =>
-      event.type !== 'chat'
-  )
+  return events as Array<AgentEventSummary & { type: DashboardEventType }>
 }
 
 function compareOperationalEvents(
@@ -564,7 +561,7 @@ function getAgentPreview(
       activeEvent.startedAt ?? activeEvent.queuedAt
     )}`
   }
-  const latestFailure = nonChatEvents(events)
+  const latestFailure = operationalEvents(events)
     .filter((event) => event.status === 'failed')
     .sort(compareNewestEvents)[0]
   if (latestFailure) {

@@ -60,7 +60,10 @@ describe('collectSubAgentMessages', () => {
       progress: {
         childAgentId: 'child_123',
         childName: 'Haiku-San',
-        streamNamespace: 'reply:parent',
+        target: {
+          kind: 'workflow-parent-stream',
+          streamNamespace: 'reply:parent',
+        },
         toolCallId: 'tool_call_123',
         toolName: 'agent_haiku_san',
       },
@@ -129,6 +132,49 @@ describe('collectSubAgentMessages', () => {
         },
         {
           id: 'msg_2',
+          parts: [],
+          role: 'assistant',
+        },
+      ],
+    })
+  })
+
+  it('does not touch workflow writable streams when progress target is none', async () => {
+    mockGetRun.mockReturnValue({
+      getReadable: mockGetReadable.mockReturnValue('readable-stream'),
+    })
+    mockGetWritable.mockImplementation(() => {
+      throw new Error('getWritable should not be called')
+    })
+    mockReadUIMessageStream.mockReturnValue(
+      (async function* () {
+        await Promise.resolve()
+        yield {
+          id: 'msg_1',
+          parts: [],
+          role: 'assistant',
+        }
+      })()
+    )
+
+    const result = await collectSubAgentMessages({
+      progress: {
+        childAgentId: 'child_123',
+        childName: 'Haiku-San',
+        target: { kind: 'none' },
+        toolCallId: 'tool_call_123',
+        toolName: 'agent_haiku_san',
+      },
+      sessionRunId: 'wrun_123',
+      streamToken: 'stream_123',
+    })
+
+    expect(mockGetWritable).not.toHaveBeenCalled()
+    expect(result).toEqual({
+      error: null,
+      messages: [
+        {
+          id: 'msg_1',
           parts: [],
           role: 'assistant',
         },
