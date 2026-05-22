@@ -98,4 +98,20 @@ describe('readFileViaBashTool', () => {
       exists: false,
     })
   })
+
+  it('rethrows non-missing-file read failures', async () => {
+    const error = new Error('permission denied')
+    const execute = vi.fn().mockRejectedValue(error)
+    mockCreateSystemBashTool.mockResolvedValue({
+      tools: { readFile: { execute } },
+    })
+
+    await expect(
+      readFileViaBashTool({
+        agentId: 'agent_123',
+        options: {} as ToolExecutionOptions,
+        path: 'notes.md',
+      })
+    ).rejects.toBe(error)
+  })
 })
