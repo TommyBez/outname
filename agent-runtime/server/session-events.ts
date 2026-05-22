@@ -1,5 +1,5 @@
 import 'server-only'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import {
   type EnqueueAgentEventResult,
@@ -89,7 +89,12 @@ export async function dispatchInvocation(input: {
   const [child] = await db
     .select()
     .from(agent)
-    .where(eq(agent.id, input.childAgentId))
+    .where(
+      and(
+        eq(agent.id, input.childAgentId),
+        eq(agent.userId, input.parentUserId)
+      )
+    )
     .limit(1)
   if (!child) {
     throw nonRetryableStepError(
