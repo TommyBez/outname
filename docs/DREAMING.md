@@ -489,13 +489,17 @@ for scheduled events).
 | Integration | fixture sandbox dir → sweep → expected `MEMORY.md` markers |
 | Workflow | `dreaming` event dispatches `handleDreaming`, budget skip invokes zero steps |
 
-## Rollout
+## Cutover
 
-1. Feature flag `dreamingPipelineV2` per agent or environment.
-2. Shadow mode (optional): run sweep, write manifest + `.dreams/`, **do not**
-   append `MEMORY.md` until validated.
-3. Enable promotion; disable v1 LLM dreaming path.
-4. Remove `handleHeartbeat` dreaming branch and `buildDreamingKickoff`.
+No feature flags or shadow mode. When `memory-core` ships, it **replaces** v1 in
+one release:
+
+- `workflow.ts` dispatches `handleDreaming` only (remove `handleHeartbeat` dreaming branch).
+- Delete `buildDreamingKickoff` and LLM-based dreaming instructions from the agent path.
+- Scheduled and manual **Dream now** both run the new sweep.
+
+Existing `DREAMS.md` / `MEMORY.md` content is left as-is; no retroactive promotion
+from old diary entries.
 
 ## Implementation sequence
 
@@ -505,7 +509,7 @@ for scheduled events).
 | 2 | Light + log ingestion + tests |
 | 3 | REM structured LLM + phase signals + tests |
 | 4 | Deep + `MEMORY.md` append |
-| 5 | `handleDreaming`, workflow wiring, budget/scheduler semantics, remove v1 LLM sweep |
+| 5 | `handleDreaming`, workflow wiring, budget/scheduler semantics, delete v1 dreaming path |
 | 6 | Diary report + diary narrative (best-effort) + `DREAMS.md` + UI copy + AGENTS template |
 | 7 | Session ingestion + optional schedule hour |
 
