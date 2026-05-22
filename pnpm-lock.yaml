@@ -17,6 +17,9 @@ importers:
       '@chat-adapter/state-redis':
         specifier: ^4.29.0
         version: 4.29.0(@opentelemetry/api@1.9.1)(ai@6.0.184(zod@4.4.3))(zod@4.4.3)
+      '@chat-adapter/web':
+        specifier: ^4.29.0
+        version: 4.29.0(@ai-sdk/react@3.0.186(react@19.2.5)(zod@4.4.3))(ai@6.0.184(zod@4.4.3))(react@19.2.5)(zod@4.4.3)
       '@hookform/resolvers':
         specifier: ^3.9.1
         version: 3.10.0(react-hook-form@7.71.1(react@19.2.5))
@@ -725,6 +728,31 @@ packages:
   '@chat-adapter/state-redis@4.29.0':
     resolution: {integrity: sha512-Nn/PMSrkavIwFbNt1yyIZ0VZ1b5hT8Gw0Ujcnvnv+JlfBGz44XEE0/+NRLRx07mDndov1MlUkGjBHuKPZcS1Tg==}
     engines: {node: '>=20'}
+
+  '@chat-adapter/web@4.29.0':
+    resolution: {integrity: sha512-6DD03N7mb9sa09oPyVV3EF5TQWieC4FhfW06pFcn/KwPkPlLAxCj53sIxMI41wBn9MImsjQ0Kvz59Ce7rzx4Gg==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@ai-sdk/react': ^3
+      '@ai-sdk/svelte': ^4
+      '@ai-sdk/vue': ^3
+      ai: ^6
+      react: ^19
+      svelte: ^5
+      vue: ^3
+    peerDependenciesMeta:
+      '@ai-sdk/react':
+        optional: true
+      '@ai-sdk/svelte':
+        optional: true
+      '@ai-sdk/vue':
+        optional: true
+      react:
+        optional: true
+      svelte:
+        optional: true
+      vue:
+        optional: true
 
   '@chevrotain/cst-dts-gen@12.0.0':
     resolution: {integrity: sha512-fSL4KXjTl7cDgf0B5Rip9Q05BOrYvkJV/RrBTE/bKDN096E4hN/ySpcBK5B24T76dlQ2i32Zc3PAE27jFnFrKg==}
@@ -8745,6 +8773,18 @@ snapshots:
       - '@node-rs/xxhash'
       - '@opentelemetry/api'
       - ai
+      - supports-color
+      - zod
+
+  '@chat-adapter/web@4.29.0(@ai-sdk/react@3.0.186(react@19.2.5)(zod@4.4.3))(ai@6.0.184(zod@4.4.3))(react@19.2.5)(zod@4.4.3)':
+    dependencies:
+      '@chat-adapter/shared': 4.29.0(ai@6.0.184(zod@4.4.3))(zod@4.4.3)
+      ai: 6.0.184(zod@4.4.3)
+      chat: 4.29.0(ai@6.0.184(zod@4.4.3))(zod@4.4.3)
+    optionalDependencies:
+      '@ai-sdk/react': 3.0.186(react@19.2.5)(zod@4.4.3)
+      react: 19.2.5
+    transitivePeerDependencies:
       - supports-color
       - zod
 
