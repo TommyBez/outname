@@ -21,3 +21,7 @@ export function conversationListTag(agentId: string) {
 export function userBudgetTag(userId: string) {
   return `user-budget-${userId}`
 }
+
+export function userTimezoneTag(userId: string) {
+  return `user-timezone-${userId}`
+}

@@ -1,5 +1,4 @@
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { formatAgentScheduleInline } from '@/agents/format'
 import { refreshAgentCapabilitySummary } from '@/agents/server/capability-summary'
 import { createAgentForUser } from '@/agents/server/creation-service'
 import type {
@@ -15,6 +14,7 @@ import {
   userAgentsTag,
   userBudgetTag,
 } from '@/shared/server/cache-tags'
+import { getUserTimeDisplay } from '@/shared/server/user-time-display'
 import { attachMaintainerToolForUser } from '@/tools/server/attachment-service/maintainer'
 import { attachSubAgentForUser } from '@/tools/server/attachment-service/sub-agent'
 import type { AttachResult } from '@/tools/server/attachment-service/types'
@@ -24,9 +24,12 @@ export async function createRequestedAgent(input: {
   toolCallId: string
   userId: string
 }): Promise<AgentCreationResult> {
-  const identityCard = resolveIdentityCard(input.input)
-  const soul = resolveSoul(input.input)
-  const instructions = resolveInstructions(input.input)
+  const [display, identityCard, soul] = await Promise.all([
+    getUserTimeDisplay(input.userId),
+    Promise.resolve(resolveIdentityCard(input.input)),
+    Promise.resolve(resolveSoul(input.input)),
+  ])
+  const instructions = resolveInstructions(input.input, display)
 
   const created = await createAgentForUser({
     userId: input.userId,
@@ -178,7 +181,10 @@ function resolveSoul(input: AgentCreationRequest): string {
   ].join('\n')
 }
 
-function resolveInstructions(input: AgentCreationRequest): string {
+function resolveInstructions(
+  input: AgentCreationRequest,
+  display: Awaited<ReturnType<typeof getUserTimeDisplay>>
+): string {
   const explicit = input.instructions?.trim()
   if (explicit) {
     return explicit
@@ -194,7 +200,7 @@ function resolveInstructions(input: AgentCreationRequest): string {
     '',
     '## Heartbeat',
     input.heartbeat.enabled
-      ? `Wake ${formatAgentScheduleInline({
+      ? `Wake ${display.agentScheduleInline({
           enabled: input.heartbeat.enabled,
           intervalMinutes: input.heartbeat.intervalMinutes,
           mode: input.heartbeat.mode,

@@ -10,6 +10,7 @@ import { AppShell } from '@/shared/components/layout/app-shell'
 import type { Agent } from '@/shared/db/schema'
 import { getCachedAgentsForUser } from '@/shared/server/data'
 import { createPrivatePageMetadata } from '@/shared/server/site-metadata'
+import { getUserTimeDisplay } from '@/shared/server/user-time-display'
 
 export const metadata: Metadata = createPrivatePageMetadata(
   'Agents',
@@ -49,7 +50,10 @@ export default function AgentsListPage() {
 
 async function AgentsListBody() {
   const session = await requireSession()
-  const agents = await getCachedAgentsForUser(session.user.id)
+  const [agents, display] = await Promise.all([
+    getCachedAgentsForUser(session.user.id),
+    getUserTimeDisplay(session.user.id),
+  ])
 
   if (agents.length === 0) {
     return (
@@ -71,7 +75,12 @@ async function AgentsListBody() {
     )
   }
 
-  return <AgentRegistry agents={agents.map(toRegistryAgent)} />
+  return (
+    <AgentRegistry
+      agents={agents.map(toRegistryAgent)}
+      timeZone={display.timeZone}
+    />
+  )
 }
 
 function AgentsListSkeleton() {

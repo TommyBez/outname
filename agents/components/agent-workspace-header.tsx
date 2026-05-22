@@ -12,7 +12,6 @@ import {
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { TriggerButton } from '@/agents/components/trigger-button'
-import { formatAgentScheduleInline } from '@/agents/format'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -39,7 +38,13 @@ const WORKSPACE_TABS = [
   { key: 'memory', label: 'Memory', icon: Database },
 ] as const
 
-export function AgentWorkspaceHeader({ agent }: { agent: HeaderAgent }) {
+export function AgentWorkspaceHeader({
+  agent,
+  heartbeatScheduleLabel,
+}: {
+  agent: HeaderAgent
+  heartbeatScheduleLabel: string
+}) {
   const pathname = usePathname()
 
   return (
@@ -72,12 +77,7 @@ export function AgentWorkspaceHeader({ agent }: { agent: HeaderAgent }) {
                 </Badge>
                 <Badge variant="outline">{agent.model}</Badge>
                 <Badge variant="secondary">
-                  {`Heartbeat ${formatAgentScheduleInline({
-                    enabled: agent.heartbeatEnabled,
-                    intervalMinutes: agent.heartbeatIntervalMinutes,
-                    mode: agent.heartbeatScheduleMode,
-                    times: agent.heartbeatScheduleTimes,
-                  })}`}
+                  {`Heartbeat ${heartbeatScheduleLabel}`}
                 </Badge>
                 <Badge variant="secondary">
                   {`Dreaming ${agent.dreamingEnabled ? 'daily' : 'off'}`}

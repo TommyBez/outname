@@ -76,6 +76,7 @@ export function HeartbeatSettings({
   setIntervalMinutes,
   setScheduleMode,
   setScheduleTimes,
+  timezoneLabel,
 }: {
   heartbeatEnabled: boolean
   intervalMinutes: number
@@ -85,6 +86,7 @@ export function HeartbeatSettings({
   setIntervalMinutes: (value: number) => void
   setScheduleMode: (value: AgentScheduleMode) => void
   setScheduleTimes: (value: string[]) => void
+  timezoneLabel: string
 }) {
   return (
     <div className="swiss-diagonal grid gap-4 border-2 border-foreground bg-muted p-5 md:grid-cols-[12rem_minmax(0,1fr)]">
@@ -118,6 +120,7 @@ export function HeartbeatSettings({
             setTimes={setScheduleTimes}
             times={scheduleTimes}
             timesId="agent-heartbeat-times"
+            timezoneLabel={timezoneLabel}
           />
         ) : null}
       </div>
@@ -167,6 +170,7 @@ function ScheduleControls({
   setTimes,
   times,
   timesId,
+  timezoneLabel,
 }: {
   intervalHelpText: string
   intervalId: string
@@ -178,6 +182,7 @@ function ScheduleControls({
   setTimes: (value: string[]) => void
   times: string[]
   timesId: string
+  timezoneLabel: string
 }) {
   function changeMode(value: AgentScheduleMode) {
     setMode(value)
@@ -206,7 +211,12 @@ function ScheduleControls({
         </Select>
       </div>
       {mode === 'daily_times' ? (
-        <DailyTimesEditor id={timesId} setTimes={setTimes} times={times} />
+        <DailyTimesEditor
+          id={timesId}
+          setTimes={setTimes}
+          times={times}
+          timezoneLabel={timezoneLabel}
+        />
       ) : (
         <IntervalSelect
           helpText={intervalHelpText}
@@ -224,10 +234,12 @@ function DailyTimesEditor({
   id,
   setTimes,
   times,
+  timezoneLabel,
 }: {
   id: string
   setTimes: (value: string[]) => void
   times: string[]
+  timezoneLabel: string
 }) {
   const visibleTimes = times.length > 0 ? times : ['09:00']
   const rows = scheduleTimeRows(id, visibleTimes)
@@ -290,8 +302,9 @@ function DailyTimesEditor({
         Add time
       </Button>
       <p className="text-muted-foreground text-xs">
-        Times use your account timezone and run on the first cron tick after the
-        selected time.
+        Times use your account timezone (
+        <span className="font-mono">{timezoneLabel}</span>) and run on the first
+        cron tick after the selected time.
       </p>
     </div>
   )

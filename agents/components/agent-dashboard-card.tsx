@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/collapsible'
 import { cn } from '@/lib/utils'
 import type { AgentScheduleMode } from '@/shared/agent-schedule'
+import { formatMediumDateTimeInTimeZone } from '@/shared/format-timezone'
 
 export interface DashboardAgent {
   dreamingEnabled: boolean
@@ -39,10 +40,12 @@ export function AgentDashboardCard({
   agent,
   budgetEntries,
   eventSummaries,
+  timeZone,
 }: {
   agent: DashboardAgent
   budgetEntries?: BudgetSummaryEntry[]
   eventSummaries?: AgentEventSummary[]
+  timeZone: string
 }) {
   const [open, setOpen] = useState(false)
   const events = eventSummaries ?? []
@@ -103,6 +106,7 @@ export function AgentDashboardCard({
             agent={agent}
             budgetEntries={entries}
             eventSummaries={events}
+            timeZone={timeZone}
           />
         </CollapsibleContent>
       </article>
@@ -114,12 +118,17 @@ function AgentActivityPanel({
   agent,
   budgetEntries,
   eventSummaries,
+  timeZone,
 }: {
   agent: DashboardAgent
   budgetEntries: BudgetSummaryEntry[]
   eventSummaries: AgentEventSummary[]
+  timeZone: string
 }) {
-  const schedule = useMemo(() => buildSchedule(agent), [agent])
+  const schedule = useMemo(
+    () => buildSchedule(agent, timeZone),
+    [agent, timeZone]
+  )
   const activeEvents = useMemo(
     () => latestActiveEvents(eventSummaries),
     [eventSummaries]
@@ -372,7 +381,7 @@ function getStatusLabel(agent: DashboardAgent): string {
   return 'event ready'
 }
 
-function buildSchedule(agent: DashboardAgent) {
+function buildSchedule(agent: DashboardAgent, timeZone: string) {
   return [
     {
       label: 'Heartbeat',
@@ -380,12 +389,13 @@ function buildSchedule(agent: DashboardAgent) {
         enabled: agent.heartbeatEnabled,
         intervalMinutes: agent.heartbeatIntervalMinutes,
         mode: agent.heartbeatScheduleMode,
+        timeZone,
         times: agent.heartbeatScheduleTimes,
       }),
     },
     {
       label: 'Last heartbeat',
-      value: formatNullableDate(agent.lastHeartbeatAt),
+      value: formatNullableAgentTimestamp(agent.lastHeartbeatAt, timeZone),
     },
     {
       label: 'Dreaming',
@@ -393,7 +403,7 @@ function buildSchedule(agent: DashboardAgent) {
     },
     {
       label: 'Last dream',
-      value: formatNullableDate(agent.lastDreamingAt),
+      value: formatNullableAgentTimestamp(agent.lastDreamingAt, timeZone),
     },
   ]
 }
@@ -538,14 +548,14 @@ function eventTime(event: AgentEventSummary): Date {
   return new Date(event.completedAt ?? event.startedAt ?? event.queuedAt)
 }
 
-function formatNullableDate(value: string | null): string {
+function formatNullableAgentTimestamp(
+  value: string | null,
+  timeZone: string
+): string {
   if (!value) {
     return 'Never'
   }
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value))
+  return formatMediumDateTimeInTimeZone(value, timeZone)
 }
 
 function getAgentPreview(

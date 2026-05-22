@@ -1,3 +1,5 @@
+'use client'
+
 import type { AgentCreationRequest } from '@/agents/server/creation-types'
 import {
   budgetReviewLines,
@@ -8,8 +10,10 @@ import {
 
 export function FinalConfigurationCard({
   config,
+  timeZone,
 }: {
   config: AgentCreationRequest | undefined
+  timeZone: string
 }) {
   if (!config) {
     return null
@@ -40,7 +44,7 @@ export function FinalConfigurationCard({
             value={[
               `Model: ${config.model}`,
               `Step limit: ${stepLimitLabel(config.stepLimit)}`,
-              `Heartbeat: ${scheduleLabel(config.heartbeat)}`,
+              `Heartbeat: ${scheduleLabel(config.heartbeat, timeZone)}`,
               `Dreaming: ${dreamingLabel(config.dreaming)}`,
             ].join('\n')}
           />

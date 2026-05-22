@@ -1,7 +1,9 @@
 import { Suspense } from 'react'
 import { AgentCreationChat } from '@/agents/components/agent-creation-chat'
+import { requireSession } from '@/auth/server/auth-guard'
 import { AppShell } from '@/shared/components/layout/app-shell'
 import { createPrivatePageMetadata } from '@/shared/server/site-metadata'
+import { getUserTimeDisplay } from '@/shared/server/user-time-display'
 
 export const metadata = createPrivatePageMetadata(
   'New agent',
@@ -28,9 +30,15 @@ export default function NewAgentPage() {
             <div className="h-[min(720px,calc(100svh-14rem))] min-h-[24rem] border-2 border-foreground bg-muted" />
           }
         >
-          <AgentCreationChat />
+          <NewAgentChat />
         </Suspense>
       </section>
     </AppShell>
   )
+}
+
+async function NewAgentChat() {
+  const session = await requireSession()
+  const display = await getUserTimeDisplay(session.user.id)
+  return <AgentCreationChat timeZone={display.timeZone} />
 }

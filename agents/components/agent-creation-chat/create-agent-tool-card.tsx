@@ -28,9 +28,11 @@ type ConfirmationApproval = ComponentProps<typeof Confirmation>['approval']
 export function CreateAgentToolCard({
   part,
   addToolApprovalResponse,
+  timeZone,
 }: {
   addToolApprovalResponse: ToolApprovalResponder
   part: CreateAgentToolPart
+  timeZone: string
 }) {
   // While input is streaming, the Tool header's "Pending"/"Running" badge is
   // the entire UI — no redundant spinner panel.
@@ -48,7 +50,7 @@ export function CreateAgentToolCard({
       <Tool defaultOpen>
         <ToolHeader state={part.state} type={part.type} />
         <ToolContent>
-          <FinalConfigurationCard config={part.input} />
+          <FinalConfigurationCard config={part.input} timeZone={timeZone} />
           <Confirmation
             approval={part.approval as ConfirmationApproval}
             className="rounded-none border-2 border-foreground"

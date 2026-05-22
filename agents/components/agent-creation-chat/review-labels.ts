@@ -2,7 +2,8 @@ import { formatAgentScheduleInline } from '@/agents/format'
 import type { AgentCreationRequest } from '@/agents/server/creation-types'
 
 export function scheduleLabel(
-  schedule: AgentCreationRequest['heartbeat']
+  schedule: AgentCreationRequest['heartbeat'],
+  timeZone?: string
 ): string {
   if (!schedule.enabled) {
     return 'off'
@@ -11,6 +12,7 @@ export function scheduleLabel(
     enabled: schedule.enabled,
     intervalMinutes: schedule.intervalMinutes,
     mode: schedule.mode,
+    timeZone,
     times: schedule.times,
   })
 }

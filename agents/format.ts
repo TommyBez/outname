@@ -3,6 +3,7 @@ import {
   normalizeAgentScheduleMode,
   normalizeDailyScheduleTimes,
 } from '@/shared/agent-schedule'
+import { formatScheduleTimezoneSuffix } from '@/shared/format-timezone'
 
 const MINUTES_PER_HOUR = 60
 const MINUTES_PER_DAY = MINUTES_PER_HOUR * 24
@@ -38,6 +39,7 @@ export function formatAgentSchedule(input: {
   enabled: boolean
   intervalMinutes: number
   mode: AgentScheduleMode
+  timeZone?: string
   times: readonly string[] | null | undefined
 }): string {
   if (!input.enabled) {
@@ -45,7 +47,10 @@ export function formatAgentSchedule(input: {
   }
   if (normalizeAgentScheduleMode(input.mode) === 'daily_times') {
     const times = normalizeDailyScheduleTimes(input.times)
-    return times.length > 0 ? `At ${times.join(', ')}` : 'No times set'
+    const suffix = input.timeZone
+      ? formatScheduleTimezoneSuffix(input.timeZone)
+      : ''
+    return times.length > 0 ? `At ${times.join(', ')}${suffix}` : 'No times set'
   }
   return formatAgentCadence(input.intervalMinutes)
 }
@@ -54,6 +59,7 @@ export function formatAgentScheduleInline(input: {
   enabled: boolean
   intervalMinutes: number
   mode: AgentScheduleMode
+  timeZone?: string
   times: readonly string[] | null | undefined
 }): string {
   if (!input.enabled) {
@@ -61,7 +67,10 @@ export function formatAgentScheduleInline(input: {
   }
   if (normalizeAgentScheduleMode(input.mode) === 'daily_times') {
     const times = normalizeDailyScheduleTimes(input.times)
-    return times.length > 0 ? `at ${times.join(', ')}` : 'no times set'
+    const suffix = input.timeZone
+      ? formatScheduleTimezoneSuffix(input.timeZone)
+      : ''
+    return times.length > 0 ? `at ${times.join(', ')}${suffix}` : 'no times set'
   }
   return formatAgentInterval(input.intervalMinutes)
 }

@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { listRecentAgentEvents } from '@/agent-runtime/server/agent-event-store'
-import { formatAgentSchedule } from '@/agents/format'
 import { requireSession } from '@/auth/server/auth-guard'
 import { BudgetIndicator } from '@/budgets/components/budget-indicator'
 import { loadBudgetSummary } from '@/budgets/server/summary'
@@ -12,7 +11,7 @@ import {
   getCachedAgentMemoryFile,
   getCachedAgentTools,
 } from '@/shared/server/data'
-import { formatNullableAgentDate } from './agent-format'
+import { getUserTimeDisplay } from '@/shared/server/user-time-display'
 
 type Params = Promise<{ agentId: string }>
 
@@ -32,16 +31,18 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
     notFound()
   }
 
-  const [budgetEntries, tools, logs, dreams, recentEvents] = await Promise.all([
-    loadBudgetSummary({
-      userId: session.user.id,
-      scope: { type: 'agent', agentId: agent.id },
-    }),
-    getCachedAgentTools(agent.id),
-    getCachedAgentLogFiles(agent.id),
-    getCachedAgentMemoryFile({ agentId: agent.id, path: 'DREAMS.md' }),
-    listRecentAgentEvents({ agentId: agent.id, limit: 6 }),
-  ])
+  const [budgetEntries, tools, logs, dreams, recentEvents, display] =
+    await Promise.all([
+      loadBudgetSummary({
+        userId: session.user.id,
+        scope: { type: 'agent', agentId: agent.id },
+      }),
+      getCachedAgentTools(agent.id),
+      getCachedAgentLogFiles(agent.id),
+      getCachedAgentMemoryFile({ agentId: agent.id, path: 'DREAMS.md' }),
+      listRecentAgentEvents({ agentId: agent.id, limit: 6 }),
+      getUserTimeDisplay(session.user.id),
+    ])
 
   const connectedTools = tools.filter((tool) => tool.status === 'connected')
   const pendingTools = tools.filter((tool) => tool.status === 'pending')
@@ -63,7 +64,7 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
                 { label: 'Model', value: agent.model },
                 {
                   label: 'Heartbeat',
-                  value: formatAgentSchedule({
+                  value: display.agentSchedule({
                     enabled: agent.heartbeatEnabled,
                     intervalMinutes: agent.heartbeatIntervalMinutes,
                     mode: agent.heartbeatScheduleMode,
@@ -72,7 +73,7 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
                 },
                 {
                   label: 'Last heartbeat',
-                  value: formatNullableAgentDate(agent.lastHeartbeatAt),
+                  value: display.nullableDateTime(agent.lastHeartbeatAt),
                 },
                 {
                   label: 'Dreaming',
@@ -80,7 +81,7 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
                 },
                 {
                   label: 'Last dream',
-                  value: formatNullableAgentDate(agent.lastDreamingAt),
+                  value: display.nullableDateTime(agent.lastDreamingAt),
                 },
               ]}
             />
@@ -121,7 +122,7 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
                 {
                   label: 'Latest log',
                   value: logs[0]
-                    ? formatNullableAgentDate(logs[0].updatedAt)
+                    ? display.nullableDateTime(logs[0].updatedAt)
                     : 'Never',
                 },
               ]}
@@ -211,7 +212,7 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
                     {event.type} · {event.source}
                   </span>
                   <span className="font-mono text-muted-foreground text-xs md:text-right">
-                    {formatNullableAgentDate(event.queuedAt)}
+                    {display.mediumDateTime(event.queuedAt)}
                   </span>
                 </Link>
               </li>
@@ -277,7 +278,7 @@ function StateTile({ label, value }: { label: string; value: string }) {
       <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
         {label}
       </p>
-      <p className="mt-2 font-black font-serif text-2xl uppercase leading-none tracking-tighter">
+      <p className="mt-2 font-black font-serif text-3xl uppercase leading-none tracking-tighter">
         {value}
       </p>
     </div>
@@ -287,10 +288,10 @@ function StateTile({ label, value }: { label: string; value: string }) {
 function OverviewSkeleton() {
   return (
     <div className="grid gap-6 md:grid-cols-2">
-      {[0, 1, 2, 3].map((index) => (
+      {[0, 1, 2, 3].map((i) => (
         <div
           className="h-48 animate-pulse border-2 border-foreground bg-muted"
-          key={index}
+          key={i}
         />
       ))}
     </div>

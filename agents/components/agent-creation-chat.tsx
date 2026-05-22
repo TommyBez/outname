@@ -21,9 +21,13 @@ import type { AgentCreationMessage } from './agent-creation-chat/types'
 
 interface AgentCreationChatProps {
   className?: string
+  timeZone: string
 }
 
-export function AgentCreationChat({ className }: AgentCreationChatProps) {
+export function AgentCreationChat({
+  className,
+  timeZone,
+}: AgentCreationChatProps) {
   const [input, setInput] = useState('')
   const router = useRouter()
   const {
@@ -65,6 +69,7 @@ export function AgentCreationChat({ className }: AgentCreationChatProps) {
         addToolApprovalResponse={addToolApprovalResponse}
         messages={messages}
         sendMessage={sendMessage}
+        timeZone={timeZone}
       />
 
       <div className="sticky bottom-0 z-10 shrink-0 bg-background px-4 pt-4 pb-4">
