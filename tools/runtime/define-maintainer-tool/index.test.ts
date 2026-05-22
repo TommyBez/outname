@@ -137,7 +137,9 @@ test('bundle child tools inherit the bundle sandbox manifest id', async () => {
 
   const result = await built.test_run.execute({})
   expect(result.ok).toBe(false)
-  expect(result.message).toBe('Unknown tool sandbox manifest: missing-manifest')
+  expect(result.message).toBe(
+    'tool sandbox manifest unavailable for "missing-manifest": Unknown tool sandbox manifest: missing-manifest'
+  )
 })
 
 test('brokered tools receive encrypted credential overrides in preserved tool config', async () => {
