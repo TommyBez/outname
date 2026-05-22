@@ -16,6 +16,7 @@ import { AppShell } from '@/shared/components/layout/app-shell'
 import type { WaitlistEntry } from '@/shared/db/schema'
 import { formatDateTime, formatRelative } from '@/shared/server/format'
 import { createPrivatePageMetadata } from '@/shared/server/site-metadata'
+import { InviteUserForm } from '@/waitlist/components/invite-user-form'
 import { WaitlistActionButtons } from '@/waitlist/components/waitlist-action-buttons'
 import {
   WAITLIST_ENTRY_STATUSES,
@@ -128,8 +129,9 @@ async function WaitlistSettingsContent({
               Waitlist
             </h1>
             <p className="mt-4 max-w-2xl text-muted-foreground text-sm leading-relaxed">
-              Review pending signups, provision accounts when access is ready,
-              and resend confirmation or access emails.
+              Invite someone directly, review pending signups, provision
+              accounts when access is ready, and resend confirmation or access
+              emails.
             </p>
           </div>
           <Link
@@ -142,6 +144,16 @@ async function WaitlistSettingsContent({
       </header>
 
       <section className="border-foreground border-y-2 py-8">
+        <div className="mb-8">
+          <p className="swiss-label mb-4 text-accent">Invite user</p>
+          <p className="mb-4 max-w-2xl text-muted-foreground text-sm leading-relaxed">
+            Send a product introduction and sign-in link to any email address.
+            The account is provisioned immediately; no waitlist confirmation is
+            required.
+          </p>
+          <InviteUserForm />
+        </div>
+
         <form className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_repeat(5,minmax(0,1fr))_auto]">
           <label className="flex flex-col gap-2">
             <span className="font-bold text-muted-foreground text-xs uppercase tracking-wider">

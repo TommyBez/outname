@@ -162,11 +162,11 @@ function WaitlistSection() {
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
       <div>
         <p className="font-black font-serif text-xl uppercase tracking-[-0.04em]">
-          Manage waitlist confirmations and invites
+          Invite users and manage the waitlist
         </p>
         <p className="mt-0.5 text-muted-foreground text-xs">
-          Review pending signups, resend confirmation emails, and send access
-          invites.
+          Send product invites by email, review signups, and resend confirmation
+          or access messages.
         </p>
       </div>
       <Link
