@@ -1,10 +1,8 @@
 import 'server-only'
 import { and, eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
-import {
-  getOrCreateConversationForAgent,
-  newChatConversationId,
-} from '@/chat/server/chat'
+import { newChatConversationId } from '@/chat/lib/new-chat-conversation-id'
+import { getOrCreateConversationForAgent } from '@/chat/server/chat'
 import { db } from '@/shared/db'
 import {
   type Agent,

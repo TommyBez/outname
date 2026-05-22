@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { requireSession } from '@/auth/server/auth-guard'
 import { AgentChat } from '@/chat/components/agent-chat'
-import { newChatConversationId } from '@/chat/server/chat'
+import { newChatConversationId } from '@/chat/lib/new-chat-conversation-id'
 import { getCachedAgentByIdForUser } from '@/shared/server/data'
 
 type Params = Promise<{ agentId: string }>
