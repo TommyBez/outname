@@ -4,6 +4,7 @@ import {
   index,
   integer,
   jsonb,
+  pgEnum,
   pgTable,
   text,
   timestamp,
@@ -20,14 +21,31 @@ export type AgentEventStatus =
   | 'failed'
   | 'cancelled'
 
-export type AgentEventType = 'chat' | 'heartbeat' | 'dreaming' | 'invocation'
+export const agentEventTypeValues = [
+  'heartbeat',
+  'dreaming',
+  'invocation',
+] as const
 
-export type AgentEventSource =
-  | 'chat'
-  | 'slack'
-  | 'scheduler'
-  | 'manual'
-  | 'invocation'
+export type AgentEventType = (typeof agentEventTypeValues)[number]
+
+export const agentEventTypeEnum = pgEnum(
+  'agent_event_type',
+  agentEventTypeValues
+)
+
+export const agentEventSourceValues = [
+  'scheduler',
+  'manual',
+  'invocation',
+] as const
+
+export type AgentEventSource = (typeof agentEventSourceValues)[number]
+
+export const agentEventSourceEnum = pgEnum(
+  'agent_event_source',
+  agentEventSourceValues
+)
 
 export const agent = pgTable(
   'agent',
@@ -88,8 +106,8 @@ export const agentEvents = pgTable(
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
-    type: text('type').$type<AgentEventType>().notNull(),
-    source: text('source').$type<AgentEventSource>().notNull(),
+    type: agentEventTypeEnum('type').notNull(),
+    source: agentEventSourceEnum('source').notNull(),
     status: text('status').$type<AgentEventStatus>().notNull(),
     idempotencyKey: text('idempotency_key').notNull(),
     concurrencyKey: text('concurrency_key'),

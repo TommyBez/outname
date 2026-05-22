@@ -8,6 +8,10 @@ import {
   subAgentModelText,
 } from '@/agent-runtime/server/sub-agent-tool-output'
 import { collectSubAgentMessages } from './invocation-stream'
+import {
+  progressStreamNamespace,
+  type SubAgentProgressTarget,
+} from './progress-target'
 
 export interface AgentToolHandle {
   childAgentId: string
@@ -22,7 +26,7 @@ export interface AgentToolHandle {
   parentRunId: string | null
   parentToolId: string
   parentUserId: string
-  streamNamespace?: string | null
+  progressTarget: SubAgentProgressTarget
 }
 
 // This tool dispatches an invocation event to a child agent and then tails the
@@ -56,7 +60,7 @@ export function buildAgentTool(handle: AgentToolHandle) {
           messages,
           status: 'running',
         }),
-        streamNamespace: handle.streamNamespace ?? null,
+        progressTarget: handle.progressTarget,
         toolCallId,
       })
 
@@ -72,7 +76,7 @@ export function buildAgentTool(handle: AgentToolHandle) {
             progress: {
               childAgentId: handle.childAgentId,
               childName: handle.childName,
-              streamNamespace: handle.streamNamespace ?? null,
+              target: handle.progressTarget,
               toolCallId,
               toolName: handle.parentToolId,
             },
@@ -156,17 +160,18 @@ async function dispatchSubAgentInvocation(input: {
 
 async function emitPreliminarySubAgentOutput(input: {
   output: SubAgentToolOutput
-  streamNamespace: string | null
+  progressTarget: SubAgentProgressTarget
   toolCallId: string
 }): Promise<void> {
   'use step'
-  if (!input.streamNamespace) {
+  const streamNamespace = progressStreamNamespace(input.progressTarget)
+  if (!streamNamespace) {
     return
   }
 
   try {
     const writable = getWritable<UIMessageChunk>({
-      namespace: input.streamNamespace,
+      namespace: streamNamespace,
     })
     const writer = writable.getWriter()
     try {

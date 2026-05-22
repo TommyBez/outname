@@ -48,11 +48,11 @@ export async function listSlackBindingsForAgent(
   const installLookup = new Map(installs.map((row) => [row.externalId, row]))
 
   const bindings: SlackBindingView[] = rows.map((row) => {
-    const install = installLookup.get(row.teamId)
+    const install = installLookup.get(row.externalScopeId)
     const meta = (install?.metadata ?? {}) as { teamName?: string }
     return {
       id: row.id,
-      teamId: row.teamId,
+      teamId: row.externalScopeId,
       externalKey: row.externalKey,
       kind: row.kind,
       workspaceName: meta.teamName ?? null,

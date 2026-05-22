@@ -10,44 +10,80 @@ import {
   type Agent,
   agent,
   agentChannelBindings,
+  type ChannelInstallation,
   channelThreadConversations,
   chatConversation,
 } from '@/shared/db/schema'
-import { getChannelInstallationsByTeam } from './installations'
-import type { ChannelId, ChannelRoute, IncomingChannelMessage } from './types'
+import { getChannelInstallationsByScope } from './installations'
+import type { ChannelId, ChannelRoute, IncomingChannelTurn } from './types'
+
+export interface ResolvedChannelRoute {
+  agent: Agent
+  installationCreatedAt: Date
+  installationUserId: string
+}
 
 // Resolve every agent that should receive this incoming thread. Multiple app
 // users may have installed the same workspace, so fan-out is scoped by
 // installation owner and then by that owner's binding.
-export async function resolveAgentsForIncomingMessage(
-  msg: IncomingChannelMessage
-): Promise<Agent[]> {
-  if (!msg.teamId) {
+export async function resolveRoutesForIncomingMessage(
+  msg: IncomingChannelTurn
+): Promise<ResolvedChannelRoute[]> {
+  if (!msg.externalScopeId) {
     return []
   }
 
-  const installations = await getChannelInstallationsByTeam(
+  const installations = await getChannelInstallationsByScope(
     msg.channel,
-    msg.teamId
+    msg.externalScopeId
   )
   if (installations.length === 0) {
     return []
   }
 
-  const agents: Agent[] = []
+  const routes: ResolvedChannelRoute[] = []
   const seen = new Set<string>()
   for (const install of installations) {
     const candidate = await findCandidateAgentForUser(msg, install.userId)
     if (candidate && !seen.has(candidate.id)) {
       seen.add(candidate.id)
-      agents.push(candidate)
+      routes.push({
+        agent: candidate,
+        installationCreatedAt: install.createdAt,
+        installationUserId: install.userId,
+      })
     }
   }
-  return agents
+  return routes.sort(compareResolvedRoutes)
+}
+
+export async function resolveAgentsForIncomingMessage(
+  msg: IncomingChannelTurn
+): Promise<Agent[]> {
+  const routes = await resolveRoutesForIncomingMessage(msg)
+  return routes.map((route) => route.agent)
+}
+
+function compareResolvedRoutes(
+  left: ResolvedChannelRoute,
+  right: ResolvedChannelRoute
+): number {
+  const createdDelta =
+    left.installationCreatedAt.getTime() - right.installationCreatedAt.getTime()
+  if (createdDelta !== 0) {
+    return createdDelta
+  }
+  const userDelta = left.installationUserId.localeCompare(
+    right.installationUserId
+  )
+  if (userDelta !== 0) {
+    return userDelta
+  }
+  return left.agent.id.localeCompare(right.agent.id)
 }
 
 async function findCandidateAgentForUser(
-  msg: IncomingChannelMessage,
+  msg: IncomingChannelTurn,
   userId: string
 ): Promise<Agent | null> {
   // Sticky thread mapping wins when this user already owns the thread.
@@ -57,8 +93,8 @@ async function findCandidateAgentForUser(
     .where(
       and(
         eq(channelThreadConversations.channel, msg.channel),
-        eq(channelThreadConversations.teamId, msg.teamId),
-        eq(channelThreadConversations.externalThreadKey, msg.externalThreadKey),
+        eq(channelThreadConversations.externalScopeId, msg.externalScopeId),
+        eq(channelThreadConversations.externalThreadId, msg.externalThreadId),
         eq(channelThreadConversations.userId, userId)
       )
     )
@@ -72,9 +108,9 @@ async function findCandidateAgentForUser(
 
   const direct = await findBinding({
     channel: msg.channel,
-    teamId: msg.teamId,
-    externalKey: msg.externalRoutingKey,
-    kind: msg.externalRoutingKind,
+    externalScopeId: msg.externalScopeId,
+    externalKey: msg.routing.key,
+    kind: msg.routing.kind,
     userId,
   })
   if (direct) {
@@ -86,7 +122,7 @@ async function findCandidateAgentForUser(
 
 async function findBinding(input: {
   channel: ChannelId
-  teamId: string
+  externalScopeId: string
   externalKey: string
   kind: 'channel' | 'dm'
   userId: string
@@ -97,7 +133,7 @@ async function findBinding(input: {
     .where(
       and(
         eq(agentChannelBindings.channel, input.channel),
-        eq(agentChannelBindings.teamId, input.teamId),
+        eq(agentChannelBindings.externalScopeId, input.externalScopeId),
         eq(agentChannelBindings.externalKey, input.externalKey),
         eq(agentChannelBindings.kind, input.kind),
         eq(agentChannelBindings.userId, input.userId)
@@ -121,7 +157,10 @@ async function loadAgent(agentId: string): Promise<Agent | null> {
 // best-effort delete the losing orphan conversation row.
 export async function ensureConversationForThread(input: {
   agent: Agent
-  message: IncomingChannelMessage
+  installation?: ChannelInstallation | null
+  installationCreatedAt?: Date
+  installationUserId?: string
+  message: IncomingChannelTurn
 }): Promise<ChannelRoute> {
   const { agent: agentRow, message } = input
 
@@ -131,17 +170,21 @@ export async function ensureConversationForThread(input: {
     .where(
       and(
         eq(channelThreadConversations.channel, message.channel),
-        eq(channelThreadConversations.teamId, message.teamId),
+        eq(channelThreadConversations.externalScopeId, message.externalScopeId),
         eq(
-          channelThreadConversations.externalThreadKey,
-          message.externalThreadKey
+          channelThreadConversations.externalThreadId,
+          message.externalThreadId
         ),
         eq(channelThreadConversations.agentId, agentRow.id)
       )
     )
     .limit(1)
   if (existing[0]) {
-    return { agent: agentRow, conversationId: existing[0].conversationId }
+    return {
+      agent: agentRow,
+      conversationId: existing[0].conversationId,
+      ...routeInstallationMetadata(input, agentRow),
+    }
   }
 
   const conversationId = newChatConversationId()
@@ -161,17 +204,17 @@ export async function ensureConversationForThread(input: {
       id: `ctc_${nanoid(12)}`,
       userId: agentRow.userId,
       channel: message.channel,
-      teamId: message.teamId,
-      externalThreadKey: message.externalThreadKey,
+      externalScopeId: message.externalScopeId,
+      externalThreadId: message.externalThreadId,
       conversationId: conversation.id,
       agentId: agentRow.id,
-      metadata: message.threadMetadata ?? {},
+      metadata: message.providerMetadata ?? {},
     })
     .onConflictDoNothing({
       target: [
         channelThreadConversations.channel,
-        channelThreadConversations.teamId,
-        channelThreadConversations.externalThreadKey,
+        channelThreadConversations.externalScopeId,
+        channelThreadConversations.externalThreadId,
         channelThreadConversations.agentId,
       ],
     })
@@ -180,7 +223,11 @@ export async function ensureConversationForThread(input: {
     })
 
   if (inserted[0]) {
-    return { agent: agentRow, conversationId: inserted[0].conversationId }
+    return {
+      agent: agentRow,
+      conversationId: inserted[0].conversationId,
+      ...routeInstallationMetadata(input, agentRow),
+    }
   }
 
   // Another webhook won the unique-index race, so re-read the canonical
@@ -193,10 +240,10 @@ export async function ensureConversationForThread(input: {
     .where(
       and(
         eq(channelThreadConversations.channel, message.channel),
-        eq(channelThreadConversations.teamId, message.teamId),
+        eq(channelThreadConversations.externalScopeId, message.externalScopeId),
         eq(
-          channelThreadConversations.externalThreadKey,
-          message.externalThreadKey
+          channelThreadConversations.externalThreadId,
+          message.externalThreadId
         ),
         eq(channelThreadConversations.agentId, agentRow.id)
       )
@@ -204,7 +251,7 @@ export async function ensureConversationForThread(input: {
     .limit(1)
   if (!canonical) {
     throw new Error(
-      `channel_thread_conversations row missing after conflict (${message.channel}/${message.teamId}/${message.externalThreadKey}/${agentRow.id})`
+      `channel_thread_conversations row missing after conflict (${message.channel}/${message.externalScopeId}/${message.externalThreadId}/${agentRow.id})`
     )
   }
 
@@ -219,5 +266,27 @@ export async function ensureConversationForThread(input: {
     )
   }
 
-  return { agent: agentRow, conversationId: canonical.conversationId }
+  return {
+    agent: agentRow,
+    conversationId: canonical.conversationId,
+    ...routeInstallationMetadata(input, agentRow),
+  }
+}
+
+function routeInstallationMetadata(
+  input: {
+    installation?: ChannelInstallation | null
+    installationCreatedAt?: Date
+    installationUserId?: string
+  },
+  agentRow: Agent
+): Pick<ChannelRoute, 'installationCreatedAt' | 'installationUserId'> {
+  return {
+    installationCreatedAt:
+      input.installationCreatedAt ??
+      input.installation?.createdAt ??
+      new Date(0),
+    installationUserId:
+      input.installationUserId ?? input.installation?.userId ?? agentRow.userId,
+  }
 }

@@ -1,42 +1,42 @@
 import 'server-only'
-import type { UIMessage, UIMessageChunk } from 'ai'
-import { nanoid } from 'nanoid'
+import { createHash } from 'node:crypto'
+import { convertToModelMessages, type UIMessage } from 'ai'
 import { revalidateTag } from 'next/cache'
-import { getRun } from 'workflow/api'
+import { runRealtimeChatTurn } from '@/agent-runtime/server/realtime-chat-runner'
 import {
-  slackConcurrencyKey,
-  slackIdempotencyKey,
-} from '@/agent-runtime/server/agent-event-keys'
-import { dispatchChatTurn } from '@/agent-runtime/server/session-events'
-import { insertChatMessage } from '@/chat/server/chat'
+  type ChatMessageWriteResult,
+  loadChatHistory,
+  upsertChatMessage,
+} from '@/chat/server/chat'
 import { conversationListTag } from '@/shared/server/cache-tags'
 import {
   ensureConversationForThread,
-  resolveAgentsForIncomingMessage,
+  resolveRoutesForIncomingMessage,
 } from './routing'
-import type { ChannelReplySink, IncomingChannelMessage } from './types'
+import type {
+  ChannelReplySink,
+  IncomingChannelMessage,
+  IncomingChannelTurn,
+} from './types'
 
-// One inbound channel message can fan out to multiple user-owned agents bound to the same workspace.
+// One inbound channel message can fan out to multiple user-owned agents bound
+// to the same workspace. Fan-out is intentionally sequential and sorted by
+// installation.createdAt, installation.userId, then agent.id in routing.
 export async function runChannelChatTurn(input: {
-  message: IncomingChannelMessage
+  turn: IncomingChannelTurn
   sink: ChannelReplySink
 }): Promise<boolean> {
-  const { message, sink } = input
+  const { sink, turn } = input
+  const loadProviderHistory = memoizeProviderHistory(turn.providerHistory)
 
-  const agents = await resolveAgentsForIncomingMessage(message)
-  if (agents.length === 0) {
+  const resolvedRoutes = await resolveRoutesForIncomingMessage(turn)
+  if (resolvedRoutes.length === 0) {
     return false
   }
 
-  // Defer the thread-history fetch until after routing confirmed at least one
-  // bound agent. `thread.allMessages` can hit paginated platform APIs, so
-  // installed-but-unbound channels would otherwise pay for work no one reads.
-  // Shared across the fan-out loop below so multi-tenant installs only pay
-  // once even when several agents are bound to the same thread.
-  const modelMessages = await message.loadModelMessages?.()
-
   let handled = false
-  for (const agent of agents) {
+  for (const resolved of resolvedRoutes) {
+    const { agent } = resolved
     if (!agent.enabled) {
       await sink.postError(
         `Agent "${agent.name}" is paused. Enable it from the dashboard before sending more messages.`
@@ -45,152 +45,202 @@ export async function runChannelChatTurn(input: {
       continue
     }
 
-    const route = await ensureConversationForThread({ agent, message })
-
-    const userUiMessage: UIMessage = {
-      id: `msg_${nanoid(12)}`,
-      role: 'user',
-      parts: [{ type: 'text', text: message.text }],
-      metadata: {
-        source: message.channel,
-        teamId: message.teamId || null,
-        externalUserId: message.externalUserId,
-        externalUserDisplayName: message.externalUserDisplayName ?? null,
-        externalThreadKey: message.externalThreadKey,
-      },
-    }
-
-    // Persist the user turn before dispatch so workflow failures do not erase the inbound message.
-    await insertChatMessage({
-      conversationId: route.conversationId,
-      id: userUiMessage.id,
-      role: 'user',
-      parts: userUiMessage.parts,
-      metadata: userUiMessage.metadata,
+    const route = await ensureConversationForThread({
+      agent,
+      installationCreatedAt: resolved.installationCreatedAt,
+      installationUserId: resolved.installationUserId,
+      message: turn,
     })
+    const currentAndSkippedKeys = new Set([
+      turn.current.externalMessageKey,
+      ...(turn.skipped ?? []).map((message) => message.externalMessageKey),
+    ])
+    const providerHistory = (await loadProviderHistory()).filter(
+      (historyMessage) =>
+        !currentAndSkippedKeys.has(historyMessage.externalMessageKey)
+    )
+    await importUserMessages({
+      agentId: agent.id,
+      conversationId: route.conversationId,
+      messages: providerHistory,
+      turn,
+    })
+    await importUserMessages({
+      agentId: agent.id,
+      conversationId: route.conversationId,
+      messages: turn.skipped ?? [],
+      turn,
+    })
+
+    const userUiMessage = buildUserUiMessage({
+      agentId: agent.id,
+      message: turn.current,
+      turn,
+    })
+    const currentWrite = await persistUserMessage({
+      conversationId: route.conversationId,
+      message: turn.current,
+      userUiMessage,
+    })
+    if (currentWrite === 'unchanged') {
+      handled = true
+      continue
+    }
     revalidateTag(conversationListTag(agent.id), 'max')
 
     await sink.startTyping?.('Thinking...')
 
-    const slack = slackEventMetadata(agent.id, message)
-    const { sessionRunId, replyToken, workflowRunId } = await dispatchChatTurn({
-      agent,
-      concurrencyKey: slack?.concurrencyKey,
-      conversationId: route.conversationId,
-      extraPayload: slack?.payload,
-      idempotencyKey: slack?.idempotencyKey,
-      modelMessages,
-      source: message.channel,
-      uiMessages: [userUiMessage],
-    })
+    const canonicalHistory = await loadChatHistory(route.conversationId)
+    const modelMessages = await convertToModelMessages(canonicalHistory)
 
-    if (slack) {
-      if (!workflowRunId) {
-        await sink.postReply(
-          `Queued behind the current thread run for "${agent.name}".`
-        )
-      }
+    try {
+      await runRealtimeChatTurn({
+        abortSignal: AbortSignal.timeout(240_000),
+        agentId: agent.id,
+        assistantMessageId: `msg_${crypto.randomUUID()}`,
+        conversationId: route.conversationId,
+        delivery: {
+          postAgentStream: sink.postAgentStream,
+          postText: sink.postText,
+          scheduleBackgroundTask: sink.scheduleBackgroundTask,
+        },
+        externalScopeId: turn.externalScopeId,
+        externalThreadId: turn.externalThreadId,
+        messages: modelMessages,
+        persistMode: 'text-only',
+        runId: `rt_${crypto.randomUUID()}`,
+        source: turn.channel,
+        titleMessages: canonicalHistory,
+        userId: agent.userId,
+      })
+    } catch (error) {
       handled = true
+      console.error('[channels] realtime agent turn failed', {
+        agentId: agent.id,
+        channel: turn.channel,
+        conversationId: route.conversationId,
+        error,
+        externalScopeId: turn.externalScopeId,
+        externalThreadId: turn.externalThreadId,
+      })
+      await postAgentFailureNotice({
+        agentName: agent.name,
+        sink,
+      })
       continue
     }
-
-    if (!sessionRunId) {
-      await sink.postReply(`Queued event for "${agent.name}".`)
-      handled = true
-      continue
-    }
-
-    const readable = getRun(sessionRunId).getReadable<UIMessageChunk>({
-      namespace: replyToken,
-    })
-
-    const textIterable = chunksToTextIterable(readable)
-    await sink.postReply(textIterable)
     handled = true
   }
   return handled
 }
 
-function slackEventMetadata(
-  agentId: string,
+async function postAgentFailureNotice(input: {
+  agentName: string
+  sink: ChannelReplySink
+}): Promise<void> {
+  try {
+    await input.sink.postError(
+      `Agent "${input.agentName}" failed while processing this message. Continuing with the remaining agents.`
+    )
+  } catch (error) {
+    console.error('[channels] failed to post agent failure notice', {
+      agentName: input.agentName,
+      error,
+    })
+  }
+}
+
+function buildUserUiMessage(input: {
+  agentId: string
   message: IncomingChannelMessage
-): {
-  concurrencyKey: string
-  idempotencyKey: string
-  payload: Record<string, unknown>
-} | null {
-  if (message.channel !== 'slack') {
-    return null
-  }
-  const channelId = readString(message.threadMetadata, 'slackChannel')
-  const messageTs = readString(message.threadMetadata, 'slackMessageTs')
-  const teamId = readString(message.threadMetadata, 'slackTeamId')
-  const threadTs = readString(message.threadMetadata, 'slackThreadTs')
-  if (!(channelId && messageTs && teamId && threadTs)) {
-    return null
-  }
-  const slackPayload: Record<string, string> = {
-    channelId,
-    messageTs,
-    teamId,
-    threadTs,
-  }
-  const recipientUserId = readSlackUserId(message.externalUserId)
-  if (recipientUserId) {
-    slackPayload.recipientUserId = recipientUserId
-  }
+  turn: IncomingChannelTurn
+}): UIMessage {
+  const { agentId, message, turn } = input
   return {
-    concurrencyKey: slackConcurrencyKey({
-      agentId,
-      channelId,
-      teamId,
-      threadTs,
-    }),
-    idempotencyKey: slackIdempotencyKey({
-      agentId,
-      channelId,
-      messageTs,
-      teamId,
-    }),
-    payload: {
-      slack: slackPayload,
+    id: channelUserMessageId({ agentId, message, turn }),
+    role: 'user',
+    parts: [{ type: 'text', text: message.text }],
+    metadata: {
+      channel: turn.channel,
+      externalScopeId: turn.externalScopeId,
+      externalUserId: message.externalUserId,
+      externalUserDisplayName: message.externalUserDisplayName ?? null,
+      externalThreadId: turn.externalThreadId,
+      providerMetadata: message.providerMetadata ?? null,
+      source: turn.channel,
     },
   }
 }
 
-function readString(
-  value: Record<string, unknown> | undefined,
-  key: string
-): string {
-  const item = value?.[key]
-  return typeof item === 'string' ? item : ''
-}
-
-function readSlackUserId(value: string): string | null {
-  const trimmed = value.trim()
-  return trimmed && trimmed !== 'unknown' ? trimmed : null
-}
-
-// Channel adapters only want visible assistant text, so ignore non-text chunks here.
-async function* chunksToTextIterable(
-  readable: ReadableStream<UIMessageChunk>
-): AsyncGenerator<string, void, unknown> {
-  const reader = readable.getReader()
-  try {
-    while (true) {
-      const { value, done } = await reader.read()
-      if (done) {
-        return
-      }
-      if (!value || typeof value !== 'object') {
-        continue
-      }
-      const chunk = value as { type?: string; delta?: unknown }
-      if (chunk.type === 'text-delta' && typeof chunk.delta === 'string') {
-        yield chunk.delta
-      }
-    }
-  } finally {
-    reader.releaseLock()
+async function importUserMessages(input: {
+  agentId: string
+  conversationId: string
+  messages: IncomingChannelMessage[]
+  turn: IncomingChannelTurn
+}): Promise<void> {
+  for (const message of input.messages) {
+    await persistUserMessage({
+      conversationId: input.conversationId,
+      message,
+      userUiMessage: buildUserUiMessage({
+        agentId: input.agentId,
+        message,
+        turn: input.turn,
+      }),
+    })
   }
+}
+
+async function persistUserMessage(input: {
+  conversationId: string
+  message: IncomingChannelMessage
+  userUiMessage: UIMessage
+}): Promise<ChatMessageWriteResult> {
+  return await upsertChatMessage({
+    conversationId: input.conversationId,
+    createdAt: input.message.createdAt,
+    id: input.userUiMessage.id,
+    role: 'user',
+    parts: input.userUiMessage.parts,
+    metadata: input.userUiMessage.metadata,
+  })
+}
+
+function memoizeProviderHistory(
+  providerHistory: IncomingChannelTurn['providerHistory']
+): () => Promise<IncomingChannelMessage[]> {
+  if (!providerHistory) {
+    return async () => []
+  }
+
+  let promise: Promise<IncomingChannelMessage[]> | null = null
+  return async () => {
+    promise ??= providerHistory().catch((error) => {
+      console.warn('[channels] failed to import provider history', { error })
+      return []
+    })
+    return await promise
+  }
+}
+
+function channelUserMessageId(input: {
+  agentId: string
+  message: IncomingChannelMessage
+  turn: IncomingChannelTurn
+}): string {
+  if (input.message.externalMessageKey.trim().length === 0) {
+    throw new Error(
+      'channelUserMessageId: input.message.externalMessageKey must be non-empty'
+    )
+  }
+  const rawKey = [
+    input.turn.channel,
+    input.turn.externalScopeId,
+    input.message.externalMessageKey,
+    input.agentId,
+  ].join('\u0000')
+  return `msg_${createHash('sha256')
+    .update(rawKey)
+    .digest('base64url')
+    .slice(0, 16)}`
 }

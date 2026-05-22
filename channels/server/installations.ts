@@ -1,5 +1,5 @@
 import 'server-only'
-import { and, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 import { db } from '@/shared/db'
 import {
   type ChannelInstallation,
@@ -8,10 +8,10 @@ import {
 import type { ChannelId } from './types'
 
 // Slack bot tokens are shared per workspace, so the adapter can use any active row here.
-// Routing must use `getChannelInstallationsByTeam()` so fan-out sees every user install.
-export async function getChannelInstallationByTeam(
+// Routing must use `getChannelInstallationsByScope()` so fan-out sees every user install.
+export async function getChannelInstallationByScope(
   channel: ChannelId,
-  teamId: string
+  externalScopeId: string
 ): Promise<ChannelInstallation | null> {
   const [row] = await db
     .select()
@@ -19,16 +19,16 @@ export async function getChannelInstallationByTeam(
     .where(
       and(
         eq(channelInstallations.channel, channel),
-        eq(channelInstallations.externalId, teamId)
+        eq(channelInstallations.externalId, externalScopeId)
       )
     )
     .limit(1)
   return row ?? null
 }
 
-export async function getChannelInstallationsByTeam(
+export async function getChannelInstallationsByScope(
   channel: ChannelId,
-  teamId: string
+  externalScopeId: string
 ): Promise<ChannelInstallation[]> {
   return await db
     .select()
@@ -36,8 +36,13 @@ export async function getChannelInstallationsByTeam(
     .where(
       and(
         eq(channelInstallations.channel, channel),
-        eq(channelInstallations.externalId, teamId)
+        eq(channelInstallations.externalId, externalScopeId)
       )
+    )
+    .orderBy(
+      asc(channelInstallations.createdAt),
+      asc(channelInstallations.userId),
+      asc(channelInstallations.id)
     )
 }
 

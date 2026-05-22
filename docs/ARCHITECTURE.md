@@ -20,8 +20,10 @@ flowchart LR
   Next --> Workflow[Vercel Workflow]
   Next --> Resend[Resend]
 
-  Workflow --> Sandbox[Vercel Sandbox]
-  Workflow --> Gateway[Vercel AI Gateway]
+  Next --> Gateway[Vercel AI Gateway]
+  Next --> Sandbox[Vercel Sandbox]
+  Workflow --> Sandbox
+  Workflow --> Gateway
   Workflow --> DB
   Workflow --> Redis
   Workflow --> Tools[Tool catalog and providers]
@@ -44,13 +46,26 @@ Key files:
 
 ### Agent runtime
 
-Agent work is event-scoped. There is no always-on per-agent process. Each unit
-of work becomes an `agent_events` row and, when runnable, one workflow run.
+Agent work is run-scoped. There is no always-on per-agent process.
+
+Realtime chat turns from the web app and channels such as Slack run directly in
+the Next.js Node runtime through AI SDK `ToolLoopAgent`. Their model context and
+visible state come from the app-owned `chat_message` transcript. Provider
+history from Chat SDK adapters is imported into that transcript on a
+best-effort basis; it is not a second runtime source of truth. Realtime turns do
+not create durable `agent_events` rows.
+
+Autonomous or long-running work remains workflow-backed. Heartbeat, dreaming,
+and sub-agent invocation create `agent_events` rows and run through Vercel
+Workflow.
 
 Core responsibilities:
 
-- enqueueing and deduplicating events;
-- dispatching event handlers for chat, heartbeat, dreaming, and invocation;
+- building a serializable `AgentRuntimeSpec` shared by durable and realtime
+  adapters;
+- dispatching realtime `ToolLoopAgent` chat turns;
+- enqueueing and deduplicating durable events;
+- dispatching durable handlers for heartbeat, dreaming, and invocation;
 - managing per-event reply streams;
 - cleaning up ephemeral resources after each run;
 - starting the next queued event for a matching concurrency key.
@@ -59,6 +74,8 @@ Key files:
 
 - `agent-runtime/server/agent-events.ts`
 - `agent-runtime/server/agent-event-store.ts`
+- `agent-runtime/server/runtime-spec.ts`
+- `agent-runtime/server/realtime-chat-runner.ts`
 - `agent-runtime/workflows/events/workflow.ts`
 - `agent-runtime/workflows/session/handlers/*`
 
@@ -75,7 +92,6 @@ filesystem for bootstrap files and durable agent-authored files.
 
 Event types:
 
-- `chat`
 - `heartbeat`
 - `dreaming`
 - `invocation`
@@ -89,9 +105,10 @@ Event statuses:
 - `failed`
 - `cancelled`
 
-`idempotency_key` prevents duplicate work for retried or repeated ingress.
-`concurrency_key` is used only where ordering matters, such as Slack threads or
-scheduled buckets for the same agent.
+`idempotency_key` prevents duplicate durable work for retried or repeated
+autonomous ingress. `concurrency_key` is used only where durable ordering
+matters, such as scheduled buckets for the same agent. Realtime channel
+idempotency is handled at the `chat_message` layer.
 
 ## Request and event flow
 
@@ -100,12 +117,19 @@ sequenceDiagram
   participant Ingress as Browser, Slack, cron, or tool
   participant Next as Next.js route
   participant DB as Neon Postgres
+  participant R as ToolLoopAgent
   participant W as agentEventWorkflow
   participant S as Vercel Sandbox
   participant M as AI Gateway and tools
 
   Ingress->>Next: request or trigger
   Next->>DB: validate ownership and persist visible input
+  alt realtime chat
+    Next->>R: build runtime and stream response
+    R->>S: use sandbox-backed tools
+    R->>M: execute model and tool work
+    R->>DB: persist assistant transcript
+  else durable event
   Next->>DB: insert or reuse agent_events row
   Next->>W: start workflow when runnable
   W->>DB: mark running and heartbeat
@@ -114,6 +138,7 @@ sequenceDiagram
   W-->>Ingress: stream reply namespace
   W->>DB: mark terminal status
   W->>DB: start next queued event for same concurrency key
+  end
 ```
 
 ## Scheduler and liveness
@@ -129,18 +154,22 @@ The scheduler:
 - requeues expired `starting` events whose workflow never came up;
 - inspects `running` events and reconciles them with workflow status.
 
-Long-running Slack or realtime events are valid. Failure detection depends on
-stale heartbeat data or terminal workflow state, not just elapsed runtime.
+Long-running durable events are valid. Failure detection depends on stale
+heartbeat data or terminal workflow state, not just elapsed runtime. Realtime
+channel turns are best-effort request/background work with transcript-level
+deduplication. Realtime channel assistant delivery is not exactly-once in v1:
+if a provider accepts a streamed assistant message and the process dies before
+final Postgres persistence, no delivery ledger reconciles that gap yet.
 
 ## State ownership
 
 | Concern | Source of truth | Notes |
 | --- | --- | --- |
 | Users, sessions, agents, tools, conversations | Neon Postgres | Stored through Drizzle ORM and Better Auth. |
-| Agent event ledger | Neon Postgres | `agent_events` drives orchestration and recovery. |
+| Agent event ledger | Neon Postgres | `agent_events` drives durable orchestration and recovery for heartbeat, dreaming, and invocation. |
 | Agent filesystem and bootstrap files | Vercel Sandbox | Persistent per-agent filesystem. |
 | Cache and distributed coordination | Upstash Redis | Used for locks, scheduling, and cached file reads. |
-| Slack thread state | Postgres plus optional Redis | Redis-backed state is optional for Chat SDK coordination. |
+| Channel thread state | Postgres plus Redis | Installations and canonical transcripts live in Postgres; Chat SDK locks, queue, dedupe, subscriptions, and ephemeral state require Redis. |
 
 ## Key data model
 
@@ -161,7 +190,7 @@ The main application tables are:
 | --- | --- | --- |
 | Better Auth | Authentication and admin roles | `auth/server/auth.ts`, `app/api/auth/[...all]/route.ts` |
 | Neon Postgres | Primary relational database | `shared/db/index.ts`, `shared/db/schema/*` |
-| Vercel Workflow | Event execution and streaming | `next.config.ts`, `agent-runtime/workflows/events/workflow.ts` |
+| Vercel Workflow | Durable heartbeat, dreaming, and invocation execution | `next.config.ts`, `agent-runtime/workflows/events/workflow.ts` |
 | Vercel Sandbox | Persistent agent filesystem and tool execution | `agent-runtime/server/agent-sandbox.ts`, `tools/sandbox-runtime/*` |
 | Upstash Redis | Locks, cache, and scheduling coordination | `agent-runtime/server/redis-lock.ts`, `agent-runtime/server/file-cache.ts` |
 | Slack Chat SDK | Slack ingress, routing, and streaming replies | `channels/slack/server/*`, `app/api/channels/slack/*` |
@@ -188,7 +217,7 @@ Local development uses the same Next.js application and database schema as the
 deployed app. For most product work, the local environment is enough. Vercel is
 mainly useful when you want to exercise hosted or scheduled behavior such as:
 
-- workflow execution and reply streaming;
+- workflow execution;
 - persistent sandbox lifecycle;
 - scheduler execution through Vercel Cron;
-- Slack ingress and background streaming behavior.
+- Slack ingress, Chat SDK queueing, and background streaming behavior.

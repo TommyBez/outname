@@ -16,6 +16,7 @@ export function LandingNav({ waitlistEnabled }: { waitlistEnabled: boolean }) {
           OUTNA.ME
         </Link>
         <div className="hidden items-center gap-1 sm:flex">
+          <NavLink href="/blog">Blog</NavLink>
           {waitlistEnabled ? (
             <NavLink href="/waitlist?source=landing-nav">Waitlist</NavLink>
           ) : null}
