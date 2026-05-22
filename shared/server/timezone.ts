@@ -140,14 +140,28 @@ function wallClockMinutes(target: LocalTarget): number {
   )
 }
 
-function safeTimeZone(timezone?: string | null): string {
-  const timeZone = timezone || DEFAULT_TIMEZONE
-  try {
-    new Intl.DateTimeFormat('en-US', { timeZone }).format(new Date(0))
-    return timeZone
-  } catch {
-    return DEFAULT_TIMEZONE
+export function isValidIanaTimeZone(timezone: string): boolean {
+  const trimmed = timezone.trim()
+  if (!trimmed) {
+    return false
   }
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: trimmed }).format(new Date(0))
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function normalizeUserTimeZone(timezone: string): string | null {
+  const trimmed = timezone.trim()
+  return isValidIanaTimeZone(trimmed) ? trimmed : null
+}
+
+function safeTimeZone(timezone?: string | null): string {
+  const candidate = (timezone ?? DEFAULT_TIMEZONE).trim()
+  const timeZone = candidate || DEFAULT_TIMEZONE
+  return isValidIanaTimeZone(timeZone) ? timeZone : DEFAULT_TIMEZONE
 }
 
 function pad2(value: number): string {
