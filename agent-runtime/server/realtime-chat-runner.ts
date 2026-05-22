@@ -57,6 +57,8 @@ export interface RealtimeChatTurnBaseInput {
   agentId: string
   conversationId: string
   delivery: RealtimeDelivery
+  externalScopeId?: string
+  externalThreadId?: string
   runId: string
   source: RealtimeSource
   userId: string
@@ -126,6 +128,39 @@ export function tapFullStream(
 async function runRealtimeChatTurnInsideContext(
   input: RealtimeTextOnlyTurnInput
 ): Promise<undefined> {
+  const prepared = await prepareRealtimeChatTurn(input)
+  if (prepared.status === 'budget-exceeded') {
+    return await handleBudgetExceeded(input, prepared.notice)
+  }
+  await runTextOnlyTurn({ input, spec: prepared.spec })
+  return
+}
+
+async function streamUiMessageTurnInsideContext(input: {
+  input: RealtimeUiMessageTurnInput
+  writer: UIMessageStreamWriter<UIMessage>
+}): Promise<void> {
+  const { input: turn } = input
+  const prepared = await prepareRealtimeChatTurn(turn)
+  if (prepared.status === 'budget-exceeded') {
+    const message = await persistBudgetExceeded(turn, prepared.notice)
+    writeAssistantNotice(input.writer, message)
+    return
+  }
+
+  await streamUiMessageTurn({
+    input: turn,
+    spec: prepared.spec,
+    writer: input.writer,
+  })
+}
+
+async function prepareRealtimeChatTurn(
+  input: RealtimeChatTurnInput
+): Promise<
+  | { status: 'ready'; spec: AgentRuntimeSpec }
+  | { status: 'budget-exceeded'; notice: string }
+> {
   await assertRealtimeAgentOwnership({
     agentId: input.agentId,
     userId: input.userId,
@@ -135,12 +170,11 @@ async function runRealtimeChatTurnInsideContext(
     rootAgentId: input.agentId,
   })
   if (exceeded) {
-    return await handleBudgetExceeded(
-      input,
-      formatBudgetExceededMessage(exceeded)
-    )
+    return {
+      status: 'budget-exceeded',
+      notice: formatBudgetExceededMessage(exceeded),
+    }
   }
-
   await startupSystemSandbox({ agentId: input.agentId })
   const spec = await buildAgentRuntimeSpec({
     agentId: input.agentId,
@@ -152,45 +186,7 @@ async function runRealtimeChatTurnInsideContext(
       `runRealtimeChatTurn: agent ${input.agentId} does not belong to user ${input.userId}`
     )
   }
-
-  await runTextOnlyTurn({ input, spec })
-  return
-}
-
-async function streamUiMessageTurnInsideContext(input: {
-  input: RealtimeUiMessageTurnInput
-  writer: UIMessageStreamWriter<UIMessage>
-}): Promise<void> {
-  const { input: turn } = input
-  await assertRealtimeAgentOwnership({
-    agentId: turn.agentId,
-    userId: turn.userId,
-  })
-  const exceeded = await preflightBudget({
-    userId: turn.userId,
-    rootAgentId: turn.agentId,
-  })
-  if (exceeded) {
-    const message = await persistBudgetExceeded(
-      turn,
-      formatBudgetExceededMessage(exceeded)
-    )
-    writeAssistantNotice(input.writer, message)
-    return
-  }
-
-  await startupSystemSandbox({ agentId: turn.agentId })
-  const spec = await buildAgentRuntimeSpec({
-    agentId: turn.agentId,
-    eventKind: 'chat',
-    runId: turn.runId,
-  })
-  if (spec.userId !== turn.userId) {
-    throw new Error(
-      `runRealtimeChatTurn: agent ${turn.agentId} does not belong to user ${turn.userId}`
-    )
-  }
-  await streamUiMessageTurn({ input: turn, spec, writer: input.writer })
+  return { status: 'ready', spec }
 }
 
 async function assertRealtimeAgentOwnership(input: {
@@ -306,6 +302,8 @@ async function runTextOnlyTurn(input: {
       agentId: turn.agentId,
       conversationId: turn.conversationId,
       err,
+      externalScopeId: turn.externalScopeId,
+      externalThreadId: turn.externalThreadId,
       runId: turn.runId,
       source: turn.source,
     })
@@ -334,7 +332,10 @@ async function runTextOnlyTurn(input: {
     await persistAssistantTextOnly({
       agentId: turn.agentId,
       conversationId: turn.conversationId,
+      externalThreadId: turn.externalThreadId,
       id: turn.assistantMessageId ?? `msg_${nanoid(12)}`,
+      runId: turn.runId,
+      source: turn.source,
       text: assistantText,
     })
     scheduleTitleGeneration({
@@ -449,7 +450,10 @@ function appendStepLimitNoticeForPersistence(
 async function persistAssistantTextOnly(input: {
   agentId: string
   conversationId: string
+  externalThreadId?: string
   id: string
+  runId: string
+  source: RealtimeSource
   text: string
 }): Promise<void> {
   await insertChatMessageIfNew({
@@ -457,6 +461,11 @@ async function persistAssistantTextOnly(input: {
     id: input.id,
     role: 'assistant',
     parts: [{ type: 'text', text: input.text }],
+    metadata: {
+      externalThreadId: input.externalThreadId ?? null,
+      runId: input.runId,
+      source: input.source,
+    },
   })
   revalidateTag(conversationListTag(input.agentId), 'max')
 }

@@ -14,8 +14,8 @@ import {
   channelThreadConversations,
   chatConversation,
 } from '@/shared/db/schema'
-import { getChannelInstallationsByTeam } from './installations'
-import type { ChannelId, ChannelRoute, IncomingChannelMessage } from './types'
+import { getChannelInstallationsByScope } from './installations'
+import type { ChannelId, ChannelRoute, IncomingChannelTurn } from './types'
 
 export interface ResolvedChannelRoute {
   agent: Agent
@@ -27,15 +27,15 @@ export interface ResolvedChannelRoute {
 // users may have installed the same workspace, so fan-out is scoped by
 // installation owner and then by that owner's binding.
 export async function resolveRoutesForIncomingMessage(
-  msg: IncomingChannelMessage
+  msg: IncomingChannelTurn
 ): Promise<ResolvedChannelRoute[]> {
-  if (!msg.teamId) {
+  if (!msg.externalScopeId) {
     return []
   }
 
-  const installations = await getChannelInstallationsByTeam(
+  const installations = await getChannelInstallationsByScope(
     msg.channel,
-    msg.teamId
+    msg.externalScopeId
   )
   if (installations.length === 0) {
     return []
@@ -58,7 +58,7 @@ export async function resolveRoutesForIncomingMessage(
 }
 
 export async function resolveAgentsForIncomingMessage(
-  msg: IncomingChannelMessage
+  msg: IncomingChannelTurn
 ): Promise<Agent[]> {
   const routes = await resolveRoutesForIncomingMessage(msg)
   return routes.map((route) => route.agent)
@@ -83,7 +83,7 @@ function compareResolvedRoutes(
 }
 
 async function findCandidateAgentForUser(
-  msg: IncomingChannelMessage,
+  msg: IncomingChannelTurn,
   userId: string
 ): Promise<Agent | null> {
   // Sticky thread mapping wins when this user already owns the thread.
@@ -93,8 +93,8 @@ async function findCandidateAgentForUser(
     .where(
       and(
         eq(channelThreadConversations.channel, msg.channel),
-        eq(channelThreadConversations.teamId, msg.teamId),
-        eq(channelThreadConversations.externalThreadKey, msg.externalThreadKey),
+        eq(channelThreadConversations.externalScopeId, msg.externalScopeId),
+        eq(channelThreadConversations.externalThreadId, msg.externalThreadId),
         eq(channelThreadConversations.userId, userId)
       )
     )
@@ -108,9 +108,9 @@ async function findCandidateAgentForUser(
 
   const direct = await findBinding({
     channel: msg.channel,
-    teamId: msg.teamId,
-    externalKey: msg.externalRoutingKey,
-    kind: msg.externalRoutingKind,
+    externalScopeId: msg.externalScopeId,
+    externalKey: msg.routing.key,
+    kind: msg.routing.kind,
     userId,
   })
   if (direct) {
@@ -122,7 +122,7 @@ async function findCandidateAgentForUser(
 
 async function findBinding(input: {
   channel: ChannelId
-  teamId: string
+  externalScopeId: string
   externalKey: string
   kind: 'channel' | 'dm'
   userId: string
@@ -133,7 +133,7 @@ async function findBinding(input: {
     .where(
       and(
         eq(agentChannelBindings.channel, input.channel),
-        eq(agentChannelBindings.teamId, input.teamId),
+        eq(agentChannelBindings.externalScopeId, input.externalScopeId),
         eq(agentChannelBindings.externalKey, input.externalKey),
         eq(agentChannelBindings.kind, input.kind),
         eq(agentChannelBindings.userId, input.userId)
@@ -160,7 +160,7 @@ export async function ensureConversationForThread(input: {
   installation?: ChannelInstallation | null
   installationCreatedAt?: Date
   installationUserId?: string
-  message: IncomingChannelMessage
+  message: IncomingChannelTurn
 }): Promise<ChannelRoute> {
   const { agent: agentRow, message } = input
 
@@ -170,10 +170,10 @@ export async function ensureConversationForThread(input: {
     .where(
       and(
         eq(channelThreadConversations.channel, message.channel),
-        eq(channelThreadConversations.teamId, message.teamId),
+        eq(channelThreadConversations.externalScopeId, message.externalScopeId),
         eq(
-          channelThreadConversations.externalThreadKey,
-          message.externalThreadKey
+          channelThreadConversations.externalThreadId,
+          message.externalThreadId
         ),
         eq(channelThreadConversations.agentId, agentRow.id)
       )
@@ -204,17 +204,17 @@ export async function ensureConversationForThread(input: {
       id: `ctc_${nanoid(12)}`,
       userId: agentRow.userId,
       channel: message.channel,
-      teamId: message.teamId,
-      externalThreadKey: message.externalThreadKey,
+      externalScopeId: message.externalScopeId,
+      externalThreadId: message.externalThreadId,
       conversationId: conversation.id,
       agentId: agentRow.id,
-      metadata: message.threadMetadata ?? {},
+      metadata: message.providerMetadata ?? {},
     })
     .onConflictDoNothing({
       target: [
         channelThreadConversations.channel,
-        channelThreadConversations.teamId,
-        channelThreadConversations.externalThreadKey,
+        channelThreadConversations.externalScopeId,
+        channelThreadConversations.externalThreadId,
         channelThreadConversations.agentId,
       ],
     })
@@ -240,10 +240,10 @@ export async function ensureConversationForThread(input: {
     .where(
       and(
         eq(channelThreadConversations.channel, message.channel),
-        eq(channelThreadConversations.teamId, message.teamId),
+        eq(channelThreadConversations.externalScopeId, message.externalScopeId),
         eq(
-          channelThreadConversations.externalThreadKey,
-          message.externalThreadKey
+          channelThreadConversations.externalThreadId,
+          message.externalThreadId
         ),
         eq(channelThreadConversations.agentId, agentRow.id)
       )
@@ -251,7 +251,7 @@ export async function ensureConversationForThread(input: {
     .limit(1)
   if (!canonical) {
     throw new Error(
-      `channel_thread_conversations row missing after conflict (${message.channel}/${message.teamId}/${message.externalThreadKey}/${agentRow.id})`
+      `channel_thread_conversations row missing after conflict (${message.channel}/${message.externalScopeId}/${message.externalThreadId}/${agentRow.id})`
     )
   }
 

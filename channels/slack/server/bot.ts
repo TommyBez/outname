@@ -1,17 +1,12 @@
 import 'server-only'
 import { createSlackAdapter, type SlackAdapter } from '@chat-adapter/slack'
-import type { ModelMessage } from 'ai'
-import {
-  Chat,
-  type Message as ChatMessage,
-  type StreamEvent,
-  toAiMessages,
-} from 'chat'
+import { Chat, type StreamEvent } from 'chat'
 import { after } from 'next/server'
 import { runChannelChatTurn } from '@/channels/server/dispatch'
 import type { IncomingChannelMessage } from '@/channels/server/types'
 import {
   buildIncomingSlackMessage,
+  buildIncomingSlackTurn,
   type SlackChat,
   type SlackMessage,
   type SlackMessageContext,
@@ -101,27 +96,27 @@ async function handleSlackMessage(input: {
   context?: SlackMessageContext
 }): Promise<void> {
   const { thread, message, kind, context } = input
-  const incoming = buildIncomingSlackMessage({
-    thread,
-    message,
-    kind,
-    loadModelMessages: () => collectThreadHistory(thread),
-  })
-  if (!incoming) {
-    return
-  }
-  incoming.skipped = (context?.skipped ?? [])
+  const skipped = (context?.skipped ?? [])
     .map((skipped) =>
       buildIncomingSlackMessage({
         thread,
         message: skipped as SlackMessage,
-        kind,
       })
     )
     .filter((skipped): skipped is IncomingChannelMessage => Boolean(skipped))
+  const incoming = buildIncomingSlackTurn({
+    thread,
+    message,
+    kind,
+    providerHistory: () => collectThreadHistory(thread),
+    skipped,
+  })
+  if (!incoming) {
+    return
+  }
 
   const handled = await runChannelChatTurn({
-    message: incoming,
+    turn: incoming,
     sink: {
       postAgentStream: async (stream) => {
         await thread.post(stream as AsyncIterable<string | StreamEvent>)
@@ -143,50 +138,40 @@ async function handleSlackMessage(input: {
 
   if (!handled) {
     console.warn('[slack] no agent binding for incoming message', {
-      channelId: readString(incoming.threadMetadata, 'slackChannel'),
-      teamId: incoming.teamId,
+      externalScopeId: incoming.externalScopeId,
+      externalThreadId: incoming.externalThreadId,
       kind,
-      routingKey: incoming.externalRoutingKey,
+      routingKey: incoming.routing.key,
     })
   }
 }
 
-// Materialise the full Slack thread into AI SDK model messages. Chat SDK
-// auto-paginates and maps `author.isMe` to "assistant", so the LLM sees the
-// real conversation rather than just the latest user turn. Image and text-file
-// attachments come through as `FilePart`/`ImagePart` with inlined data, so the
-// model gets vision/file context too — pick a multimodal model for any agent
-// bound to channels where users share media.
+// Provider history is a best-effort import into the canonical Postgres
+// transcript. Runtime model context is loaded from `chat_message`, not from the
+// provider history directly.
 async function collectThreadHistory(
   thread: SlackThread
-): Promise<ModelMessage[] | undefined> {
+): Promise<IncomingChannelMessage[]> {
   try {
-    const messages: ChatMessage[] = []
+    const messages: IncomingChannelMessage[] = []
     for await (const m of thread.allMessages) {
-      messages.push(m)
+      if (m.author?.isMe || m.author?.isBot === true) {
+        continue
+      }
+      const incoming = buildIncomingSlackMessage({
+        thread,
+        message: m as SlackMessage,
+      })
+      if (incoming) {
+        messages.push(incoming)
+      }
     }
-    if (messages.length === 0) {
-      return
-    }
-    // `includeNames` prefixes user turns with `[name]:` so multi-user channels
-    // stay attributable. Harmless in 1:1 DMs.
-    const aiMessages = await toAiMessages(messages, { includeNames: true })
-    return aiMessages as ModelMessage[]
+    return messages
   } catch (err) {
-    // Fall back to "new turn only" — the workflow still works, just without
-    // history, which matches the pre-Chat-SDK-hydration behaviour.
-    console.warn('[slack] failed to hydrate thread history; falling back', {
+    console.warn('[slack] failed to import thread history; falling back', {
       err: err instanceof Error ? err.message : String(err),
       threadId: thread.id,
     })
-    return
+    return []
   }
-}
-
-function readString(
-  value: Record<string, unknown> | undefined,
-  key: string
-): string {
-  const item = value?.[key]
-  return typeof item === 'string' ? item : ''
 }

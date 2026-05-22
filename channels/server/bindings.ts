@@ -16,7 +16,7 @@ type BindingKind = 'channel' | 'dm'
 export async function upsertAgentChannelBinding(input: {
   agentId: string
   channel: ChannelId
-  teamId: string
+  externalScopeId: string
   externalKey: string
   kind: BindingKind
   metadata?: Record<string, unknown>
@@ -43,7 +43,7 @@ export async function upsertAgentChannelBinding(input: {
       userId,
       agentId: input.agentId,
       channel: input.channel,
-      teamId: input.teamId,
+      externalScopeId: input.externalScopeId,
       externalKey: input.externalKey,
       kind: input.kind,
       metadata,
@@ -51,7 +51,7 @@ export async function upsertAgentChannelBinding(input: {
     .onConflictDoUpdate({
       target: [
         agentChannelBindings.channel,
-        agentChannelBindings.teamId,
+        agentChannelBindings.externalScopeId,
         agentChannelBindings.externalKey,
         agentChannelBindings.kind,
         agentChannelBindings.userId,
@@ -69,7 +69,7 @@ export async function upsertAgentChannelBinding(input: {
     .where(
       and(
         eq(agentChannelBindings.channel, input.channel),
-        eq(agentChannelBindings.teamId, input.teamId),
+        eq(agentChannelBindings.externalScopeId, input.externalScopeId),
         eq(agentChannelBindings.externalKey, input.externalKey),
         eq(agentChannelBindings.kind, input.kind),
         eq(agentChannelBindings.userId, userId)
@@ -78,7 +78,7 @@ export async function upsertAgentChannelBinding(input: {
     .limit(1)
   if (!row) {
     throw new Error(
-      `upsertAgentChannelBinding: row missing after upsert (${input.channel}/${input.teamId}/${input.kind}/${input.externalKey})`
+      `upsertAgentChannelBinding: row missing after upsert (${input.channel}/${input.externalScopeId}/${input.kind}/${input.externalKey})`
     )
   }
   return row
@@ -87,7 +87,7 @@ export async function upsertAgentChannelBinding(input: {
 export async function deleteAgentChannelBinding(input: {
   userId: string
   channel: ChannelId
-  teamId: string
+  externalScopeId: string
   externalKey: string
   kind: BindingKind
 }): Promise<void> {
@@ -97,7 +97,7 @@ export async function deleteAgentChannelBinding(input: {
       and(
         eq(agentChannelBindings.userId, input.userId),
         eq(agentChannelBindings.channel, input.channel),
-        eq(agentChannelBindings.teamId, input.teamId),
+        eq(agentChannelBindings.externalScopeId, input.externalScopeId),
         eq(agentChannelBindings.externalKey, input.externalKey),
         eq(agentChannelBindings.kind, input.kind)
       )

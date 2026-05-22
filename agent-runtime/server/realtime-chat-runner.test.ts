@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   buildAgentRuntimeSpec: vi.fn(),
   buildRealtimeAgentRuntime: vi.fn(),
   cleanupRealtimeRun: vi.fn(),
+  getAgentById: vi.fn(),
   insertChatMessageIfNew: vi.fn(),
   maybeGenerateConversationTitle: vi.fn(),
   persistNewChatMessages: vi.fn(),
@@ -13,7 +14,6 @@ const mocks = vi.hoisted(() => ({
   recordTokenUsageStep: vi.fn(),
   revalidateTag: vi.fn(),
   startupSystemSandbox: vi.fn(),
-  getAgentById: vi.fn(),
 }))
 
 vi.mock('server-only', () => ({}))
@@ -118,15 +118,16 @@ describe('realtime chat runner persistence policy', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.cleanupRealtimeRun.mockResolvedValue(undefined)
-    mocks.insertChatMessageIfNew.mockResolvedValue(true)
-    mocks.maybeGenerateConversationTitle.mockResolvedValue(undefined)
-    mocks.persistNewChatMessages.mockResolvedValue(undefined)
-    mocks.recordTokenUsageStep.mockResolvedValue(undefined)
-    mocks.startupSystemSandbox.mockResolvedValue(undefined)
     mocks.getAgentById.mockResolvedValue({
       id: 'agent_123',
       userId: 'user_123',
     })
+    mocks.insertChatMessageIfNew.mockResolvedValue(true)
+    mocks.buildAgentRuntimeSpec.mockResolvedValue(runtimeSpec())
+    mocks.maybeGenerateConversationTitle.mockResolvedValue(undefined)
+    mocks.persistNewChatMessages.mockResolvedValue(undefined)
+    mocks.recordTokenUsageStep.mockResolvedValue(undefined)
+    mocks.startupSystemSandbox.mockResolvedValue(undefined)
   })
 
   it('persists normal and length-finished UI assistant messages and schedules title generation', async () => {
@@ -273,6 +274,44 @@ describe('realtime chat runner persistence policy', () => {
     expect(mocks.buildAgentRuntimeSpec).not.toHaveBeenCalled()
   })
 
+  it('starts the system sandbox before composing the runtime spec', async () => {
+    mocks.preflightBudget.mockResolvedValue(null)
+    mocks.buildRealtimeAgentRuntime.mockResolvedValue({
+      agent: {
+        stream: async () => ({
+          fullStream: streamFromChunks([{ text: 'hello', type: 'text-delta' }]),
+        }),
+      },
+      meta: {
+        model: 'openai/gpt-5.1',
+        name: 'Agent',
+        stepLimitCustom: null,
+        stepLimitMode: 'medium',
+        userId: 'user_123',
+      },
+      tools: {},
+    })
+
+    const { runRealtimeChatTurn } = await import('./realtime-chat-runner')
+    await runRealtimeChatTurn({
+      abortSignal: new AbortController().signal,
+      agentId: 'agent_123',
+      assistantMessageId: 'msg_assistant',
+      conversationId: 'conv_123',
+      delivery: buildDelivery(),
+      messages: [],
+      persistMode: 'text-only',
+      runId: 'rt_123',
+      source: 'slack',
+      titleMessages: [userMessage('msg_user', 'hello')],
+      userId: 'user_123',
+    })
+
+    const [startupOrder] = mocks.startupSystemSandbox.mock.invocationCallOrder
+    const [specOrder] = mocks.buildAgentRuntimeSpec.mock.invocationCallOrder
+    expect(startupOrder).toBeLessThan(specOrder)
+  })
+
   it('schedules text-only usage recording and persists accumulated assistant text', async () => {
     mocks.preflightBudget.mockResolvedValue(null)
     mocks.buildAgentRuntimeSpec.mockResolvedValue(runtimeSpec())
@@ -335,6 +374,11 @@ describe('realtime chat runner persistence policy', () => {
     expect(mocks.insertChatMessageIfNew).toHaveBeenCalledWith({
       conversationId: 'conv_123',
       id: 'msg_assistant',
+      metadata: {
+        externalThreadId: null,
+        runId: 'rt_123',
+        source: 'slack',
+      },
       parts: [{ text: 'hello', type: 'text' }],
       role: 'assistant',
     })

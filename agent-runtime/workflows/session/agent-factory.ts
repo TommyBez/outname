@@ -6,14 +6,10 @@ import {
   buildAgentRuntimeSpec,
   runtimeMetaFromSpec,
 } from '@/agent-runtime/server/runtime-spec'
+import { buildRuntimeToolset } from '@/agent-runtime/server/runtime-toolset'
 import { getUserModelForGateway } from '@/shared/server/ai-gateway-byok'
-import { buildAttachedTools } from '@/tools/runtime/build-attached-tools'
 import type { SubAgentProgressTarget } from '@/tools/sub-agents/progress-target'
-import {
-  noSubAgentProgressTarget,
-  workflowParentStreamTarget,
-} from '@/tools/sub-agents/progress-target'
-import { createFileTools } from './tools/file-tools'
+import { workflowParentStreamTarget } from '@/tools/sub-agents/progress-target'
 
 // Build one event-scoped agent: prompt from sandbox files, built-in file tools,
 // and attached maintainer/sub-agent tools.
@@ -61,21 +57,7 @@ export function buildDurableAgentRuntime(
     progressTarget?: SubAgentProgressTarget
   } = {}
 ): BuildAgentResult {
-  const attached = buildAttachedTools({
-    agentId: spec.agentId,
-    userId: spec.userId,
-    plan: spec.toolPlan,
-    callStack: spec.callStack,
-    currentRunId: options.currentRunId,
-    conversationId: options.conversationId,
-    depth: spec.depth,
-    progressTarget: options.progressTarget ?? noSubAgentProgressTarget,
-  })
-
-  const tools = {
-    ...createFileTools({ agentId: spec.agentId }),
-    ...attached.tools,
-  }
+  const tools = buildRuntimeToolset(spec, options)
 
   const durableAgent = new DurableAgent({
     model: async () => {

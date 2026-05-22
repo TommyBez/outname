@@ -1,8 +1,10 @@
 import 'server-only'
 import type { SlackAdapter } from '@chat-adapter/slack'
-import type { ModelMessage } from 'ai'
 import type { Chat } from 'chat'
-import type { IncomingChannelMessage } from '@/channels/server/types'
+import type {
+  IncomingChannelMessage,
+  IncomingChannelTurn,
+} from '@/channels/server/types'
 import {
   describeSlackAttachments,
   extractSlackTeamId,
@@ -21,36 +23,25 @@ export type SlackMessageContext = Parameters<
   Parameters<SlackChat['onNewMention']>[0]
 >[2]
 
-// Top-level messages use their own ts so direct replies still round-trip as a
-// stable synthetic thread.
-function slackThreadKey(channel: string, threadTs: string): string {
-  return `${channel}:${threadTs}`
-}
-
 function extractTeamId(message: SlackMessage): string {
   const raw = message.raw as SlackRawMessage | undefined
   return extractSlackTeamId(raw)
 }
 
-export function buildIncomingSlackMessage(input: {
+export function buildIncomingSlackTurn(input: {
   thread: SlackThread
   message: SlackMessage
   kind: 'channel' | 'dm'
-  loadModelMessages?: () => Promise<ModelMessage[] | undefined>
-}): IncomingChannelMessage | null {
+  providerHistory?: () => Promise<IncomingChannelMessage[]>
+  skipped?: IncomingChannelMessage[]
+}): IncomingChannelTurn | null {
   const { thread, message, kind } = input
   const raw = message.raw as SlackRawMessage | undefined
-  const trimmedText = message.text?.trim() ?? ''
-  const attachmentSummary = describeSlackAttachments(raw)
-  if (!(trimmedText || attachmentSummary)) {
+  const current = buildIncomingSlackMessage({ thread, message })
+  if (!current) {
     return null
   }
-  // Attachment-only messages still flow through routing/persistence; the model
-  // receives the actual file bytes via `toAiMessages` in `loadModelMessages`.
-  const text = trimmedText || `(attachment: ${attachmentSummary})`
 
-  // Keep provider-native Slack ids out of routing keys; `slack:`-prefixed SDK
-  // ids should not leak into shared channel bindings.
   const slackThread = extractSlackThread(thread, raw)
   if (!slackThread) {
     console.warn('[slack] thread missing slack ids; skipping', {
@@ -66,32 +57,74 @@ export function buildIncomingSlackMessage(input: {
   if (!teamId) {
     console.warn(
       '[slack] dropping event with no team id; cannot owner-scope to an installation',
-      { channelId, kind }
+      { channelId }
     )
     return null
   }
 
-  const externalRoutingKey =
+  const routingKey =
     kind === 'dm' ? (message.author?.userId ?? channelId) : channelId
 
   return {
     channel: 'slack',
-    createdAt: message.metadata.dateSent,
-    externalMessageKey: message.id,
-    externalThreadKey: slackThreadKey(channelId, threadTs),
-    externalRoutingKey,
-    externalRoutingKind: kind,
-    externalUserId: message.author?.userId ?? 'unknown',
-    externalUserDisplayName:
-      message.author?.fullName ?? message.author?.userName,
-    teamId,
-    text,
-    threadMetadata: {
+    current,
+    externalScopeId: teamId,
+    externalThreadId: thread.id,
+    providerHistory: input.providerHistory,
+    providerMetadata: {
       slackChannel: channelId,
       slackMessageTs: messageTs,
       slackThreadTs: threadTs,
       slackTeamId: teamId,
     },
-    loadModelMessages: input.loadModelMessages,
+    routing: {
+      key: routingKey,
+      kind,
+    },
+    skipped: input.skipped,
+  }
+}
+
+export function buildIncomingSlackMessage(input: {
+  thread: SlackThread
+  message: SlackMessage
+}): IncomingChannelMessage | null {
+  const { thread, message } = input
+  const raw = message.raw as SlackRawMessage | undefined
+  const trimmedText = message.text?.trim() ?? ''
+  const attachmentSummary = describeSlackAttachments(raw)
+  if (!(trimmedText || attachmentSummary)) {
+    return null
+  }
+  // Attachment-only messages still flow through routing/persistence as a text
+  // summary in the canonical transcript.
+  const text = trimmedText || `(attachment: ${attachmentSummary})`
+
+  const slackThread = extractSlackThread(thread, raw)
+  if (!slackThread) {
+    console.warn('[slack] thread missing slack ids; skipping', {
+      channelId: thread.channelId,
+      threadId: thread.id,
+    })
+    return null
+  }
+  const { channelId, threadTs } = slackThread
+  const messageTs = raw?.ts ?? threadTs
+
+  const teamId = extractTeamId(message)
+
+  return {
+    createdAt: message.metadata.dateSent,
+    externalMessageKey: message.id,
+    externalUserId: message.author?.userId ?? 'unknown',
+    externalUserDisplayName:
+      message.author?.fullName ?? message.author?.userName,
+    text,
+    providerMetadata: {
+      slackChannel: channelId,
+      slackMessageTs: messageTs,
+      slackThreadTs: threadTs,
+      ...(teamId ? { slackTeamId: teamId } : {}),
+    },
   }
 }

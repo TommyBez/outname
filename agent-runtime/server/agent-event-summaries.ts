@@ -1,11 +1,7 @@
 import 'server-only'
 import { and, asc, eq, inArray } from 'drizzle-orm'
 import { compactLedgerEvents } from '@/agent-runtime/shared/compact-ledger-events'
-import type {
-  AgentEventSource,
-  AgentEventSummary,
-  AgentEventType,
-} from '@/agent-runtime/shared/event-types'
+import type { AgentEventSummary } from '@/agent-runtime/shared/event-types'
 import { db } from '@/shared/db'
 import { type AgentEvent, agentEvents } from '@/shared/db/schema'
 import { reconcileActiveAgentEvent } from './agent-event-reconciliation'
@@ -64,10 +60,10 @@ export function summarizeAgentEvent(
     lastError: event.lastError,
     preview: previewAgentEvent(event),
     queuedAt: event.queuedAt.toISOString(),
-    source: event.source as AgentEventSource,
+    source: event.source,
     startedAt: dateToIso(event.startedAt),
     status: event.status,
-    type: event.type as AgentEventType,
+    type: event.type,
     workflowRunId: readableWorkflowRunId(event.workflowRunId),
   }
 }

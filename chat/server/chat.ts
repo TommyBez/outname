@@ -15,6 +15,8 @@ import { conversationListTag } from '@/shared/server/cache-tags'
 const PLACEHOLDER_CHAT_TITLE = 'new chat'
 const WHITESPACE_PATTERN = '\\s+'
 
+export type ChatMessageWriteResult = 'inserted' | 'updated' | 'unchanged'
+
 export function newChatConversationId() {
   return (
     'cc_' +
@@ -230,12 +232,107 @@ export async function insertChatMessageIfNew(input: {
     return false
   }
 
+  await touchConversation(input.conversationId)
+  return true
+}
+
+export async function upsertChatMessage(input: {
+  createdAt?: Date
+  conversationId: string
+  id: string
+  role: ChatRole
+  parts: UIMessage['parts']
+  metadata?: unknown
+}): Promise<ChatMessageWriteResult> {
+  const inserted = await db
+    .insert(chatMessage)
+    .values({
+      id: input.id,
+      conversationId: input.conversationId,
+      role: input.role,
+      parts: input.parts,
+      metadata: input.metadata ?? null,
+      createdAt: input.createdAt,
+    })
+    .onConflictDoNothing({ target: chatMessage.id })
+    .returning({ id: chatMessage.id })
+
+  if (inserted.length > 0) {
+    await touchConversation(input.conversationId)
+    return 'inserted'
+  }
+
+  const [existing] = await db
+    .select({
+      conversationId: chatMessage.conversationId,
+      metadata: chatMessage.metadata,
+      parts: chatMessage.parts,
+      role: chatMessage.role,
+    })
+    .from(chatMessage)
+    .where(eq(chatMessage.id, input.id))
+    .limit(1)
+  if (!existing) {
+    throw new Error(`upsertChatMessage: message ${input.id} disappeared`)
+  }
+  if (existing.conversationId !== input.conversationId) {
+    throw new Error(
+      `upsertChatMessage: message ${input.id} belongs to another conversation`
+    )
+  }
+
+  const nextMetadata = input.metadata ?? null
+  const unchanged =
+    existing.role === input.role &&
+    stableJson(existing.parts) === stableJson(input.parts) &&
+    stableJson(existing.metadata) === stableJson(nextMetadata)
+  if (unchanged) {
+    return 'unchanged'
+  }
+
+  await db
+    .update(chatMessage)
+    .set({
+      role: input.role,
+      parts: input.parts,
+      metadata: nextMetadata,
+    })
+    .where(eq(chatMessage.id, input.id))
+  await touchConversation(input.conversationId)
+  return 'updated'
+}
+
+async function touchConversation(conversationId: string): Promise<void> {
   await db
     .update(chatConversation)
     .set({ updatedAt: new Date() })
-    .where(eq(chatConversation.id, input.conversationId))
+    .where(eq(chatConversation.id, conversationId))
+}
 
-  return true
+function stableJson(value: unknown): string {
+  return JSON.stringify(sortJson(value)) ?? 'undefined'
+}
+
+function sortJson(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(sortJson)
+  }
+  if (!isPlainObject(value)) {
+    return value
+  }
+  const sorted: Record<string, unknown> = {}
+  for (const key of Object.keys(value).sort()) {
+    sorted[key] = sortJson(value[key])
+  }
+  return sorted
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    Object.getPrototypeOf(value) === Object.prototype
+  )
 }
 
 // Diff by message id so workflow retries do not double-insert chat turns.

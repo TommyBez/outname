@@ -1,14 +1,19 @@
-import type { ModelMessage } from 'ai'
+import type { UIMessage } from 'ai'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Agent } from '@/shared/db/schema'
-import type { ChannelReplySink, IncomingChannelMessage } from './types'
+import type {
+  ChannelReplySink,
+  IncomingChannelMessage,
+  IncomingChannelTurn,
+} from './types'
 
 const mocks = vi.hoisted(() => ({
   ensureConversationForThread: vi.fn(),
-  insertChatMessageIfNew: vi.fn(),
+  loadChatHistory: vi.fn(),
   revalidateTag: vi.fn(),
   resolveRoutesForIncomingMessage: vi.fn(),
   runRealtimeChatTurn: vi.fn(),
+  upsertChatMessage: vi.fn(),
 }))
 
 vi.mock('server-only', () => ({}))
@@ -22,7 +27,8 @@ vi.mock('@/agent-runtime/server/realtime-chat-runner', () => ({
 }))
 
 vi.mock('@/chat/server/chat', () => ({
-  insertChatMessageIfNew: mocks.insertChatMessageIfNew,
+  loadChatHistory: mocks.loadChatHistory,
+  upsertChatMessage: mocks.upsertChatMessage,
 }))
 
 vi.mock('@/shared/server/cache-tags', () => ({
@@ -36,16 +42,23 @@ vi.mock('./routing', () => ({
 
 describe('runChannelChatTurn', () => {
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>
+  let consoleWarnSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     vi.clearAllMocks()
     consoleErrorSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined)
+    consoleWarnSpy = vi
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined)
+    mocks.loadChatHistory.mockResolvedValue([userMessage('msg_user', 'hello')])
+    mocks.upsertChatMessage.mockResolvedValue('inserted')
   })
 
   afterEach(() => {
     consoleErrorSpy.mockRestore()
+    consoleWarnSpy.mockRestore()
   })
 
   it('continues sequential fan-out when one realtime agent turn fails', async () => {
@@ -61,14 +74,13 @@ describe('runChannelChatTurn', () => {
     })
 
     mockRoutes(firstAgent, secondAgent)
-    mocks.insertChatMessageIfNew.mockResolvedValue(true)
     mocks.runRealtimeChatTurn
       .mockRejectedValueOnce(new Error('model failed'))
       .mockResolvedValueOnce(undefined)
 
     const sink = buildSink()
     const handled = await runChannelChatTurn({
-      message: buildSlackMessage(),
+      turn: buildSlackTurn(),
       sink,
     })
 
@@ -108,7 +120,6 @@ describe('runChannelChatTurn', () => {
     const order: string[] = []
 
     mockRoutes(firstAgent, secondAgent)
-    mocks.insertChatMessageIfNew.mockResolvedValue(true)
     mocks.runRealtimeChatTurn.mockImplementation(
       async ({ agentId }: { agentId: string }) => {
         order.push(`${agentId}:start`)
@@ -127,7 +138,7 @@ describe('runChannelChatTurn', () => {
     )
 
     const turnPromise = runChannelChatTurn({
-      message: buildSlackMessage(),
+      turn: buildSlackTurn(),
       sink: buildSink(),
     })
     await firstStarted
@@ -151,34 +162,31 @@ describe('runChannelChatTurn', () => {
       userId: 'user_alpha',
     })
     const skipped = [
-      buildSlackMessage({
+      buildChannelMessage({
         createdAt: new Date('2024-03-09T16:00:00.100Z'),
         externalMessageKey: 'slack-message-1',
         text: 'first',
       }),
-      buildSlackMessage({
+      buildChannelMessage({
         createdAt: new Date('2024-03-09T16:00:01.200Z'),
         externalMessageKey: 'slack-message-2',
         text: 'second',
       }),
     ]
-    const current = buildSlackMessage({
+    const current = buildChannelMessage({
       createdAt: new Date('2024-03-09T16:00:02.300Z'),
       externalMessageKey: 'slack-message-3',
-      skipped,
       text: 'third',
     })
 
     mockRoutes(agent)
-    mocks.insertChatMessageIfNew.mockResolvedValue(true)
-    mocks.runRealtimeChatTurn.mockResolvedValue(undefined)
+    await runChannelChatTurn({
+      turn: buildSlackTurn({ current, skipped }),
+      sink: buildSink(),
+    })
 
-    await runChannelChatTurn({ message: current, sink: buildSink() })
-
-    expect(mocks.insertChatMessageIfNew).toHaveBeenCalledTimes(3)
-    const calls = mocks.insertChatMessageIfNew.mock.calls.map(
-      ([input]) => input
-    )
+    expect(mocks.upsertChatMessage).toHaveBeenCalledTimes(3)
+    const calls = mocks.upsertChatMessage.mock.calls.map(([input]) => input)
     expect(calls.map((call) => call.parts[0].text)).toEqual([
       'first',
       'second',
@@ -199,21 +207,25 @@ describe('runChannelChatTurn', () => {
     })
 
     mockRoutes(agent)
-    mocks.insertChatMessageIfNew.mockResolvedValue(true)
-    mocks.runRealtimeChatTurn.mockResolvedValue(undefined)
 
     await runChannelChatTurn({
-      message: buildSlackMessage({ externalMessageKey: 'same-platform-id' }),
+      turn: buildSlackTurn({
+        current: buildChannelMessage({
+          externalMessageKey: 'same-platform-id',
+        }),
+      }),
       sink: buildSink(),
     })
     await runChannelChatTurn({
-      message: buildSlackMessage({ externalMessageKey: 'same-platform-id' }),
+      turn: buildSlackTurn({
+        current: buildChannelMessage({
+          externalMessageKey: 'same-platform-id',
+        }),
+      }),
       sink: buildSink(),
     })
 
-    const calls = mocks.insertChatMessageIfNew.mock.calls.map(
-      ([input]) => input
-    )
+    const calls = mocks.upsertChatMessage.mock.calls.map(([input]) => input)
     expect(calls[0].id).toBe(calls[1].id)
   })
 
@@ -230,21 +242,21 @@ describe('runChannelChatTurn', () => {
     })
 
     mockRoutes(firstAgent, secondAgent)
-    mocks.insertChatMessageIfNew.mockResolvedValue(true)
-    mocks.runRealtimeChatTurn.mockResolvedValue(undefined)
 
     await runChannelChatTurn({
-      message: buildSlackMessage({ externalMessageKey: 'same-platform-id' }),
+      turn: buildSlackTurn({
+        current: buildChannelMessage({
+          externalMessageKey: 'same-platform-id',
+        }),
+      }),
       sink: buildSink(),
     })
 
-    const calls = mocks.insertChatMessageIfNew.mock.calls.map(
-      ([input]) => input
-    )
+    const calls = mocks.upsertChatMessage.mock.calls.map(([input]) => input)
     expect(calls[0].id).not.toBe(calls[1].id)
   })
 
-  it('loads model messages once for multi-agent fan-out', async () => {
+  it('imports provider history once and uses Postgres chat history as model context', async () => {
     const firstAgent = buildAgent({
       id: 'agent_alpha',
       name: 'Alpha',
@@ -255,27 +267,51 @@ describe('runChannelChatTurn', () => {
       name: 'Beta',
       userId: 'user_beta',
     })
-    const loadedMessages: ModelMessage[] = [
-      { content: 'history', role: 'user' },
-    ]
-    const loadModelMessages = vi.fn(async () => loadedMessages)
+    const providerHistory = vi.fn(async () => [
+      buildChannelMessage({
+        externalMessageKey: 'slack-history-1',
+        text: 'history',
+      }),
+    ])
+    const canonicalHistory = [userMessage('msg_history', 'canonical history')]
+    mocks.loadChatHistory.mockResolvedValue(canonicalHistory)
 
     mockRoutes(firstAgent, secondAgent)
-    mocks.insertChatMessageIfNew.mockResolvedValue(true)
-    mocks.runRealtimeChatTurn.mockResolvedValue(undefined)
-
     await runChannelChatTurn({
-      message: buildSlackMessage({ loadModelMessages }),
+      turn: buildSlackTurn({ providerHistory }),
       sink: buildSink(),
     })
 
-    expect(loadModelMessages).toHaveBeenCalledTimes(1)
-    expect(mocks.runRealtimeChatTurn.mock.calls[0][0].messages).toBe(
-      loadedMessages
+    expect(providerHistory).toHaveBeenCalledTimes(1)
+    expect(mocks.loadChatHistory).toHaveBeenCalledTimes(2)
+    expect(mocks.runRealtimeChatTurn.mock.calls[0][0].titleMessages).toBe(
+      canonicalHistory
     )
-    expect(mocks.runRealtimeChatTurn.mock.calls[1][0].messages).toBe(
-      loadedMessages
-    )
+    expect(mocks.runRealtimeChatTurn.mock.calls[0][0].messages).toEqual([
+      {
+        content: [{ text: 'canonical history', type: 'text' }],
+        role: 'user',
+      },
+    ])
+  })
+
+  it('skips the runner when the current message is an unchanged duplicate', async () => {
+    const agent = buildAgent({
+      id: 'agent_alpha',
+      name: 'Alpha',
+      userId: 'user_alpha',
+    })
+
+    mockRoutes(agent)
+    mocks.upsertChatMessage.mockResolvedValue('unchanged')
+
+    const handled = await runChannelChatTurn({
+      turn: buildSlackTurn(),
+      sink: buildSink(),
+    })
+
+    expect(handled).toBe(true)
+    expect(mocks.runRealtimeChatTurn).not.toHaveBeenCalled()
   })
 })
 
@@ -312,32 +348,44 @@ function buildAgent(input: {
   } as unknown as Agent
 }
 
-function buildSlackMessage(
+function buildSlackTurn(
   input: {
-    createdAt?: Date
-    externalMessageKey?: string
-    loadModelMessages?: () => Promise<ModelMessage[] | undefined>
+    current?: IncomingChannelMessage
+    providerHistory?: () => Promise<IncomingChannelMessage[]>
     skipped?: IncomingChannelMessage[]
-    text?: string
   } = {}
-): IncomingChannelMessage {
+): IncomingChannelTurn {
   return {
     channel: 'slack',
-    createdAt: input.createdAt ?? new Date('2024-03-09T16:00:00.123Z'),
-    externalMessageKey: input.externalMessageKey ?? 'slack-message-1',
-    externalRoutingKey: 'C123',
-    externalRoutingKind: 'channel',
-    externalThreadKey: 'C123:1710000000.123456',
-    externalUserDisplayName: 'Slack User',
-    externalUserId: 'U123',
-    loadModelMessages: input.loadModelMessages,
-    skipped: input.skipped,
-    teamId: 'T123',
-    text: input.text ?? 'hello',
-    threadMetadata: {
+    current: input.current ?? buildChannelMessage(),
+    externalScopeId: 'T123',
+    externalThreadId: 'slack:C123:1710000000.123456',
+    providerHistory: input.providerHistory,
+    providerMetadata: {
       slackChannel: 'C123',
       slackMessageTs: '1710000000.123456',
     },
+    routing: {
+      key: 'C123',
+      kind: 'channel',
+    },
+    skipped: input.skipped,
+  }
+}
+
+function buildChannelMessage(
+  input: { createdAt?: Date; externalMessageKey?: string; text?: string } = {}
+): IncomingChannelMessage {
+  return {
+    createdAt: input.createdAt ?? new Date('2024-03-09T16:00:00.123Z'),
+    externalMessageKey: input.externalMessageKey ?? 'slack-message-1',
+    externalUserDisplayName: 'Slack User',
+    externalUserId: 'U123',
+    providerMetadata: {
+      slackChannel: 'C123',
+      slackMessageTs: '1710000000.123456',
+    },
+    text: input.text ?? 'hello',
   }
 }
 
@@ -348,6 +396,14 @@ function buildSink(): ChannelReplySink {
     postText: vi.fn(async () => undefined),
     scheduleBackgroundTask: vi.fn(),
     startTyping: vi.fn(async () => undefined),
+  }
+}
+
+function userMessage(id: string, text: string): UIMessage {
+  return {
+    id,
+    parts: [{ text, type: 'text' }],
+    role: 'user',
   }
 }
 

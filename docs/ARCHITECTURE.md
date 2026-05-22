@@ -48,9 +48,12 @@ Key files:
 
 Agent work is run-scoped. There is no always-on per-agent process.
 
-Realtime chat turns from the web app and Slack run directly in the Next.js Node
-runtime through AI SDK `ToolLoopAgent`. Their visible state is the
-`chat_message` transcript. They do not create durable `agent_events` rows.
+Realtime chat turns from the web app and channels such as Slack run directly in
+the Next.js Node runtime through AI SDK `ToolLoopAgent`. Their model context and
+visible state come from the app-owned `chat_message` transcript. Provider
+history from Chat SDK adapters is imported into that transcript on a
+best-effort basis; it is not a second runtime source of truth. Realtime turns do
+not create durable `agent_events` rows.
 
 Autonomous or long-running work remains workflow-backed. Heartbeat, dreaming,
 and sub-agent invocation create `agent_events` rows and run through Vercel
@@ -154,7 +157,9 @@ The scheduler:
 Long-running durable events are valid. Failure detection depends on stale
 heartbeat data or terminal workflow state, not just elapsed runtime. Realtime
 channel turns are best-effort request/background work with transcript-level
-deduplication.
+deduplication. Realtime channel assistant delivery is not exactly-once in v1:
+if a provider accepts a streamed assistant message and the process dies before
+final Postgres persistence, no delivery ledger reconciles that gap yet.
 
 ## State ownership
 
@@ -164,7 +169,7 @@ deduplication.
 | Agent event ledger | Neon Postgres | `agent_events` drives durable orchestration and recovery for heartbeat, dreaming, and invocation. |
 | Agent filesystem and bootstrap files | Vercel Sandbox | Persistent per-agent filesystem. |
 | Cache and distributed coordination | Upstash Redis | Used for locks, scheduling, and cached file reads. |
-| Slack thread state | Postgres plus Redis | Installations live in Postgres; Chat SDK locks, queue, dedupe, subscriptions, and ephemeral state require Redis. |
+| Channel thread state | Postgres plus Redis | Installations and canonical transcripts live in Postgres; Chat SDK locks, queue, dedupe, subscriptions, and ephemeral state require Redis. |
 
 ## Key data model
 

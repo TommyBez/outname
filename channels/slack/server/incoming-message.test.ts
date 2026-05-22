@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   buildIncomingSlackMessage,
+  buildIncomingSlackTurn,
   type SlackMessage,
   type SlackThread,
 } from './incoming-message'
@@ -24,33 +25,26 @@ describe('buildIncomingSlackMessage', () => {
 
   it('uses Chat SDK message id and dateSent as canonical message fields', () => {
     const incoming = buildIncomingSlackMessage({
-      kind: 'channel',
       message: buildSlackMessage(),
       thread: buildSlackThread(),
     })
 
     expect(incoming).toMatchObject({
-      channel: 'slack',
       createdAt: DEFAULT_DATE,
       externalMessageKey: 'slack-message-1',
-      externalRoutingKey: 'C123',
-      externalRoutingKind: 'channel',
-      externalThreadKey: 'C123:1710000000.123456',
       externalUserDisplayName: 'Ada Lovelace',
       externalUserId: 'U123',
-      teamId: 'T123',
       text: 'hello',
     })
   })
 
   it('preserves Slack metadata passively', () => {
     const incoming = buildIncomingSlackMessage({
-      kind: 'channel',
       message: buildSlackMessage(),
       thread: buildSlackThread(),
     })
 
-    expect(incoming?.threadMetadata).toEqual({
+    expect(incoming?.providerMetadata).toEqual({
       slackChannel: 'C123',
       slackMessageTs: '1710000000.123456',
       slackThreadTs: '1710000000.123456',
@@ -60,7 +54,6 @@ describe('buildIncomingSlackMessage', () => {
 
   it('returns null when the message has no text or attachments', () => {
     const incoming = buildIncomingSlackMessage({
-      kind: 'channel',
       message: buildSlackMessage({ text: '   ' }),
       thread: buildSlackThread(),
     })
@@ -70,7 +63,6 @@ describe('buildIncomingSlackMessage', () => {
 
   it('returns null when Slack thread ids cannot be resolved', () => {
     const incoming = buildIncomingSlackMessage({
-      kind: 'channel',
       message: buildSlackMessage({ raw: { team: 'T123' } }),
       thread: buildSlackThread({ channelId: '', id: '' }),
     })
@@ -78,8 +70,8 @@ describe('buildIncomingSlackMessage', () => {
     expect(incoming).toBeNull()
   })
 
-  it('returns null when Slack team id is missing', () => {
-    const incoming = buildIncomingSlackMessage({
+  it('returns null when the turn has no Slack team id', () => {
+    const incoming = buildIncomingSlackTurn({
       kind: 'channel',
       message: buildSlackMessage({
         raw: {
@@ -92,6 +84,31 @@ describe('buildIncomingSlackMessage', () => {
     })
 
     expect(incoming).toBeNull()
+  })
+
+  it('builds a turn with Chat SDK thread id as canonical external thread id', () => {
+    const turn = buildIncomingSlackTurn({
+      kind: 'channel',
+      message: buildSlackMessage(),
+      thread: buildSlackThread(),
+    })
+
+    expect(turn).toMatchObject({
+      channel: 'slack',
+      externalScopeId: 'T123',
+      externalThreadId: 'slack:C123:1710000000.123456',
+      routing: {
+        key: 'C123',
+        kind: 'channel',
+      },
+    })
+    expect(turn?.current.externalMessageKey).toBe('slack-message-1')
+    expect(turn?.providerMetadata).toEqual({
+      slackChannel: 'C123',
+      slackMessageTs: '1710000000.123456',
+      slackThreadTs: '1710000000.123456',
+      slackTeamId: 'T123',
+    })
   })
 })
 

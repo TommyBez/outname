@@ -10,13 +10,9 @@ import {
   runtimeMetaFromSpec,
   stopWhenFromSpec,
 } from '@/agent-runtime/server/runtime-spec'
-import { createFileTools } from '@/agent-runtime/workflows/session/tools/file-tools'
 import { getUserModelForGateway } from '@/shared/server/ai-gateway-byok'
-import { buildAttachedTools } from '@/tools/runtime/build-attached-tools'
-import {
-  noSubAgentProgressTarget,
-  type SubAgentProgressTarget,
-} from '@/tools/sub-agents/progress-target'
+import type { SubAgentProgressTarget } from '@/tools/sub-agents/progress-target'
+import { buildRuntimeToolset } from './runtime-toolset'
 
 export interface BuiltRealtimeAgentRuntime {
   agent: ToolLoopAgent<never, Record<string, Tool>>
@@ -33,20 +29,7 @@ export async function buildRealtimeAgentRuntime(
     progressTarget?: SubAgentProgressTarget
   } = {}
 ): Promise<BuiltRealtimeAgentRuntime> {
-  const attached = buildAttachedTools({
-    agentId: spec.agentId,
-    userId: spec.userId,
-    plan: spec.toolPlan,
-    callStack: spec.callStack,
-    currentRunId: options.currentRunId,
-    conversationId: options.conversationId,
-    depth: spec.depth,
-    progressTarget: options.progressTarget ?? noSubAgentProgressTarget,
-  })
-  const tools = {
-    ...createFileTools({ agentId: spec.agentId }),
-    ...attached.tools,
-  }
+  const tools = buildRuntimeToolset(spec, options)
   const model = await getUserModelForGateway({
     modelId: spec.modelId,
     userId: spec.userId,

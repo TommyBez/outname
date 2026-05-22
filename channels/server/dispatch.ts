@@ -1,27 +1,35 @@
 import 'server-only'
 import { createHash } from 'node:crypto'
-import { convertToModelMessages, type ModelMessage, type UIMessage } from 'ai'
+import { convertToModelMessages, type UIMessage } from 'ai'
 import { revalidateTag } from 'next/cache'
 import { runRealtimeChatTurn } from '@/agent-runtime/server/realtime-chat-runner'
-import { insertChatMessageIfNew } from '@/chat/server/chat'
+import {
+  type ChatMessageWriteResult,
+  loadChatHistory,
+  upsertChatMessage,
+} from '@/chat/server/chat'
 import { conversationListTag } from '@/shared/server/cache-tags'
 import {
   ensureConversationForThread,
   resolveRoutesForIncomingMessage,
 } from './routing'
-import type { ChannelReplySink, IncomingChannelMessage } from './types'
+import type {
+  ChannelReplySink,
+  IncomingChannelMessage,
+  IncomingChannelTurn,
+} from './types'
 
 // One inbound channel message can fan out to multiple user-owned agents bound
 // to the same workspace. Fan-out is intentionally sequential and sorted by
 // installation.createdAt, installation.userId, then agent.id in routing.
 export async function runChannelChatTurn(input: {
-  message: IncomingChannelMessage
+  turn: IncomingChannelTurn
   sink: ChannelReplySink
 }): Promise<boolean> {
-  const { message, sink } = input
-  const loadModelMessages = memoizeLoadModelMessages(message.loadModelMessages)
+  const { sink, turn } = input
+  const loadProviderHistory = memoizeProviderHistory(turn.providerHistory)
 
-  const resolvedRoutes = await resolveRoutesForIncomingMessage(message)
+  const resolvedRoutes = await resolveRoutesForIncomingMessage(turn)
   if (resolvedRoutes.length === 0) {
     return false
   }
@@ -41,34 +49,40 @@ export async function runChannelChatTurn(input: {
       agent,
       installationCreatedAt: resolved.installationCreatedAt,
       installationUserId: resolved.installationUserId,
-      message,
+      message: turn,
     })
-    const skippedTurns = (message.skipped ?? []).map((skipped) => ({
-      message: skipped,
-      userUiMessage: buildUserUiMessage({
-        agentId: agent.id,
-        message: skipped,
-      }),
-    }))
-    for (const skippedTurn of skippedTurns) {
-      await persistUserMessage({
-        conversationId: route.conversationId,
-        message: skippedTurn.message,
-        userUiMessage: skippedTurn.userUiMessage,
-      })
-    }
-    const skippedUserMessages = skippedTurns.map((turn) => turn.userUiMessage)
+    const currentAndSkippedKeys = new Set([
+      turn.current.externalMessageKey,
+      ...(turn.skipped ?? []).map((message) => message.externalMessageKey),
+    ])
+    const providerHistory = (await loadProviderHistory()).filter(
+      (historyMessage) =>
+        !currentAndSkippedKeys.has(historyMessage.externalMessageKey)
+    )
+    await importUserMessages({
+      agentId: agent.id,
+      conversationId: route.conversationId,
+      messages: providerHistory,
+      turn,
+    })
+    await importUserMessages({
+      agentId: agent.id,
+      conversationId: route.conversationId,
+      messages: turn.skipped ?? [],
+      turn,
+    })
 
     const userUiMessage = buildUserUiMessage({
       agentId: agent.id,
-      message,
+      message: turn.current,
+      turn,
     })
-    const inserted = await persistUserMessage({
+    const currentWrite = await persistUserMessage({
       conversationId: route.conversationId,
-      message,
+      message: turn.current,
       userUiMessage,
     })
-    if (!inserted) {
+    if (currentWrite === 'unchanged') {
       handled = true
       continue
     }
@@ -76,10 +90,8 @@ export async function runChannelChatTurn(input: {
 
     await sink.startTyping?.('Thinking...')
 
-    const modelMessages = await loadModelMessagesForTurn({
-      fallbackMessages: [...skippedUserMessages, userUiMessage],
-      loadModelMessages,
-    })
+    const canonicalHistory = await loadChatHistory(route.conversationId)
+    const modelMessages = await convertToModelMessages(canonicalHistory)
 
     try {
       await runRealtimeChatTurn({
@@ -92,21 +104,24 @@ export async function runChannelChatTurn(input: {
           postText: sink.postText,
           scheduleBackgroundTask: sink.scheduleBackgroundTask,
         },
+        externalScopeId: turn.externalScopeId,
+        externalThreadId: turn.externalThreadId,
         messages: modelMessages,
         persistMode: 'text-only',
         runId: `rt_${crypto.randomUUID()}`,
-        source: message.channel,
-        titleMessages: [...skippedUserMessages, userUiMessage],
+        source: turn.channel,
+        titleMessages: canonicalHistory,
         userId: agent.userId,
       })
     } catch (error) {
       handled = true
       console.error('[channels] realtime agent turn failed', {
         agentId: agent.id,
-        channel: message.channel,
+        channel: turn.channel,
         conversationId: route.conversationId,
         error,
-        externalThreadKey: message.externalThreadKey,
+        externalScopeId: turn.externalScopeId,
+        externalThreadId: turn.externalThreadId,
       })
       await postAgentFailureNotice({
         agentName: agent.name,
@@ -138,19 +153,41 @@ async function postAgentFailureNotice(input: {
 function buildUserUiMessage(input: {
   agentId: string
   message: IncomingChannelMessage
+  turn: IncomingChannelTurn
 }): UIMessage {
-  const { agentId, message } = input
+  const { agentId, message, turn } = input
   return {
-    id: channelUserMessageId({ agentId, message }),
+    id: channelUserMessageId({ agentId, message, turn }),
     role: 'user',
     parts: [{ type: 'text', text: message.text }],
     metadata: {
-      source: message.channel,
-      teamId: message.teamId || null,
+      channel: turn.channel,
+      externalScopeId: turn.externalScopeId,
       externalUserId: message.externalUserId,
       externalUserDisplayName: message.externalUserDisplayName ?? null,
-      externalThreadKey: message.externalThreadKey,
+      externalThreadId: turn.externalThreadId,
+      providerMetadata: message.providerMetadata ?? null,
+      source: turn.channel,
     },
+  }
+}
+
+async function importUserMessages(input: {
+  agentId: string
+  conversationId: string
+  messages: IncomingChannelMessage[]
+  turn: IncomingChannelTurn
+}): Promise<void> {
+  for (const message of input.messages) {
+    await persistUserMessage({
+      conversationId: input.conversationId,
+      message,
+      userUiMessage: buildUserUiMessage({
+        agentId: input.agentId,
+        message,
+        turn: input.turn,
+      }),
+    })
   }
 }
 
@@ -158,8 +195,8 @@ async function persistUserMessage(input: {
   conversationId: string
   message: IncomingChannelMessage
   userUiMessage: UIMessage
-}): Promise<boolean> {
-  return await insertChatMessageIfNew({
+}): Promise<ChatMessageWriteResult> {
+  return await upsertChatMessage({
     conversationId: input.conversationId,
     createdAt: input.message.createdAt,
     id: input.userUiMessage.id,
@@ -169,38 +206,31 @@ async function persistUserMessage(input: {
   })
 }
 
-async function loadModelMessagesForTurn(input: {
-  fallbackMessages: UIMessage[]
-  loadModelMessages?: () => Promise<ModelMessage[] | undefined>
-}): Promise<ModelMessage[]> {
-  const loaded = await input.loadModelMessages?.()
-  if (loaded) {
-    return loaded
-  }
-  return await convertToModelMessages(input.fallbackMessages)
-}
-
-function memoizeLoadModelMessages(
-  loadModelMessages: IncomingChannelMessage['loadModelMessages']
-): (() => Promise<ModelMessage[] | undefined>) | undefined {
-  if (!loadModelMessages) {
-    return
+function memoizeProviderHistory(
+  providerHistory: IncomingChannelTurn['providerHistory']
+): () => Promise<IncomingChannelMessage[]> {
+  if (!providerHistory) {
+    return async () => []
   }
 
-  let promise: Promise<ModelMessage[] | undefined> | null = null
-  return () => {
-    promise ??= loadModelMessages()
-    return promise
+  let promise: Promise<IncomingChannelMessage[]> | null = null
+  return async () => {
+    promise ??= providerHistory().catch((error) => {
+      console.warn('[channels] failed to import provider history', { error })
+      return []
+    })
+    return await promise
   }
 }
 
 function channelUserMessageId(input: {
   agentId: string
   message: IncomingChannelMessage
+  turn: IncomingChannelTurn
 }): string {
   const rawKey = [
-    input.message.channel,
-    input.message.teamId,
+    input.turn.channel,
+    input.turn.externalScopeId,
     input.message.externalMessageKey,
     input.agentId,
   ].join('\u0000')

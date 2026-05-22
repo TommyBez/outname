@@ -17,19 +17,73 @@ export async function cleanupRealtimeRun(input: {
     bestEffort('stopAllRepoWorkspacesForRun', () =>
       stopAllRepoWorkspacesForRun()
     ),
-    bestEffort('refreshAgentFileCache', () =>
-      refreshAgentFileCache(input.agentId)
+    bestEffort(
+      'refreshAgentFileCache',
+      () => refreshAgentFileCache(input.agentId),
+      {
+        ignore: isMissingSystemSandboxError,
+        onIgnored: (err) => {
+          console.warn(
+            '[realtime-cleanup] refreshAgentFileCache skipped; system sandbox is missing',
+            {
+              agentId: input.agentId,
+              sandboxName: readErrorString(err, 'sandboxName'),
+            }
+          )
+        },
+      }
     ),
   ])
 }
 
 async function bestEffort(
   label: string,
-  fn: () => Promise<unknown>
+  fn: () => Promise<unknown>,
+  options: {
+    ignore?: (err: unknown) => boolean
+    onIgnored?: (err: unknown) => void
+  } = {}
 ): Promise<void> {
   try {
     await fn()
   } catch (err) {
+    if (options.ignore?.(err)) {
+      options.onIgnored?.(err)
+      return
+    }
     console.error(`[realtime-cleanup] ${label} failed`, err)
   }
+}
+
+function isMissingSystemSandboxError(err: unknown): boolean {
+  return (
+    Boolean(readErrorString(err, 'sandboxName')) &&
+    (readErrorNumber(err, 'response.status') === 404 ||
+      readErrorString(err, 'json.error.code') === 'not_found')
+  )
+}
+
+function readErrorNumber(err: unknown, path: string): number | undefined {
+  const value = readErrorValue(err, path)
+  return typeof value === 'number' ? value : undefined
+}
+
+function readErrorString(err: unknown, path: string): string | undefined {
+  const value = readErrorValue(err, path)
+  return typeof value === 'string' ? value : undefined
+}
+
+function readErrorValue(err: unknown, path: string): unknown {
+  let current = err
+  for (const key of path.split('.')) {
+    if (!isRecord(current)) {
+      return
+    }
+    current = current[key]
+  }
+  return current
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
 }
