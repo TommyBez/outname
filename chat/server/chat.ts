@@ -17,14 +17,6 @@ const WHITESPACE_PATTERN = '\\s+'
 
 export type ChatMessageWriteResult = 'inserted' | 'updated' | 'unchanged'
 
-export function newChatConversationId() {
-  return (
-    'cc_' +
-    Math.random().toString(36).slice(2) +
-    Date.now().toString(36).slice(-4)
-  )
-}
-
 // Draft `/chat/new` routes stay DB-free until the first user message creates the row.
 // Re-selecting after `ON CONFLICT DO NOTHING` keeps retries race-safe and agent-scoped.
 export async function getOrCreateConversationForAgent(

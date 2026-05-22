@@ -2,6 +2,8 @@
 
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
+import { MessageSquarePlus } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import {
   type AgentChatMessage,
@@ -14,12 +16,15 @@ import {
 } from '@/chat/components/agent-chat-transcript'
 import { refreshConversationList } from '@/chat/components/agent-sidebar-workspace/conversations'
 import { ChatErrorBanner } from '@/chat/components/chat-error-banner'
+import { newChatConversationId } from '@/chat/lib/new-chat-conversation-id'
 import {
   PromptInput,
+  PromptInputButton,
   PromptInputFooter,
   type PromptInputMessage,
   PromptInputSubmit,
   PromptInputTextarea,
+  PromptInputTools,
 } from '@/components/ai-elements/prompt-input'
 
 interface AgentChatProps {
@@ -40,6 +45,7 @@ export function AgentChat({
   initialMessages,
   isDraft,
 }: AgentChatProps) {
+  const router = useRouter()
   const [input, setInput] = useState('')
   const [workflowStatus, setWorkflowStatus] =
     useState<WorkflowStatusData | null>(null)
@@ -108,6 +114,10 @@ export function AgentChat({
     setInput('')
   }
 
+  function handleNewChat() {
+    router.push(`/agents/${agentId}/chat/new?draft=${newChatConversationId()}`)
+  }
+
   return (
     <div className="flex h-full min-w-0 flex-col overflow-hidden">
       <AgentChatTranscript
@@ -128,7 +138,15 @@ export function AgentChat({
             value={input}
           />
           <PromptInputFooter>
-            <div />
+            <PromptInputTools>
+              <PromptInputButton
+                aria-label="New chat"
+                onClick={handleNewChat}
+                tooltip="New chat"
+              >
+                <MessageSquarePlus className="size-4" />
+              </PromptInputButton>
+            </PromptInputTools>
             <PromptInputSubmit
               disabled={!isBusy && input.trim().length === 0}
               onStop={stop}

@@ -4,6 +4,7 @@ import { Bot, MessageSquarePlus } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import useSWR from 'swr'
+import { newChatConversationId } from '@/chat/lib/new-chat-conversation-id'
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -105,7 +106,7 @@ function ChatHistoryGroup({
             className="text-muted-foreground hover:text-foreground"
             isActive={pathname === newChatPath}
             onClick={() => {
-              router.push(`${newChatPath}?draft=${createDraftConversationId()}`)
+              router.push(`${newChatPath}?draft=${newChatConversationId()}`)
             }}
             tooltip="New chat"
             type="button"
@@ -143,12 +144,4 @@ function isActive(
     return false
   }
   return pathname === `/agents/${agentId}/chat/${conversationId}`
-}
-
-function createDraftConversationId() {
-  return (
-    'cc_' +
-    Math.random().toString(36).slice(2) +
-    Date.now().toString(36).slice(-4)
-  )
 }
