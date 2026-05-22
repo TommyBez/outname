@@ -5,6 +5,9 @@
     },
     "neon-postgres": {
       "enabled": true
+    },
+    "cursor-team-kit": {
+      "enabled": true
     }
   }
 }
