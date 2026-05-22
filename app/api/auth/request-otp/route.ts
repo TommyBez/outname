@@ -109,8 +109,17 @@ export async function POST(request: Request) {
         )
       }
 
+      if (waitlistEntry.status === 'confirmed') {
+        return NextResponse.json(
+          {
+            error:
+              'Your waitlist email is confirmed. Access must be granted before you can sign in.',
+          },
+          { status: 403 }
+        )
+      }
+
       if (
-        waitlistEntry.status === 'confirmed' ||
         waitlistEntry.status === 'invited' ||
         waitlistEntry.status === 'converted'
       ) {
