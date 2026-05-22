@@ -1,7 +1,18 @@
 import type { ToolExecutionOptions } from 'ai'
+import {
+  getSystemSandbox,
+  isMissingSystemSandboxError,
+} from '@/agent-runtime/server/agent-sandbox'
+import {
+  nonRetryableStepError,
+  nonRetryableStepErrorFromUnknown,
+} from '@/shared/server/workflow-step-errors'
 import { grepLiveFiles } from '../sandbox-file-helpers/grep'
 import { listLiveFiles } from '../sandbox-file-helpers/list'
-import { createSystemBashTool } from './system-bash-tool'
+import {
+  createSystemBashTool,
+  isSystemSandboxFileNotFoundError,
+} from './system-bash-tool'
 
 type BashToolExecutor<TInput> = (
   input: TInput,
@@ -14,14 +25,25 @@ export async function readFileViaBashTool(args: {
   path: string
 }): Promise<unknown> {
   'use step'
-  const bashTool = await createSystemBashTool({ agentId: args.agentId })
+  const bashTool = await createSystemBashToolForStep(args.agentId)
   const execute = bashTool.tools.readFile.execute as
     | BashToolExecutor<{ path: string }>
     | undefined
   if (!execute) {
-    throw new Error('readFile tool execute handler is unavailable')
+    throw nonRetryableStepError('readFile tool execute handler is unavailable')
   }
-  return await execute({ path: args.path }, args.options)
+  try {
+    return await execute({ path: args.path }, args.options)
+  } catch (error) {
+    if (isSystemSandboxFileNotFoundError(error)) {
+      return {
+        content: null,
+        error: error.message,
+        exists: false,
+      }
+    }
+    throw error
+  }
 }
 
 export async function writeFileViaBashTool(args: {
@@ -31,12 +53,12 @@ export async function writeFileViaBashTool(args: {
   path: string
 }): Promise<unknown> {
   'use step'
-  const bashTool = await createSystemBashTool({ agentId: args.agentId })
+  const bashTool = await createSystemBashToolForStep(args.agentId)
   const execute = bashTool.tools.writeFile.execute as
     | BashToolExecutor<{ content: string; path: string }>
     | undefined
   if (!execute) {
-    throw new Error('writeFile tool execute handler is unavailable')
+    throw nonRetryableStepError('writeFile tool execute handler is unavailable')
   }
   const toolResult = await execute(
     { content: args.content, path: args.path },
@@ -50,10 +72,7 @@ export async function listFilesStep(
   input: { maxResults: number; pathPrefix: string }
 ): Promise<{ paths: string[]; truncated: boolean }> {
   'use step'
-  const { getSystemSandbox } = await import(
-    '@/agent-runtime/server/agent-sandbox'
-  )
-  const sandbox = await getSystemSandbox(agentId)
+  const sandbox = await getSystemSandboxForStep(agentId)
   return await listLiveFiles(sandbox, input)
 }
 
@@ -71,9 +90,38 @@ export async function grepFilesStep(
   truncated: boolean
 }> {
   'use step'
-  const { getSystemSandbox } = await import(
-    '@/agent-runtime/server/agent-sandbox'
-  )
-  const sandbox = await getSystemSandbox(agentId)
+  const sandbox = await getSystemSandboxForStep(agentId)
   return await grepLiveFiles(sandbox, input)
+}
+
+async function createSystemBashToolForStep(
+  agentId: string
+): Promise<Awaited<ReturnType<typeof createSystemBashTool>>> {
+  try {
+    return await createSystemBashTool({ agentId })
+  } catch (error) {
+    if (isMissingSystemSandboxError(error, agentId)) {
+      throw nonRetryableStepErrorFromUnknown(
+        error,
+        `system sandbox tools unavailable for agent "${agentId}"`
+      )
+    }
+    throw error
+  }
+}
+
+async function getSystemSandboxForStep(
+  agentId: string
+): Promise<Awaited<ReturnType<typeof getSystemSandbox>>> {
+  try {
+    return await getSystemSandbox(agentId)
+  } catch (error) {
+    if (isMissingSystemSandboxError(error, agentId)) {
+      throw nonRetryableStepErrorFromUnknown(
+        error,
+        `system sandbox unavailable for agent "${agentId}"`
+      )
+    }
+    throw error
+  }
 }

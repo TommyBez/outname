@@ -1,6 +1,10 @@
 import { Sandbox } from '@vercel/sandbox'
 import { getWritable } from 'workflow'
 import { toolBuildSandboxTags } from '@/shared/server/vercel-sandbox-config'
+import {
+  nonRetryableStepError,
+  nonRetryableStepErrorFromUnknown,
+} from '@/shared/server/workflow-step-errors'
 import { getToolSandboxManifest } from '@/tools/sandboxes/registry'
 import {
   buildToolSandboxNamespace,
@@ -17,7 +21,16 @@ export async function runSandboxBuild(input: {
 }): Promise<{ snapshotId: string }> {
   'use step'
 
-  const manifest = getToolSandboxManifest(input.manifestId)
+  let manifest: ReturnType<typeof getToolSandboxManifest>
+  try {
+    manifest = getToolSandboxManifest(input.manifestId)
+  } catch (error) {
+    throw nonRetryableStepErrorFromUnknown(
+      error,
+      `tool sandbox manifest unavailable for "${input.manifestId}"`
+    )
+  }
+
   const emit = async (message: string) => {
     try {
       const writable = getWritable<ToolSandboxBuildEvent>({
@@ -62,7 +75,7 @@ export async function runSandboxBuild(input: {
     if (result.exitCode !== 0) {
       const stderr = (await result.stderr()).slice(0, 4000)
       const stdout = (await result.stdout()).slice(0, 1000)
-      throw new Error(
+      throw nonRetryableStepError(
         `setup script exited with code ${result.exitCode}\n--- stderr ---\n${stderr}\n--- stdout (tail) ---\n${stdout}`
       )
     }

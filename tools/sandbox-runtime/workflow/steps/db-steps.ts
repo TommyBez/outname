@@ -7,6 +7,10 @@ import {
   toolSandboxSnapshots,
 } from '@/shared/db/schema'
 import { agentToolsTag } from '@/shared/server/cache-tags'
+import {
+  nonRetryableStepError,
+  nonRetryableStepErrorFromUnknown,
+} from '@/shared/server/workflow-step-errors'
 
 export interface LoadBuildRowResult {
   manifestHash: string
@@ -26,7 +30,9 @@ export async function loadBuildRow(input: {
     .where(eq(toolSandboxBuilds.id, input.buildId))
     .limit(1)
   if (!row) {
-    throw new Error(`tool_sandbox_builds row not found: ${input.buildId}`)
+    throw nonRetryableStepError(
+      `tool_sandbox_builds row not found: ${input.buildId}`
+    )
   }
   return row
 }
@@ -199,8 +205,15 @@ export async function readManifestSetupScript(input: {
   manifestId: string
 }): Promise<{ setup: string }> {
   'use step'
-  const { getToolSandboxSetupScript } = await import(
-    '@/tools/sandboxes/registry'
-  )
-  return { setup: getToolSandboxSetupScript(input.manifestId) }
+  try {
+    const { getToolSandboxSetupScript } = await import(
+      '@/tools/sandboxes/registry'
+    )
+    return { setup: getToolSandboxSetupScript(input.manifestId) }
+  } catch (error) {
+    throw nonRetryableStepErrorFromUnknown(
+      error,
+      `tool sandbox setup script unavailable for "${input.manifestId}"`
+    )
+  }
 }

@@ -1,5 +1,5 @@
 import 'server-only'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import {
   type EnqueueAgentEventResult,
@@ -7,6 +7,10 @@ import {
 } from '@/agent-runtime/server/agent-events'
 import { db } from '@/shared/db'
 import { type Agent, agent } from '@/shared/db/schema'
+import {
+  delayedRetryStepError,
+  nonRetryableStepError,
+} from '@/shared/server/workflow-step-errors'
 
 function workflowRunIdOrNull(result: EnqueueAgentEventResult): string | null {
   return result.workflowRunId
@@ -14,8 +18,9 @@ function workflowRunIdOrNull(result: EnqueueAgentEventResult): string | null {
 
 function workflowRunIdOrThrow(result: EnqueueAgentEventResult): string {
   if (!result.workflowRunId) {
-    throw new Error(
-      `Agent event ${result.eventId} was queued before a workflow run became available`
+    throw delayedRetryStepError(
+      `Agent event ${result.eventId} was queued before a workflow run became available`,
+      { retryAfter: '1s' }
     )
   }
   return result.workflowRunId
@@ -76,7 +81,7 @@ export async function dispatchInvocation(input: {
   depth: number
 }): Promise<{ eventId: string; sessionRunId: string }> {
   if (input.childUserId !== input.parentUserId) {
-    throw new Error(
+    throw nonRetryableStepError(
       `dispatchInvocation: child ${input.childAgentId} does not belong to caller`
     )
   }
@@ -84,13 +89,20 @@ export async function dispatchInvocation(input: {
   const [child] = await db
     .select()
     .from(agent)
-    .where(eq(agent.id, input.childAgentId))
+    .where(
+      and(
+        eq(agent.id, input.childAgentId),
+        eq(agent.userId, input.parentUserId)
+      )
+    )
     .limit(1)
   if (!child) {
-    throw new Error(`dispatchInvocation: child ${input.childAgentId} not found`)
+    throw nonRetryableStepError(
+      `dispatchInvocation: child ${input.childAgentId} not found`
+    )
   }
   if (!child.enabled) {
-    throw new Error(
+    throw nonRetryableStepError(
       `dispatchInvocation: child ${input.childAgentId} is disabled`
     )
   }

@@ -102,20 +102,38 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   )
 }
 
+function blogBlocksWithKeys(
+  content: string
+): Array<{ block: string; key: string }> {
+  const seen = new Map<string, number>()
+  return content
+    .split('\n\n')
+    .filter((block) => block.trim() !== '')
+    .map((block) => {
+      const baseKey = block.startsWith('## ')
+        ? `heading:${block}`
+        : `paragraph:${block}`
+      const occurrence = seen.get(baseKey) ?? 0
+      seen.set(baseKey, occurrence + 1)
+      const key = occurrence === 0 ? baseKey : `${baseKey}:${occurrence}`
+      return { block, key }
+    })
+}
+
 function BlogContent({ content }: { content: string }) {
   // Simple markdown-style rendering: split by double newline for paragraphs,
   // and handle ## headings
-  const blocks = content.split('\n\n')
+  const blocks = blogBlocksWithKeys(content)
 
   return (
     <div className="space-y-6">
-      {blocks.map((block, i) => {
+      {blocks.map(({ block, key }) => {
         // Heading
         if (block.startsWith('## ')) {
           return (
             <h2
               className="mt-12 font-black font-serif text-2xl uppercase leading-none tracking-tighter sm:text-3xl"
-              key={i}
+              key={key}
             >
               {block.replace('## ', '')}
             </h2>
@@ -123,7 +141,7 @@ function BlogContent({ content }: { content: string }) {
         }
         // Regular paragraph
         return (
-          <p className="text-foreground/85 leading-relaxed" key={i}>
+          <p className="text-foreground/85 leading-relaxed" key={key}>
             {block}
           </p>
         )
