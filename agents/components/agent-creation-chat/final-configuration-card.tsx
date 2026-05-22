@@ -1,7 +1,6 @@
 'use client'
 
 import type { AgentCreationRequest } from '@/agents/server/creation-types'
-import { useUserTimezone } from '@/shared/components/user-timezone-context'
 import {
   budgetReviewLines,
   dreamingLabel,
@@ -11,10 +10,11 @@ import {
 
 export function FinalConfigurationCard({
   config,
+  timeZone,
 }: {
   config: AgentCreationRequest | undefined
+  timeZone: string
 }) {
-  const timeZone = useUserTimezone()
   if (!config) {
     return null
   }

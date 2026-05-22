@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { requireSession } from '@/auth/server/auth-guard'
 import type { Agent } from '@/shared/db/schema'
 import { getCachedAgentByIdForUser } from '@/shared/server/data'
+import { getUserTimeDisplay } from '@/shared/server/user-time-display'
 import { AgentWorkspaceHeader } from './agent-workspace-header'
 
 type Params = Promise<{ agentId: string }>
@@ -15,14 +16,27 @@ export async function AgentWorkspaceFrame({
 }) {
   const { agentId } = await params
   const session = await requireSession()
-  const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
+  const [agent, display] = await Promise.all([
+    getCachedAgentByIdForUser(agentId, session.user.id),
+    getUserTimeDisplay(session.user.id),
+  ])
   if (!agent) {
     notFound()
   }
 
+  const headerAgent = toHeaderAgent(agent)
+
   return (
     <>
-      <AgentWorkspaceHeader agent={toHeaderAgent(agent)} />
+      <AgentWorkspaceHeader
+        agent={headerAgent}
+        heartbeatScheduleLabel={display.agentScheduleInline({
+          enabled: headerAgent.heartbeatEnabled,
+          intervalMinutes: headerAgent.heartbeatIntervalMinutes,
+          mode: headerAgent.heartbeatScheduleMode,
+          times: headerAgent.heartbeatScheduleTimes,
+        })}
+      />
       <div className="mt-8 min-w-0">{children}</div>
     </>
   )

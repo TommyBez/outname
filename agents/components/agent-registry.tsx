@@ -6,7 +6,6 @@ import { formatAgentScheduleInline } from '@/agents/format'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { AgentScheduleMode } from '@/shared/agent-schedule'
-import { useUserTimezone } from '@/shared/components/user-timezone-context'
 
 export interface RegistryAgent {
   dreamingEnabled: boolean
@@ -20,7 +19,13 @@ export interface RegistryAgent {
   name: string
 }
 
-export function AgentRegistry({ agents }: { agents: RegistryAgent[] }) {
+export function AgentRegistry({
+  agents,
+  timeZone,
+}: {
+  agents: RegistryAgent[]
+  timeZone: string
+}) {
   const [query, setQuery] = useState('')
   const visibleAgents = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -74,7 +79,7 @@ export function AgentRegistry({ agents }: { agents: RegistryAgent[] }) {
         <ul className="border-foreground border-y-2">
           {visibleAgents.map((agent) => (
             <li key={agent.id}>
-              <AgentRegistryRow agent={agent} />
+              <AgentRegistryRow agent={agent} timeZone={timeZone} />
             </li>
           ))}
         </ul>
@@ -83,8 +88,13 @@ export function AgentRegistry({ agents }: { agents: RegistryAgent[] }) {
   )
 }
 
-function AgentRegistryRow({ agent }: { agent: RegistryAgent }) {
-  const timeZone = useUserTimezone()
+function AgentRegistryRow({
+  agent,
+  timeZone,
+}: {
+  agent: RegistryAgent
+  timeZone: string
+}) {
   return (
     <article className="grid gap-5 border-foreground border-b-2 py-6 last:border-b-0 md:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] md:items-center md:px-4">
       <div className="min-w-0">

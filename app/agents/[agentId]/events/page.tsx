@@ -6,6 +6,7 @@ import { TERMINAL_LEDGER_EVENTS_PER_TYPE } from '@/agent-runtime/shared/compact-
 import { AgentEventsWorkspace } from '@/agents/components/agent-events-workspace'
 import { requireSession } from '@/auth/server/auth-guard'
 import { getCachedAgentByIdForUser } from '@/shared/server/data'
+import { getUserTimeDisplay } from '@/shared/server/user-time-display'
 
 type Params = Promise<{ agentId: string }>
 
@@ -13,7 +14,10 @@ export default async function AgentEventsPage({ params }: { params: Params }) {
   await connection()
   const { agentId } = await params
   const session = await requireSession()
-  const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
+  const [agent, display] = await Promise.all([
+    getCachedAgentByIdForUser(agentId, session.user.id),
+    getUserTimeDisplay(session.user.id),
+  ])
   if (!agent) {
     notFound()
   }
@@ -26,7 +30,11 @@ export default async function AgentEventsPage({ params }: { params: Params }) {
 
   return (
     <Suspense fallback={<EventsSkeleton />}>
-      <AgentEventsWorkspace agentId={agent.id} initialEvents={events} />
+      <AgentEventsWorkspace
+        agentId={agent.id}
+        initialEvents={events}
+        timeZone={display.timeZone}
+      />
     </Suspense>
   )
 }

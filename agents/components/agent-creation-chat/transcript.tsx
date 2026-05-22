@@ -38,10 +38,12 @@ export function AgentCreationTranscript({
   messages,
   addToolApprovalResponse,
   sendMessage,
+  timeZone,
 }: {
   addToolApprovalResponse: ToolApprovalResponder
   messages: AgentCreationMessage[]
   sendMessage: SendMessageFn
+  timeZone: string
 }) {
   return (
     <Conversation className="min-h-0 flex-1">
@@ -59,6 +61,7 @@ export function AgentCreationTranscript({
               key={message.id}
               message={message}
               sendMessage={sendMessage}
+              timeZone={timeZone}
             />
           ))
         )}
@@ -72,10 +75,12 @@ function AgentCreationMessageView({
   message,
   addToolApprovalResponse,
   sendMessage,
+  timeZone,
 }: {
   addToolApprovalResponse: ToolApprovalResponder
   message: UIMessage
   sendMessage: SendMessageFn
+  timeZone: string
 }) {
   return (
     <Message from={message.role === 'user' ? 'user' : 'assistant'}>
@@ -86,6 +91,7 @@ function AgentCreationMessageView({
             key: `${message.id}-${index}`,
             part,
             sendMessage,
+            timeZone,
           })
         )}
       </MessageContent>
@@ -98,6 +104,7 @@ function renderAgentCreationPart(input: {
   key: string
   part: UIMessage['parts'][number]
   sendMessage: SendMessageFn
+  timeZone: string
 }) {
   const { key, part } = input
 
@@ -118,6 +125,7 @@ function renderAgentCreationPart(input: {
         addToolApprovalResponse={input.addToolApprovalResponse}
         key={key}
         part={part as CreateAgentToolPart}
+        timeZone={input.timeZone}
       />
     )
   }

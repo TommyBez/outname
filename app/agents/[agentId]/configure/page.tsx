@@ -21,6 +21,7 @@ import {
   getCachedAgentByIdForUser,
   getCachedAgentMemoryFile,
 } from '@/shared/server/data'
+import { getUserTimeDisplay } from '@/shared/server/user-time-display'
 
 type Params = Promise<{ agentId: string }>
 
@@ -44,6 +45,7 @@ async function AgentConfigure({ params }: { params: Params }) {
     agentsMdFile,
     userMdFile,
     budgetRules,
+    display,
   ] = await Promise.all([
     getCachedAgentByIdForUser(agentId, session.user.id),
     getAvailableModels(),
@@ -52,6 +54,7 @@ async function AgentConfigure({ params }: { params: Params }) {
     getCachedAgentMemoryFile({ agentId, path: 'AGENTS.md' }),
     getCachedAgentMemoryFile({ agentId, path: 'USER.md' }),
     listAgentBudgetRules({ userId: session.user.id, agentId }),
+    getUserTimeDisplay(session.user.id),
   ])
   if (!agentRow) {
     notFound()
@@ -96,6 +99,7 @@ async function AgentConfigure({ params }: { params: Params }) {
             stepLimitCustom: agentRow.stepLimitCustom,
           }}
           models={models}
+          timezoneLabel={display.timezoneLabel}
         />
       </section>
 

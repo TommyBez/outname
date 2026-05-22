@@ -9,8 +9,7 @@ import {
   getCachedAgentMemoryFile,
   getCachedAgentMemoryFiles,
 } from '@/shared/server/data'
-import { formatRelative } from '@/shared/server/format'
-import { getCachedUserTimezone } from '@/shared/server/user-timezone'
+import { getUserTimeDisplay } from '@/shared/server/user-time-display'
 
 type Params = Promise<{ agentId: string }>
 
@@ -49,9 +48,9 @@ async function ResolvedAgentMemoryFiles({ params }: { params: Params }) {
     notFound()
   }
 
-  const [rows, timeZone] = await Promise.all([
+  const [rows, display] = await Promise.all([
     getCachedAgentMemoryFiles(agent.id),
-    getCachedUserTimezone(session.user.id),
+    getUserTimeDisplay(session.user.id),
   ])
 
   return (
@@ -83,7 +82,7 @@ async function ResolvedAgentMemoryFiles({ params }: { params: Params }) {
                   {row.path}
                 </h2>
                 <span className="font-mono text-muted-foreground text-xs">
-                  Updated {formatRelative(row.updatedAt, { timeZone })}
+                  Updated {display.relative(row.updatedAt)}
                 </span>
               </header>
               <pre className="max-h-[480px] overflow-auto whitespace-pre-wrap border-2 border-border bg-muted p-4 font-mono text-xs leading-relaxed">
@@ -105,9 +104,9 @@ async function ResolvedAgentMemoryTimeline({ params }: { params: Params }) {
     notFound()
   }
 
-  const [logs, timeZone] = await Promise.all([
+  const [logs, display] = await Promise.all([
     getCachedAgentLogFiles(agent.id),
-    getCachedUserTimezone(session.user.id),
+    getUserTimeDisplay(session.user.id),
   ])
 
   return (
@@ -132,7 +131,7 @@ async function ResolvedAgentMemoryTimeline({ params }: { params: Params }) {
                   {formatLogPath(log.path)}
                 </h2>
                 <span className="font-mono text-muted-foreground text-xs">
-                  Updated {formatRelative(log.updatedAt, { timeZone })}
+                  Updated {display.relative(log.updatedAt)}
                 </span>
               </header>
               <RunResultView content={log.content} />

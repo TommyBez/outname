@@ -1,5 +1,4 @@
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { formatAgentScheduleInline } from '@/agents/format'
 import { refreshAgentCapabilitySummary } from '@/agents/server/capability-summary'
 import { createAgentForUser } from '@/agents/server/creation-service'
 import type {
@@ -15,7 +14,7 @@ import {
   userAgentsTag,
   userBudgetTag,
 } from '@/shared/server/cache-tags'
-import { getCachedUserTimezone } from '@/shared/server/user-timezone'
+import { getUserTimeDisplay } from '@/shared/server/user-time-display'
 import { attachMaintainerToolForUser } from '@/tools/server/attachment-service/maintainer'
 import { attachSubAgentForUser } from '@/tools/server/attachment-service/sub-agent'
 import type { AttachResult } from '@/tools/server/attachment-service/types'
@@ -25,12 +24,12 @@ export async function createRequestedAgent(input: {
   toolCallId: string
   userId: string
 }): Promise<AgentCreationResult> {
-  const [timeZone, identityCard, soul] = await Promise.all([
-    getCachedUserTimezone(input.userId),
+  const [display, identityCard, soul] = await Promise.all([
+    getUserTimeDisplay(input.userId),
     Promise.resolve(resolveIdentityCard(input.input)),
     Promise.resolve(resolveSoul(input.input)),
   ])
-  const instructions = resolveInstructions(input.input, timeZone)
+  const instructions = resolveInstructions(input.input, display)
 
   const created = await createAgentForUser({
     userId: input.userId,
@@ -184,7 +183,7 @@ function resolveSoul(input: AgentCreationRequest): string {
 
 function resolveInstructions(
   input: AgentCreationRequest,
-  timeZone: string
+  display: Awaited<ReturnType<typeof getUserTimeDisplay>>
 ): string {
   const explicit = input.instructions?.trim()
   if (explicit) {
@@ -201,11 +200,10 @@ function resolveInstructions(
     '',
     '## Heartbeat',
     input.heartbeat.enabled
-      ? `Wake ${formatAgentScheduleInline({
+      ? `Wake ${display.agentScheduleInline({
           enabled: input.heartbeat.enabled,
           intervalMinutes: input.heartbeat.intervalMinutes,
           mode: input.heartbeat.mode,
-          timeZone,
           times: input.heartbeat.times,
         })} and perform one useful, bounded action aligned with the role.`
       : 'Do not run proactive heartbeat work unless the user enables it later.',

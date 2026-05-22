@@ -22,6 +22,7 @@ import { TodayDate } from '@/shared/components/today-date'
 import type { Agent } from '@/shared/db/schema'
 import { getCachedAgentsForUser } from '@/shared/server/data'
 import { createPrivatePageMetadata } from '@/shared/server/site-metadata'
+import { getUserTimeDisplay } from '@/shared/server/user-time-display'
 
 export const metadata = createPrivatePageMetadata(
   'Dashboard',
@@ -31,11 +32,24 @@ export const metadata = createPrivatePageMetadata(
 export default function DashboardPage() {
   return (
     <AppShell>
+      <Suspense fallback={<DashboardPageFallback />}>
+        <DashboardPageBody />
+      </Suspense>
+    </AppShell>
+  )
+}
+
+async function DashboardPageBody() {
+  const session = await requireSession()
+  const display = await getUserTimeDisplay(session.user.id)
+
+  return (
+    <>
       <header className="mb-12 border-foreground border-t-4 pt-6 md:mb-16">
         <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(14rem,18rem)] xl:items-end">
           <div className="min-w-0">
             <p className="swiss-label mb-4 text-accent">
-              01. <TodayDate />
+              01. <TodayDate label={display.longDate(new Date())} />
             </p>
             <h1 className="text-balance font-black font-serif text-5xl uppercase leading-[0.86] tracking-tighter sm:text-6xl lg:text-[clamp(4.5rem,7vw,7rem)]">
               Dashboard
@@ -56,24 +70,22 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <Suspense fallback={<DashboardContentFallback />}>
-        <DashboardContent />
+      <Suspense fallback={<RunResultSkeleton />}>
+        <DashboardCockpit
+          timeZone={display.timeZone}
+          userId={session.user.id}
+        />
       </Suspense>
-    </AppShell>
+    </>
   )
 }
-
-async function DashboardContent() {
-  const session = await requireSession()
-
-  return (
-    <Suspense fallback={<RunResultSkeleton />}>
-      <DashboardCockpit userId={session.user.id} />
-    </Suspense>
-  )
-}
-
-async function DashboardCockpit({ userId }: { userId: string }) {
+async function DashboardCockpit({
+  timeZone,
+  userId,
+}: {
+  timeZone: string
+  userId: string
+}) {
   const [agents, generalBudget] = await Promise.all([
     getCachedAgentsForUser(userId),
     loadBudgetSummary({ userId, scope: { type: 'general' } }),
@@ -226,6 +238,7 @@ async function DashboardCockpit({ userId }: { userId: string }) {
                     agent={toDashboardAgent(agent)}
                     budgetEntries={agentBudgetMap.get(agent.id) ?? []}
                     eventSummaries={agentEventMap.get(agent.id) ?? []}
+                    timeZone={timeZone}
                   />
                 </Suspense>
               </li>
@@ -312,8 +325,15 @@ function isBudgetAttention(entry: BudgetSummaryEntry): boolean {
   return entry.spentUsd / entry.limitUsd >= 0.8
 }
 
-function DashboardContentFallback() {
-  return <RunResultSkeleton />
+function DashboardPageFallback() {
+  return (
+    <>
+      <header className="mb-12 border-foreground border-t-4 pt-6 md:mb-16">
+        <div className="h-24 animate-pulse bg-muted" />
+      </header>
+      <RunResultSkeleton />
+    </>
+  )
 }
 
 function toDashboardAgent(agent: Agent): DashboardAgent {

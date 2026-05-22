@@ -11,9 +11,6 @@ import {
   AppSidebarFallback,
 } from '@/shared/components/layout/app-sidebar'
 import { TimezoneBootstrapLoader } from '@/shared/components/layout/timezone-bootstrap-loader'
-import { UserTimezoneLoader } from '@/shared/components/layout/user-timezone-loader'
-import { UserTimezoneProvider } from '@/shared/components/user-timezone-context'
-import { DEFAULT_ACCOUNT_TIMEZONE } from '@/shared/format-timezone'
 
 interface AppShellProps {
   children: React.ReactNode
@@ -61,15 +58,7 @@ export function AppShell({
           className={cn(mainClassName ?? DEFAULT_MAIN_CLASS)}
           id="main-content"
         >
-          <Suspense
-            fallback={
-              <UserTimezoneProvider timezone={DEFAULT_ACCOUNT_TIMEZONE}>
-                {children}
-              </UserTimezoneProvider>
-            }
-          >
-            <UserTimezoneLoader>{children}</UserTimezoneLoader>
-          </Suspense>
+          {children}
         </main>
       </SidebarInset>
     </SidebarProvider>

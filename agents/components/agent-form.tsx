@@ -26,9 +26,15 @@ interface AgentFormProps {
   defaultModel: string
   initial?: AgentFormInitial
   models: ModelOption[]
+  timezoneLabel: string
 }
 
-export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
+export function AgentForm({
+  models,
+  defaultModel,
+  initial,
+  timezoneLabel,
+}: AgentFormProps) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [name, setName] = useState(initial?.name ?? '')
@@ -163,6 +169,7 @@ export function AgentForm({ models, defaultModel, initial }: AgentFormProps) {
             setIntervalMinutes={setIntervalMinutes}
             setScheduleMode={setHeartbeatScheduleMode}
             setScheduleTimes={setHeartbeatScheduleTimes}
+            timezoneLabel={timezoneLabel}
           />
           <DreamingSettings
             dreamingEnabled={dreamingEnabled}

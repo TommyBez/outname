@@ -23,7 +23,6 @@ import {
 import { AgentChatTranscript } from '@/chat/components/agent-chat-transcript'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { useUserTimezone } from '@/shared/components/user-timezone-context'
 import {
   formatCompactDateTimeInTimeZone,
   formatTimeInTimeZone,
@@ -32,13 +31,14 @@ import {
 interface AgentEventsWorkspaceProps {
   agentId: string
   initialEvents: AgentEventSummary[]
+  timeZone: string
 }
 
 export function AgentEventsWorkspace({
   agentId,
   initialEvents,
+  timeZone,
 }: AgentEventsWorkspaceProps) {
-  const timeZone = useUserTimezone()
   const router = useRouter()
   const searchParams = useSearchParams()
   const queryEventId = searchParams.get('event')

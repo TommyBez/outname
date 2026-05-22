@@ -20,7 +20,6 @@ import {
 } from '@/components/ui/collapsible'
 import { cn } from '@/lib/utils'
 import type { AgentScheduleMode } from '@/shared/agent-schedule'
-import { useUserTimezone } from '@/shared/components/user-timezone-context'
 import { formatMediumDateTimeInTimeZone } from '@/shared/format-timezone'
 
 export interface DashboardAgent {
@@ -41,10 +40,12 @@ export function AgentDashboardCard({
   agent,
   budgetEntries,
   eventSummaries,
+  timeZone,
 }: {
   agent: DashboardAgent
   budgetEntries?: BudgetSummaryEntry[]
   eventSummaries?: AgentEventSummary[]
+  timeZone: string
 }) {
   const [open, setOpen] = useState(false)
   const events = eventSummaries ?? []
@@ -105,6 +106,7 @@ export function AgentDashboardCard({
             agent={agent}
             budgetEntries={entries}
             eventSummaries={events}
+            timeZone={timeZone}
           />
         </CollapsibleContent>
       </article>
@@ -116,12 +118,13 @@ function AgentActivityPanel({
   agent,
   budgetEntries,
   eventSummaries,
+  timeZone,
 }: {
   agent: DashboardAgent
   budgetEntries: BudgetSummaryEntry[]
   eventSummaries: AgentEventSummary[]
+  timeZone: string
 }) {
-  const timeZone = useUserTimezone()
   const schedule = useMemo(
     () => buildSchedule(agent, timeZone),
     [agent, timeZone]
