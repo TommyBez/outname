@@ -6,6 +6,10 @@ export type ChannelId = 'slack'
 
 export interface IncomingChannelMessage {
   channel: ChannelId
+  // Provider-normalized message creation time.
+  createdAt: Date
+  // Provider-native stable id for the single inbound message.
+  externalMessageKey: string
   // Provider-native routing key used to resolve the agent binding.
   externalRoutingKey: string
   externalRoutingKind: 'channel' | 'dm'

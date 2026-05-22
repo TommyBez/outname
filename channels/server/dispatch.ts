@@ -19,6 +19,7 @@ export async function runChannelChatTurn(input: {
   sink: ChannelReplySink
 }): Promise<boolean> {
   const { message, sink } = input
+  const loadModelMessages = memoizeLoadModelMessages(message.loadModelMessages)
 
   const resolvedRoutes = await resolveRoutesForIncomingMessage(message)
   if (resolvedRoutes.length === 0) {
@@ -77,7 +78,7 @@ export async function runChannelChatTurn(input: {
 
     const modelMessages = await loadModelMessagesForTurn({
       fallbackMessages: [...skippedUserMessages, userUiMessage],
-      message,
+      loadModelMessages,
     })
 
     try {
@@ -160,7 +161,7 @@ async function persistUserMessage(input: {
 }): Promise<boolean> {
   return await insertChatMessageIfNew({
     conversationId: input.conversationId,
-    createdAt: channelMessageCreatedAt(input.message),
+    createdAt: input.message.createdAt,
     id: input.userUiMessage.id,
     role: 'user',
     parts: input.userUiMessage.parts,
@@ -170,88 +171,41 @@ async function persistUserMessage(input: {
 
 async function loadModelMessagesForTurn(input: {
   fallbackMessages: UIMessage[]
-  message: IncomingChannelMessage
+  loadModelMessages?: () => Promise<ModelMessage[] | undefined>
 }): Promise<ModelMessage[]> {
-  const loaded = await input.message.loadModelMessages?.()
+  const loaded = await input.loadModelMessages?.()
   if (loaded) {
     return loaded
   }
   return await convertToModelMessages(input.fallbackMessages)
 }
 
+function memoizeLoadModelMessages(
+  loadModelMessages: IncomingChannelMessage['loadModelMessages']
+): (() => Promise<ModelMessage[] | undefined>) | undefined {
+  if (!loadModelMessages) {
+    return
+  }
+
+  let promise: Promise<ModelMessage[] | undefined> | null = null
+  return () => {
+    promise ??= loadModelMessages()
+    return promise
+  }
+}
+
 function channelUserMessageId(input: {
   agentId: string
   message: IncomingChannelMessage
 }): string {
-  if (input.message.channel === 'slack') {
-    const rawKey = [
-      input.message.channel,
-      input.message.teamId,
-      slackExternalMessageKey(input.message),
-      input.agentId,
-    ].join('\u0000')
-    return `msg_${createHash('sha256')
-      .update(rawKey)
-      .digest('base64url')
-      .slice(0, 16)}`
-  }
-  return `msg_${crypto.randomUUID()}`
-}
-
-function slackExternalMessageKey(message: IncomingChannelMessage): string {
-  const channelId = readString(message.threadMetadata, 'slackChannel')
-  const messageTs = readString(message.threadMetadata, 'slackMessageTs')
-  if (channelId && messageTs) {
-    return `${channelId}:${messageTs}`
-  }
-  return `fallback:${channelMessageFingerprint(message)}`
-}
-
-function channelMessageFingerprint(message: IncomingChannelMessage): string {
-  const raw = JSON.stringify({
-    channel: message.channel,
-    externalRoutingKey: message.externalRoutingKey,
-    externalRoutingKind: message.externalRoutingKind,
-    externalThreadKey: message.externalThreadKey,
-    externalUserId: message.externalUserId,
-    teamId: message.teamId,
-    text: message.text,
-    threadMetadata: message.threadMetadata ?? null,
-  })
-  return createHash('sha256').update(raw).digest('base64url').slice(0, 16)
-}
-
-function channelMessageCreatedAt(
-  message: IncomingChannelMessage
-): Date | undefined {
-  if (message.channel !== 'slack') {
-    return
-  }
-  const messageTs = readString(message.threadMetadata, 'slackMessageTs')
-  if (!messageTs) {
-    return
-  }
-  return parseSlackTs(messageTs)
-}
-
-export function parseSlackTs(ts: string): Date {
-  const [secondsValue, micros = '0'] = ts.split('.')
-  const seconds = Number(secondsValue)
-  if (!Number.isFinite(seconds) || seconds <= 0) {
-    return new Date()
-  }
-  const paddedMicros = Number(micros.padEnd(6, '0'))
-  if (!Number.isFinite(paddedMicros) || paddedMicros < 0) {
-    return new Date()
-  }
-  const ms = seconds * 1000 + Math.floor(paddedMicros / 1000)
-  return new Date(ms)
-}
-
-function readString(
-  value: Record<string, unknown> | undefined,
-  key: string
-): string {
-  const item = value?.[key]
-  return typeof item === 'string' ? item : ''
+  const rawKey = [
+    input.message.channel,
+    input.message.teamId,
+    input.message.externalMessageKey,
+    input.agentId,
+  ].join('\u0000')
+  return `msg_${createHash('sha256')
+    .update(rawKey)
+    .digest('base64url')
+    .slice(0, 16)}`
 }

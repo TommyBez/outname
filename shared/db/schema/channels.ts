@@ -53,6 +53,7 @@ export const agentChannelBindings = pgTable(
       .notNull()
       .references(() => agent.id, { onDelete: 'cascade' }),
     channel: text('channel').notNull(),
+    // Channel-native workspace/scope id: Slack team, future Discord guild, etc.
     teamId: text('team_id').notNull().default(''),
     externalKey: text('external_key').notNull(),
     kind: text('kind').$type<'channel' | 'dm'>().notNull(),
@@ -86,6 +87,7 @@ export const channelThreadConversations = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
     channel: text('channel').notNull(),
+    // Channel-native workspace/scope id: Slack team, future Discord guild, etc.
     teamId: text('team_id').notNull().default(''),
     externalThreadKey: text('external_thread_key').notNull(),
     conversationId: text('conversation_id')

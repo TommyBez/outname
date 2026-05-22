@@ -21,6 +21,7 @@ import {
 } from '@/agent-runtime/server/runtime-spec'
 import { getAgentById } from '@/agent-runtime/server/start-agent-run'
 import { formatBudgetExceededMessage } from '@/budgets/server/errors'
+import type { ChannelId } from '@/channels/server/types'
 import {
   insertChatMessageIfNew,
   persistNewChatMessages,
@@ -43,7 +44,7 @@ import {
 import { buildRealtimeAgentRuntime } from './realtime-agent-runtime'
 
 export type RealtimePersistMode = 'ui-message-full' | 'text-only'
-export type RealtimeSource = 'chat' | 'slack'
+export type RealtimeSource = 'chat' | ChannelId
 
 export interface RealtimeDelivery {
   postAgentStream?: (stream: AsyncIterable<unknown>) => Promise<void>

@@ -10,7 +10,7 @@ vi.mock('@chat-adapter/state-redis', () => ({
   createRedisState: mocks.createRedisState,
 }))
 
-describe('createSlackBackingState', () => {
+describe('createChannelRedisState', () => {
   const originalRedisUrl = process.env.REDIS_URL
 
   beforeEach(() => {
@@ -26,23 +26,23 @@ describe('createSlackBackingState', () => {
     }
   })
 
-  it('throws immediately when REDIS_URL is missing', async () => {
-    const { createSlackBackingState } = await import('./backing-state')
+  it('throws when REDIS_URL is missing', async () => {
+    const { createChannelRedisState } = await import('./backing-state')
 
-    expect(() => createSlackBackingState()).toThrow(
+    expect(() => createChannelRedisState('slack')).toThrow(
       'REDIS_URL is required for slack Chat SDK state.'
     )
     expect(mocks.createRedisState).not.toHaveBeenCalled()
   })
 
-  it('creates Redis-backed Chat SDK state when REDIS_URL exists', async () => {
+  it('uses a channel-specific Redis key prefix', async () => {
     const adapter = { connect: vi.fn() }
     process.env.REDIS_URL = 'redis://localhost:6379'
     mocks.createRedisState.mockReturnValue(adapter)
 
-    const { createSlackBackingState } = await import('./backing-state')
+    const { createChannelRedisState } = await import('./backing-state')
 
-    expect(createSlackBackingState()).toBe(adapter)
+    expect(createChannelRedisState('slack')).toBe(adapter)
     expect(mocks.createRedisState).toHaveBeenCalledWith({
       keyPrefix: 'slack-chat-sdk',
       url: 'redis://localhost:6379',

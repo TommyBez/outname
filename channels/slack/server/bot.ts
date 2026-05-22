@@ -10,17 +10,14 @@ import {
 import { after } from 'next/server'
 import { runChannelChatTurn } from '@/channels/server/dispatch'
 import type { IncomingChannelMessage } from '@/channels/server/types'
-import { SlackHybridState } from './state'
 import {
-  describeSlackAttachments,
-  extractSlackTeamId,
-  extractSlackThread,
-  type SlackRawMessage,
-} from './thread-ids'
-
-type SlackChat = Chat<{ slack: SlackAdapter }>
-type SlackThread = Parameters<Parameters<SlackChat['onNewMention']>[0]>[0]
-type SlackMessage = Parameters<Parameters<SlackChat['onNewMention']>[0]>[1]
+  buildIncomingSlackMessage,
+  type SlackChat,
+  type SlackMessage,
+  type SlackMessageContext,
+  type SlackThread,
+} from './incoming-message'
+import { SlackHybridState } from './state'
 
 interface SlackBotBundle {
   adapter: SlackAdapter
@@ -75,12 +72,6 @@ export function getSlackAdapter(): SlackAdapter {
   return ensureBundle().adapter
 }
 
-// Top-level messages use their own ts so direct replies still round-trip as a
-// stable synthetic thread.
-function slackThreadKey(channel: string, threadTs: string): string {
-  return `${channel}:${threadTs}`
-}
-
 function registerHandlers(bot: SlackChat): void {
   bot.onNewMention(async (thread, message, context) => {
     await thread.subscribe()
@@ -103,16 +94,11 @@ function registerHandlers(bot: SlackChat): void {
   })
 }
 
-function extractTeamId(message: SlackMessage): string {
-  const raw = message.raw as SlackRawMessage | undefined
-  return extractSlackTeamId(raw)
-}
-
 async function handleSlackMessage(input: {
   thread: SlackThread
   message: SlackMessage
   kind: 'channel' | 'dm'
-  context?: Parameters<Parameters<SlackChat['onNewMention']>[0]>[2]
+  context?: SlackMessageContext
 }): Promise<void> {
   const { thread, message, kind, context } = input
   const incoming = buildIncomingSlackMessage({
@@ -162,68 +148,6 @@ async function handleSlackMessage(input: {
       kind,
       routingKey: incoming.externalRoutingKey,
     })
-  }
-}
-
-function buildIncomingSlackMessage(input: {
-  thread: SlackThread
-  message: SlackMessage
-  kind: 'channel' | 'dm'
-  loadModelMessages?: () => Promise<ModelMessage[] | undefined>
-}): IncomingChannelMessage | null {
-  const { thread, message, kind } = input
-  const raw = message.raw as SlackRawMessage | undefined
-  const trimmedText = message.text?.trim() ?? ''
-  const attachmentSummary = describeSlackAttachments(raw)
-  if (!(trimmedText || attachmentSummary)) {
-    return null
-  }
-  // Attachment-only messages still flow through routing/persistence; the model
-  // receives the actual file bytes via `toAiMessages` in `loadModelMessages`.
-  const text = trimmedText || `(attachment: ${attachmentSummary})`
-
-  // Keep provider-native Slack ids out of routing keys; `slack:`-prefixed SDK
-  // ids should not leak into shared channel bindings.
-  const slackThread = extractSlackThread(thread, raw)
-  if (!slackThread) {
-    console.warn('[slack] thread missing slack ids; skipping', {
-      channelId: thread.channelId,
-      threadId: thread.id,
-    })
-    return null
-  }
-  const { channelId, threadTs } = slackThread
-  const messageTs = raw?.ts ?? threadTs
-
-  const teamId = extractTeamId(message)
-  if (!teamId) {
-    console.warn(
-      '[slack] dropping event with no team id; cannot owner-scope to an installation',
-      { channelId, kind }
-    )
-    return null
-  }
-
-  const externalRoutingKey =
-    kind === 'dm' ? (message.author?.userId ?? channelId) : channelId
-
-  return {
-    channel: 'slack',
-    teamId,
-    externalThreadKey: slackThreadKey(channelId, threadTs),
-    externalRoutingKey,
-    externalRoutingKind: kind,
-    externalUserId: message.author?.userId ?? 'unknown',
-    externalUserDisplayName:
-      message.author?.fullName ?? message.author?.userName,
-    text,
-    threadMetadata: {
-      slackChannel: channelId,
-      slackMessageTs: messageTs,
-      slackThreadTs: threadTs,
-      slackTeamId: teamId,
-    },
-    loadModelMessages: input.loadModelMessages,
   }
 }
 
