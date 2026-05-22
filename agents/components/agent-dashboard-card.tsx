@@ -224,7 +224,7 @@ function EventStateList({
       <section className="border-foreground border-y-2 bg-background px-4 py-5">
         <p className="font-bold text-xs uppercase tracking-[0.16em]">Idle</p>
         <p className="mt-2 text-muted-foreground text-sm">
-          No active or queued non-chat events.
+          No active or queued events.
         </p>
       </section>
     )

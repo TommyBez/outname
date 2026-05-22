@@ -228,6 +228,11 @@ function channelUserMessageId(input: {
   message: IncomingChannelMessage
   turn: IncomingChannelTurn
 }): string {
+  if (input.message.externalMessageKey.trim().length === 0) {
+    throw new Error(
+      'channelUserMessageId: input.message.externalMessageKey must be non-empty'
+    )
+  }
   const rawKey = [
     input.turn.channel,
     input.turn.externalScopeId,

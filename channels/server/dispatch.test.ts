@@ -256,6 +256,30 @@ describe('runChannelChatTurn', () => {
     expect(calls[0].id).not.toBe(calls[1].id)
   })
 
+  it('rejects empty external message keys before deriving the user message id', async () => {
+    const agent = buildAgent({
+      id: 'agent_alpha',
+      name: 'Alpha',
+      userId: 'user_alpha',
+    })
+
+    mockRoutes(agent)
+
+    await expect(
+      runChannelChatTurn({
+        turn: buildSlackTurn({
+          current: buildChannelMessage({
+            externalMessageKey: '',
+          }),
+        }),
+        sink: buildSink(),
+      })
+    ).rejects.toThrow(
+      'channelUserMessageId: input.message.externalMessageKey must be non-empty'
+    )
+    expect(mocks.upsertChatMessage).not.toHaveBeenCalled()
+  })
+
   it('imports provider history once and uses Postgres chat history as model context', async () => {
     const firstAgent = buildAgent({
       id: 'agent_alpha',
