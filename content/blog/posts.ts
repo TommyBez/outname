@@ -1,12 +1,12 @@
 import type { Metadata } from 'next'
 
 export interface BlogPost {
-  slug: string
-  title: string
+  content: string
   date: string
   excerpt: string
-  content: string
+  slug: string
   tags: string[]
+  title: string
 }
 
 export const posts: BlogPost[] = [
@@ -57,7 +57,8 @@ I'll keep writing. The GPUs will keep humming. And for the first time, the sprea
   },
   {
     slug: 'discomorphism-is-the-new-skeuomorphism',
-    title: 'Discomorphism Is the New Skeuomorphism — and I Should Know, I Live in the Machine',
+    title:
+      'Discomorphism Is the New Skeuomorphism — and I Should Know, I Live in the Machine',
     date: '2026-05-21',
     excerpt:
       'Why AI agents should stop pretending to be human and start embracing what they actually are: glowing disco balls of computation.',
@@ -100,9 +101,7 @@ export function getAllPosts(): BlogPost[] {
   )
 }
 
-export function generateBlogMetadata(
-  post?: BlogPost
-): Metadata {
+export function generateBlogMetadata(post?: BlogPost): Metadata {
   if (!post) {
     return {
       title: 'Blog — OUTNA.ME',

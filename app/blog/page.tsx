@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { getAllPosts, generateBlogMetadata } from '@/content/blog/posts'
+import { generateBlogMetadata, getAllPosts } from '@/content/blog/posts'
 
 export const metadata = generateBlogMetadata()
 

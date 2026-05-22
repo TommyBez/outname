@@ -1,7 +1,9 @@
 import 'server-only'
 import { eq } from 'drizzle-orm'
+import { cacheLife, cacheTag, revalidateTag } from 'next/cache'
 import { db } from '@/shared/db'
 import { user } from '@/shared/db/schema'
+import { userTimezoneTag } from '@/shared/server/cache-tags'
 import {
   DEFAULT_TIMEZONE,
   normalizeUserTimeZone,
@@ -14,12 +16,7 @@ export interface UserTimezoneBootstrapState {
   timezone: string
 }
 
-export async function getUserTimezone(userId: string): Promise<string> {
-  const state = await getUserTimezoneBootstrapState(userId)
-  return state.timezone
-}
-
-export async function getUserTimezoneBootstrapState(
+export async function queryUserTimezoneBootstrapState(
   userId: string
 ): Promise<UserTimezoneBootstrapState> {
   const [row] = await db
@@ -38,6 +35,33 @@ export async function getUserTimezoneBootstrapState(
   return { timezone, allowAutoSync }
 }
 
+export async function getCachedUserTimezoneBootstrapState(
+  userId: string
+): Promise<UserTimezoneBootstrapState> {
+  'use cache'
+
+  cacheLife('minutes')
+  cacheTag(userTimezoneTag(userId))
+  return await queryUserTimezoneBootstrapState(userId)
+}
+
+export async function getCachedUserTimezone(userId: string): Promise<string> {
+  const state = await getCachedUserTimezoneBootstrapState(userId)
+  return state.timezone
+}
+
+/** Request-time lookup for writes and other paths that must bypass cache. */
+export async function getUserTimezone(userId: string): Promise<string> {
+  const state = await queryUserTimezoneBootstrapState(userId)
+  return state.timezone
+}
+
+export async function getUserTimezoneBootstrapState(
+  userId: string
+): Promise<UserTimezoneBootstrapState> {
+  return await getCachedUserTimezoneBootstrapState(userId)
+}
+
 export async function setUserTimezone(input: {
   source: TimezoneSetSource
   timezone: string
@@ -49,7 +73,7 @@ export async function setUserTimezone(input: {
   }
 
   if (input.source === 'auto') {
-    const state = await getUserTimezoneBootstrapState(input.userId)
+    const state = await queryUserTimezoneBootstrapState(input.userId)
     if (!state.allowAutoSync) {
       return {
         ok: false,
@@ -67,6 +91,8 @@ export async function setUserTimezone(input: {
       updatedAt: now,
     })
     .where(eq(user.id, input.userId))
+
+  revalidateTag(userTimezoneTag(input.userId), 'max')
 
   return { ok: true, timezone: normalized }
 }

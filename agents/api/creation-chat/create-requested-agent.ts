@@ -15,7 +15,7 @@ import {
   userAgentsTag,
   userBudgetTag,
 } from '@/shared/server/cache-tags'
-import { getUserTimezone } from '@/shared/server/user-timezone'
+import { getCachedUserTimezone } from '@/shared/server/user-timezone'
 import { attachMaintainerToolForUser } from '@/tools/server/attachment-service/maintainer'
 import { attachSubAgentForUser } from '@/tools/server/attachment-service/sub-agent'
 import type { AttachResult } from '@/tools/server/attachment-service/types'
@@ -26,7 +26,7 @@ export async function createRequestedAgent(input: {
   userId: string
 }): Promise<AgentCreationResult> {
   const [timeZone, identityCard, soul] = await Promise.all([
-    getUserTimezone(input.userId),
+    getCachedUserTimezone(input.userId),
     Promise.resolve(resolveIdentityCard(input.input)),
     Promise.resolve(resolveSoul(input.input)),
   ])

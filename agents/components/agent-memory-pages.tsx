@@ -10,7 +10,7 @@ import {
   getCachedAgentMemoryFiles,
 } from '@/shared/server/data'
 import { formatRelative } from '@/shared/server/format'
-import { getUserTimezone } from '@/shared/server/user-timezone'
+import { getCachedUserTimezone } from '@/shared/server/user-timezone'
 
 type Params = Promise<{ agentId: string }>
 
@@ -51,7 +51,7 @@ async function ResolvedAgentMemoryFiles({ params }: { params: Params }) {
 
   const [rows, timeZone] = await Promise.all([
     getCachedAgentMemoryFiles(agent.id),
-    getUserTimezone(session.user.id),
+    getCachedUserTimezone(session.user.id),
   ])
 
   return (
@@ -107,7 +107,7 @@ async function ResolvedAgentMemoryTimeline({ params }: { params: Params }) {
 
   const [logs, timeZone] = await Promise.all([
     getCachedAgentLogFiles(agent.id),
-    getUserTimezone(session.user.id),
+    getCachedUserTimezone(session.user.id),
   ])
 
   return (

@@ -12,7 +12,7 @@ import {
   getCachedAgentMemoryFile,
   getCachedAgentTools,
 } from '@/shared/server/data'
-import { getUserTimezone } from '@/shared/server/user-timezone'
+import { getCachedUserTimezone } from '@/shared/server/user-timezone'
 import { formatNullableAgentDate } from './agent-format'
 
 type Params = Promise<{ agentId: string }>
@@ -43,7 +43,7 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
       getCachedAgentLogFiles(agent.id),
       getCachedAgentMemoryFile({ agentId: agent.id, path: 'DREAMS.md' }),
       listRecentAgentEvents({ agentId: agent.id, limit: 6 }),
-      getUserTimezone(session.user.id),
+      getCachedUserTimezone(session.user.id),
     ])
 
   const connectedTools = tools.filter((tool) => tool.status === 'connected')

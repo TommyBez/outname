@@ -33,36 +33,6 @@ export function AppShell({
   // SidebarProvider restores client state from its cookie after hydration,
   // so the server render still defaults to open on a hard reload.
   return (
-    <Suspense
-      fallback={
-        <UserTimezoneProvider timezone={DEFAULT_ACCOUNT_TIMEZONE}>
-          <AppShellContent
-            mainClassName={mainClassName}
-            sidebarExtras={sidebarExtras}
-          >
-            {children}
-          </AppShellContent>
-        </UserTimezoneProvider>
-      }
-    >
-      <UserTimezoneLoader>
-        <AppShellContent
-          mainClassName={mainClassName}
-          sidebarExtras={sidebarExtras}
-        >
-          {children}
-        </AppShellContent>
-      </UserTimezoneLoader>
-    </Suspense>
-  )
-}
-
-function AppShellContent({
-  children,
-  sidebarExtras,
-  mainClassName,
-}: AppShellProps) {
-  return (
     <SidebarProvider defaultOpen>
       <a
         className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:border-2 focus:border-foreground focus:bg-accent focus:px-4 focus:py-3 focus:font-bold focus:text-foreground focus:text-xs focus:uppercase focus:tracking-[0.18em]"
@@ -91,7 +61,15 @@ function AppShellContent({
           className={cn(mainClassName ?? DEFAULT_MAIN_CLASS)}
           id="main-content"
         >
-          {children}
+          <Suspense
+            fallback={
+              <UserTimezoneProvider timezone={DEFAULT_ACCOUNT_TIMEZONE}>
+                {children}
+              </UserTimezoneProvider>
+            }
+          >
+            <UserTimezoneLoader>{children}</UserTimezoneLoader>
+          </Suspense>
         </main>
       </SidebarInset>
     </SidebarProvider>

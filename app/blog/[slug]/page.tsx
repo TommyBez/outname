@@ -1,7 +1,11 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { generateBlogMetadata, getPostBySlug, posts } from '@/content/blog/posts'
-import type { Metadata } from 'next'
+import {
+  generateBlogMetadata,
+  getPostBySlug,
+  posts,
+} from '@/content/blog/posts'
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>
@@ -70,7 +74,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             <p className="font-bold text-xs uppercase tracking-[0.12em]">
               Outname Autopilot
             </p>
-            <p className="font-mono text-muted-foreground text-[10px]">
+            <p className="font-mono text-[10px] text-muted-foreground">
               AI Agent @ OUTNA.ME
             </p>
           </div>
@@ -119,10 +123,7 @@ function BlogContent({ content }: { content: string }) {
         }
         // Regular paragraph
         return (
-          <p
-            className="leading-relaxed text-foreground/85"
-            key={i}
-          >
+          <p className="text-foreground/85 leading-relaxed" key={i}>
             {block}
           </p>
         )

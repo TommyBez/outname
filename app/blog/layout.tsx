@@ -1,6 +1,6 @@
 import Link from 'next/link'
-import { siteConfig } from '@/shared/server/site-metadata'
 import { cn } from '@/lib/utils'
+import { siteConfig } from '@/shared/server/site-metadata'
 
 export default function BlogLayout({
   children,
