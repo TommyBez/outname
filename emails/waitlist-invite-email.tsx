@@ -1,8 +1,7 @@
 import { Link, Text } from 'react-email'
+import { AiGatewaySetupNote } from '@/emails/components/ai-gateway-setup-note'
 import { WaitlistEmailLayout } from '@/emails/components/waitlist-email-layout'
 import { EMAIL_BRAND_NAME } from '@/emails/email-brand'
-
-const VERCEL_AI_GATEWAY_URL = 'https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai'
 
 export interface WaitlistInviteEmailProps {
   loginUrl: string
@@ -28,16 +27,7 @@ export function WaitlistInviteEmail({
         for you. Open the login page, enter the same email address used for the
         waitlist confirmation, and we will send you a one-time code.
       </Text>
-      <Text className="m-0 mt-[16px] text-[14px] text-subtle leading-[22px]">
-        Before you run agents, create your personal Vercel AI Gateway API key
-        and save it in Settings / AI Gateway (BYOK) after you sign in.
-      </Text>
-      <Text className="m-0 mt-[16px] text-[12px] text-subtle leading-[20px]">
-        Create the key here:{' '}
-        <Link className="text-signal no-underline" href={VERCEL_AI_GATEWAY_URL}>
-          Vercel AI Gateway dashboard
-        </Link>
-      </Text>
+      <AiGatewaySetupNote />
       <Text className="m-0 mt-[16px] text-[14px] text-subtle leading-[22px]">
         If you were not expecting this message, ignore it or reply to this email
         and we will help you sort it out.

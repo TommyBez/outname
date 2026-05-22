@@ -106,6 +106,13 @@
       "when": 1779800000000,
       "tag": "0011_connector_connections",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1779900000000,
+      "tag": "0012_user_timezone_configured_at",
+      "breakpoints": true
     }
   ]
 }

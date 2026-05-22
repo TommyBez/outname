@@ -17,7 +17,9 @@ import { AccountSkeleton } from '@/shared/components/skeletons'
 import { hasUserAiGatewayApiKey } from '@/shared/server/ai-gateway-byok'
 import { getCachedAgentsForUser } from '@/shared/server/data'
 import { createPrivatePageMetadata } from '@/shared/server/site-metadata'
+import { getUserTimezone } from '@/shared/server/user-timezone'
 import { AiGatewayKeyCard } from './ai-gateway-key-card'
+import { TimezoneCard } from './timezone-card'
 
 export const metadata: Metadata = createPrivatePageMetadata(
   'Settings',
@@ -50,6 +52,12 @@ export default function SettingsPage() {
         <Section title="Account">
           <Suspense fallback={<AccountSkeleton />}>
             <AccountSection />
+          </Suspense>
+        </Section>
+
+        <Section title="Timezone">
+          <Suspense fallback={<div className="h-24" />}>
+            <TimezoneSection />
           </Suspense>
         </Section>
 
@@ -130,6 +138,12 @@ async function AccountSection() {
   )
 }
 
+async function TimezoneSection() {
+  const session = await requireSession()
+  const timezone = await getUserTimezone(session.user.id)
+  return <TimezoneCard timezone={timezone} />
+}
+
 async function WaitlistAdminSection() {
   const session = await getSession()
   if (!(session && (await hasWaitlistManageAccess(session.user.id)))) {
@@ -148,11 +162,11 @@ function WaitlistSection() {
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
       <div>
         <p className="font-black font-serif text-xl uppercase tracking-[-0.04em]">
-          Manage waitlist confirmations and invites
+          Invite users and manage the waitlist
         </p>
         <p className="mt-0.5 text-muted-foreground text-xs">
-          Review pending signups, resend confirmation emails, and send access
-          invites.
+          Send product invites by email, review signups, and resend confirmation
+          or access messages.
         </p>
       </div>
       <Link
