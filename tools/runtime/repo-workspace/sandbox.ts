@@ -147,7 +147,7 @@ async function createWorkspaceSandbox(
         url: input.repoUrl,
         username: input.gitCredentials.username,
         password: input.gitCredentials.password,
-        depth: 1,
+        depth: 10,
       },
       persistent: false,
       ports: [3000],
