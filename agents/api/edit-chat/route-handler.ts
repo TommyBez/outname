@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { updateAgentForUser } from '@/agents/server/update-service'
 import { auth } from '@/auth/server/auth'
+import { stripIncompleteToolPartsForModel } from '@/chat/lib/incomplete-tool-parts'
 import { getUserModelForGateway } from '@/shared/server/ai-gateway-byok'
 import { getAgentByIdForUser } from '@/shared/server/data'
 import { detachToolForUser } from '@/tools/server/attachment-service/detach'
@@ -68,7 +69,10 @@ export async function POST(
     tools: buildEditTools({ agentId, userId: session.user.id }),
   })
 
-  return createAgentUIStreamResponse({ agent, uiMessages: messages.value })
+  return createAgentUIStreamResponse({
+    agent,
+    uiMessages: stripIncompleteToolPartsForModel(messages.value),
+  })
 }
 
 function buildEditTools(input: { agentId: string; userId: string }) {

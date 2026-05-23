@@ -9,6 +9,7 @@ import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/auth/server/auth'
+import { stripIncompleteToolPartsForModel } from '@/chat/lib/incomplete-tool-parts'
 import { getUserModelForGateway } from '@/shared/server/ai-gateway-byok'
 import { listAvailableTools } from './available-tools'
 import { createRequestedAgent } from './create-requested-agent'
@@ -72,7 +73,7 @@ export async function POST(req: Request) {
 
   return createAgentUIStreamResponse({
     agent,
-    uiMessages: messages.value,
+    uiMessages: stripIncompleteToolPartsForModel(messages.value),
   })
 }
 

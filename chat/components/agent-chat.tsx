@@ -1,7 +1,7 @@
 'use client'
 
 import { useChat } from '@ai-sdk/react'
-import { DefaultChatTransport } from 'ai'
+import { DefaultChatTransport, MissingToolResultsError } from 'ai'
 import { MessageSquarePlus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
@@ -16,6 +16,7 @@ import {
 } from '@/chat/components/agent-chat-transcript'
 import { refreshConversationList } from '@/chat/components/agent-sidebar-workspace/conversations'
 import { ChatErrorBanner } from '@/chat/components/chat-error-banner'
+import { stripIncompleteToolPartsForModel } from '@/chat/lib/incomplete-tool-parts'
 import { newChatConversationId } from '@/chat/lib/new-chat-conversation-id'
 import {
   PromptInput,
@@ -50,25 +51,38 @@ export function AgentChat({
   const [workflowStatus, setWorkflowStatus] =
     useState<WorkflowStatusData | null>(null)
   const didPromoteDraftRef = useRef(false)
-  const { messages, sendMessage, status, error, stop } =
-    useChat<AgentChatMessage>({
-      messages: initialMessages,
-      transport: new DefaultChatTransport({
-        api: `/api/agents/${agentId}/chat`,
-        body: { conversationId },
-      }),
-      onData: (part) => {
-        if (isWorkflowStatusPart(part)) {
-          setWorkflowStatus(part.data)
-        }
-      },
-      onFinish: async () => {
-        setWorkflowStatus(null)
-        // Refresh the sidebar list; title generation can finish slightly after the
-        // stream closes, so we retry until the row has a title or attempts exhaust.
-        await refreshConversationList(agentId, { conversationId })
-      },
-    })
+  const {
+    messages,
+    sendMessage,
+    setMessages,
+    status,
+    error,
+    stop,
+    clearError,
+  } = useChat<AgentChatMessage>({
+    messages: initialMessages,
+    transport: new DefaultChatTransport({
+      api: `/api/agents/${agentId}/chat`,
+      body: { conversationId },
+    }),
+    onData: (part) => {
+      if (isWorkflowStatusPart(part)) {
+        setWorkflowStatus(part.data)
+      }
+    },
+    onError: (streamError) => {
+      if (shouldRepairIncompleteToolCalls(streamError)) {
+        setMessages((current) => stripIncompleteToolPartsForModel(current))
+        clearError()
+      }
+    },
+    onFinish: async () => {
+      setWorkflowStatus(null)
+      // Refresh the sidebar list; title generation can finish slightly after the
+      // stream closes, so we retry until the row has a title or attempts exhaust.
+      await refreshConversationList(agentId, { conversationId })
+    },
+  })
 
   // Use `history.replaceState` instead of `router.replace` so the URL updates
   // without remounting `useChat` or flashing the chat surface.
@@ -118,6 +132,11 @@ export function AgentChat({
     router.push(`/agents/${agentId}/chat/new?draft=${newChatConversationId()}`)
   }
 
+  function handleStop() {
+    stop()
+    setMessages((current) => stripIncompleteToolPartsForModel(current))
+  }
+
   return (
     <div className="flex h-full min-w-0 flex-col overflow-hidden">
       <AgentChatTranscript
@@ -149,13 +168,23 @@ export function AgentChat({
             </PromptInputTools>
             <PromptInputSubmit
               disabled={!isBusy && input.trim().length === 0}
-              onStop={stop}
+              onStop={handleStop}
               status={status}
             />
           </PromptInputFooter>
         </PromptInput>
       </div>
     </div>
+  )
+}
+
+function shouldRepairIncompleteToolCalls(error: Error): boolean {
+  if (MissingToolResultsError.isInstance(error)) {
+    return true
+  }
+  return (
+    error.message.includes('Tool result') &&
+    error.message.includes('missing for tool call')
   )
 }
 

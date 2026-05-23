@@ -3,6 +3,15 @@ import {
   isSubAgentToolOutput,
   subAgentModelText,
 } from '@/agent-runtime/server/sub-agent-tool-output'
+import { stripIncompleteToolPartsForModel } from '@/chat/lib/incomplete-tool-parts'
+
+export function prepareChatMessagesForModel(
+  messages: UIMessage[]
+): UIMessage[] {
+  return compactSubAgentToolOutputsForModel(
+    stripIncompleteToolPartsForModel(messages)
+  )
+}
 
 export function compactSubAgentToolOutputsForModel(
   messages: UIMessage[]

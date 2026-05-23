@@ -2,6 +2,7 @@ import 'server-only'
 import type { UIMessage } from 'ai'
 import { and, asc, desc, eq, isNull, or, sql } from 'drizzle-orm'
 import { cacheLife, cacheTag } from 'next/cache'
+import { stripIncompleteToolPartsForModel } from '@/chat/lib/incomplete-tool-parts'
 import { db } from '@/shared/db'
 import {
   type ChatConversation,
@@ -174,7 +175,7 @@ export async function loadChatHistory(
     .from(chatMessage)
     .where(eq(chatMessage.conversationId, conversationId))
     .orderBy(asc(chatMessage.createdAt))
-  return rows.map(rowToUIMessage)
+  return stripIncompleteToolPartsForModel(rows.map(rowToUIMessage))
 }
 
 function rowToUIMessage(row: ChatMessage): UIMessage {

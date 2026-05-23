@@ -26,7 +26,7 @@ import {
   insertChatMessageIfNew,
   persistNewChatMessages,
 } from '@/chat/server/chat'
-import { compactSubAgentToolOutputsForModel } from '@/chat/server/chat-model'
+import { prepareChatMessagesForModel } from '@/chat/server/chat-model'
 import { maybeGenerateConversationTitle } from '@/chat/workflows/steps/generate-conversation-title'
 import { conversationListTag } from '@/shared/server/cache-tags'
 import { withToolRuntimeRunId } from '@/tools/runtime/realtime-run-id'
@@ -226,7 +226,7 @@ async function streamUiMessageTurn(input: {
       })
     },
   })
-  const streamMessages = compactSubAgentToolOutputsForModel(turn.messages)
+  const streamMessages = prepareChatMessagesForModel(turn.messages)
 
   const agentStream = await createAgentUIStream({
     agent: built.agent,
