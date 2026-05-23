@@ -51,6 +51,7 @@ export function AgentChat({
   const [workflowStatus, setWorkflowStatus] =
     useState<WorkflowStatusData | null>(null)
   const didPromoteDraftRef = useRef(false)
+  const shouldClearRepairedErrorRef = useRef(false)
   const {
     messages,
     sendMessage,
@@ -73,7 +74,8 @@ export function AgentChat({
     onError: (streamError) => {
       if (shouldRepairIncompleteToolCalls(streamError)) {
         setMessages((current) => stripIncompleteToolPartsForModel(current))
-        clearError()
+        // clearError only works once status is 'error'; onError runs before that.
+        shouldClearRepairedErrorRef.current = true
       }
     },
     onFinish: async () => {
@@ -83,6 +85,14 @@ export function AgentChat({
       await refreshConversationList(agentId, { conversationId })
     },
   })
+
+  useEffect(() => {
+    if (!shouldClearRepairedErrorRef.current || status !== 'error') {
+      return
+    }
+    clearError()
+    shouldClearRepairedErrorRef.current = false
+  }, [clearError, status])
 
   // Use `history.replaceState` instead of `router.replace` so the URL updates
   // without remounting `useChat` or flashing the chat surface.
