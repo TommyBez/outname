@@ -21,7 +21,9 @@ import type {
 } from '@/agent-runtime/server/chat-status'
 import type { RunEvent } from '@/agent-runtime/server/run-events'
 import {
+  type AgentEventTranscriptPayload,
   eventSummaryToWorkflowStatus,
+  fallbackEventTranscriptMessages,
   runEventToWorkflowStatus,
   terminalErrorToWorkflowStatus,
 } from '@/agent-runtime/shared/event-transcript'
@@ -123,17 +125,36 @@ export function useAgentEventTranscript(input: {
     latestActivityRef.current = eventSummaryToWorkflowStatus(currentEvent)
     setWorkflowStatus(latestActivityRef.current)
 
-    if (!currentEvent.workflowRunId) {
-      setStatus(statusForEventWithoutRun(currentEvent))
-      return () => controller.abort()
-    }
+    if (!shouldStreamLiveTranscript(currentEvent)) {
+      setStatus(statusForStoredEvent(currentEvent))
 
-    if (
-      currentEvent.status === 'failed' ||
-      currentEvent.status === 'cancelled'
-    ) {
-      setStatus(currentEvent.status === 'failed' ? 'failed' : 'completed')
-      setWorkflowStatus(eventSummaryToWorkflowStatus(currentEvent))
+      loadStoredTranscript({
+        agentId,
+        event: currentEvent,
+        onError: (message) => {
+          if (!controller.signal.aborted) {
+            setError(message)
+            setWarning(null)
+            setMessages(fallbackEventTranscriptMessages(currentEvent))
+            setWorkflowStatus(eventSummaryToWorkflowStatus(currentEvent))
+            setStatus(statusForStoredEvent(currentEvent))
+          }
+        },
+        onSuccess: (payload) => {
+          if (!controller.signal.aborted) {
+            setError(null)
+            setWarning(null)
+            setMessages(payload.messages)
+            setWorkflowStatus(
+              payload.workflowStatus ??
+                eventSummaryToWorkflowStatus(currentEvent)
+            )
+            setStatus(statusForStoredEvent(currentEvent))
+          }
+        },
+        signal: controller.signal,
+      }).catch(() => undefined)
+
       return () => controller.abort()
     }
 
@@ -504,6 +525,15 @@ function statusForEventWithoutRun(
   return 'queued'
 }
 
+function statusForStoredEvent(
+  event: AgentEventSummary
+): AgentEventTranscriptStatus {
+  if (!currentEventHasWorkflowOutput(event)) {
+    return statusForEventWithoutRun(event)
+  }
+  return statusForTerminalEvent(event)
+}
+
 function statusForTerminalEvent(
   event: AgentEventSummary
 ): AgentEventTranscriptStatus {
@@ -517,6 +547,39 @@ function statusForTerminalEvent(
     return 'streaming'
   }
   return 'completed'
+}
+
+function shouldStreamLiveTranscript(event: AgentEventSummary): boolean {
+  return event.status === 'running' && currentEventHasWorkflowOutput(event)
+}
+
+function currentEventHasWorkflowOutput(event: AgentEventSummary): boolean {
+  return (
+    typeof event.workflowRunId === 'string' && event.workflowRunId.length > 0
+  )
+}
+
+async function loadStoredTranscript(input: {
+  agentId: string
+  event: AgentEventSummary
+  onError: (message: string) => void
+  onSuccess: (payload: AgentEventTranscriptPayload) => void
+  signal: AbortSignal
+}): Promise<void> {
+  const response = await fetch(
+    `/api/agents/${input.agentId}/events/${input.event.id}/transcript`,
+    {
+      cache: 'no-store',
+      signal: input.signal,
+    }
+  )
+  if (!response.ok) {
+    input.onError(`Event transcript failed with HTTP ${response.status}`)
+    return
+  }
+
+  const payload = (await response.json()) as AgentEventTranscriptPayload
+  input.onSuccess(payload)
 }
 
 function readErrorMessage(reason: unknown): string {

@@ -55,10 +55,12 @@ async function dispatchAgentEvent(event: WorkflowAgentEvent): Promise<void> {
       const payload = payloadAs<AgentEventPayloads['heartbeat']>(event)
       await handleHeartbeat({
         agentId: event.agentId,
+        eventId: event.id,
         manual: payload.manual ?? false,
         mode: 'normal',
         replyToken: replyNamespaceForEvent(event.id),
         scheduledAt: payload.scheduledAt,
+        userId: event.userId,
       })
       return
     }
@@ -66,11 +68,13 @@ async function dispatchAgentEvent(event: WorkflowAgentEvent): Promise<void> {
       const payload = payloadAs<AgentEventPayloads['dreaming']>(event)
       await handleHeartbeat({
         agentId: event.agentId,
+        eventId: event.id,
         localDate: payload.localDate,
         manual: payload.manual ?? false,
         mode: 'dreaming',
         replyToken: replyNamespaceForEvent(event.id),
         scheduledAt: payload.scheduledAt,
+        userId: event.userId,
       })
       return
     }
@@ -80,6 +84,7 @@ async function dispatchAgentEvent(event: WorkflowAgentEvent): Promise<void> {
         agentId: event.agentId,
         callStack: payload.callStack,
         depth: payload.depth,
+        eventId: event.id,
         input: payload.input,
         parentRunId: payload.parentRunId ?? null,
         parentToolCallId: payload.parentToolCallId ?? null,
@@ -87,6 +92,7 @@ async function dispatchAgentEvent(event: WorkflowAgentEvent): Promise<void> {
         parentStream: null,
         replyToken: replyNamespaceForEvent(event.id),
         streamToken: payload.streamToken,
+        userId: event.userId,
       })
       return
     }

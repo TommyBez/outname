@@ -13,6 +13,11 @@ export interface EventActivityMetadata {
   transient: true
 }
 
+export interface AgentEventTranscriptPayload {
+  messages: AgentChatMessage[]
+  workflowStatus: WorkflowStatusData | null
+}
+
 export function runEventToAgentChatMessage(
   event: RunEvent,
   index: number
@@ -74,6 +79,15 @@ export function terminalErrorToWorkflowStatus(
     phase: 'agent-stream',
     timestamp: new Date().toISOString(),
   }
+}
+
+export function fallbackEventTranscriptMessages(
+  event: AgentEventSummary
+): AgentChatMessage[] {
+  if (event.status === 'failed' && event.lastError) {
+    return [terminalErrorToAgentChatMessage(event.id, event.lastError)]
+  }
+  return [eventSummaryToAgentChatMessage(event)]
 }
 
 export function readEventActivityMetadata(

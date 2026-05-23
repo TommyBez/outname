@@ -17,6 +17,7 @@ export type WorkflowAgentEvent = Pick<
   | 'source'
   | 'status'
   | 'type'
+  | 'userId'
   | 'workflowRunId'
 >
 
@@ -37,6 +38,7 @@ export async function loadAgentEventStep(input: {
     source: event.source,
     status: event.status,
     type: event.type,
+    userId: event.userId,
     workflowRunId: event.workflowRunId,
   }
 }

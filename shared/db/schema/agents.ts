@@ -152,5 +152,35 @@ export const agentEvents = pgTable(
   ]
 )
 
+export const agentEventMessage = pgTable(
+  'agent_event_message',
+  {
+    id: text('id').primaryKey(),
+    eventId: text('event_id')
+      .notNull()
+      .references(() => agentEvents.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    messageId: text('message_id').notNull(),
+    messageOrder: integer('message_order').notNull(),
+    role: text('role').notNull(),
+    parts: jsonb('parts').notNull(),
+    metadata: jsonb('metadata'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('agent_event_message_event_order_idx').on(
+      t.eventId,
+      t.messageOrder
+    ),
+    index('agent_event_message_event_idx').on(t.eventId, t.messageOrder),
+    index('agent_event_message_user_event_idx').on(t.userId, t.eventId),
+  ]
+)
+
 export type Agent = typeof agent.$inferSelect
 export type AgentEvent = typeof agentEvents.$inferSelect
+export type AgentEventMessage = typeof agentEventMessage.$inferSelect

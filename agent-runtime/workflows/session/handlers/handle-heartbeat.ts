@@ -1,5 +1,6 @@
-import type { StepResult, ToolSet, UIMessageChunk } from 'ai'
+import type { StepResult, ToolSet, UIMessage, UIMessageChunk } from 'ai'
 import { getWritable } from 'workflow'
+import { replaceAgentEventTranscriptMessagesBestEffort } from '@/agent-runtime/server/agent-event-transcript-store'
 import { startupSystemSandbox } from '@/agent-runtime/server/agent-sandbox'
 import { emitActivity } from '@/agent-runtime/server/run-events'
 import { currentWorkflowRunId } from '@/shared/server/workflow-run-id'
@@ -33,13 +34,15 @@ import {
 
 export async function handleHeartbeat(input: {
   agentId: string
+  eventId: string
   localDate?: string
   manual?: boolean
   mode?: HeartbeatMode
   replyToken?: string
   scheduledAt?: string
+  userId: string
 }): Promise<void> {
-  const { agentId } = input
+  const { agentId, eventId, userId: eventUserId } = input
   const mode = input.mode ?? 'normal'
   const nowIso = input.scheduledAt ?? new Date().toISOString()
   const dreamingLocalDate = input.localDate ?? nowIso.slice(0, 10)
@@ -54,8 +57,8 @@ export async function handleHeartbeat(input: {
       manual: input.manual ?? false,
     })
 
-    const userId = await checkBudgetOrFinalize({ agentId, mode, runId })
-    if (userId === BUDGET_EXCEEDED) {
+    const budgetUserId = await checkBudgetOrFinalize({ agentId, mode, runId })
+    if (budgetUserId === BUDGET_EXCEEDED) {
       await markBudgetSkippedRunCompleted({
         agentId,
         localDate: dreamingLocalDate,
@@ -92,13 +95,14 @@ export async function handleHeartbeat(input: {
         : buildHeartbeatKickoff({ nowIso, previousIso })
 
     const result = await durableAgent.stream({
+      collectUIMessages: true,
       messages: [{ role: 'user', content: kickoff }],
       writable,
       stopWhen: resolveStepLimit(stepLimitInput),
     })
-    if (userId) {
+    if (budgetUserId) {
       await recordTokenUsageStep({
-        userId,
+        userId: budgetUserId,
         agentId,
         rootAgentId: agentId,
         sourceType: mode === 'dreaming' ? 'dreaming' : 'heartbeat',
@@ -116,12 +120,23 @@ export async function handleHeartbeat(input: {
       runId,
       stepLimitInput,
     })
+    await replaceAgentEventTranscriptMessagesBestEffort({
+      eventId,
+      messages: normalizePersistedMessages(result.uiMessages),
+      userId: eventUserId,
+    })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     await emitActivity(runId, activityMessage(mode, 'Run failed'), { message })
     await finalizeRun(runId, 'failed', message)
     throw err
   }
+}
+
+function normalizePersistedMessages(
+  messages: readonly UIMessage[] | undefined
+): UIMessage[] {
+  return messages ? [...messages] : []
 }
 
 async function prepareHeartbeatSandbox(input: {

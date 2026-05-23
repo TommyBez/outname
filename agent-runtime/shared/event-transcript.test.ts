@@ -3,6 +3,7 @@ import type { RunEvent } from '../server/run-events'
 import {
   eventSummaryToAgentChatMessage,
   eventSummaryToWorkflowStatus,
+  fallbackEventTranscriptMessages,
   readEventActivityMetadata,
   runEventToAgentChatMessage,
   runEventToWorkflowStatus,
@@ -89,4 +90,27 @@ test('event summaries produce stable transcript status messages', () => {
   expect(status.message).toBe(
     'Event queued. Waiting for the worker to pick it up.'
   )
+})
+
+test('fallback event transcript prefers terminal failure details', () => {
+  const messages = fallbackEventTranscriptMessages({
+    attempt: 1,
+    blockedByEventId: null,
+    completedAt: '2026-05-14T09:05:00.000Z',
+    id: 'evt_123',
+    lastError: 'workflow storage expired',
+    preview: null,
+    queuedAt: '2026-05-14T09:00:00.000Z',
+    source: 'manual',
+    startedAt: '2026-05-14T09:00:01.000Z',
+    status: 'failed',
+    type: 'heartbeat',
+    workflowRunId: 'run_123',
+  })
+
+  expect(messages).toHaveLength(1)
+  expect(messages[0]?.parts[0]).toEqual({
+    text: 'workflow storage expired',
+    type: 'text',
+  })
 })

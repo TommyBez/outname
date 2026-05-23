@@ -63,6 +63,7 @@ function createEvent(overrides: Record<string, unknown> = {}) {
     source: 'manual',
     status: 'starting',
     type: 'heartbeat',
+    userId: 'user_123',
     workflowRunId: null,
     ...overrides,
   }
@@ -113,10 +114,12 @@ describe('agentEventWorkflow', () => {
     })
     expect(mockHandleHeartbeat).toHaveBeenCalledWith({
       agentId: 'agent_123',
+      eventId: 'evt_123',
       manual: true,
       mode: 'normal',
       replyToken: 'reply:evt_123',
       scheduledAt: '2026-05-14T20:30:00.000Z',
+      userId: 'user_123',
     })
     expect(mockMarkAgentEventTerminalStep).toHaveBeenCalledWith({
       eventId: event.id,
@@ -146,11 +149,13 @@ describe('agentEventWorkflow', () => {
 
     expect(mockHandleHeartbeat).toHaveBeenCalledWith({
       agentId: 'agent_123',
+      eventId: 'evt_123',
       localDate: '2026-05-14',
       manual: false,
       mode: 'dreaming',
       replyToken: 'reply:evt_123',
       scheduledAt: '2026-05-14T20:30:00.000Z',
+      userId: 'user_123',
     })
   })
 
@@ -173,6 +178,7 @@ describe('agentEventWorkflow', () => {
       agentId: 'agent_123',
       callStack: ['tool_a'],
       depth: 2,
+      eventId: 'evt_123',
       input: 'hello',
       parentRunId: null,
       parentStream: null,
@@ -180,6 +186,7 @@ describe('agentEventWorkflow', () => {
       parentToolId: null,
       replyToken: 'reply:evt_123',
       streamToken: 'stream_123',
+      userId: 'user_123',
     })
   })
 
