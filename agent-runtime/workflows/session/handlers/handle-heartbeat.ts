@@ -17,10 +17,7 @@ import {
 import { extractTotalUsage, recordTokenUsageStep } from '../steps/budget'
 import { finalizeRun } from '../steps/finalize-run'
 import { initRun } from '../steps/init-run'
-import {
-  BUDGET_EXCEEDED,
-  checkBudgetOrFinalize,
-} from './handle-heartbeat/budget'
+import { checkBudgetOrFinalize } from './handle-heartbeat/budget'
 import {
   activityMessage,
   type HeartbeatMode,
@@ -57,8 +54,18 @@ export async function handleHeartbeat(input: {
       manual: input.manual ?? false,
     })
 
-    const budgetUserId = await checkBudgetOrFinalize({ agentId, mode, runId })
-    if (budgetUserId === BUDGET_EXCEEDED) {
+    const budgetCheck = await checkBudgetOrFinalize({ agentId, mode, runId })
+    if (budgetCheck.kind === 'exceeded') {
+      await replaceAgentEventTranscriptMessagesBestEffort({
+        eventId,
+        messages: [
+          createAssistantTextMessage({
+            id: `budget_refusal_${eventId}`,
+            text: budgetCheck.message,
+          }),
+        ],
+        userId: eventUserId,
+      })
       await markBudgetSkippedRunCompleted({
         agentId,
         localDate: dreamingLocalDate,
@@ -100,9 +107,9 @@ export async function handleHeartbeat(input: {
       writable,
       stopWhen: resolveStepLimit(stepLimitInput),
     })
-    if (budgetUserId) {
+    if (budgetCheck.userId) {
       await recordTokenUsageStep({
-        userId: budgetUserId,
+        userId: budgetCheck.userId,
         agentId,
         rootAgentId: agentId,
         sourceType: mode === 'dreaming' ? 'dreaming' : 'heartbeat',
@@ -137,6 +144,17 @@ function normalizePersistedMessages(
   messages: readonly UIMessage[] | undefined
 ): UIMessage[] {
   return messages ? [...messages] : []
+}
+
+function createAssistantTextMessage(input: {
+  id: string
+  text: string
+}): UIMessage {
+  return {
+    id: input.id,
+    parts: [{ text: input.text, type: 'text' }],
+    role: 'assistant',
+  }
 }
 
 async function prepareHeartbeatSandbox(input: {

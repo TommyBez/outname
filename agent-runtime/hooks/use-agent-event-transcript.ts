@@ -153,7 +153,16 @@ export function useAgentEventTranscript(input: {
           }
         },
         signal: controller.signal,
-      }).catch(() => undefined)
+      }).catch((reason: unknown) => {
+        if (!controller.signal.aborted) {
+          const message = readErrorMessage(reason)
+          setError(message)
+          setWarning(null)
+          setMessages(fallbackEventTranscriptMessages(currentEvent))
+          setWorkflowStatus(eventSummaryToWorkflowStatus(currentEvent))
+          setStatus(statusForStoredEvent(currentEvent))
+        }
+      })
 
       return () => controller.abort()
     }
