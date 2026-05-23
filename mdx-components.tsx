@@ -8,6 +8,7 @@ function MdxLink({ href, children, ...props }: ComponentPropsWithoutRef<'a'>) {
       <Link
         className="text-accent underline-offset-4 hover:underline"
         href={href}
+        {...props}
       >
         {children}
       </Link>
