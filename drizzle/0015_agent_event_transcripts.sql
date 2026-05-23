@@ -21,8 +21,5 @@ ALTER TABLE "agent_event_message"
 CREATE UNIQUE INDEX "agent_event_message_event_order_idx"
   ON "agent_event_message" ("event_id", "message_order");--> statement-breakpoint
 
-CREATE INDEX "agent_event_message_event_idx"
-  ON "agent_event_message" ("event_id", "message_order");--> statement-breakpoint
-
 CREATE INDEX "agent_event_message_user_event_idx"
   ON "agent_event_message" ("user_id", "event_id");

@@ -537,6 +537,9 @@ function statusForEventWithoutRun(
 function statusForStoredEvent(
   event: AgentEventSummary
 ): AgentEventTranscriptStatus {
+  if (event.status === 'running') {
+    return statusForTerminalEvent(event)
+  }
   if (!currentEventHasWorkflowOutput(event)) {
     return statusForEventWithoutRun(event)
   }

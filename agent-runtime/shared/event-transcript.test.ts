@@ -93,10 +93,11 @@ test('event summaries produce stable transcript status messages', () => {
 })
 
 test('fallback event transcript prefers terminal failure details', () => {
+  const completedAt = '2026-05-14T09:05:00.000Z'
   const messages = fallbackEventTranscriptMessages({
     attempt: 1,
     blockedByEventId: null,
-    completedAt: '2026-05-14T09:05:00.000Z',
+    completedAt,
     id: 'evt_123',
     lastError: 'workflow storage expired',
     preview: null,
@@ -113,4 +114,5 @@ test('fallback event transcript prefers terminal failure details', () => {
     text: 'workflow storage expired',
     type: 'text',
   })
+  expect(readEventActivityMetadata(messages[0])?.timestamp).toBe(completedAt)
 })

@@ -61,7 +61,9 @@ export async function replaceAgentEventTranscriptMessagesBestEffort(input: {
     await replaceAgentEventTranscriptMessages(input)
   } catch (error) {
     console.error('[agent-events] failed to persist event transcript', {
-      error,
+      errorCode: 'AGENT_EVENT_TRANSCRIPT_PERSIST_FAILED',
+      errorMessage:
+        error instanceof Error ? error.message : 'unknown transcript error',
       eventId: input.eventId,
       messageCount: input.messages.length,
     })

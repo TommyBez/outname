@@ -176,7 +176,6 @@ export const agentEventMessage = pgTable(
       t.eventId,
       t.messageOrder
     ),
-    index('agent_event_message_event_idx').on(t.eventId, t.messageOrder),
     index('agent_event_message_user_event_idx').on(t.userId, t.eventId),
   ]
 )

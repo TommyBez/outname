@@ -61,12 +61,13 @@ export function eventSummaryToWorkflowStatus(
 
 export function terminalErrorToAgentChatMessage(
   eventId: string,
-  message: string
+  message: string,
+  timestamp?: string
 ): AgentChatMessage {
   return activityMessage({
     id: `event:${eventId}:error`,
     message,
-    timestamp: new Date().toISOString(),
+    timestamp: timestamp ?? new Date().toISOString(),
     tone: 'error',
   })
 }
@@ -85,7 +86,13 @@ export function fallbackEventTranscriptMessages(
   event: AgentEventSummary
 ): AgentChatMessage[] {
   if (event.status === 'failed' && event.lastError) {
-    return [terminalErrorToAgentChatMessage(event.id, event.lastError)]
+    return [
+      terminalErrorToAgentChatMessage(
+        event.id,
+        event.lastError,
+        event.completedAt ?? event.startedAt ?? event.queuedAt
+      ),
+    ]
   }
   return [eventSummaryToAgentChatMessage(event)]
 }
