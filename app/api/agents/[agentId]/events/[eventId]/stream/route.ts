@@ -44,13 +44,14 @@ export async function GET(
   }
 
   const streamKind = readStreamKind(request)
+  const startIndex = readStartIndex(request)
   const namespace =
     streamKind === 'activity'
       ? eventActivityNamespace(event.workflowRunId)
       : outputNamespaceForEvent(event)
   const source = run.getReadable<AgentChatChunk | RunEvent>({
     namespace,
-    startIndex: 0,
+    startIndex,
   })
 
   const encoder = new TextEncoder()
@@ -69,6 +70,15 @@ export async function GET(
       'X-Accel-Buffering': 'no',
     },
   })
+}
+
+function readStartIndex(request: Request): number {
+  const searchParams = new URL(request.url).searchParams
+  const rawStartIndex = Number(searchParams.get('startIndex') ?? '0')
+  if (!Number.isFinite(rawStartIndex)) {
+    return 0
+  }
+  return Math.max(0, Math.floor(rawStartIndex))
 }
 
 function readStreamKind(request: Request): 'activity' | 'output' {

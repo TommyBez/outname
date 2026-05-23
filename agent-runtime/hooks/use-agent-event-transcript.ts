@@ -170,7 +170,9 @@ export function useAgentEventTranscript(input: {
     setStatus('connecting')
 
     let active = true
+    let activityStreamIndex = 0
     let messageCount = 0
+    let outputStreamIndex = 0
     const streamErrors = {
       activity: null as string | null,
       output: null as string | null,
@@ -196,7 +198,11 @@ export function useAgentEventTranscript(input: {
         await consumeOutputStream({
           agentId,
           eventId: currentEvent.id,
+          onChunk: () => {
+            outputStreamIndex += 1
+          },
           signal: controller.signal,
+          startIndex: outputStreamIndex,
           onMessage: (message) => {
             if (!controller.signal.aborted) {
               messageCount += 1
@@ -225,7 +231,11 @@ export function useAgentEventTranscript(input: {
         await consumeActivityStream({
           agentId,
           eventId: currentEvent.id,
+          onChunk: () => {
+            activityStreamIndex += 1
+          },
           signal: controller.signal,
+          startIndex: activityStreamIndex,
           onEvent: (runEvent) => {
             if (!controller.signal.aborted) {
               observeRunEventTerminalStatus(observedTerminal, runEvent)
@@ -388,14 +398,18 @@ async function runStreamWithRetry(input: {
 
 async function consumeOutputStream(input: {
   agentId: string
+  onChunk: () => void
   eventId: string
   onMessage: (message: AgentChatMessage) => void
   signal: AbortSignal
+  startIndex: number
 }): Promise<void> {
   const stream = await openEventStream<AgentChatChunk>({
     agentId: input.agentId,
     eventId: input.eventId,
+    onChunk: input.onChunk,
     signal: input.signal,
+    startIndex: input.startIndex,
     stream: 'output',
   })
   for await (const message of readUIMessageStream<AgentChatMessage>({
@@ -409,13 +423,17 @@ async function consumeOutputStream(input: {
 async function consumeActivityStream(input: {
   agentId: string
   eventId: string
+  onChunk: () => void
   onEvent: (event: RunEvent) => void
   signal: AbortSignal
+  startIndex: number
 }): Promise<void> {
   const stream = await openEventStream<RunEvent>({
     agentId: input.agentId,
     eventId: input.eventId,
+    onChunk: input.onChunk,
     signal: input.signal,
+    startIndex: input.startIndex,
     stream: 'activity',
   })
   const reader = stream.getReader()
@@ -435,11 +453,13 @@ async function consumeActivityStream(input: {
 async function openEventStream<T>(input: {
   agentId: string
   eventId: string
+  onChunk: () => void
   signal: AbortSignal
+  startIndex: number
   stream: 'activity' | 'output'
 }): Promise<ReadableStream<T>> {
   const response = await fetch(
-    `/api/agents/${input.agentId}/events/${input.eventId}/stream?stream=${input.stream}`,
+    `/api/agents/${input.agentId}/events/${input.eventId}/stream?stream=${input.stream}&startIndex=${input.startIndex}`,
     {
       cache: 'no-store',
       signal: input.signal,
@@ -460,11 +480,12 @@ async function openEventStream<T>(input: {
   if (!response.body) {
     throw new Error('Event stream did not return a body')
   }
-  return ndjsonReadable<T>(response.body)
+  return ndjsonReadable<T>(response.body, input.onChunk)
 }
 
 function ndjsonReadable<T>(
-  body: ReadableStream<Uint8Array>
+  body: ReadableStream<Uint8Array>,
+  onChunk: () => void
 ): ReadableStream<T> {
   return new ReadableStream<T>({
     async start(controller) {
@@ -484,6 +505,7 @@ function ndjsonReadable<T>(
           )
           buffer = parsed.buffer
           for (const item of parsed.values) {
+            onChunk()
             controller.enqueue(item)
           }
         }
@@ -492,11 +514,13 @@ function ndjsonReadable<T>(
           const parsed = parseNdjsonChunk<T>(buffer, tail, NDJSON_OPTIONS)
           buffer = parsed.buffer
           for (const item of parsed.values) {
+            onChunk()
             controller.enqueue(item)
           }
         }
         for (const item of flushNdjsonBuffer<T>(buffer, NDJSON_OPTIONS)
           .values) {
+          onChunk()
           controller.enqueue(item)
         }
         controller.close()
