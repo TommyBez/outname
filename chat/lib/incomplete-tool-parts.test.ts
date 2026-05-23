@@ -10,9 +10,26 @@ describe('incomplete tool parts', () => {
     expect(
       isIncompleteToolPart({
         type: 'tool-search',
+        toolCallId: 'call_streaming',
+        state: 'input-streaming',
+        input: { q: 'test' },
+      })
+    ).toBe(true)
+    expect(
+      isIncompleteToolPart({
+        type: 'tool-search',
         toolCallId: 'call_1',
         state: 'input-available',
         input: { q: 'test' },
+      })
+    ).toBe(true)
+    expect(
+      isIncompleteToolPart({
+        type: 'tool-search',
+        toolCallId: 'call_approval',
+        state: 'approval-requested',
+        input: { q: 'test' },
+        approval: { id: 'approval_1' },
       })
     ).toBe(true)
     expect(
