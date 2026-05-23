@@ -16,6 +16,7 @@ const formatBlogDate = (date: string) =>
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+    timeZone: 'UTC',
   })
 
 export type BlogSocialImageKind = 'index' | 'post'
