@@ -1,11 +1,8 @@
 import { getRun } from 'workflow/api'
-import {
-  eventActivityNamespace,
-  replyNamespaceForEvent,
-} from '@/agent-runtime/server/agent-event-keys'
+import { eventActivityNamespace } from '@/agent-runtime/server/agent-event-keys'
 import { reconcileActiveAgentEvent } from '@/agent-runtime/server/agent-event-reconciliation'
-import type { AgentEventPayloads } from '@/agent-runtime/server/agent-event-store'
 import { getAgentEvent } from '@/agent-runtime/server/agent-event-store'
+import { outputNamespaceForAgentEvent } from '@/agent-runtime/server/agent-event-transcript'
 import type { AgentChatChunk } from '@/agent-runtime/server/chat-status'
 import type { RunEvent } from '@/agent-runtime/server/run-events'
 import { WORKFLOW_STREAM_UNAVAILABLE_MESSAGE } from '@/agent-runtime/shared/workflow-stream-messages'
@@ -48,7 +45,7 @@ export async function GET(
   const namespace =
     streamKind === 'activity'
       ? eventActivityNamespace(event.workflowRunId)
-      : outputNamespaceForEvent(event)
+      : outputNamespaceForAgentEvent(event)
   const source = run.getReadable<AgentChatChunk | RunEvent>({
     namespace,
     startIndex,
@@ -88,21 +85,6 @@ function readStreamKind(request: Request): 'activity' | 'output' {
     return 'activity'
   }
   return 'output'
-}
-
-function outputNamespaceForEvent(
-  event: NonNullable<Awaited<ReturnType<typeof getAgentEvent>>>
-): string {
-  if (event?.type === 'invocation') {
-    const payload = event.payload as AgentEventPayloads['invocation']
-    if (
-      typeof payload?.streamToken === 'string' &&
-      payload.streamToken.length > 0
-    ) {
-      return payload.streamToken
-    }
-  }
-  return replyNamespaceForEvent(event.id)
 }
 
 function jsonError(status: number, error: string): Response {

@@ -1,12 +1,13 @@
 import 'server-only'
 import type { UIMessage } from 'ai'
 import { asc, eq } from 'drizzle-orm'
+import type { AgentChatMessage } from '@/agent-runtime/server/chat-status'
 import { db } from '@/shared/db'
 import { agentEventMessage } from '@/shared/db/schema'
 
 export async function listAgentEventTranscriptMessages(
   eventId: string
-): Promise<UIMessage[]> {
+): Promise<AgentChatMessage[]> {
   const rows = await db
     .select()
     .from(agentEventMessage)
@@ -16,8 +17,8 @@ export async function listAgentEventTranscriptMessages(
   return rows.map((row) => ({
     id: row.messageId,
     metadata: row.metadata ?? undefined,
-    parts: row.parts as UIMessage['parts'],
-    role: row.role as UIMessage['role'],
+    parts: row.parts as AgentChatMessage['parts'],
+    role: row.role as AgentChatMessage['role'],
   }))
 }
 
