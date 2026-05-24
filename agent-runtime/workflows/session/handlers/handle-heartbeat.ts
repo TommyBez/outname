@@ -1,5 +1,6 @@
 import type { StepResult, ToolSet, UIMessage, UIMessageChunk } from 'ai'
 import { getWritable } from 'workflow'
+import { readAgentEventTranscriptFromWorkflowRun } from '@/agent-runtime/server/agent-event-transcript'
 import { replaceAgentEventTranscriptMessagesBestEffort } from '@/agent-runtime/server/agent-event-transcript-store'
 import { startupSystemSandbox } from '@/agent-runtime/server/agent-sandbox'
 import { emitActivity } from '@/agent-runtime/server/run-events'
@@ -127,9 +128,17 @@ export async function handleHeartbeat(input: {
       runId,
       stepLimitInput,
     })
+    const persistedMessages = await readAgentEventTranscriptFromWorkflowRun({
+      event: {
+        id: eventId,
+        payload: {},
+        type: mode === 'dreaming' ? 'dreaming' : 'heartbeat',
+      },
+      workflowRunId: runId,
+    })
     await replaceAgentEventTranscriptMessagesBestEffort({
       eventId,
-      messages: normalizePersistedMessages(result.uiMessages),
+      messages: persistedMessages,
       userId: eventUserId,
     })
   } catch (err) {
@@ -138,12 +147,6 @@ export async function handleHeartbeat(input: {
     await finalizeRun(runId, 'failed', message)
     throw err
   }
-}
-
-function normalizePersistedMessages(
-  messages: readonly UIMessage[] | undefined
-): UIMessage[] {
-  return messages ? [...messages] : []
 }
 
 function createAssistantTextMessage(input: {

@@ -55,7 +55,9 @@ export function createStoredTranscriptFailureState(
 ): UseAgentEventTranscriptResult {
   return {
     error: message,
-    messages: fallbackEventTranscriptMessages(event),
+    messages: shouldShowStoredFallbackMessages(event)
+      ? fallbackEventTranscriptMessages(event)
+      : [],
     status: statusForStoredEvent(event),
     warning: null,
     workflowStatus: eventSummaryToWorkflowStatus(event),
@@ -127,6 +129,10 @@ export function currentEventHasWorkflowOutput(
   return (
     typeof event.workflowRunId === 'string' && event.workflowRunId.length > 0
   )
+}
+
+function shouldShowStoredFallbackMessages(event: AgentEventSummary): boolean {
+  return !currentEventHasWorkflowOutput(event)
 }
 
 export function readTranscriptErrorMessage(reason: unknown): string {

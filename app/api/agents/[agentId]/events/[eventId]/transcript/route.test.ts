@@ -4,10 +4,12 @@ const {
   mockGetAgentEvent,
   mockGetSession,
   mockLoadPersistedAgentEventTranscript,
+  mockMissingPersistedEventTranscriptError,
 } = vi.hoisted(() => ({
   mockGetAgentEvent: vi.fn(),
   mockGetSession: vi.fn(),
   mockLoadPersistedAgentEventTranscript: vi.fn(),
+  mockMissingPersistedEventTranscriptError: class extends Error {},
 }))
 
 vi.mock('server-only', () => ({}))
@@ -18,6 +20,8 @@ vi.mock('@/agent-runtime/server/agent-event-store', () => ({
 
 vi.mock('@/agent-runtime/server/agent-event-transcript', () => ({
   loadPersistedAgentEventTranscript: mockLoadPersistedAgentEventTranscript,
+  MissingPersistedEventTranscriptError:
+    mockMissingPersistedEventTranscriptError,
 }))
 
 vi.mock('@/auth/server/auth-guard', () => ({
@@ -84,5 +88,20 @@ describe('events transcript route', () => {
         },
       ],
     })
+  })
+
+  it('returns 409 when a completed event is missing persisted transcript rows', async () => {
+    mockLoadPersistedAgentEventTranscript.mockRejectedValue(
+      new mockMissingPersistedEventTranscriptError('missing')
+    )
+
+    const response = await GET(new Request('http://localhost:3000'), {
+      params: Promise.resolve({
+        agentId: 'agent_123',
+        eventId: 'evt_123',
+      }),
+    })
+
+    expect(response.status).toBe(409)
   })
 })

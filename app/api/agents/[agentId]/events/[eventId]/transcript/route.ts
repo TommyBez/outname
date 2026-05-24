@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getAgentEvent } from '@/agent-runtime/server/agent-event-store'
-import { loadPersistedAgentEventTranscript } from '@/agent-runtime/server/agent-event-transcript'
+import {
+  loadPersistedAgentEventTranscript,
+  MissingPersistedEventTranscriptError,
+} from '@/agent-runtime/server/agent-event-transcript'
 import type { AgentEventTranscriptPayload } from '@/agent-runtime/shared/event-transcript'
 import { getSession } from '@/auth/server/auth-guard'
 
@@ -19,8 +22,18 @@ export async function GET(
     return NextResponse.json({ error: 'not found' }, { status: 404 })
   }
 
-  const body: AgentEventTranscriptPayload =
-    await loadPersistedAgentEventTranscript(event)
+  let body: AgentEventTranscriptPayload
+  try {
+    body = await loadPersistedAgentEventTranscript(event)
+  } catch (error) {
+    if (error instanceof MissingPersistedEventTranscriptError) {
+      return NextResponse.json(
+        { error: 'persisted transcript missing for completed event' },
+        { status: 409 }
+      )
+    }
+    throw error
+  }
 
   return NextResponse.json(body, {
     headers: {

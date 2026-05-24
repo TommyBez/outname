@@ -1,5 +1,6 @@
 import { convertToModelMessages, type UIMessage, type UIMessageChunk } from 'ai'
 import { getWritable } from 'workflow'
+import { readAgentEventTranscriptFromWorkflowRun } from '@/agent-runtime/server/agent-event-transcript'
 import { replaceAgentEventTranscriptMessagesBestEffort } from '@/agent-runtime/server/agent-event-transcript-store'
 import { startupSystemSandbox } from '@/agent-runtime/server/agent-sandbox'
 import type { AgentChatMessage } from '@/agent-runtime/server/chat-status'
@@ -137,11 +138,6 @@ export async function handleInvocation(input: {
       preventClose: true,
       sendFinish: false,
     })
-    const persistedMessages = buildPersistedInvocationMessages({
-      messages: result.uiMessages,
-      stepLimitInput,
-      steps: result.steps,
-    })
     await recordTokenUsageStep({
       userId: built.meta.userId,
       agentId,
@@ -160,9 +156,23 @@ export async function handleInvocation(input: {
     })
     await finishInvocationStreams(streamNamespaces)
     await forwardPromise
+    const persistedMessages = await readAgentEventTranscriptFromWorkflowRun({
+      event: {
+        id: eventId,
+        payload: {
+          streamToken,
+        },
+        type: 'invocation',
+      },
+      workflowRunId: runId,
+    })
     await replaceAgentEventTranscriptMessagesBestEffort({
       eventId,
-      messages: persistedMessages,
+      messages: appendStepLimitNoticeIfNeeded({
+        messages: persistedMessages,
+        stepLimitInput,
+        steps: result.steps,
+      }),
       userId,
     })
   } catch (err) {
@@ -294,22 +304,21 @@ async function failInvocation(input: {
   })
 }
 
-function buildPersistedInvocationMessages(input: {
-  messages: readonly UIMessage[] | undefined
+function appendStepLimitNoticeIfNeeded(input: {
+  messages: readonly UIMessage[]
   stepLimitInput: Parameters<typeof resolveStepLimit>[0]
   steps: Parameters<typeof didReachStepLimit>[0]['steps']
 }): UIMessage[] {
-  const messages = input.messages ? [...input.messages] : []
   if (
     !didReachStepLimit({
       ...input.stepLimitInput,
       steps: input.steps,
     })
   ) {
-    return messages
+    return [...input.messages]
   }
   return appendStepLimitNoticeToMessages(
-    messages,
+    input.messages,
     buildStepLimitNotice(input.stepLimitInput)
   )
 }
