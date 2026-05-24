@@ -1,6 +1,5 @@
 import { convertToModelMessages, type UIMessage, type UIMessageChunk } from 'ai'
 import { getWritable } from 'workflow'
-import { readAgentEventTranscriptFromWorkflowRun } from '@/agent-runtime/server/agent-event-transcript'
 import { replaceAgentEventTranscriptMessagesBestEffort } from '@/agent-runtime/server/agent-event-transcript-store'
 import { startupSystemSandbox } from '@/agent-runtime/server/agent-sandbox'
 import type { AgentChatMessage } from '@/agent-runtime/server/chat-status'
@@ -13,7 +12,6 @@ import { formatBudgetExceededMessage } from '@/budgets/server/errors'
 import { currentWorkflowRunId } from '@/shared/server/workflow-run-id'
 import { buildAgent } from '../agent-factory'
 import {
-  appendStepLimitNoticeToMessages,
   buildStepLimitNotice,
   didReachStepLimit,
   resolveStepLimit,
@@ -23,6 +21,7 @@ import {
   preflightBudget,
   recordTokenUsageStep,
 } from '../steps/budget'
+import { persistAgentEventTranscriptStep } from '../steps/persist-event-transcript'
 import { finishSuccessfulInvocation } from './handle-invocation/finish-success'
 import { invocationMessageId } from './handle-invocation/run-helpers'
 import {
@@ -156,7 +155,7 @@ export async function handleInvocation(input: {
     })
     await finishInvocationStreams(streamNamespaces)
     await forwardPromise
-    const persistedMessages = await readAgentEventTranscriptFromWorkflowRun({
+    await persistAgentEventTranscriptStep({
       event: {
         id: eventId,
         payload: {
@@ -164,16 +163,14 @@ export async function handleInvocation(input: {
         },
         type: 'invocation',
       },
-      workflowRunId: runId,
-    })
-    await replaceAgentEventTranscriptMessagesBestEffort({
-      eventId,
-      messages: appendStepLimitNoticeIfNeeded({
-        messages: persistedMessages,
-        stepLimitInput,
+      stepLimitNotice: didReachStepLimit({
+        ...stepLimitInput,
         steps: result.steps,
-      }),
+      })
+        ? buildStepLimitNotice(stepLimitInput)
+        : undefined,
       userId,
+      workflowRunId: runId,
     })
   } catch (err) {
     await failInvocation({
@@ -302,25 +299,6 @@ async function failInvocation(input: {
   await input.forwardPromise.catch(() => {
     // Already logged by the forwarding task.
   })
-}
-
-function appendStepLimitNoticeIfNeeded(input: {
-  messages: readonly UIMessage[]
-  stepLimitInput: Parameters<typeof resolveStepLimit>[0]
-  steps: Parameters<typeof didReachStepLimit>[0]['steps']
-}): UIMessage[] {
-  if (
-    !didReachStepLimit({
-      ...input.stepLimitInput,
-      steps: input.steps,
-    })
-  ) {
-    return [...input.messages]
-  }
-  return appendStepLimitNoticeToMessages(
-    input.messages,
-    buildStepLimitNotice(input.stepLimitInput)
-  )
 }
 
 function createAssistantTextMessage(input: {

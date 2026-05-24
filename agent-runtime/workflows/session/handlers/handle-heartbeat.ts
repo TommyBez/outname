@@ -1,6 +1,5 @@
 import type { StepResult, ToolSet, UIMessage, UIMessageChunk } from 'ai'
 import { getWritable } from 'workflow'
-import { readAgentEventTranscriptFromWorkflowRun } from '@/agent-runtime/server/agent-event-transcript'
 import { replaceAgentEventTranscriptMessagesBestEffort } from '@/agent-runtime/server/agent-event-transcript-store'
 import { startupSystemSandbox } from '@/agent-runtime/server/agent-sandbox'
 import { emitActivity } from '@/agent-runtime/server/run-events'
@@ -18,6 +17,7 @@ import {
 import { extractTotalUsage, recordTokenUsageStep } from '../steps/budget'
 import { finalizeRun } from '../steps/finalize-run'
 import { initRun } from '../steps/init-run'
+import { persistAgentEventTranscriptStep } from '../steps/persist-event-transcript'
 import { checkBudgetOrFinalize } from './handle-heartbeat/budget'
 import {
   activityMessage,
@@ -128,18 +128,14 @@ export async function handleHeartbeat(input: {
       runId,
       stepLimitInput,
     })
-    const persistedMessages = await readAgentEventTranscriptFromWorkflowRun({
+    await persistAgentEventTranscriptStep({
       event: {
         id: eventId,
         payload: {},
         type: mode === 'dreaming' ? 'dreaming' : 'heartbeat',
       },
-      workflowRunId: runId,
-    })
-    await replaceAgentEventTranscriptMessagesBestEffort({
-      eventId,
-      messages: persistedMessages,
       userId: eventUserId,
+      workflowRunId: runId,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
