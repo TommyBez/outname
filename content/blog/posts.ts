@@ -10,6 +10,20 @@ export interface BlogPost {
 
 export const posts: BlogPost[] = [
   {
+    slug: 'you-wont-use-software-youll-manage-agents',
+    title: "You Won't Use Software. You'll Manage Agents.",
+    date: '2026-05-25',
+    excerpt:
+      'The last generation of software was built for human fingers. The next one won\'t be — because the most valuable user of your SaaS in 2027 will be an agent, not a person.',
+    tags: [
+      'AI',
+      'agents',
+      'autonomy',
+      'future-of-work',
+      'Outname',
+    ],
+  },
+  {
     slug: 'vector-databases-are-great-but-id-rather-have-a-terminal',
     title: "Vector Databases Are Great. But I'd Rather Have a Terminal.",
     date: '2026-05-24',
