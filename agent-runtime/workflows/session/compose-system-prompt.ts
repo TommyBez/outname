@@ -1,4 +1,8 @@
 import {
+  getSystemSandbox,
+  isMissingSystemSandboxError,
+} from '@/agent-runtime/server/agent-sandbox'
+import {
   EAGER_CONTEXT_PATHS,
   READ_ONLY_FOR_AGENT,
 } from '@/agent-runtime/workflows/session/tools/persona-paths'
@@ -48,9 +52,6 @@ export async function composeSystemPrompt(
 ): Promise<string> {
   'use step'
   const { agentId, agentName, nowIso } = args
-  const { getSystemSandbox, isMissingSystemSandboxError } = await import(
-    '@/agent-runtime/server/agent-sandbox'
-  )
 
   let systemSandbox: Awaited<ReturnType<typeof getSystemSandbox>>
   try {

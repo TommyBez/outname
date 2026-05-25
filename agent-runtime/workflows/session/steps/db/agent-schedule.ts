@@ -1,13 +1,12 @@
 import { eq } from 'drizzle-orm'
+import { db } from '@/shared/db'
 import { agent as agentTable } from '@/shared/db/schema'
 import type { HeartbeatMode } from '../../handlers/handle-heartbeat/messages'
-import { getDb } from './get-db'
 
 export async function readPreviousHeartbeatCompletionStep(
   agentId: string
 ): Promise<string | null> {
   'use step'
-  const db = await getDb()
   const [row] = await db
     .select({ lastHeartbeatAt: agentTable.lastHeartbeatAt })
     .from(agentTable)
@@ -20,7 +19,6 @@ export async function readPreviousDreamingCompletionStep(
   agentId: string
 ): Promise<string | null> {
   'use step'
-  const db = await getDb()
   const [row] = await db
     .select({ lastDreamingAt: agentTable.lastDreamingAt })
     .from(agentTable)
@@ -61,7 +59,6 @@ export async function markRunCompletedStep(input: {
 }
 
 async function markHeartbeatCompletedStep(agentId: string): Promise<void> {
-  const db = await getDb()
   await db
     .update(agentTable)
     .set({
@@ -75,7 +72,6 @@ async function markDreamingCompletedStep(input: {
   agentId: string
   localDate: string
 }): Promise<void> {
-  const db = await getDb()
   await db
     .update(agentTable)
     .set({
