@@ -5,7 +5,7 @@ import {
   type EnqueueAgentEventResult,
   enqueueAgentEvent,
 } from '@/agent-runtime/server/agent-events'
-import { db } from '@/shared/db'
+import { db } from '@/shared/db/pool'
 import { type Agent, agent } from '@/shared/db/schema'
 import {
   delayedRetryStepError,

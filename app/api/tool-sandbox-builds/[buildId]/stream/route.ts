@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm'
 import { getRun } from 'workflow/api'
 import { getSession } from '@/auth/server/auth-guard'
-import { db } from '@/shared/db'
+import { db } from '@/shared/db/pool'
 import { agent, agentTools, toolSandboxBuilds } from '@/shared/db/schema'
 import {
   buildToolSandboxNamespace,

@@ -9,7 +9,7 @@ import {
   normalizeAgentScheduleMode,
   normalizeScheduleTimesForMode,
 } from '@/shared/agent-schedule'
-import { db } from '@/shared/db'
+import { db } from '@/shared/db/pool'
 import { type Agent, agent } from '@/shared/db/schema'
 import {
   DEFAULT_MODEL_ID,

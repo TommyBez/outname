@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { and, eq } from 'drizzle-orm'
-import { db } from '@/shared/db'
+import { db } from '@/shared/db/pool'
 import { agentTools } from '@/shared/db/schema'
 import { connectorBackedCapabilities } from '@/tools/catalog/capabilities'
 import { getMaintainerTool } from '@/tools/catalog/registry'

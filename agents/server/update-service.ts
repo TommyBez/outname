@@ -12,7 +12,7 @@ import {
   normalizeAgentScheduleMode,
   normalizeScheduleTimesForMode,
 } from '@/shared/agent-schedule'
-import { db } from '@/shared/db'
+import { db } from '@/shared/db/pool'
 import { agent } from '@/shared/db/schema'
 import { isModelIdValid } from '@/shared/server/ai-gateway-models'
 

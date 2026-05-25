@@ -10,7 +10,7 @@ import {
 } from '@/channels/server/bindings'
 import { getChannelInstallationsForUser } from '@/channels/server/installations'
 import { deleteSlackInstallation } from '@/channels/slack/server/installations'
-import { db } from '@/shared/db'
+import { db } from '@/shared/db/pool'
 import { agentChannelBindings } from '@/shared/db/schema'
 import { agentTag } from '@/shared/server/cache-tags'
 import { getAgentByIdForUser } from '@/shared/server/data'

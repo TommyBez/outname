@@ -1,55 +1,19 @@
 import 'server-only'
 
-import { attachDatabasePool } from '@vercel/functions'
-import { drizzle } from 'drizzle-orm/node-postgres'
-import { Pool } from 'pg'
-import {
-  account,
-  agent,
-  agentChannelBindings,
-  agentEvents,
-  agentTokenUsage,
-  agentTools,
-  budgetRule,
-  channelInstallations,
-  channelThreadConversations,
-  chatConversation,
-  chatMessage,
-  session,
-  user,
-  userConnections,
-  verification,
-  waitlistEntry,
-} from './schema'
+import { neon } from '@neondatabase/serverless'
+import { drizzle } from 'drizzle-orm/neon-http'
+import { dbSchema } from './schema-registry'
 
-const schema = {
-  user,
-  session,
-  account,
-  verification,
-  agent,
-  agentEvents,
-  chatConversation,
-  chatMessage,
-  userConnections,
-  agentTools,
-  budgetRule,
-  agentTokenUsage,
-  channelInstallations,
-  agentChannelBindings,
-  channelThreadConversations,
-  waitlistEntry,
-}
-
+/**
+ * Neon HTTP driver for workflow bundles and shared server modules on the
+ * workflow dependency graph. Server routes should import from
+ * `@/shared/db/pool` for TCP connection pooling on Vercel Fluid.
+ */
 const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl) {
   throw new Error('DATABASE_URL is not set')
 }
 
-const pool = new Pool({
-  connectionString: databaseUrl,
-  max: 10,
-})
-attachDatabasePool(pool)
+const sql = neon(databaseUrl)
 
-export const db = drizzle({ client: pool, schema })
+export const db = drizzle(sql, { schema: dbSchema })

@@ -1,6 +1,6 @@
 import 'server-only'
 import { and, asc, eq } from 'drizzle-orm'
-import { db } from '@/shared/db'
+import { db } from '@/shared/db/pool'
 import {
   type ChannelInstallation,
   channelInstallations,

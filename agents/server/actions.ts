@@ -11,7 +11,7 @@ import {
 } from '@/agents/server/update-service'
 import { requireSession } from '@/auth/server/auth-guard'
 import type { AgentScheduleMode } from '@/shared/agent-schedule'
-import { db } from '@/shared/db'
+import { db } from '@/shared/db/pool'
 import { agent, agentEvents } from '@/shared/db/schema'
 import {
   agentTag,

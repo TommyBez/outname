@@ -3,7 +3,7 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { admin as adminPlugin, emailOTP } from 'better-auth/plugins'
 import { ac, roles } from '@/auth/access-control'
 import { sendAuthSignInOtpEmail } from '@/auth/server/auth-email'
-import { db } from '@/shared/db'
+import { db } from '@/shared/db/pool'
 
 // Production uses Better Auth defaults. Non-production must trust the incoming
 // origin and issue `SameSite=None` cookies so sign-in still works inside the

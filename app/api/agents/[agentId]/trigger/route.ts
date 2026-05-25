@@ -8,7 +8,7 @@ import {
 } from '@/agent-runtime/server/session-events'
 import { getAgentById } from '@/agent-runtime/server/start-agent-run'
 import { auth } from '@/auth/server/auth'
-import { db } from '@/shared/db'
+import { db } from '@/shared/db/pool'
 import { user } from '@/shared/db/schema'
 import { localDateKey } from '@/shared/server/timezone'
 

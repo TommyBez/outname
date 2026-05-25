@@ -17,7 +17,7 @@ import {
 } from '@/agent-runtime/server/agent-events'
 import { isWorkflowRunAlive } from '@/agent-runtime/server/workflow-runs'
 import { normalizeAgentScheduleMode } from '@/shared/agent-schedule'
-import { db } from '@/shared/db'
+import { db } from '@/shared/db/pool'
 import { agent, user } from '@/shared/db/schema'
 import { localDateKey } from '@/shared/server/timezone'
 import { resolveDailyScheduleDue } from './schedule-due'

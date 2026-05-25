@@ -2,7 +2,7 @@
 
 import { and, eq } from 'drizzle-orm'
 import { requireUserId } from '@/auth/server/auth-guard'
-import { db } from '@/shared/db'
+import { db } from '@/shared/db/pool'
 import { agent, agentTools, toolSandboxBuilds } from '@/shared/db/schema'
 
 // Fallback for when the workflow stream is gone: return only terminal build

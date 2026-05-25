@@ -2,7 +2,7 @@ import 'server-only'
 
 import { and, eq } from 'drizzle-orm'
 import { refreshAgentCapabilitySummary } from '@/agents/server/capability-summary'
-import { db } from '@/shared/db'
+import { db } from '@/shared/db/pool'
 import { type AgentToolKind, agentTools } from '@/shared/db/schema'
 import {
   assertAgentOwnership,

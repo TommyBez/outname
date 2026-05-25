@@ -1,7 +1,7 @@
 import 'server-only'
 import { and, eq } from 'drizzle-orm'
 import { getChannelInstallationsForUser } from '@/channels/server/installations'
-import { db } from '@/shared/db'
+import { db } from '@/shared/db/pool'
 import { agentChannelBindings } from '@/shared/db/schema'
 
 export interface SlackBindingView {

@@ -5,7 +5,7 @@ import {
   buildAgentsMdContent,
   extractAgentsMdCustomInstructions,
 } from '@/agents/server/agents-md-template'
-import { db } from '@/shared/db'
+import { db } from '@/shared/db/pool'
 import { agent, agentTools } from '@/shared/db/schema'
 import { getAgentMemoryFile } from '@/shared/server/data'
 import { connectorBackedCapabilities } from '@/tools/catalog/capabilities'

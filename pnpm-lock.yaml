@@ -26,6 +26,9 @@ importers:
       '@mdx-js/react':
         specifier: ^3.1.1
         version: 3.1.1(@types/react@19.2.14)(react@19.2.5)
+      '@neondatabase/serverless':
+        specifier: ^1.0.2
+        version: 1.0.2
       '@next/mdx':
         specifier: ^16.2.6
         version: 16.2.6(@mdx-js/loader@3.1.1(webpack@5.105.0(@swc/core@1.15.3)(esbuild@0.28.0)(postcss@8.5.14)))(@mdx-js/react@3.1.1(@types/react@19.2.14)(react@19.2.5))
@@ -9697,7 +9700,6 @@ snapshots:
     dependencies:
       '@types/node': 22.19.11
       '@types/pg': 8.20.0
-    optional: true
 
   '@nestjs/common@11.1.19(reflect-metadata@0.2.2)(rxjs@7.8.2)':
     dependencies:
