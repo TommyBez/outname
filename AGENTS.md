@@ -156,6 +156,7 @@ WAITLIST_ADMIN_EMAIL=<admin inbox for new waitlist signup notifications>
 ### Known caveats
 
 - **Sign-up is disabled** at the Better Auth level (`auth/server/auth.ts`); new users are provisioned from the waitlist and sign in with email OTP codes. The data model is multi-user — every user-owned table is scoped by `user_id` and routes verify ownership. Use a provisioned address such as `TEST_USER_EMAIL` to request a login code in dev.
+- **Dev sign-in flow**: Request an OTP via `POST /api/auth/request-otp` with `{"email":"<existing-user>"}`, then read the code from the `verification` table (`SELECT value FROM verification ORDER BY "createdAt" DESC LIMIT 1` — the OTP is the part before the `:`). Submit it to `POST /api/auth/sign-in/email-otp` with `{"email":"...","otp":"..."}` to get a `better-auth.session_token` cookie. Existing test users can be found with `SELECT email FROM "user" LIMIT 5`.
 - **`drizzle-kit push`** requires a TTY for confirmation prompts. Use `drizzle-kit push --force` or run interactively if schema changes are needed.
 - **Do not commit `pnpm-workspace.yaml` allow-build overrides.** They make the production build fail in this app.
 - **UI/auth changes should be tested manually** via the browser. There is no comprehensive automated product test suite for waitlist and authentication flows.
