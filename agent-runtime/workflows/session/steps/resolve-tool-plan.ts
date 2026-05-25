@@ -1,10 +1,10 @@
 import { eq } from 'drizzle-orm'
 import { resolveConnectionAvailability } from '@/connections/runtime/availability'
+import { db } from '@/shared/db'
 import type { AgentTool } from '@/shared/db/schema'
 import { agentTools } from '@/shared/db/schema'
 import type { Reconnect } from '@/tools/catalog/types'
 import { resolveToolKindRows } from '@/tools/runtime/tool-kind-plugins'
-import { getDb } from './db/get-db'
 import { resolveMaintainerRow } from './resolve-tool-plan/maintainer-tools'
 import { resolveSubAgentRows } from './resolve-tool-plan/sub-agents'
 import type {
@@ -31,7 +31,6 @@ export async function resolveToolPlan(args: {
   const { agentId, userId } = args
   const callStack = args.callStack ?? []
   const depth = args.depth ?? 0
-  const db = await getDb()
   const rows = await db
     .select()
     .from(agentTools)
