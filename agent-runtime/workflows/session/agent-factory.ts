@@ -1,11 +1,5 @@
 import { DurableAgent } from '@workflow/ai/agent'
 import type { Tool } from 'ai'
-import {
-  type AgentRuntimeMeta,
-  type AgentRuntimeSpec,
-  buildAgentRuntimeSpec,
-  runtimeMetaFromSpec,
-} from '@/agent-runtime/server/runtime-spec'
 import { buildRuntimeToolset } from '@/agent-runtime/server/runtime-toolset'
 import {
   getUserModelForGateway,
@@ -14,6 +8,15 @@ import {
 import { nonRetryableStepErrorFromUnknown } from '@/shared/server/workflow-step-errors'
 import type { SubAgentProgressTarget } from '@/tools/sub-agents/progress-target'
 import { workflowParentStreamTarget } from '@/tools/sub-agents/progress-target'
+import { composeSystemPrompt } from './compose-system-prompt'
+import {
+  type AgentRuntimeMeta,
+  type AgentRuntimeSpec,
+  runtimeMetaFromSpec,
+} from './runtime-spec-types'
+import type { StepLimitMode } from './step-limit'
+import { loadAgentStep } from './steps/db/load-agent'
+import { resolveToolPlan } from './steps/resolve-tool-plan'
 
 // Build one event-scoped agent: prompt from sandbox files, built-in file tools,
 // and attached maintainer/sub-agent tools.
@@ -38,14 +41,45 @@ export interface BuildAgentResult {
 export async function buildAgent(
   args: BuildAgentArgs
 ): Promise<BuildAgentResult> {
-  const spec = await buildAgentRuntimeSpec({
+  const row = await loadAgentStep({ agentId: args.agentId })
+  if (!row) {
+    const suffix = args.runId ? ` (run ${args.runId})` : ''
+    throw new Error(`buildAgent: agent ${args.agentId} not found${suffix}`)
+  }
+
+  const callStack = args.callStack ?? []
+  const depth = args.depth ?? 0
+  const eventKind = args.eventKind ?? 'heartbeat'
+
+  const toolPlan = await resolveToolPlan({
     agentId: args.agentId,
-    callStack: args.callStack,
-    depth: args.depth,
-    eventKind: args.eventKind ?? 'heartbeat',
-    nowIso: args.nowIso,
-    runId: args.runId,
+    userId: row.userId,
+    callStack,
+    depth,
   })
+
+  const systemPrompt = await composeSystemPrompt({
+    agentId: args.agentId,
+    agentName: row.name,
+    eventKind,
+    nowIso: args.nowIso ?? new Date().toISOString(),
+    reconnects: toolPlan.reconnects,
+  })
+
+  const spec: AgentRuntimeSpec = {
+    agentId: args.agentId,
+    agentName: row.name,
+    callStack,
+    depth,
+    eventKind,
+    modelId: row.model,
+    stepLimitCustom: row.stepLimitCustom,
+    stepLimitMode: row.stepLimitMode as StepLimitMode,
+    systemPrompt,
+    toolPlan,
+    userId: row.userId,
+  }
+
   return buildDurableAgentRuntime(spec, {
     conversationId: args.conversationId,
     currentRunId: args.currentRunId,

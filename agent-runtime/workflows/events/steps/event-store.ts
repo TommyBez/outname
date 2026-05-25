@@ -1,10 +1,3 @@
-import {
-  getAgentEvent,
-  markEventHeartbeat,
-  markEventRunning,
-  markEventTerminal,
-  setEventPublisherWorkflowRunId,
-} from '@/agent-runtime/server/agent-event-store'
 import type { AgentEvent, AgentEventStatus } from '@/shared/db/schema'
 
 export type WorkflowAgentEvent = Pick<
@@ -24,6 +17,9 @@ export async function loadAgentEventStep(input: {
   eventId: string
 }): Promise<WorkflowAgentEvent | null> {
   'use step'
+  const { getAgentEvent } = await import(
+    '@/agent-runtime/server/agent-event-store'
+  )
   const event = await getAgentEvent(input.eventId)
   if (!event) {
     return null
@@ -46,6 +42,9 @@ export async function markAgentEventRunningStep(input: {
   workflowRunId?: string | null
 }): Promise<void> {
   'use step'
+  const { markEventRunning } = await import(
+    '@/agent-runtime/server/agent-event-store'
+  )
   await markEventRunning(input)
 }
 
@@ -53,6 +52,9 @@ export async function markAgentEventHeartbeatStep(input: {
   eventId: string
 }): Promise<void> {
   'use step'
+  const { markEventHeartbeat } = await import(
+    '@/agent-runtime/server/agent-event-store'
+  )
   await markEventHeartbeat(input.eventId)
 }
 
@@ -62,6 +64,9 @@ export async function markAgentEventTerminalStep(input: {
   status: Extract<AgentEventStatus, 'cancelled' | 'completed' | 'failed'>
 }): Promise<void> {
   'use step'
+  const { markEventTerminal } = await import(
+    '@/agent-runtime/server/agent-event-store'
+  )
   await markEventTerminal(input)
 }
 
@@ -70,5 +75,8 @@ export async function setAgentEventPublisherWorkflowRunIdStep(input: {
   publisherWorkflowRunId: string
 }): Promise<void> {
   'use step'
+  const { setEventPublisherWorkflowRunId } = await import(
+    '@/agent-runtime/server/agent-event-store'
+  )
   await setEventPublisherWorkflowRunId(input)
 }
