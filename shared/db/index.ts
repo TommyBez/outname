@@ -41,39 +41,15 @@ const schema = {
   waitlistEntry,
 }
 
-type DB = ReturnType<typeof drizzle<typeof schema>>
-
-let _pool: Pool | null = null
-let _db: DB | null = null
-
-function getPool(): Pool {
-  if (_pool) {
-    return _pool
-  }
-  const url = process.env.DATABASE_URL
-  if (!url) {
-    throw new Error('DATABASE_URL is not set')
-  }
-  _pool = new Pool({
-    connectionString: url,
-    max: 10,
-  })
-  attachDatabasePool(_pool)
-  return _pool
+const databaseUrl = process.env.DATABASE_URL
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL is not set')
 }
 
-function getDb(): DB {
-  if (_db) {
-    return _db
-  }
-  _db = drizzle({ client: getPool(), schema })
-  return _db
-}
-
-// Lazy proxy — resolves the underlying client only when actually used.
-export const db = new Proxy({} as DB, {
-  get(_t, prop, receiver) {
-    const target = getDb() as unknown as object
-    return Reflect.get(target, prop, receiver)
-  },
+const pool = new Pool({
+  connectionString: databaseUrl,
+  max: 10,
 })
+attachDatabasePool(pool)
+
+export const db = drizzle({ client: pool, schema })
