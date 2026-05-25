@@ -8,11 +8,13 @@ import {
   saveAiGatewayKeyAction,
 } from '@/app/settings/actions'
 import { Button } from '@/components/ui/button'
+import { useAiGatewayKeyGate } from '@/shared/components/ai-gateway-key-gate/ai-gateway-key-gate-provider'
 
 export function AiGatewayKeyCard({ hasKey }: { hasKey: boolean }) {
+  const router = useRouter()
+  const { markHasKey, markMissingKey } = useAiGatewayKeyGate()
   const [apiKey, setApiKey] = useState('')
   const [pending, startTransition] = useTransition()
-  const router = useRouter()
 
   return (
     <div className="flex flex-col gap-3">
@@ -37,6 +39,7 @@ export function AiGatewayKeyCard({ hasKey }: { hasKey: boolean }) {
             }
             toast.success('Key saved.')
             setApiKey('')
+            markHasKey()
             router.refresh()
           })
         }}
@@ -64,6 +67,7 @@ export function AiGatewayKeyCard({ hasKey }: { hasKey: boolean }) {
                     return
                   }
                   toast.success('Key removed.')
+                  markMissingKey()
                   router.refresh()
                 })
               }

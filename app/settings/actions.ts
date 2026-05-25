@@ -55,6 +55,9 @@ export async function saveAiGatewayKeyAction(apiKey: string) {
   }
   await setUserAiGatewayApiKey({ userId, apiKey })
   revalidatePath('/settings')
+  revalidatePath('/dashboard')
+  revalidatePath('/agents')
+  revalidatePath('/agents/new')
   return { ok: true }
 }
 
@@ -62,5 +65,8 @@ export async function removeAiGatewayKeyAction() {
   const userId = await requireUserId()
   await clearUserAiGatewayApiKey(userId)
   revalidatePath('/settings')
+  revalidatePath('/dashboard')
+  revalidatePath('/agents')
+  revalidatePath('/agents/new')
   return { ok: true }
 }

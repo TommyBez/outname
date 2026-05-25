@@ -10,6 +10,7 @@ import {
   insertChatMessage,
 } from '@/chat/server/chat'
 import type { ChatRole } from '@/shared/db/schema'
+import { ensureUserAiGatewayApiKey } from '@/shared/server/ai-gateway-http'
 import { conversationListTag } from '@/shared/server/cache-tags'
 
 // Authenticate, persist the newest user turn, then stream a realtime
@@ -33,6 +34,11 @@ export async function POST(
       { error: 'Agent is paused. Enable it before chatting.' },
       { status: 412 }
     )
+  }
+
+  const missingKey = await ensureUserAiGatewayApiKey(session.user.id)
+  if (missingKey) {
+    return missingKey
   }
 
   let body: { messages?: AgentChatMessage[]; conversationId?: string }

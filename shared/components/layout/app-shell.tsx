@@ -6,6 +6,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar'
 import { cn } from '@/lib/utils'
+import { AiGatewayKeyGateRoot } from '@/shared/components/ai-gateway-key-gate/ai-gateway-key-gate-root'
 import {
   AppSidebar,
   AppSidebarFallback,
@@ -58,7 +59,9 @@ export function AppShell({
           className={cn(mainClassName ?? DEFAULT_MAIN_CLASS)}
           id="main-content"
         >
-          {children}
+          <Suspense fallback={null}>
+            <AiGatewayKeyGateRoot>{children}</AiGatewayKeyGateRoot>
+          </Suspense>
         </main>
       </SidebarInset>
     </SidebarProvider>

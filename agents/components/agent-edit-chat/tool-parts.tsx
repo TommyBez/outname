@@ -31,6 +31,7 @@ export function renderMessagePart(input: {
   currentBudget: AgentBudgetValues
   key: string
   part: UIMessage['parts'][number]
+  requireAiGatewayKey: () => boolean
   sendMessage: SendMessageFn
 }) {
   const { part, key } = input
@@ -51,6 +52,7 @@ export function renderMessagePart(input: {
         currentBudget={input.currentBudget}
         key={key}
         part={part as ToolPart}
+        requireAiGatewayKey={input.requireAiGatewayKey}
         sendMessage={input.sendMessage}
       />
     )
@@ -62,6 +64,7 @@ export function renderMessagePart(input: {
         currentBudget={input.currentBudget}
         key={key}
         part={part as ToolPart}
+        requireAiGatewayKey={input.requireAiGatewayKey}
       />
     )
   }
@@ -72,6 +75,7 @@ export function renderMessagePart(input: {
         currentBudget={input.currentBudget}
         key={key}
         part={part as ToolPart}
+        requireAiGatewayKey={input.requireAiGatewayKey}
       />
     )
   }
@@ -82,10 +86,12 @@ function ToolCard({
   part,
   addToolApprovalResponse,
   currentBudget,
+  requireAiGatewayKey,
 }: {
   addToolApprovalResponse: ChatAddToolApproveResponseFunction
   currentBudget: AgentBudgetValues
   part: ToolPart
+  requireAiGatewayKey: () => boolean
 }) {
   const toolName = getToolPartName(part)
   const isApprovalRequest = part.state === 'approval-requested'
@@ -116,13 +122,16 @@ function ToolCard({
           <Confirmation approval={part.approval} state={part.state}>
             <ConfirmationActions>
               <ConfirmationAction
-                onClick={() =>
+                onClick={() => {
+                  if (!requireAiGatewayKey()) {
+                    return
+                  }
                   addToolApprovalResponse({
                     id: part.approval.id,
                     approved: true,
                     reason: 'User approved this edit operation.',
                   })
-                }
+                }}
               >
                 <CheckIcon className="size-4" />
                 Approve

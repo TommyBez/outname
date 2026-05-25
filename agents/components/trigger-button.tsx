@@ -6,6 +6,8 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { cn } from '@/lib/utils'
+import { isAiGatewayApiKeyMissingError } from '@/shared/ai-gateway/errors'
+import { useAiGatewayKeyGate } from '@/shared/components/ai-gateway-key-gate/ai-gateway-key-gate-provider'
 
 /**
  * Triggers a manual run for a specific agent. `agentId` is required; there
@@ -25,37 +27,31 @@ export function TriggerButton({
   className?: string
 }) {
   const router = useRouter()
+  const { requireAiGatewayKey } = useAiGatewayKeyGate()
   const [isLoading, setIsLoading] = useState(false)
   const [isPending, startTransition] = useTransition()
 
   async function trigger() {
     setIsLoading(true)
     try {
-      const res = await fetch(`/api/agents/${agentId}/trigger`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode }),
-      })
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: res.statusText }))
-        throw new Error(body.error ?? `HTTP ${res.status}`)
-      }
-      const { eventId, workflowRunId } = (await res.json()) as {
-        eventId?: string
-        workflowRunId?: string
-      }
-      toast.success(
-        mode === 'dreaming' ? 'Dreaming started' : 'Run started',
-        (workflowRunId ?? eventId)
-          ? { description: `Event ${(workflowRunId ?? eventId)?.slice(0, 8)}` }
-          : undefined
-      )
-      startTransition(() => {
-        if (eventId) {
-          router.push(`/agents/${agentId}/events?event=${eventId}`)
-          return
-        }
-        router.refresh()
+      await postAgentTrigger({
+        agentId,
+        mode,
+        onMissingKey: requireAiGatewayKey,
+        onSuccess: (payload) => {
+          const runId = payload.workflowRunId ?? payload.eventId
+          toast.success(
+            mode === 'dreaming' ? 'Dreaming started' : 'Run started',
+            runId ? { description: `Event ${runId.slice(0, 8)}` } : undefined
+          )
+          startTransition(() => {
+            if (payload.eventId) {
+              router.push(`/agents/${agentId}/events?event=${payload.eventId}`)
+              return
+            }
+            router.refresh()
+          })
+        },
       })
     } catch (err) {
       toast.error(
@@ -99,4 +95,37 @@ export function TriggerButton({
       {isLoading ? 'Starting…' : label}
     </Button>
   )
+}
+
+async function postAgentTrigger(input: {
+  agentId: string
+  mode: 'heartbeat' | 'dreaming'
+  onMissingKey: () => boolean
+  onSuccess: (payload: { eventId?: string; workflowRunId?: string }) => void
+}): Promise<void> {
+  if (!input.onMissingKey()) {
+    return
+  }
+
+  const res = await fetch(`/api/agents/${input.agentId}/trigger`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode: input.mode }),
+  })
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }))
+    if (isAiGatewayApiKeyMissingError(body) && !input.onMissingKey()) {
+      return
+    }
+    throw new Error(
+      typeof body.error === 'string' ? body.error : `HTTP ${res.status}`
+    )
+  }
+
+  const payload = (await res.json()) as {
+    eventId?: string
+    workflowRunId?: string
+  }
+  input.onSuccess(payload)
 }

@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/auth/server/auth'
 import { getUserModelForGateway } from '@/shared/server/ai-gateway-byok'
+import { ensureUserAiGatewayApiKey } from '@/shared/server/ai-gateway-http'
 import { listAvailableTools } from './available-tools'
 import { createRequestedAgent } from './create-requested-agent'
 import { CREATOR_MODEL, creatorInstructions } from './instructions'
@@ -24,6 +25,11 @@ export async function POST(req: Request) {
   const messages = await readMessages(req)
   if (!messages.ok) {
     return messages.response
+  }
+
+  const missingKey = await ensureUserAiGatewayApiKey(session.user.id)
+  if (missingKey) {
+    return missingKey
   }
 
   const model = await getUserModelForGateway({

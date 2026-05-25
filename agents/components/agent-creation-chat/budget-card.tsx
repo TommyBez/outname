@@ -15,8 +15,10 @@ import type { ProposeBudgetToolPart, SendMessageFn } from './types'
 export function ProposeBudgetCard({
   part,
   sendMessage,
+  requireAiGatewayKey,
 }: {
   part: ProposeBudgetToolPart
+  requireAiGatewayKey: () => boolean
   sendMessage: SendMessageFn
 }) {
   const proposed: AgentBudgetValues = {
@@ -57,6 +59,9 @@ export function ProposeBudgetCard({
 
   function submit(values: AgentBudgetValues) {
     if (submitted) {
+      return
+    }
+    if (!requireAiGatewayKey()) {
       return
     }
     setSubmitted(true)

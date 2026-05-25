@@ -10,6 +10,7 @@ import { getAgentById } from '@/agent-runtime/server/start-agent-run'
 import { auth } from '@/auth/server/auth'
 import { db } from '@/shared/db'
 import { user } from '@/shared/db/schema'
+import { ensureUserAiGatewayApiKey } from '@/shared/server/ai-gateway-http'
 import { localDateKey } from '@/shared/server/timezone'
 
 type TriggerMode = 'heartbeat' | 'dreaming'
@@ -35,6 +36,11 @@ export async function POST(
       { error: 'Agent is paused. Enable it before triggering a run.' },
       { status: 412 }
     )
+  }
+
+  const missingKey = await ensureUserAiGatewayApiKey(session.user.id)
+  if (missingKey) {
+    return missingKey
   }
 
   try {

@@ -26,6 +26,7 @@ import {
   PromptInputTextarea,
   PromptInputTools,
 } from '@/components/ai-elements/prompt-input'
+import { useAiGatewayKeyGate } from '@/shared/components/ai-gateway-key-gate/ai-gateway-key-gate-provider'
 
 interface AgentChatProps {
   agentId: string
@@ -46,6 +47,7 @@ export function AgentChat({
   isDraft,
 }: AgentChatProps) {
   const router = useRouter()
+  const { requireAiGatewayKey } = useAiGatewayKeyGate()
   const [input, setInput] = useState('')
   const [workflowStatus, setWorkflowStatus] =
     useState<WorkflowStatusData | null>(null)
@@ -107,6 +109,9 @@ export function AgentChat({
   function handleSubmit(message: PromptInputMessage) {
     const text = (message.text ?? '').trim()
     if (!text || isBusy) {
+      return
+    }
+    if (!requireAiGatewayKey()) {
       return
     }
     setWorkflowStatus(null)

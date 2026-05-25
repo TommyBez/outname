@@ -1,11 +1,11 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { Suspense } from 'react'
 import {
   AgentRegistry,
   type RegistryAgent,
 } from '@/agents/components/agent-registry'
 import { requireSession } from '@/auth/server/auth-guard'
+import { NewAgentLink } from '@/shared/components/ai-gateway-key-gate/new-agent-link'
 import { AppShell } from '@/shared/components/layout/app-shell'
 import type { Agent } from '@/shared/db/schema'
 import { getCachedAgentsForUser } from '@/shared/server/data'
@@ -32,12 +32,9 @@ export default function AgentsListPage() {
             The registry for every agent, with direct routes into chat,
             configuration, tools, and memory.
           </p>
-          <Link
-            className="inline-flex h-14 shrink-0 items-center justify-center self-start border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground md:self-auto"
-            href="/agents/new"
-          >
+          <NewAgentLink className="inline-flex h-14 shrink-0 items-center justify-center self-start border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground md:self-auto">
             + New agent
-          </Link>
+          </NewAgentLink>
         </div>
       </header>
 
@@ -65,12 +62,9 @@ async function AgentsListBody() {
           Add an agent to automate recurring work. Each agent runs on its own
           schedule and keeps its memory in a persistent sandbox.
         </p>
-        <Link
-          className="mt-8 inline-flex h-14 items-center justify-center border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground"
-          href="/agents/new"
-        >
+        <NewAgentLink className="mt-8 inline-flex h-14 items-center justify-center border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground">
           Create agent
-        </Link>
+        </NewAgentLink>
       </div>
     )
   }

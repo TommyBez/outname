@@ -8,6 +8,8 @@ import type {
 } from '@/agents/server/creation-types'
 import { upsertBudgetRule } from '@/budgets/server/rules'
 import type { BudgetPeriod } from '@/budgets/server/types'
+import { AI_GATEWAY_API_KEY_MISSING_MESSAGE } from '@/shared/ai-gateway/errors'
+import { hasUserAiGatewayApiKey } from '@/shared/server/ai-gateway-byok'
 import {
   agentTag,
   agentToolsTag,
@@ -24,6 +26,10 @@ export async function createRequestedAgent(input: {
   toolCallId: string
   userId: string
 }): Promise<AgentCreationResult> {
+  if (!(await hasUserAiGatewayApiKey(input.userId))) {
+    throw new Error(AI_GATEWAY_API_KEY_MISSING_MESSAGE)
+  }
+
   const [display, identityCard, soul] = await Promise.all([
     getUserTimeDisplay(input.userId),
     Promise.resolve(resolveIdentityCard(input.input)),

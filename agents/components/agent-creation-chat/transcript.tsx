@@ -39,9 +39,11 @@ export function AgentCreationTranscript({
   addToolApprovalResponse,
   sendMessage,
   timeZone,
+  requireAiGatewayKey,
 }: {
   addToolApprovalResponse: ToolApprovalResponder
   messages: AgentCreationMessage[]
+  requireAiGatewayKey: () => boolean
   sendMessage: SendMessageFn
   timeZone: string
 }) {
@@ -60,6 +62,7 @@ export function AgentCreationTranscript({
               addToolApprovalResponse={addToolApprovalResponse}
               key={message.id}
               message={message}
+              requireAiGatewayKey={requireAiGatewayKey}
               sendMessage={sendMessage}
               timeZone={timeZone}
             />
@@ -76,9 +79,11 @@ function AgentCreationMessageView({
   addToolApprovalResponse,
   sendMessage,
   timeZone,
+  requireAiGatewayKey,
 }: {
   addToolApprovalResponse: ToolApprovalResponder
   message: UIMessage
+  requireAiGatewayKey: () => boolean
   sendMessage: SendMessageFn
   timeZone: string
 }) {
@@ -90,6 +95,7 @@ function AgentCreationMessageView({
             addToolApprovalResponse,
             key: `${message.id}-${index}`,
             part,
+            requireAiGatewayKey,
             sendMessage,
             timeZone,
           })
@@ -103,6 +109,7 @@ function renderAgentCreationPart(input: {
   addToolApprovalResponse: ToolApprovalResponder
   key: string
   part: UIMessage['parts'][number]
+  requireAiGatewayKey: () => boolean
   sendMessage: SendMessageFn
   timeZone: string
 }) {
@@ -125,6 +132,7 @@ function renderAgentCreationPart(input: {
         addToolApprovalResponse={input.addToolApprovalResponse}
         key={key}
         part={part as CreateAgentToolPart}
+        requireAiGatewayKey={input.requireAiGatewayKey}
         timeZone={input.timeZone}
       />
     )
@@ -134,6 +142,7 @@ function renderAgentCreationPart(input: {
       <ProposeBudgetCard
         key={key}
         part={part as ProposeBudgetToolPart}
+        requireAiGatewayKey={input.requireAiGatewayKey}
         sendMessage={input.sendMessage}
       />
     )

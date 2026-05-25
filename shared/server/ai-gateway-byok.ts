@@ -2,6 +2,7 @@ import 'server-only'
 import { createGateway } from 'ai'
 import { eq } from 'drizzle-orm'
 import { decryptCredential, encryptCredential } from '@/connections/crypto'
+import { AI_GATEWAY_API_KEY_MISSING_MESSAGE } from '@/shared/ai-gateway/errors'
 import { db } from '@/shared/db'
 import { user } from '@/shared/db/schema'
 import { getUpstashRedis } from '@/shared/server/upstash-redis'
@@ -10,9 +11,7 @@ const AI_GATEWAY_API_KEY_CACHE_SUFFIX = 'ai-gateway-api-key'
 
 export class MissingAiGatewayApiKeyError extends Error {
   constructor() {
-    super(
-      'Missing AI Gateway API key. Add your key in Settings before running agents.'
-    )
+    super(AI_GATEWAY_API_KEY_MISSING_MESSAGE)
   }
 }
 

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { AgentScheduleMode } from '@/shared/agent-schedule'
+import { useAiGatewayKeyGate } from '@/shared/components/ai-gateway-key-gate/ai-gateway-key-gate-provider'
 import type { ModelOption } from '@/shared/server/ai-gateway-models'
 import { BootstrapFiles } from './agent-form/bootstrap-files'
 import { ModelSelector } from './agent-form/model-selector'
@@ -36,6 +37,7 @@ export function AgentForm({
   timezoneLabel,
 }: AgentFormProps) {
   const router = useRouter()
+  const { requireAiGatewayKey } = useAiGatewayKeyGate()
   const [pending, startTransition] = useTransition()
   const [name, setName] = useState(initial?.name ?? '')
   const [identityCard, setIdentityCard] = useState(initial?.identityCard ?? '')
@@ -73,6 +75,9 @@ export function AgentForm({
     const trimmed = name.trim()
     if (!trimmed) {
       toast.error('Name is required')
+      return
+    }
+    if (!(isEdit || requireAiGatewayKey())) {
       return
     }
     startTransition(async () => {

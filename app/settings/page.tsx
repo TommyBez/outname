@@ -61,7 +61,7 @@ export default function SettingsPage() {
           </Suspense>
         </Section>
 
-        <Section title="AI Gateway (BYOK)">
+        <Section id="ai-gateway" title="AI Gateway (BYOK)">
           <Suspense fallback={<div className="h-10" />}>
             <AiGatewaySection />
           </Suspense>
@@ -180,14 +180,19 @@ function WaitlistSection() {
 }
 
 function Section({
+  id,
   title,
   children,
 }: {
+  id?: string
   title: string
   children: React.ReactNode
 }) {
   return (
-    <section className="grid grid-cols-1 gap-6 border-foreground border-b-2 py-10 last:border-b-0 lg:grid-cols-[160px_1fr] lg:gap-10">
+    <section
+      className="grid grid-cols-1 gap-6 border-foreground border-b-2 py-10 last:border-b-0 lg:grid-cols-[160px_1fr] lg:gap-10"
+      id={id}
+    >
       <h2 className="swiss-label text-accent">{title}</h2>
       <div className="min-w-0">{children}</div>
     </section>

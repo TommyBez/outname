@@ -11,6 +11,7 @@ import { z } from 'zod'
 import { updateAgentForUser } from '@/agents/server/update-service'
 import { auth } from '@/auth/server/auth'
 import { getUserModelForGateway } from '@/shared/server/ai-gateway-byok'
+import { ensureUserAiGatewayApiKey } from '@/shared/server/ai-gateway-http'
 import { getAgentByIdForUser } from '@/shared/server/data'
 import { detachToolForUser } from '@/tools/server/attachment-service/detach'
 import { attachMaintainerToolForUser } from '@/tools/server/attachment-service/maintainer'
@@ -53,6 +54,11 @@ export async function POST(
   const messages = await readMessages(req)
   if (!messages.ok) {
     return messages.response
+  }
+
+  const missingKey = await ensureUserAiGatewayApiKey(session.user.id)
+  if (missingKey) {
+    return missingKey
   }
 
   const model = await getUserModelForGateway({

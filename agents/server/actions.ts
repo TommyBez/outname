@@ -11,8 +11,10 @@ import {
 } from '@/agents/server/update-service'
 import { requireSession } from '@/auth/server/auth-guard'
 import type { AgentScheduleMode } from '@/shared/agent-schedule'
+import { AI_GATEWAY_API_KEY_MISSING_MESSAGE } from '@/shared/ai-gateway/errors'
 import { db } from '@/shared/db'
 import { agent, agentEvents } from '@/shared/db/schema'
+import { hasUserAiGatewayApiKey } from '@/shared/server/ai-gateway-byok'
 import {
   agentTag,
   conversationListTag,
@@ -39,6 +41,9 @@ export async function createAgentAction(
   input: CreateInput
 ): Promise<{ id: string }> {
   const session = await requireSession()
+  if (!(await hasUserAiGatewayApiKey(session.user.id))) {
+    throw new Error(AI_GATEWAY_API_KEY_MISSING_MESSAGE)
+  }
   const result = await createAgentForUser({
     ...input,
     userId: session.user.id,

@@ -29,9 +29,11 @@ export function CreateAgentToolCard({
   part,
   addToolApprovalResponse,
   timeZone,
+  requireAiGatewayKey,
 }: {
   addToolApprovalResponse: ToolApprovalResponder
   part: CreateAgentToolPart
+  requireAiGatewayKey: () => boolean
   timeZone: string
 }) {
   // While input is streaming, the Tool header's "Pending"/"Running" badge is
@@ -63,13 +65,16 @@ export function CreateAgentToolCard({
             </ConfirmationRequest>
             <ConfirmationActions>
               <ConfirmationAction
-                onClick={() =>
+                onClick={() => {
+                  if (!requireAiGatewayKey()) {
+                    return
+                  }
                   addToolApprovalResponse({
                     id: approvalId,
                     approved: true,
                     reason: 'User approved agent creation.',
                   })
-                }
+                }}
                 size="sm"
               >
                 <CheckIcon className="size-4" />

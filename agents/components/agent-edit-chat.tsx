@@ -24,12 +24,14 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
 } from '@/components/ai-elements/prompt-input'
+import { useAiGatewayKeyGate } from '@/shared/components/ai-gateway-key-gate/ai-gateway-key-gate-provider'
 import { renderMessagePart } from './agent-edit-chat/tool-parts'
 import type { AgentEditChatProps } from './agent-edit-chat/types'
 
 export function AgentEditChat({ agentId, currentBudget }: AgentEditChatProps) {
   const [input, setInput] = useState('')
   const router = useRouter()
+  const { requireAiGatewayKey } = useAiGatewayKeyGate()
   const {
     messages,
     sendMessage,
@@ -52,6 +54,9 @@ export function AgentEditChat({ agentId, currentBudget }: AgentEditChatProps) {
   function handleSubmit(message: PromptInputMessage) {
     const text = (message.text ?? '').trim()
     if (!text || isBusy) {
+      return
+    }
+    if (!requireAiGatewayKey()) {
       return
     }
     sendMessage({ text })
@@ -84,6 +89,7 @@ export function AgentEditChat({ agentId, currentBudget }: AgentEditChatProps) {
                       currentBudget,
                       key: `${message.id}-${index}`,
                       part,
+                      requireAiGatewayKey,
                       sendMessage,
                     })
                   )}

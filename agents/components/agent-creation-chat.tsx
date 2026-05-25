@@ -16,6 +16,8 @@ import {
   PromptInputTextarea,
 } from '@/components/ai-elements/prompt-input'
 import { cn } from '@/lib/utils'
+import { useAiGatewayKeyGate } from '@/shared/components/ai-gateway-key-gate/ai-gateway-key-gate-provider'
+import { AiGatewaySetupBanner } from '@/shared/components/ai-gateway-key-gate/ai-gateway-setup-banner'
 import { AgentCreationTranscript } from './agent-creation-chat/transcript'
 import type { AgentCreationMessage } from './agent-creation-chat/types'
 
@@ -30,6 +32,7 @@ export function AgentCreationChat({
 }: AgentCreationChatProps) {
   const [input, setInput] = useState('')
   const router = useRouter()
+  const { requireAiGatewayKey } = useAiGatewayKeyGate()
   const {
     messages,
     sendMessage,
@@ -54,6 +57,9 @@ export function AgentCreationChat({
     if (!text || isBusy) {
       return
     }
+    if (!requireAiGatewayKey()) {
+      return
+    }
     sendMessage({ text })
     setInput('')
   }
@@ -65,9 +71,13 @@ export function AgentCreationChat({
         className
       )}
     >
+      <div className="shrink-0 px-4 pt-4">
+        <AiGatewaySetupBanner />
+      </div>
       <AgentCreationTranscript
         addToolApprovalResponse={addToolApprovalResponse}
         messages={messages}
+        requireAiGatewayKey={requireAiGatewayKey}
         sendMessage={sendMessage}
         timeZone={timeZone}
       />

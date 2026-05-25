@@ -13,6 +13,8 @@ import { requireSession } from '@/auth/server/auth-guard'
 import { BudgetIndicator } from '@/budgets/components/budget-indicator'
 import { loadBudgetSummary } from '@/budgets/server/summary'
 import type { BudgetSummaryEntry } from '@/budgets/server/types'
+import { NewAgentLink } from '@/shared/components/ai-gateway-key-gate/new-agent-link'
+import { QuickActionLink } from '@/shared/components/ai-gateway-key-gate/quick-action-link'
 import { AppShell } from '@/shared/components/layout/app-shell'
 import {
   AgentCardSkeleton,
@@ -60,12 +62,9 @@ async function DashboardPageBody() {
               Live cockpit for event queues, budgets, and agents that need
               attention.
             </p>
-            <Link
-              className="inline-flex h-14 shrink-0 items-center justify-center border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground"
-              href="/agents/new"
-            >
+            <NewAgentLink className="inline-flex h-14 shrink-0 items-center justify-center border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground">
               + New agent
-            </Link>
+            </NewAgentLink>
           </div>
         </div>
       </header>
@@ -100,12 +99,9 @@ async function DashboardCockpit({
         <p className="mt-4 max-w-md text-muted-foreground text-sm leading-relaxed">
           Create your first agent to start automating recurring work.
         </p>
-        <Link
-          className="mt-8 inline-flex h-14 items-center justify-center border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground"
-          href="/agents/new"
-        >
+        <NewAgentLink className="mt-8 inline-flex h-14 items-center justify-center border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground">
           Create agent
-        </Link>
+        </NewAgentLink>
       </div>
     )
   }
@@ -196,7 +192,7 @@ async function DashboardCockpit({
             Quick actions
           </p>
           <div className="mt-4 grid gap-2">
-            <QuickAction href="/agents/new" label="New agent" />
+            <QuickActionLink href="/agents/new" label="New agent" />
             <QuickAction href="/agents" label="Agent registry" />
             <QuickAction href="/channels" label="Channels" />
             <QuickAction href="/connections" label="Connections" />
@@ -300,6 +296,9 @@ function DashboardMetric({ label, value }: { label: string; value: number }) {
 }
 
 function QuickAction({ href, label }: { href: string; label: string }) {
+  if (href === '/agents/new') {
+    return <QuickActionLink href={href} label={label} />
+  }
   return (
     <Link
       className="inline-flex h-10 items-center justify-center border-2 border-foreground px-3 font-bold text-[10px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"

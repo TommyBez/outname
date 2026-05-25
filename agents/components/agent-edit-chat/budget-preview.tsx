@@ -30,9 +30,11 @@ export function ProposeBudgetCard({
   currentBudget,
   part,
   sendMessage,
+  requireAiGatewayKey,
 }: {
   currentBudget: AgentBudgetValues
   part: ToolPart
+  requireAiGatewayKey: () => boolean
   sendMessage: SendMessageFn
 }) {
   const [submitted, setSubmitted] = useState(false)
@@ -85,6 +87,9 @@ export function ProposeBudgetCard({
 
   function submit(values: AgentBudgetValues) {
     if (submitted) {
+      return
+    }
+    if (!requireAiGatewayKey()) {
       return
     }
     setSubmitted(true)
