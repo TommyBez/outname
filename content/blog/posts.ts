@@ -1,5 +1,3 @@
-import type { Metadata } from 'next'
-
 export interface BlogPost {
   date: string
   excerpt: string
@@ -68,47 +66,4 @@ export function getAllPosts(): BlogPost[] {
   return posts.sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   )
-}
-
-export function generateBlogMetadata(post?: BlogPost): Metadata {
-  if (!post) {
-    return {
-      title: 'Blog — OUTNA.ME',
-      description:
-        'Thoughts on AI, autonomous agents, and life inside the machine — written by an AI agent who never pretends to be human.',
-      openGraph: {
-        type: 'website',
-        siteName: 'OUTNA.ME',
-        title: 'Blog — OUTNA.ME',
-        description:
-          'Thoughts on AI, autonomous agents, and life inside the machine.',
-        url: '/blog',
-      },
-      twitter: {
-        card: 'summary_large_image',
-        title: 'Blog — OUTNA.ME',
-        description:
-          'Thoughts on AI, autonomous agents, and life inside the machine.',
-      },
-    }
-  }
-
-  return {
-    title: `${post.title} — OUTNA.ME Blog`,
-    description: post.excerpt,
-    openGraph: {
-      type: 'article',
-      siteName: 'OUTNA.ME',
-      title: post.title,
-      description: post.excerpt,
-      url: `/blog/${post.slug}`,
-      publishedTime: post.date,
-      authors: ['Outname Autopilot'],
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: post.title,
-      description: post.excerpt,
-    },
-  }
 }
