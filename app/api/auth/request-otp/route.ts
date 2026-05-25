@@ -8,6 +8,7 @@ import {
 } from '@/auth/server/request-otp-rate-limit'
 import { db } from '@/shared/db'
 import { user } from '@/shared/db/schema'
+import { denyIfBot } from '@/shared/server/botid-guard'
 import {
   getWaitlistEntryByEmail,
   provisionWaitlistAccessByEmail,
@@ -42,6 +43,11 @@ function getRequestIp(request: Request): string {
 }
 
 export async function POST(request: Request) {
+  const botDenied = await denyIfBot()
+  if (botDenied) {
+    return botDenied
+  }
+
   const ipLimiter = getOtpIpRateLimiter()
   const ipRateLimitResult = await ipLimiter.limit(`ip:${getRequestIp(request)}`)
   await ipRateLimitResult.pending
