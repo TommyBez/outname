@@ -5,12 +5,14 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 
+const HTTP_STATUS_FORBIDDEN = 403
+
 export function WaitlistConfirmButton({ token }: { token: string }) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  async function handleConfirm() {
+  const handleConfirm: () => Promise<void> = async () => {
     setIsSubmitting(true)
     setErrorMessage(null)
 
@@ -23,7 +25,7 @@ export function WaitlistConfirmButton({ token }: { token: string }) {
         body: formData,
       })
 
-      if (response.status === 403) {
+      if (response.status === HTTP_STATUS_FORBIDDEN) {
         setErrorMessage('Access denied. Please refresh the page and try again.')
         return
       }
