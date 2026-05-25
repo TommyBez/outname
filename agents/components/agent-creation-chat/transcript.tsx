@@ -1,5 +1,6 @@
 import type { UIMessage } from 'ai'
 import { BotIcon } from 'lucide-react'
+import type { AgentCreationLimitState } from '@/agents/shared/agent-limit-types'
 import {
   Conversation,
   ConversationContent,
@@ -39,8 +40,10 @@ export function AgentCreationTranscript({
   addToolApprovalResponse,
   sendMessage,
   timeZone,
+  limitState,
 }: {
   addToolApprovalResponse: ToolApprovalResponder
+  limitState: AgentCreationLimitState
   messages: AgentCreationMessage[]
   sendMessage: SendMessageFn
   timeZone: string
@@ -59,6 +62,7 @@ export function AgentCreationTranscript({
             <AgentCreationMessageView
               addToolApprovalResponse={addToolApprovalResponse}
               key={message.id}
+              limitState={limitState}
               message={message}
               sendMessage={sendMessage}
               timeZone={timeZone}
@@ -76,8 +80,10 @@ function AgentCreationMessageView({
   addToolApprovalResponse,
   sendMessage,
   timeZone,
+  limitState,
 }: {
   addToolApprovalResponse: ToolApprovalResponder
+  limitState: AgentCreationLimitState
   message: UIMessage
   sendMessage: SendMessageFn
   timeZone: string
@@ -89,6 +95,7 @@ function AgentCreationMessageView({
           renderAgentCreationPart({
             addToolApprovalResponse,
             key: `${message.id}-${index}`,
+            limitState,
             part,
             sendMessage,
             timeZone,
@@ -102,6 +109,7 @@ function AgentCreationMessageView({
 function renderAgentCreationPart(input: {
   addToolApprovalResponse: ToolApprovalResponder
   key: string
+  limitState: AgentCreationLimitState
   part: UIMessage['parts'][number]
   sendMessage: SendMessageFn
   timeZone: string
@@ -124,6 +132,7 @@ function renderAgentCreationPart(input: {
       <CreateAgentToolCard
         addToolApprovalResponse={input.addToolApprovalResponse}
         key={key}
+        limitState={input.limitState}
         part={part as CreateAgentToolPart}
         timeZone={input.timeZone}
       />

@@ -7,6 +7,7 @@ import {
 } from 'ai'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import type { AgentCreationLimitState } from '@/agents/shared/agent-limit-types'
 import { ChatErrorBanner } from '@/chat/components/chat-error-banner'
 import {
   PromptInput,
@@ -21,12 +22,14 @@ import type { AgentCreationMessage } from './agent-creation-chat/types'
 
 interface AgentCreationChatProps {
   className?: string
+  limitState: AgentCreationLimitState
   timeZone: string
 }
 
 export function AgentCreationChat({
   className,
   timeZone,
+  limitState,
 }: AgentCreationChatProps) {
   const [input, setInput] = useState('')
   const router = useRouter()
@@ -67,6 +70,7 @@ export function AgentCreationChat({
     >
       <AgentCreationTranscript
         addToolApprovalResponse={addToolApprovalResponse}
+        limitState={limitState}
         messages={messages}
         sendMessage={sendMessage}
         timeZone={timeZone}

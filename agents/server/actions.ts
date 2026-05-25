@@ -4,11 +4,13 @@ import { and, eq } from 'drizzle-orm'
 import { revalidatePath, updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { destroyAgentSandboxes } from '@/agent-runtime/server/agent-sandbox'
+import { getAgentCreationLimitState } from '@/agents/server/agent-limit'
 import { createAgentForUser } from '@/agents/server/creation-service'
 import {
   type UpdateAgentInput,
   updateAgentForUser,
 } from '@/agents/server/update-service'
+import type { AgentCreationLimitState } from '@/agents/shared/agent-limit-types'
 import { requireSession } from '@/auth/server/auth-guard'
 import type { AgentScheduleMode } from '@/shared/agent-schedule'
 import { db } from '@/shared/db'
@@ -33,6 +35,11 @@ interface CreateInput {
   stepLimitCustom?: number | null
   stepLimitMode: 'custom' | 'grind' | 'high' | 'low' | 'medium'
   userProfile: string
+}
+
+export async function getAgentCreationLimitAction(): Promise<AgentCreationLimitState> {
+  const session = await requireSession()
+  return getAgentCreationLimitState(session.user.id)
 }
 
 export async function createAgentAction(

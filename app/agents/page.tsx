@@ -1,10 +1,11 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { Suspense } from 'react'
 import {
   AgentRegistry,
   type RegistryAgent,
 } from '@/agents/components/agent-registry'
+import { NewAgentLink } from '@/agents/components/new-agent-link'
+import { getAgentCreationLimitState } from '@/agents/server/agent-limit'
 import { requireSession } from '@/auth/server/auth-guard'
 import { AppShell } from '@/shared/components/layout/app-shell'
 import type { Agent } from '@/shared/db/schema'
@@ -20,26 +21,9 @@ export const metadata: Metadata = createPrivatePageMetadata(
 export default function AgentsListPage() {
   return (
     <AppShell>
-      <header className="mb-12 border-foreground border-t-4 pt-6">
-        <div className="grid gap-8 md:grid-cols-[minmax(0,7fr)_minmax(14rem,3fr)] md:items-end">
-          <div>
-            <p className="swiss-label mb-4 text-accent">02. Agents</p>
-            <h1 className="font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
-              Your agents
-            </h1>
-          </div>
-          <p className="max-w-xs border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
-            The registry for every agent, with direct routes into chat,
-            configuration, tools, and memory.
-          </p>
-          <Link
-            className="inline-flex h-14 shrink-0 items-center justify-center self-start border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground md:self-auto"
-            href="/agents/new"
-          >
-            + New agent
-          </Link>
-        </div>
-      </header>
+      <Suspense fallback={<AgentsListHeaderSkeleton />}>
+        <AgentsListHeader />
+      </Suspense>
 
       <Suspense fallback={<AgentsListSkeleton />}>
         <AgentsListBody />
@@ -48,11 +32,48 @@ export default function AgentsListPage() {
   )
 }
 
+async function AgentsListHeader() {
+  const session = await requireSession()
+  const limitState = await getAgentCreationLimitState(session.user.id)
+
+  return (
+    <header className="mb-12 border-foreground border-t-4 pt-6">
+      <div className="grid gap-8 md:grid-cols-[minmax(0,7fr)_minmax(14rem,3fr)] md:items-end">
+        <div>
+          <p className="swiss-label mb-4 text-accent">02. Agents</p>
+          <h1 className="font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
+            Your agents
+          </h1>
+        </div>
+        <p className="max-w-xs border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
+          The registry for every agent, with direct routes into chat,
+          configuration, tools, and memory.
+        </p>
+        <NewAgentLink
+          className="inline-flex h-14 shrink-0 items-center justify-center self-start border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground md:self-auto"
+          limitState={limitState}
+        >
+          + New agent
+        </NewAgentLink>
+      </div>
+    </header>
+  )
+}
+
+function AgentsListHeaderSkeleton() {
+  return (
+    <header className="mb-12 border-foreground border-t-4 pt-6">
+      <div className="h-24 animate-pulse bg-muted" />
+    </header>
+  )
+}
+
 async function AgentsListBody() {
   const session = await requireSession()
-  const [agents, display] = await Promise.all([
+  const [agents, display, limitState] = await Promise.all([
     getCachedAgentsForUser(session.user.id),
     getUserTimeDisplay(session.user.id),
+    getAgentCreationLimitState(session.user.id),
   ])
 
   if (agents.length === 0) {
@@ -65,12 +86,12 @@ async function AgentsListBody() {
           Add an agent to automate recurring work. Each agent runs on its own
           schedule and keeps its memory in a persistent sandbox.
         </p>
-        <Link
+        <NewAgentLink
           className="mt-8 inline-flex h-14 items-center justify-center border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground"
-          href="/agents/new"
+          limitState={limitState}
         >
           Create agent
-        </Link>
+        </NewAgentLink>
       </div>
     )
   }

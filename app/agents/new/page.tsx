@@ -1,5 +1,7 @@
 import { Suspense } from 'react'
 import { AgentCreationChat } from '@/agents/components/agent-creation-chat'
+import { AgentCreationGate } from '@/agents/components/agent-creation-gate'
+import { getAgentCreationLimitState } from '@/agents/server/agent-limit'
 import { requireSession } from '@/auth/server/auth-guard'
 import { AppShell } from '@/shared/components/layout/app-shell'
 import { createPrivatePageMetadata } from '@/shared/server/site-metadata'
@@ -39,6 +41,13 @@ export default function NewAgentPage() {
 
 async function NewAgentChat() {
   const session = await requireSession()
-  const display = await getUserTimeDisplay(session.user.id)
-  return <AgentCreationChat timeZone={display.timeZone} />
+  const [display, limitState] = await Promise.all([
+    getUserTimeDisplay(session.user.id),
+    getAgentCreationLimitState(session.user.id),
+  ])
+  return (
+    <AgentCreationGate limitState={limitState}>
+      <AgentCreationChat limitState={limitState} timeZone={display.timeZone} />
+    </AgentCreationGate>
+  )
 }

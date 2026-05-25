@@ -9,6 +9,9 @@ import {
   AgentDashboardCard,
   type DashboardAgent,
 } from '@/agents/components/agent-dashboard-card'
+import { NewAgentLink } from '@/agents/components/new-agent-link'
+import { getAgentCreationLimitState } from '@/agents/server/agent-limit'
+import type { AgentCreationLimitState } from '@/agents/shared/agent-limit-types'
 import { requireSession } from '@/auth/server/auth-guard'
 import { BudgetIndicator } from '@/budgets/components/budget-indicator'
 import { loadBudgetSummary } from '@/budgets/server/summary'
@@ -41,7 +44,10 @@ export default function DashboardPage() {
 
 async function DashboardPageBody() {
   const session = await requireSession()
-  const display = await getUserTimeDisplay(session.user.id)
+  const [display, limitState] = await Promise.all([
+    getUserTimeDisplay(session.user.id),
+    getAgentCreationLimitState(session.user.id),
+  ])
 
   return (
     <>
@@ -60,18 +66,19 @@ async function DashboardPageBody() {
               Live cockpit for event queues, budgets, and agents that need
               attention.
             </p>
-            <Link
+            <NewAgentLink
               className="inline-flex h-14 shrink-0 items-center justify-center border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground"
-              href="/agents/new"
+              limitState={limitState}
             >
               + New agent
-            </Link>
+            </NewAgentLink>
           </div>
         </div>
       </header>
 
       <Suspense fallback={<RunResultSkeleton />}>
         <DashboardCockpit
+          limitState={limitState}
           timeZone={display.timeZone}
           userId={session.user.id}
         />
@@ -82,7 +89,9 @@ async function DashboardPageBody() {
 async function DashboardCockpit({
   timeZone,
   userId,
+  limitState,
 }: {
+  limitState: AgentCreationLimitState
   timeZone: string
   userId: string
 }) {
@@ -100,12 +109,12 @@ async function DashboardCockpit({
         <p className="mt-4 max-w-md text-muted-foreground text-sm leading-relaxed">
           Create your first agent to start automating recurring work.
         </p>
-        <Link
+        <NewAgentLink
           className="mt-8 inline-flex h-14 items-center justify-center border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground"
-          href="/agents/new"
+          limitState={limitState}
         >
           Create agent
-        </Link>
+        </NewAgentLink>
       </div>
     )
   }
@@ -196,7 +205,7 @@ async function DashboardCockpit({
             Quick actions
           </p>
           <div className="mt-4 grid gap-2">
-            <QuickAction href="/agents/new" label="New agent" />
+            <NewAgentQuickAction limitState={limitState} />
             <QuickAction href="/agents" label="Agent registry" />
             <QuickAction href="/channels" label="Channels" />
             <QuickAction href="/connections" label="Connections" />
@@ -296,6 +305,21 @@ function DashboardMetric({ label, value }: { label: string; value: number }) {
         {value}
       </p>
     </div>
+  )
+}
+
+function NewAgentQuickAction({
+  limitState,
+}: {
+  limitState: AgentCreationLimitState
+}) {
+  return (
+    <NewAgentLink
+      className="inline-flex h-10 items-center justify-center border-2 border-foreground px-3 font-bold text-[10px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+      limitState={limitState}
+    >
+      New agent
+    </NewAgentLink>
   )
 }
 

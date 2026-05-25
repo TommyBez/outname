@@ -1,5 +1,7 @@
 import { CheckIcon, XIcon } from 'lucide-react'
-import type { ComponentProps } from 'react'
+import { type ComponentProps, useState } from 'react'
+import { AgentLimitReachedDialog } from '@/agents/components/agent-limit-reached-dialog'
+import type { AgentCreationLimitState } from '@/agents/shared/agent-limit-types'
 import {
   Confirmation,
   ConfirmationAccepted,
@@ -29,11 +31,14 @@ export function CreateAgentToolCard({
   part,
   addToolApprovalResponse,
   timeZone,
+  limitState,
 }: {
   addToolApprovalResponse: ToolApprovalResponder
+  limitState: AgentCreationLimitState
   part: CreateAgentToolPart
   timeZone: string
 }) {
+  const [limitDialogOpen, setLimitDialogOpen] = useState(false)
   // While input is streaming, the Tool header's "Pending"/"Running" badge is
   // the entire UI — no redundant spinner panel.
   if (part.state === 'input-streaming' || part.state === 'input-available') {
@@ -51,6 +56,12 @@ export function CreateAgentToolCard({
         <ToolHeader state={part.state} type={part.type} />
         <ToolContent>
           <FinalConfigurationCard config={part.input} timeZone={timeZone} />
+          <AgentLimitReachedDialog
+            agentCount={limitState.count}
+            agentLimit={limitState.limit}
+            onOpenChange={setLimitDialogOpen}
+            open={limitDialogOpen}
+          />
           <Confirmation
             approval={part.approval as ConfirmationApproval}
             className="rounded-none border-2 border-foreground"
@@ -63,13 +74,17 @@ export function CreateAgentToolCard({
             </ConfirmationRequest>
             <ConfirmationActions>
               <ConfirmationAction
-                onClick={() =>
+                onClick={() => {
+                  if (!limitState.canCreate) {
+                    setLimitDialogOpen(true)
+                    return
+                  }
                   addToolApprovalResponse({
                     id: approvalId,
                     approved: true,
                     reason: 'User approved agent creation.',
                   })
-                }
+                }}
                 size="sm"
               >
                 <CheckIcon className="size-4" />
