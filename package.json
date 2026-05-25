@@ -13,8 +13,8 @@
     "url": "https://github.com/TommyBez/personal-assistant-agent/issues"
   },
   "engines": {
-    "node": ">=22",
-    "pnpm": ">=9"
+    "node": ">=24",
+    "pnpm": ">=10"
   },
   "keywords": [
     "ai-agents",
@@ -30,6 +30,7 @@
     "@chat-adapter/slack": "^4.29.0",
     "@chat-adapter/state-redis": "^4.29.0",
     "@hookform/resolvers": "^3.9.1",
+    "@icons-pack/react-simple-icons": "^13.13.0",
     "@mdx-js/loader": "^3.1.1",
     "@mdx-js/react": "^3.1.1",
     "@next/mdx": "^16.2.6",
