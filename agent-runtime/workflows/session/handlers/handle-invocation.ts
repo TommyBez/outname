@@ -15,6 +15,7 @@ import {
   preflightBudget,
   recordTokenUsageStep,
 } from '../steps/budget'
+import { startupSystemSandboxStep } from '../steps/db/system-sandbox'
 import { finishSuccessfulInvocation } from './handle-invocation/finish-success'
 import { invocationMessageId } from './handle-invocation/run-helpers'
 import {
@@ -193,9 +194,6 @@ async function prepareInvocationRun(input: {
     depth: input.depth,
     parentRunId: input.parentRunId,
   })
-  const { startupSystemSandboxStep } = await import(
-    '../steps/db/system-sandbox'
-  )
   await startupSystemSandboxStep({ agentId: input.agentId })
 }
 

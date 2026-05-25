@@ -1,5 +1,6 @@
 import { DurableAgent } from '@workflow/ai/agent'
 import type { Tool } from 'ai'
+import { buildRuntimeToolset } from '@/agent-runtime/server/runtime-toolset'
 import {
   getUserModelForGateway,
   MissingAiGatewayApiKeyError,
@@ -7,12 +8,15 @@ import {
 import { nonRetryableStepErrorFromUnknown } from '@/shared/server/workflow-step-errors'
 import type { SubAgentProgressTarget } from '@/tools/sub-agents/progress-target'
 import { workflowParentStreamTarget } from '@/tools/sub-agents/progress-target'
+import { composeSystemPrompt } from './compose-system-prompt'
 import {
   type AgentRuntimeMeta,
   type AgentRuntimeSpec,
   runtimeMetaFromSpec,
 } from './runtime-spec-types'
 import type { StepLimitMode } from './step-limit'
+import { loadAgentStep } from './steps/db/load-agent'
+import { resolveToolPlan } from './steps/resolve-tool-plan'
 
 // Build one event-scoped agent: prompt from sandbox files, built-in file tools,
 // and attached maintainer/sub-agent tools.
@@ -37,7 +41,6 @@ export interface BuildAgentResult {
 export async function buildAgent(
   args: BuildAgentArgs
 ): Promise<BuildAgentResult> {
-  const { loadAgentStep } = await import('./steps/db/load-agent')
   const row = await loadAgentStep({ agentId: args.agentId })
   if (!row) {
     const suffix = args.runId ? ` (run ${args.runId})` : ''
@@ -48,7 +51,6 @@ export async function buildAgent(
   const depth = args.depth ?? 0
   const eventKind = args.eventKind ?? 'heartbeat'
 
-  const { resolveToolPlan } = await import('./steps/resolve-tool-plan')
   const toolPlan = await resolveToolPlan({
     agentId: args.agentId,
     userId: row.userId,
@@ -56,7 +58,6 @@ export async function buildAgent(
     depth,
   })
 
-  const { composeSystemPrompt } = await import('./compose-system-prompt')
   const systemPrompt = await composeSystemPrompt({
     agentId: args.agentId,
     agentName: row.name,
@@ -79,24 +80,21 @@ export async function buildAgent(
     userId: row.userId,
   }
 
-  return await buildDurableAgentRuntime(spec, {
+  return buildDurableAgentRuntime(spec, {
     conversationId: args.conversationId,
     currentRunId: args.currentRunId,
     progressTarget: workflowParentStreamTarget(args.streamNamespace),
   })
 }
 
-export async function buildDurableAgentRuntime(
+export function buildDurableAgentRuntime(
   spec: AgentRuntimeSpec,
   options: {
     conversationId?: string | null
     currentRunId?: string | null
     progressTarget?: SubAgentProgressTarget
   } = {}
-): Promise<BuildAgentResult> {
-  const { buildRuntimeToolset } = await import(
-    '@/agent-runtime/server/runtime-toolset'
-  )
+): BuildAgentResult {
   const tools = buildRuntimeToolset(spec, options)
 
   const durableAgent = new DurableAgent({

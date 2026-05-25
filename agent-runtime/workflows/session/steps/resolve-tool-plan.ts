@@ -1,5 +1,4 @@
 import { eq } from 'drizzle-orm'
-import { resolveConnectionAvailability } from '@/connections/runtime/availability'
 import type { AgentTool } from '@/shared/db/schema'
 import { agentTools } from '@/shared/db/schema'
 import type { Reconnect } from '@/tools/catalog/types'
@@ -108,6 +107,9 @@ async function resolveCredentialReconnects(input: {
   planned: PlannedToolType[]
   userId: string
 }): Promise<Reconnect[]> {
+  const { resolveConnectionAvailability } = await import(
+    '@/connections/runtime/availability'
+  )
   const requirements = input.planned.flatMap(
     (plan) => plan.connectorRequirements
   )

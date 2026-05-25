@@ -13,6 +13,13 @@ import {
   resolveStepLimitCount,
 } from '../step-limit'
 import { extractTotalUsage, recordTokenUsageStep } from '../steps/budget'
+import {
+  markBudgetSkippedRunCompletedStep,
+  markRunCompletedStep,
+  readPreviousDreamingCompletionStep,
+  readPreviousHeartbeatCompletionStep,
+} from '../steps/db/agent-schedule'
+import { startupSystemSandboxStep } from '../steps/db/system-sandbox'
 import { finalizeRun } from '../steps/finalize-run'
 import { initRun } from '../steps/init-run'
 import {
@@ -49,9 +56,6 @@ export async function handleHeartbeat(input: {
 
     const userId = await checkBudgetOrFinalize({ agentId, mode, runId })
     if (userId === BUDGET_EXCEEDED) {
-      const { markBudgetSkippedRunCompletedStep } = await import(
-        '../steps/db/agent-schedule'
-      )
       await markBudgetSkippedRunCompletedStep({
         agentId,
         localDate: dreamingLocalDate,
@@ -133,9 +137,6 @@ async function prepareHeartbeatSandbox(input: {
       previousIso: input.previousIso,
     }
   )
-  const { startupSystemSandboxStep } = await import(
-    '../steps/db/system-sandbox'
-  )
   await startupSystemSandboxStep({ agentId: input.agentId })
 }
 
@@ -143,10 +144,6 @@ async function readPreviousCompletion(
   agentId: string,
   mode: HeartbeatMode
 ): Promise<string | null> {
-  const {
-    readPreviousDreamingCompletionStep,
-    readPreviousHeartbeatCompletionStep,
-  } = await import('../steps/db/agent-schedule')
   return mode === 'dreaming'
     ? await readPreviousDreamingCompletionStep(agentId)
     : await readPreviousHeartbeatCompletionStep(agentId)
@@ -184,6 +181,5 @@ async function finalizeHeartbeatRun(input: {
       ? activityMessage(input.mode, 'Completed after reaching the step limit')
       : undefined
   )
-  const { markRunCompletedStep } = await import('../steps/db/agent-schedule')
   await markRunCompletedStep(input)
 }

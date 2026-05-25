@@ -1,6 +1,7 @@
 import { emitActivity } from '@/agent-runtime/server/run-events'
 import { formatBudgetExceededMessage } from '@/budgets/server/errors'
 import { preflightBudget } from '../../steps/budget'
+import { loadAgentStep } from '../../steps/db/load-agent'
 import { finalizeRun } from '../../steps/finalize-run'
 import { activityMessage, type HeartbeatMode } from './messages'
 
@@ -12,7 +13,6 @@ export async function checkBudgetOrFinalize(input: {
   runId: string
 }): Promise<string | null | typeof BUDGET_EXCEEDED> {
   const { agentId, mode, runId } = input
-  const { loadAgentStep } = await import('../../steps/db/load-agent')
   const agentRow = await loadAgentStep({ agentId })
   const userId = agentRow?.userId ?? null
   if (!userId) {
