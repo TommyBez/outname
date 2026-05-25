@@ -1,18 +1,24 @@
 import Link from 'next/link'
-import type { SimpleIcon as SimpleIconData } from 'simple-icons'
+import type { ComponentType } from 'react'
 import { cn } from '@/lib/utils'
-import { SimpleIcon } from '@/marketing/components/landing/simple-icon'
+
+interface SocialIconProps {
+  className?: string
+  color?: string
+  size?: number | string
+  title?: string
+}
 
 export function LandingSocialLink({
   href,
-  icon,
   label,
   className,
+  Icon,
 }: {
   href: string
-  icon: SimpleIconData
   label: string
   className?: string
+  Icon: ComponentType<SocialIconProps>
 }) {
   return (
     <Link
@@ -25,7 +31,7 @@ export function LandingSocialLink({
       rel="noopener noreferrer"
       target="_blank"
     >
-      <SimpleIcon className="size-4" icon={icon} />
+      <Icon color="currentColor" size={16} title="" />
     </Link>
   )
 }

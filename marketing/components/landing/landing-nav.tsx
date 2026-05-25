@@ -1,5 +1,5 @@
+import { SiGithub } from '@icons-pack/react-simple-icons'
 import Link from 'next/link'
-import { siGithub } from 'simple-icons'
 import { NavLink } from '@/marketing/components/landing/landing-links'
 import { LandingSocialLink } from '@/marketing/components/landing/landing-social-link'
 import { githubRepositoryUrl } from '@/marketing/data/social-links'
@@ -29,7 +29,7 @@ export function LandingNav({ waitlistEnabled }: { waitlistEnabled: boolean }) {
           <LandingSocialLink
             className="border-foreground sm:border-l-2"
             href={githubRepositoryUrl}
-            icon={siGithub}
+            Icon={SiGithub}
             label="GitHub repository"
           />
         </div>

@@ -1,5 +1,5 @@
+import { SiGithub, SiX } from '@icons-pack/react-simple-icons'
 import Link from 'next/link'
-import { siGithub, siX } from 'simple-icons'
 import { LandingSocialLink } from '@/marketing/components/landing/landing-social-link'
 import { githubRepositoryUrl, xProfileUrl } from '@/marketing/data/social-links'
 
@@ -19,13 +19,13 @@ export function LandingFooter() {
         >
           <LandingSocialLink
             href={githubRepositoryUrl}
-            icon={siGithub}
+            Icon={SiGithub}
             label="GitHub repository"
           />
           <LandingSocialLink
             className="border-foreground border-l-2"
             href={xProfileUrl}
-            icon={siX}
+            Icon={SiX}
             label="X profile"
           />
         </nav>
