@@ -8,7 +8,7 @@ import {
   readCachedAgentFile,
   readCachedAgentFiles,
 } from '@/agent-runtime/server/file-cache'
-import { db } from '@/shared/db/pool'
+import { db } from '@/shared/db'
 import {
   type Agent,
   type AgentTool,

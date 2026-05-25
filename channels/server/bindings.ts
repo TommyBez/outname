@@ -1,7 +1,7 @@
 import 'server-only'
 import { and, eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
-import { db } from '@/shared/db/pool'
+import { db } from '@/shared/db'
 import {
   type AgentChannelBinding,
   agent,

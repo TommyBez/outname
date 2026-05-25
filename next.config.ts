@@ -4,7 +4,7 @@ import { withWorkflow } from 'workflow/next'
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
-  serverExternalPackages: ['better-auth', 'bash-tool', 'just-bash'],
+  serverExternalPackages: ['better-auth', 'bash-tool', 'just-bash', 'pg'],
   pageExtensions: ['js', 'jsx', 'md', 'mdx', 'ts', 'tsx'],
 }
 

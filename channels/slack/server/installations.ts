@@ -2,7 +2,7 @@ import 'server-only'
 import { and, eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { decryptCredential, encryptCredential } from '@/connections/crypto'
-import { db } from '@/shared/db/pool'
+import { db } from '@/shared/db'
 import {
   type ChannelInstallation,
   channelInstallations,

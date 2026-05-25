@@ -3,7 +3,7 @@ import 'server-only'
 import { eq } from 'drizzle-orm'
 import { revalidateTag } from 'next/cache'
 import { refreshAgentCapabilitySummary } from '@/agents/server/capability-summary'
-import { db } from '@/shared/db/pool'
+import { db } from '@/shared/db'
 import { agent, agentTools } from '@/shared/db/schema'
 import { agentToolsTag } from '@/shared/server/cache-tags'
 import {

@@ -2,7 +2,7 @@ import 'server-only'
 
 import { eq } from 'drizzle-orm'
 import { revalidateTag } from 'next/cache'
-import { db } from '@/shared/db/pool'
+import { db } from '@/shared/db'
 import { agent } from '@/shared/db/schema'
 import {
   agentTag,

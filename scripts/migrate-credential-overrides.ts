@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm'
 import { legacyProviderToConnectorId } from '@/connections/legacy-provider-map'
-import { db } from '@/shared/db/pool'
+import { db } from '@/shared/db'
 import { agentTools } from '@/shared/db/schema'
 
 const SECRETS_FIELD = '_secrets'

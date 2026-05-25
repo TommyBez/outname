@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { and, eq, isNull, sql } from 'drizzle-orm'
-import { db } from '@/shared/db/pool'
+import { db } from '@/shared/db'
 import { budgetRule } from '@/shared/db/schema'
 import type { BudgetRule, UpsertBudgetRuleArgs } from './types'
 

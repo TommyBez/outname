@@ -1,7 +1,7 @@
 import 'server-only'
 import { eq } from 'drizzle-orm'
 import { cacheLife, cacheTag, revalidateTag } from 'next/cache'
-import { db } from '@/shared/db/pool'
+import { db } from '@/shared/db'
 import { user } from '@/shared/db/schema'
 import { userTimezoneTag } from '@/shared/server/cache-tags'
 import {

@@ -1,12 +1,19 @@
-import { refreshAgentFileCache } from '@/agent-runtime/server/file-cache'
-import { stopAllBrokeredHttpSandboxesForRun } from '@/tools/runtime/brokered-http/sandbox'
-import { stopAllRepoWorkspacesForRun } from '@/tools/runtime/repo-workspace/sandbox'
-import { stopAllToolSandboxesForRun } from '@/tools/sandbox-runtime/runtime'
-
 export async function cleanupEventResources(input: {
   agentId: string
 }): Promise<void> {
   'use step'
+  const [
+    { stopAllToolSandboxesForRun },
+    { stopAllBrokeredHttpSandboxesForRun },
+    { stopAllRepoWorkspacesForRun },
+    { refreshAgentFileCache },
+  ] = await Promise.all([
+    import('@/tools/sandbox-runtime/runtime'),
+    import('@/tools/runtime/brokered-http/sandbox'),
+    import('@/tools/runtime/repo-workspace/sandbox'),
+    import('@/agent-runtime/server/file-cache'),
+  ])
+
   await Promise.all([
     stopAllToolSandboxesForRun(),
     stopAllBrokeredHttpSandboxesForRun(),

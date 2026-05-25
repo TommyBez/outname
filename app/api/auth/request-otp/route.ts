@@ -6,7 +6,7 @@ import {
   getOtpEmailRateLimiter,
   getOtpIpRateLimiter,
 } from '@/auth/server/request-otp-rate-limit'
-import { db } from '@/shared/db/pool'
+import { db } from '@/shared/db'
 import { user } from '@/shared/db/schema'
 import {
   getWaitlistEntryByEmail,

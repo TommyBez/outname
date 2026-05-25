@@ -35,6 +35,8 @@ export async function handleInvocation(input: {
   callStack: string[]
   depth: number
 }): Promise<void> {
+  'use step'
+
   const {
     agentId,
     input: instruction,

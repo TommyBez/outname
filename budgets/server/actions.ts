@@ -4,7 +4,7 @@ import { and, eq } from 'drizzle-orm'
 import { revalidatePath, updateTag } from 'next/cache'
 import { requireSession } from '@/auth/server/auth-guard'
 import { upsertBudgetRule } from '@/budgets/server/rules'
-import { db } from '@/shared/db/pool'
+import { db } from '@/shared/db'
 import {
   agent as agentTable,
   type BudgetPeriod,

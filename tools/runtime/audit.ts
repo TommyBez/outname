@@ -1,5 +1,5 @@
 import 'server-only'
-import { db } from '@/shared/db/pool'
+import { db } from '@/shared/db'
 import { toolInvocations } from '@/shared/db/schema'
 import type { ToolErrorCode } from '@/tools/catalog/types'
 

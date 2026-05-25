@@ -3,7 +3,7 @@ import 'server-only'
 import { and, desc, eq, gt, ilike, isNotNull, type SQL } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { auth } from '@/auth/server/auth'
-import { db } from '@/shared/db/pool'
+import { db } from '@/shared/db'
 import { user, waitlistEntry } from '@/shared/db/schema'
 import {
   WAITLIST_CONFIRMATION_RESEND_COOLDOWN_MS,

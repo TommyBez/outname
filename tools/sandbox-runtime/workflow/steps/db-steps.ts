@@ -1,16 +1,22 @@
 import { and, eq, gt } from 'drizzle-orm'
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres'
 import { revalidateTag } from 'next/cache'
-import { db } from '@/shared/db'
 import {
   agentTools,
   toolSandboxBuilds,
   toolSandboxSnapshots,
 } from '@/shared/db/schema'
+import type { dbSchema } from '@/shared/db/schema-registry'
 import { agentToolsTag } from '@/shared/server/cache-tags'
 import {
   nonRetryableStepError,
   nonRetryableStepErrorFromUnknown,
 } from '@/shared/server/workflow-step-errors'
+
+async function getDb(): Promise<NodePgDatabase<typeof dbSchema>> {
+  const { db } = await import('@/shared/db')
+  return db
+}
 
 export interface LoadBuildRowResult {
   manifestHash: string
@@ -21,6 +27,7 @@ export async function loadBuildRow(input: {
   buildId: string
 }): Promise<LoadBuildRowResult> {
   'use step'
+  const db = await getDb()
   const [row] = await db
     .select({
       manifestId: toolSandboxBuilds.manifestId,
@@ -41,6 +48,7 @@ export async function markBuildRunning(input: {
   buildId: string
 }): Promise<void> {
   'use step'
+  const db = await getDb()
   await db
     .update(toolSandboxBuilds)
     .set({ status: 'running' })
@@ -63,6 +71,7 @@ export async function markBuildReady(input: {
 }): Promise<void> {
   'use step'
 
+  const db = await getDb()
   const [currentBuild] = await db
     .select({ startedAt: toolSandboxBuilds.startedAt })
     .from(toolSandboxBuilds)
@@ -152,6 +161,7 @@ export async function markBuildFailed(input: {
   error: string
 }): Promise<void> {
   'use step'
+  const db = await getDb()
   const [row] = await db
     .select({
       manifestId: toolSandboxBuilds.manifestId,

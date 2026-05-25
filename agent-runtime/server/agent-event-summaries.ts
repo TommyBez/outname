@@ -2,7 +2,7 @@ import 'server-only'
 import { and, asc, eq, inArray } from 'drizzle-orm'
 import { compactLedgerEvents } from '@/agent-runtime/shared/compact-ledger-events'
 import type { AgentEventSummary } from '@/agent-runtime/shared/event-types'
-import { db } from '@/shared/db/pool'
+import { db } from '@/shared/db'
 import { type AgentEvent, agentEvents } from '@/shared/db/schema'
 import { reconcileActiveAgentEvent } from './agent-event-reconciliation'
 import {

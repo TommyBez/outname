@@ -1,7 +1,7 @@
 import 'server-only'
 import { and, desc, eq, inArray } from 'drizzle-orm'
 import { getRun, start } from 'workflow/api'
-import { db } from '@/shared/db/pool'
+import { db } from '@/shared/db'
 import { toolSandboxBuilds, toolSandboxSnapshots } from '@/shared/db/schema'
 import { buildToolSandboxWorkflow } from '@/tools/sandbox-runtime/workflow/workflow'
 import { manifestHash } from '@/tools/sandboxes'

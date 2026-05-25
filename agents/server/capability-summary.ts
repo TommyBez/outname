@@ -2,7 +2,7 @@ import 'server-only'
 
 import { generateText } from 'ai'
 import { eq } from 'drizzle-orm'
-import { db } from '@/shared/db/pool'
+import { db } from '@/shared/db'
 import { agent } from '@/shared/db/schema'
 import { getUserModelForGateway } from '@/shared/server/ai-gateway-byok'
 import { loadSummaryContext } from './capability-summary/context'

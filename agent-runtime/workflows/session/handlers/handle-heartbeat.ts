@@ -39,6 +39,8 @@ export async function handleHeartbeat(input: {
   replyToken?: string
   scheduledAt?: string
 }): Promise<void> {
+  'use step'
+
   const { agentId } = input
   const mode = input.mode ?? 'normal'
   const nowIso = input.scheduledAt ?? new Date().toISOString()
