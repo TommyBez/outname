@@ -15,17 +15,19 @@ export function LandingFooter() {
         </Link>
         <nav
           aria-label="Social"
-          className="flex items-center gap-1 border-2 border-foreground"
+          className="inline-flex items-stretch border-2 border-foreground"
         >
           <LandingSocialLink
             href={githubRepositoryUrl}
             Icon={SiGithub}
+            iconSize={20}
             label="GitHub repository"
           />
           <LandingSocialLink
             className="border-foreground border-l-2"
             href={xProfileUrl}
             Icon={SiX}
+            iconSize={17}
             label="X profile"
           />
         </nav>

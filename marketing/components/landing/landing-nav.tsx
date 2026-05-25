@@ -30,6 +30,7 @@ export function LandingNav({ waitlistEnabled }: { waitlistEnabled: boolean }) {
             className="border-foreground sm:border-l-2"
             href={githubRepositoryUrl}
             Icon={SiGithub}
+            iconSize={20}
             label="GitHub repository"
           />
         </div>
