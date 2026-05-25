@@ -131,7 +131,7 @@ Most formatting and common issues are automatically fixed by Biome. Run `pnpm dl
 This is a single Next.js 16 application (not a monorepo). The dev server is the only service needed locally.
 
 - **Dev server**: `pnpm dev` → http://localhost:3000
-- **Database**: Remote Neon Postgres via `DATABASE_URL` (no local DB required). Use `@/shared/db` (`pg` + `attachDatabasePool` per [Neon + Vercel connection methods](https://neon.com/docs/guides/vercel-connection-methods)). Use Neon's pooled connection string (hostname includes `-pooler`). Workflow *flow* code may statically import isolated small `'use step'` modules under `agent-runtime/workflows/session/steps/db/`; top-level server imports in those step modules are okay. Be more careful in non-step helpers or mixed modules that are still on the flow path: if a helper is not itself an isolated step surface, keep server-only or optional heavy imports behind the execution path (for example via `await import(...)`).
+- **Database**: Remote Neon Postgres via `DATABASE_URL` (no local DB required). Use `@/shared/db` (`pg` + `attachDatabasePool` per [Neon + Vercel connection methods](https://neon.com/docs/guides/vercel-connection-methods)). Use Neon's pooled connection string (hostname includes `-pooler`). In the session workflow codepath, prefer normal static imports even for step-oriented modules that touch `@/shared/db` or server helpers. Keep `await import(...)` only when you truly want optional-path lazy loading or package/runtime-local loading (for example the optional child-trace path or `bash-tool` package loading).
 - **Lint**: `pnpm check` (Ultracite/Biome)
 - **Format**: `pnpm fix` (auto-fix lint/format issues)
 

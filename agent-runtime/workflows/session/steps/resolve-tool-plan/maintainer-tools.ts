@@ -1,4 +1,5 @@
 import { and, desc, eq, inArray } from 'drizzle-orm'
+import { db } from '@/shared/db'
 import { toolSandboxBuilds, toolSandboxSnapshots } from '@/shared/db/schema'
 import { connectorBackedCapabilities } from '@/tools/catalog/capabilities'
 import { getMaintainerTool } from '@/tools/catalog/registry'
@@ -10,7 +11,6 @@ import {
   withStoredCredentialOverrides,
 } from '@/tools/runtime/define-maintainer-tool/api-key-override'
 import { getToolSandboxManifest } from '@/tools/sandboxes/registry'
-import { getDb } from '../db/get-db'
 import type { MaintainerRow, PlannedTool } from './types'
 
 type MaintainerOutcome =
@@ -139,7 +139,6 @@ async function checkSandboxRequirement(
   }
 
   const desiredHash = await manifestHashStep({ manifestId })
-  const db = await getDb()
   const [snapshot] = await db
     .select()
     .from(toolSandboxSnapshots)
