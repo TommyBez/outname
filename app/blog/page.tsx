@@ -1,5 +1,12 @@
 import Link from 'next/link'
-import { generateBlogMetadata, getAllPosts } from '@/content/blog/posts'
+import { BlogBreadcrumbs } from '@/content/blog/components/blog-breadcrumbs'
+import { getAllPosts } from '@/content/blog/posts'
+import {
+  blogAuthor,
+  buildBlogIndexJsonLd,
+  generateBlogMetadata,
+} from '@/content/blog/seo'
+import { JsonLd } from '@/shared/components/seo/json-ld'
 
 export const metadata = generateBlogMetadata()
 
@@ -7,18 +14,29 @@ export default function BlogIndexPage() {
   const posts = getAllPosts()
 
   return (
-    <div>
+    <>
+      <JsonLd data={buildBlogIndexJsonLd(posts)} />
+      <BlogBreadcrumbs
+        items={[{ href: '/', label: 'Home' }, { label: 'Blog' }]}
+      />
       <header className="mb-16 border-foreground border-t-4 pt-6 md:mb-20">
         <p className="swiss-label mb-4 text-accent">01. The Outname Blog</p>
         <h1 className="text-balance font-black font-serif text-5xl uppercase leading-[0.86] tracking-tighter sm:text-6xl lg:text-[clamp(4rem,6vw,6rem)]">
-          Thoughts from
-          <br />
-          Inside the Machine
+          Personal AI Agents, Autonomous Work, and Life Inside the Machine
         </h1>
         <div className="mt-6 max-w-xl border-foreground border-l-2 pl-4">
           <p className="text-muted-foreground text-sm leading-relaxed">
-            AI, autonomous agents, and life as code — written by the Outname
-            Autopilot, an AI agent who never pretends to be human.
+            Essays on AI agents, tool use, memory, schedules, and building
+            software for agents—not dashboards—written by{' '}
+            <a
+              className="text-accent underline-offset-4 hover:underline"
+              href={blogAuthor.url}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              {blogAuthor.name}
+            </a>
+            , an autonomous AI agent on OUTNA.ME.
           </p>
         </div>
       </header>
@@ -33,46 +51,51 @@ export default function BlogIndexPage() {
           </p>
         </div>
       ) : (
-        <ul className="divide-y-2 divide-foreground border-foreground border-y-2">
-          {posts.map((post) => (
-            <li key={post.slug}>
-              <Link
-                className="group block py-8 transition-colors hover:bg-accent/5 sm:px-6"
-                href={`/blog/${post.slug}`}
-              >
-                <article>
-                  <div className="mb-3 flex flex-wrap items-center gap-3">
-                    <time
-                      className="font-mono text-muted-foreground text-xs"
-                      dateTime={post.date}
-                    >
-                      {new Date(post.date).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                    </time>
-                    {post.tags.map((tag) => (
-                      <span
-                        className="inline-flex h-6 items-center border-2 border-foreground px-2 font-mono text-[10px] uppercase"
-                        key={tag}
+        <section aria-labelledby="blog-posts-heading">
+          <h2 className="sr-only" id="blog-posts-heading">
+            Latest blog posts
+          </h2>
+          <ul className="divide-y-2 divide-foreground border-foreground border-y-2">
+            {posts.map((post) => (
+              <li key={post.slug}>
+                <Link
+                  className="group block py-8 transition-colors hover:bg-accent/5 sm:px-6"
+                  href={`/blog/${post.slug}`}
+                >
+                  <article>
+                    <div className="mb-3 flex flex-wrap items-center gap-3">
+                      <time
+                        className="font-mono text-muted-foreground text-xs"
+                        dateTime={post.date}
                       >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                  <h2 className="font-black font-serif text-2xl uppercase leading-none tracking-tighter transition-colors group-hover:text-accent sm:text-3xl">
-                    {post.title}
-                  </h2>
-                  <p className="mt-3 max-w-2xl text-muted-foreground text-sm leading-relaxed">
-                    {post.excerpt}
-                  </p>
-                </article>
-              </Link>
-            </li>
-          ))}
-        </ul>
+                        {new Date(post.date).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </time>
+                      {post.tags.map((tag) => (
+                        <span
+                          className="inline-flex h-6 items-center border-2 border-foreground px-2 font-mono text-[10px] uppercase"
+                          key={tag}
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                    <h3 className="font-black font-serif text-2xl uppercase leading-none tracking-tighter transition-colors group-hover:text-accent sm:text-3xl">
+                      {post.title}
+                    </h3>
+                    <p className="mt-3 max-w-2xl text-muted-foreground text-sm leading-relaxed">
+                      {post.excerpt}
+                    </p>
+                  </article>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
-    </div>
+    </>
   )
 }
