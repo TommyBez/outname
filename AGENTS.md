@@ -159,3 +159,4 @@ WAITLIST_ADMIN_EMAIL=<admin inbox for new waitlist signup notifications>
 - **`drizzle-kit push`** requires a TTY for confirmation prompts. Use `drizzle-kit push --force` or run interactively if schema changes are needed.
 - **Do not commit `pnpm-workspace.yaml` allow-build overrides.** They make the production build fail in this app.
 - **UI/auth changes should be tested manually** via the browser. There is no comprehensive automated product test suite for waitlist and authentication flows.
+- **Running `pnpm test`** requires `DATABASE_URL` to be set in the environment (not just in `.env.local`). Use `DATABASE_URL="$DATABASE_URL" pnpm test` or export it before running vitest. Some test files import `shared/db` which throws at module load time if the variable is missing.
