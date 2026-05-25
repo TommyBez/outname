@@ -19,6 +19,9 @@ const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i
 const X_ENDPOINT_GUIDE =
   'Use relative X API v2 paths such as /2/users/by/username/xdevelopers, /2/tweets/search/recent, /2/tweets, or /2/dm_conversations. Long-lived streaming response endpoints are not supported.'
 
+const X_API_QUERY_GUIDE =
+  'Optional URL query parameters as a JSON object mapping parameter names to string, number, or boolean values. Must be an object — never a query string or a JSON-encoded string. Correct: {"query":"from:xdevelopers","tweet.fields":"created_at,author_id","max_results":10}. Wrong: "tweet.fields=created_at,author_id" or a stringified object.'
+
 const xApiMethodSchema = z.enum(['GET', 'POST', 'PATCH', 'PUT', 'DELETE'])
 const xApiConfigSchema = z.object({
   readOnly: z
@@ -39,9 +42,7 @@ const xApiRequestInputSchema = z.object({
   query: z
     .record(z.string(), xApiQueryValueSchema)
     .optional()
-    .describe(
-      'Optional query parameters. Use strings for comma-separated field lists such as tweet.fields or expansions.'
-    ),
+    .describe(X_API_QUERY_GUIDE),
   body: z
     .record(z.string(), z.unknown())
     .optional()
@@ -204,7 +205,7 @@ export const xApiRequestTool = defineApiPassthroughTool({
   id: 'x_api_request',
   category: 'social',
   displayName: 'X API · App Request',
-  description: `Call X API v2 endpoints on api.x.com with the app Bearer token connector. This tool does not act as an X user. ${X_ENDPOINT_GUIDE}`,
+  description: `Call X API v2 endpoints on api.x.com with the app Bearer token connector. This tool does not act as an X user. ${X_ENDPOINT_GUIDE} For URL params, set the query input field to an object of key-value pairs (e.g. tweet.fields, expansions, max_results) — not a query string.`,
   connectorId: 'x.bearer_token',
   configSchema: xApiConfigSchema,
   inputSchema: xApiRequestInputSchema,
@@ -249,8 +250,7 @@ export const xUserApiRequestTool = defineApiPassthroughTool({
   id: 'x_user_api_request',
   category: 'social',
   displayName: 'X API · OAuth User Request',
-  description:
-    'Call X API v2 user-context endpoints on api.x.com for tweets, users/me, likes, follows, bookmarks, and media upload.',
+  description: `Call X API v2 user-context endpoints on api.x.com for tweets, users/me, likes, follows, bookmarks, and media upload. ${X_ENDPOINT_GUIDE} For URL params, set the query input field to an object of key-value pairs — not a query string.`,
   connectorId: 'x.oauth2_user',
   requiredScopes: X_OAUTH_SCOPES,
   configSchema: xApiConfigSchema,
