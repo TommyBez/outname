@@ -1,5 +1,11 @@
 import { type Tool, tool } from 'ai'
 import { z } from 'zod'
+import {
+  grepFilesStep,
+  listFilesStep,
+  readFileViaBashTool,
+  writeFileViaBashTool,
+} from './file-tools/file-steps'
 import type { FileToolsContext as FileToolsContextType } from './file-tools/types'
 
 const MAX_LIST_RESULTS = 1000
@@ -17,14 +23,8 @@ export function createFileTools(
       inputSchema: z.object({
         path: z.string().describe('The path to the file to read'),
       }),
-      execute: async ({ path }, options) => {
-        const { readFileViaBashTool } = await import('./file-tools/file-steps')
-        return await readFileViaBashTool({
-          agentId: ctx.agentId,
-          options,
-          path,
-        })
-      },
+      execute: async ({ path }, options) =>
+        readFileViaBashTool({ agentId: ctx.agentId, options, path }),
     }),
     writeFile: tool({
       description:
@@ -33,15 +33,13 @@ export function createFileTools(
         content: z.string().describe('The content to write to the file'),
         path: z.string().describe('The path where the file should be written'),
       }),
-      execute: async ({ content, path }, options) => {
-        const { writeFileViaBashTool } = await import('./file-tools/file-steps')
-        return await writeFileViaBashTool({
+      execute: async ({ content, path }, options) =>
+        await writeFileViaBashTool({
           agentId: ctx.agentId,
           content,
           options,
           path,
-        })
-      },
+        }),
     }),
     listFiles: tool({
       description:
@@ -61,13 +59,11 @@ export function createFileTools(
             "Optional relative or /vercel/sandbox path prefix, e.g. 'logs/' or 'projects/demo'."
           ),
       }),
-      execute: async ({ maxResults, pathPrefix }) => {
-        const { listFilesStep } = await import('./file-tools/file-steps')
-        return await listFilesStep(ctx.agentId, {
+      execute: async ({ maxResults, pathPrefix }) =>
+        listFilesStep(ctx.agentId, {
           maxResults: maxResults ?? 200,
           pathPrefix: pathPrefix ?? '',
-        })
-      },
+        }),
     }),
     grepFiles: tool({
       description:
@@ -110,16 +106,14 @@ export function createFileTools(
         maxResults,
         pathPrefix,
         pattern,
-      }) => {
-        const { grepFilesStep } = await import('./file-tools/file-steps')
-        return await grepFilesStep(ctx.agentId, {
+      }) =>
+        grepFilesStep(ctx.agentId, {
           caseInsensitive: caseInsensitive ?? false,
           fixedString: fixedString ?? false,
           maxResults: maxResults ?? 50,
           pathPrefix: pathPrefix ?? '',
           pattern,
-        })
-      },
+        }),
     }),
   }
 }
