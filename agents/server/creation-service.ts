@@ -1,7 +1,7 @@
 import 'server-only'
 import { createHash } from 'node:crypto'
 import { eq } from 'drizzle-orm'
-import { assertUserCanCreateAgent } from '@/agents/server/agent-limit'
+import { assertUserCanCreateAgentWithinTransaction } from '@/agents/server/agent-limit'
 import { writeBootstrapFiles } from '@/agents/server/bootstrap-files'
 import { refreshAgentCapabilitySummary } from '@/agents/server/capability-summary'
 import type { StepLimitMode } from '@/agents/server/creation-types'
@@ -104,29 +104,33 @@ export async function createAgentForUser(
       })
     : nanoid()
 
-  await assertUserCanCreateAgent(input.userId, { agentId: id })
-
-  const inserted = await db
-    .insert(agent)
-    .values({
-      id,
-      userId: input.userId,
-      name,
-      model,
-      enabled: true,
-      heartbeatEnabled: input.heartbeatEnabled,
-      heartbeatScheduleMode,
-      heartbeatScheduleTimes,
-      heartbeatIntervalMinutes,
-      dreamingEnabled: input.dreamingEnabled,
-      stepLimitMode: input.stepLimitMode,
-      stepLimitCustom:
-        input.stepLimitMode === 'custom'
-          ? Math.max(1, Math.floor(input.stepLimitCustom ?? 30))
-          : null,
+  const inserted = await db.transaction(async (tx) => {
+    await assertUserCanCreateAgentWithinTransaction(tx, input.userId, {
+      agentId: id,
     })
-    .onConflictDoNothing()
-    .returning()
+
+    return tx
+      .insert(agent)
+      .values({
+        id,
+        userId: input.userId,
+        name,
+        model,
+        enabled: true,
+        heartbeatEnabled: input.heartbeatEnabled,
+        heartbeatScheduleMode,
+        heartbeatScheduleTimes,
+        heartbeatIntervalMinutes,
+        dreamingEnabled: input.dreamingEnabled,
+        stepLimitMode: input.stepLimitMode,
+        stepLimitCustom:
+          input.stepLimitMode === 'custom'
+            ? Math.max(1, Math.floor(input.stepLimitCustom ?? 30))
+            : null,
+      })
+      .onConflictDoNothing()
+      .returning()
+  })
 
   const created = inserted.length > 0
   const row =

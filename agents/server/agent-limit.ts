@@ -1,5 +1,5 @@
 import 'server-only'
-import { count, eq } from 'drizzle-orm'
+import { and, count, eq } from 'drizzle-orm'
 import {
   type AgentCreationLimitState,
   AgentLimitReachedError,
@@ -8,6 +8,8 @@ import {
 import { db } from '@/shared/db'
 import { agent, user } from '@/shared/db/schema'
 import { getAgentByIdForUser } from '@/shared/server/data'
+
+type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
 function parseAdminUserIds(): string[] {
   const raw = process.env.BETTER_AUTH_ADMIN_USER_IDS
@@ -81,16 +83,55 @@ export async function canUserCreateAgent(
   return false
 }
 
+export async function assertUserCanCreateAgentWithinTransaction(
+  tx: DbTransaction,
+  userId: string,
+  options?: { agentId?: string }
+): Promise<void> {
+  const [userRow] = await tx
+    .select({ role: user.role })
+    .from(user)
+    .where(eq(user.id, userId))
+    .for('update')
+    .limit(1)
+
+  if (!userRow) {
+    throw new Error('User not found.')
+  }
+
+  if (parseAdminUserIds().includes(userId) || userRow.role === 'admin') {
+    return
+  }
+
+  if (options?.agentId) {
+    const [existing] = await tx
+      .select({ id: agent.id })
+      .from(agent)
+      .where(and(eq(agent.id, options.agentId), eq(agent.userId, userId)))
+      .limit(1)
+    if (existing) {
+      return
+    }
+  }
+
+  const [result] = await tx
+    .select({ value: count() })
+    .from(agent)
+    .where(eq(agent.userId, userId))
+
+  const currentCount = Number(result?.value ?? 0)
+  if (currentCount >= MAX_AGENTS_PER_USER) {
+    throw new AgentLimitReachedError(MAX_AGENTS_PER_USER, currentCount)
+  }
+}
+
 export async function assertUserCanCreateAgent(
   userId: string,
   options?: { agentId?: string }
 ): Promise<void> {
-  if (await canUserCreateAgent(userId, options)) {
-    return
-  }
-
-  const currentCount = await countAgentsForUser(userId)
-  throw new AgentLimitReachedError(MAX_AGENTS_PER_USER, currentCount)
+  await db.transaction(async (tx) => {
+    await assertUserCanCreateAgentWithinTransaction(tx, userId, options)
+  })
 }
 
 export function isAgentLimitReachedError(

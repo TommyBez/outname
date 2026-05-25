@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Suspense } from 'react'
+import { cache, Suspense } from 'react'
 import {
   AgentRegistry,
   type RegistryAgent,
@@ -32,9 +32,14 @@ export default function AgentsListPage() {
   )
 }
 
-async function AgentsListHeader() {
+const getAgentsPageContext = cache(async () => {
   const session = await requireSession()
   const limitState = await getAgentCreationLimitState(session.user.id)
+  return { limitState, session }
+})
+
+async function AgentsListHeader() {
+  const { limitState } = await getAgentsPageContext()
 
   return (
     <header className="mb-12 border-foreground border-t-4 pt-6">
@@ -69,11 +74,10 @@ function AgentsListHeaderSkeleton() {
 }
 
 async function AgentsListBody() {
-  const session = await requireSession()
-  const [agents, display, limitState] = await Promise.all([
+  const { limitState, session } = await getAgentsPageContext()
+  const [agents, display] = await Promise.all([
     getCachedAgentsForUser(session.user.id),
     getUserTimeDisplay(session.user.id),
-    getAgentCreationLimitState(session.user.id),
   ])
 
   if (agents.length === 0) {
