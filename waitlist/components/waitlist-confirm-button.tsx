@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 
 export function WaitlistConfirmButton({ token }: { token: string }) {
@@ -47,18 +48,13 @@ export function WaitlistConfirmButton({ token }: { token: string }) {
 
   return (
     <div className="space-y-3">
-      <button
-        className="inline-flex min-h-11 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.14em] transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
-        disabled={isSubmitting}
-        onClick={handleConfirm}
-        type="button"
-      >
+      <Button disabled={isSubmitting} onClick={handleConfirm} type="button">
         {isSubmitting ? (
           <Spinner className="size-4" />
         ) : (
           'Confirm waitlist request'
         )}
-      </button>
+      </Button>
       {errorMessage ? (
         <p className="text-destructive text-sm leading-relaxed">
           {errorMessage}
