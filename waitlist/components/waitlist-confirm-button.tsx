@@ -21,20 +21,17 @@ export function WaitlistConfirmButton({ token }: { token: string }) {
       const response = await fetch('/api/waitlist/confirm', {
         method: 'POST',
         body: formData,
-        redirect: 'manual',
       })
-
-      if (response.status === 303 || response.status === 302) {
-        const location = response.headers.get('Location')
-        if (location) {
-          router.push(location)
-          router.refresh()
-          return
-        }
-      }
 
       if (response.status === 403) {
         setErrorMessage('Access denied. Please refresh the page and try again.')
+        return
+      }
+
+      const resultUrl = new URL(response.url)
+      if (resultUrl.searchParams.get('status') === 'confirmed') {
+        router.push(`${resultUrl.pathname}${resultUrl.search}`)
+        router.refresh()
         return
       }
 
