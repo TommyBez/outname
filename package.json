@@ -13,8 +13,8 @@
     "url": "https://github.com/TommyBez/personal-assistant-agent/issues"
   },
   "engines": {
-    "node": ">=22",
-    "pnpm": ">=9"
+    "node": ">=24",
+    "pnpm": ">=10"
   },
   "keywords": [
     "ai-agents",
