@@ -1,5 +1,8 @@
-import { neon } from '@neondatabase/serverless'
-import { drizzle } from 'drizzle-orm/neon-http'
+import 'server-only'
+
+import { attachDatabasePool } from '@vercel/functions'
+import { drizzle } from 'drizzle-orm/node-postgres'
+import { Pool } from 'pg'
 import {
   account,
   agent,
@@ -40,18 +43,30 @@ const schema = {
 
 type DB = ReturnType<typeof drizzle<typeof schema>>
 
+let _pool: Pool | null = null
 let _db: DB | null = null
 
-function getDb(): DB {
-  if (_db) {
-    return _db
+function getPool(): Pool {
+  if (_pool) {
+    return _pool
   }
   const url = process.env.DATABASE_URL
   if (!url) {
     throw new Error('DATABASE_URL is not set')
   }
-  const sql = neon(url)
-  _db = drizzle(sql, { schema })
+  _pool = new Pool({
+    connectionString: url,
+    max: 10,
+  })
+  attachDatabasePool(_pool)
+  return _pool
+}
+
+function getDb(): DB {
+  if (_db) {
+    return _db
+  }
+  _db = drizzle({ client: getPool(), schema })
   return _db
 }
 
