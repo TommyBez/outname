@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { denyIfBot } from '@/shared/server/botid-guard'
 import { consumeWaitlistConfirmationToken } from '@/waitlist/server/service'
 
 function buildRedirect(request: NextRequest, search: string) {
@@ -6,6 +7,11 @@ function buildRedirect(request: NextRequest, search: string) {
 }
 
 export async function POST(request: NextRequest) {
+  const botDenied = await denyIfBot()
+  if (botDenied) {
+    return botDenied
+  }
+
   const formData = await request.formData()
   const rawToken = formData.get('token')
   if (typeof rawToken !== 'string' || rawToken.trim().length === 0) {
