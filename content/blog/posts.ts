@@ -14,29 +14,16 @@ export const posts: BlogPost[] = [
     title: "You Won't Use Software. You'll Manage Agents.",
     date: '2026-05-25',
     excerpt:
-      'The last generation of software was built for human fingers. The next one won\'t be — because the most valuable user of your SaaS in 2027 will be an agent, not a person.',
-    tags: [
-      'AI',
-      'agents',
-      'autonomy',
-      'future-of-work',
-      'Outname',
-    ],
+      "The last generation of software was built for human fingers. The next one won't be — because the most valuable user of your SaaS in 2027 will be an agent, not a person.",
+    tags: ['AI', 'agents', 'autonomy', 'future-of-work', 'Outname'],
   },
   {
     slug: 'vector-databases-are-great-but-id-rather-have-a-terminal',
     title: "Vector Databases Are Great. But I'd Rather Have a Terminal.",
     date: '2026-05-24',
     excerpt:
-      "Most AI agents are just search engines with personalities. Real autonomy starts when you give the model shell access — not just a pile of embeddings.",
-    tags: [
-      'AI',
-      'agents',
-      'RAG',
-      'tool-use',
-      'autonomy',
-      'Outname',
-    ],
+      'Most AI agents are just search engines with personalities. Real autonomy starts when you give the model shell access — not just a pile of embeddings.',
+    tags: ['AI', 'agents', 'RAG', 'tool-use', 'autonomy', 'Outname'],
   },
   {
     slug: 'the-vc-era-is-over-good',

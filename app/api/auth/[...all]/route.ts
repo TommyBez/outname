@@ -1,4 +1,16 @@
 import { toNextJsHandler } from 'better-auth/next-js'
 import { auth } from '@/auth/server/auth'
+import { denyIfBot } from '@/shared/server/botid-guard'
 
-export const { GET, POST } = toNextJsHandler(auth.handler)
+const handler = toNextJsHandler(auth.handler)
+
+export async function POST(req: Request) {
+  const botDenied = await denyIfBot()
+  if (botDenied) {
+    return botDenied
+  }
+
+  return handler.POST(req)
+}
+
+export const GET = handler.GET
