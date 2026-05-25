@@ -13,6 +13,7 @@ import { requireSession } from '@/auth/server/auth-guard'
 import { BudgetIndicator } from '@/budgets/components/budget-indicator'
 import { loadBudgetSummary } from '@/budgets/server/summary'
 import type { BudgetSummaryEntry } from '@/budgets/server/types'
+import { AiGatewayKeyGateProvider } from '@/shared/components/ai-gateway-key-gate/ai-gateway-key-gate-provider'
 import { NewAgentLink } from '@/shared/components/ai-gateway-key-gate/new-agent-link'
 import { QuickActionLink } from '@/shared/components/ai-gateway-key-gate/quick-action-link'
 import { AppShell } from '@/shared/components/layout/app-shell'
@@ -22,6 +23,7 @@ import {
 } from '@/shared/components/skeletons'
 import { TodayDate } from '@/shared/components/today-date'
 import type { Agent } from '@/shared/db/schema'
+import { hasUserAiGatewayApiKey } from '@/shared/server/ai-gateway-byok'
 import { getCachedAgentsForUser } from '@/shared/server/data'
 import { createPrivatePageMetadata } from '@/shared/server/site-metadata'
 import { getUserTimeDisplay } from '@/shared/server/user-time-display'
@@ -43,39 +45,44 @@ export default function DashboardPage() {
 
 async function DashboardPageBody() {
   const session = await requireSession()
-  const display = await getUserTimeDisplay(session.user.id)
+  const [display, hasKey] = await Promise.all([
+    getUserTimeDisplay(session.user.id),
+    hasUserAiGatewayApiKey(session.user.id),
+  ])
 
   return (
-    <>
-      <header className="mb-12 border-foreground border-t-4 pt-6 md:mb-16">
-        <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(14rem,18rem)] xl:items-end">
-          <div className="min-w-0">
-            <p className="swiss-label mb-4 text-accent">
-              01. <TodayDate label={display.longDate(new Date())} />
-            </p>
-            <h1 className="text-balance font-black font-serif text-5xl uppercase leading-[0.86] tracking-tighter sm:text-6xl lg:text-[clamp(4.5rem,7vw,7rem)]">
-              Dashboard
-            </h1>
+    <AiGatewayKeyGateProvider initialHasKey={hasKey}>
+      <div>
+        <header className="mb-12 border-foreground border-t-4 pt-6 md:mb-16">
+          <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(14rem,18rem)] xl:items-end">
+            <div className="min-w-0">
+              <p className="swiss-label mb-4 text-accent">
+                01. <TodayDate label={display.longDate(new Date())} />
+              </p>
+              <h1 className="text-balance font-black font-serif text-5xl uppercase leading-[0.86] tracking-tighter sm:text-6xl lg:text-[clamp(4.5rem,7vw,7rem)]">
+                Dashboard
+              </h1>
+            </div>
+            <div className="flex flex-col items-start gap-6 xl:items-stretch xl:justify-self-end">
+              <p className="max-w-xs border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
+                Live cockpit for event queues, budgets, and agents that need
+                attention.
+              </p>
+              <NewAgentLink className="inline-flex h-14 shrink-0 items-center justify-center border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground">
+                + New agent
+              </NewAgentLink>
+            </div>
           </div>
-          <div className="flex flex-col items-start gap-6 xl:items-stretch xl:justify-self-end">
-            <p className="max-w-xs border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
-              Live cockpit for event queues, budgets, and agents that need
-              attention.
-            </p>
-            <NewAgentLink className="inline-flex h-14 shrink-0 items-center justify-center border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground">
-              + New agent
-            </NewAgentLink>
-          </div>
-        </div>
-      </header>
+        </header>
 
-      <Suspense fallback={<RunResultSkeleton />}>
-        <DashboardCockpit
-          timeZone={display.timeZone}
-          userId={session.user.id}
-        />
-      </Suspense>
-    </>
+        <Suspense fallback={<RunResultSkeleton />}>
+          <DashboardCockpit
+            timeZone={display.timeZone}
+            userId={session.user.id}
+          />
+        </Suspense>
+      </div>
+    </AiGatewayKeyGateProvider>
   )
 }
 async function DashboardCockpit({

@@ -76,7 +76,3 @@ export function useAiGatewayKeyGate(): AiGatewayKeyGateContextValue {
   }
   return context
 }
-
-export function useOptionalAiGatewayKeyGate(): AiGatewayKeyGateContextValue | null {
-  return useContext(AiGatewayKeyGateContext)
-}

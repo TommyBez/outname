@@ -12,6 +12,7 @@ import {
 } from '@/budgets/components/budget-rules'
 import { listGeneralBudgetRulesForUser } from '@/budgets/server/rules'
 import { sumSpendUsd } from '@/budgets/server/spend'
+import { AiGatewayKeyGateProvider } from '@/shared/components/ai-gateway-key-gate/ai-gateway-key-gate-provider'
 import { AppShell } from '@/shared/components/layout/app-shell'
 import { AccountSkeleton } from '@/shared/components/skeletons'
 import { hasUserAiGatewayApiKey } from '@/shared/server/ai-gateway-byok'
@@ -78,7 +79,11 @@ export default function SettingsPage() {
 async function AiGatewaySection() {
   const session = await requireSession()
   const hasKey = await hasUserAiGatewayApiKey(session.user.id)
-  return <AiGatewayKeyCard hasKey={hasKey} />
+  return (
+    <AiGatewayKeyGateProvider initialHasKey={hasKey}>
+      <AiGatewayKeyCard hasKey={hasKey} />
+    </AiGatewayKeyGateProvider>
+  )
 }
 
 async function BudgetSection() {

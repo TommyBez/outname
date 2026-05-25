@@ -1,7 +1,9 @@
 import { Suspense } from 'react'
 import { AgentCreationChat } from '@/agents/components/agent-creation-chat'
 import { requireSession } from '@/auth/server/auth-guard'
+import { AiGatewayKeyGateProvider } from '@/shared/components/ai-gateway-key-gate/ai-gateway-key-gate-provider'
 import { AppShell } from '@/shared/components/layout/app-shell'
+import { hasUserAiGatewayApiKey } from '@/shared/server/ai-gateway-byok'
 import { createPrivatePageMetadata } from '@/shared/server/site-metadata'
 import { getUserTimeDisplay } from '@/shared/server/user-time-display'
 
@@ -39,6 +41,13 @@ export default function NewAgentPage() {
 
 async function NewAgentChat() {
   const session = await requireSession()
-  const display = await getUserTimeDisplay(session.user.id)
-  return <AgentCreationChat timeZone={display.timeZone} />
+  const [display, hasKey] = await Promise.all([
+    getUserTimeDisplay(session.user.id),
+    hasUserAiGatewayApiKey(session.user.id),
+  ])
+  return (
+    <AiGatewayKeyGateProvider initialHasKey={hasKey}>
+      <AgentCreationChat timeZone={display.timeZone} />
+    </AiGatewayKeyGateProvider>
+  )
 }
