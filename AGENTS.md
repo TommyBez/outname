@@ -131,7 +131,7 @@ Most formatting and common issues are automatically fixed by Biome. Run `pnpm dl
 This is a single Next.js 16 application (not a monorepo). The dev server is the only service needed locally.
 
 - **Dev server**: `pnpm dev` → http://localhost:3000
-- **Database**: Remote Neon Postgres via `DATABASE_URL` (no local DB required). Use `@/shared/db` (`pg` + `attachDatabasePool` per [Neon + Vercel connection methods](https://neon.com/docs/guides/vercel-connection-methods)). Use Neon's pooled connection string (hostname includes `-pooler`). Workflow *flow* bundles cannot statically import `@/shared/db`; handlers that need DB/sandbox use `'use step'`, and step modules loaded from workflow entry files should `import('@/shared/db')` inside the step body.
+- **Database**: Remote Neon Postgres via `DATABASE_URL` (no local DB required). Use `@/shared/db` (`pg` + `attachDatabasePool` per [Neon + Vercel connection methods](https://neon.com/docs/guides/vercel-connection-methods)). Use Neon's pooled connection string (hostname includes `-pooler`). Workflow *flow* code must not statically import `@/shared/db` or server modules that do. Keep DB/sandbox work in small `'use step'` helpers under `agent-runtime/workflows/session/steps/db/` (use `getDb()` / dynamic `import()` inside the step). Workflow handlers call those steps via dynamic `import()` so the flow bundle never pulls in `pg`.
 - **Lint**: `pnpm check` (Ultracite/Biome)
 - **Format**: `pnpm fix` (auto-fix lint/format issues)
 

@@ -1,5 +1,4 @@
 import { emitActivity } from '@/agent-runtime/server/run-events'
-import { getAgentById } from '@/agent-runtime/server/start-agent-run'
 import { formatBudgetExceededMessage } from '@/budgets/server/errors'
 import { preflightBudget } from '../../steps/budget'
 import { finalizeRun } from '../../steps/finalize-run'
@@ -13,7 +12,8 @@ export async function checkBudgetOrFinalize(input: {
   runId: string
 }): Promise<string | null | typeof BUDGET_EXCEEDED> {
   const { agentId, mode, runId } = input
-  const agentRow = await getAgentById(agentId)
+  const { loadAgentStep } = await import('../../steps/db/load-agent')
+  const agentRow = await loadAgentStep({ agentId })
   const userId = agentRow?.userId ?? null
   if (!userId) {
     return null

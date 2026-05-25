@@ -1,12 +1,13 @@
 import { eq } from 'drizzle-orm'
-import { db } from '@/shared/db'
 import { agent as agentTable } from '@/shared/db/schema'
-import type { HeartbeatMode } from './messages'
+import type { HeartbeatMode } from '../../handlers/handle-heartbeat/messages'
+import { getDb } from './get-db'
 
-export async function readPreviousHeartbeatCompletion(
+export async function readPreviousHeartbeatCompletionStep(
   agentId: string
 ): Promise<string | null> {
   'use step'
+  const db = await getDb()
   const [row] = await db
     .select({ lastHeartbeatAt: agentTable.lastHeartbeatAt })
     .from(agentTable)
@@ -15,10 +16,11 @@ export async function readPreviousHeartbeatCompletion(
   return row?.lastHeartbeatAt ? row.lastHeartbeatAt.toISOString() : null
 }
 
-export async function readPreviousDreamingCompletion(
+export async function readPreviousDreamingCompletionStep(
   agentId: string
 ): Promise<string | null> {
   'use step'
+  const db = await getDb()
   const [row] = await db
     .select({ lastDreamingAt: agentTable.lastDreamingAt })
     .from(agentTable)
@@ -27,37 +29,39 @@ export async function readPreviousDreamingCompletion(
   return row?.lastDreamingAt ? row.lastDreamingAt.toISOString() : null
 }
 
-export async function markBudgetSkippedRunCompleted(input: {
+export async function markBudgetSkippedRunCompletedStep(input: {
   agentId: string
   localDate: string
   mode: HeartbeatMode
 }): Promise<void> {
+  'use step'
   if (input.mode !== 'dreaming') {
     return
   }
-  await markDreamingCompleted({
+  await markDreamingCompletedStep({
     agentId: input.agentId,
     localDate: input.localDate,
   })
 }
 
-export async function markRunCompleted(input: {
+export async function markRunCompletedStep(input: {
   agentId: string
   localDate: string
   mode: HeartbeatMode
 }): Promise<void> {
+  'use step'
   if (input.mode === 'dreaming') {
-    await markDreamingCompleted({
+    await markDreamingCompletedStep({
       agentId: input.agentId,
       localDate: input.localDate,
     })
     return
   }
-  await markHeartbeatCompleted(input.agentId)
+  await markHeartbeatCompletedStep(input.agentId)
 }
 
-async function markHeartbeatCompleted(agentId: string): Promise<void> {
-  'use step'
+async function markHeartbeatCompletedStep(agentId: string): Promise<void> {
+  const db = await getDb()
   await db
     .update(agentTable)
     .set({
@@ -67,11 +71,11 @@ async function markHeartbeatCompleted(agentId: string): Promise<void> {
     .where(eq(agentTable.id, agentId))
 }
 
-async function markDreamingCompleted(input: {
+async function markDreamingCompletedStep(input: {
   agentId: string
   localDate: string
 }): Promise<void> {
-  'use step'
+  const db = await getDb()
   await db
     .update(agentTable)
     .set({

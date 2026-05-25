@@ -1,6 +1,5 @@
 import type { StepResult, ToolSet, UIMessageChunk } from 'ai'
 import { getWritable } from 'workflow'
-import { startupSystemSandbox } from '@/agent-runtime/server/agent-sandbox'
 import { emitActivity } from '@/agent-runtime/server/run-events'
 import { currentWorkflowRunId } from '@/shared/server/workflow-run-id'
 import {
@@ -24,12 +23,6 @@ import {
   activityMessage,
   type HeartbeatMode,
 } from './handle-heartbeat/messages'
-import {
-  markBudgetSkippedRunCompleted,
-  markRunCompleted,
-  readPreviousDreamingCompletion,
-  readPreviousHeartbeatCompletion,
-} from './handle-heartbeat/state'
 
 export async function handleHeartbeat(input: {
   agentId: string
@@ -39,8 +32,6 @@ export async function handleHeartbeat(input: {
   replyToken?: string
   scheduledAt?: string
 }): Promise<void> {
-  'use step'
-
   const { agentId } = input
   const mode = input.mode ?? 'normal'
   const nowIso = input.scheduledAt ?? new Date().toISOString()
@@ -58,7 +49,10 @@ export async function handleHeartbeat(input: {
 
     const userId = await checkBudgetOrFinalize({ agentId, mode, runId })
     if (userId === BUDGET_EXCEEDED) {
-      await markBudgetSkippedRunCompleted({
+      const { markBudgetSkippedRunCompletedStep } = await import(
+        '../steps/db/agent-schedule'
+      )
+      await markBudgetSkippedRunCompletedStep({
         agentId,
         localDate: dreamingLocalDate,
         mode,
@@ -139,16 +133,23 @@ async function prepareHeartbeatSandbox(input: {
       previousIso: input.previousIso,
     }
   )
-  await startupSystemSandbox({ agentId: input.agentId })
+  const { startupSystemSandboxStep } = await import(
+    '../steps/db/system-sandbox'
+  )
+  await startupSystemSandboxStep({ agentId: input.agentId })
 }
 
 async function readPreviousCompletion(
   agentId: string,
   mode: HeartbeatMode
 ): Promise<string | null> {
+  const {
+    readPreviousDreamingCompletionStep,
+    readPreviousHeartbeatCompletionStep,
+  } = await import('../steps/db/agent-schedule')
   return mode === 'dreaming'
-    ? await readPreviousDreamingCompletion(agentId)
-    : await readPreviousHeartbeatCompletion(agentId)
+    ? await readPreviousDreamingCompletionStep(agentId)
+    : await readPreviousHeartbeatCompletionStep(agentId)
 }
 
 async function finalizeHeartbeatRun(input: {
@@ -183,5 +184,6 @@ async function finalizeHeartbeatRun(input: {
       ? activityMessage(input.mode, 'Completed after reaching the step limit')
       : undefined
   )
-  await markRunCompleted(input)
+  const { markRunCompletedStep } = await import('../steps/db/agent-schedule')
+  await markRunCompletedStep(input)
 }

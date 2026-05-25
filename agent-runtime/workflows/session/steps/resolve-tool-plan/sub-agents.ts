@@ -1,11 +1,11 @@
 import { inArray } from 'drizzle-orm'
-import { db } from '@/shared/db'
 import { agent } from '@/shared/db/schema'
 import type { Reconnect } from '@/tools/catalog/types'
 import {
   isLegacySubAgentToolId,
   uniqueSubAgentToolId,
 } from '@/tools/sub-agents/sub-agent-tool-name'
+import { getDb } from '../db/get-db'
 import type { PlannedSubAgent, SubAgentResolution, SubAgentRow } from './types'
 import { MAX_SUB_AGENT_DEPTH } from './types'
 
@@ -61,6 +61,7 @@ export async function resolveSubAgentRows(input: {
 async function loadSubAgentChildren(
   subAgentRows: SubAgentRow[]
 ): Promise<SubAgentChild[]> {
+  const db = await getDb()
   const childIds = Array.from(
     new Set(subAgentRows.map((subAgent) => subAgent.childAgentId))
   )

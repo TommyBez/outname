@@ -1,6 +1,5 @@
 import { convertToModelMessages, type UIMessage, type UIMessageChunk } from 'ai'
 import { getWritable } from 'workflow'
-import { startupSystemSandbox } from '@/agent-runtime/server/agent-sandbox'
 import type { AgentChatMessage } from '@/agent-runtime/server/chat-status'
 import {
   emitActivity,
@@ -35,8 +34,6 @@ export async function handleInvocation(input: {
   callStack: string[]
   depth: number
 }): Promise<void> {
-  'use step'
-
   const {
     agentId,
     input: instruction,
@@ -196,7 +193,10 @@ async function prepareInvocationRun(input: {
     depth: input.depth,
     parentRunId: input.parentRunId,
   })
-  await startupSystemSandbox({ agentId: input.agentId })
+  const { startupSystemSandboxStep } = await import(
+    '../steps/db/system-sandbox'
+  )
+  await startupSystemSandboxStep({ agentId: input.agentId })
 }
 
 async function refuseBudgetExceeded(input: {

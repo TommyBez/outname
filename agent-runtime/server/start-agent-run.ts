@@ -4,7 +4,6 @@ import { db } from '@/shared/db'
 import { type Agent, agent } from '@/shared/db/schema'
 
 export async function getAgentById(agentId: string): Promise<Agent | null> {
-  'use step'
   const [row] = await db
     .select()
     .from(agent)
