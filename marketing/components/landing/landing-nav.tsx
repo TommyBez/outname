@@ -1,5 +1,8 @@
 import Link from 'next/link'
+import { siGithub } from 'simple-icons'
 import { NavLink } from '@/marketing/components/landing/landing-links'
+import { LandingSocialLink } from '@/marketing/components/landing/landing-social-link'
+import { githubRepositoryUrl } from '@/marketing/data/social-links'
 
 export function LandingNav({ waitlistEnabled }: { waitlistEnabled: boolean }) {
   return (
@@ -15,12 +18,20 @@ export function LandingNav({ waitlistEnabled }: { waitlistEnabled: boolean }) {
           <span aria-hidden className="size-3 bg-accent" />
           OUTNA.ME
         </Link>
-        <div className="hidden items-center gap-1 sm:flex">
-          <NavLink href="/blog">Blog</NavLink>
-          {waitlistEnabled ? (
-            <NavLink href="/waitlist?source=landing-nav">Waitlist</NavLink>
-          ) : null}
-          <NavLink href="/login?from=/dashboard">Login</NavLink>
+        <div className="flex items-center gap-1">
+          <div className="hidden items-center gap-1 sm:flex">
+            <NavLink href="/blog">Blog</NavLink>
+            {waitlistEnabled ? (
+              <NavLink href="/waitlist?source=landing-nav">Waitlist</NavLink>
+            ) : null}
+            <NavLink href="/login?from=/dashboard">Login</NavLink>
+          </div>
+          <LandingSocialLink
+            className="border-foreground sm:border-l-2"
+            href={githubRepositoryUrl}
+            icon={siGithub}
+            label="GitHub repository"
+          />
         </div>
       </nav>
     </header>
