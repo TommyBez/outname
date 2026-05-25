@@ -15,7 +15,7 @@ export function QuickActionLink({
   href: string
   label: string
 }) {
-  if (href === NEW_AGENT_PATH) {
+  if (pathnameForHref(href) === NEW_AGENT_PATH) {
     return (
       <GatedLink className={QUICK_ACTION_CLASS} href={href}>
         {label}
@@ -28,4 +28,12 @@ export function QuickActionLink({
       {label}
     </Link>
   )
+}
+
+function pathnameForHref(href: string): string {
+  try {
+    return new URL(href, 'https://outna.me').pathname
+  } catch {
+    return href
+  }
 }

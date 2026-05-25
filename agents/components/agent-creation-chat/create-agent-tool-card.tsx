@@ -81,13 +81,16 @@ export function CreateAgentToolCard({
                 Create agent
               </ConfirmationAction>
               <ConfirmationAction
-                onClick={() =>
+                onClick={() => {
+                  if (!requireAiGatewayKey()) {
+                    return
+                  }
                   addToolApprovalResponse({
                     id: approvalId,
                     approved: false,
                     reason: 'User denied agent creation and wants changes.',
                   })
-                }
+                }}
                 size="sm"
                 variant="outline"
               >

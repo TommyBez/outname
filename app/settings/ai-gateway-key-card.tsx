@@ -10,9 +10,9 @@ import {
 import { Button } from '@/components/ui/button'
 import { useAiGatewayKeyGate } from '@/shared/components/ai-gateway-key-gate/ai-gateway-key-gate-provider'
 
-export function AiGatewayKeyCard({ hasKey }: { hasKey: boolean }) {
+export function AiGatewayKeyCard() {
   const router = useRouter()
-  const { markHasKey, markMissingKey } = useAiGatewayKeyGate()
+  const { hasKey, markHasKey, markMissingKey } = useAiGatewayKeyGate()
   const [apiKey, setApiKey] = useState('')
   const [pending, startTransition] = useTransition()
 

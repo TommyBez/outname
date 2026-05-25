@@ -81,7 +81,7 @@ async function AiGatewaySection() {
   const hasKey = await hasUserAiGatewayApiKey(session.user.id)
   return (
     <AiGatewayKeyGateProvider initialHasKey={hasKey}>
-      <AiGatewayKeyCard hasKey={hasKey} />
+      <AiGatewayKeyCard />
     </AiGatewayKeyGateProvider>
   )
 }

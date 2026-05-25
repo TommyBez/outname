@@ -137,13 +137,16 @@ function ToolCard({
                 Approve
               </ConfirmationAction>
               <ConfirmationAction
-                onClick={() =>
+                onClick={() => {
+                  if (!requireAiGatewayKey()) {
+                    return
+                  }
                   addToolApprovalResponse({
                     id: part.approval.id,
                     approved: false,
                     reason: 'User denied this edit operation.',
                   })
-                }
+                }}
                 variant="outline"
               >
                 <XIcon className="size-4" />

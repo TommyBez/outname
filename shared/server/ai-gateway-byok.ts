@@ -10,8 +10,8 @@ import { getUpstashRedis } from '@/shared/server/upstash-redis'
 const AI_GATEWAY_API_KEY_CACHE_SUFFIX = 'ai-gateway-api-key'
 
 export class MissingAiGatewayApiKeyError extends Error {
-  constructor() {
-    super(AI_GATEWAY_API_KEY_MISSING_MESSAGE)
+  constructor(message = AI_GATEWAY_API_KEY_MISSING_MESSAGE) {
+    super(message)
   }
 }
 
