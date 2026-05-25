@@ -1,16 +1,19 @@
 # Slack Integration
 
-Slack is a realtime ingress channel for agents. It uses Vercel Chat SDK for
-Slack transport, queueing, thread locking, and streaming replies. Agent
-execution does not go through `agent_events`; Slack turns run through the
-realtime `ToolLoopAgent` runner and persist visible state in `chat_message`.
+Slack is a realtime ingress channel for agents. It now runs inside the shared
+multi-adapter Vercel Chat SDK runtime in `channels/server/bot.ts`, alongside
+Discord when Discord is configured. Slack still uses the Chat SDK Slack adapter
+for transport, queueing, thread locking, and streaming replies. Agent execution
+does not go through `agent_events`; Slack turns run through the realtime
+`ToolLoopAgent` runner and persist visible state in `chat_message`.
 
 ## Runtime Flow
 
 ```mermaid
 flowchart TD
   Slack[Slack Events API] --> Route["POST /api/channels/slack/events"]
-  Route --> Bot["channels/slack/server/bot.ts"]
+  Route --> Dynamic["app/api/channels/[channel]/events"]
+  Dynamic --> Bot["channels/server/bot.ts"]
   Bot --> ChatSDK["Chat SDK thread lock + queue"]
   ChatSDK --> Dispatch["runChannelChatTurn"]
   Dispatch --> Routing["resolve ordered route candidates"]
@@ -22,6 +25,13 @@ flowchart TD
   Stream --> Thread["thread.post(fullStream)"]
   Runner --> Persist["persist assistant text-only chat_message"]
 ```
+
+The public Slack URLs are unchanged, but they are served by dynamic channel
+routes:
+
+- `/api/channels/slack/events`
+- `/api/channels/slack/install`
+- `/api/channels/slack/oauth/callback`
 
 The Slack webhook route acknowledges quickly and lets Chat SDK continue work via
 `waitUntil`. Inside a single Chat SDK handler, multi-agent fan-out is sequential:
@@ -58,17 +68,23 @@ a rapid burst. Missing messages in provider history are not treated as deletes.
 
 ## Chat SDK State
 
-The Slack bot uses `SlackHybridState`:
+Slack and Discord share `ChannelHybridState`:
 
 - `slack:installation:*` keys are intercepted and stored in Postgres so OAuth
   installations stay owner-scoped and encrypted.
 - All other Chat SDK state goes to Redis: locks, queues, dedupe,
   subscriptions, and ephemeral state.
+- The shared Redis key prefix is `channels-chat-sdk`.
+- The old pre-production `slack-chat-sdk` Redis prefix is abandoned; use
+  `scripts/cleanup-legacy-slack-chat-sdk-redis.ts` if staging memory needs to
+  be cleaned up.
 - `REDIS_URL` is required in every environment. There is no memory fallback.
 
 Chat SDK concurrency is configured as `queue`. While one handler is running,
 only the latest queued message is processed next; intermediate messages arrive
-as `context.skipped`.
+as `context.skipped`. The shared runtime intentionally keeps Chat SDK dedupe
+longer than queue TTL so provider retries cannot rerun messages that already
+expired from the queue.
 
 ## Streaming And Persistence
 

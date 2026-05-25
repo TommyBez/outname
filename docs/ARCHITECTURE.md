@@ -180,7 +180,7 @@ The main application tables are:
 - `chat_conversation` and `chat_message` for transcripts;
 - `agent_tools` for tool attachments and sub-agent wiring;
 - `channel_installations`, `agent_channel_bindings`, and
-  `channel_thread_conversations` for Slack integration;
+  `channel_thread_conversations` for chat channel integrations;
 - `user_connections` for user-provided provider credentials;
 - `waitlist_entry` for public waitlist capture.
 
@@ -193,7 +193,7 @@ The main application tables are:
 | Vercel Workflow | Durable heartbeat, dreaming, and invocation execution | `next.config.ts`, `agent-runtime/workflows/events/workflow.ts` |
 | Vercel Sandbox | Persistent agent filesystem and tool execution | `agent-runtime/server/agent-sandbox.ts`, `tools/sandbox-runtime/*` |
 | Upstash Redis | Locks, cache, and scheduling coordination | `agent-runtime/server/redis-lock.ts`, `agent-runtime/server/file-cache.ts` |
-| Slack Chat SDK | Slack ingress, routing, and streaming replies | `channels/slack/server/*`, `app/api/channels/slack/*` |
+| Chat SDK channels | Slack/Discord ingress, routing, and streaming replies | `channels/server/*`, `channels/slack/server/*`, `channels/discord/server/*`, `app/api/channels/[channel]/*` |
 | Resend | Waitlist confirmation email delivery | `waitlist/server/email.ts` |
 
 ## Repository layout
@@ -204,7 +204,7 @@ The main application tables are:
 | `agent-runtime/` | Event queue, scheduler, workflows, and runtime handlers |
 | `agents/` | Agent-facing UI and server helpers |
 | `auth/` | Auth configuration and access control |
-| `channels/` | Slack adapters and channel dispatching |
+| `channels/` | Chat SDK adapters, channel installation, and channel dispatching |
 | `chat/` | Conversation persistence and chat helpers |
 | `connections/` | User-managed provider credentials |
 | `shared/` | Shared database, metadata, and server utilities |

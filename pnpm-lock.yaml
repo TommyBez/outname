@@ -12,13 +12,13 @@ importers:
         specifier: ^3.0.186
         version: 3.0.186(react@19.2.5)(zod@4.4.3)
       '@chat-adapter/discord':
-        specifier: ^4.29.0
+        specifier: 4.29.0
         version: 4.29.0(ai@6.0.184(zod@4.4.3))(zod@4.4.3)
       '@chat-adapter/slack':
-        specifier: ^4.29.0
+        specifier: 4.29.0
         version: 4.29.0(ai@6.0.184(zod@4.4.3))(zod@4.4.3)
       '@chat-adapter/state-redis':
-        specifier: ^4.29.0
+        specifier: 4.29.0
         version: 4.29.0(@opentelemetry/api@1.9.1)(ai@6.0.184(zod@4.4.3))(zod@4.4.3)
       '@hookform/resolvers':
         specifier: ^3.9.1
@@ -165,7 +165,7 @@ importers:
         specifier: ^1.6.11
         version: 1.6.11(@opentelemetry/api@1.9.1)(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@neondatabase/serverless@1.0.2)(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.38.0)(kysely@0.28.17)(sql.js@1.14.1))(next@16.2.4(@opentelemetry/api@1.9.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(vitest@4.1.6(@opentelemetry/api@1.9.1)(@types/node@22.19.11)(vite@8.0.12(@types/node@22.19.11)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)))
       chat:
-        specifier: ^4.29.0
+        specifier: 4.29.0
         version: 4.29.0(ai@6.0.184(zod@4.4.3))(zod@4.4.3)
       class-variance-authority:
         specifier: ^0.7.1
@@ -242,6 +242,9 @@ importers:
       recharts:
         specifier: 2.15.0
         version: 2.15.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      redis:
+        specifier: 5.12.1
+        version: 5.12.1(@opentelemetry/api@1.9.1)
       resend:
         specifier: ^6.12.3
         version: 6.12.3(@react-email/render@2.0.8(react-dom@19.2.5(react@19.2.5))(react@19.2.5))

@@ -1,12 +1,11 @@
 import 'server-only'
 import { createRedisState } from '@chat-adapter/state-redis'
 import type { StateAdapter } from 'chat'
-import type { ChannelId } from './types'
 
-export function createChannelRedisState(channel: ChannelId): StateAdapter {
+export function createChannelRedisState(): StateAdapter {
   const url = process.env.REDIS_URL
   if (!url) {
-    throw new Error(`REDIS_URL is required for ${channel} Chat SDK state.`)
+    throw new Error('REDIS_URL is required for channel Chat SDK state.')
   }
-  return createRedisState({ url, keyPrefix: `${channel}-chat-sdk` })
+  return createRedisState({ url, keyPrefix: 'channels-chat-sdk' })
 }

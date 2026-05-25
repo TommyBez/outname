@@ -5,6 +5,8 @@ import {
 } from '@/budgets/components/budget-rules'
 import { listAgentBudgetRules } from '@/budgets/server/rules'
 import { sumSpendUsd } from '@/budgets/server/spend'
+import { DiscordBindingsPanel } from '@/channels/discord/components/discord-bindings-panel'
+import { listDiscordBindingsForAgent } from '@/channels/discord/server/bindings-query'
 import { SlackBindingsPanel } from '@/channels/slack/components/slack-bindings-panel'
 import { listSlackBindingsForAgent } from '@/channels/slack/server/bindings-query'
 
@@ -47,15 +49,61 @@ export async function AgentSlackSection({
     userId
   )
   const isConfigured = Boolean(
-    process.env.SLACK_CLIENT_ID && process.env.SLACK_CLIENT_SECRET
+    process.env.SLACK_CLIENT_ID &&
+      process.env.SLACK_CLIENT_SECRET &&
+      process.env.SLACK_SIGNING_SECRET
   )
   return (
-    <SlackBindingsPanel
-      agentId={agentId}
-      bindings={bindings}
-      installations={installations}
-      isConfigured={isConfigured}
-    />
+    <section aria-labelledby="slack-integrations-heading">
+      <h3
+        className="mb-4 font-black font-serif text-2xl uppercase leading-none tracking-tighter"
+        id="slack-integrations-heading"
+      >
+        Slack
+      </h3>
+      <SlackBindingsPanel
+        agentId={agentId}
+        bindings={bindings}
+        installations={installations}
+        isConfigured={isConfigured}
+      />
+    </section>
+  )
+}
+
+export async function AgentDiscordSection({
+  agentId,
+  userId,
+}: {
+  agentId: string
+  userId: string
+}) {
+  const { bindings, guilds, userLinks } = await listDiscordBindingsForAgent(
+    agentId,
+    userId
+  )
+  const isConfigured = Boolean(
+    process.env.DISCORD_APPLICATION_ID &&
+      process.env.DISCORD_BOT_TOKEN &&
+      process.env.DISCORD_PUBLIC_KEY &&
+      process.env.DISCORD_CLIENT_SECRET
+  )
+  return (
+    <section aria-labelledby="discord-integrations-heading">
+      <h3
+        className="mb-4 font-black font-serif text-2xl uppercase leading-none tracking-tighter"
+        id="discord-integrations-heading"
+      >
+        Discord
+      </h3>
+      <DiscordBindingsPanel
+        agentId={agentId}
+        bindings={bindings}
+        guilds={guilds}
+        isConfigured={isConfigured}
+        userLinks={userLinks}
+      />
+    </section>
   )
 }
 

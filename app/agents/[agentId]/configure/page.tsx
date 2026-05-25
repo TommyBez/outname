@@ -4,6 +4,7 @@ import { AgentDeleteDialog } from '@/agents/components/agent-delete-dialog'
 import { AgentEditChat } from '@/agents/components/agent-edit-chat'
 import {
   AgentBudgetSection,
+  AgentDiscordSection,
   AgentSlackSection,
   EditSkeleton,
   summarizeBudgetRules,
@@ -106,12 +107,21 @@ async function AgentConfigure({ params }: { params: Params }) {
       <section className="border-foreground border-t-2 py-10" id="integrations">
         <h2 className="swiss-label mb-6 text-accent">Integrations</h2>
         <p className="mb-6 max-w-2xl text-muted-foreground text-sm">
-          Route incoming Slack messages to this agent. Install the app once per
-          workspace, then bind a channel, DM, or workspace fallback.
+          Route incoming Slack and Discord messages to this agent. Install each
+          provider first, then bind the specific channel or DM scope that should
+          reach this agent.
         </p>
-        <Suspense fallback={<div className="h-32" />}>
-          <AgentSlackSection agentId={agentRow.id} userId={session.user.id} />
-        </Suspense>
+        <div className="flex flex-col gap-10">
+          <Suspense fallback={<div className="h-32" />}>
+            <AgentSlackSection agentId={agentRow.id} userId={session.user.id} />
+          </Suspense>
+          <Suspense fallback={<div className="h-32" />}>
+            <AgentDiscordSection
+              agentId={agentRow.id}
+              userId={session.user.id}
+            />
+          </Suspense>
+        </div>
       </section>
 
       <section className="border-foreground border-t-2 py-10" id="budget">

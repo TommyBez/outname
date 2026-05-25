@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { requireSession } from '@/auth/server/auth-guard'
+import { DiscordInstallationsPanel } from '@/channels/discord/components/discord-installations-panel'
+import { listDiscordInstallationsForUser } from '@/channels/discord/server/bindings-query'
 import { SlackInstallationsPanel } from '@/channels/slack/components/slack-installations-panel'
 import { listSlackInstallationsForUser } from '@/channels/slack/server/bindings-query'
 import { AppShell } from '@/shared/components/layout/app-shell'
@@ -74,39 +76,81 @@ async function ChannelFlashNotice({
 
 async function ChannelsSection() {
   const session = await requireSession()
-  const installations = await listSlackInstallationsForUser(session.user.id)
+  const [slackInstallations, discordInstallations] = await Promise.all([
+    listSlackInstallationsForUser(session.user.id),
+    listDiscordInstallationsForUser(session.user.id),
+  ])
   const isSlackConfigured = Boolean(
-    process.env.SLACK_CLIENT_ID && process.env.SLACK_CLIENT_SECRET
+    process.env.SLACK_CLIENT_ID &&
+      process.env.SLACK_CLIENT_SECRET &&
+      process.env.SLACK_SIGNING_SECRET
+  )
+  const isDiscordConfigured = Boolean(
+    process.env.DISCORD_APPLICATION_ID &&
+      process.env.DISCORD_BOT_TOKEN &&
+      process.env.DISCORD_PUBLIC_KEY &&
+      process.env.DISCORD_CLIENT_SECRET
   )
 
   return (
-    <section
-      aria-labelledby="slack-channel-heading"
-      className="border-foreground border-y-2 py-8"
-      id="slack"
-    >
-      <div className="mb-8 grid gap-4 md:grid-cols-[minmax(0,1fr)_16rem] md:items-start">
-        <div>
-          <h2
-            className="font-black font-serif text-3xl uppercase leading-none tracking-tighter"
-            id="slack-channel-heading"
-          >
-            Slack
-          </h2>
-          <p className="mt-2 max-w-2xl text-muted-foreground text-sm">
-            Install the Slack app once per workspace. Agent-specific routing
-            stays in each agent&apos;s Configure / Integrations section.
+    <div className="flex flex-col gap-10">
+      <section
+        aria-labelledby="slack-channel-heading"
+        className="border-foreground border-y-2 py-8"
+        id="slack"
+      >
+        <div className="mb-8 grid gap-4 md:grid-cols-[minmax(0,1fr)_16rem] md:items-start">
+          <div>
+            <h2
+              className="font-black font-serif text-3xl uppercase leading-none tracking-tighter"
+              id="slack-channel-heading"
+            >
+              Slack
+            </h2>
+            <p className="mt-2 max-w-2xl text-muted-foreground text-sm">
+              Install the Slack app once per workspace. Agent-specific routing
+              stays in each agent&apos;s Configure / Integrations section.
+            </p>
+          </div>
+          <p className="font-mono text-muted-foreground text-xs md:text-right">
+            {slackInstallations.length} installed
           </p>
         </div>
-        <p className="font-mono text-muted-foreground text-xs md:text-right">
-          {installations.length} installed
-        </p>
-      </div>
 
-      <SlackInstallationsPanel
-        installations={installations}
-        isConfigured={isSlackConfigured}
-      />
-    </section>
+        <SlackInstallationsPanel
+          installations={slackInstallations}
+          isConfigured={isSlackConfigured}
+        />
+      </section>
+
+      <section
+        aria-labelledby="discord-channel-heading"
+        className="border-foreground border-y-2 py-8"
+        id="discord"
+      >
+        <div className="mb-8 grid gap-4 md:grid-cols-[minmax(0,1fr)_16rem] md:items-start">
+          <div>
+            <h2
+              className="font-black font-serif text-3xl uppercase leading-none tracking-tighter"
+              id="discord-channel-heading"
+            >
+              Discord
+            </h2>
+            <p className="mt-2 max-w-2xl text-muted-foreground text-sm">
+              Install the Discord app per server. The installer&apos;s Discord
+              user is also linked for explicit DM bindings.
+            </p>
+          </div>
+          <p className="font-mono text-muted-foreground text-xs md:text-right">
+            {discordInstallations.guilds.length} installed
+          </p>
+        </div>
+
+        <DiscordInstallationsPanel
+          guilds={discordInstallations.guilds}
+          isConfigured={isDiscordConfigured}
+        />
+      </section>
+    </div>
   )
 }

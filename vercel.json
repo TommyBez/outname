@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/liveness",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/channels/discord/gateway",
+      "schedule": "*/4 * * * *"
     }
   ]
 }

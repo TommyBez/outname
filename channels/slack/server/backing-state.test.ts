@@ -30,7 +30,7 @@ describe('createSlackBackingState', () => {
     const { createSlackBackingState } = await import('./backing-state')
 
     expect(() => createSlackBackingState()).toThrow(
-      'REDIS_URL is required for slack Chat SDK state.'
+      'REDIS_URL is required for channel Chat SDK state.'
     )
     expect(mocks.createRedisState).not.toHaveBeenCalled()
   })
@@ -44,7 +44,7 @@ describe('createSlackBackingState', () => {
 
     expect(createSlackBackingState()).toBe(adapter)
     expect(mocks.createRedisState).toHaveBeenCalledWith({
-      keyPrefix: 'slack-chat-sdk',
+      keyPrefix: 'channels-chat-sdk',
       url: 'redis://localhost:6379',
     })
   })

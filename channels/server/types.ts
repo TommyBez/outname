@@ -1,7 +1,7 @@
 import 'server-only'
 import type { Agent } from '@/shared/db/schema'
 
-export type ChannelId = 'slack'
+export type ChannelId = 'discord' | 'slack'
 
 export interface IncomingChannelMessage {
   // Provider-normalized message creation time.
