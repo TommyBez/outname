@@ -95,10 +95,10 @@ export function statusForEventWithoutRun(
 export function statusForStoredEvent(
   event: AgentEventSummary
 ): AgentEventTranscriptStatus {
-  if (event.status === 'running') {
+  if (isTerminalAgentEventStatus(event.status)) {
     return statusForTerminalEvent(event)
   }
-  if (!currentEventHasWorkflowOutput(event) && event.status !== 'completed') {
+  if (!currentEventHasWorkflowOutput(event)) {
     return statusForEventWithoutRun(event)
   }
   return statusForTerminalEvent(event)

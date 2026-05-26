@@ -21,6 +21,15 @@ test('statusForStoredEvent keeps completed events readable without workflow outp
   expect(statusForStoredEvent(baseEvent)).toBe('completed')
 })
 
+test('statusForStoredEvent keeps cancelled events terminal without workflow output', () => {
+  expect(
+    statusForStoredEvent({
+      ...baseEvent,
+      status: 'cancelled',
+    })
+  ).toBe('completed')
+})
+
 test('statusForStoredEvent still uses the no-run fallback for queued events', () => {
   expect(
     statusForStoredEvent({

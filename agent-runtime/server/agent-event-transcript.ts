@@ -31,14 +31,12 @@ export class MissingPersistedEventTranscriptError extends Error {
 export function outputNamespaceForAgentEvent(
   event: Pick<AgentEvent, 'id' | 'payload' | 'type'>
 ): string {
-  if (event.type === 'invocation') {
-    const payload = event.payload as AgentEventPayloads['invocation']
-    if (
-      typeof payload?.streamToken === 'string' &&
-      payload.streamToken.length > 0
-    ) {
-      return payload.streamToken
-    }
+  if (
+    event.type === 'invocation' &&
+    isInvocationPayload(event.payload) &&
+    event.payload.streamToken.length > 0
+  ) {
+    return event.payload.streamToken
   }
   return replyNamespaceForEvent(event.id)
 }
@@ -98,5 +96,15 @@ function requiresPersistedTranscript(
     typeof workflowRunId === 'string' &&
     !workflowRunId.startsWith('starting:') &&
     (status === 'completed' || status === 'failed' || status === 'cancelled')
+  )
+}
+
+function isInvocationPayload(
+  payload: unknown
+): payload is AgentEventPayloads['invocation'] {
+  return (
+    typeof payload === 'object' &&
+    payload !== null &&
+    typeof Reflect.get(payload, 'streamToken') === 'string'
   )
 }

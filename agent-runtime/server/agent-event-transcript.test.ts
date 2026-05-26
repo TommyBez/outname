@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { AgentEvent } from '@/shared/db/schema'
 
 const {
   mockGetReadable,
@@ -39,21 +40,47 @@ import {
   readAgentEventTranscriptFromWorkflowRun,
 } from './agent-event-transcript'
 
+const invocationEvent = {
+  id: 'evt_123',
+  payload: {
+    streamToken: 'stream_123',
+  },
+  type: 'invocation',
+} satisfies Pick<AgentEvent, 'id' | 'payload' | 'type'>
+
+const basePersistedEvent: AgentEvent = {
+  agentId: 'agent_123',
+  attempt: 1,
+  claimExpiresAt: null,
+  completedAt: null,
+  concurrencyKey: null,
+  createdAt: new Date('2026-05-23T09:58:00.000Z'),
+  heartbeatAt: null,
+  id: 'evt_123',
+  idempotencyKey: 'event:evt_123',
+  lastError: null,
+  payload: {
+    streamToken: 'stream_123',
+  },
+  publisherWorkflowRunId: null,
+  queuedAt: new Date('2026-05-23T09:58:00.000Z'),
+  scheduledFor: null,
+  source: 'manual',
+  startedAt: new Date('2026-05-23T09:59:00.000Z'),
+  status: 'completed',
+  type: 'invocation',
+  updatedAt: new Date('2026-05-23T10:00:00.000Z'),
+  userId: 'user_123',
+  workflowRunId: 'run_123',
+}
+
 describe('agent event transcript service', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it('uses the invocation stream token as the output namespace', () => {
-    expect(
-      outputNamespaceForAgentEvent({
-        id: 'evt_123',
-        payload: {
-          streamToken: 'stream_123',
-        },
-        type: 'invocation',
-      } as never)
-    ).toBe('stream_123')
+    expect(outputNamespaceForAgentEvent(invocationEvent)).toBe('stream_123')
   })
 
   it('throws for completed events missing persisted transcript rows', async () => {
@@ -74,18 +101,7 @@ describe('agent event transcript service', () => {
     })
 
     await expect(
-      loadPersistedAgentEventTranscript({
-        id: 'evt_123',
-        payload: {
-          streamToken: 'stream_123',
-        },
-        queuedAt: new Date('2026-05-23T09:58:00.000Z'),
-        source: 'manual',
-        startedAt: new Date('2026-05-23T09:59:00.000Z'),
-        status: 'completed',
-        type: 'invocation',
-        workflowRunId: 'run_123',
-      } as never)
+      loadPersistedAgentEventTranscript(basePersistedEvent)
     ).rejects.toBeInstanceOf(MissingPersistedEventTranscriptError)
   })
 
@@ -106,16 +122,20 @@ describe('agent event transcript service', () => {
       workflowRunId: null,
     })
 
-    const result = await loadPersistedAgentEventTranscript({
+    const queuedEvent: AgentEvent = {
+      ...basePersistedEvent,
+      completedAt: null,
       id: 'evt_queued',
+      idempotencyKey: 'event:evt_queued',
       payload: {},
-      queuedAt: new Date('2026-05-23T09:58:00.000Z'),
-      source: 'manual',
       startedAt: null,
       status: 'queued',
       type: 'heartbeat',
+      updatedAt: new Date('2026-05-23T09:58:00.000Z'),
       workflowRunId: null,
-    } as never)
+    }
+
+    const result = await loadPersistedAgentEventTranscript(queuedEvent)
 
     expect(result.messages).toMatchObject([
       {
@@ -153,13 +173,7 @@ describe('agent event transcript service', () => {
     )
 
     const result = await readAgentEventTranscriptFromWorkflowRun({
-      event: {
-        id: 'evt_123',
-        payload: {
-          streamToken: 'stream_123',
-        },
-        type: 'invocation',
-      } as never,
+      event: invocationEvent,
       workflowRunId: 'run_123',
     })
 
