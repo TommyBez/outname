@@ -80,12 +80,11 @@ function normalizeVercelPath(path: string): string {
   return trimmed
 }
 
-function vercelGroup(path: string): 'Projects' | 'Teams' | 'Other' {
-  const p = normalizeVercelPath(path)
-  if (p.includes('/projects')) {
+function vercelGroup(pathname: string): 'Projects' | 'Teams' | 'Other' {
+  if (pathname.includes('/projects')) {
     return 'Projects'
   }
-  if (p.includes('/teams')) {
+  if (pathname.includes('/teams')) {
     return 'Teams'
   }
   return 'Other'
@@ -98,7 +97,16 @@ const vercelSafetyPolicy: ToolPolicy<VercelRequestInput, VercelConfig> = ({
   if (input.method === 'GET' && input.body !== undefined) {
     return { ok: false, message: 'GET requests cannot include a body.' }
   }
-  const group = vercelGroup(input.path)
+  let normalizedPath: string
+  try {
+    normalizedPath = normalizeVercelPath(input.path)
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : 'Invalid path.',
+    }
+  }
+  const group = vercelGroup(normalizedPath)
   if (group === 'Projects') {
     const decision = enforceGroupAccess({
       enabled: config.enableGroupProjects,
@@ -128,14 +136,6 @@ const vercelSafetyPolicy: ToolPolicy<VercelRequestInput, VercelConfig> = ({
       ok: false,
       message:
         'This tool attachment is configured as read-only. Only GET requests are allowed.',
-    }
-  }
-  try {
-    normalizeVercelPath(input.path)
-  } catch (err) {
-    return {
-      ok: false,
-      message: err instanceof Error ? err.message : 'Invalid path.',
     }
   }
   return { ok: true }

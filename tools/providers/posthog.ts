@@ -20,6 +20,26 @@ const POSTHOG_API_BASE_BY_REGION = {
   us: 'https://us.posthog.com',
 } as const
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i
+const RESOURCE_GROUP_SEPARATOR_PATTERN = /[\n,]/
+
+function parseResourceGroupList(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value
+  }
+  if (typeof value !== 'string') {
+    return value
+  }
+  return value
+    .split(RESOURCE_GROUP_SEPARATOR_PATTERN)
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0)
+}
+
+function resourceGroupListField(description: string) {
+  return z
+    .preprocess(parseResourceGroupList, z.array(z.string().min(1)).default([]))
+    .describe(description)
+}
 
 const posthogConfigSchema = z.object({
   region: z
@@ -36,18 +56,12 @@ const posthogConfigSchema = z.object({
     'Annotations',
     'When true, annotation endpoints are read-only.'
   ),
-  disabledResourceGroups: z
-    .array(z.string().min(1))
-    .default([])
-    .describe(
-      '[Group: Advanced] Optional list of PostHog resource groups to disable entirely (derived from the first path segment under /api/projects/{projectId}/...). Example: ["insights","dashboards","feature_flags"].'
-    ),
-  readOnlyResourceGroups: z
-    .array(z.string().min(1))
-    .default([])
-    .describe(
-      '[Group: Advanced] Optional list of PostHog resource groups that should be read-only (mutating methods blocked). Example: ["insights","cohorts"].'
-    ),
+  disabledResourceGroups: resourceGroupListField(
+    '[Group: Advanced] Optional comma- or newline-separated list of PostHog resource groups to disable entirely (derived from the first path segment under /api/projects/{projectId}/...). Example: insights, dashboards, feature_flags.'
+  ),
+  readOnlyResourceGroups: resourceGroupListField(
+    '[Group: Advanced] Optional comma- or newline-separated list of PostHog resource groups that should be read-only (mutating methods blocked). Example: insights, cohorts.'
+  ),
   projectId: z
     .string()
     .min(1)
