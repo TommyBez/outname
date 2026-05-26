@@ -1,6 +1,11 @@
 import 'server-only'
 import { z } from 'zod'
 import {
+  enforceGroupAccess,
+  groupReadOnlyField,
+  groupToggleField,
+} from '@/tools/providers/rest-resource-groups'
+import {
   defineApiPassthroughTool,
   type ToolPolicy,
   toolSuccess,
@@ -27,9 +32,31 @@ const calcomConfigSchema = z.object({
   readOnly: z
     .boolean()
     .default(true)
-    .describe(
-      'When true, only GET requests are allowed. Set false to allow POST, PATCH, PUT, and DELETE on allowlisted paths.'
-    ),
+    .describe('When true, only GET requests are allowed across groups.'),
+  enableGroupBookings: groupToggleField(
+    'Bookings',
+    'Enable bookings endpoints.'
+  ),
+  readOnlyGroupBookings: groupReadOnlyField(
+    'Bookings',
+    'When true, bookings endpoints are read-only.'
+  ),
+  enableGroupEventTypes: groupToggleField(
+    'Event Types',
+    'Enable event-types endpoints.'
+  ),
+  readOnlyGroupEventTypes: groupReadOnlyField(
+    'Event Types',
+    'When true, event-types endpoints are read-only.'
+  ),
+  enableGroupWebhooks: groupToggleField(
+    'Webhooks',
+    'Enable webhooks endpoints.'
+  ),
+  readOnlyGroupWebhooks: groupReadOnlyField(
+    'Webhooks',
+    'When true, webhooks endpoints are read-only.'
+  ),
 })
 
 const calcomRequestInputSchema = z.object({
@@ -99,6 +126,21 @@ function defaultCalcomApiVersion(
   return CALCOM_API_VERSION
 }
 
+function calcomGroup(
+  pathname: string
+): 'Bookings' | 'Event Types' | 'Webhooks' | 'Other' {
+  if (pathname === '/bookings' || pathname.startsWith('/bookings/')) {
+    return 'Bookings'
+  }
+  if (pathname === '/event-types' || pathname.startsWith('/event-types/')) {
+    return 'Event Types'
+  }
+  if (pathname === '/webhooks' || pathname.startsWith('/webhooks/')) {
+    return 'Webhooks'
+  }
+  return 'Other'
+}
+
 function isAllowedPath(pathname: string): boolean {
   return (
     pathname === '/me' ||
@@ -142,6 +184,44 @@ const calcomSafetyPolicy: ToolPolicy<CalcomRequestInput, CalcomConfig> = ({
     return {
       ok: false,
       message: `Path "${pathname}" is outside the allowed Cal.com surface.`,
+    }
+  }
+
+  const group = calcomGroup(pathname)
+  if (group === 'Bookings') {
+    const d = enforceGroupAccess({
+      enabled: config.enableGroupBookings,
+      group,
+      readOnly: config.readOnlyGroupBookings,
+      method: input.method,
+      globalReadOnly: config.readOnly,
+    })
+    if (!d.ok) {
+      return d
+    }
+  }
+  if (group === 'Event Types') {
+    const d = enforceGroupAccess({
+      enabled: config.enableGroupEventTypes,
+      group,
+      readOnly: config.readOnlyGroupEventTypes,
+      method: input.method,
+      globalReadOnly: config.readOnly,
+    })
+    if (!d.ok) {
+      return d
+    }
+  }
+  if (group === 'Webhooks') {
+    const d = enforceGroupAccess({
+      enabled: config.enableGroupWebhooks,
+      group,
+      readOnly: config.readOnlyGroupWebhooks,
+      method: input.method,
+      globalReadOnly: config.readOnly,
+    })
+    if (!d.ok) {
+      return d
     }
   }
   return { ok: true }

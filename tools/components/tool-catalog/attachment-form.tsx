@@ -43,6 +43,19 @@ export function AttachmentForm({
   const [open, setOpen] = useState(false)
   const hasFields =
     entry.configFields.length > 0 || entry.credentialOverrideFields.length > 0
+  const groupedConfigFields = useMemo(() => {
+    const grouped = new Map<string, ToolConfigField[]>()
+    for (const field of entry.configFields) {
+      const section = field.section ?? 'General'
+      const current = grouped.get(section) ?? []
+      current.push(field)
+      grouped.set(section, current)
+    }
+    return Array.from(grouped.entries()).map(([section, fields]) => ({
+      section,
+      fields,
+    }))
+  }, [entry.configFields])
 
   function handleAttach() {
     const config = buildToolConfig(entry, values)
@@ -115,19 +128,28 @@ export function AttachmentForm({
           className="flex w-full max-w-lg flex-col gap-3 border-2 border-foreground bg-muted p-4"
           onSubmit={handleAttachSubmit}
         >
-          {entry.configFields.map((field) => (
-            <ConfigField
-              field={field}
-              key={field.name}
-              onChange={(value) =>
-                setValues((current) => ({
-                  ...current,
-                  [field.name]: value,
-                }))
-              }
-              toolId={entry.toolId}
-              value={values[field.name] ?? ''}
-            />
+          {groupedConfigFields.map((group) => (
+            <div className="flex flex-col gap-3" key={group.section}>
+              {groupedConfigFields.length > 1 && (
+                <p className="font-black font-mono text-xs uppercase tracking-[0.08em]">
+                  {group.section}
+                </p>
+              )}
+              {group.fields.map((field) => (
+                <ConfigField
+                  field={field}
+                  key={field.name}
+                  onChange={(value) =>
+                    setValues((current) => ({
+                      ...current,
+                      [field.name]: value,
+                    }))
+                  }
+                  toolId={entry.toolId}
+                  value={values[field.name] ?? ''}
+                />
+              ))}
+            </div>
           ))}
           {entry.credentialOverrideFields.map((group) => (
             <div className="flex flex-col gap-3" key={group.connectorId}>

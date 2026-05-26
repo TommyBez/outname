@@ -1,6 +1,11 @@
 import 'server-only'
 import { z } from 'zod'
 import {
+  enforceGroupAccess,
+  groupReadOnlyField,
+  groupToggleField,
+} from '@/tools/providers/rest-resource-groups'
+import {
   defineApiPassthroughTool,
   type ToolPolicy,
   toolSuccess,
@@ -21,9 +26,31 @@ const supabaseConfigSchema = z.object({
   readOnly: z
     .boolean()
     .default(true)
-    .describe(
-      'When true, only GET requests are allowed. Set false to allow POST, PATCH, PUT, and DELETE on allowlisted paths.'
-    ),
+    .describe('When true, only GET requests are allowed across groups.'),
+  enableGroupProjects: groupToggleField(
+    'Projects',
+    'Enable projects endpoints.'
+  ),
+  readOnlyGroupProjects: groupReadOnlyField(
+    'Projects',
+    'When true, project endpoints are read-only.'
+  ),
+  enableGroupOrganizations: groupToggleField(
+    'Organizations',
+    'Enable organizations endpoints.'
+  ),
+  readOnlyGroupOrganizations: groupReadOnlyField(
+    'Organizations',
+    'When true, organization endpoints are read-only.'
+  ),
+  enableGroupFunctions: groupToggleField(
+    'Functions',
+    'Enable functions endpoints.'
+  ),
+  readOnlyGroupFunctions: groupReadOnlyField(
+    'Functions',
+    'When true, functions endpoints are read-only.'
+  ),
 })
 
 const supabaseQueryValueSchema = z.union([z.string(), z.number(), z.boolean()])
@@ -90,6 +117,24 @@ function isAllowedPath(pathname: string): boolean {
   return pathname === '/v1' || pathname.startsWith('/v1/')
 }
 
+function supabaseGroup(
+  pathname: string
+): 'Projects' | 'Organizations' | 'Functions' | 'Other' {
+  if (pathname === '/v1/projects' || pathname.startsWith('/v1/projects/')) {
+    return 'Projects'
+  }
+  if (
+    pathname === '/v1/organizations' ||
+    pathname.startsWith('/v1/organizations/')
+  ) {
+    return 'Organizations'
+  }
+  if (pathname === '/v1/functions' || pathname.startsWith('/v1/functions/')) {
+    return 'Functions'
+  }
+  return 'Other'
+}
+
 const supabaseSafetyPolicy: ToolPolicy<
   SupabaseRequestInput,
   SupabaseConfig
@@ -119,6 +164,44 @@ const supabaseSafetyPolicy: ToolPolicy<
     return {
       ok: false,
       message: `Path "${pathname}" is outside the allowed Supabase Management API surface.`,
+    }
+  }
+
+  const group = supabaseGroup(pathname)
+  if (group === 'Projects') {
+    const decision = enforceGroupAccess({
+      enabled: config.enableGroupProjects,
+      group,
+      readOnly: config.readOnlyGroupProjects,
+      method: input.method,
+      globalReadOnly: config.readOnly,
+    })
+    if (!decision.ok) {
+      return decision
+    }
+  }
+  if (group === 'Organizations') {
+    const decision = enforceGroupAccess({
+      enabled: config.enableGroupOrganizations,
+      group,
+      readOnly: config.readOnlyGroupOrganizations,
+      method: input.method,
+      globalReadOnly: config.readOnly,
+    })
+    if (!decision.ok) {
+      return decision
+    }
+  }
+  if (group === 'Functions') {
+    const decision = enforceGroupAccess({
+      enabled: config.enableGroupFunctions,
+      group,
+      readOnly: config.readOnlyGroupFunctions,
+      method: input.method,
+      globalReadOnly: config.readOnly,
+    })
+    if (!decision.ok) {
+      return decision
     }
   }
 

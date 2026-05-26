@@ -1,6 +1,11 @@
 import 'server-only'
 import { z } from 'zod'
 import {
+  enforceGroupAccess,
+  groupReadOnlyField,
+  groupToggleField,
+} from '@/tools/providers/rest-resource-groups'
+import {
   defineApiPassthroughTool,
   type ToolPolicy,
   toolSuccess,
@@ -19,9 +24,23 @@ const vercelConfigSchema = z.object({
   readOnly: z
     .boolean()
     .default(true)
-    .describe(
-      'When true, only read operations are allowed (GET/HEAD-style usage). Set false to allow write and delete operations.'
-    ),
+    .describe('When true, only read operations are allowed for all groups.'),
+  enableGroupProjects: groupToggleField(
+    'Projects',
+    'Enable access to project endpoints.'
+  ),
+  readOnlyGroupProjects: groupReadOnlyField(
+    'Projects',
+    'When true, project endpoints are read-only.'
+  ),
+  enableGroupTeams: groupToggleField(
+    'Teams',
+    'Enable access to team endpoints.'
+  ),
+  readOnlyGroupTeams: groupReadOnlyField(
+    'Teams',
+    'When true, team endpoints are read-only.'
+  ),
 })
 
 const vercelRequestInputSchema = z.object({
@@ -61,6 +80,17 @@ function normalizeVercelPath(path: string): string {
   return trimmed
 }
 
+function vercelGroup(path: string): 'Projects' | 'Teams' | 'Other' {
+  const p = normalizeVercelPath(path)
+  if (p.includes('/projects')) {
+    return 'Projects'
+  }
+  if (p.includes('/teams')) {
+    return 'Teams'
+  }
+  return 'Other'
+}
+
 const vercelSafetyPolicy: ToolPolicy<VercelRequestInput, VercelConfig> = ({
   config,
   input,
@@ -68,7 +98,32 @@ const vercelSafetyPolicy: ToolPolicy<VercelRequestInput, VercelConfig> = ({
   if (input.method === 'GET' && input.body !== undefined) {
     return { ok: false, message: 'GET requests cannot include a body.' }
   }
-  if (config.readOnly && input.method !== 'GET') {
+  const group = vercelGroup(input.path)
+  if (group === 'Projects') {
+    const decision = enforceGroupAccess({
+      enabled: config.enableGroupProjects,
+      group,
+      readOnly: config.readOnlyGroupProjects,
+      method: input.method,
+      globalReadOnly: config.readOnly,
+    })
+    if (!decision.ok) {
+      return decision
+    }
+  }
+  if (group === 'Teams') {
+    const decision = enforceGroupAccess({
+      enabled: config.enableGroupTeams,
+      group,
+      readOnly: config.readOnlyGroupTeams,
+      method: input.method,
+      globalReadOnly: config.readOnly,
+    })
+    if (!decision.ok) {
+      return decision
+    }
+  }
+  if (group === 'Other' && config.readOnly && input.method !== 'GET') {
     return {
       ok: false,
       message:

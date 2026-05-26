@@ -139,6 +139,14 @@ Every important input and config field should have a `describe(...)` string. The
 
 If the tool can create, cancel, delete, send, post, mutate, or otherwise do something irreversible, use concrete safety boundaries such as `readOnly` attachment config, narrow path allowlists, explicit deny policies, more specific tool surfaces, or human confirmation outside the tool input schema.
 
+When a single attachment exposes API operations across multiple **resource groups** (for example projects, users, deployments, repositories, calendars, etc.), do not rely only on one global `readOnly` flag.
+
+- Add **per-group enable flags** so users can disable an entire resource group.
+- Add **per-group read-only flags** so users can allow reads but block writes for that specific group.
+- Keep any existing global `readOnly` as a coarse safety override, but enforce group-level flags in each mutating child tool policy.
+- Prefer clear field naming that maps to UX sections, such as `enableGroupProjects`, `readOnlyGroupProjects`.
+- In the attachment form UX, organize complex configs by group sections so users can reason about one resource domain at a time.
+
 ### 7. Keep failures crisp
 
 - Use `toolError(...)` for expected failures

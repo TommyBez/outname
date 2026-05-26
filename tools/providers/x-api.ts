@@ -2,6 +2,11 @@ import 'server-only'
 import { z } from 'zod'
 import { X_OAUTH_SCOPES } from '@/connections/x-oauth-scopes'
 import {
+  enforceGroupAccess,
+  groupReadOnlyField,
+  groupToggleField,
+} from '@/tools/providers/rest-resource-groups'
+import {
   defineApiPassthroughTool,
   type ToolPolicy,
   toolSuccess,
@@ -24,9 +29,25 @@ const xApiConfigSchema = z.object({
   readOnly: z
     .boolean()
     .default(false)
-    .describe(
-      'When true, only read operations are allowed. Non-GET methods are blocked.'
-    ),
+    .describe('When true, only read operations are allowed across groups.'),
+  enableGroupTweets: groupToggleField('Tweets', 'Enable tweets endpoints.'),
+  readOnlyGroupTweets: groupReadOnlyField(
+    'Tweets',
+    'When true, tweet endpoints are read-only.',
+    false
+  ),
+  enableGroupUsers: groupToggleField('Users', 'Enable users endpoints.'),
+  readOnlyGroupUsers: groupReadOnlyField(
+    'Users',
+    'When true, user endpoints are read-only.',
+    false
+  ),
+  enableGroupMedia: groupToggleField('Media', 'Enable media endpoints.'),
+  readOnlyGroupMedia: groupReadOnlyField(
+    'Media',
+    'When true, media endpoints are read-only.',
+    false
+  ),
 })
 
 const xApiQueryValueSchema = z.union([z.string(), z.number(), z.boolean()])
@@ -115,6 +136,19 @@ function isMutationMethod(method: XApiHttpMethod): boolean {
   return method !== 'GET'
 }
 
+function xApiGroup(pathname: string): 'Tweets' | 'Users' | 'Media' | 'Other' {
+  if (pathname.startsWith('/2/tweets')) {
+    return 'Tweets'
+  }
+  if (pathname.startsWith('/2/users')) {
+    return 'Users'
+  }
+  if (pathname.startsWith('/2/media')) {
+    return 'Media'
+  }
+  return 'Other'
+}
+
 const xApiSafetyPolicy: ToolPolicy<XApiRequestInput, XApiConfig> = ({
   config,
   input,
@@ -153,6 +187,44 @@ const xApiSafetyPolicy: ToolPolicy<XApiRequestInput, XApiConfig> = ({
       ok: false,
       message:
         'This tool attachment is configured as read-only. Only GET requests are allowed.',
+    }
+  }
+
+  const group = xApiGroup(pathname)
+  if (group === 'Tweets') {
+    const decision = enforceGroupAccess({
+      enabled: config.enableGroupTweets,
+      group,
+      readOnly: config.readOnlyGroupTweets,
+      method: input.method,
+      globalReadOnly: config.readOnly,
+    })
+    if (!decision.ok) {
+      return decision
+    }
+  }
+  if (group === 'Users') {
+    const decision = enforceGroupAccess({
+      enabled: config.enableGroupUsers,
+      group,
+      readOnly: config.readOnlyGroupUsers,
+      method: input.method,
+      globalReadOnly: config.readOnly,
+    })
+    if (!decision.ok) {
+      return decision
+    }
+  }
+  if (group === 'Media') {
+    const decision = enforceGroupAccess({
+      enabled: config.enableGroupMedia,
+      group,
+      readOnly: config.readOnlyGroupMedia,
+      method: input.method,
+      globalReadOnly: config.readOnly,
+    })
+    if (!decision.ok) {
+      return decision
     }
   }
 

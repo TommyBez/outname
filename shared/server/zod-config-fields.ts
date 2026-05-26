@@ -8,7 +8,27 @@ export interface ConfigField {
   name: string
   placeholder?: string
   required: boolean
+  section?: string
   type: 'text' | 'number' | 'boolean'
+}
+
+const SECTION_PREFIX_PATTERN = /^\[Group:\s*([^\]]+)\]\s*/
+
+function splitSection(description?: string): {
+  description?: string
+  section?: string
+} {
+  if (!description) {
+    return {}
+  }
+  const match = description.match(SECTION_PREFIX_PATTERN)
+  if (!match) {
+    return { description }
+  }
+  return {
+    section: match[1]?.trim(),
+    description: description.replace(SECTION_PREFIX_PATTERN, '').trim(),
+  }
 }
 
 function unwrap(schema: z.ZodTypeAny): {
@@ -70,12 +90,14 @@ export function describeConfigSchema(
       (raw as unknown as { description?: string }).description ??
       (inner as unknown as { description?: string }).description
     const type = classify(inner)
+    const fieldMeta = splitSection(description)
 
     fields.push({
       name,
       label: humanize(name),
       type,
-      description,
+      description: fieldMeta.description,
+      section: fieldMeta.section,
       defaultValue:
         typeof defaultValue === 'string' ||
         typeof defaultValue === 'number' ||

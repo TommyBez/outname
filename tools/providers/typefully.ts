@@ -2,6 +2,11 @@ import 'server-only'
 import { z } from 'zod'
 import { isTypefullyPresignedUploadRequest } from '@/shared/server/typefully-upload-url'
 import {
+  enforceGroupAccess,
+  groupReadOnlyField,
+  groupToggleField,
+} from '@/tools/providers/rest-resource-groups'
+import {
   defineApiPassthroughTool,
   type ToolPolicy,
   toolSuccess,
@@ -24,9 +29,19 @@ const typefullyConfigSchema = z.object({
   readOnly: z
     .boolean()
     .default(false)
-    .describe(
-      'When true, only read operations are allowed. Non-GET methods are blocked.'
-    ),
+    .describe('When true, only read operations are allowed across groups.'),
+  enableGroupDrafts: groupToggleField('Drafts', 'Enable drafts endpoints.'),
+  readOnlyGroupDrafts: groupReadOnlyField(
+    'Drafts',
+    'When true, drafts endpoints are read-only.',
+    false
+  ),
+  enableGroupMedia: groupToggleField('Media', 'Enable media endpoints.'),
+  readOnlyGroupMedia: groupReadOnlyField(
+    'Media',
+    'When true, media endpoints are read-only.',
+    false
+  ),
 })
 const typefullyQueryValueSchema = z.union([z.string(), z.number(), z.boolean()])
 
@@ -120,6 +135,45 @@ function isMutationMethod(method: TypefullyHttpMethod): boolean {
   return method !== 'GET'
 }
 
+function typefullyGroup(
+  pathname: string,
+  isUploadUrl: boolean
+): 'Drafts' | 'Media' | 'Other' {
+  if (isUploadUrl || pathname.startsWith('/v2/media')) {
+    return 'Media'
+  }
+  if (pathname.includes('/drafts')) {
+    return 'Drafts'
+  }
+  return 'Other'
+}
+
+function enforceTypefullyGroupPolicy(args: {
+  config: TypefullyConfig
+  group: 'Drafts' | 'Media' | 'Other'
+  method: TypefullyHttpMethod
+}) {
+  if (args.group === 'Drafts') {
+    return enforceGroupAccess({
+      enabled: args.config.enableGroupDrafts,
+      group: args.group,
+      readOnly: args.config.readOnlyGroupDrafts,
+      method: args.method,
+      globalReadOnly: args.config.readOnly,
+    })
+  }
+  if (args.group === 'Media') {
+    return enforceGroupAccess({
+      enabled: args.config.enableGroupMedia,
+      group: args.group,
+      readOnly: args.config.readOnlyGroupMedia,
+      method: args.method,
+      globalReadOnly: args.config.readOnly,
+    })
+  }
+  return { ok: true } as const
+}
+
 const typefullySafetyPolicy: ToolPolicy<
   TypefullyRequestInput,
   TypefullyConfig
@@ -176,6 +230,16 @@ const typefullySafetyPolicy: ToolPolicy<
       ok: false,
       message: `Path "${pathname}" is outside the allowed Typefully API v2 surface.`,
     }
+  }
+
+  const group = typefullyGroup(pathname, isUploadUrl)
+  const decision = enforceTypefullyGroupPolicy({
+    config,
+    group,
+    method: input.method,
+  })
+  if (!decision.ok) {
+    return decision
   }
 
   return { ok: true }
