@@ -5,26 +5,41 @@ import { loadAgentStep } from '../../steps/db/load-agent'
 import { finalizeRun } from '../../steps/finalize-run'
 import { activityMessage, type HeartbeatMode } from './messages'
 
-export const BUDGET_EXCEEDED = Symbol('budget-exceeded')
+export type HeartbeatBudgetCheckResult =
+  | {
+      kind: 'continue'
+      userId: string | null
+    }
+  | {
+      kind: 'exceeded'
+      message: string
+    }
 
 export async function checkBudgetOrFinalize(input: {
   agentId: string
   mode: HeartbeatMode
   runId: string
-}): Promise<string | null | typeof BUDGET_EXCEEDED> {
+}): Promise<HeartbeatBudgetCheckResult> {
   const { agentId, mode, runId } = input
   const agentRow = await loadAgentStep({ agentId })
   const userId = agentRow?.userId ?? null
   if (!userId) {
-    return null
+    return {
+      kind: 'continue',
+      userId: null,
+    }
   }
   const exceeded = await preflightBudget({
     userId,
     rootAgentId: agentId,
   })
   if (!exceeded) {
-    return userId
+    return {
+      kind: 'continue',
+      userId,
+    }
   }
+  const message = formatBudgetExceededMessage(exceeded)
   await emitActivity(
     runId,
     activityMessage(mode, 'Budget exceeded, skipping run'),
@@ -33,6 +48,9 @@ export async function checkBudgetOrFinalize(input: {
       scope: exceeded.scope.type,
     }
   )
-  await finalizeRun(runId, 'completed', formatBudgetExceededMessage(exceeded))
-  return BUDGET_EXCEEDED
+  await finalizeRun(runId, 'completed', message)
+  return {
+    kind: 'exceeded',
+    message,
+  }
 }

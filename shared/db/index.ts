@@ -1,6 +1,7 @@
 import { attachDatabasePool } from '@vercel/functions'
 import { drizzle } from 'drizzle-orm/node-postgres'
 import { Pool } from 'pg'
+import { normalizeDatabaseUrlForPg } from './connection-string'
 import { dbSchema } from './schema-registry'
 
 const databaseUrl = process.env.DATABASE_URL
@@ -9,7 +10,7 @@ if (!databaseUrl) {
 }
 
 const pool = new Pool({
-  connectionString: databaseUrl,
+  connectionString: normalizeDatabaseUrlForPg(databaseUrl),
   max: 10,
 })
 attachDatabasePool(pool)

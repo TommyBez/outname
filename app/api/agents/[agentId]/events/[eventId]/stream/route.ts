@@ -1,11 +1,8 @@
 import { getRun } from 'workflow/api'
-import {
-  eventActivityNamespace,
-  replyNamespaceForEvent,
-} from '@/agent-runtime/server/agent-event-keys'
+import { eventActivityNamespace } from '@/agent-runtime/server/agent-event-keys'
 import { reconcileActiveAgentEvent } from '@/agent-runtime/server/agent-event-reconciliation'
-import type { AgentEventPayloads } from '@/agent-runtime/server/agent-event-store'
 import { getAgentEvent } from '@/agent-runtime/server/agent-event-store'
+import { outputNamespaceForAgentEvent } from '@/agent-runtime/server/agent-event-transcript'
 import type { AgentChatChunk } from '@/agent-runtime/server/chat-status'
 import type { RunEvent } from '@/agent-runtime/server/run-events'
 import { WORKFLOW_STREAM_UNAVAILABLE_MESSAGE } from '@/agent-runtime/shared/workflow-stream-messages'
@@ -44,13 +41,14 @@ export async function GET(
   }
 
   const streamKind = readStreamKind(request)
+  const startIndex = readStartIndex(request)
   const namespace =
     streamKind === 'activity'
       ? eventActivityNamespace(event.workflowRunId)
-      : outputNamespaceForEvent(event)
+      : outputNamespaceForAgentEvent(event)
   const source = run.getReadable<AgentChatChunk | RunEvent>({
     namespace,
-    startIndex: 0,
+    startIndex,
   })
 
   const encoder = new TextEncoder()
@@ -71,6 +69,15 @@ export async function GET(
   })
 }
 
+function readStartIndex(request: Request): number {
+  const searchParams = new URL(request.url).searchParams
+  const rawStartIndex = Number(searchParams.get('startIndex') ?? '0')
+  if (!Number.isFinite(rawStartIndex)) {
+    return 0
+  }
+  return Math.max(0, Math.floor(rawStartIndex))
+}
+
 function readStreamKind(request: Request): 'activity' | 'output' {
   const searchParams = new URL(request.url).searchParams
   const stream = searchParams.get('stream')
@@ -78,21 +85,6 @@ function readStreamKind(request: Request): 'activity' | 'output' {
     return 'activity'
   }
   return 'output'
-}
-
-function outputNamespaceForEvent(
-  event: NonNullable<Awaited<ReturnType<typeof getAgentEvent>>>
-): string {
-  if (event?.type === 'invocation') {
-    const payload = event.payload as AgentEventPayloads['invocation']
-    if (
-      typeof payload?.streamToken === 'string' &&
-      payload.streamToken.length > 0
-    ) {
-      return payload.streamToken
-    }
-  }
-  return replyNamespaceForEvent(event.id)
 }
 
 function jsonError(status: number, error: string): Response {

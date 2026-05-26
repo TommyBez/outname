@@ -127,6 +127,13 @@
       "when": 1780100000000,
       "tag": "0014_agent_event_domain_enums",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1780200000000,
+      "tag": "0015_agent_event_transcripts",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,4 @@
-import type { StepResult, ToolSet, UIMessageChunk } from 'ai'
+import type { StepResult, ToolSet, UIMessage, UIMessageChunk } from 'ai'
 import { getWritable } from 'workflow'
 import { emitActivity } from '@/agent-runtime/server/run-events'
 import { currentWorkflowRunId } from '@/shared/server/workflow-run-id'
@@ -19,13 +19,12 @@ import {
   readPreviousDreamingCompletionStep,
   readPreviousHeartbeatCompletionStep,
 } from '../steps/db/agent-schedule'
+import { replaceAgentEventTranscriptMessagesBestEffortStep } from '../steps/db/event-transcript-store'
 import { startupSystemSandboxStep } from '../steps/db/system-sandbox'
 import { finalizeRun } from '../steps/finalize-run'
 import { initRun } from '../steps/init-run'
-import {
-  BUDGET_EXCEEDED,
-  checkBudgetOrFinalize,
-} from './handle-heartbeat/budget'
+import { persistAgentEventTranscriptStep } from '../steps/persist-event-transcript'
+import { checkBudgetOrFinalize } from './handle-heartbeat/budget'
 import {
   activityMessage,
   type HeartbeatMode,
@@ -33,13 +32,15 @@ import {
 
 export async function handleHeartbeat(input: {
   agentId: string
+  eventId: string
   localDate?: string
   manual?: boolean
   mode?: HeartbeatMode
   replyToken?: string
   scheduledAt?: string
+  userId: string
 }): Promise<void> {
-  const { agentId } = input
+  const { agentId, eventId, userId: eventUserId } = input
   const mode = input.mode ?? 'normal'
   const nowIso = input.scheduledAt ?? new Date().toISOString()
   const dreamingLocalDate = input.localDate ?? nowIso.slice(0, 10)
@@ -54,8 +55,18 @@ export async function handleHeartbeat(input: {
       manual: input.manual ?? false,
     })
 
-    const userId = await checkBudgetOrFinalize({ agentId, mode, runId })
-    if (userId === BUDGET_EXCEEDED) {
+    const budgetCheck = await checkBudgetOrFinalize({ agentId, mode, runId })
+    if (budgetCheck.kind === 'exceeded') {
+      await replaceAgentEventTranscriptMessagesBestEffortStep({
+        eventId,
+        messages: [
+          createAssistantTextMessage({
+            id: `budget_refusal_${eventId}`,
+            text: budgetCheck.message,
+          }),
+        ],
+        userId: eventUserId,
+      })
       await markBudgetSkippedRunCompletedStep({
         agentId,
         localDate: dreamingLocalDate,
@@ -92,13 +103,14 @@ export async function handleHeartbeat(input: {
         : buildHeartbeatKickoff({ nowIso, previousIso })
 
     const result = await durableAgent.stream({
+      collectUIMessages: true,
       messages: [{ role: 'user', content: kickoff }],
       writable,
       stopWhen: resolveStepLimit(stepLimitInput),
     })
-    if (userId) {
+    if (budgetCheck.userId) {
       await recordTokenUsageStep({
-        userId,
+        userId: budgetCheck.userId,
         agentId,
         rootAgentId: agentId,
         sourceType: mode === 'dreaming' ? 'dreaming' : 'heartbeat',
@@ -116,11 +128,31 @@ export async function handleHeartbeat(input: {
       runId,
       stepLimitInput,
     })
+    await persistAgentEventTranscriptStep({
+      event: {
+        id: eventId,
+        payload: {},
+        type: mode === 'dreaming' ? 'dreaming' : 'heartbeat',
+      },
+      userId: eventUserId,
+      workflowRunId: runId,
+    })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     await emitActivity(runId, activityMessage(mode, 'Run failed'), { message })
     await finalizeRun(runId, 'failed', message)
     throw err
+  }
+}
+
+function createAssistantTextMessage(input: {
+  id: string
+  text: string
+}): UIMessage {
+  return {
+    id: input.id,
+    parts: [{ text: input.text, type: 'text' }],
+    role: 'assistant',
   }
 }
 

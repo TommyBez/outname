@@ -9,13 +9,19 @@ import {
 import { formatBudgetExceededMessage } from '@/budgets/server/errors'
 import { currentWorkflowRunId } from '@/shared/server/workflow-run-id'
 import { buildAgent } from '../agent-factory'
-import { resolveStepLimit } from '../step-limit'
+import {
+  buildStepLimitNotice,
+  didReachStepLimit,
+  resolveStepLimit,
+} from '../step-limit'
 import {
   extractTotalUsage,
   preflightBudget,
   recordTokenUsageStep,
 } from '../steps/budget'
+import { replaceAgentEventTranscriptMessagesBestEffortStep } from '../steps/db/event-transcript-store'
 import { startupSystemSandboxStep } from '../steps/db/system-sandbox'
+import { persistAgentEventTranscriptStep } from '../steps/persist-event-transcript'
 import { finishSuccessfulInvocation } from './handle-invocation/finish-success'
 import { invocationMessageId } from './handle-invocation/run-helpers'
 import {
@@ -25,6 +31,7 @@ import {
 
 export async function handleInvocation(input: {
   agentId: string
+  eventId: string
   input: string
   streamToken: string
   parentRunId?: string | null
@@ -34,9 +41,11 @@ export async function handleInvocation(input: {
   replyToken?: string | null
   callStack: string[]
   depth: number
+  userId: string
 }): Promise<void> {
   const {
     agentId,
+    eventId,
     input: instruction,
     streamToken,
     parentRunId,
@@ -46,6 +55,7 @@ export async function handleInvocation(input: {
     replyToken,
     callStack,
     depth,
+    userId,
   } = input
   const runId = currentWorkflowRunId()
   const streamNamespace = streamToken
@@ -78,10 +88,11 @@ export async function handleInvocation(input: {
     })
     if (exceeded) {
       await refuseBudgetExceeded({
+        eventId,
         exceeded,
         runId,
-        streamNamespace,
         streamNamespaces,
+        userId,
       })
       return
     }
@@ -144,12 +155,28 @@ export async function handleInvocation(input: {
     })
     await finishInvocationStreams(streamNamespaces)
     await forwardPromise
+    await persistAgentEventTranscriptStep({
+      event: {
+        id: eventId,
+        payload: {
+          streamToken,
+        },
+        type: 'invocation',
+      },
+      stepLimitNotice: didReachStepLimit({
+        ...stepLimitInput,
+        steps: result.steps,
+      })
+        ? buildStepLimitNotice(stepLimitInput)
+        : undefined,
+      userId,
+      workflowRunId: runId,
+    })
   } catch (err) {
     await failInvocation({
       err,
       forwardPromise,
       runId,
-      streamNamespace,
       streamNamespaces,
     })
     throw err
@@ -198,10 +225,11 @@ async function prepareInvocationRun(input: {
 }
 
 async function refuseBudgetExceeded(input: {
+  eventId: string
   exceeded: Parameters<typeof formatBudgetExceededMessage>[0]
   runId: string
-  streamNamespace: string
   streamNamespaces: readonly string[]
+  userId: string
 }): Promise<void> {
   const message = formatBudgetExceededMessage(input.exceeded)
   await emitActivity(input.runId, 'Sub-agent: Budget exceeded, refusing', {
@@ -224,13 +252,22 @@ async function refuseBudgetExceeded(input: {
       })
     )
   )
+  await replaceAgentEventTranscriptMessagesBestEffortStep({
+    eventId: input.eventId,
+    messages: [
+      createAssistantTextMessage({
+        id: `budget_refusal_${input.runId}`,
+        text: message,
+      }),
+    ],
+    userId: input.userId,
+  })
 }
 
 async function failInvocation(input: {
   err: unknown
   forwardPromise: Promise<AgentChatMessage[]>
   runId: string
-  streamNamespace: string
   streamNamespaces: readonly string[]
 }): Promise<void> {
   const message =
@@ -262,4 +299,15 @@ async function failInvocation(input: {
   await input.forwardPromise.catch(() => {
     // Already logged by the forwarding task.
   })
+}
+
+function createAssistantTextMessage(input: {
+  id: string
+  text: string
+}): UIMessage {
+  return {
+    id: input.id,
+    parts: [{ text: input.text, type: 'text' }],
+    role: 'assistant',
+  }
 }
