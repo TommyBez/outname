@@ -14,12 +14,24 @@ export async function listAgentEventTranscriptMessages(
     .where(eq(agentEventMessage.eventId, eventId))
     .orderBy(asc(agentEventMessage.messageOrder))
 
-  return rows.map((row) => ({
-    id: row.messageId,
-    metadata: row.metadata ?? undefined,
-    parts: row.parts as AgentChatMessage['parts'],
-    role: row.role as AgentChatMessage['role'],
-  }))
+  return rows.map((row) => {
+    if (!isAgentChatMessageParts(row.parts)) {
+      throw new Error(
+        `Invalid transcript parts for event ${eventId} message ${row.messageId}`
+      )
+    }
+    if (!isAgentChatMessageRole(row.role)) {
+      throw new Error(
+        `Invalid transcript role for event ${eventId} message ${row.messageId}`
+      )
+    }
+    return {
+      id: row.messageId,
+      metadata: row.metadata ?? undefined,
+      parts: row.parts,
+      role: row.role,
+    }
+  })
 }
 
 export async function replaceAgentEventTranscriptMessages(input: {
@@ -69,4 +81,25 @@ export async function replaceAgentEventTranscriptMessagesBestEffort(input: {
       messageCount: input.messages.length,
     })
   }
+}
+function isAgentChatMessageRole(
+  value: unknown
+): value is AgentChatMessage['role'] {
+  return value === 'assistant' || value === 'system' || value === 'user'
+}
+
+function isAgentChatMessagePart(
+  value: unknown
+): value is AgentChatMessage['parts'][number] {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof Reflect.get(value, 'type') === 'string'
+  )
+}
+
+function isAgentChatMessageParts(
+  value: unknown
+): value is AgentChatMessage['parts'] {
+  return Array.isArray(value) && value.every(isAgentChatMessagePart)
 }

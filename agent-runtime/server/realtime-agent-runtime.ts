@@ -4,12 +4,12 @@ import {
   ToolLoopAgent,
   type ToolLoopAgentOnFinishCallback,
 } from 'ai'
+import { stopWhenFromSpec } from '@/agent-runtime/server/runtime-spec'
 import {
   type AgentRuntimeMeta,
   type AgentRuntimeSpec,
   runtimeMetaFromSpec,
-  stopWhenFromSpec,
-} from '@/agent-runtime/server/runtime-spec'
+} from '@/agent-runtime/workflows/session/runtime-spec-types'
 import { getUserModelForGateway } from '@/shared/server/ai-gateway-byok'
 import type { SubAgentProgressTarget } from '@/tools/sub-agents/progress-target'
 import { buildRuntimeToolset } from './runtime-toolset'

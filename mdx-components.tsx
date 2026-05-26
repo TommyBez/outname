@@ -29,6 +29,11 @@ function MdxLink({ href, children, ...props }: ComponentPropsWithoutRef<'a'>) {
 }
 
 const components = {
+  h1: ({ children }) => (
+    <h2 className="mt-12 font-black font-serif text-2xl uppercase leading-none tracking-tighter sm:text-3xl">
+      {children}
+    </h2>
+  ),
   h2: ({ children }) => (
     <h2 className="mt-12 font-black font-serif text-2xl uppercase leading-none tracking-tighter sm:text-3xl">
       {children}

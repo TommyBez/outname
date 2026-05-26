@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next'
+import { getAllPosts } from '@/content/blog/posts'
 import { siteConfig } from '@/shared/server/site-metadata'
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -9,7 +10,22 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'weekly',
       priority: 1,
     },
+    {
+      url: `${siteConfig.url}/blog`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
   ]
+
+  for (const post of getAllPosts()) {
+    entries.push({
+      url: `${siteConfig.url}/blog/${post.slug}`,
+      lastModified: new Date(post.date),
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    })
+  }
 
   if (process.env.WAITLIST_PUBLIC_ENABLED === 'true') {
     entries.push({
