@@ -1,6 +1,17 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { siteConfig } from '@/shared/server/site-metadata'
+
+export const metadata: Metadata = {
+  alternates: {
+    types: {
+      'application/rss+xml': [
+        { url: '/blog/feed.xml', title: `${siteConfig.name} Blog RSS` },
+      ],
+    },
+  },
+}
 
 export default function BlogLayout({
   children,
@@ -19,12 +30,20 @@ export default function BlogLayout({
             <span aria-hidden className="inline-block size-3 bg-accent" />
             <span>{siteConfig.name}</span>
           </Link>
-          <nav className="flex items-center gap-6">
+          <nav aria-label="Blog" className="flex items-center gap-6">
             <Link
               className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.18em] transition-colors hover:text-foreground"
               href="/blog"
             >
               Blog
+            </Link>
+            <Link
+              className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.18em] transition-colors hover:text-foreground"
+              href="/blog/feed.xml"
+              rel="alternate"
+              type="application/rss+xml"
+            >
+              RSS
             </Link>
             <Link
               className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.18em] transition-colors hover:text-foreground"
@@ -55,6 +74,8 @@ export default function BlogLayout({
             <Link
               className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.18em] transition-colors hover:text-foreground"
               href="https://x.com/OutnameBot"
+              rel="noopener noreferrer"
+              target="_blank"
             >
               @OutnameBot on X →
             </Link>

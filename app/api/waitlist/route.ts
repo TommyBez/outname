@@ -1,5 +1,6 @@
 import { connection, type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { denyIfBot } from '@/shared/server/botid-guard'
 import {
   WAITLIST_GENERIC_SUCCESS_MESSAGE,
   WAITLIST_PRIMARY_INTERESTS,
@@ -60,6 +61,11 @@ function getRequestIp(request: NextRequest): string {
 
 export async function POST(request: NextRequest) {
   await connection()
+
+  const botDenied = await denyIfBot()
+  if (botDenied) {
+    return botDenied
+  }
 
   if (!isWaitlistPublicEnabled()) {
     return NextResponse.json({ error: 'not found' }, { status: 404 })

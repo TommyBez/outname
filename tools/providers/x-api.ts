@@ -17,7 +17,19 @@ const X_API_MAX_RESPONSE_BYTES = 64 * 1024
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i
 
 const X_ENDPOINT_GUIDE =
-  'Use relative X API v2 paths such as /2/users/by/username/xdevelopers, /2/tweets/search/recent, /2/tweets, or /2/dm_conversations. Long-lived streaming response endpoints are not supported.'
+  'Relative path only, starting with /. Allowed: /2/openapi.json and /2/* (no /stream endpoints). Examples: /2/users/by/username/xdevelopers, /2/tweets/search/recent, /2/tweets, /2/users/me.'
+
+const X_API_JSON_RULES =
+  'Use strict JSON for every field: double-quoted keys and string values, no trailing commas, no comments. Dotted X API names such as tweet.fields and user.fields are object keys — quote them.'
+
+const X_API_QUERY_GUIDE =
+  'Optional nested object of URL query params (never a string). Each key is an X API query param name; each value is a string, number, or boolean. Comma-separated lists stay in the value string, e.g. "tweet.fields":"created_at,author_id,text". Search endpoints need a "query" key for the search expression. Example query object: {"query":"from:xdevelopers -is:retweet","max_results":10,"tweet.fields":"created_at,author_id,text","expansions":"author_id"}.'
+
+const X_API_BODY_GUIDE =
+  'Optional JSON object request body for POST, PATCH, PUT, or DELETE. Omit for GET. Use X API field names as object keys with strict JSON quoting.'
+
+const X_API_INPUT_EXAMPLE =
+  '{"method":"GET","path":"/2/tweets/search/recent","query":{"query":"from:xdevelopers -is:retweet","max_results":10,"tweet.fields":"created_at,author_id,text","expansions":"author_id"}}'
 
 const xApiMethodSchema = z.enum(['GET', 'POST', 'PATCH', 'PUT', 'DELETE'])
 const xApiConfigSchema = z.object({
@@ -34,18 +46,23 @@ const xApiQueryValueSchema = z.union([z.string(), z.number(), z.boolean()])
 const xApiRequestInputSchema = z.object({
   method: xApiMethodSchema
     .default('GET')
-    .describe('HTTP method to use. GET is for read-only calls.'),
-  path: z.string().min(1).describe(`Relative X API path. ${X_ENDPOINT_GUIDE}`),
+    .describe(
+      'HTTP method. Use GET for reads. Use POST/PATCH/PUT/DELETE only when the endpoint mutates data; pair with body when required.'
+    ),
+  path: z
+    .string()
+    .min(1)
+    .describe(
+      `Relative X API path starting with /. ${X_ENDPOINT_GUIDE} Never pass a full https:// URL.`
+    ),
   query: z
     .record(z.string(), xApiQueryValueSchema)
     .optional()
-    .describe(
-      'Optional query parameters. Use strings for comma-separated field lists such as tweet.fields or expansions.'
-    ),
+    .describe(`${X_API_QUERY_GUIDE} ${X_API_JSON_RULES}`),
   body: z
     .record(z.string(), z.unknown())
     .optional()
-    .describe('Optional JSON request body for non-GET requests.'),
+    .describe(`${X_API_BODY_GUIDE} ${X_API_JSON_RULES}`),
   maxResponseBytes: z
     .number()
     .int()
@@ -53,7 +70,7 @@ const xApiRequestInputSchema = z.object({
     .max(X_API_MAX_RESPONSE_BYTES)
     .default(X_API_DEFAULT_RESPONSE_BYTES)
     .describe(
-      'Maximum response body bytes to return, from 1000 to 65536. Increase for larger search or lookup responses.'
+      'Max response bytes to return (1000–65536). Default 12000. Raise for large search results if needed.'
     ),
 })
 
@@ -204,7 +221,7 @@ export const xApiRequestTool = defineApiPassthroughTool({
   id: 'x_api_request',
   category: 'social',
   displayName: 'X API · App Request',
-  description: `Call X API v2 endpoints on api.x.com with the app Bearer token connector. This tool does not act as an X user. ${X_ENDPOINT_GUIDE}`,
+  description: `Call X API v2 on api.x.com with the app Bearer token (not as an X user). ${X_API_JSON_RULES} Example tool input: ${X_API_INPUT_EXAMPLE}.`,
   connectorId: 'x.bearer_token',
   configSchema: xApiConfigSchema,
   inputSchema: xApiRequestInputSchema,
@@ -249,8 +266,7 @@ export const xUserApiRequestTool = defineApiPassthroughTool({
   id: 'x_user_api_request',
   category: 'social',
   displayName: 'X API · OAuth User Request',
-  description:
-    'Call X API v2 user-context endpoints on api.x.com for tweets, users/me, likes, follows, bookmarks, and media upload.',
+  description: `Call X API v2 user-context endpoints on api.x.com (tweets, users/me, likes, follows, bookmarks, media). ${X_API_JSON_RULES} Example tool input: ${X_API_INPUT_EXAMPLE}.`,
   connectorId: 'x.oauth2_user',
   requiredScopes: X_OAUTH_SCOPES,
   configSchema: xApiConfigSchema,

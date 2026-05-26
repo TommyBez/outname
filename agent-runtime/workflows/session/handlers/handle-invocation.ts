@@ -1,7 +1,6 @@
 import { convertToModelMessages, type UIMessage, type UIMessageChunk } from 'ai'
 import { getWritable } from 'workflow'
 import { replaceAgentEventTranscriptMessagesBestEffort } from '@/agent-runtime/server/agent-event-transcript-store'
-import { startupSystemSandbox } from '@/agent-runtime/server/agent-sandbox'
 import type { AgentChatMessage } from '@/agent-runtime/server/chat-status'
 import {
   emitActivity,
@@ -21,6 +20,7 @@ import {
   preflightBudget,
   recordTokenUsageStep,
 } from '../steps/budget'
+import { startupSystemSandboxStep } from '../steps/db/system-sandbox'
 import { persistAgentEventTranscriptStep } from '../steps/persist-event-transcript'
 import { finishSuccessfulInvocation } from './handle-invocation/finish-success'
 import { invocationMessageId } from './handle-invocation/run-helpers'
@@ -221,7 +221,7 @@ async function prepareInvocationRun(input: {
     depth: input.depth,
     parentRunId: input.parentRunId,
   })
-  await startupSystemSandbox({ agentId: input.agentId })
+  await startupSystemSandboxStep({ agentId: input.agentId })
 }
 
 async function refuseBudgetExceeded(input: {

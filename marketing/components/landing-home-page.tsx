@@ -3,6 +3,7 @@
 import { useReducedMotion } from 'motion/react'
 import { LandingChatShowcase } from '@/marketing/components/landing/landing-chat-showcase'
 import { LandingComposableWorkbench } from '@/marketing/components/landing/landing-composable-workbench'
+import { LandingFooter } from '@/marketing/components/landing/landing-footer'
 import { LandingHeartbeatCloser } from '@/marketing/components/landing/landing-heartbeat-closer'
 import { LandingHeroDemo } from '@/marketing/components/landing/landing-hero-demo'
 import { LandingNav } from '@/marketing/components/landing/landing-nav'
@@ -33,6 +34,7 @@ export function LandingHomePage({
         shouldReduceMotion={reduceMotionFlag}
         waitlistEnabled={waitlistEnabled}
       />
+      <LandingFooter />
     </main>
   )
 }

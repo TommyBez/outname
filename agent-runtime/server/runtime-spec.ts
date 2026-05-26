@@ -5,38 +5,18 @@ import {
   resolveStepLimit,
   type StepLimitMode,
 } from '@/agent-runtime/workflows/session/step-limit'
-import {
-  type ResolveToolPlanResult,
-  resolveToolPlan,
-} from '@/agent-runtime/workflows/session/steps/resolve-tool-plan'
+import { resolveToolPlan } from '@/agent-runtime/workflows/session/steps/resolve-tool-plan'
 
-export type AgentRuntimeEventKind =
-  | 'chat'
-  | 'dreaming'
-  | 'heartbeat'
-  | 'invocation'
+export type {
+  AgentRuntimeEventKind,
+  AgentRuntimeMeta,
+  AgentRuntimeSpec,
+} from '@/agent-runtime/workflows/session/runtime-spec-types'
 
-export interface AgentRuntimeSpec {
-  agentId: string
-  agentName: string
-  callStack: string[]
-  depth: number
-  eventKind: AgentRuntimeEventKind
-  modelId: string
-  stepLimitCustom: number | null
-  stepLimitMode: StepLimitMode
-  systemPrompt: string
-  toolPlan: ResolveToolPlanResult
-  userId: string
-}
-
-export interface AgentRuntimeMeta {
-  model: string
-  name: string
-  stepLimitCustom: number | null
-  stepLimitMode: StepLimitMode
-  userId: string
-}
+import type {
+  AgentRuntimeEventKind,
+  AgentRuntimeSpec,
+} from '@/agent-runtime/workflows/session/runtime-spec-types'
 
 export interface BuildAgentRuntimeSpecInput {
   agentId: string
@@ -86,16 +66,6 @@ export async function buildAgentRuntimeSpec(
     systemPrompt,
     toolPlan,
     userId: row.userId,
-  }
-}
-
-export function runtimeMetaFromSpec(spec: AgentRuntimeSpec): AgentRuntimeMeta {
-  return {
-    model: spec.modelId,
-    name: spec.agentName,
-    stepLimitCustom: spec.stepLimitCustom,
-    stepLimitMode: spec.stepLimitMode,
-    userId: spec.userId,
   }
 }
 
