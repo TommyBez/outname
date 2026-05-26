@@ -50,8 +50,20 @@ export function buildAgentTool(handle: AgentToolHandle) {
             'text returned as the tool result.',
           ].join(' ')
         ),
+      waitForCompletion: z
+        .boolean()
+        .optional()
+        .describe(
+          [
+            'Whether to wait for the sub-agent final answer.',
+            'Set to false for long-running delegated work that does not',
+            'block your next step; in that case this tool returns immediately',
+            'after the child run is queued.',
+          ].join(' ')
+        ),
     }),
-    async execute({ instruction }, { toolCallId }) {
+    async execute({ instruction, waitForCompletion }, { toolCallId }) {
+      const shouldWait = waitForCompletion ?? true
       const streamToken = newInvocationStreamToken()
       const messages: AgentChatMessage[] = []
       await emitPreliminarySubAgentOutput({
@@ -68,9 +80,18 @@ export function buildAgentTool(handle: AgentToolHandle) {
         const { sessionRunId } = await dispatchSubAgentInvocation({
           handle,
           instruction,
+          reportBackToParent: !shouldWait,
           streamToken,
           toolCallId,
         })
+        if (!shouldWait) {
+          return subAgentOutput({
+            finalText: `Sub-agent "${handle.childName}" started asynchronously (run: ${sessionRunId}). Continue your current work and use this run id to inspect completion later.`,
+            handle,
+            messages,
+            status: 'completed',
+          })
+        }
         const { error, messages: childMessages } =
           await collectSubAgentMessages({
             progress: {
@@ -136,22 +157,26 @@ function modelOutputText(output: unknown): string {
 async function dispatchSubAgentInvocation(input: {
   handle: AgentToolHandle
   instruction: string
+  reportBackToParent: boolean
   streamToken: string
   toolCallId: string
 }): Promise<{ sessionRunId: string }> {
   'use step'
-  const { handle, instruction, streamToken, toolCallId } = input
+  const { handle, instruction, reportBackToParent, streamToken, toolCallId } =
+    input
   const { dispatchInvocation } = await import(
     '@/agent-runtime/server/session-events'
   )
   return await dispatchInvocation({
     childAgentId: handle.childAgentId,
     childUserId: handle.childUserId,
+    parentAgentId: handle.parentAgentId,
     parentUserId: handle.parentUserId,
     parentRunId: handle.parentRunId,
     parentToolId: handle.parentToolId,
     parentToolCallId: toolCallId,
     instruction,
+    reportBackToParent,
     streamToken,
     callStack: [...handle.parentCallStack, handle.parentAgentId],
     depth: handle.parentDepth + 1,
@@ -215,7 +240,7 @@ function composeDescription(handle: AgentToolHandle): string {
     (summary ? `Capability summary: ${summary} ` : '') +
     'Provide a fully self-contained instruction; the sub-agent does ' +
     'not see your conversation, memory, or files unless you include ' +
-    "them in the instruction. Returns the sub-agent's final text reply."
+    'them in the instruction. By default this tool waits for the sub-agent final text reply, but you can set waitForCompletion=false for long-running work and continue immediately.'
   )
 }
 

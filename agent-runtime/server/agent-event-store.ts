@@ -28,9 +28,11 @@ export interface AgentEventPayloads {
     callStack: string[]
     depth: number
     input: string
+    parentAgentId?: string | null
     parentRunId?: string | null
     parentToolCallId?: string | null
     parentToolId?: string | null
+    reportBackToParent?: boolean
     streamToken: string
   }
 }
