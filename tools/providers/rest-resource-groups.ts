@@ -21,7 +21,10 @@ export function enforceGroupAccess(args: {
       message: `The ${args.group} resource group is disabled for this attachment.`,
     }
   }
-  if ((args.globalReadOnly || args.readOnly) && args.method !== 'GET') {
+  const method = (args.method || '').toUpperCase()
+  const isSafeMethod =
+    method === 'GET' || method === 'HEAD' || method === 'OPTIONS'
+  if ((args.globalReadOnly || args.readOnly) && !isSafeMethod) {
     return {
       ok: false,
       message: `This attachment blocks mutating ${args.group.toLowerCase()} operations.`,
