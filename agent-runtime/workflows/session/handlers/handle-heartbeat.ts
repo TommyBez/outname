@@ -1,6 +1,5 @@
 import type { StepResult, ToolSet, UIMessage, UIMessageChunk } from 'ai'
 import { getWritable } from 'workflow'
-import { replaceAgentEventTranscriptMessagesBestEffort } from '@/agent-runtime/server/agent-event-transcript-store'
 import { emitActivity } from '@/agent-runtime/server/run-events'
 import { currentWorkflowRunId } from '@/shared/server/workflow-run-id'
 import {
@@ -20,6 +19,7 @@ import {
   readPreviousDreamingCompletionStep,
   readPreviousHeartbeatCompletionStep,
 } from '../steps/db/agent-schedule'
+import { replaceAgentEventTranscriptMessagesBestEffortStep } from '../steps/db/event-transcript-store'
 import { startupSystemSandboxStep } from '../steps/db/system-sandbox'
 import { finalizeRun } from '../steps/finalize-run'
 import { initRun } from '../steps/init-run'
@@ -57,7 +57,7 @@ export async function handleHeartbeat(input: {
 
     const budgetCheck = await checkBudgetOrFinalize({ agentId, mode, runId })
     if (budgetCheck.kind === 'exceeded') {
-      await replaceAgentEventTranscriptMessagesBestEffort({
+      await replaceAgentEventTranscriptMessagesBestEffortStep({
         eventId,
         messages: [
           createAssistantTextMessage({
