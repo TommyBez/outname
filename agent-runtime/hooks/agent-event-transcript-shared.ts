@@ -98,7 +98,7 @@ export function statusForStoredEvent(
   if (event.status === 'running') {
     return statusForTerminalEvent(event)
   }
-  if (!currentEventHasWorkflowOutput(event)) {
+  if (!currentEventHasWorkflowOutput(event) && event.status !== 'completed') {
     return statusForEventWithoutRun(event)
   }
   return statusForTerminalEvent(event)
