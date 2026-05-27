@@ -1,6 +1,9 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
-import { requireSession } from '@/auth/server/auth-guard'
+import {
+  hasSlackIntegrationAccess,
+  requireSession,
+} from '@/auth/server/auth-guard'
 import { SlackInstallationsPanel } from '@/channels/slack/components/slack-installations-panel'
 import { listSlackInstallationsForUser } from '@/channels/slack/server/bindings-query'
 import { AppShell } from '@/shared/components/layout/app-shell'
@@ -74,7 +77,10 @@ async function ChannelFlashNotice({
 
 async function ChannelsSection() {
   const session = await requireSession()
-  const installations = await listSlackInstallationsForUser(session.user.id)
+  const isSlackAvailable = await hasSlackIntegrationAccess(session.user.id)
+  const installations = isSlackAvailable
+    ? await listSlackInstallationsForUser(session.user.id)
+    : []
   const isSlackConfigured = Boolean(
     process.env.SLACK_CLIENT_ID && process.env.SLACK_CLIENT_SECRET
   )
@@ -87,24 +93,34 @@ async function ChannelsSection() {
     >
       <div className="mb-8 grid gap-4 md:grid-cols-[minmax(0,1fr)_16rem] md:items-start">
         <div>
-          <h2
-            className="font-black font-serif text-3xl uppercase leading-none tracking-tighter"
-            id="slack-channel-heading"
-          >
-            Slack
-          </h2>
+          <div className="flex flex-wrap items-center gap-3">
+            <h2
+              className="font-black font-serif text-3xl uppercase leading-none tracking-tighter"
+              id="slack-channel-heading"
+            >
+              Slack
+            </h2>
+            {!isSlackAvailable && (
+              <span className="inline-flex h-7 items-center border-2 border-foreground bg-muted px-3 font-bold text-[10px] uppercase tracking-[0.16em]">
+                Coming soon
+              </span>
+            )}
+          </div>
           <p className="mt-2 max-w-2xl text-muted-foreground text-sm">
             Install the Slack app once per workspace. Agent-specific routing
             stays in each agent&apos;s Configure / Integrations section.
           </p>
         </div>
-        <p className="font-mono text-muted-foreground text-xs md:text-right">
-          {installations.length} installed
-        </p>
+        {isSlackAvailable && (
+          <p className="font-mono text-muted-foreground text-xs md:text-right">
+            {installations.length} installed
+          </p>
+        )}
       </div>
 
       <SlackInstallationsPanel
         installations={installations}
+        isAvailable={isSlackAvailable}
         isConfigured={isSlackConfigured}
       />
     </section>

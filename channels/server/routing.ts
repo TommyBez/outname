@@ -1,6 +1,7 @@
 import 'server-only'
 import { and, eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
+import { hasSlackIntegrationAccess } from '@/auth/server/auth-guard'
 import { newChatConversationId } from '@/chat/lib/new-chat-conversation-id'
 import { getOrCreateConversationForAgent } from '@/chat/server/chat'
 import { db } from '@/shared/db'
@@ -41,7 +42,16 @@ export async function resolveRoutesForIncomingMessage(
 
   const routes: ResolvedChannelRoute[] = []
   const seen = new Set<string>()
+  const slackAccessByUserId =
+    msg.channel === 'slack'
+      ? await resolveSlackAccessByUserId(
+          installations.map((install) => install.userId)
+        )
+      : null
   for (const install of installations) {
+    if (msg.channel === 'slack' && !slackAccessByUserId?.get(install.userId)) {
+      continue
+    }
     const candidate = await findCandidateAgentForUser(msg, install.userId)
     if (candidate && !seen.has(candidate.id)) {
       seen.add(candidate.id)
@@ -53,6 +63,19 @@ export async function resolveRoutesForIncomingMessage(
     }
   }
   return routes.sort(compareResolvedRoutes)
+}
+
+async function resolveSlackAccessByUserId(
+  userIds: string[]
+): Promise<Map<string, boolean>> {
+  const uniqueUserIds = [...new Set(userIds)]
+  const accessEntries = await Promise.all(
+    uniqueUserIds.map(
+      async (userId) =>
+        [userId, await hasSlackIntegrationAccess(userId)] as const
+    )
+  )
+  return new Map(accessEntries)
 }
 
 export async function resolveAgentsForIncomingMessage(

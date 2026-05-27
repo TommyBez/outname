@@ -10,6 +10,7 @@ import type {
   InstallationView,
   SlackBindingsPanelProps as SlackBindingsPanelPropsType,
 } from './slack-bindings-panel/types'
+import { SlackComingSoonNotice } from './slack-coming-soon-notice'
 import { SlackNotConfiguredNotice } from './slack-not-configured-notice'
 
 export type { SlackBindingsPanelProps } from './slack-bindings-panel/types'
@@ -18,6 +19,7 @@ export function SlackBindingsPanel({
   agentId,
   bindings,
   installations,
+  isAvailable,
   isConfigured,
 }: SlackBindingsPanelPropsType) {
   const router = useRouter()
@@ -27,6 +29,10 @@ export function SlackBindingsPanel({
     [installations]
   )
   const canBind = workspaceOptions.length > 0
+
+  if (!isAvailable) {
+    return <SlackComingSoonNotice />
+  }
 
   return (
     <div className="flex flex-col gap-6">

@@ -1,6 +1,9 @@
 import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
-import { waitlistManagePermission } from '@/auth/access-control'
+import {
+  slackIntegrationPermission,
+  waitlistManagePermission,
+} from '@/auth/access-control'
 import { auth } from '@/auth/server/auth'
 
 export async function requireSession() {
@@ -24,6 +27,18 @@ export async function hasWaitlistManageAccess(
     body: {
       userId,
       permissions: waitlistManagePermission,
+    },
+  })
+  return permission.success
+}
+
+export async function hasSlackIntegrationAccess(
+  userId: string
+): Promise<boolean> {
+  const permission = await auth.api.userHasPermission({
+    body: {
+      userId,
+      permissions: slackIntegrationPermission,
     },
   })
   return permission.success
