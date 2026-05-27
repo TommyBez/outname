@@ -32,6 +32,7 @@ export const resendSendTool = defineActionTool({
   id: 'resend_send',
   category: 'email',
   displayName: 'Resend · Send',
+  displayDescription: 'Send transactional email through your Resend account.',
   description:
     'Send a transactional email via Resend using the configured sender address.',
   capabilities: [{ kind: 'brokered_http', connectorId: 'resend.api_key' }],

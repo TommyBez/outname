@@ -45,7 +45,7 @@ export function ToolRow({
             {entry.displayName}
           </p>
           <p className="mt-1 text-muted-foreground text-sm">
-            {entry.description}
+            {entry.displayDescription}
           </p>
           {entry.exposedTools.length > 1 && (
             <div className="mt-2 flex flex-col gap-1">

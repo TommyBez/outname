@@ -208,6 +208,7 @@ const v0BundleTools = Object.fromEntries(
     definition.childToolId,
     {
       displayName: `v0 · ${humanizeOperation(definition.operation)}`,
+      displayDescription: `Work with v0 ${humanizeOperation(definition.operation).toLowerCase()}.`,
       description:
         definition.sdkTool.description ??
         `Run the v0 ${humanizeOperation(definition.operation)} tool.`,
@@ -252,6 +253,8 @@ export const v0PlatformTool = defineToolBundle({
   id: V0_ATTACHMENT_TOOL_ID,
   category: 'deployment',
   displayName: 'v0 · Platform',
+  displayDescription:
+    'Create and manage v0 chats, projects, deployments, and webhooks.',
   description:
     'Attach the official v0 Platform AI SDK tools directly for chats, projects, deployments, user info, and webhooks. Defaults to read-only mode.',
   capabilities: [{ kind: 'sdk', connectorId: V0_CONNECTOR_ID }],

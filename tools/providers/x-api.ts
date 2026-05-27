@@ -2,9 +2,10 @@ import 'server-only'
 import { z } from 'zod'
 import { X_OAUTH_SCOPES } from '@/connections/x-oauth-scopes'
 import {
-  enforceGroupAccess,
-  groupReadOnlyField,
-  groupToggleField,
+  buildResourceConfigShape,
+  enforceResourceAccess,
+  findResourceDefinition,
+  type RestResourceDefinition,
 } from '@/tools/providers/rest-resource-groups'
 import {
   defineApiPassthroughTool,
@@ -20,9 +21,10 @@ const X_API_BASE = 'https://api.x.com'
 const X_API_DEFAULT_RESPONSE_BYTES = 12_000
 const X_API_MAX_RESPONSE_BYTES = 64 * 1024
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i
+const RESOURCE_LABEL_SEPARATOR_PATTERN = /[_-]+/
 
 const X_ENDPOINT_GUIDE =
-  'Relative path only, starting with /. Allowed: /2/openapi.json and /2/* (no /stream endpoints). Examples: /2/users/by/username/xdevelopers, /2/tweets/search/recent, /2/tweets, /2/users/me.'
+  'Relative path only, starting with /. Allowed declared X API v2 resources include /2/openapi.json, /2/account, /2/account_activity, /2/connections, /2/dm, /2/dm_conversations, /2/evaluate_note, /2/lists, /2/media, /2/news, /2/notes, /2/posts, /2/tweets, /2/users, and /2/webhooks. Long-lived /stream endpoints are not supported.'
 
 const X_API_JSON_RULES =
   'Use strict JSON for every field: double-quoted keys and string values, no trailing commas, no comments. Dotted X API names such as tweet.fields and user.fields are object keys — quote them.'
@@ -37,29 +39,71 @@ const X_API_INPUT_EXAMPLE =
   '{"method":"GET","path":"/2/tweets/search/recent","query":{"query":"from:xdevelopers -is:retweet","max_results":10,"tweet.fields":"created_at,author_id,text","expansions":"author_id"}}'
 
 const xApiMethodSchema = z.enum(['GET', 'POST', 'PATCH', 'PUT', 'DELETE'])
+const X_APP_RESOURCE_KEYS = [
+  'openapi',
+  'account',
+  'account_activity',
+  'connections',
+  'dm',
+  'dm_conversations',
+  'evaluate_note',
+  'lists',
+  'media',
+  'news',
+  'notes',
+  'posts',
+  'tweets',
+  'users',
+  'webhooks',
+] as const
+
+const X_USER_RESOURCE_KEYS = ['openapi', 'media', 'tweets', 'users'] as const
+
+function toXLabel(key: string): string {
+  if (key === 'openapi') {
+    return 'OpenAPI'
+  }
+  return key
+    .split(RESOURCE_LABEL_SEPARATOR_PATTERN)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+function makeXResources<const T extends readonly string[]>(
+  keys: T
+): readonly RestResourceDefinition[] {
+  return keys.map((key) => ({
+    key,
+    label: toXLabel(key),
+    defaultReadOnly: key === 'openapi',
+    enableDescription:
+      key === 'openapi'
+        ? 'Enable the /2/openapi.json metadata endpoint.'
+        : undefined,
+    readOnlyDescription:
+      key === 'openapi'
+        ? 'When true, the /2/openapi.json metadata endpoint is read-only.'
+        : undefined,
+  }))
+}
+
+const X_APP_RESOURCES = makeXResources(X_APP_RESOURCE_KEYS)
+const X_USER_RESOURCES = makeXResources(X_USER_RESOURCE_KEYS)
+
 const xApiConfigSchema = z.object({
   readOnly: z
     .boolean()
     .default(false)
     .describe('When true, only read operations are allowed across groups.'),
-  enableGroupTweets: groupToggleField('Tweets', 'Enable tweets endpoints.'),
-  readOnlyGroupTweets: groupReadOnlyField(
-    'Tweets',
-    'When true, tweet endpoints are read-only.',
-    false
-  ),
-  enableGroupUsers: groupToggleField('Users', 'Enable users endpoints.'),
-  readOnlyGroupUsers: groupReadOnlyField(
-    'Users',
-    'When true, user endpoints are read-only.',
-    false
-  ),
-  enableGroupMedia: groupToggleField('Media', 'Enable media endpoints.'),
-  readOnlyGroupMedia: groupReadOnlyField(
-    'Media',
-    'When true, media endpoints are read-only.',
-    false
-  ),
+  ...buildResourceConfigShape(X_APP_RESOURCES),
+})
+
+const xUserApiConfigSchema = z.object({
+  readOnly: z
+    .boolean()
+    .default(false)
+    .describe('When true, only read operations are allowed across groups.'),
+  ...buildResourceConfigShape(X_USER_RESOURCES),
 })
 
 const xApiQueryValueSchema = z.union([z.string(), z.number(), z.boolean()])
@@ -95,9 +139,9 @@ const xApiRequestInputSchema = z.object({
     ),
 })
 
-type XApiHttpMethod = z.infer<typeof xApiMethodSchema>
 type XApiRequestInput = z.infer<typeof xApiRequestInputSchema>
 type XApiConfig = z.infer<typeof xApiConfigSchema>
+type XUserApiConfig = z.infer<typeof xUserApiConfigSchema>
 
 function normalizeXApiPath(path: string): string {
   const trimmed = path.trim()
@@ -117,8 +161,15 @@ function normalizedXApiPathname(path: string): string {
   return new URL(normalizeXApiPath(path), X_API_BASE).pathname
 }
 
-function isAllowedPath(pathname: string): boolean {
-  return pathname === '/2/openapi.json' || pathname.startsWith('/2/')
+function xApiResourceKey(pathname: string): string | null {
+  if (pathname === '/2/openapi.json') {
+    return 'openapi'
+  }
+  const parts = pathname.split('/').filter(Boolean)
+  if (parts[0] !== '2') {
+    return null
+  }
+  return parts[1] ?? null
 }
 
 function isStreamingResponsePath(pathname: string): boolean {
@@ -149,27 +200,26 @@ function isAllowedUserContextPath(pathname: string): boolean {
   )
 }
 
-function isMutationMethod(method: XApiHttpMethod): boolean {
-  return method !== 'GET'
+function resolveXResource(
+  pathname: string,
+  resources: readonly RestResourceDefinition[]
+): RestResourceDefinition | null {
+  const resourceKey = xApiResourceKey(pathname)
+  if (!resourceKey) {
+    return null
+  }
+  return findResourceDefinition(resources, resourceKey)
 }
 
-function xApiGroup(pathname: string): 'Tweets' | 'Users' | 'Media' | 'Other' {
-  if (pathname.startsWith('/2/tweets')) {
-    return 'Tweets'
-  }
-  if (pathname.startsWith('/2/users')) {
-    return 'Users'
-  }
-  if (pathname.startsWith('/2/media')) {
-    return 'Media'
-  }
-  return 'Other'
-}
-
-const xApiSafetyPolicy: ToolPolicy<XApiRequestInput, XApiConfig> = ({
-  config,
-  input,
-}) => {
+function validateXApiPath(input: XApiRequestInput):
+  | {
+      ok: false
+      message: string
+    }
+  | {
+      ok: true
+      pathname: string
+    } {
   if (input.method === 'GET' && input.body !== undefined) {
     return { ok: false, message: 'GET requests cannot include a body.' }
   }
@@ -184,7 +234,7 @@ const xApiSafetyPolicy: ToolPolicy<XApiRequestInput, XApiConfig> = ({
     }
   }
 
-  if (!isAllowedPath(pathname)) {
+  if (!pathname.startsWith('/2/')) {
     return {
       ok: false,
       message: `Path "${pathname}" is outside the allowed X API v2 surface.`,
@@ -199,66 +249,56 @@ const xApiSafetyPolicy: ToolPolicy<XApiRequestInput, XApiConfig> = ({
     }
   }
 
-  if (config.readOnly && isMutationMethod(input.method)) {
-    return {
-      ok: false,
-      message:
-        'This tool attachment is configured as read-only. Only GET requests are allowed.',
-    }
-  }
-
-  const group = xApiGroup(pathname)
-  if (group === 'Tweets') {
-    const decision = enforceGroupAccess({
-      enabled: config.enableGroupTweets,
-      group,
-      readOnly: config.readOnlyGroupTweets,
-      method: input.method,
-      globalReadOnly: config.readOnly,
-    })
-    if (!decision.ok) {
-      return decision
-    }
-  }
-  if (group === 'Users') {
-    const decision = enforceGroupAccess({
-      enabled: config.enableGroupUsers,
-      group,
-      readOnly: config.readOnlyGroupUsers,
-      method: input.method,
-      globalReadOnly: config.readOnly,
-    })
-    if (!decision.ok) {
-      return decision
-    }
-  }
-  if (group === 'Media') {
-    const decision = enforceGroupAccess({
-      enabled: config.enableGroupMedia,
-      group,
-      readOnly: config.readOnlyGroupMedia,
-      method: input.method,
-      globalReadOnly: config.readOnly,
-    })
-    if (!decision.ok) {
-      return decision
-    }
-  }
-
-  return { ok: true }
+  return { ok: true, pathname }
 }
 
-const xUserApiSafetyPolicy: ToolPolicy<XApiRequestInput, XApiConfig> = ({
+function enforceXResourcePolicy(args: {
+  config: Record<string, unknown>
+  input: XApiRequestInput
+  pathname: string
+  resources: readonly RestResourceDefinition[]
+}): { ok: true } | { ok: false; message: string } {
+  const resource = resolveXResource(args.pathname, args.resources)
+  if (!resource) {
+    return {
+      ok: false,
+      message: `Path "${args.pathname}" is outside the declared X API resource surface.`,
+    }
+  }
+  return enforceResourceAccess({
+    config: args.config,
+    globalReadOnly: Boolean(args.config.readOnly),
+    method: args.input.method,
+    resource,
+  })
+}
+
+const xApiSafetyPolicy: ToolPolicy<XApiRequestInput, XApiConfig> = ({
   config,
   input,
-  ctx,
 }) => {
-  const base = xApiSafetyPolicy({ config, input, ctx })
-  if (!base.ok) {
-    return base
+  const validation = validateXApiPath(input)
+  if (!validation.ok) {
+    return validation
+  }
+  return enforceXResourcePolicy({
+    config,
+    input,
+    pathname: validation.pathname,
+    resources: X_APP_RESOURCES,
+  })
+}
+
+const xUserApiSafetyPolicy: ToolPolicy<XApiRequestInput, XUserApiConfig> = ({
+  config,
+  input,
+}) => {
+  const validation = validateXApiPath(input)
+  if (!validation.ok) {
+    return validation
   }
 
-  const pathname = normalizedXApiPathname(input.path)
+  const pathname = validation.pathname
   if (
     !isAllowedUserContextPath(pathname) ||
     isBlockedUserContextPath(pathname)
@@ -266,11 +306,16 @@ const xUserApiSafetyPolicy: ToolPolicy<XApiRequestInput, XApiConfig> = ({
     return {
       ok: false,
       message:
-        'This X OAuth user-context tool is limited to tweets, users/me, likes, follows, bookmarks, and media endpoints in v1. DM, list, mute, block, space, and other surfaces are not enabled.',
+        'This X OAuth user-context tool is limited to OpenAPI, tweets, users, and media endpoints in v2. DM, list, mute, block, space, and other surfaces are not enabled.',
     }
   }
 
-  return { ok: true }
+  return enforceXResourcePolicy({
+    config,
+    input,
+    pathname,
+    resources: X_USER_RESOURCES,
+  })
 }
 
 function errorCodeForStatus(status: number) {
@@ -293,6 +338,8 @@ export const xApiRequestTool = defineApiPassthroughTool({
   id: 'x_api_request',
   category: 'social',
   displayName: 'X API · App Request',
+  displayDescription:
+    'Read public X data using your app credentials (not as a signed-in user).',
   description: `Call X API v2 on api.x.com with the app Bearer token (not as an X user). ${X_API_JSON_RULES} Example tool input: ${X_API_INPUT_EXAMPLE}.`,
   connectorId: 'x.bearer_token',
   configSchema: xApiConfigSchema,
@@ -338,10 +385,12 @@ export const xUserApiRequestTool = defineApiPassthroughTool({
   id: 'x_user_api_request',
   category: 'social',
   displayName: 'X API · OAuth User Request',
+  displayDescription:
+    'Post, like, bookmark, and manage your X account on your behalf.',
   description: `Call X API v2 user-context endpoints on api.x.com (tweets, users/me, likes, follows, bookmarks, media). ${X_API_JSON_RULES} Example tool input: ${X_API_INPUT_EXAMPLE}.`,
   connectorId: 'x.oauth2_user',
   requiredScopes: X_OAUTH_SCOPES,
-  configSchema: xApiConfigSchema,
+  configSchema: xUserApiConfigSchema,
   inputSchema: xApiRequestInputSchema,
   policies: [xUserApiSafetyPolicy],
   toRequest({ input }) {

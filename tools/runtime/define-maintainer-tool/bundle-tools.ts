@@ -18,5 +18,6 @@ export function toBundleExposedTools<TConfig>(
     toolId,
     displayName: child.displayName,
     description: child.description,
+    displayDescription: child.displayDescription,
   }))
 }

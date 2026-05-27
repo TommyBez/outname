@@ -23,9 +23,11 @@ export interface ToolCatalogEntry {
   connectors: string[]
   credentialOverrideFields: CredentialOverrideFieldGroup[]
   description: string
+  displayDescription: string
   displayName: string
   exposedTools: Array<{
     description: string
+    displayDescription: string
     displayName: string
     toolId: string
   }>

@@ -2,6 +2,7 @@ import { getConnector } from '@/connections/registry'
 import { getAgentsForUser, getUserConnections } from '@/shared/server/data'
 import { describeConfigSchema } from '@/shared/server/zod-config-fields'
 import { connectorBackedCapabilities } from '@/tools/catalog/capabilities'
+import { clientToolDescription } from '@/tools/catalog/client-description'
 import { listMaintainerTools } from '@/tools/catalog/registry'
 
 export async function listAvailableTools(userId: string) {
@@ -23,7 +24,11 @@ export async function listAvailableTools(userId: string) {
         displayName: tool.displayName,
         category: tool.category,
         description: tool.description,
-        exposedTools: [...tool.resolveExposedTools()],
+        displayDescription: clientToolDescription(tool),
+        exposedTools: [...tool.resolveExposedTools()].map((child) => ({
+          ...child,
+          displayDescription: clientToolDescription(child),
+        })),
         configFields: describeConfigSchema(tool.configSchema),
         connectors: connectors.map((connectorId) => {
           const connector = getConnector(connectorId)

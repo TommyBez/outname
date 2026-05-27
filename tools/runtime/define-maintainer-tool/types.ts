@@ -36,6 +36,7 @@ export interface DefineMaintainerToolArgs<TInput, TConfig, TData> {
   category: string
   configSchema?: z.ZodType<TConfig, unknown>
   description: string
+  displayDescription?: string
   displayName: string
   execute(args: ExecuteArgs<TInput, TConfig>): ExecuteResult<TData>
   exposedTools?: readonly MaintainerExposedTool[]
@@ -47,6 +48,7 @@ export interface DefineMaintainerToolArgs<TInput, TConfig, TData> {
 
 export interface BundleChildToolArgs<TConfig> {
   description: string
+  displayDescription?: string
   displayName: string
   execute(args: ExecuteArgs<unknown, TConfig>): ExecuteResult<unknown>
   inputSchema: z.ZodTypeAny
@@ -59,6 +61,7 @@ export interface DefineToolBundleArgs<TConfig> {
   category: string
   configSchema?: z.ZodType<TConfig, unknown>
   description: string
+  displayDescription?: string
   displayName: string
   id: string
   sandboxManifestId?: string

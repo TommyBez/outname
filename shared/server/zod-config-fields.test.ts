@@ -108,4 +108,42 @@ describe('describeConfigSchema', () => {
   test('returns an empty list for non-object schemas', () => {
     expect(describeConfigSchema(z.string())).toEqual([])
   })
+
+  test('turns grouped resource toggles into compact labels with sections', () => {
+    expect(
+      describeConfigSchema(
+        z.object({
+          enableGroupProjects: z
+            .boolean()
+            .default(true)
+            .describe('[Group: Projects] Enable project endpoints.'),
+          readOnlyGroupProjects: z
+            .boolean()
+            .default(true)
+            .describe(
+              '[Group: Projects] When true, project endpoints are read-only.'
+            ),
+        })
+      )
+    ).toEqual([
+      {
+        defaultValue: true,
+        description: 'Enable project endpoints.',
+        label: 'Enabled',
+        name: 'enableGroupProjects',
+        required: false,
+        section: 'Projects',
+        type: 'boolean',
+      },
+      {
+        defaultValue: true,
+        description: 'When true, project endpoints are read-only.',
+        label: 'Read Only',
+        name: 'readOnlyGroupProjects',
+        required: false,
+        section: 'Projects',
+        type: 'boolean',
+      },
+    ])
+  })
 })

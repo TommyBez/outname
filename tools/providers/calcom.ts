@@ -1,9 +1,10 @@
 import 'server-only'
 import { z } from 'zod'
 import {
-  enforceGroupAccess,
-  groupReadOnlyField,
-  groupToggleField,
+  buildResourceConfigShape,
+  enforceResourceAccess,
+  findResourceDefinition,
+  type RestResourceDefinition,
 } from '@/tools/providers/rest-resource-groups'
 import {
   defineApiPassthroughTool,
@@ -28,35 +29,22 @@ const calcomMethodSchema = z.enum(['GET', 'POST', 'PATCH', 'PUT', 'DELETE'])
 const CALCOM_ENDPOINT_GUIDE =
   'Allowed Cal.com API v2 paths: /me, /event-types, /bookings, /bookings/{uid}/cancel, /bookings/{uid}/reschedule, /slots, /schedules, /webhooks, /teams.'
 
+const CALCOM_RESOURCES = [
+  { key: 'me', label: 'Me' },
+  { key: 'event-types', label: 'Event Types' },
+  { key: 'bookings', label: 'Bookings' },
+  { key: 'slots', label: 'Slots' },
+  { key: 'schedules', label: 'Schedules' },
+  { key: 'webhooks', label: 'Webhooks' },
+  { key: 'teams', label: 'Teams' },
+] as const satisfies readonly RestResourceDefinition[]
+
 const calcomConfigSchema = z.object({
   readOnly: z
     .boolean()
     .default(true)
     .describe('When true, only GET requests are allowed across groups.'),
-  enableGroupBookings: groupToggleField(
-    'Bookings',
-    'Enable bookings endpoints.'
-  ),
-  readOnlyGroupBookings: groupReadOnlyField(
-    'Bookings',
-    'When true, bookings endpoints are read-only.'
-  ),
-  enableGroupEventTypes: groupToggleField(
-    'Event Types',
-    'Enable event-types endpoints.'
-  ),
-  readOnlyGroupEventTypes: groupReadOnlyField(
-    'Event Types',
-    'When true, event-types endpoints are read-only.'
-  ),
-  enableGroupWebhooks: groupToggleField(
-    'Webhooks',
-    'Enable webhooks endpoints.'
-  ),
-  readOnlyGroupWebhooks: groupReadOnlyField(
-    'Webhooks',
-    'When true, webhooks endpoints are read-only.'
-  ),
+  ...buildResourceConfigShape(CALCOM_RESOURCES),
 })
 
 const calcomRequestInputSchema = z.object({
@@ -126,35 +114,29 @@ function defaultCalcomApiVersion(
   return CALCOM_API_VERSION
 }
 
-function calcomGroup(
-  pathname: string
-): 'Bookings' | 'Event Types' | 'Webhooks' | 'Other' {
-  if (pathname === '/bookings' || pathname.startsWith('/bookings/')) {
-    return 'Bookings'
+function calcomResourceKey(pathname: string): string | null {
+  if (pathname === '/me') {
+    return 'me'
   }
   if (pathname === '/event-types' || pathname.startsWith('/event-types/')) {
-    return 'Event Types'
+    return 'event-types'
+  }
+  if (pathname === '/bookings' || pathname.startsWith('/bookings/')) {
+    return 'bookings'
+  }
+  if (pathname === '/slots') {
+    return 'slots'
+  }
+  if (pathname === '/schedules' || pathname.startsWith('/schedules/')) {
+    return 'schedules'
   }
   if (pathname === '/webhooks' || pathname.startsWith('/webhooks/')) {
-    return 'Webhooks'
+    return 'webhooks'
   }
-  return 'Other'
-}
-
-function isAllowedPath(pathname: string): boolean {
-  return (
-    pathname === '/me' ||
-    pathname === '/event-types' ||
-    pathname.startsWith('/event-types/') ||
-    pathname === '/bookings' ||
-    pathname.startsWith('/bookings/') ||
-    pathname === '/slots' ||
-    pathname === '/schedules' ||
-    pathname.startsWith('/schedules/') ||
-    pathname === '/webhooks' ||
-    pathname.startsWith('/webhooks/') ||
-    pathname === '/teams'
-  )
+  if (pathname === '/teams') {
+    return 'teams'
+  }
+  return null
 }
 
 const calcomSafetyPolicy: ToolPolicy<CalcomRequestInput, CalcomConfig> = ({
@@ -163,13 +145,6 @@ const calcomSafetyPolicy: ToolPolicy<CalcomRequestInput, CalcomConfig> = ({
 }) => {
   if (input.method === 'GET' && input.body !== undefined) {
     return { ok: false, message: 'GET requests cannot include a body.' }
-  }
-  if (config.readOnly && input.method !== 'GET') {
-    return {
-      ok: false,
-      message:
-        'This tool attachment is configured as read-only. Only GET requests are allowed.',
-    }
   }
   let pathname: string
   try {
@@ -180,49 +155,28 @@ const calcomSafetyPolicy: ToolPolicy<CalcomRequestInput, CalcomConfig> = ({
       message: err instanceof Error ? err.message : 'Invalid path.',
     }
   }
-  if (!isAllowedPath(pathname)) {
+  const resourceKey = calcomResourceKey(pathname)
+  if (!resourceKey) {
     return {
       ok: false,
       message: `Path "${pathname}" is outside the allowed Cal.com surface.`,
     }
   }
-
-  const group = calcomGroup(pathname)
-  if (group === 'Bookings') {
-    const d = enforceGroupAccess({
-      enabled: config.enableGroupBookings,
-      group,
-      readOnly: config.readOnlyGroupBookings,
-      method: input.method,
-      globalReadOnly: config.readOnly,
-    })
-    if (!d.ok) {
-      return d
+  const resource = findResourceDefinition(CALCOM_RESOURCES, resourceKey)
+  if (!resource) {
+    return {
+      ok: false,
+      message: `Path "${pathname}" does not map to a declared Cal.com resource.`,
     }
   }
-  if (group === 'Event Types') {
-    const d = enforceGroupAccess({
-      enabled: config.enableGroupEventTypes,
-      group,
-      readOnly: config.readOnlyGroupEventTypes,
-      method: input.method,
-      globalReadOnly: config.readOnly,
-    })
-    if (!d.ok) {
-      return d
-    }
-  }
-  if (group === 'Webhooks') {
-    const d = enforceGroupAccess({
-      enabled: config.enableGroupWebhooks,
-      group,
-      readOnly: config.readOnlyGroupWebhooks,
-      method: input.method,
-      globalReadOnly: config.readOnly,
-    })
-    if (!d.ok) {
-      return d
-    }
+  const decision = enforceResourceAccess({
+    config,
+    globalReadOnly: config.readOnly,
+    method: input.method,
+    resource,
+  })
+  if (!decision.ok) {
+    return decision
   }
   return { ok: true }
 }
@@ -231,6 +185,8 @@ export const calcomRequestTool = defineApiPassthroughTool({
   id: 'calcom_request',
   category: 'scheduling',
   displayName: 'Cal.com · Request',
+  displayDescription:
+    'Manage Cal.com scheduling, bookings, event types, and availability.',
   description: `Call authenticated Cal.com API v2 endpoints for scheduling, bookings, event types, availability, and related resources. ${CALCOM_ENDPOINT_GUIDE}`,
   connectorId: 'calcom.api_key',
   configSchema: calcomConfigSchema,

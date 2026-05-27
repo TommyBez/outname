@@ -1,11 +1,39 @@
 import { z } from 'zod'
 
+const RESOURCE_FIELD_SEPARATOR_PATTERN = /[^a-zA-Z0-9]+/
+
+export interface RestResourceDefinition {
+  defaultReadOnly?: boolean
+  enableDescription?: string
+  key: string
+  label: string
+  readOnlyDescription?: string
+}
+
 export function withGroupPrefix(group: string, description: string): string {
   return `[Group: ${group}] ${description}`
 }
 
 export function normalizeResourcePathname(base: string, path: string): string {
   return new URL(path, base).pathname
+}
+
+function toResourceFieldSuffix(key: string): string {
+  return key
+    .split(RESOURCE_FIELD_SEPARATOR_PATTERN)
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join('')
+}
+
+export function resourceConfigFieldName(args: {
+  kind: 'enable' | 'readOnly'
+  resource: RestResourceDefinition
+}): string {
+  const suffix = toResourceFieldSuffix(args.resource.key)
+  return args.kind === 'enable'
+    ? `enableGroup${suffix}`
+    : `readOnlyGroup${suffix}`
 }
 
 export function enforceGroupAccess(args: {
@@ -31,6 +59,77 @@ export function enforceGroupAccess(args: {
     }
   }
   return { ok: true }
+}
+
+export function buildResourceConfigShape(
+  resources: readonly RestResourceDefinition[]
+): Record<string, z.ZodTypeAny> {
+  return Object.fromEntries(
+    resources.flatMap((resource) => [
+      [
+        resourceConfigFieldName({ kind: 'enable', resource }),
+        groupToggleField(
+          resource.label,
+          resource.enableDescription ??
+            `Enable ${resource.label.toLowerCase()} endpoints.`
+        ),
+      ],
+      [
+        resourceConfigFieldName({ kind: 'readOnly', resource }),
+        groupReadOnlyField(
+          resource.label,
+          resource.readOnlyDescription ??
+            `When true, ${resource.label.toLowerCase()} endpoints are read-only.`,
+          resource.defaultReadOnly ?? true
+        ),
+      ],
+    ])
+  )
+}
+
+export function findResourceDefinition(
+  resources: readonly RestResourceDefinition[],
+  key: string
+): RestResourceDefinition | null {
+  return resources.find((resource) => resource.key === key) ?? null
+}
+
+function readResourceConfigValue(args: {
+  config: Record<string, unknown>
+  fallback: boolean
+  kind: 'enable' | 'readOnly'
+  resource: RestResourceDefinition
+}): boolean {
+  const value =
+    args.config[
+      resourceConfigFieldName({ kind: args.kind, resource: args.resource })
+    ]
+  return typeof value === 'boolean' ? value : args.fallback
+}
+
+export function enforceResourceAccess(args: {
+  config: Record<string, unknown>
+  globalReadOnly: boolean
+  method: string
+  resource: RestResourceDefinition
+}): { ok: true } | { ok: false; message: string } {
+  return enforceGroupAccess({
+    enabled: readResourceConfigValue({
+      config: args.config,
+      fallback: true,
+      kind: 'enable',
+      resource: args.resource,
+    }),
+    globalReadOnly: args.globalReadOnly,
+    group: args.resource.label,
+    method: args.method,
+    readOnly: readResourceConfigValue({
+      config: args.config,
+      fallback: args.resource.defaultReadOnly ?? true,
+      kind: 'readOnly',
+      resource: args.resource,
+    }),
+  })
 }
 
 export const groupToggleField = (group: string, description: string) =>

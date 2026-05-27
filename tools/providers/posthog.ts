@@ -1,9 +1,10 @@
 import 'server-only'
 import { z } from 'zod'
 import {
-  enforceGroupAccess,
-  groupReadOnlyField,
-  groupToggleField,
+  buildResourceConfigShape,
+  enforceResourceAccess,
+  findResourceDefinition,
+  type RestResourceDefinition,
 } from '@/tools/providers/rest-resource-groups'
 import {
   defineApiPassthroughTool,
@@ -20,26 +21,70 @@ const POSTHOG_API_BASE_BY_REGION = {
   us: 'https://us.posthog.com',
 } as const
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i
-const RESOURCE_GROUP_SEPARATOR_PATTERN = /[\n,]/
+const RESOURCE_LABEL_SEPARATOR_PATTERN = /[_-]+/
 
-function parseResourceGroupList(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value
-  }
-  if (typeof value !== 'string') {
-    return value
-  }
-  return value
-    .split(RESOURCE_GROUP_SEPARATOR_PATTERN)
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0)
+const POSTHOG_RESOURCE_KEYS = [
+  'project-root',
+  'actions',
+  'activity_log',
+  'annotations',
+  'app_metrics',
+  'batch_exports',
+  'cohorts',
+  'dashboard_templates',
+  'dashboards',
+  'data_management',
+  'early_access_feature',
+  'event_definitions',
+  'events',
+  'experiments',
+  'explicit_members',
+  'exports',
+  'external_data_sources',
+  'feature_flags',
+  'groups',
+  'groups_types',
+  'hooks',
+  'ingestion_warnings',
+  'insights',
+  'integrations',
+  'persons',
+  'pipeline_transformations_configs',
+  'plugin_configs',
+  'property_definitions',
+  'query',
+  'search',
+  'session_recording_playlists',
+  'session_recordings',
+  'subscriptions',
+  'surveys',
+  'tags',
+  'uploaded_media',
+  'warehouse_saved_queries',
+  'warehouse_tables',
+  'warehouse_view_link',
+  'warehouse_view_links',
+] as const
+
+function toPosthogLabel(key: string): string {
+  return key
+    .split(RESOURCE_LABEL_SEPARATOR_PATTERN)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(' ')
 }
 
-function resourceGroupListField(description: string) {
-  return z
-    .preprocess(parseResourceGroupList, z.array(z.string().min(1)).default([]))
-    .describe(description)
-}
+const POSTHOG_RESOURCES = POSTHOG_RESOURCE_KEYS.map((key) => ({
+  key,
+  label: key === 'project-root' ? 'Project Root' : toPosthogLabel(key),
+  enableDescription:
+    key === 'project-root'
+      ? 'Enable the project-root endpoint under /api/projects/{projectId}/.'
+      : undefined,
+  readOnlyDescription:
+    key === 'project-root'
+      ? 'When true, the project-root endpoint is read-only.'
+      : undefined,
+})) as readonly RestResourceDefinition[]
 
 const posthogConfigSchema = z.object({
   region: z
@@ -48,20 +93,6 @@ const posthogConfigSchema = z.object({
     .describe(
       'PostHog server region for this workspace. Choose "us" for US Cloud or "eu" for EU Cloud.'
     ),
-  enableGroupAnnotations: groupToggleField(
-    'Annotations',
-    'Enable annotation endpoints.'
-  ),
-  readOnlyGroupAnnotations: groupReadOnlyField(
-    'Annotations',
-    'When true, annotation endpoints are read-only.'
-  ),
-  disabledResourceGroups: resourceGroupListField(
-    '[Group: Advanced] Optional comma- or newline-separated list of PostHog resource groups to disable entirely (derived from the first path segment under /api/projects/{projectId}/...). Example: insights, dashboards, feature_flags.'
-  ),
-  readOnlyResourceGroups: resourceGroupListField(
-    '[Group: Advanced] Optional comma- or newline-separated list of PostHog resource groups that should be read-only (mutating methods blocked). Example: insights, cohorts.'
-  ),
   projectId: z
     .string()
     .min(1)
@@ -70,6 +101,7 @@ const posthogConfigSchema = z.object({
     .boolean()
     .default(true)
     .describe('When true, only GET requests are allowed. Recommended default.'),
+  ...buildResourceConfigShape(POSTHOG_RESOURCES),
 })
 
 const posthogMethodSchema = z.enum(['GET', 'POST', 'PATCH', 'PUT', 'DELETE'])
@@ -133,23 +165,16 @@ function buildExpectedProjectPrefix(projectId: string): string {
   return `/api/projects/${projectId.trim()}/`
 }
 
-function posthogResourceGroup(
+function posthogResourceKey(
   canonicalPathname: string,
   projectPrefix: string
-): string {
+): string | null {
   const rest = canonicalPathname.slice(projectPrefix.length)
   const firstSegment = rest.split('/').filter(Boolean)[0]
   if (!firstSegment) {
-    return 'Project Root'
+    return 'project-root'
   }
-  return firstSegment
-    .split('-')
-    .map((part) => part[0]?.toUpperCase() + part.slice(1))
-    .join(' ')
-}
-
-function normalizeGroupKey(group: string): string {
-  return group.trim().toLowerCase().replaceAll(' ', '_')
+  return findResourceDefinition(POSTHOG_RESOURCES, firstSegment)?.key ?? null
 }
 
 const posthogSafetyPolicy: ToolPolicy<
@@ -180,46 +205,31 @@ const posthogSafetyPolicy: ToolPolicy<
         'Path must stay inside /api/projects/{projectId}/ endpoints for the configured project ID.',
     }
   }
-  const group = posthogResourceGroup(canonicalPathname, expectedProjectPrefix)
-  if (group === 'Annotations') {
-    const d = enforceGroupAccess({
-      enabled: config.enableGroupAnnotations,
-      group,
-      readOnly: config.readOnlyGroupAnnotations,
-      method: input.method,
-      globalReadOnly: config.readOnly,
-    })
-    if (!d.ok) {
-      return d
-    }
-  }
-  const normalizedGroup = normalizeGroupKey(group)
-  if (
-    config.disabledResourceGroups.some(
-      (g) => normalizeGroupKey(g) === normalizedGroup
-    )
-  ) {
+  const resourceKey = posthogResourceKey(
+    canonicalPathname,
+    expectedProjectPrefix
+  )
+  if (!resourceKey) {
     return {
       ok: false,
-      message: `The ${group} resource group is disabled for this attachment.`,
+      message: `Path "${canonicalPathname}" is outside the declared PostHog project resource surface.`,
     }
   }
-  if (
-    config.readOnlyResourceGroups.some(
-      (g) => normalizeGroupKey(g) === normalizedGroup
-    ) &&
-    input.method !== 'GET'
-  ) {
+  const resource = findResourceDefinition(POSTHOG_RESOURCES, resourceKey)
+  if (!resource) {
     return {
       ok: false,
-      message: `The ${group} resource group is configured as read-only for this attachment.`,
+      message: `Path "${canonicalPathname}" does not map to a declared PostHog resource.`,
     }
   }
-  if (config.readOnly && input.method !== 'GET') {
-    return {
-      ok: false,
-      message: 'This attachment is read-only. Use GET requests only.',
-    }
+  const decision = enforceResourceAccess({
+    config,
+    globalReadOnly: config.readOnly,
+    method: input.method,
+    resource,
+  })
+  if (!decision.ok) {
+    return decision
   }
   return { ok: true }
 }
@@ -228,6 +238,8 @@ export const posthogRequestTool = defineApiPassthroughTool({
   id: 'posthog_request',
   category: 'analytics',
   displayName: 'PostHog · Request',
+  displayDescription:
+    'Query and manage PostHog analytics, flags, and project data.',
   description:
     'Call authenticated PostHog project API endpoints. Defaults to read-only mode for safer analytics retrieval.',
   connectorId: 'posthog.api_key',

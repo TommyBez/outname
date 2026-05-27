@@ -34,6 +34,7 @@ export type BuiltMaintainerTool = Tool | Record<string, Tool>
 
 export interface MaintainerExposedTool {
   description: string
+  displayDescription?: string
   displayName: string
   toolId: string
 }
@@ -87,6 +88,7 @@ export interface MaintainerTool {
   category: string
   configSchema?: z.ZodTypeAny
   description: string
+  displayDescription?: string
   displayName: string
   exposedTools: readonly MaintainerExposedTool[]
   id: string

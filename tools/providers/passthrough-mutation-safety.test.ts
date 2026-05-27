@@ -201,44 +201,54 @@ describe('passthrough mutation safety policies', () => {
     expect(mockBrokeredHttpRequest).not.toHaveBeenCalled()
   })
 
+  it.each([
+    [
+      'x_api_request',
+      xApiRequestTool,
+      { readOnly: false },
+      { method: 'GET', path: '/2/powerstream/rules' },
+    ],
+    [
+      'typefully_request',
+      typefullyRequestTool,
+      { readOnly: false },
+      { method: 'GET', path: '/v2/unknown-surface' },
+    ],
+    [
+      'supabase_request',
+      supabaseRequestTool,
+      { readOnly: false },
+      { method: 'GET', path: '/v1/unknown-surface' },
+    ],
+    [
+      'vercel_request',
+      vercelRequestTool,
+      { readOnly: false },
+      { method: 'GET', path: '/v10/unknown-surface' },
+    ],
+    [
+      'posthog_request',
+      posthogRequestTool,
+      { projectId: '123', readOnly: false },
+      { method: 'GET', path: '/api/projects/123/unknown-surface/' },
+    ],
+  ])('%s rejects paths outside its declared resource registry', async (_name, tool, config, input) => {
+    await expect(buildTool(tool, config).execute(input)).resolves.toMatchObject(
+      {
+        code: 'policy_denied',
+        ok: false,
+      }
+    )
+
+    expect(mockBrokeredHttpRequest).not.toHaveBeenCalled()
+  })
+
   it('Vercel rejects malformed paths before group checks run', async () => {
     await expect(
       buildTool(vercelRequestTool, { readOnly: false }).execute({
         method: 'POST',
         path: 'https://api.vercel.com/v10/projects',
         body: { name: 'project' },
-      })
-    ).resolves.toMatchObject({
-      code: 'policy_denied',
-      ok: false,
-    })
-
-    expect(mockBrokeredHttpRequest).not.toHaveBeenCalled()
-  })
-
-  it('PostHog accepts comma-separated resource-group config from the catalog form', async () => {
-    const tool = buildTool(posthogRequestTool, {
-      projectId: '123',
-      readOnly: false,
-      disabledResourceGroups: 'insights, dashboards',
-      readOnlyResourceGroups: 'cohorts',
-    })
-
-    await expect(
-      tool.execute({
-        method: 'GET',
-        path: '/api/projects/123/insights/',
-      })
-    ).resolves.toMatchObject({
-      code: 'policy_denied',
-      ok: false,
-    })
-
-    await expect(
-      tool.execute({
-        method: 'POST',
-        path: '/api/projects/123/cohorts/',
-        body: { name: 'test cohort' },
       })
     ).resolves.toMatchObject({
       code: 'policy_denied',

@@ -71,6 +71,7 @@ export function defineMaintainerTool<
         toolId: definition.id,
         displayName: definition.displayName,
         description: definition.description,
+        displayDescription: definition.displayDescription,
       }),
     ] as const)
 
@@ -79,6 +80,7 @@ export function defineMaintainerTool<
     category: definition.category,
     displayName: definition.displayName,
     description: definition.description,
+    displayDescription: definition.displayDescription,
     capabilities: definition.capabilities,
     configSchema,
     exposedTools,
@@ -120,6 +122,7 @@ export function defineToolBundle<TConfig = Record<string, never>>(
     category: definition.category,
     displayName: definition.displayName,
     description: definition.description,
+    displayDescription: definition.displayDescription,
     capabilities: definition.capabilities,
     configSchema,
     exposedTools,

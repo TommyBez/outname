@@ -67,6 +67,12 @@ function classify(inner: z.ZodTypeAny): 'text' | 'number' | 'boolean' {
 }
 
 function humanize(name: string): string {
+  if (name.startsWith('enableGroup')) {
+    return 'Enabled'
+  }
+  if (name.startsWith('readOnlyGroup')) {
+    return 'Read Only'
+  }
   return name
     .replace(/[_-]+/g, ' ')
     .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -97,7 +103,7 @@ export function describeConfigSchema(
       label: humanize(name),
       type,
       description: fieldMeta.description,
-      section: fieldMeta.section,
+      ...(fieldMeta.section ? { section: fieldMeta.section } : {}),
       defaultValue:
         typeof defaultValue === 'string' ||
         typeof defaultValue === 'number' ||

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { enforceGroupAccess } from './rest-resource-groups'
+import {
+  buildResourceConfigShape,
+  enforceGroupAccess,
+  enforceResourceAccess,
+  resourceConfigFieldName,
+} from './rest-resource-groups'
 
 describe('enforceGroupAccess', () => {
   it('allows safe methods in read-only mode regardless of case', () => {
@@ -47,5 +52,41 @@ describe('enforceGroupAccess', () => {
       message: 'This attachment blocks mutating projects operations.',
       ok: false,
     })
+  })
+
+  it('generates stable config field names and shapes per resource', () => {
+    const resource = { key: 'feature_flags', label: 'Feature Flags' } as const
+
+    expect(resourceConfigFieldName({ kind: 'enable', resource })).toBe(
+      'enableGroupFeatureFlags'
+    )
+    expect(resourceConfigFieldName({ kind: 'readOnly', resource })).toBe(
+      'readOnlyGroupFeatureFlags'
+    )
+
+    expect(Object.keys(buildResourceConfigShape([resource]))).toEqual([
+      'enableGroupFeatureFlags',
+      'readOnlyGroupFeatureFlags',
+    ])
+  })
+
+  it('reads generated config fields when enforcing resource access', () => {
+    const resource = {
+      defaultReadOnly: true,
+      key: 'feature_flags',
+      label: 'Feature Flags',
+    } as const
+
+    expect(
+      enforceResourceAccess({
+        config: {
+          enableGroupFeatureFlags: true,
+          readOnlyGroupFeatureFlags: false,
+        },
+        globalReadOnly: false,
+        method: 'POST',
+        resource,
+      })
+    ).toEqual({ ok: true })
   })
 })

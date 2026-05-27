@@ -1,9 +1,10 @@
 import 'server-only'
 import { z } from 'zod'
 import {
-  enforceGroupAccess,
-  groupReadOnlyField,
-  groupToggleField,
+  buildResourceConfigShape,
+  enforceResourceAccess,
+  findResourceDefinition,
+  type RestResourceDefinition,
 } from '@/tools/providers/rest-resource-groups'
 import {
   defineApiPassthroughTool,
@@ -19,7 +20,22 @@ const SUPABASE_API_BASE = 'https://api.supabase.com'
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i
 
 const SUPABASE_ENDPOINT_GUIDE =
-  'Allowed Supabase Management API paths begin with /v1/. Examples: /v1/projects, /v1/projects/{ref}, /v1/organizations, /v1/functions.'
+  'Allowed Supabase Management API paths begin with /v1/. Examples: /v1, /v1/projects, /v1/organizations, /v1/branches, /v1/profile, /v1/oauth, and /v1/snippets.'
+
+const SUPABASE_RESOURCES = [
+  {
+    key: 'api-root',
+    label: 'API Root',
+    enableDescription: 'Enable the /v1 API root endpoint.',
+    readOnlyDescription: 'When true, the /v1 API root endpoint is read-only.',
+  },
+  { key: 'branches', label: 'Branches' },
+  { key: 'oauth', label: 'OAuth' },
+  { key: 'organizations', label: 'Organizations' },
+  { key: 'profile', label: 'Profile' },
+  { key: 'projects', label: 'Projects' },
+  { key: 'snippets', label: 'Snippets' },
+] as const satisfies readonly RestResourceDefinition[]
 
 const supabaseMethodSchema = z.enum(['GET', 'POST', 'PATCH', 'PUT', 'DELETE'])
 const supabaseConfigSchema = z.object({
@@ -27,30 +43,7 @@ const supabaseConfigSchema = z.object({
     .boolean()
     .default(true)
     .describe('When true, only GET requests are allowed across groups.'),
-  enableGroupProjects: groupToggleField(
-    'Projects',
-    'Enable projects endpoints.'
-  ),
-  readOnlyGroupProjects: groupReadOnlyField(
-    'Projects',
-    'When true, project endpoints are read-only.'
-  ),
-  enableGroupOrganizations: groupToggleField(
-    'Organizations',
-    'Enable organizations endpoints.'
-  ),
-  readOnlyGroupOrganizations: groupReadOnlyField(
-    'Organizations',
-    'When true, organization endpoints are read-only.'
-  ),
-  enableGroupFunctions: groupToggleField(
-    'Functions',
-    'Enable functions endpoints.'
-  ),
-  readOnlyGroupFunctions: groupReadOnlyField(
-    'Functions',
-    'When true, functions endpoints are read-only.'
-  ),
+  ...buildResourceConfigShape(SUPABASE_RESOURCES),
 })
 
 const supabaseQueryValueSchema = z.union([z.string(), z.number(), z.boolean()])
@@ -113,26 +106,19 @@ function normalizedSupabasePathname(path: string): string {
   return new URL(normalizeSupabasePath(path), SUPABASE_API_BASE).pathname
 }
 
-function isAllowedPath(pathname: string): boolean {
-  return pathname === '/v1' || pathname.startsWith('/v1/')
-}
-
-function supabaseGroup(
-  pathname: string
-): 'Projects' | 'Organizations' | 'Functions' | 'Other' {
-  if (pathname === '/v1/projects' || pathname.startsWith('/v1/projects/')) {
-    return 'Projects'
+function supabaseResourceKey(pathname: string): string | null {
+  if (pathname === '/v1') {
+    return 'api-root'
   }
-  if (
-    pathname === '/v1/organizations' ||
-    pathname.startsWith('/v1/organizations/')
-  ) {
-    return 'Organizations'
+  const parts = pathname.split('/').filter(Boolean)
+  if (parts[0] !== 'v1') {
+    return null
   }
-  if (pathname === '/v1/functions' || pathname.startsWith('/v1/functions/')) {
-    return 'Functions'
+  const resourceKey = parts[1]
+  if (!resourceKey) {
+    return 'api-root'
   }
-  return 'Other'
+  return findResourceDefinition(SUPABASE_RESOURCES, resourceKey)?.key ?? null
 }
 
 const supabaseSafetyPolicy: ToolPolicy<
@@ -141,13 +127,6 @@ const supabaseSafetyPolicy: ToolPolicy<
 > = ({ config, input }) => {
   if (input.method === 'GET' && input.body !== undefined) {
     return { ok: false, message: 'GET requests cannot include a body.' }
-  }
-  if (config.readOnly && input.method !== 'GET') {
-    return {
-      ok: false,
-      message:
-        'This tool attachment is configured as read-only. Only GET requests are allowed.',
-    }
   }
 
   let pathname: string
@@ -160,49 +139,28 @@ const supabaseSafetyPolicy: ToolPolicy<
     }
   }
 
-  if (!isAllowedPath(pathname)) {
+  const resourceKey = supabaseResourceKey(pathname)
+  if (!resourceKey) {
     return {
       ok: false,
       message: `Path "${pathname}" is outside the allowed Supabase Management API surface.`,
     }
   }
-
-  const group = supabaseGroup(pathname)
-  if (group === 'Projects') {
-    const decision = enforceGroupAccess({
-      enabled: config.enableGroupProjects,
-      group,
-      readOnly: config.readOnlyGroupProjects,
-      method: input.method,
-      globalReadOnly: config.readOnly,
-    })
-    if (!decision.ok) {
-      return decision
+  const resource = findResourceDefinition(SUPABASE_RESOURCES, resourceKey)
+  if (!resource) {
+    return {
+      ok: false,
+      message: `Path "${pathname}" does not map to a declared Supabase resource.`,
     }
   }
-  if (group === 'Organizations') {
-    const decision = enforceGroupAccess({
-      enabled: config.enableGroupOrganizations,
-      group,
-      readOnly: config.readOnlyGroupOrganizations,
-      method: input.method,
-      globalReadOnly: config.readOnly,
-    })
-    if (!decision.ok) {
-      return decision
-    }
-  }
-  if (group === 'Functions') {
-    const decision = enforceGroupAccess({
-      enabled: config.enableGroupFunctions,
-      group,
-      readOnly: config.readOnlyGroupFunctions,
-      method: input.method,
-      globalReadOnly: config.readOnly,
-    })
-    if (!decision.ok) {
-      return decision
-    }
+  const decision = enforceResourceAccess({
+    config,
+    globalReadOnly: config.readOnly,
+    method: input.method,
+    resource,
+  })
+  if (!decision.ok) {
+    return decision
   }
 
   return { ok: true }
@@ -232,6 +190,8 @@ export const supabaseRequestTool = defineApiPassthroughTool({
   id: 'supabase_request',
   category: 'database',
   displayName: 'Supabase · Request',
+  displayDescription:
+    'Manage Supabase projects, branches, functions, secrets, and organizations.',
   description: `Call authenticated Supabase Management API endpoints on api.supabase.com for projects, organizations, branches, functions, secrets, and related resources. ${SUPABASE_ENDPOINT_GUIDE}`,
   connectorId: 'supabase.personal_access_token',
   configSchema: supabaseConfigSchema,

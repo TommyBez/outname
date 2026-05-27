@@ -65,7 +65,7 @@ describe('xUserApiRequestTool', () => {
     '/2/users/123/blocking',
     '/2/users/123/muting',
     '/2/spaces/123',
-  ])('rejects user-context path outside the v1 allowlist: %s', async (path) => {
+  ])('rejects user-context path outside the declared v2 surface: %s', async (path) => {
     await expect(
       buildXUserTool().execute({
         method: 'GET',

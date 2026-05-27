@@ -1,9 +1,10 @@
 import 'server-only'
 import { z } from 'zod'
 import {
-  enforceGroupAccess,
-  groupReadOnlyField,
-  groupToggleField,
+  buildResourceConfigShape,
+  enforceResourceAccess,
+  findResourceDefinition,
+  type RestResourceDefinition,
 } from '@/tools/providers/rest-resource-groups'
 import {
   defineApiPassthroughTool,
@@ -17,6 +18,53 @@ import {
 
 const VERCEL_API_BASE = 'https://api.vercel.com'
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i
+const RESOURCE_LABEL_SEPARATOR_PATTERN = /[_-]+/
+
+const VERCEL_RESOURCE_KEYS = [
+  'access-groups',
+  'aliases',
+  'artifacts',
+  'billing',
+  'bulk-redirects',
+  'certs',
+  'connect',
+  'deployments',
+  'domains',
+  'drains',
+  'edge-cache',
+  'edge-config',
+  'env',
+  'events',
+  'files',
+  'installations',
+  'integrations',
+  'log-drains',
+  'messages',
+  'microfrontends',
+  'models',
+  'observability',
+  'products',
+  'projects',
+  'registrar',
+  'sandboxes',
+  'security',
+  'storage',
+  'teams',
+  'user',
+  'webhooks',
+] as const
+
+function toVercelLabel(key: string): string {
+  return key
+    .split(RESOURCE_LABEL_SEPARATOR_PATTERN)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+const VERCEL_RESOURCES = VERCEL_RESOURCE_KEYS.map((key) => ({
+  key,
+  label: toVercelLabel(key),
+})) as readonly RestResourceDefinition[]
 
 const vercelMethodSchema = z.enum(['GET', 'POST', 'PATCH', 'PUT', 'DELETE'])
 
@@ -25,22 +73,7 @@ const vercelConfigSchema = z.object({
     .boolean()
     .default(true)
     .describe('When true, only read operations are allowed for all groups.'),
-  enableGroupProjects: groupToggleField(
-    'Projects',
-    'Enable access to project endpoints.'
-  ),
-  readOnlyGroupProjects: groupReadOnlyField(
-    'Projects',
-    'When true, project endpoints are read-only.'
-  ),
-  enableGroupTeams: groupToggleField(
-    'Teams',
-    'Enable access to team endpoints.'
-  ),
-  readOnlyGroupTeams: groupReadOnlyField(
-    'Teams',
-    'When true, team endpoints are read-only.'
-  ),
+  ...buildResourceConfigShape(VERCEL_RESOURCES),
 })
 
 const vercelRequestInputSchema = z.object({
@@ -80,14 +113,20 @@ function normalizeVercelPath(path: string): string {
   return trimmed
 }
 
-function vercelGroup(pathname: string): 'Projects' | 'Teams' | 'Other' {
-  if (pathname.includes('/projects')) {
-    return 'Projects'
+function normalizedVercelPathname(path: string): string {
+  return new URL(normalizeVercelPath(path), VERCEL_API_BASE).pathname
+}
+
+function vercelResourceKey(pathname: string): string | null {
+  const parts = pathname.split('/').filter(Boolean)
+  if (!parts[0]?.startsWith('v')) {
+    return null
   }
-  if (pathname.includes('/teams')) {
-    return 'Teams'
+  const resourceKey = parts[1]
+  if (!resourceKey) {
+    return null
   }
-  return 'Other'
+  return findResourceDefinition(VERCEL_RESOURCES, resourceKey)?.key ?? null
 }
 
 const vercelSafetyPolicy: ToolPolicy<VercelRequestInput, VercelConfig> = ({
@@ -98,45 +137,39 @@ const vercelSafetyPolicy: ToolPolicy<VercelRequestInput, VercelConfig> = ({
     return { ok: false, message: 'GET requests cannot include a body.' }
   }
   let normalizedPath: string
+  let pathname: string
   try {
     normalizedPath = normalizeVercelPath(input.path)
+    pathname = normalizedVercelPathname(input.path)
   } catch (err) {
     return {
       ok: false,
       message: err instanceof Error ? err.message : 'Invalid path.',
     }
   }
-  const group = vercelGroup(normalizedPath)
-  if (group === 'Projects') {
-    const decision = enforceGroupAccess({
-      enabled: config.enableGroupProjects,
-      group,
-      readOnly: config.readOnlyGroupProjects,
-      method: input.method,
-      globalReadOnly: config.readOnly,
-    })
-    if (!decision.ok) {
-      return decision
-    }
-  }
-  if (group === 'Teams') {
-    const decision = enforceGroupAccess({
-      enabled: config.enableGroupTeams,
-      group,
-      readOnly: config.readOnlyGroupTeams,
-      method: input.method,
-      globalReadOnly: config.readOnly,
-    })
-    if (!decision.ok) {
-      return decision
-    }
-  }
-  if (group === 'Other' && config.readOnly && input.method !== 'GET') {
+
+  const resourceKey = vercelResourceKey(pathname)
+  if (!resourceKey) {
     return {
       ok: false,
-      message:
-        'This tool attachment is configured as read-only. Only GET requests are allowed.',
+      message: `Path "${normalizedPath}" is outside the declared Vercel REST surface.`,
     }
+  }
+  const resource = findResourceDefinition(VERCEL_RESOURCES, resourceKey)
+  if (!resource) {
+    return {
+      ok: false,
+      message: `Path "${normalizedPath}" does not map to a declared Vercel resource.`,
+    }
+  }
+  const decision = enforceResourceAccess({
+    config,
+    globalReadOnly: config.readOnly,
+    method: input.method,
+    resource,
+  })
+  if (!decision.ok) {
+    return decision
   }
   return { ok: true }
 }
@@ -145,6 +178,8 @@ export const vercelRequestTool = defineApiPassthroughTool({
   id: 'vercel_request',
   category: 'deployment',
   displayName: 'Vercel · Request',
+  displayDescription:
+    'Manage Vercel projects, deployments, domains, and account settings.',
   description:
     'Call authenticated Vercel REST API endpoints. Supports read-only attachment mode.',
   connectorId: 'vercel.api_token',
