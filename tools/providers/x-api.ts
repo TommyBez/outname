@@ -24,7 +24,10 @@ const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i
 const RESOURCE_LABEL_SEPARATOR_PATTERN = /[_-]+/
 
 const X_ENDPOINT_GUIDE =
-  'Relative path only, starting with /. Allowed declared X API v2 resources include /2/openapi.json, /2/account, /2/account_activity, /2/connections, /2/dm, /2/dm_conversations, /2/evaluate_note, /2/lists, /2/media, /2/news, /2/notes, /2/posts, /2/tweets, /2/users, and /2/webhooks. Long-lived /stream endpoints are not supported.'
+  'Relative path only, starting with /. Allowed declared X API v2 resources include /2/openapi.json, /2/account, /2/account_activity, /2/connections, /2/dm_conversations, /2/dm_events, /2/evaluate_note, /2/lists, /2/media, /2/news, /2/notes, /2/posts, /2/spaces, /2/tweets, /2/users, and /2/webhooks. Long-lived /stream endpoints are not supported.'
+
+const X_USER_ENDPOINT_GUIDE =
+  'Relative path only, starting with /. OAuth user-context resources include /2/openapi.json, /2/tweets, /2/users, /2/media, /2/lists, /2/spaces, /2/dm_events, and /2/dm_conversations. Long-lived /stream endpoints are not supported.'
 
 const X_API_JSON_RULES =
   'Use strict JSON for every field: double-quoted keys and string values, no trailing commas, no comments. Dotted X API names such as tweet.fields and user.fields are object keys — quote them.'
@@ -44,20 +47,30 @@ const X_APP_RESOURCE_KEYS = [
   'account',
   'account_activity',
   'connections',
-  'dm',
   'dm_conversations',
+  'dm_events',
   'evaluate_note',
   'lists',
   'media',
   'news',
   'notes',
   'posts',
+  'spaces',
   'tweets',
   'users',
   'webhooks',
 ] as const
 
-const X_USER_RESOURCE_KEYS = ['openapi', 'media', 'tweets', 'users'] as const
+const X_USER_RESOURCE_KEYS = [
+  'openapi',
+  'tweets',
+  'users',
+  'media',
+  'lists',
+  'spaces',
+  'dm_events',
+  'dm_conversations',
+] as const
 
 function toXLabel(key: string): string {
   if (key === 'openapi') {
@@ -108,36 +121,43 @@ const xUserApiConfigSchema = z.object({
 
 const xApiQueryValueSchema = z.union([z.string(), z.number(), z.boolean()])
 
-const xApiRequestInputSchema = z.object({
-  method: xApiMethodSchema
-    .default('GET')
-    .describe(
-      'HTTP method. Use GET for reads. Use POST/PATCH/PUT/DELETE only when the endpoint mutates data; pair with body when required.'
-    ),
-  path: z
-    .string()
-    .min(1)
-    .describe(
-      `Relative X API path starting with /. ${X_ENDPOINT_GUIDE} Never pass a full https:// URL.`
-    ),
-  query: z
-    .record(z.string(), xApiQueryValueSchema)
-    .optional()
-    .describe(`${X_API_QUERY_GUIDE} ${X_API_JSON_RULES}`),
-  body: z
-    .record(z.string(), z.unknown())
-    .optional()
-    .describe(`${X_API_BODY_GUIDE} ${X_API_JSON_RULES}`),
-  maxResponseBytes: z
-    .number()
-    .int()
-    .min(1000)
-    .max(X_API_MAX_RESPONSE_BYTES)
-    .default(X_API_DEFAULT_RESPONSE_BYTES)
-    .describe(
-      'Max response bytes to return (1000–65536). Default 12000. Raise for large search results if needed.'
-    ),
-})
+function buildXApiRequestInputSchema(endpointGuide: string) {
+  return z.object({
+    method: xApiMethodSchema
+      .default('GET')
+      .describe(
+        'HTTP method. Use GET for reads. Use POST/PATCH/PUT/DELETE only when the endpoint mutates data; pair with body when required.'
+      ),
+    path: z
+      .string()
+      .min(1)
+      .describe(
+        `Relative X API path starting with /. ${endpointGuide} Never pass a full https:// URL.`
+      ),
+    query: z
+      .record(z.string(), xApiQueryValueSchema)
+      .optional()
+      .describe(`${X_API_QUERY_GUIDE} ${X_API_JSON_RULES}`),
+    body: z
+      .record(z.string(), z.unknown())
+      .optional()
+      .describe(`${X_API_BODY_GUIDE} ${X_API_JSON_RULES}`),
+    maxResponseBytes: z
+      .number()
+      .int()
+      .min(1000)
+      .max(X_API_MAX_RESPONSE_BYTES)
+      .default(X_API_DEFAULT_RESPONSE_BYTES)
+      .describe(
+        'Max response bytes to return (1000–65536). Default 12000. Raise for large search results if needed.'
+      ),
+  })
+}
+
+const xApiRequestInputSchema = buildXApiRequestInputSchema(X_ENDPOINT_GUIDE)
+const xUserApiRequestInputSchema = buildXApiRequestInputSchema(
+  X_USER_ENDPOINT_GUIDE
+)
 
 type XApiRequestInput = z.infer<typeof xApiRequestInputSchema>
 type XApiConfig = z.infer<typeof xApiConfigSchema>
@@ -174,30 +194,6 @@ function xApiResourceKey(pathname: string): string | null {
 
 function isStreamingResponsePath(pathname: string): boolean {
   return pathname.endsWith('/stream')
-}
-
-function isBlockedUserContextPath(pathname: string): boolean {
-  const isUserNestedListPath =
-    pathname.startsWith('/2/users/') &&
-    (pathname.endsWith('/list_memberships') ||
-      pathname.endsWith('/followed_lists'))
-  return (
-    pathname.startsWith('/2/dm') ||
-    pathname.startsWith('/2/lists') ||
-    isUserNestedListPath ||
-    pathname.includes('/blocking') ||
-    pathname.includes('/muting') ||
-    pathname.startsWith('/2/spaces')
-  )
-}
-
-function isAllowedUserContextPath(pathname: string): boolean {
-  return (
-    pathname === '/2/openapi.json' ||
-    pathname.startsWith('/2/tweets') ||
-    pathname.startsWith('/2/users') ||
-    pathname.startsWith('/2/media')
-  )
 }
 
 function resolveXResource(
@@ -297,23 +293,10 @@ const xUserApiSafetyPolicy: ToolPolicy<XApiRequestInput, XUserApiConfig> = ({
   if (!validation.ok) {
     return validation
   }
-
-  const pathname = validation.pathname
-  if (
-    !isAllowedUserContextPath(pathname) ||
-    isBlockedUserContextPath(pathname)
-  ) {
-    return {
-      ok: false,
-      message:
-        'This X OAuth user-context tool is limited to OpenAPI, tweets, users, and media endpoints in v2. DM, list, mute, block, space, and other surfaces are not enabled.',
-    }
-  }
-
   return enforceXResourcePolicy({
     config,
     input,
-    pathname,
+    pathname: validation.pathname,
     resources: X_USER_RESOURCES,
   })
 }
@@ -386,12 +369,12 @@ export const xUserApiRequestTool = defineApiPassthroughTool({
   category: 'social',
   displayName: 'X API · OAuth User Request',
   displayDescription:
-    'Post, like, bookmark, and manage your X account on your behalf.',
-  description: `Call X API v2 user-context endpoints on api.x.com (tweets, users/me, likes, follows, bookmarks, media). ${X_API_JSON_RULES} Example tool input: ${X_API_INPUT_EXAMPLE}.`,
+    'Post, like, follow, bookmark, list, DM, and manage your X account on your behalf.',
+  description: `Call X API v2 OAuth user-context endpoints on api.x.com (posts, users, likes, follows, bookmarks, lists, DMs, Spaces, media). ${X_API_JSON_RULES} Example tool input: ${X_API_INPUT_EXAMPLE}.`,
   connectorId: 'x.oauth2_user',
   requiredScopes: X_OAUTH_SCOPES,
   configSchema: xUserApiConfigSchema,
-  inputSchema: xApiRequestInputSchema,
+  inputSchema: xUserApiRequestInputSchema,
   policies: [xUserApiSafetyPolicy],
   toRequest({ input }) {
     const path = normalizeXApiPath(input.path)
