@@ -42,11 +42,14 @@ export async function resolveRoutesForIncomingMessage(
 
   const routes: ResolvedChannelRoute[] = []
   const seen = new Set<string>()
+  const slackAccessByUserId =
+    msg.channel === 'slack'
+      ? await resolveSlackAccessByUserId(
+          installations.map((install) => install.userId)
+        )
+      : null
   for (const install of installations) {
-    if (
-      msg.channel === 'slack' &&
-      !(await hasSlackIntegrationAccess(install.userId))
-    ) {
+    if (msg.channel === 'slack' && !slackAccessByUserId?.get(install.userId)) {
       continue
     }
     const candidate = await findCandidateAgentForUser(msg, install.userId)
@@ -60,6 +63,19 @@ export async function resolveRoutesForIncomingMessage(
     }
   }
   return routes.sort(compareResolvedRoutes)
+}
+
+async function resolveSlackAccessByUserId(
+  userIds: string[]
+): Promise<Map<string, boolean>> {
+  const uniqueUserIds = [...new Set(userIds)]
+  const accessEntries = await Promise.all(
+    uniqueUserIds.map(
+      async (userId) =>
+        [userId, await hasSlackIntegrationAccess(userId)] as const
+    )
+  )
+  return new Map(accessEntries)
 }
 
 export async function resolveAgentsForIncomingMessage(

@@ -77,10 +77,10 @@ async function ChannelFlashNotice({
 
 async function ChannelsSection() {
   const session = await requireSession()
-  const [installations, isSlackAvailable] = await Promise.all([
-    listSlackInstallationsForUser(session.user.id),
-    hasSlackIntegrationAccess(session.user.id),
-  ])
+  const isSlackAvailable = await hasSlackIntegrationAccess(session.user.id)
+  const installations = isSlackAvailable
+    ? await listSlackInstallationsForUser(session.user.id)
+    : []
   const isSlackConfigured = Boolean(
     process.env.SLACK_CLIENT_ID && process.env.SLACK_CLIENT_SECRET
   )

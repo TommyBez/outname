@@ -43,10 +43,10 @@ export async function AgentSlackSection({
   agentId: string
   userId: string
 }) {
-  const [{ bindings, installations }, isAvailable] = await Promise.all([
-    listSlackBindingsForAgent(agentId, userId),
-    hasSlackIntegrationAccess(userId),
-  ])
+  const isAvailable = await hasSlackIntegrationAccess(userId)
+  const { bindings, installations } = isAvailable
+    ? await listSlackBindingsForAgent(agentId, userId)
+    : { bindings: [], installations: [] }
   const isConfigured = Boolean(
     process.env.SLACK_CLIENT_ID && process.env.SLACK_CLIENT_SECRET
   )
