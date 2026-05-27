@@ -1,6 +1,7 @@
 import { headers } from 'next/headers'
 import { type NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth/server/auth'
+import { hasSlackIntegrationAccess } from '@/auth/server/auth-guard'
 import {
   encodeSlackOAuthState,
   normalizeSlackOAuthReturnTo,
@@ -25,6 +26,16 @@ export async function GET(request: NextRequest): Promise<Response> {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) {
     const target = new URL('/login', request.url)
+    return NextResponse.redirect(target)
+  }
+
+  if (!(await hasSlackIntegrationAccess(session.user.id))) {
+    const target = new URL('/channels#slack', request.url)
+    target.searchParams.set('connection', 'error')
+    target.searchParams.set(
+      'reason',
+      'Slack integration is coming soon for your account.'
+    )
     return NextResponse.redirect(target)
   }
 

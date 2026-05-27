@@ -1,6 +1,7 @@
 import 'server-only'
 import { and, eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
+import { hasSlackIntegrationAccess } from '@/auth/server/auth-guard'
 import { newChatConversationId } from '@/chat/lib/new-chat-conversation-id'
 import { getOrCreateConversationForAgent } from '@/chat/server/chat'
 import { db } from '@/shared/db'
@@ -42,6 +43,12 @@ export async function resolveRoutesForIncomingMessage(
   const routes: ResolvedChannelRoute[] = []
   const seen = new Set<string>()
   for (const install of installations) {
+    if (
+      msg.channel === 'slack' &&
+      !(await hasSlackIntegrationAccess(install.userId))
+    ) {
+      continue
+    }
     const candidate = await findCandidateAgentForUser(msg, install.userId)
     if (candidate && !seen.has(candidate.id)) {
       seen.add(candidate.id)

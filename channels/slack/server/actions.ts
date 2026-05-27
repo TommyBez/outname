@@ -9,6 +9,7 @@ import {
   upsertAgentChannelBinding,
 } from '@/channels/server/bindings'
 import { getChannelInstallationsForUser } from '@/channels/server/installations'
+import { assertSlackIntegrationAccess } from '@/channels/slack/server/access'
 import { deleteSlackInstallation } from '@/channels/slack/server/installations'
 import { db } from '@/shared/db'
 import { agentChannelBindings } from '@/shared/db/schema'
@@ -76,6 +77,10 @@ export async function upsertSlackBindingAction(input: {
   externalKey: string
 }): Promise<ActionResult> {
   const userId = await requireUserId()
+  const access = await assertSlackIntegrationAccess(userId)
+  if (access) {
+    return access
+  }
 
   const parsed = upsertSchema.safeParse(input)
   if (!parsed.success) {
@@ -111,6 +116,10 @@ export async function deleteSlackBindingAction(input: {
   bindingId: string
 }): Promise<ActionResult> {
   const userId = await requireUserId()
+  const access = await assertSlackIntegrationAccess(userId)
+  if (access) {
+    return access
+  }
   const agent = await getAgentByIdForUser(input.agentId, userId)
   if (!agent) {
     return { ok: false, error: 'Agent not found.' }
@@ -148,6 +157,10 @@ export async function disconnectSlackInstallationAction(input: {
   teamId: string
 }): Promise<ActionResult> {
   const userId = await requireUserId()
+  const access = await assertSlackIntegrationAccess(userId)
+  if (access) {
+    return access
+  }
   if (!input.teamId) {
     return { ok: false, error: 'teamId is required.' }
   }

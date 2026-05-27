@@ -8,6 +8,7 @@ import {
 export const accessStatement = {
   ...defaultStatements,
   waitlist: ['manage'],
+  slack: ['use'],
 } as const
 
 export const ac = createAccessControl(accessStatement)
@@ -15,6 +16,7 @@ export const ac = createAccessControl(accessStatement)
 export const adminRole = ac.newRole({
   ...adminAc.statements,
   waitlist: ['manage'],
+  slack: ['use'],
 })
 
 export const userRole = ac.newRole({
@@ -28,4 +30,8 @@ export const roles = {
 
 export const waitlistManagePermission = {
   waitlist: ['manage'] as 'manage'[],
+}
+
+export const slackIntegrationPermission = {
+  slack: ['use'] as 'use'[],
 }

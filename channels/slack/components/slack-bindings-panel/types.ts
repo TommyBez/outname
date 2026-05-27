@@ -10,5 +10,6 @@ export interface SlackBindingsPanelProps {
   agentId: string
   bindings: SlackBindingViewType[]
   installations: InstallationView[]
+  isAvailable: boolean
   isConfigured: boolean
 }

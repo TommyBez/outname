@@ -1,4 +1,5 @@
 import type { AgentBudgetValues } from '@/agents/components/agent-budget-widget'
+import { hasSlackIntegrationAccess } from '@/auth/server/auth-guard'
 import {
   BudgetRules,
   type BudgetRuleView,
@@ -42,10 +43,10 @@ export async function AgentSlackSection({
   agentId: string
   userId: string
 }) {
-  const { bindings, installations } = await listSlackBindingsForAgent(
-    agentId,
-    userId
-  )
+  const [{ bindings, installations }, isAvailable] = await Promise.all([
+    listSlackBindingsForAgent(agentId, userId),
+    hasSlackIntegrationAccess(userId),
+  ])
   const isConfigured = Boolean(
     process.env.SLACK_CLIENT_ID && process.env.SLACK_CLIENT_SECRET
   )
@@ -54,6 +55,7 @@ export async function AgentSlackSection({
       agentId={agentId}
       bindings={bindings}
       installations={installations}
+      isAvailable={isAvailable}
       isConfigured={isConfigured}
     />
   )
