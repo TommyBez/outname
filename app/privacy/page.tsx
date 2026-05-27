@@ -188,8 +188,8 @@ export default function PrivacyPage() {
             <LegalLink href={`mailto:${privacyEmail}`}>
               {privacyEmail}
             </LegalLink>
-            . Product support: see our{' '}
-            <LegalLink href="/support">Support</LegalLink> page.
+            . See also our <LegalLink href="/terms">Terms of Service</LegalLink>{' '}
+            and <LegalLink href="/support">Support</LegalLink> page.
           </p>
         </LegalSection>
       </div>

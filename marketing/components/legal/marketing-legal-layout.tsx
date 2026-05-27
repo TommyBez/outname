@@ -14,7 +14,16 @@ export function MarketingLegalLayout({ children }: { children: ReactNode }) {
             <span aria-hidden className="inline-block size-3 bg-accent" />
             <span>{siteConfig.name}</span>
           </Link>
-          <nav aria-label="Legal" className="flex items-center gap-6">
+          <nav
+            aria-label="Legal"
+            className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2"
+          >
+            <Link
+              className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.18em] transition-colors hover:text-foreground"
+              href="/terms"
+            >
+              Terms
+            </Link>
             <Link
               className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.18em] transition-colors hover:text-foreground"
               href="/privacy"

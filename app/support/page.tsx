@@ -103,7 +103,8 @@ export default function SupportPage() {
         <LegalSection title="Privacy and data">
           <p>
             For data access, deletion, or privacy questions, see our{' '}
-            <LegalLink href="/privacy">Privacy Policy</LegalLink> or email{' '}
+            <LegalLink href="/privacy">Privacy Policy</LegalLink> and{' '}
+            <LegalLink href="/terms">Terms of Service</LegalLink>, or email{' '}
             <LegalLink href={`mailto:${privacyEmail}`}>
               {privacyEmail}
             </LegalLink>
