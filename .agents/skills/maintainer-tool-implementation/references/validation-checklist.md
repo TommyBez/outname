@@ -7,6 +7,7 @@ Use this checklist before closing a maintainer-tool task.
 - [ ] `id` is unique, stable, and snake_case
 - [ ] `displayName` is clear in the catalog UI
 - [ ] `description` explains the tool's purpose without leaking implementation noise
+- [ ] `displayDescription` is set when catalog UI needs shorter copy than the model-facing description
 - [ ] category reuses an existing bucket unless a new one is truly needed
 - [ ] `configSchema` only contains attachment defaults
 - [ ] `inputSchema` only contains per-call arguments
@@ -33,6 +34,11 @@ Use this checklist before closing a maintainer-tool task.
 - [ ] authenticated API or CLI flows use Secret Injection rather than exposing credentials to tool code or sandboxed processes
 - [ ] authenticated egress is restricted to the minimum required provider domains or narrow wildcards
 - [ ] destructive actions require an explicit confirmation field or policy
+- [ ] multi-group REST tools declare a resource registry and reject undeclared paths before brokered HTTP
+- [ ] multi-group REST tools use `buildResourceConfigShape` and `enforceResourceAccess` instead of ad hoc field names
+- [ ] group config fields use `[Group: …]` descriptions when the attachment form should render grouped toggles
+- [ ] global `readOnly` and per-group read-only both block mutating methods while allowing GET/HEAD/OPTIONS
+- [ ] path validation and normalization happen before resource-group checks
 - [ ] expected failures return `toolError(...)`
 - [ ] provider failures map to `provider_error`
 - [ ] oversized provider errors are clipped or summarized
@@ -81,6 +87,8 @@ Do not add manual plumbing for these unless the new tool truly breaks the standa
 - [ ] re-read `connections/registry.ts` if you introduced or changed a connector
 - [ ] re-read any connector broker or sandbox network policy touched by the authenticated integration
 - [ ] run focused tests for policy, request building, response handling, and bundle child exposure when applicable
+- [ ] run `tools/providers/rest-resource-groups.test.ts` when changing shared group-access helpers
+- [ ] run `tools/providers/passthrough-mutation-safety.test.ts` when changing REST passthrough policy behavior
 - [ ] run `pnpm check` when the change is non-trivial or shared types moved
 - [ ] run `pnpm test:typecheck` when touching shared runtime types or connector credential types
 - [ ] clearly call out any missing prerequisite, such as connector config, OAuth app config, sandbox manifest, provider tier, or product policy

@@ -2,7 +2,7 @@
 name: maintainer-tool-implementation
 description: Implement a new maintainer tool in this codebase's tool catalog. Use when adding a tool under `tools/providers/`, wiring a connector-backed integration, wrapping an official SDK as AI tools or tool bundles, creating a `tool_sandbox` or `repo_workspace` tool, updating `tools/catalog/registry.ts`, or when the user mentions maintainer tools, connectors, OAuth scopes, `define-maintainer-tool`, `defineActionTool`, `defineToolBundle`, `defineApiPassthroughTool`, `defineSandboxTool`, brokered HTTP, SDK-backed tools, repo workspaces, or catalog tool attachments.
 metadata:
-  version: 1.2.0
+  version: 1.3.0
 ---
 
 # Maintainer Tool Implementation
@@ -15,7 +15,10 @@ The current architecture is connector-based. A maintainer tool never asks for a 
 
 Before making changes, read the local code that owns the relevant surface:
 
-- `tools/catalog/types.ts` for `ToolCapability`, `Reconnect`, and maintainer tool shape
+- `tools/catalog/types.ts` for `ToolCapability`, `Reconnect`, maintainer tool shape, and optional `displayDescription`
+- `tools/catalog/client-description.ts` for catalog UI description fallback
+- `shared/server/zod-config-fields.ts` for attachment-form field metadata and `[Group: …]` section parsing
+- `tools/providers/rest-resource-groups.ts` when a passthrough or bundle tool spans multiple REST resource groups
 - `tools/catalog/capabilities.ts` for connector-backed capability detection
 - `tools/catalog/registry.ts` for registry wiring and boot validation
 - `tools/runtime/define-maintainer-tool` for helper APIs and execution behavior
@@ -27,8 +30,9 @@ Before making changes, read the local code that owns the relevant surface:
 Default references:
 
 - `tools/providers/resend.ts` for a custom action tool using brokered HTTP with `connectorId: 'resend.api_key'`
-- `tools/providers/calcom.ts` for an API passthrough tool with request policies
-- `tools/providers/x-api.ts` for separate app-only and OAuth user-context tools, including `requiredScopes`
+- `tools/providers/calcom.ts` for an API passthrough tool with per-group config and request policies
+- `tools/providers/vercel.ts` or `tools/providers/posthog.ts` for large declared REST resource registries with group access
+- `tools/providers/x-api.ts` for separate app-only and OAuth user-context tools, per-group config, and `requiredScopes`
 - `connections/x-oauth-scopes.ts` for an OAuth scope bundle shared by the connector and tool implementation
 - `tools/providers/agent-browser.ts` for a sandbox-backed CLI tool
 - `tools/providers/github-repo.ts` for a connector-backed live repository workspace bundle with `capabilities: [{ kind: 'repo_workspace', connectorId: 'github.personal_access_token' }]`
@@ -77,7 +81,7 @@ Do not ask for wiring details that the repository already makes clear.
 
 Deliver a tool that:
 
-- has a stable registry id and clear catalog label
+- has a stable registry id, clear catalog label, and optional short `displayDescription` for the attachment UI
 - exposes a model-friendly input schema with useful field descriptions
 - declares the correct capability: `brokered_http`, `sdk`, `tool_sandbox`, `repo_workspace`, or `none`
 - keeps authenticated credentials outside tool code and outside the sandbox VM boundary
@@ -111,6 +115,7 @@ For SDK-backed tools, choose one of two patterns:
 - For repo-oriented sandbox tools, prefer the existing `bash-tool` adapter surface (`bash`, `readFile`, `writeFile`) before inventing provider-specific wrappers
 - Prefer `tools/runtime/define-maintainer-tool/provider-response.ts` when several brokered HTTP tools need the same clipped-error / response-body plumbing
 - Prefer `tools/runtime/define-maintainer-tool/sdk-step.ts` when a workflow step needs connector-backed SDK credentials without hand-rolling credential error mapping
+- Prefer `tools/providers/rest-resource-groups.ts` when a REST passthrough or bundle spans multiple resource groups and needs shared enable/read-only config plus policy enforcement
 - For sandbox manifests, keep installer bytes in `tools/sandboxes/<id>/setup.ts` and expose them through `tools/sandboxes/registry.ts`; do not rely on runtime reads of repo-relative `.sh` files
 
 ### 3. Enforce Secret Injection for authenticated tools
@@ -135,6 +140,13 @@ If a tool is based on an authenticated API or CLI, it must use the Secret Inject
 
 Every important input and config field should have a `describe(...)` string. The model sees these descriptions and uses them to decide how to call the tool.
 
+Split catalog copy when the model needs more detail than humans should see in the attachment picker:
+
+- `description`: full, model-facing explanation of what the tool does and how to call it safely
+- `displayDescription`: optional short label for catalog UI, child-tool rows, and agent creation flows
+- set `displayDescription` on bundles and child tools when the technical `description` is long or noisy
+- the UI resolves copy through `clientToolDescription(...)`, which prefers `displayDescription` and falls back to `description`
+
 ### 6. Guard destructive behavior
 
 If the tool can create, cancel, delete, send, post, mutate, or otherwise do something irreversible, use concrete safety boundaries such as `readOnly` attachment config, narrow path allowlists, explicit deny policies, more specific tool surfaces, or human confirmation outside the tool input schema.
@@ -146,6 +158,18 @@ When a single attachment exposes API operations across multiple **resource group
 - Keep any existing global `readOnly` as a coarse safety override, but enforce group-level flags in each mutating child tool policy.
 - Prefer clear field naming that maps to UX sections, such as `enableGroupProjects`, `readOnlyGroupProjects`.
 - In the attachment form UX, organize complex configs by group sections so users can reason about one resource domain at a time.
+
+For REST passthrough and bundle tools with multiple resource groups, reuse `tools/providers/rest-resource-groups.ts` instead of hand-rolling config field names or policy checks:
+
+- declare a readonly `RestResourceDefinition[]` registry with `key`, `label`, and optional `defaultReadOnly`, `enableDescription`, and `readOnlyDescription`
+- spread `...buildResourceConfigShape(resources)` into `configSchema`; this generates paired `enableGroup*` / `readOnlyGroup*` fields with stable suffixes from each resource `key`
+- build group field descriptions with `withGroupPrefix(label, description)` so `describeConfigSchema` can parse `[Group: …]` into attachment-form sections
+- use `groupToggleField` and `groupReadOnlyField` when adding one-off group booleans outside `buildResourceConfigShape`
+- default to safe attachment behavior: group enable defaults to `true`, group read-only defaults to `true` unless a resource sets `defaultReadOnly: false`
+- map each request path to exactly one declared resource; reject unknown paths with `policy_denied` before brokered HTTP runs
+- validate and normalize paths first, then run resource lookup, then call `enforceResourceAccess({ config, globalReadOnly, method, resource })`
+- treat `GET`, `HEAD`, and `OPTIONS` as safe methods that remain allowed when global or group read-only is enabled; block mutating methods otherwise
+- when a group is disabled, block all methods for that group with a clear policy message
 
 ### 7. Keep failures crisp
 
@@ -175,6 +199,10 @@ Implementation checklist:
 - [ ] Decide whether brokered HTTP responses need connector-level or request-level `maxResponseBytes`
 - [ ] Reuse shared brokered HTTP response helpers when response handling is mechanical
 - [ ] Reuse the shared SDK step helper when connector-backed SDK credentials are needed inside a workflow step
+- [ ] Add `displayDescription` when catalog UI needs shorter copy than the model-facing `description`
+- [ ] For multi-group REST tools, declare a resource registry and reuse `rest-resource-groups.ts`
+- [ ] Generate group config with `buildResourceConfigShape` and enforce access with `enforceResourceAccess`
+- [ ] Reject undeclared paths and malformed paths before brokered HTTP
 - [ ] Implement `tools/providers/<tool-name>.ts`
 - [ ] Register the export in `tools/catalog/registry.ts`
 - [ ] Update `TOOL_CATEGORY_ORDER` only if introducing a new category
@@ -188,11 +216,13 @@ Lock down:
 
 - stable `id` in snake_case
 - human-facing `displayName`
-- short catalog `description`
+- model-facing `description`
+- optional short `displayDescription` for catalog UI when the technical description is long
 - category, preferably reusing an existing one
 - whether the tool depends on a connector, sandbox snapshot, live repo workspace, SDK, or none
 - if bundling, a stable attachment id plus stable namespaced child tool ids
 - if OAuth-backed, required scope bundle and whether endpoints are read-only or mutating
+- if REST passthrough spans multiple resource groups, the declared resource registry and which groups are mutating by default
 
 ### Step 2: Implement or reuse the connector
 
@@ -219,6 +249,8 @@ In `tools/providers/<tool-name>.ts`:
 
 - define `configSchema` if the attachment needs saved defaults
 - define `inputSchema`
+- set `displayDescription` on the attachment and child tools when catalog UI should stay concise
+- if the tool spans multiple REST resource groups, declare `RestResourceDefinition[]`, spread `buildResourceConfigShape(...)`, and enforce `enforceResourceAccess(...)` inside policies
 - if bundling, define the child tool map and make child ids stable / namespaced
 - if brokered HTTP is involved, investigate expected payload size and set `maxResponseBytes` deliberately
 - implement execution with the chosen helper
@@ -255,6 +287,7 @@ Normal registry wiring automatically updates attachment planning, prompt setup i
 ### Step 5: Wire dependencies only when needed
 
 - New brokered HTTP tool on an existing connector: usually touch only `tools/providers/<tool>.ts`, `tools/catalog/registry.ts`, and tests
+- New REST passthrough with multiple resource groups: reuse `tools/providers/rest-resource-groups.ts`, add or extend `tools/providers/rest-resource-groups.test.ts` and `tools/providers/passthrough-mutation-safety.test.ts` when policy behavior changes
 - New connector-backed API surface: add or update `connections/` plus registry, then declare the exact `connectorId` on the tool
 - New OAuth-backed tool: add `requiredScopes` when needed; do not implement OAuth flow inside the tool
 - New SDK-backed tool with connector: ensure the connector exists, use `capabilities: [{ kind: 'sdk', connectorId: '<connectorId>' }]`, read credentials only at execute time, and never expose secrets through attachment config
@@ -279,7 +312,11 @@ At minimum:
 - confirm connector-backed SDK tools read credentials only at execute time and never during tool build
 - confirm the chosen `maxResponseBytes` matches the tool's expected payload shape and size
 - confirm `response.truncated` is handled intentionally for brokered HTTP tools
+- confirm REST resource-group tools reject undeclared paths and enforce global plus per-group read-only rules
+- confirm group config fields use `[Group: …]` descriptions when the attachment form should render grouped toggles
+- confirm `displayDescription` is present when the model-facing `description` is too long for catalog UI
 - if you introduced a new runtime abstraction, confirm it is provider-agnostic and reusable by similar future tools
+- run focused tests for resource-group policy and passthrough mutation safety when applicable
 - run `pnpm check` if the change is substantial or touches shared runtime types
 - mention any unimplemented prerequisite such as a missing connector, missing sandbox manifest, missing OAuth app config, or missing product rule
 
@@ -295,6 +332,8 @@ When you finish, report:
 
 - which pattern you chose and why
 - which connector id or auth surface the tool uses, if any
+- whether you added `displayDescription` and how catalog copy differs from model copy
+- whether the tool uses a declared REST resource registry and per-group access controls
 - which files changed
 - whether the attachment exposes one tool or a bundle of child tools
 - whether the tool is ready immediately or still depends on connector config, OAuth app config, sandbox build, or product decision

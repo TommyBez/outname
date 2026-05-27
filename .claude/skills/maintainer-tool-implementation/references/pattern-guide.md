@@ -6,7 +6,7 @@ Use this file to pick the right helper before writing the tool.
 
 | Situation | Use | Capability | Best reference |
 | --- | --- | --- | --- |
-| Authenticated HTTP call with request/response normalization | `defineApiPassthroughTool` | `brokered_http` with `connectorId` | `tools/providers/calcom.ts`, `tools/providers/x-api.ts` |
+| Authenticated HTTP call with request/response normalization | `defineApiPassthroughTool` | `brokered_http` with `connectorId` | `tools/providers/calcom.ts`, `tools/providers/vercel.ts`, `tools/providers/x-api.ts` |
 | Custom execution flow with parsing, multiple steps, or mixed concerns | `defineActionTool` | `brokered_http`, `tool_sandbox`, `none`, or a mix | `tools/providers/resend.ts` |
 | One attachment exposing several related child tools that share config and capabilities | `defineToolBundle` | `brokered_http`, `sdk`, `tool_sandbox`, or a mix | `tools/providers/v0.ts` |
 | Repo cloned live per run, connector-backed credentials, no snapshot | `defineToolBundle` | `repo_workspace` with `connectorId` | `tools/providers/github-repo.ts` |
@@ -62,6 +62,78 @@ Example from X:
 - `x.oauth2_user` backs `x_user_api_request` for user-context requests and declares `requiredScopes`
 
 Do not add a tool that silently accepts either connector. One maintainer tool capability should point at one explicit connector surface.
+
+## Catalog Copy: `description` vs `displayDescription`
+
+Use both fields when the model needs richer guidance than the attachment picker should show.
+
+- `description`: full tool guidance for the model and runtime prompts
+- `displayDescription`: optional short label for catalog UI, child-tool rows, and agent creation flows
+- resolve UI copy with `clientToolDescription(...)`, which prefers `displayDescription`
+
+Set `displayDescription` on bundles and child tools when the technical description includes endpoint lists, JSON rules, or other prompt-oriented detail.
+
+## REST Resource Groups
+
+Use this pattern when one attachment exposes many REST endpoints that belong to distinct resource domains.
+
+Shared module: `tools/providers/rest-resource-groups.ts`
+
+Typical flow:
+
+1. Declare a readonly `RestResourceDefinition[]` registry with stable `key` and human `label` values.
+2. Spread `...buildResourceConfigShape(resources)` into `configSchema`.
+3. Keep a global `readOnly` boolean as a coarse override when the provider supports it.
+4. Normalize and validate the request path before resource lookup.
+5. Map the canonical pathname to one declared resource; reject unknown paths with `policy_denied`.
+6. Call `enforceResourceAccess({ config, globalReadOnly, method, resource })` inside the tool policy.
+
+Config and UX conventions:
+
+- generated enable fields use `enableGroup{Suffix}` and default to `true`
+- generated read-only fields use `readOnlyGroup{Suffix}` and default to `true` unless `defaultReadOnly: false`
+- group field descriptions should use `withGroupPrefix(label, description)` so attachment forms render grouped toggles via `describeConfigSchema`
+- safe methods are `GET`, `HEAD`, and `OPTIONS`; mutating methods are blocked when global or group read-only is enabled
+
+Skeleton:
+
+```ts
+const RESOURCES = [
+  { key: 'projects', label: 'Projects' },
+  { key: 'deployments', label: 'Deployments', defaultReadOnly: false },
+] as const satisfies readonly RestResourceDefinition[]
+
+const configSchema = z.object({
+  readOnly: z
+    .boolean()
+    .default(true)
+    .describe('When true, only read operations are allowed across groups.'),
+  ...buildResourceConfigShape(RESOURCES),
+})
+
+const safetyPolicy: ToolPolicy<Input, Config> = ({ config, input }) => {
+  const pathname = normalizeResourcePathname(API_BASE, input.path)
+  const resource = findResourceDefinition(RESOURCES, resourceKeyFromPath(pathname))
+  if (!resource) {
+    return {
+      ok: false,
+      message: `Path "${pathname}" is outside the declared resource surface.`,
+    }
+  }
+  return enforceResourceAccess({
+    config,
+    globalReadOnly: config.readOnly,
+    method: input.method,
+    resource,
+  })
+}
+```
+
+Best references:
+
+- `tools/providers/vercel.ts` and `tools/providers/posthog.ts` for large registries
+- `tools/providers/x-api.ts` for different registries per auth surface
+- `tools/providers/rest-resource-groups.test.ts` and `tools/providers/passthrough-mutation-safety.test.ts` for policy expectations
 
 ## `defineActionTool`
 
