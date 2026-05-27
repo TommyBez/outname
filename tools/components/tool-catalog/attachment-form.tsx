@@ -7,11 +7,9 @@ import { toast } from 'sonner'
 import { attachToolAction, detachToolAction } from '@/tools/actions'
 import { CatalogActionButtons } from './action-buttons'
 import { ConfigField } from './config-field'
-import type {
-  AttachedToolView,
-  ToolCatalogEntry,
-  ToolConfigField,
-} from './types'
+import { partitionConfigFields } from './config-field-utils'
+import { GroupConfigPanel } from './group-config-panel'
+import type { AttachedToolView, ToolCatalogEntry } from './types'
 import { defaultValuesFor, submitButtonLabel } from './utils'
 
 interface AttachmentFormProps {
@@ -43,19 +41,10 @@ export function AttachmentForm({
   const [open, setOpen] = useState(false)
   const hasFields =
     entry.configFields.length > 0 || entry.credentialOverrideFields.length > 0
-  const groupedConfigFields = useMemo(() => {
-    const grouped = new Map<string, ToolConfigField[]>()
-    for (const field of entry.configFields) {
-      const section = field.section ?? 'General'
-      const current = grouped.get(section) ?? []
-      current.push(field)
-      grouped.set(section, current)
-    }
-    return Array.from(grouped.entries()).map(([section, fields]) => ({
-      section,
-      fields,
-    }))
-  }, [entry.configFields])
+  const { generalFields, globalReadOnlyField, groupSections } = useMemo(
+    () => partitionConfigFields(entry.configFields),
+    [entry.configFields]
+  )
 
   function handleAttach() {
     const config = buildToolConfig(entry, values)
@@ -125,32 +114,30 @@ export function AttachmentForm({
       />
       {open && hasFields && (
         <form
-          className="flex w-full max-w-lg flex-col gap-3 border-2 border-foreground bg-muted p-4"
+          className="flex w-full max-w-2xl flex-col gap-3 border-2 border-foreground bg-muted p-4"
           onSubmit={handleAttachSubmit}
         >
-          {groupedConfigFields.map((group) => (
-            <div className="flex flex-col gap-3" key={group.section}>
-              {groupedConfigFields.length > 1 && (
-                <p className="font-black font-mono text-xs uppercase tracking-[0.08em]">
-                  {group.section}
-                </p>
-              )}
-              {group.fields.map((field) => (
-                <ConfigField
-                  field={field}
-                  key={field.name}
-                  onChange={(value) =>
-                    setValues((current) => ({
-                      ...current,
-                      [field.name]: value,
-                    }))
-                  }
-                  toolId={entry.toolId}
-                  value={values[field.name] ?? ''}
-                />
-              ))}
-            </div>
+          {generalFields.map((field) => (
+            <ConfigField
+              field={field}
+              key={field.name}
+              onChange={(value) =>
+                setValues((current) => ({
+                  ...current,
+                  [field.name]: value,
+                }))
+              }
+              toolId={entry.toolId}
+              value={values[field.name] ?? ''}
+            />
           ))}
+          <GroupConfigPanel
+            disabled={pending}
+            globalReadOnlyField={globalReadOnlyField}
+            groupSections={groupSections}
+            onChange={setValues}
+            values={values}
+          />
           {entry.credentialOverrideFields.map((group) => (
             <div className="flex flex-col gap-3" key={group.connectorId}>
               <div className="flex flex-wrap items-center justify-between gap-2">
