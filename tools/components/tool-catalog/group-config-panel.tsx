@@ -48,6 +48,12 @@ export function GroupConfigPanel({
     globalReadOnlyField,
     false
   )
+  const hasEnableFields = groupSections.some(
+    (group) => group.enable !== undefined
+  )
+  const hasReadOnlyFields =
+    globalReadOnlyField !== undefined ||
+    groupSections.some((group) => group.readOnly !== undefined)
 
   return (
     <div className="flex flex-col gap-3">
@@ -55,46 +61,52 @@ export function GroupConfigPanel({
         <p className="font-black font-mono text-xs uppercase tracking-[0.08em]">
           Resource groups
         </p>
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-          <BulkToggleControl
-            disabled={disabled}
-            falseActive={allDisabled}
-            falseLabel="Disable all"
-            fieldRole="enable"
-            label="Enabled"
-            onSelect={(nextValue) =>
-              onChange(
-                patchGroupBooleanValues(
-                  values,
-                  groupSections,
-                  'enable',
-                  nextValue
-                )
-              )
-            }
-            trueActive={allEnabled}
-            trueLabel="Enable all"
-          />
-          <BulkToggleControl
-            disabled={disabled}
-            falseActive={allWritable}
-            falseLabel="Writable all"
-            fieldRole="readonly"
-            label="Access"
-            onSelect={(nextValue) =>
-              onChange(
-                patchAllWriteAccess(
-                  values,
-                  groupSections,
-                  globalReadOnlyField,
-                  nextValue
-                )
-              )
-            }
-            trueActive={allReadOnly}
-            trueLabel="Read-only all"
-          />
-        </div>
+        {(hasEnableFields || hasReadOnlyFields) && (
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+            {hasEnableFields ? (
+              <BulkToggleControl
+                disabled={disabled}
+                falseActive={allDisabled}
+                falseLabel="Disable all"
+                fieldRole="enable"
+                label="Enabled"
+                onSelect={(nextValue) =>
+                  onChange(
+                    patchGroupBooleanValues(
+                      values,
+                      groupSections,
+                      'enable',
+                      nextValue
+                    )
+                  )
+                }
+                trueActive={allEnabled}
+                trueLabel="Enable all"
+              />
+            ) : null}
+            {hasReadOnlyFields ? (
+              <BulkToggleControl
+                disabled={disabled}
+                falseActive={allWritable}
+                falseLabel="Writable all"
+                fieldRole="readonly"
+                label="Access"
+                onSelect={(nextValue) =>
+                  onChange(
+                    patchAllWriteAccess(
+                      values,
+                      groupSections,
+                      globalReadOnlyField,
+                      nextValue
+                    )
+                  )
+                }
+                trueActive={allReadOnly}
+                trueLabel="Read-only all"
+              />
+            ) : null}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-2">

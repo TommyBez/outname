@@ -1,5 +1,8 @@
+'use client'
+
+import { useEffect } from 'react'
 import { BooleanToggleField } from './boolean-toggle-field'
-import { booleanRoleFromField } from './config-field-utils'
+import { booleanRoleFromField, readBooleanValue } from './config-field-utils'
 import type { ToolConfigField } from './types'
 
 export function ConfigField({
@@ -14,8 +17,16 @@ export function ConfigField({
   value: string
 }) {
   const inputId = `tool-${toolId}-${field.name}`
-  const booleanValue =
-    value === 'true' || (value === '' && field.defaultValue === true)
+  const booleanValue = readBooleanValue({ [field.name]: value }, field, false)
+
+  useEffect(() => {
+    if (field.type !== 'boolean') {
+      return
+    }
+    if (value === '' && field.defaultValue === true) {
+      onChange('true')
+    }
+  }, [field.defaultValue, field.type, onChange, value])
 
   return (
     <div className="flex flex-col gap-1">
