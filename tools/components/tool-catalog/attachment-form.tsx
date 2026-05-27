@@ -9,7 +9,11 @@ import { CatalogActionButtons } from './action-buttons'
 import { ConfigField } from './config-field'
 import { partitionConfigFields } from './config-field-utils'
 import { GroupConfigPanel } from './group-config-panel'
-import type { AttachedToolView, ToolCatalogEntry } from './types'
+import type {
+  AttachedToolView,
+  ToolCatalogEntry,
+  ToolConfigField,
+} from './types'
 import { defaultValuesFor, submitButtonLabel } from './utils'
 
 interface AttachmentFormProps {
