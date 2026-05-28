@@ -21,13 +21,7 @@ export function AuthSignInOtpEmail({
       ctaLabel={`Open ${EMAIL_BRAND_NAME}`}
       eyebrow={`${EMAIL_BRAND_NAME} / sign in`}
       footerEyebrow={`${EMAIL_BRAND_NAME} / security`}
-      footerText={
-        <Text className="m-0 mt-[12px] text-[12px] text-subtle leading-[20px]">
-          You are receiving this message because someone requested a sign-in
-          code for {EMAIL_BRAND_NAME}. If this was not you, ignore this email
-          and no access will be granted.
-        </Text>
-      }
+      footerText={`You are receiving this message because someone requested a sign-in code for ${EMAIL_BRAND_NAME}. If this was not you, ignore this email and no access will be granted.`}
       lead={`Use this one-time code to finish signing in. It expires in ${expiresInMinutes} minutes and can only be used once.`}
       logoUrl={logoUrl}
       preview={`Your ${EMAIL_BRAND_NAME} sign-in code is ${code}.`}

@@ -22,7 +22,7 @@ vi.mock('next/cache', () => ({
   revalidateTag: mocks.revalidateTag,
 }))
 
-vi.mock('@/agent-runtime/server/agent-sandbox', () => ({
+vi.mock('@/agent-runtime/server/system-sandbox-startup', () => ({
   startupSystemSandbox: mocks.startupSystemSandbox,
 }))
 

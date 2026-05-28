@@ -83,7 +83,7 @@ function buildProvisionedUserName(input: {
   return fallbackName || 'outname user'
 }
 
-export function isWaitlistResendCoolingDown(sentAt?: Date | null): boolean {
+function isWaitlistResendCoolingDown(sentAt?: Date | null): boolean {
   if (!sentAt) {
     return false
   }

@@ -24,12 +24,12 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
 } from '@/components/ai-elements/prompt-input'
-import { renderMessagePart } from './agent-edit-chat/tool-parts'
+import { MessagePartRenderer } from './agent-edit-chat/tool-parts'
 import type { AgentEditChatProps } from './agent-edit-chat/types'
 
 export function AgentEditChat({ agentId, currentBudget }: AgentEditChatProps) {
   const [input, setInput] = useState('')
-  const router = useRouter()
+  const { refresh } = useRouter()
   const {
     messages,
     sendMessage,
@@ -44,7 +44,7 @@ export function AgentEditChat({ agentId, currentBudget }: AgentEditChatProps) {
     }),
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
     onFinish: () => {
-      router.refresh()
+      refresh()
     },
   })
   const isBusy = status === 'submitted' || status === 'streaming'
@@ -78,15 +78,15 @@ export function AgentEditChat({ agentId, currentBudget }: AgentEditChatProps) {
                 key={message.id}
               >
                 <MessageContent>
-                  {message.parts.map((part, index) =>
-                    renderMessagePart({
-                      addToolApprovalResponse,
-                      currentBudget,
-                      key: `${message.id}-${index}`,
-                      part,
-                      sendMessage,
-                    })
-                  )}
+                  {message.parts.map((part) => (
+                    <MessagePartRenderer
+                      addToolApprovalResponse={addToolApprovalResponse}
+                      currentBudget={currentBudget}
+                      key={getMessagePartKey(message.id, part)}
+                      part={part}
+                      sendMessage={sendMessage}
+                    />
+                  ))}
                 </MessageContent>
               </Message>
             ))
@@ -115,4 +115,26 @@ export function AgentEditChat({ agentId, currentBudget }: AgentEditChatProps) {
       </div>
     </div>
   )
+}
+
+function getMessagePartKey(
+  messageId: string,
+  part: UIMessage['parts'][number]
+): string {
+  if ('toolCallId' in part) {
+    return `${messageId}-${part.type}-${part.toolCallId}`
+  }
+  if ('sourceId' in part) {
+    return `${messageId}-${part.type}-${part.sourceId}`
+  }
+  if ('id' in part && typeof part.id === 'string') {
+    return `${messageId}-${part.type}-${part.id}`
+  }
+  if (part.type === 'file') {
+    return `${messageId}-${part.type}-${part.url}`
+  }
+  if (part.type === 'text' || part.type === 'reasoning') {
+    return `${messageId}-${part.type}-${part.text}`
+  }
+  return `${messageId}-${part.type}`
 }

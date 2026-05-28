@@ -126,7 +126,7 @@ export function normalizeAdvancedSettings(
   }
 }
 
-export const advancedSettingsSchema = z
+const advancedSettingsSchema = z
   .strictObject({
     source_policy: sourcePolicySchema
       .optional()

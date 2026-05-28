@@ -1,6 +1,6 @@
 import type { ChatAddToolApproveResponseFunction, UIMessage } from 'ai'
 import { CheckIcon, XIcon } from 'lucide-react'
-import type { AgentBudgetValues } from '@/agents/components/agent-budget-widget'
+import type { AgentBudgetValues } from '@/agents/components/agent-budget-values'
 import {
   Confirmation,
   ConfirmationAction,
@@ -26,20 +26,19 @@ import type { SendMessageFn } from './types'
 const PROPOSE_BUDGET_PART_TYPE = 'tool-propose_agent_budget'
 const TOOL_PREFIX_PATTERN = /^tool-/
 
-export function renderMessagePart(input: {
+export function MessagePartRenderer(input: {
   addToolApprovalResponse: ChatAddToolApproveResponseFunction
   currentBudget: AgentBudgetValues
-  key: string
   part: UIMessage['parts'][number]
   sendMessage: SendMessageFn
 }) {
-  const { part, key } = input
+  const { part } = input
   if (part.type === 'text') {
-    return <MessageResponse key={key}>{part.text}</MessageResponse>
+    return <MessageResponse>{part.text}</MessageResponse>
   }
   if (part.type === 'reasoning') {
     return (
-      <Reasoning isStreaming={part.state === 'streaming'} key={key}>
+      <Reasoning isStreaming={part.state === 'streaming'}>
         <ReasoningTrigger />
         <ReasoningContent>{part.text}</ReasoningContent>
       </Reasoning>
@@ -49,7 +48,6 @@ export function renderMessagePart(input: {
     return (
       <ProposeBudgetCard
         currentBudget={input.currentBudget}
-        key={key}
         part={part as ToolPart}
         sendMessage={input.sendMessage}
       />
@@ -60,7 +58,6 @@ export function renderMessagePart(input: {
       <ToolCard
         addToolApprovalResponse={input.addToolApprovalResponse}
         currentBudget={input.currentBudget}
-        key={key}
         part={part as ToolPart}
       />
     )
@@ -70,7 +67,6 @@ export function renderMessagePart(input: {
       <ToolCard
         addToolApprovalResponse={input.addToolApprovalResponse}
         currentBudget={input.currentBudget}
-        key={key}
         part={part as ToolPart}
       />
     )

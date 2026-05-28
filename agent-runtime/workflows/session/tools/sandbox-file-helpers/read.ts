@@ -1,7 +1,7 @@
 import type { Sandbox } from '@vercel/sandbox'
 import { type NormalizedSandboxPath, normalizeSandboxPath } from './paths'
 
-export const MAX_READ_FILE_BYTES = 256 * 1024
+const MAX_READ_FILE_BYTES = 256 * 1024
 
 export function readLiveFile(
   sandbox: Sandbox,
@@ -11,7 +11,7 @@ export function readLiveFile(
   return readLiveFileByPath(sandbox, safe)
 }
 
-export async function readLiveFileByPath(
+async function readLiveFileByPath(
   sandbox: Sandbox,
   safe: NormalizedSandboxPath
 ): Promise<string | null> {

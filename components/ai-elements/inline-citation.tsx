@@ -18,7 +18,7 @@ import type { ComponentProps } from "react";
 import {
   createContext,
   useCallback,
-  useContext,
+  use,
   useEffect,
   useState,
 } from "react";
@@ -92,7 +92,7 @@ export const InlineCitationCardBody = ({
 const CarouselApiContext = createContext<CarouselApi | undefined>(undefined);
 
 const useCarouselApi = () => {
-  const context = useContext(CarouselApiContext);
+  const context = use(CarouselApiContext);
   return context;
 };
 

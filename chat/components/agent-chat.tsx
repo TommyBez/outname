@@ -10,10 +10,8 @@ import {
   CHAT_STATUS_PART_TYPE,
   type WorkflowStatusData,
 } from '@/agent-runtime/server/chat-status'
-import {
-  AgentChatTranscript,
-  hasAssistantContentAfterLatestUser,
-} from '@/chat/components/agent-chat-transcript'
+import { AgentChatTranscript } from '@/chat/components/agent-chat-transcript'
+import { hasAssistantContentAfterLatestUser } from '@/chat/components/agent-chat-transcript-helpers'
 import { refreshConversationList } from '@/chat/components/agent-sidebar-workspace/conversations'
 import { ChatErrorBanner } from '@/chat/components/chat-error-banner'
 import { newChatConversationId } from '@/chat/lib/new-chat-conversation-id'
@@ -45,7 +43,7 @@ export function AgentChat({
   initialMessages,
   isDraft,
 }: AgentChatProps) {
-  const router = useRouter()
+  const { push } = useRouter()
   const [input, setInput] = useState('')
   const [workflowStatus, setWorkflowStatus] =
     useState<WorkflowStatusData | null>(null)
@@ -93,16 +91,10 @@ export function AgentChat({
   }, [agentId, conversationId, isDraft, messages.length])
 
   const isBusy = status === 'submitted' || status === 'streaming'
-  const showWorkflowStatus = isBusy && workflowStatus !== null
-
-  useEffect(() => {
-    if (!(workflowStatus && isBusy)) {
-      return
-    }
-    if (hasAssistantContentAfterLatestUser(messages)) {
-      setWorkflowStatus(null)
-    }
-  }, [isBusy, messages, workflowStatus])
+  const showWorkflowStatus =
+    isBusy &&
+    workflowStatus !== null &&
+    !hasAssistantContentAfterLatestUser(messages)
 
   function handleSubmit(message: PromptInputMessage) {
     const text = (message.text ?? '').trim()
@@ -115,7 +107,7 @@ export function AgentChat({
   }
 
   function handleNewChat() {
-    router.push(`/agents/${agentId}/chat/new?draft=${newChatConversationId()}`)
+    push(`/agents/${agentId}/chat/new?draft=${newChatConversationId()}`)
   }
 
   return (

@@ -80,7 +80,7 @@ export function createStoredTranscriptSuccessState(
   }
 }
 
-export function statusForEventWithoutRun(
+function statusForEventWithoutRun(
   event: AgentEventSummary
 ): AgentEventTranscriptStatus {
   if (event.status === 'failed') {

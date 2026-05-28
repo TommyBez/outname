@@ -4,9 +4,15 @@ import { requireSession } from '@/auth/server/auth-guard'
 import { AgentChat } from '@/chat/components/agent-chat'
 import { newChatConversationId } from '@/chat/lib/new-chat-conversation-id'
 import { getCachedAgentByIdForUser } from '@/shared/server/data'
+import { createPrivatePageMetadata } from '@/shared/server/site-metadata'
 
 type Params = Promise<{ agentId: string }>
 type SearchParams = Promise<{ draft?: string }>
+
+export const metadata = createPrivatePageMetadata(
+  'New agent chat',
+  'Start a private OUTNA.ME agent conversation.'
+)
 
 export default function NewAgentChatPage({
   params,
@@ -29,9 +35,11 @@ async function DraftChat({
   params: Params
   searchParams: SearchParams
 }) {
-  const { agentId } = await params
-  const { draft } = await searchParams
-  const session = await requireSession()
+  const [{ agentId }, { draft }, session] = await Promise.all([
+    params,
+    searchParams,
+    requireSession(),
+  ])
   const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
   if (!agent) {
     notFound()

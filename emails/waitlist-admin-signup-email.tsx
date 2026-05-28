@@ -48,12 +48,7 @@ export function WaitlistAdminSignupEmail({
       ctaLabel="Open waitlist admin"
       eyebrow={`${EMAIL_BRAND_NAME} / waitlist / admin`}
       footerEyebrow={`${EMAIL_BRAND_NAME} / internal`}
-      footerText={
-        <Text className="m-0 mt-[12px] text-[12px] text-subtle leading-[20px]">
-          Internal notification for a new waitlist signup. The address still
-          needs to confirm before the entry is marked confirmed.
-        </Text>
-      }
+      footerText="Internal notification for a new waitlist signup. The address still needs to confirm before the entry is marked confirmed."
       lead="A new address joined the waitlist and is waiting for email confirmation."
       logoUrl={logoUrl}
       preview={`New ${EMAIL_BRAND_NAME} waitlist signup: ${email}`}

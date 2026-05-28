@@ -1,7 +1,6 @@
 import 'server-only'
 import { nanoid } from 'nanoid'
 import { start } from 'workflow/api'
-import { agentEventWorkflow } from '@/agent-runtime/workflows/events/workflow'
 import { db } from '@/shared/db'
 import {
   type Agent,
@@ -21,6 +20,12 @@ import {
 } from './agent-event-store'
 
 const EVENT_CLAIM_TTL_MS = 5 * 60_000
+const AGENT_EVENT_WORKFLOW = {
+  // Keep this in sync with app/.well-known/workflow/v1/manifest.json so queue
+  // code can start the workflow without importing it.
+  workflowId:
+    'workflow//./agent-runtime/workflows/events/workflow//agentEventWorkflow',
+} as const
 
 export interface EnqueueAgentEventInput {
   agent: Agent
@@ -103,7 +108,7 @@ export async function tryStartAgentEvent(
   }
 
   try {
-    const run = await start(agentEventWorkflow, [{ eventId: event.id }])
+    const run = await start(AGENT_EVENT_WORKFLOW, [{ eventId: event.id }])
     await setEventWorkflowRunId({ eventId: event.id, workflowRunId: run.runId })
     return run.runId
   } catch (err) {

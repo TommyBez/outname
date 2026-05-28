@@ -24,8 +24,7 @@ export function AgentOverview({ params }: { params: Params }) {
 }
 
 async function ResolvedAgentOverview({ params }: { params: Params }) {
-  const { agentId } = await params
-  const session = await requireSession()
+  const [{ agentId }, session] = await Promise.all([params, requireSession()])
   const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
   if (!agent) {
     notFound()

@@ -21,12 +21,6 @@ export async function loadApplicableRules(input: {
     )
 }
 
-export async function listBudgetRulesForUser(
-  userId: string
-): Promise<BudgetRule[]> {
-  return await db.select().from(budgetRule).where(eq(budgetRule.userId, userId))
-}
-
 export async function listGeneralBudgetRulesForUser(
   userId: string
 ): Promise<BudgetRule[]> {

@@ -29,7 +29,7 @@ export function AgentCreationChat({
   timeZone,
 }: AgentCreationChatProps) {
   const [input, setInput] = useState('')
-  const router = useRouter()
+  const { refresh } = useRouter()
   const {
     messages,
     sendMessage,
@@ -44,7 +44,7 @@ export function AgentCreationChat({
     }),
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
     onFinish: () => {
-      router.refresh()
+      refresh()
     },
   })
   const isBusy = status === 'submitted' || status === 'streaming'

@@ -18,7 +18,7 @@ function getActionErrorMessage(error: unknown): string {
 }
 
 export function InviteUserForm() {
-  const router = useRouter()
+  const { refresh } = useRouter()
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [isPending, startTransition] = useTransition()
@@ -34,7 +34,7 @@ export function InviteUserForm() {
         toast.success('Invite sent.')
         setEmail('')
         setName('')
-        router.refresh()
+        refresh()
       } catch (error) {
         unstable_rethrow(error)
         toast.error(getActionErrorMessage(error))
@@ -42,19 +42,21 @@ export function InviteUserForm() {
     })
   }
 
+  function submitInvite() {
+    runInvite(() => inviteUserToApplicationAction(email, name))
+  }
+
   return (
     <form
+      action={submitInvite}
       className="grid gap-4 border-foreground border-t-2 pt-8 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto]"
-      onSubmit={(event) => {
-        event.preventDefault()
-        runInvite(() => inviteUserToApplicationAction(email, name))
-      }}
     >
       <label className="flex flex-col gap-2">
         <span className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
           Email
         </span>
         <input
+          aria-label="Invitee email"
           autoComplete="email"
           className="h-11 border-2 border-foreground bg-background px-3 text-sm"
           disabled={isPending}
@@ -72,6 +74,7 @@ export function InviteUserForm() {
           Name (optional)
         </span>
         <input
+          aria-label="Invitee name"
           autoComplete="name"
           className="h-11 border-2 border-foreground bg-background px-3 text-sm"
           disabled={isPending}

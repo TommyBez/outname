@@ -67,7 +67,7 @@ function ActionButton({
 }
 
 export function WaitlistActionButtons({ entry }: { entry: WaitlistEntry }) {
-  const router = useRouter()
+  const { refresh } = useRouter()
   const [pendingAction, setPendingAction] = useState<WaitlistActionKind | null>(
     null
   )
@@ -85,7 +85,7 @@ export function WaitlistActionButtons({ entry }: { entry: WaitlistEntry }) {
           toast.error(result.error)
           return
         }
-        router.refresh()
+        refresh()
       } catch (error) {
         unstable_rethrow(error)
         toast.error(getActionErrorMessage(error))

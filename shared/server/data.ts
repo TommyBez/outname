@@ -67,7 +67,7 @@ export async function getCachedAgentByIdForUser(
   return await getAgentByIdForUser(agentId, userId)
 }
 
-export async function getAgentMemoryFiles(
+async function getAgentMemoryFiles(
   agentId: string
 ): Promise<AgentMemoryFile[]> {
   const cached = await readCachedAgentFiles(agentId)
@@ -87,9 +87,7 @@ export async function getCachedAgentMemoryFiles(
   return await getAgentMemoryFiles(agentId)
 }
 
-export async function getAgentLogFiles(
-  agentId: string
-): Promise<AgentMemoryFile[]> {
+async function getAgentLogFiles(agentId: string): Promise<AgentMemoryFile[]> {
   const rows = await getAgentMemoryFiles(agentId)
   return rows
     .filter((row) => row.path.startsWith('logs/'))

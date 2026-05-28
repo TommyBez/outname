@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -40,10 +40,7 @@ export function WaitlistSignupForm({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submittedMessage, setSubmittedMessage] = useState<string | null>(null)
 
-  const referrer = useMemo(
-    () => (typeof document === 'undefined' ? '' : document.referrer),
-    []
-  )
+  const referrer = typeof document === 'undefined' ? '' : document.referrer
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()

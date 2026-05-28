@@ -92,7 +92,7 @@ function SubAgentRow({
   entry: SubAgentCatalogEntry
 }) {
   const [pending, startTransition] = useTransition()
-  const router = useRouter()
+  const { refresh } = useRouter()
   const attached = entry.attachedToolId !== null
 
   function handleAttach() {
@@ -103,7 +103,7 @@ function SubAgentRow({
         return
       }
       toast.success('Sub-agent attached.')
-      router.refresh()
+      refresh()
     })
   }
 
@@ -119,7 +119,7 @@ function SubAgentRow({
         return
       }
       toast.success('Sub-agent detached.')
-      router.refresh()
+      refresh()
     })
   }
 
@@ -135,7 +135,7 @@ function SubAgentRow({
           </p>
           {!entry.enabled && (
             <p className="mt-2 font-bold text-[10px] text-destructive uppercase tracking-[0.2em]">
-              Currently disabled — turn it on from its overview page before
+              Currently disabled, turn it on from its overview page before
               attaching, or attach now and re-enable later.
             </p>
           )}
@@ -163,12 +163,9 @@ function SubAgentRow({
           </button>
         )}
         {attached && (
-          <span
-            className="inline-flex h-10 items-center border-2 border-foreground bg-foreground px-3 font-bold text-[10px] text-background uppercase tracking-[0.16em]"
-            role="status"
-          >
+          <output className="inline-flex h-10 items-center border-2 border-foreground bg-foreground px-3 font-bold text-[10px] text-background uppercase tracking-[0.16em]">
             Attached
-          </span>
+          </output>
         )}
       </div>
     </div>

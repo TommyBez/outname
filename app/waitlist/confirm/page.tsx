@@ -97,8 +97,8 @@ async function ConfirmContent({
 
 function ConfirmFallback() {
   return (
-    <div className="mt-8 text-muted-foreground text-sm" role="status">
+    <output className="mt-8 text-muted-foreground text-sm">
       Loading confirmation state…
-    </div>
+    </output>
   )
 }

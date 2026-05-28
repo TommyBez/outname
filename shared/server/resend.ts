@@ -13,7 +13,7 @@ function getResendApiKey(): string {
   return apiKey
 }
 
-export function getResendClient(): Resend {
+function getResendClient(): Resend {
   if (resendClient) {
     return resendClient
   }

@@ -1,4 +1,4 @@
-export const AGENT_SCHEDULE_MODES = ['interval', 'daily_times'] as const
+const AGENT_SCHEDULE_MODES = ['interval', 'daily_times'] as const
 
 export type AgentScheduleMode = (typeof AGENT_SCHEDULE_MODES)[number]
 
@@ -6,9 +6,7 @@ export const MAX_DAILY_SCHEDULE_TIMES = 8
 
 const DAILY_TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/
 
-export function isAgentScheduleMode(
-  value: unknown
-): value is AgentScheduleMode {
+function isAgentScheduleMode(value: unknown): value is AgentScheduleMode {
   return value === 'interval' || value === 'daily_times'
 }
 
@@ -16,7 +14,7 @@ export function normalizeAgentScheduleMode(value: unknown): AgentScheduleMode {
   return isAgentScheduleMode(value) ? value : 'interval'
 }
 
-export function isDailyScheduleTime(value: unknown): value is string {
+function isDailyScheduleTime(value: unknown): value is string {
   return typeof value === 'string' && DAILY_TIME_PATTERN.test(value)
 }
 

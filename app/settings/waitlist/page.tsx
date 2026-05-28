@@ -160,6 +160,7 @@ async function WaitlistSettingsContent({
               Search email
             </span>
             <input
+              aria-label="Search waitlist email"
               className="h-11 border-2 border-foreground bg-background px-3 text-sm"
               defaultValue={params.search ?? ''}
               name="search"
@@ -273,13 +274,12 @@ async function WaitlistSettingsContent({
 
 function WaitlistSettingsFallback() {
   return (
-    <div
+    <output
       aria-busy="true"
       className="border-foreground border-t-4 pt-6 text-muted-foreground text-sm"
-      role="status"
     >
       Loading waitlist manager…
-    </div>
+    </output>
   )
 }
 

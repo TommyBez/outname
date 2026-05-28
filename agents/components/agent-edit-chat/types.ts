@@ -1,4 +1,4 @@
-import type { AgentBudgetValues } from '@/agents/components/agent-budget-widget'
+import type { AgentBudgetValues } from '@/agents/components/agent-budget-values'
 import type { AgentScheduleMode } from '@/shared/agent-schedule'
 
 export interface AgentEditChatProps {
@@ -27,7 +27,7 @@ export interface AgentEditSettings {
   stepLimitMode: 'custom' | 'grind' | 'high' | 'low' | 'medium'
 }
 
-export const MARKDOWN_FILE_FIELDS = [
+const MARKDOWN_FILE_FIELDS = [
   { key: 'identityCard', path: 'IDENTITY.md', title: 'Identity card' },
   { key: 'soul', path: 'SOUL.md', title: 'Soul' },
   { key: 'instructions', path: 'AGENTS.md', title: 'Instructions' },
@@ -36,7 +36,7 @@ export const MARKDOWN_FILE_FIELDS = [
 
 export type MarkdownFileKey = (typeof MARKDOWN_FILE_FIELDS)[number]['key']
 
-export const SETTINGS_FIELDS = [
+const SETTINGS_FIELDS = [
   { key: 'name', label: 'Name' },
   { key: 'model', label: 'Model' },
   { key: 'heartbeatEnabled', label: 'Heartbeat' },

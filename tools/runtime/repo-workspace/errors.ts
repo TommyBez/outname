@@ -15,12 +15,3 @@ export class RepoWorkspaceProviderError extends Error {
     this.name = 'RepoWorkspaceProviderError'
   }
 }
-
-export class RepoWorkspaceUnavailableError extends Error {
-  readonly code = 'unavailable' as const
-
-  constructor(message: string) {
-    super(message)
-    this.name = 'RepoWorkspaceUnavailableError'
-  }
-}

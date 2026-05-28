@@ -35,7 +35,7 @@ export function CreateAgentToolCard({
   timeZone: string
 }) {
   // While input is streaming, the Tool header's "Pending"/"Running" badge is
-  // the entire UI — no redundant spinner panel.
+  // the entire UI, no redundant spinner panel.
   if (part.state === 'input-streaming' || part.state === 'input-available') {
     return (
       <Tool>
@@ -109,13 +109,13 @@ export function CreateAgentToolCard({
             <ConfirmationAccepted>
               <ConfirmationTitle>
                 <CheckIcon className="mr-2 inline size-4" />
-                Approved — preparing the agent…
+                Approved, preparing the agent…
               </ConfirmationTitle>
             </ConfirmationAccepted>
             <ConfirmationRejected>
               <ConfirmationTitle>
                 <XIcon className="mr-2 inline size-4" />
-                Denied — keep editing.
+                Denied, keep editing.
               </ConfirmationTitle>
             </ConfirmationRejected>
           </Confirmation>

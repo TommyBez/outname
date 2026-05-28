@@ -63,7 +63,7 @@ export function BindingsBlock({
       {bindings.length > 0 && installations.length === 0 && (
         <p className="text-destructive text-xs">
           One or more bindings reference a workspace you no longer have
-          installed — they will be ignored until you reinstall.
+          installed, they will be ignored until you reinstall.
         </p>
       )}
     </div>
@@ -105,7 +105,7 @@ function BindingRow({
       </div>
       <button
         aria-label="Remove binding"
-        className="inline-flex h-9 w-9 items-center justify-center border-2 border-foreground transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
+        className="inline-flex size-9 items-center justify-center border-2 border-foreground transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
         disabled={disabled}
         onClick={onRemove}
         type="button"

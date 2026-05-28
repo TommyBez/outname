@@ -4,7 +4,7 @@ export interface TimezoneOption {
 }
 
 /** Curated IANA zones for account settings (scheduling uses the stored value). */
-export const COMMON_TIMEZONE_OPTIONS: readonly TimezoneOption[] = [
+const COMMON_TIMEZONE_OPTIONS: readonly TimezoneOption[] = [
   { value: 'UTC', label: 'UTC' },
   { value: 'Europe/London', label: 'Europe/London' },
   { value: 'Europe/Paris', label: 'Europe/Paris' },

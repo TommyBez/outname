@@ -36,7 +36,7 @@ export function AttachmentForm({
   isPending,
 }: AttachmentFormProps) {
   const [pending, startTransition] = useTransition()
-  const router = useRouter()
+  const { refresh } = useRouter()
   const initial = useMemo(
     () => defaultValuesFor(entry, attached),
     [entry, attached]
@@ -64,7 +64,7 @@ export function AttachmentForm({
         toast.success(isAttached ? 'Tool updated.' : 'Tool attached.')
       }
       setOpen(false)
-      router.refresh()
+      refresh()
     })
   }
 
@@ -80,7 +80,7 @@ export function AttachmentForm({
       }
       toast.success('Credential override cleared.')
       setOpen(false)
-      router.refresh()
+      refresh()
     })
   }
 
@@ -98,7 +98,7 @@ export function AttachmentForm({
       }
       toast.success('Tool detached.')
       setOpen(false)
-      router.refresh()
+      refresh()
     })
   }
 

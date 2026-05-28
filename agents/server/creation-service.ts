@@ -16,8 +16,8 @@ import {
   isModelIdValid,
 } from '@/shared/server/ai-gateway-models'
 
-export const HEARTBEAT_MIN = 5
-export const HEARTBEAT_MAX = 1440
+const HEARTBEAT_MIN = 5
+const HEARTBEAT_MAX = 1440
 
 export interface CreateAgentInput {
   dreamingEnabled: boolean
@@ -51,7 +51,7 @@ function nanoid(): string {
   )
 }
 
-export function stableAgentIdForCreation(input: {
+function stableAgentIdForCreation(input: {
   idempotencyKey: string
   userId: string
 }): string {

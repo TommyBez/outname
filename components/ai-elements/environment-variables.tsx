@@ -9,7 +9,7 @@ import type { ComponentProps, HTMLAttributes } from "react";
 import {
   createContext,
   useCallback,
-  useContext,
+  use,
   useEffect,
   useMemo,
   useRef,
@@ -110,7 +110,7 @@ export const EnvironmentVariablesToggle = ({
   className,
   ...props
 }: EnvironmentVariablesToggleProps) => {
-  const { showValues, setShowValues } = useContext(EnvironmentVariablesContext);
+  const { showValues, setShowValues } = use(EnvironmentVariablesContext);
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
@@ -169,7 +169,7 @@ export const EnvironmentVariableName = ({
   children,
   ...props
 }: EnvironmentVariableNameProps) => {
-  const { name } = useContext(EnvironmentVariableContext);
+  const { name } = use(EnvironmentVariableContext);
 
   return (
     <span className={cn("font-mono text-sm", className)} {...props}>
@@ -185,8 +185,8 @@ export const EnvironmentVariableValue = ({
   children,
   ...props
 }: EnvironmentVariableValueProps) => {
-  const { value } = useContext(EnvironmentVariableContext);
-  const { showValues } = useContext(EnvironmentVariablesContext);
+  const { value } = use(EnvironmentVariableContext);
+  const { showValues } = use(EnvironmentVariablesContext);
 
   const displayValue = showValues
     ? value
@@ -262,7 +262,7 @@ export const EnvironmentVariableCopyButton = ({
 }: EnvironmentVariableCopyButtonProps) => {
   const [isCopied, setIsCopied] = useState(false);
   const timeoutRef = useRef<number>(0);
-  const { name, value } = useContext(EnvironmentVariableContext);
+  const { name, value } = use(EnvironmentVariableContext);
 
   const getTextToCopy = useCallback((): string => {
     const formatMap = {

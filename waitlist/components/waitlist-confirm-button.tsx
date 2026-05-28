@@ -8,7 +8,7 @@ import { Spinner } from '@/components/ui/spinner'
 const HTTP_STATUS_FORBIDDEN = 403
 
 export function WaitlistConfirmButton({ token }: { token: string }) {
-  const router = useRouter()
+  const { push, refresh } = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
@@ -32,8 +32,8 @@ export function WaitlistConfirmButton({ token }: { token: string }) {
 
       const resultUrl = new URL(response.url)
       if (resultUrl.searchParams.get('status') === 'confirmed') {
-        router.push(`${resultUrl.pathname}${resultUrl.search}`)
-        router.refresh()
+        push(`${resultUrl.pathname}${resultUrl.search}`)
+        refresh()
         return
       }
 

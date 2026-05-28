@@ -10,7 +10,7 @@ const MINUTES_PER_DAY = MINUTES_PER_HOUR * 24
 
 type MinuteUnitStyle = 'long' | 'short'
 
-export function formatAgentInterval(minutes: number): string {
+function formatAgentInterval(minutes: number): string {
   return formatMinuteDuration(minutes, { minuteUnitStyle: 'short' })
 }
 
@@ -28,11 +28,6 @@ export function formatAgentCadence(minutes: number): string {
   return `Every ${formatMinuteDuration(totalMinutes, {
     minuteUnitStyle: 'long',
   })}`
-}
-
-export function formatAgentCadenceLower(minutes: number): string {
-  const cadence = formatAgentCadence(minutes)
-  return `${cadence.charAt(0).toLowerCase()}${cadence.slice(1)}`
 }
 
 export function formatAgentSchedule(input: {

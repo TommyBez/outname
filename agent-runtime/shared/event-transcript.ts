@@ -59,7 +59,7 @@ export function eventSummaryToWorkflowStatus(
   }
 }
 
-export function terminalErrorToAgentChatMessage(
+function terminalErrorToAgentChatMessage(
   eventId: string,
   message: string,
   timestamp?: string

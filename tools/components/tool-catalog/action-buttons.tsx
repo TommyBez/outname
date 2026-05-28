@@ -61,24 +61,20 @@ export function CatalogActionButtons({
         </button>
       )}
       {isAttached && !isPending && (
-        <span
-          className="inline-flex h-10 items-center border-2 border-foreground bg-foreground px-3 font-bold text-[10px] text-background uppercase tracking-[0.16em]"
-          role="status"
-        >
+        <output className="inline-flex h-10 items-center border-2 border-foreground bg-foreground px-3 font-bold text-[10px] text-background uppercase tracking-[0.16em]">
           Attached
-        </span>
+        </output>
       )}
       {isPending && (
-        <span
+        <output
           className={`inline-flex h-10 items-center border-2 px-3 font-bold text-[10px] uppercase tracking-[0.16em] ${
             isFailedPending
               ? 'border-destructive text-destructive'
               : 'border-foreground'
           }`}
-          role="status"
         >
           {isFailedPending ? 'Build failed' : 'Preparing...'}
-        </span>
+        </output>
       )}
     </div>
   )

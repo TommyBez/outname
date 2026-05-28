@@ -13,7 +13,7 @@ import { isWaitlistPublicEnabled } from '@/waitlist/server/public-config'
 
 export const metadata: Metadata = {
   title: 'Support',
-  description: `Get help with ${siteConfig.name} — account access, agents, integrations, and more.`,
+  description: `Get help with ${siteConfig.name}, account access, agents, integrations, and more.`,
   alternates: {
     canonical: '/support',
   },
@@ -31,7 +31,7 @@ export default function SupportPage() {
         </h1>
         <p className="mt-6 max-w-xl border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
           {siteConfig.name} is in early access. If something is broken or
-          unclear, reach out — we read every message.
+          unclear, reach out, we read every message.
         </p>
       </header>
 
@@ -51,13 +51,13 @@ export default function SupportPage() {
         <LegalSection title="Account and access">
           <LegalList>
             <li>
-              <strong className="text-foreground">Sign in</strong> — use email
+              <strong className="text-foreground">Sign in</strong>, use email
               OTP at <LegalLink href="/login?from=/dashboard">/login</LegalLink>
               . Codes expire quickly; request a new one if needed.
             </li>
             {waitlistEnabled ? (
               <li>
-                <strong className="text-foreground">Waitlist</strong> — no
+                <strong className="text-foreground">Waitlist</strong>, no
                 account yet? Join at{' '}
                 <LegalLink href="/waitlist?source=support-page">
                   /waitlist
@@ -66,8 +66,8 @@ export default function SupportPage() {
               </li>
             ) : null}
             <li>
-              <strong className="text-foreground">No access</strong> — sign-up
-              is invite-only. If you were provisioned from the waitlist, use the
+              <strong className="text-foreground">No access</strong>, sign-up is
+              invite-only. If you were provisioned from the waitlist, use the
               same email you registered with.
             </li>
           </LegalList>
@@ -76,16 +76,16 @@ export default function SupportPage() {
         <LegalSection title="Agents and runs">
           <LegalList>
             <li>
-              Scheduled or heartbeat runs not firing — check agent schedule,
+              Scheduled or heartbeat runs not firing, check agent schedule,
               timezone, and whether the agent is paused.
             </li>
             <li>
-              Tool or connection errors — reconnect the integration under{' '}
+              Tool or connection errors, reconnect the integration under{' '}
               <LegalLink href="/connections">Connections</LegalLink> and verify
               scopes match what the tool needs.
             </li>
             <li>
-              Unexpected agent output — share the conversation ID, agent ID, and
+              Unexpected agent output, share the conversation ID, agent ID, and
               approximate time so we can trace the run.
             </li>
           </LegalList>

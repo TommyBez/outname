@@ -39,7 +39,7 @@ export function ModelSelector({
   const selectedModel =
     availableModels.find((option) => option.id === model) ?? availableModels[0]
   const sortedModels = useMemo(
-    () => [...availableModels].sort(selectedModelSort(model)),
+    () => availableModels.toSorted(selectedModelSort(model)),
     [availableModels, model]
   )
   const visibleModels = useMemo(

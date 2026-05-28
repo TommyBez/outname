@@ -15,13 +15,25 @@ function MdxLink({ href, children, ...props }: ComponentPropsWithoutRef<'a'>) {
     )
   }
 
+  if (href?.startsWith('http')) {
+    return (
+      <a
+        {...props}
+        className="text-accent underline-offset-4 hover:underline"
+        href={href}
+        rel="noreferrer"
+        target="_blank"
+      >
+        {children}
+      </a>
+    )
+  }
+
   return (
     <a
+      {...props}
       className="text-accent underline-offset-4 hover:underline"
       href={href}
-      rel={href?.startsWith('http') ? 'noopener noreferrer' : undefined}
-      target={href?.startsWith('http') ? '_blank' : undefined}
-      {...props}
     >
       {children}
     </a>

@@ -13,13 +13,13 @@ import {
 } from 'ai'
 import { nanoid } from 'nanoid'
 import { revalidateTag } from 'next/cache'
-import { startupSystemSandbox } from '@/agent-runtime/server/agent-sandbox'
 import { cleanupRealtimeRun } from '@/agent-runtime/server/realtime-cleanup'
 import {
   type AgentRuntimeSpec,
   buildAgentRuntimeSpec,
 } from '@/agent-runtime/server/runtime-spec'
 import { getAgentById } from '@/agent-runtime/server/start-agent-run'
+import { startupSystemSandbox } from '@/agent-runtime/server/system-sandbox-startup'
 import { formatBudgetExceededMessage } from '@/budgets/server/errors'
 import type { ChannelId } from '@/channels/server/types'
 import {

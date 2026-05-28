@@ -150,7 +150,7 @@ export function AppSidebarFallback() {
 }
 
 function SignOutMenuButton() {
-  const router = useRouter()
+  const { push, refresh } = useRouter()
   const [isPending, startTransition] = useTransition()
 
   async function handleSignOut() {
@@ -158,8 +158,8 @@ function SignOutMenuButton() {
       await signOut()
       toast.success('Signed out')
       startTransition(() => {
-        router.push('/login')
-        router.refresh()
+        push('/login')
+        refresh()
       })
     } catch {
       toast.error('Could not sign out')

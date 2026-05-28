@@ -41,8 +41,7 @@ export function AgentMemoryDreams({ params }: { params: Params }) {
 }
 
 async function ResolvedAgentMemoryFiles({ params }: { params: Params }) {
-  const { agentId } = await params
-  const session = await requireSession()
+  const [{ agentId }, session] = await Promise.all([params, requireSession()])
   const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
   if (!agent) {
     notFound()
@@ -97,8 +96,7 @@ async function ResolvedAgentMemoryFiles({ params }: { params: Params }) {
 }
 
 async function ResolvedAgentMemoryTimeline({ params }: { params: Params }) {
-  const { agentId } = await params
-  const session = await requireSession()
+  const [{ agentId }, session] = await Promise.all([params, requireSession()])
   const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
   if (!agent) {
     notFound()
@@ -144,8 +142,7 @@ async function ResolvedAgentMemoryTimeline({ params }: { params: Params }) {
 }
 
 async function ResolvedAgentMemoryDreams({ params }: { params: Params }) {
-  const { agentId } = await params
-  const session = await requireSession()
+  const [{ agentId }, session] = await Promise.all([params, requireSession()])
   const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
   if (!agent) {
     notFound()

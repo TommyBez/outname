@@ -22,7 +22,7 @@ export function SlackBindingsPanel({
   isAvailable,
   isConfigured,
 }: SlackBindingsPanelPropsType) {
-  const router = useRouter()
+  const { refresh } = useRouter()
   const [showForm, setShowForm] = useState(false)
   const workspaceOptions = useMemo<InstallationView[]>(
     () => installations,
@@ -44,7 +44,7 @@ export function SlackBindingsPanel({
           installHref={slackInstallHref(
             `/agents/${agentId}/configure#integrations`
           )}
-          onChanged={() => router.refresh()}
+          onChanged={() => refresh()}
         />
       )}
 
@@ -52,7 +52,7 @@ export function SlackBindingsPanel({
         agentId={agentId}
         bindings={bindings}
         installations={installations}
-        onChanged={() => router.refresh()}
+        onChanged={() => refresh()}
       />
 
       {isConfigured && (
@@ -63,7 +63,7 @@ export function SlackBindingsPanel({
               onCancel={() => setShowForm(false)}
               onSaved={() => {
                 setShowForm(false)
-                router.refresh()
+                refresh()
               }}
               workspaces={workspaceOptions}
             />

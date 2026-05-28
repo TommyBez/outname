@@ -29,7 +29,7 @@ export function clipProviderErrorMessage(
     : `${options.label} failed.`
 }
 
-export function parseProviderResponseBody(
+function parseProviderResponseBody(
   raw: string,
   contentType: string | undefined
 ): unknown {

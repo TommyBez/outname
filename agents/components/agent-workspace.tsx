@@ -14,8 +14,7 @@ export async function AgentWorkspaceFrame({
   children: React.ReactNode
   params: Params
 }) {
-  const { agentId } = await params
-  const session = await requireSession()
+  const [{ agentId }, session] = await Promise.all([params, requireSession()])
   const [agent, display] = await Promise.all([
     getCachedAgentByIdForUser(agentId, session.user.id),
     getUserTimeDisplay(session.user.id),

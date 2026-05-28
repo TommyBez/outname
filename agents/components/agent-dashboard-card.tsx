@@ -245,7 +245,7 @@ function EventStateList({
         {events.map((event) => (
           <li key={event.id}>
             <Link
-              className="grid gap-2 px-4 py-4 transition-colors hover:bg-accent sm:grid-cols-[8rem_1fr_auto]"
+              className="grid gap-2 p-4 transition-colors hover:bg-accent sm:grid-cols-[8rem_1fr_auto]"
               href={eventHref(agentId, event.id)}
             >
               <span className="font-bold text-xs uppercase tracking-[0.16em]">
@@ -327,7 +327,7 @@ function AttentionList({ items }: { items: AttentionItem[] }) {
         Attention
       </p>
       {items.length === 0 ? (
-        <div className="border-foreground border-y-2 bg-background px-4 py-4">
+        <div className="border-foreground border-y-2 bg-background p-4">
           <p className="font-medium text-sm">No recent failures.</p>
           <p className="mt-1 text-muted-foreground text-sm">Budget ok.</p>
         </div>
@@ -448,9 +448,7 @@ function buildAttentionItems(input: {
     })
   }
 
-  const latestFailure = operationalEvents(input.eventSummaries)
-    .filter((event) => event.status === 'failed')
-    .sort(compareNewestEvents)[0]
+  const latestFailure = latestFailedEvent(input.eventSummaries)
   if (latestFailure) {
     items.push({
       detail: `${formatEventLabel(latestFailure)} failed ${formatRelativeTime(
@@ -493,6 +491,24 @@ function operationalEvents(
   events: readonly AgentEventSummary[]
 ): Array<AgentEventSummary & { type: DashboardEventType }> {
   return events as Array<AgentEventSummary & { type: DashboardEventType }>
+}
+
+function latestFailedEvent(
+  events: readonly AgentEventSummary[]
+): AgentEventSummary | undefined {
+  let latestFailure: AgentEventSummary | undefined
+  for (const event of operationalEvents(events)) {
+    if (event.status !== 'failed') {
+      continue
+    }
+    if (
+      !latestFailure ||
+      eventTime(event).getTime() > eventTime(latestFailure).getTime()
+    ) {
+      latestFailure = event
+    }
+  }
+  return latestFailure
 }
 
 function compareOperationalEvents(
@@ -571,9 +587,7 @@ function getAgentPreview(
       activeEvent.startedAt ?? activeEvent.queuedAt
     )}`
   }
-  const latestFailure = operationalEvents(events)
-    .filter((event) => event.status === 'failed')
-    .sort(compareNewestEvents)[0]
+  const latestFailure = latestFailedEvent(events)
   if (latestFailure) {
     return `${formatEventLabel(latestFailure)} failed ${formatRelativeTime(
       latestFailure.completedAt ?? latestFailure.queuedAt

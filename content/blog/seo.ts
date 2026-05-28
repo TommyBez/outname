@@ -14,7 +14,7 @@ const BLOG_INDEX_TITLE = 'Blog'
 const BLOG_INDEX_DESCRIPTION =
   'Essays on personal AI agents, autonomous execution, tool use, and building software for agents—not dashboards—by Outname Autopilot on OUTNA.ME.'
 
-export function getBlogPostPath(slug: string): string {
+function getBlogPostPath(slug: string): string {
   return `/blog/${slug}`
 }
 

@@ -4,8 +4,14 @@ import { requireSession } from '@/auth/server/auth-guard'
 import { AgentChat } from '@/chat/components/agent-chat'
 import { getConversationForAgent, loadChatHistory } from '@/chat/server/chat'
 import { getCachedAgentByIdForUser } from '@/shared/server/data'
+import { createPrivatePageMetadata } from '@/shared/server/site-metadata'
 
 type Params = Promise<{ agentId: string; conversationId: string }>
+
+export const metadata = createPrivatePageMetadata(
+  'Agent conversation',
+  'Continue a private OUTNA.ME agent conversation.'
+)
 
 export default function AgentConversationPage({ params }: { params: Params }) {
   return (
@@ -16,8 +22,10 @@ export default function AgentConversationPage({ params }: { params: Params }) {
 }
 
 async function ConversationShell({ params }: { params: Params }) {
-  const { agentId, conversationId } = await params
-  const session = await requireSession()
+  const [{ agentId, conversationId }, session] = await Promise.all([
+    params,
+    requireSession(),
+  ])
   const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
   if (!agent) {
     notFound()

@@ -99,7 +99,7 @@ function BudgetRow({
   rule: BudgetRuleView | null
   scope: Props['scope']
 }) {
-  const router = useRouter()
+  const { refresh } = useRouter()
   const [pending, startTransition] = useTransition()
   const [draftLimit, setDraftLimit] = useState<string>(
     rule ? rule.limitUsd.toString() : ''
@@ -121,7 +121,7 @@ function BudgetRow({
           enabled: rule?.enabled ?? true,
         })
         toast.success(`${period.label} budget saved`)
-        router.refresh()
+        refresh()
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Failed to save')
       }
@@ -137,7 +137,7 @@ function BudgetRow({
         ruleId: rule.id,
         enabled: !rule.enabled,
       })
-      router.refresh()
+      refresh()
     })
   }
 
@@ -148,7 +148,7 @@ function BudgetRow({
     startTransition(async () => {
       await deleteBudgetRuleAction(rule.id)
       toast.success(`${period.label} budget removed`)
-      router.refresh()
+      refresh()
     })
   }
 

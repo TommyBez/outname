@@ -24,7 +24,7 @@ export function TriggerButton({
   mode?: 'heartbeat' | 'dreaming'
   className?: string
 }) {
-  const router = useRouter()
+  const { push, refresh } = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [isPending, startTransition] = useTransition()
 
@@ -52,10 +52,10 @@ export function TriggerButton({
       )
       startTransition(() => {
         if (eventId) {
-          router.push(`/agents/${agentId}/events?event=${eventId}`)
+          push(`/agents/${agentId}/events?event=${eventId}`)
           return
         }
-        router.refresh()
+        refresh()
       })
     } catch (err) {
       toast.error(

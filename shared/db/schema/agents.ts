@@ -21,28 +21,17 @@ export type AgentEventStatus =
   | 'failed'
   | 'cancelled'
 
-export const agentEventTypeValues = [
-  'heartbeat',
-  'dreaming',
-  'invocation',
-] as const
+const agentEventTypeValues = ['heartbeat', 'dreaming', 'invocation'] as const
 
 export type AgentEventType = (typeof agentEventTypeValues)[number]
 
-export const agentEventTypeEnum = pgEnum(
-  'agent_event_type',
-  agentEventTypeValues
-)
+const agentEventTypeEnum = pgEnum('agent_event_type', agentEventTypeValues)
 
-export const agentEventSourceValues = [
-  'scheduler',
-  'manual',
-  'invocation',
-] as const
+const agentEventSourceValues = ['scheduler', 'manual', 'invocation'] as const
 
 export type AgentEventSource = (typeof agentEventSourceValues)[number]
 
-export const agentEventSourceEnum = pgEnum(
+const agentEventSourceEnum = pgEnum(
   'agent_event_source',
   agentEventSourceValues
 )

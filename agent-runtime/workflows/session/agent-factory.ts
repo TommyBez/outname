@@ -87,7 +87,7 @@ export async function buildAgent(
   })
 }
 
-export function buildDurableAgentRuntime(
+function buildDurableAgentRuntime(
   spec: AgentRuntimeSpec,
   options: {
     conversationId?: string | null

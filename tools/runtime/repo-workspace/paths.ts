@@ -4,7 +4,6 @@ export const REPO_WORKSPACE_ROOT = '/vercel/sandbox'
 
 const MAX_PATH_CHARS = 512
 const LEADING_SLASHES_RE = /^\/+/
-const TRAILING_SLASHES_RE = /\/+$/
 
 export interface NormalizedRepoWorkspacePath {
   absPath: string
@@ -63,17 +62,6 @@ export function isSafeRepoWorkspacePath(relPath: string): boolean {
   return (
     relPath === '' ||
     !(relPath === '..' || relPath.startsWith('../') || relPath.startsWith('/'))
-  )
-}
-
-export function matchesRepoWorkspacePrefix(
-  relPath: string,
-  prefix: string
-): boolean {
-  return (
-    prefix.length === 0 ||
-    relPath === prefix ||
-    relPath.startsWith(`${prefix.replace(TRAILING_SLASHES_RE, '')}/`)
   )
 }
 

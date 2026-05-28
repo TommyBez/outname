@@ -4,7 +4,7 @@ const MAX_TOOL_NAME_LENGTH = 64
 const FALLBACK_SLUG = 'subagent'
 const SUFFIX_LENGTH = 6
 
-export function baseSubAgentToolId(childName: string): string {
+function baseSubAgentToolId(childName: string): string {
   const slug = slugifyAgentName(childName)
   return `${AGENT_TOOL_PREFIX}${slug}`.slice(0, MAX_TOOL_NAME_LENGTH)
 }
@@ -37,7 +37,7 @@ export function uniqueSubAgentToolId(input: {
   return fitWithSuffix(base, `${suffix}_${Date.now().toString(36).slice(-4)}`)
 }
 
-export function legacySubAgentToolId(childAgentId: string): string {
+function legacySubAgentToolId(childAgentId: string): string {
   return `${AGENT_TOOL_PREFIX}${childAgentId}`
 }
 

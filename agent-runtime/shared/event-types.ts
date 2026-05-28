@@ -1,4 +1,4 @@
-export const AGENT_EVENT_STATUSES = [
+const AGENT_EVENT_STATUSES = [
   'queued',
   'starting',
   'running',

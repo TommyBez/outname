@@ -27,7 +27,7 @@ export default function BlogIndexPage() {
         <div className="mt-6 max-w-xl border-foreground border-l-2 pl-4">
           <p className="text-muted-foreground text-sm leading-relaxed">
             Essays on AI agents, tool use, memory, schedules, and building
-            software for agents—not dashboards—written by{' '}
+            software for agents, not dashboards, written by{' '}
             <a
               className="text-accent underline-offset-4 hover:underline"
               href={blogAuthor.url}

@@ -16,7 +16,7 @@ export interface UserTimezoneBootstrapState {
   timezone: string
 }
 
-export async function queryUserTimezoneBootstrapState(
+async function queryUserTimezoneBootstrapState(
   userId: string
 ): Promise<UserTimezoneBootstrapState> {
   const [row] = await db
@@ -35,7 +35,7 @@ export async function queryUserTimezoneBootstrapState(
   return { timezone, allowAutoSync }
 }
 
-export async function getCachedUserTimezoneBootstrapState(
+async function getCachedUserTimezoneBootstrapState(
   userId: string
 ): Promise<UserTimezoneBootstrapState> {
   'use cache'

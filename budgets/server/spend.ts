@@ -3,7 +3,6 @@ import 'server-only'
 import { and, eq, gte, sql } from 'drizzle-orm'
 import { db } from '@/shared/db'
 import { agentTokenUsage } from '@/shared/db/schema'
-import { formatBudgetExceededMessage } from './errors'
 import { periodStart } from './periods'
 import { loadApplicableRules } from './rules'
 import type { BudgetExceededInfo, BudgetPeriod, BudgetScope } from './types'
@@ -70,14 +69,4 @@ export async function checkBudgetExceeded(input: {
     }
   }
   return null
-}
-
-export class BudgetExceededError extends Error {
-  readonly info: BudgetExceededInfo
-
-  constructor(info: BudgetExceededInfo) {
-    super(formatBudgetExceededMessage(info))
-    this.name = 'BudgetExceededError'
-    this.info = info
-  }
 }

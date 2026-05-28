@@ -1,8 +1,13 @@
 'use client'
 
 import { BotIcon, ChevronRightIcon, CircleIcon } from 'lucide-react'
-import { motion, useReducedMotion } from 'motion/react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  domAnimation,
+  LazyMotion,
+  m as motion,
+  useReducedMotion,
+} from 'motion/react'
+import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
 import type {
   AgentChatMessage,
   WorkflowStatusData,
@@ -390,6 +395,60 @@ for (const scenario of showcaseScenarios) {
   framesByScenario.set(scenario.id, buildFrames(scenario))
 }
 
+const EMPTY_FRAMES: readonly Frame[] = []
+const EMPTY_FRAME: Frame = {
+  delayBefore: 0,
+  messages: [],
+  workflowStatus: null,
+}
+
+interface ShowcaseState {
+  activeId: ChatShowcaseScenario['id']
+  frameIndex: number
+  input: string
+  isPlaying: boolean
+}
+
+type ShowcaseAction =
+  | { type: 'input'; value: string }
+  | { type: 'play' }
+  | { scenario: ChatShowcaseScenario; type: 'select-scenario' }
+  | { frameIndex: number; type: 'show-frame' }
+  | { type: 'stop' }
+
+const initialShowcaseState: ShowcaseState = {
+  activeId: showcaseScenarios[0].id,
+  frameIndex: 0,
+  input: showcaseScenarios[0].prompt,
+  isPlaying: false,
+}
+
+function showcaseReducer(
+  state: ShowcaseState,
+  action: ShowcaseAction
+): ShowcaseState {
+  switch (action.type) {
+    case 'input':
+      return { ...state, input: action.value }
+    case 'play':
+      return { ...state, frameIndex: 0, isPlaying: true }
+    case 'select-scenario':
+      return {
+        ...state,
+        activeId: action.scenario.id,
+        frameIndex: 0,
+        input: action.scenario.prompt,
+        isPlaying: true,
+      }
+    case 'show-frame':
+      return { ...state, frameIndex: action.frameIndex }
+    case 'stop':
+      return { ...state, isPlaying: false }
+    default:
+      return state
+  }
+}
+
 export function LandingChatShowcase({
   shouldReduceMotion,
 }: {
@@ -398,13 +457,9 @@ export function LandingChatShowcase({
   const reduceMotion = useReducedMotion()
   const reduceMotionFlag = shouldReduceMotion || Boolean(reduceMotion)
 
-  const [activeId, setActiveId] = useState<ChatShowcaseScenario['id']>(
-    showcaseScenarios[0].id
-  )
-  const [input, setInput] = useState(showcaseScenarios[0].prompt)
-  const [frameIndex, setFrameIndex] = useState(0)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [hasAutoPlayed, setHasAutoPlayed] = useState(false)
+  const [state, dispatch] = useReducer(showcaseReducer, initialShowcaseState)
+  const { activeId, frameIndex, input, isPlaying } = state
+  const hasAutoPlayedRef = useRef(false)
   const sectionRef = useRef<HTMLElement | null>(null)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -414,13 +469,10 @@ export function LandingChatShowcase({
       showcaseScenarios[0],
     [activeId]
   )
-  const frames = framesByScenario.get(activeScenario.id) ?? []
+  const frames = framesByScenario.get(activeScenario.id) ?? EMPTY_FRAMES
   const totalFrames = frames.length
-  const currentFrame = frames[Math.min(frameIndex, totalFrames - 1)] ?? {
-    delayBefore: 0,
-    messages: [],
-    workflowStatus: null,
-  }
+  const currentFrame =
+    frames[Math.min(frameIndex, totalFrames - 1)] ?? EMPTY_FRAME
 
   const clearTimer = useCallback(() => {
     if (timeoutRef.current) {
@@ -431,8 +483,7 @@ export function LandingChatShowcase({
 
   const play = useCallback(() => {
     clearTimer()
-    setFrameIndex(0)
-    setIsPlaying(true)
+    dispatch({ type: 'play' })
   }, [clearTimer])
 
   // Animation tick: schedule next frame based on its delay.
@@ -441,20 +492,26 @@ export function LandingChatShowcase({
       return
     }
     if (frameIndex >= totalFrames - 1) {
-      setIsPlaying(false)
+      dispatch({ type: 'stop' })
       return
     }
     const nextIndex = frameIndex + 1
     const delay = frames[nextIndex]?.delayBefore ?? 600
-    timeoutRef.current = setTimeout(() => {
-      setFrameIndex(nextIndex)
+    const timeoutId = setTimeout(() => {
+      dispatch({ frameIndex: nextIndex, type: 'show-frame' })
     }, delay)
-    return clearTimer
-  }, [clearTimer, frameIndex, frames, isPlaying, reduceMotionFlag, totalFrames])
+    timeoutRef.current = timeoutId
+    return () => {
+      clearTimeout(timeoutId)
+      if (timeoutRef.current === timeoutId) {
+        timeoutRef.current = null
+      }
+    }
+  }, [frameIndex, frames, isPlaying, reduceMotionFlag, totalFrames])
 
   // Auto-play once when section enters viewport.
   useEffect(() => {
-    if (reduceMotionFlag || hasAutoPlayed) {
+    if (reduceMotionFlag || hasAutoPlayedRef.current) {
       return
     }
     const section = sectionRef.current
@@ -465,7 +522,7 @@ export function LandingChatShowcase({
       (entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting) {
-            setHasAutoPlayed(true)
+            hasAutoPlayedRef.current = true
             play()
             observer.disconnect()
             break
@@ -476,12 +533,11 @@ export function LandingChatShowcase({
     )
     observer.observe(section)
     return () => observer.disconnect()
-  }, [hasAutoPlayed, play, reduceMotionFlag])
+  }, [play, reduceMotionFlag])
 
   function handleScenarioSelect(scenario: ChatShowcaseScenario) {
-    setInput(scenario.prompt)
-    setActiveId(scenario.id)
-    play()
+    clearTimer()
+    dispatch({ scenario, type: 'select-scenario' })
   }
 
   const displayMessages = reduceMotionFlag
@@ -495,194 +551,201 @@ export function LandingChatShowcase({
       id="chat"
       ref={sectionRef}
     >
-      <motion.div
-        className="mx-auto max-w-7xl"
-        initial={reduceMotionFlag ? false : 'hidden'}
-        variants={staggerVariants}
-        viewport={{ once: true, margin: '-80px' }}
-        whileInView="visible"
-      >
+      <LazyMotion features={domAnimation}>
         <motion.div
-          className="grid gap-5 border-foreground border-t-4 pt-5 md:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)] md:items-end"
-          variants={revealVariants}
+          className="mx-auto max-w-7xl"
+          initial={reduceMotionFlag ? false : 'hidden'}
+          variants={staggerVariants}
+          viewport={{ once: true, margin: '-80px' }}
+          whileInView="visible"
         >
-          <div>
-            <p className="swiss-label text-accent">Live agent · /chat/:id</p>
-            <h2 className="mt-4 text-balance font-black text-5xl uppercase leading-[0.88] tracking-normal md:text-7xl">
-              Same agent. Every surface.
-            </h2>
-          </div>
-          <p className="max-w-2xl text-muted-foreground leading-relaxed">
-            Heartbeat runs, in-app chat, Slack, Discord, Telegram.
-          </p>
-        </motion.div>
+          <motion.div
+            className="grid gap-5 border-foreground border-t-4 pt-5 md:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)] md:items-end"
+            variants={revealVariants}
+          >
+            <div>
+              <p className="swiss-label text-accent">Live agent · /chat/:id</p>
+              <h2 className="mt-4 text-balance font-black text-5xl uppercase leading-[0.88] tracking-normal md:text-7xl">
+                Same agent. Every surface.
+              </h2>
+            </div>
+            <p className="max-w-2xl text-muted-foreground leading-relaxed">
+              Heartbeat runs, in-app chat, Slack, Discord, Telegram.
+            </p>
+          </motion.div>
 
-        <motion.div
-          className="mt-8 border-2 border-foreground bg-background p-2"
-          variants={revealVariants}
-        >
-          <div className="grid min-h-[32rem] border border-foreground/15 bg-background lg:min-h-[44rem] lg:grid-cols-[18rem_minmax(0,1fr)]">
-            <aside className="min-w-0 border-foreground border-b-2 bg-muted lg:flex lg:flex-col lg:border-r-2 lg:border-b-0">
-              <div className="flex items-center justify-between gap-3 border-foreground border-b-2 p-3 lg:block lg:p-5">
-                <div className="flex min-w-0 items-center gap-3 lg:block">
-                  <span className="grid size-9 shrink-0 place-items-center border-2 border-foreground bg-accent lg:hidden">
-                    <BotIcon className="size-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="hidden font-bold text-[10px] text-muted-foreground uppercase tracking-normal lg:block">
-                      Workspace
-                    </p>
-                    <div className="lg:mt-3 lg:flex lg:items-start lg:justify-between lg:gap-3">
-                      <div className="min-w-0">
-                        <p className="font-black text-sm uppercase leading-none tracking-normal lg:text-lg">
-                          {agentMeta.name}
-                        </p>
-                        <p className="mt-1 font-mono text-[10px] text-muted-foreground uppercase tracking-normal lg:mt-2">
-                          {agentMeta.attached}
-                        </p>
+          <motion.div
+            className="mt-8 border-2 border-foreground bg-background p-2"
+            variants={revealVariants}
+          >
+            <div className="grid min-h-[32rem] border border-foreground/15 bg-background lg:min-h-[44rem] lg:grid-cols-[18rem_minmax(0,1fr)]">
+              <aside className="min-w-0 border-foreground border-b-2 bg-muted lg:flex lg:flex-col lg:border-r-2 lg:border-b-0">
+                <div className="flex items-center justify-between gap-3 border-foreground border-b-2 p-3 lg:block lg:p-5">
+                  <div className="flex min-w-0 items-center gap-3 lg:block">
+                    <span className="grid size-9 shrink-0 place-items-center border-2 border-foreground bg-accent lg:hidden">
+                      <BotIcon className="size-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="hidden font-bold text-[10px] text-muted-foreground uppercase tracking-normal lg:block">
+                        Workspace
+                      </p>
+                      <div className="lg:mt-3 lg:flex lg:items-start lg:justify-between lg:gap-3">
+                        <div className="min-w-0">
+                          <p className="font-black text-sm uppercase leading-none tracking-normal lg:text-lg">
+                            {agentMeta.name}
+                          </p>
+                          <p className="mt-1 font-mono text-[10px] text-muted-foreground uppercase tracking-normal lg:mt-2">
+                            {agentMeta.attached}
+                          </p>
+                        </div>
+                        <span className="hidden size-9 shrink-0 place-items-center border-2 border-foreground bg-accent lg:grid">
+                          <BotIcon className="size-4" />
+                        </span>
                       </div>
-                      <span className="hidden size-9 shrink-0 place-items-center border-2 border-foreground bg-accent lg:grid">
-                        <BotIcon className="size-4" />
-                      </span>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <nav className="hidden border-foreground border-b-2 p-3 lg:block">
-                <ul className="grid gap-0.5 font-mono text-[11px] uppercase tracking-normal">
-                  {[
-                    { active: true, label: 'Chat' },
-                    { active: false, label: 'Configure' },
-                    { active: false, label: 'Memory' },
-                    { active: false, label: 'Tools' },
-                    { active: false, label: 'Timeline' },
-                  ].map((item) => (
-                    <li key={item.label}>
-                      <span
-                        className={cn(
-                          'flex items-center justify-between gap-2 px-3 py-2',
-                          item.active
-                            ? 'bg-foreground text-background'
-                            : 'text-muted-foreground'
-                        )}
-                      >
-                        {item.label}
-                        {item.active ? (
-                          <ChevronRightIcon className="size-3" />
-                        ) : null}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-
-              <div className="min-w-0 border-foreground border-b-2 p-2 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:border-b-0 lg:p-3">
-                <p className="hidden px-2 pt-1 pb-2 font-bold text-[10px] text-muted-foreground uppercase tracking-normal lg:block">
-                  Conversations
-                </p>
-                <ul className="-mx-2 flex gap-1.5 overflow-x-auto px-2 lg:mx-0 lg:grid lg:gap-1.5 lg:overflow-visible lg:px-0">
-                  {showcaseScenarios.map((scenario) => (
-                    <li className="shrink-0 lg:shrink" key={scenario.id}>
-                      <button
-                        className={cn(
-                          'ease grid h-full w-44 gap-1 border-2 border-foreground px-3 py-2 text-left transition-colors duration-150 lg:w-full lg:px-3 lg:py-2.5',
-                          activeScenario.id === scenario.id
-                            ? 'bg-background'
-                            : 'bg-muted hover:bg-background'
-                        )}
-                        onClick={() => handleScenarioSelect(scenario)}
-                        type="button"
-                      >
-                        <span className="flex items-baseline justify-between gap-2">
-                          <span className="truncate font-black text-xs uppercase tracking-normal">
-                            {scenario.title}
-                          </span>
-                          <span className="shrink-0 font-mono text-[9px] text-muted-foreground uppercase tracking-normal">
-                            {scenario.relativeTime}
-                          </span>
+                <nav className="hidden border-foreground border-b-2 p-3 lg:block">
+                  <ul className="grid gap-0.5 font-mono text-[11px] uppercase tracking-normal">
+                    {[
+                      { active: true, label: 'Chat' },
+                      { active: false, label: 'Configure' },
+                      { active: false, label: 'Memory' },
+                      { active: false, label: 'Tools' },
+                      { active: false, label: 'Timeline' },
+                    ].map((item) => (
+                      <li key={item.label}>
+                        <span
+                          className={cn(
+                            'flex items-center justify-between gap-2 px-3 py-2',
+                            item.active
+                              ? 'bg-foreground text-background'
+                              : 'text-muted-foreground'
+                          )}
+                        >
+                          {item.label}
+                          {item.active ? (
+                            <ChevronRightIcon className="size-3" />
+                          ) : null}
                         </span>
-                        <span className="line-clamp-2 hidden text-[11px] text-muted-foreground leading-snug lg:block">
-                          {scenario.description}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </aside>
+                      </li>
+                    ))}
+                  </ul>
+                </nav>
 
-            <div className="flex min-w-0 flex-col">
-              <header className="flex flex-wrap items-center justify-between gap-3 border-foreground border-b-2 bg-background px-5 py-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <span
-                    aria-hidden
-                    className="grid size-9 place-items-center border-2 border-foreground bg-foreground text-background"
-                  >
-                    <BotIcon className="size-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="font-black text-sm uppercase leading-none tracking-normal">
-                      {agentMeta.name}
-                    </p>
-                    <p className="mt-1.5 font-mono text-[10px] text-muted-foreground uppercase tracking-normal">
-                      {activeScenario.model}
-                    </p>
+                <div className="min-w-0 border-foreground border-b-2 p-2 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:border-b-0 lg:p-3">
+                  <p className="hidden px-2 pt-1 pb-2 font-bold text-[10px] text-muted-foreground uppercase tracking-normal lg:block">
+                    Conversations
+                  </p>
+                  <ul className="-mx-2 flex gap-1.5 overflow-x-auto px-2 lg:mx-0 lg:grid lg:gap-1.5 lg:overflow-visible lg:px-0">
+                    {showcaseScenarios.map((scenario) => (
+                      <li className="shrink-0 lg:shrink" key={scenario.id}>
+                        <button
+                          className={cn(
+                            'ease grid h-full w-44 gap-1 border-2 border-foreground px-3 py-2 text-left transition-colors duration-150 lg:w-full lg:px-3 lg:py-2.5',
+                            activeScenario.id === scenario.id
+                              ? 'bg-background'
+                              : 'bg-muted hover:bg-background'
+                          )}
+                          onClick={() => handleScenarioSelect(scenario)}
+                          type="button"
+                        >
+                          <span className="flex items-baseline justify-between gap-2">
+                            <span className="truncate font-black text-xs uppercase tracking-normal">
+                              {scenario.title}
+                            </span>
+                            <span className="shrink-0 font-mono text-[9px] text-muted-foreground uppercase tracking-normal">
+                              {scenario.relativeTime}
+                            </span>
+                          </span>
+                          <span className="line-clamp-2 hidden text-[11px] text-muted-foreground leading-snug lg:block">
+                            {scenario.description}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </aside>
+
+              <div className="flex min-w-0 flex-col">
+                <header className="flex flex-wrap items-center justify-between gap-3 border-foreground border-b-2 bg-background px-5 py-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span
+                      aria-hidden
+                      className="grid size-9 place-items-center border-2 border-foreground bg-foreground text-background"
+                    >
+                      <BotIcon className="size-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-black text-sm uppercase leading-none tracking-normal">
+                        {agentMeta.name}
+                      </p>
+                      <p className="mt-1.5 font-mono text-[10px] text-muted-foreground uppercase tracking-normal">
+                        {activeScenario.model}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={cn(
-                      'inline-flex items-center gap-2 border-2 border-foreground px-2 py-1 font-mono text-[10px] uppercase tracking-normal',
-                      isPlaying
-                        ? 'bg-foreground text-background'
-                        : 'bg-background'
-                    )}
-                  >
-                    <CircleIcon
+                  <div className="flex items-center gap-2">
+                    <span
                       className={cn(
-                        'size-2 stroke-none',
+                        'inline-flex items-center gap-2 border-2 border-foreground px-2 py-1 font-mono text-[10px] uppercase tracking-normal',
                         isPlaying
-                          ? 'animate-pulse fill-accent'
-                          : 'fill-foreground'
+                          ? 'bg-foreground text-background'
+                          : 'bg-background'
                       )}
-                    />
-                    {isPlaying ? 'streaming' : 'idle'}
-                  </span>
-                </div>
-              </header>
+                    >
+                      <CircleIcon
+                        className={cn(
+                          'size-2 stroke-none',
+                          isPlaying
+                            ? 'animate-pulse fill-accent'
+                            : 'fill-foreground'
+                        )}
+                      />
+                      {isPlaying ? 'streaming' : 'idle'}
+                    </span>
+                  </div>
+                </header>
 
-              <div className="min-h-0 flex-1 overflow-hidden bg-background">
-                <AgentChatTranscript
-                  className="h-full"
-                  emptyDescription="Pick a scenario to preview an agent run."
-                  emptyTitle="No run selected"
-                  messages={[...displayMessages]}
-                  workflowStatus={displayStatus}
-                />
-              </div>
-
-              <div className="border-foreground border-t-2 bg-muted px-5 py-4">
-                <PromptInput
-                  onSubmit={() => {
-                    /* static demo */
-                  }}
-                >
-                  <PromptInputTextarea
-                    onChange={(event) => setInput(event.currentTarget.value)}
-                    placeholder="Ask this agent…"
-                    value={input}
+                <div className="min-h-0 flex-1 overflow-hidden bg-background">
+                  <AgentChatTranscript
+                    className="h-full"
+                    emptyDescription="Pick a scenario to preview an agent run."
+                    emptyTitle="No run selected"
+                    messages={[...displayMessages]}
+                    workflowStatus={displayStatus}
                   />
-                  <PromptInputFooter>
-                    <div />
-                    <PromptInputSubmit disabled />
-                  </PromptInputFooter>
-                </PromptInput>
+                </div>
+
+                <div className="border-foreground border-t-2 bg-muted px-5 py-4">
+                  <PromptInput
+                    onSubmit={() => {
+                      /* static demo */
+                    }}
+                  >
+                    <PromptInputTextarea
+                      onChange={(event) =>
+                        dispatch({
+                          type: 'input',
+                          value: event.currentTarget.value,
+                        })
+                      }
+                      placeholder="Ask this agent…"
+                      value={input}
+                    />
+                    <PromptInputFooter>
+                      <div />
+                      <PromptInputSubmit disabled />
+                    </PromptInputFooter>
+                  </PromptInput>
+                </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         </motion.div>
-      </motion.div>
+      </LazyMotion>
     </section>
   )
 }

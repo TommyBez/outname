@@ -1,6 +1,12 @@
 'use client'
 
-import { motion, useMotionValueEvent, useScroll } from 'motion/react'
+import {
+  domAnimation,
+  LazyMotion,
+  m as motion,
+  useMotionValueEvent,
+  useScroll,
+} from 'motion/react'
 import { useRef, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
@@ -31,90 +37,93 @@ export function LandingHeartbeatCloser({
       className="px-4 pt-10 pb-24 sm:px-6 md:px-10 md:pb-32 lg:px-12"
       id="heartbeat"
     >
-      <motion.div
-        className="mx-auto max-w-7xl"
-        initial={shouldReduceMotion ? false : 'hidden'}
-        variants={staggerVariants}
-        viewport={{ once: true, margin: '-80px' }}
-        whileInView="visible"
-      >
+      <LazyMotion features={domAnimation}>
         <motion.div
-          className="grid gap-5 border-foreground border-t-4 pt-5 md:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)] md:items-end"
-          variants={revealVariants}
+          className="mx-auto max-w-7xl"
+          initial={shouldReduceMotion ? false : 'hidden'}
+          variants={staggerVariants}
+          viewport={{ once: true, margin: '-80px' }}
+          whileInView="visible"
         >
-          <div>
-            <p className="swiss-label text-accent">
-              One day · INBOX SENTINEL · 2026-05-11
-            </p>
-            <h2 className="mt-4 text-balance font-black text-5xl uppercase leading-[0.88] tracking-normal md:text-7xl">
-              It runs while you sleep. It learns while it runs.
-            </h2>
-          </div>
-          <p className="max-w-xl text-muted-foreground leading-relaxed">
-            Schedules fire. Channels light up. Sub-agents return. The memory
-            file grows. The agent gets sharper. You read the log in the morning.
-          </p>
-        </motion.div>
-
-        <motion.div
-          className="mt-10 hidden gap-3 border-2 border-foreground bg-foreground p-3 text-background lg:grid lg:grid-cols-3"
-          variants={revealVariants}
-        >
-          {heartbeatStats.map((stat) => (
-            <div
-              className="min-h-28 border border-background/25 p-4"
-              key={stat.label}
-            >
-              <p className="font-bold text-[10px] text-background/60 uppercase tracking-normal">
-                {stat.label}
+          <motion.div
+            className="grid gap-5 border-foreground border-t-4 pt-5 md:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)] md:items-end"
+            variants={revealVariants}
+          >
+            <div>
+              <p className="swiss-label text-accent">
+                One day · INBOX SENTINEL · 2026-05-11
               </p>
-              <p className="mt-3 font-black text-6xl uppercase leading-none tracking-normal">
-                {stat.value}
+              <h2 className="mt-4 text-balance font-black text-5xl uppercase leading-[0.88] tracking-normal md:text-7xl">
+                It runs while you sleep. It learns while it runs.
+              </h2>
+            </div>
+            <p className="max-w-xl text-muted-foreground leading-relaxed">
+              Schedules fire. Channels light up. Sub-agents return. The memory
+              file grows. The agent gets sharper. You read the log in the
+              morning.
+            </p>
+          </motion.div>
+
+          <motion.div
+            className="mt-10 hidden gap-3 border-2 border-foreground bg-foreground p-3 text-background lg:grid lg:grid-cols-3"
+            variants={revealVariants}
+          >
+            {heartbeatStats.map((stat) => (
+              <div
+                className="min-h-28 border border-background/25 p-4"
+                key={stat.label}
+              >
+                <p className="font-bold text-[10px] text-background/60 uppercase tracking-normal">
+                  {stat.label}
+                </p>
+                <p className="mt-3 font-black text-6xl uppercase leading-none tracking-normal">
+                  {stat.value}
+                </p>
+              </div>
+            ))}
+          </motion.div>
+
+          <motion.ol
+            className="mt-6 hidden gap-2 lg:grid"
+            variants={revealVariants}
+          >
+            {heartbeatEvents.map((entry) => (
+              <HeartbeatRow
+                entry={entry}
+                key={`${entry.time}-${entry.event}-${entry.detail}`}
+              />
+            ))}
+          </motion.ol>
+
+          <motion.div className="mt-8 lg:hidden" variants={revealVariants}>
+            <HeartbeatTerminalPinned />
+          </motion.div>
+
+          <motion.div
+            className="mt-12 grid gap-6 border-foreground border-t-2 pt-8 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] md:items-end"
+            variants={revealVariants}
+          >
+            <h3 className="home-display text-balance font-black text-6xl uppercase leading-[0.84] tracking-normal md:text-8xl">
+              Get early access.
+            </h3>
+            <div className="flex min-w-0 flex-col gap-3 md:items-end">
+              <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
+                {waitlistEnabled ? (
+                  <PrimaryLink href="/waitlist?source=landing-closer">
+                    Join the waitlist
+                  </PrimaryLink>
+                ) : null}
+                <SecondaryLink href="/login?from=/agents/new">
+                  Login
+                </SecondaryLink>
+              </div>
+              <p className="font-mono text-[11px] text-muted-foreground uppercase tracking-normal">
+                Confirm by email, then wait for invite.
               </p>
             </div>
-          ))}
+          </motion.div>
         </motion.div>
-
-        <motion.ol
-          className="mt-6 hidden gap-2 lg:grid"
-          variants={revealVariants}
-        >
-          {heartbeatEvents.map((entry) => (
-            <HeartbeatRow
-              entry={entry}
-              key={`${entry.time}-${entry.event}-${entry.detail}`}
-            />
-          ))}
-        </motion.ol>
-
-        <motion.div className="mt-8 lg:hidden" variants={revealVariants}>
-          <HeartbeatTerminalPinned />
-        </motion.div>
-
-        <motion.div
-          className="mt-12 grid gap-6 border-foreground border-t-2 pt-8 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] md:items-end"
-          variants={revealVariants}
-        >
-          <h3 className="home-display text-balance font-black text-6xl uppercase leading-[0.84] tracking-normal md:text-8xl">
-            Get early access.
-          </h3>
-          <div className="flex min-w-0 flex-col gap-3 md:items-end">
-            <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
-              {waitlistEnabled ? (
-                <PrimaryLink href="/waitlist?source=landing-closer">
-                  Join the waitlist
-                </PrimaryLink>
-              ) : null}
-              <SecondaryLink href="/login?from=/agents/new">
-                Login
-              </SecondaryLink>
-            </div>
-            <p className="font-mono text-[11px] text-muted-foreground uppercase tracking-normal">
-              Confirm by email, then wait for invite.
-            </p>
-          </div>
-        </motion.div>
-      </motion.div>
+      </LazyMotion>
     </section>
   )
 }

@@ -73,7 +73,7 @@ function getWaitlistLogoUrl(): string {
   return `${getBaseUrl()}/email/outna-logo.png`
 }
 
-export function buildWaitlistConfirmationUrl(token: string): string {
+function buildWaitlistConfirmationUrl(token: string): string {
   const url = new URL('/waitlist/confirm', getBaseUrl())
   url.searchParams.set('token', token)
   return url.toString()

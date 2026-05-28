@@ -1,4 +1,4 @@
-import { startupSystemSandbox } from '@/agent-runtime/server/agent-sandbox'
+import { startupSystemSandbox } from '@/agent-runtime/server/system-sandbox-startup'
 
 export async function startupSystemSandboxStep(input: {
   agentId: string

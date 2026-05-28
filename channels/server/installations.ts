@@ -7,25 +7,7 @@ import {
 } from '@/shared/db/schema'
 import type { ChannelId } from './types'
 
-// Slack bot tokens are shared per workspace, so the adapter can use any active row here.
-// Routing must use `getChannelInstallationsByScope()` so fan-out sees every user install.
-export async function getChannelInstallationByScope(
-  channel: ChannelId,
-  externalScopeId: string
-): Promise<ChannelInstallation | null> {
-  const [row] = await db
-    .select()
-    .from(channelInstallations)
-    .where(
-      and(
-        eq(channelInstallations.channel, channel),
-        eq(channelInstallations.externalId, externalScopeId)
-      )
-    )
-    .limit(1)
-  return row ?? null
-}
-
+// Routing must use this plural query so fan-out sees every user install.
 export async function getChannelInstallationsByScope(
   channel: ChannelId,
   externalScopeId: string

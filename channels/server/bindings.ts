@@ -103,12 +103,3 @@ export async function deleteAgentChannelBinding(input: {
       )
     )
 }
-
-export async function listAgentChannelBindings(
-  agentId: string
-): Promise<AgentChannelBinding[]> {
-  return await db
-    .select()
-    .from(agentChannelBindings)
-    .where(eq(agentChannelBindings.agentId, agentId))
-}

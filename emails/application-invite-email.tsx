@@ -19,12 +19,7 @@ export function ApplicationInviteEmail({
       ctaLabel={`Open ${EMAIL_BRAND_NAME}`}
       eyebrow={`${EMAIL_BRAND_NAME} / invitation`}
       footerEyebrow={`${EMAIL_BRAND_NAME} / invitation`}
-      footerText={
-        <Text className="m-0 mt-[12px] text-[12px] text-subtle leading-[20px]">
-          You received this email because someone invited you to try{' '}
-          {EMAIL_BRAND_NAME}. If that was not you, you can safely ignore it.
-        </Text>
-      }
+      footerText={`You received this email because someone invited you to try ${EMAIL_BRAND_NAME}. If that was not you, you can safely ignore it.`}
       lead={siteConfig.shortDescription}
       logoUrl={logoUrl}
       preview={`You're invited to ${EMAIL_BRAND_NAME}.`}

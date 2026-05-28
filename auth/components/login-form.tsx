@@ -18,7 +18,7 @@ const OTP_LENGTH = 6
 const OTP_SLOT_IDS = ['otp-0', 'otp-1', 'otp-2', 'otp-3', 'otp-4', 'otp-5']
 
 export function LoginForm({ redirectTo }: { redirectTo: string }) {
-  const router = useRouter()
+  const { push, refresh } = useRouter()
   const [email, setEmail] = useState('')
   const [otp, setOtp] = useState('')
   const [isRequestingOtp, setIsRequestingOtp] = useState(false)
@@ -86,8 +86,8 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
     }
 
     toast.success('Signed in')
-    router.push(redirectTo)
-    router.refresh()
+    push(redirectTo)
+    refresh()
   }
 
   return (

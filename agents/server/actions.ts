@@ -66,33 +66,6 @@ export async function updateAgentAction(
   revalidatePath('/')
 }
 
-export async function toggleAgentAction(
-  agentId: string,
-  enabled: boolean
-): Promise<void> {
-  const session = await requireSession()
-  const [existing] = await db
-    .select()
-    .from(agent)
-    .where(and(eq(agent.id, agentId), eq(agent.userId, session.user.id)))
-    .limit(1)
-  if (!existing) {
-    return
-  }
-
-  await db
-    .update(agent)
-    .set({ enabled, updatedAt: new Date() })
-    .where(eq(agent.id, agentId))
-
-  updateTag(userAgentsTag(session.user.id))
-  updateTag(agentTag(agentId))
-  revalidatePath('/agents')
-  revalidatePath(`/agents/${agentId}`)
-  revalidatePath(`/agents/${agentId}/configure`)
-  revalidatePath('/')
-}
-
 export async function deleteAgentAction(agentId: string): Promise<void> {
   const session = await requireSession()
   const [existing] = await db
