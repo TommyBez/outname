@@ -334,12 +334,15 @@ export const context7DocsTool = defineToolBundle({
   id: 'context7_docs',
   category: 'browser',
   displayName: 'Context7 · Docs',
+  displayDescription: 'Look up up-to-date library documentation while coding.',
   description:
     'Search Context7 libraries and retrieve up-to-date documentation context for specific implementation questions.',
   capabilities: [{ kind: 'brokered_http', connectorId: 'context7.api_key' }],
   tools: {
     context7_search_libraries: {
       displayName: 'Context7 · Search Libraries',
+      displayDescription:
+        'Find the right library docs for a framework or package.',
       description:
         'Search Context7 for libraries matching a name and rank them using the user question or task.',
       inputSchema: context7SearchLibraryInputSchema,
@@ -352,6 +355,8 @@ export const context7DocsTool = defineToolBundle({
     },
     context7_get_context: {
       displayName: 'Context7 · Get Context',
+      displayDescription:
+        'Pull documentation snippets for a specific library and question.',
       description:
         'Fetch Context7 documentation snippets for a specific library ID and question, returning JSON snippets or prompt-ready text.',
       inputSchema: context7GetContextInputSchema,

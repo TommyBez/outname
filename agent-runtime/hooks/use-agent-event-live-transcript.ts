@@ -104,7 +104,7 @@ export function useAgentEventLiveTranscript(input: {
         await consumeOutputStream({
           agentId,
           eventId: event.id,
-          onChunkHandled: () => {
+          onChunk: () => {
             outputStreamIndex += 1
           },
           signal: controller.signal,
@@ -140,7 +140,7 @@ export function useAgentEventLiveTranscript(input: {
         await consumeActivityStream({
           agentId,
           eventId: event.id,
-          onChunkHandled: () => {
+          onChunk: () => {
             activityStreamIndex += 1
           },
           signal: controller.signal,
@@ -306,7 +306,7 @@ async function runStreamWithRetry(input: {
 
 async function consumeOutputStream(input: {
   agentId: string
-  onChunkHandled: () => void
+  onChunk: () => void
   eventId: string
   onMessage: (message: AgentChatMessage) => void
   signal: AbortSignal
@@ -315,6 +315,7 @@ async function consumeOutputStream(input: {
   const stream = await openEventStream<AgentChatChunk>({
     agentId: input.agentId,
     eventId: input.eventId,
+    onChunk: input.onChunk,
     signal: input.signal,
     startIndex: input.startIndex,
     stream: 'output',
@@ -324,14 +325,13 @@ async function consumeOutputStream(input: {
     terminateOnError: false,
   })) {
     input.onMessage(message)
-    input.onChunkHandled()
   }
 }
 
 async function consumeActivityStream(input: {
   agentId: string
   eventId: string
-  onChunkHandled: () => void
+  onChunk: () => void
   onEvent: (event: RunEvent) => void
   signal: AbortSignal
   startIndex: number
@@ -339,6 +339,7 @@ async function consumeActivityStream(input: {
   const stream = await openEventStream<RunEvent>({
     agentId: input.agentId,
     eventId: input.eventId,
+    onChunk: input.onChunk,
     signal: input.signal,
     startIndex: input.startIndex,
     stream: 'activity',
@@ -351,7 +352,6 @@ async function consumeActivityStream(input: {
         return
       }
       input.onEvent(value)
-      input.onChunkHandled()
     }
   } finally {
     reader.releaseLock()
@@ -361,6 +361,7 @@ async function consumeActivityStream(input: {
 async function openEventStream<T>(input: {
   agentId: string
   eventId: string
+  onChunk: () => void
   signal: AbortSignal
   startIndex: number
   stream: 'activity' | 'output'
@@ -387,11 +388,12 @@ async function openEventStream<T>(input: {
   if (!response.body) {
     throw new Error('Event stream did not return a body')
   }
-  return ndjsonReadable<T>(response.body)
+  return ndjsonReadable<T>(response.body, input.onChunk)
 }
 
 function ndjsonReadable<T>(
-  body: ReadableStream<Uint8Array>
+  body: ReadableStream<Uint8Array>,
+  onChunk: () => void
 ): ReadableStream<T> {
   return new ReadableStream<T>({
     async start(controller) {
@@ -411,6 +413,7 @@ function ndjsonReadable<T>(
           )
           buffer = parsed.buffer
           for (const item of parsed.values) {
+            onChunk()
             controller.enqueue(item)
           }
         }
@@ -419,11 +422,13 @@ function ndjsonReadable<T>(
           const parsed = parseNdjsonChunk<T>(buffer, tail, NDJSON_OPTIONS)
           buffer = parsed.buffer
           for (const item of parsed.values) {
+            onChunk()
             controller.enqueue(item)
           }
         }
         for (const item of flushNdjsonBuffer<T>(buffer, NDJSON_OPTIONS)
           .values) {
+          onChunk()
           controller.enqueue(item)
         }
         controller.close()

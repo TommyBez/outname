@@ -32,7 +32,12 @@ export const posthogConnector = defineConnector('posthog.api_key', {
     },
   ],
   broker: {
-    allowedHosts: ['us.i.posthog.com', 'eu.i.posthog.com'] as const,
+    allowedHosts: [
+      'us.posthog.com',
+      'eu.posthog.com',
+      'us.i.posthog.com',
+      'eu.i.posthog.com',
+    ] as const,
     injectedHeaderNames: ['authorization'] as const,
     injectedHeaders: (credential: PosthogCredential) => ({
       authorization: `Bearer ${credential.apiKey}`,

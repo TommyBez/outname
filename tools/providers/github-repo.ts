@@ -180,6 +180,7 @@ function denyDangerousBashCommand(input: {
 const githubRepoTools: Record<string, BundleChildToolArgs<GitHubRepoConfig>> = {
   github_repo_bash: {
     displayName: 'GitHub Repo · Bash',
+    displayDescription: 'Run shell commands inside a cloned GitHub repository.',
     description:
       'Execute bash commands from the cloned GitHub repository root inside the repo workspace. Use this for git, grep, builds, tests, scripts, and curl-based GitHub API calls. When readOnly is false, GitHub HTTPS auth is brokered by the sandbox network policy; no token, username, password, or credential env var is available or needed.',
     inputSchema: bashInputSchema,
@@ -193,6 +194,7 @@ const githubRepoTools: Record<string, BundleChildToolArgs<GitHubRepoConfig>> = {
   },
   github_repo_read_file: {
     displayName: 'GitHub Repo · Read File',
+    displayDescription: 'Read a file from the cloned GitHub repository.',
     description:
       'Read a UTF-8 text file from the cloned GitHub repository using the repo workspace adapter.',
     inputSchema: readFileInputSchema,
@@ -206,6 +208,8 @@ const githubRepoTools: Record<string, BundleChildToolArgs<GitHubRepoConfig>> = {
   },
   github_repo_write_file: {
     displayName: 'GitHub Repo · Write File',
+    displayDescription:
+      'Create or update a file in the cloned GitHub repository.',
     description:
       'Write a UTF-8 text file inside the cloned GitHub repository using the repo workspace adapter. Use this for repository file edits instead of generic system-sandbox file tools.',
     inputSchema: writeFileInputSchema,
@@ -224,6 +228,8 @@ export const githubRepoTool: MaintainerTool = defineToolBundle({
   id: GITHUB_REPO_TOOL_ID,
   category: 'developer',
   displayName: 'GitHub · Repo Workspace',
+  displayDescription:
+    'Work inside a private GitHub repo — run git, tests, scripts, and edit files.',
   description:
     'Clone a configured private GitHub repository into a sandboxed repo workspace and expose the bash-tool adapter so the agent can run git, grep, tests, builds, scripts, and file edits directly inside the repository. The repo workspace filesystem is separate from the system sandbox; use this bundle for repository files. When readOnly is false, GitHub HTTPS auth is brokered by the sandbox network policy, so no token, username, password, or credential env var is available or needed.',
   capabilities: [{ kind: 'repo_workspace', connectorId: GITHUB_CONNECTOR_ID }],

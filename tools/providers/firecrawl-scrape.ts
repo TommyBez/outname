@@ -67,6 +67,7 @@ export const firecrawlScrapeTool = defineApiPassthroughTool({
   id: 'firecrawl_scrape',
   category: 'browser',
   displayName: 'Firecrawl · Scrape',
+  displayDescription: 'Extract readable content from a web page URL.',
   description:
     'Scrape a single URL using Firecrawl Scrape API (v2) and return structured content such as markdown, html, links, screenshots, or JSON extraction.',
   connectorId: 'firecrawl.api_key',

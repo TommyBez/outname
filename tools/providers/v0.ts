@@ -21,7 +21,8 @@ const CAMEL_CASE_BOUNDARY_PATTERN = /([a-z])([A-Z])/g
 
 type V0MutationLevel = 'read' | 'write' | 'destructive'
 type V0ToolCategory = 'chat' | 'project' | 'deployment' | 'user' | 'hook'
-type V0EnabledFieldName = `enable${string}`
+type V0CategoryEnabledFieldName = `enableGroup${string}`
+type V0CategoryReadOnlyFieldName = `readOnlyGroup${string}`
 
 interface V0SdkTool {
   description?: string
@@ -32,7 +33,6 @@ interface V0SdkTool {
 interface V0OperationDefinition {
   category: V0ToolCategory
   childToolId: string
-  enabledFieldName: V0EnabledFieldName
   mutation: V0MutationLevel
   operation: string
   sdkTool: V0SdkTool
@@ -40,7 +40,17 @@ interface V0OperationDefinition {
 
 type V0ToolConfig = {
   readOnly: boolean
-} & Partial<Record<V0EnabledFieldName, boolean>>
+} & Partial<
+  Record<V0CategoryEnabledFieldName | V0CategoryReadOnlyFieldName, boolean>
+>
+
+const CATEGORY_LABELS: Record<V0ToolCategory, string> = {
+  chat: 'Chat',
+  project: 'Project',
+  deployment: 'Deployment',
+  user: 'User',
+  hook: 'Hook',
+}
 
 function inferMutation(operation: string): V0MutationLevel {
   if (operation.startsWith('get') || operation.startsWith('list')) {
@@ -62,8 +72,16 @@ function toChildToolId(operation: string): string {
   return `v0_${operation}`
 }
 
-function toEnabledFieldName(operation: string): V0EnabledFieldName {
-  return `enable${operation[0]?.toUpperCase() ?? ''}${operation.slice(1)}` as V0EnabledFieldName
+function toGroupEnabledFieldName(
+  category: V0ToolCategory
+): V0CategoryEnabledFieldName {
+  return `enableGroup${CATEGORY_LABELS[category]}` as V0CategoryEnabledFieldName
+}
+
+function toGroupReadOnlyFieldName(
+  category: V0ToolCategory
+): V0CategoryReadOnlyFieldName {
+  return `readOnlyGroup${CATEGORY_LABELS[category]}` as V0CategoryReadOnlyFieldName
 }
 
 function flattenV0Tools(
@@ -75,7 +93,6 @@ function flattenV0Tools(
       definitions.push({
         category: category as V0ToolCategory,
         childToolId: toChildToolId(operation),
-        enabledFieldName: toEnabledFieldName(operation),
         mutation: inferMutation(operation),
         operation,
         sdkTool,
@@ -102,13 +119,30 @@ const v0ConfigSchema = z.object(
           'When true, only non-mutating v0 operations are allowed. Set false to allow create, update, and delete operations.'
         ),
     ],
-    ...v0SchemaDefinitions.map((definition) => [
-      definition.enabledFieldName,
-      z
-        .boolean()
-        .default(true)
-        .describe(`Enable the ${definition.childToolId} child tool.`),
-    ]),
+    ...Object.keys(CATEGORY_LABELS).flatMap((categoryKey) => {
+      const category = categoryKey as V0ToolCategory
+      const label = CATEGORY_LABELS[category]
+      return [
+        [
+          toGroupEnabledFieldName(category),
+          z
+            .boolean()
+            .default(true)
+            .describe(
+              `[Group: ${label}] Enable all ${label.toLowerCase()} resource tools in this group.`
+            ),
+        ],
+        [
+          toGroupReadOnlyFieldName(category),
+          z
+            .boolean()
+            .default(true)
+            .describe(
+              `[Group: ${label}] When true, this ${label.toLowerCase()} resource group is read-only and blocks mutating operations.`
+            ),
+        ],
+      ]
+    }),
   ])
 ) as unknown as z.ZodType<V0ToolConfig>
 
@@ -174,23 +208,24 @@ const v0BundleTools = Object.fromEntries(
     definition.childToolId,
     {
       displayName: `v0 · ${humanizeOperation(definition.operation)}`,
+      displayDescription: `Work with v0 ${humanizeOperation(definition.operation).toLowerCase()}.`,
       description:
         definition.sdkTool.description ??
         `Run the v0 ${humanizeOperation(definition.operation)} tool.`,
       inputSchema: definition.sdkTool.inputSchema,
       isEnabled(config: V0ToolConfig) {
-        return config[definition.enabledFieldName] ?? true
+        return config[toGroupEnabledFieldName(definition.category)] ?? true
       },
       policies:
         definition.mutation === 'read'
           ? undefined
           : [
               ({ config }: { config: V0ToolConfig }) =>
-                config.readOnly
+                config.readOnly ||
+                (config[toGroupReadOnlyFieldName(definition.category)] ?? true)
                   ? {
                       ok: false as const,
-                      message:
-                        'This v0 attachment is read-only. Set readOnly=false to allow create, update, and delete operations.',
+                      message: `This v0 attachment blocks mutating ${CATEGORY_LABELS[definition.category].toLowerCase()} operations. Set readOnly=false and readOnlyGroup${CATEGORY_LABELS[definition.category]}=false to allow writes for this group.`,
                     }
                   : ({ ok: true } as const),
             ],
@@ -218,6 +253,8 @@ export const v0PlatformTool = defineToolBundle({
   id: V0_ATTACHMENT_TOOL_ID,
   category: 'deployment',
   displayName: 'v0 · Platform',
+  displayDescription:
+    'Create and manage v0 chats, projects, deployments, and webhooks.',
   description:
     'Attach the official v0 Platform AI SDK tools directly for chats, projects, deployments, user info, and webhooks. Defaults to read-only mode.',
   capabilities: [{ kind: 'sdk', connectorId: V0_CONNECTOR_ID }],

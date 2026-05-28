@@ -1,3 +1,8 @@
+'use client'
+
+import { useEffect } from 'react'
+import { BooleanToggleField } from './boolean-toggle-field'
+import { booleanRoleFromField, readBooleanValue } from './config-field-utils'
 import type { ToolConfigField } from './types'
 
 export function ConfigField({
@@ -12,6 +17,17 @@ export function ConfigField({
   value: string
 }) {
   const inputId = `tool-${toolId}-${field.name}`
+  const booleanValue = readBooleanValue({ [field.name]: value }, field, false)
+
+  useEffect(() => {
+    if (field.type !== 'boolean') {
+      return
+    }
+    if (value === '' && field.defaultValue === true) {
+      onChange('true')
+    }
+  }, [field.defaultValue, field.type, onChange, value])
+
   return (
     <div className="flex flex-col gap-1">
       <label
@@ -27,15 +43,13 @@ export function ConfigField({
         </span>
       )}
       {field.type === 'boolean' ? (
-        <select
-          className="h-10 w-full border-2 border-foreground bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+        <BooleanToggleField
+          ariaLabel={field.label}
+          fieldRole={booleanRoleFromField(field)}
           id={inputId}
-          onChange={(event) => onChange(event.target.value)}
-          value={value || 'false'}
-        >
-          <option value="true">true</option>
-          <option value="false">false</option>
-        </select>
+          onChange={(nextValue) => onChange(String(nextValue))}
+          value={booleanValue}
+        />
       ) : (
         <input
           className="h-10 w-full border-2 border-foreground bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"

@@ -11,6 +11,7 @@ import {
 } from '@/shared/server/data'
 import { describeConfigSchema } from '@/shared/server/zod-config-fields'
 import { connectorBackedCapabilities } from '@/tools/catalog/capabilities'
+import { clientToolDescription } from '@/tools/catalog/client-description'
 import { listMaintainerTools } from '@/tools/catalog/registry'
 import {
   SubAgentCatalog,
@@ -100,7 +101,11 @@ async function Resolved({ params }: { params: Params }) {
       toolId: t.id,
       displayName: t.displayName,
       description: t.description,
-      exposedTools: [...t.resolveExposedTools(attachedConfig)],
+      displayDescription: clientToolDescription(t),
+      exposedTools: [...t.resolveExposedTools(attachedConfig)].map((child) => ({
+        ...child,
+        displayDescription: clientToolDescription(child),
+      })),
       connectors,
       toolSandboxManifest: sandboxManifest,
       configFields: describeConfigSchema(t.configSchema),

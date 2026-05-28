@@ -81,19 +81,19 @@ describe('passthrough mutation safety policies', () => {
     [
       'supabase_request',
       supabaseRequestTool,
-      { readOnly: false },
+      { readOnly: false, readOnlyGroupProjects: false },
       { method: 'POST', path: '/v1/projects', body: { name: 'project' } },
     ],
     [
       'vercel_request',
       vercelRequestTool,
-      { readOnly: false },
+      { readOnly: false, readOnlyGroupProjects: false },
       { method: 'POST', path: '/v10/projects', body: { name: 'project' } },
     ],
     [
       'posthog_request',
       posthogRequestTool,
-      { projectId: '123', readOnly: false },
+      { projectId: '123', readOnly: false, readOnlyGroupAnnotations: false },
       {
         method: 'POST',
         path: '/api/projects/123/annotations/',
@@ -103,10 +103,10 @@ describe('passthrough mutation safety policies', () => {
     [
       'calcom_request',
       calcomRequestTool,
-      { readOnly: false },
+      { readOnly: false, readOnlyGroupWebhooks: false },
       { method: 'DELETE', path: '/webhooks/hook_test' },
     ],
-  ])('%s allows non-GET calls without extra boolean gates', async (_name, tool, config, input) => {
+  ])('%s allows non-GET calls when group write access is enabled', async (_name, tool, config, input) => {
     await expect(buildTool(tool, config).execute(input)).resolves.toMatchObject(
       {
         ok: true,
@@ -192,6 +192,63 @@ describe('passthrough mutation safety policies', () => {
       buildTool(calcomRequestTool, { readOnly: false }).execute({
         method: 'DELETE',
         path: '/organizations/org_test',
+      })
+    ).resolves.toMatchObject({
+      code: 'policy_denied',
+      ok: false,
+    })
+
+    expect(mockBrokeredHttpRequest).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    [
+      'x_api_request',
+      xApiRequestTool,
+      { readOnly: false },
+      { method: 'GET', path: '/2/powerstream/rules' },
+    ],
+    [
+      'typefully_request',
+      typefullyRequestTool,
+      { readOnly: false },
+      { method: 'GET', path: '/v2/unknown-surface' },
+    ],
+    [
+      'supabase_request',
+      supabaseRequestTool,
+      { readOnly: false },
+      { method: 'GET', path: '/v1/unknown-surface' },
+    ],
+    [
+      'vercel_request',
+      vercelRequestTool,
+      { readOnly: false },
+      { method: 'GET', path: '/v10/unknown-surface' },
+    ],
+    [
+      'posthog_request',
+      posthogRequestTool,
+      { projectId: '123', readOnly: false },
+      { method: 'GET', path: '/api/projects/123/unknown-surface/' },
+    ],
+  ])('%s rejects paths outside its declared resource registry', async (_name, tool, config, input) => {
+    await expect(buildTool(tool, config).execute(input)).resolves.toMatchObject(
+      {
+        code: 'policy_denied',
+        ok: false,
+      }
+    )
+
+    expect(mockBrokeredHttpRequest).not.toHaveBeenCalled()
+  })
+
+  it('Vercel rejects malformed paths before group checks run', async () => {
+    await expect(
+      buildTool(vercelRequestTool, { readOnly: false }).execute({
+        method: 'POST',
+        path: 'https://api.vercel.com/v10/projects',
+        body: { name: 'project' },
       })
     ).resolves.toMatchObject({
       code: 'policy_denied',

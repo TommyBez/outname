@@ -113,6 +113,7 @@ interface AgentBrowserToolOptions {
   argsDescription: string
   commandDescription: string
   description: string
+  displayDescription: string
   displayName: string
   id: string
   manifestId: string
@@ -130,6 +131,7 @@ export function createAgentBrowserTool(
     id: input.id,
     category: 'browser',
     displayName: input.displayName,
+    displayDescription: input.displayDescription,
     description: input.description,
     manifestId: input.manifestId,
     inputSchema,
@@ -149,6 +151,8 @@ export function createAgentBrowserTool(
 export const agentBrowserTool = createAgentBrowserTool({
   id: 'agent_browser',
   displayName: 'agent-browser',
+  displayDescription:
+    'Browse websites, click elements, fill forms, and capture page content.',
   manifestId: 'agent-browser',
   commandDescription: `agent-browser subcommand. This sandbox runs agent-browser on its default Chrome engine. See https://agent-browser.dev for the full reference. Common: ${KNOWN_COMMANDS.join(', ')}.`,
   argsDescription:

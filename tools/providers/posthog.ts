@@ -1,6 +1,12 @@
 import 'server-only'
 import { z } from 'zod'
 import {
+  buildResourceConfigShape,
+  enforceResourceAccess,
+  findResourceDefinition,
+  type RestResourceDefinition,
+} from '@/tools/providers/rest-resource-groups'
+import {
   defineApiPassthroughTool,
   type ToolPolicy,
   toolSuccess,
@@ -10,10 +16,83 @@ import {
   toolErrorFromProviderResponse,
 } from '@/tools/runtime/define-maintainer-tool/provider-response'
 
-const POSTHOG_API_BASE = 'https://us.i.posthog.com'
+const POSTHOG_API_BASE_BY_REGION = {
+  eu: 'https://eu.posthog.com',
+  us: 'https://us.posthog.com',
+} as const
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i
+const RESOURCE_LABEL_SEPARATOR_PATTERN = /[_-]+/
+
+const POSTHOG_RESOURCE_KEYS = [
+  'project-root',
+  'actions',
+  'activity_log',
+  'annotations',
+  'app_metrics',
+  'batch_exports',
+  'cohorts',
+  'dashboard_templates',
+  'dashboards',
+  'data_management',
+  'early_access_feature',
+  'event_definitions',
+  'events',
+  'experiments',
+  'explicit_members',
+  'exports',
+  'external_data_sources',
+  'feature_flags',
+  'groups',
+  'groups_types',
+  'hooks',
+  'ingestion_warnings',
+  'insights',
+  'integrations',
+  'persons',
+  'pipeline_transformations_configs',
+  'plugin_configs',
+  'property_definitions',
+  'query',
+  'search',
+  'session_recording_playlists',
+  'session_recordings',
+  'subscriptions',
+  'surveys',
+  'tags',
+  'uploaded_media',
+  'warehouse_saved_queries',
+  'warehouse_tables',
+  'warehouse_view_link',
+  'warehouse_view_links',
+] as const
+
+function toPosthogLabel(key: string): string {
+  return key
+    .split(RESOURCE_LABEL_SEPARATOR_PATTERN)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+const POSTHOG_RESOURCES = POSTHOG_RESOURCE_KEYS.map((key) => ({
+  key,
+  label: key === 'project-root' ? 'Project Root' : toPosthogLabel(key),
+  enableDescription:
+    key === 'project-root'
+      ? 'Enable the project-root endpoint under /api/projects/{projectId}/.'
+      : undefined,
+  readOnlyDescription:
+    key === 'project-root'
+      ? 'When true, the project-root endpoint is read-only.'
+      : undefined,
+})) as readonly RestResourceDefinition[]
 
 const posthogConfigSchema = z.object({
+  region: z
+    .enum(['us', 'eu'])
+    .default('us')
+    .describe(
+      'PostHog server region for this workspace. Choose "us" for US Cloud or "eu" for EU Cloud.'
+    ),
   projectId: z
     .string()
     .min(1)
@@ -22,6 +101,7 @@ const posthogConfigSchema = z.object({
     .boolean()
     .default(true)
     .describe('When true, only GET requests are allowed. Recommended default.'),
+  ...buildResourceConfigShape(POSTHOG_RESOURCES),
 })
 
 const posthogMethodSchema = z.enum(['GET', 'POST', 'PATCH', 'PUT', 'DELETE'])
@@ -61,22 +141,40 @@ function normalizePosthogPath(path: string): string {
   return trimmed
 }
 
-function resolvePosthogUrl(path: string): URL {
-  return new URL(path, POSTHOG_API_BASE)
+function resolvePosthogUrl(path: string, region: 'eu' | 'us'): URL {
+  return new URL(path, POSTHOG_API_BASE_BY_REGION[region])
 }
 
-function getCanonicalPosthogPathname(path: string): string {
-  return resolvePosthogUrl(path).pathname
+function getCanonicalPosthogPathname(
+  path: string,
+  region: 'eu' | 'us'
+): string {
+  return resolvePosthogUrl(path, region).pathname
 }
 
 /** Pathname plus embedded query string (for responses / parity with raw input.path). */
-function getCanonicalPosthogPathAndQuery(path: string): string {
-  const resolved = resolvePosthogUrl(path)
+function getCanonicalPosthogPathAndQuery(
+  path: string,
+  region: 'eu' | 'us'
+): string {
+  const resolved = resolvePosthogUrl(path, region)
   return `${resolved.pathname}${resolved.search}`
 }
 
 function buildExpectedProjectPrefix(projectId: string): string {
   return `/api/projects/${projectId.trim()}/`
+}
+
+function posthogResourceKey(
+  canonicalPathname: string,
+  projectPrefix: string
+): string | null {
+  const rest = canonicalPathname.slice(projectPrefix.length)
+  const firstSegment = rest.split('/').filter(Boolean)[0]
+  if (!firstSegment) {
+    return 'project-root'
+  }
+  return findResourceDefinition(POSTHOG_RESOURCES, firstSegment)?.key ?? null
 }
 
 const posthogSafetyPolicy: ToolPolicy<
@@ -95,7 +193,10 @@ const posthogSafetyPolicy: ToolPolicy<
       message: err instanceof Error ? err.message : 'Invalid path.',
     }
   }
-  const canonicalPathname = getCanonicalPosthogPathname(normalizedPath)
+  const canonicalPathname = getCanonicalPosthogPathname(
+    normalizedPath,
+    config.region
+  )
   const expectedProjectPrefix = buildExpectedProjectPrefix(config.projectId)
   if (!canonicalPathname.startsWith(expectedProjectPrefix)) {
     return {
@@ -104,11 +205,31 @@ const posthogSafetyPolicy: ToolPolicy<
         'Path must stay inside /api/projects/{projectId}/ endpoints for the configured project ID.',
     }
   }
-  if (config.readOnly && input.method !== 'GET') {
+  const resourceKey = posthogResourceKey(
+    canonicalPathname,
+    expectedProjectPrefix
+  )
+  if (!resourceKey) {
     return {
       ok: false,
-      message: 'This attachment is read-only. Use GET requests only.',
+      message: `Path "${canonicalPathname}" is outside the declared PostHog project resource surface.`,
     }
+  }
+  const resource = findResourceDefinition(POSTHOG_RESOURCES, resourceKey)
+  if (!resource) {
+    return {
+      ok: false,
+      message: `Path "${canonicalPathname}" does not map to a declared PostHog resource.`,
+    }
+  }
+  const decision = enforceResourceAccess({
+    config,
+    globalReadOnly: config.readOnly,
+    method: input.method,
+    resource,
+  })
+  if (!decision.ok) {
+    return decision
   }
   return { ok: true }
 }
@@ -117,15 +238,17 @@ export const posthogRequestTool = defineApiPassthroughTool({
   id: 'posthog_request',
   category: 'analytics',
   displayName: 'PostHog · Request',
+  displayDescription:
+    'Query and manage PostHog analytics, flags, and project data.',
   description:
     'Call authenticated PostHog project API endpoints. Defaults to read-only mode for safer analytics retrieval.',
   connectorId: 'posthog.api_key',
   configSchema: posthogConfigSchema,
   inputSchema: posthogRequestInputSchema,
   policies: [posthogSafetyPolicy],
-  toRequest({ input }) {
+  toRequest({ config, input }) {
     const normalizedPath = normalizePosthogPath(input.path)
-    const url = resolvePosthogUrl(normalizedPath)
+    const url = resolvePosthogUrl(normalizedPath, config.region)
     for (const [key, value] of Object.entries(input.query ?? {})) {
       url.searchParams.append(key, value)
     }
@@ -146,9 +269,13 @@ export const posthogRequestTool = defineApiPassthroughTool({
     }
     return toolSuccess({
       status: response.status,
-      path: getCanonicalPosthogPathAndQuery(normalizePosthogPath(input.path)),
+      path: getCanonicalPosthogPathAndQuery(
+        normalizePosthogPath(input.path),
+        config.region
+      ),
       method: input.method,
       readOnly: config.readOnly,
+      region: config.region,
       body: parseProviderResponseFromHttp(response),
       truncated: response.truncated,
     })

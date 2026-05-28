@@ -82,7 +82,6 @@ export async function replaceAgentEventTranscriptMessagesBestEffort(input: {
     })
   }
 }
-
 function isAgentChatMessageRole(
   value: unknown
 ): value is AgentChatMessage['role'] {

@@ -98,7 +98,6 @@ function requiresPersistedTranscript(
     (status === 'completed' || status === 'failed' || status === 'cancelled')
   )
 }
-
 function isInvocationPayload(
   payload: unknown
 ): payload is AgentEventPayloads['invocation'] {

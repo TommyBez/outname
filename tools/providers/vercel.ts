@@ -1,6 +1,12 @@
 import 'server-only'
 import { z } from 'zod'
 import {
+  buildResourceConfigShape,
+  enforceResourceAccess,
+  findResourceDefinition,
+  type RestResourceDefinition,
+} from '@/tools/providers/rest-resource-groups'
+import {
   defineApiPassthroughTool,
   type ToolPolicy,
   toolSuccess,
@@ -12,6 +18,53 @@ import {
 
 const VERCEL_API_BASE = 'https://api.vercel.com'
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i
+const RESOURCE_LABEL_SEPARATOR_PATTERN = /[_-]+/
+
+const VERCEL_RESOURCE_KEYS = [
+  'access-groups',
+  'aliases',
+  'artifacts',
+  'billing',
+  'bulk-redirects',
+  'certs',
+  'connect',
+  'deployments',
+  'domains',
+  'drains',
+  'edge-cache',
+  'edge-config',
+  'env',
+  'events',
+  'files',
+  'installations',
+  'integrations',
+  'log-drains',
+  'messages',
+  'microfrontends',
+  'models',
+  'observability',
+  'products',
+  'projects',
+  'registrar',
+  'sandboxes',
+  'security',
+  'storage',
+  'teams',
+  'user',
+  'webhooks',
+] as const
+
+function toVercelLabel(key: string): string {
+  return key
+    .split(RESOURCE_LABEL_SEPARATOR_PATTERN)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+const VERCEL_RESOURCES = VERCEL_RESOURCE_KEYS.map((key) => ({
+  key,
+  label: toVercelLabel(key),
+})) as readonly RestResourceDefinition[]
 
 const vercelMethodSchema = z.enum(['GET', 'POST', 'PATCH', 'PUT', 'DELETE'])
 
@@ -19,9 +72,8 @@ const vercelConfigSchema = z.object({
   readOnly: z
     .boolean()
     .default(true)
-    .describe(
-      'When true, only read operations are allowed (GET/HEAD-style usage). Set false to allow write and delete operations.'
-    ),
+    .describe('When true, only read operations are allowed for all groups.'),
+  ...buildResourceConfigShape(VERCEL_RESOURCES),
 })
 
 const vercelRequestInputSchema = z.object({
@@ -61,6 +113,22 @@ function normalizeVercelPath(path: string): string {
   return trimmed
 }
 
+function normalizedVercelPathname(path: string): string {
+  return new URL(normalizeVercelPath(path), VERCEL_API_BASE).pathname
+}
+
+function vercelResourceKey(pathname: string): string | null {
+  const parts = pathname.split('/').filter(Boolean)
+  if (!parts[0]?.startsWith('v')) {
+    return null
+  }
+  const resourceKey = parts[1]
+  if (!resourceKey) {
+    return null
+  }
+  return findResourceDefinition(VERCEL_RESOURCES, resourceKey)?.key ?? null
+}
+
 const vercelSafetyPolicy: ToolPolicy<VercelRequestInput, VercelConfig> = ({
   config,
   input,
@@ -68,20 +136,40 @@ const vercelSafetyPolicy: ToolPolicy<VercelRequestInput, VercelConfig> = ({
   if (input.method === 'GET' && input.body !== undefined) {
     return { ok: false, message: 'GET requests cannot include a body.' }
   }
-  if (config.readOnly && input.method !== 'GET') {
-    return {
-      ok: false,
-      message:
-        'This tool attachment is configured as read-only. Only GET requests are allowed.',
-    }
-  }
+  let normalizedPath: string
+  let pathname: string
   try {
-    normalizeVercelPath(input.path)
+    normalizedPath = normalizeVercelPath(input.path)
+    pathname = normalizedVercelPathname(input.path)
   } catch (err) {
     return {
       ok: false,
       message: err instanceof Error ? err.message : 'Invalid path.',
     }
+  }
+
+  const resourceKey = vercelResourceKey(pathname)
+  if (!resourceKey) {
+    return {
+      ok: false,
+      message: `Path "${normalizedPath}" is outside the declared Vercel REST surface.`,
+    }
+  }
+  const resource = findResourceDefinition(VERCEL_RESOURCES, resourceKey)
+  if (!resource) {
+    return {
+      ok: false,
+      message: `Path "${normalizedPath}" does not map to a declared Vercel resource.`,
+    }
+  }
+  const decision = enforceResourceAccess({
+    config,
+    globalReadOnly: config.readOnly,
+    method: input.method,
+    resource,
+  })
+  if (!decision.ok) {
+    return decision
   }
   return { ok: true }
 }
@@ -90,6 +178,8 @@ export const vercelRequestTool = defineApiPassthroughTool({
   id: 'vercel_request',
   category: 'deployment',
   displayName: 'Vercel · Request',
+  displayDescription:
+    'Manage Vercel projects, deployments, domains, and account settings.',
   description:
     'Call authenticated Vercel REST API endpoints. Supports read-only attachment mode.',
   connectorId: 'vercel.api_token',

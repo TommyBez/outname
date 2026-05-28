@@ -4,6 +4,8 @@ import { createAgentBrowserTool } from '@/tools/providers/agent-browser'
 export const agentBrowserLightTool = createAgentBrowserTool({
   id: 'agent_browser_light',
   displayName: 'agent-browser-light',
+  displayDescription:
+    'Browse websites with a lightweight engine — good for reading and simple interactions.',
   manifestId: 'agent-browser-light',
   commandDescription:
     'agent-browser subcommand. This sandbox pins agent-browser to the Lightpanda engine. See https://agent-browser.dev for the full reference. Common: open, close, snapshot, screenshot, click, type, press, eval, goto, reload, back, forward, wait, network, storage, list, select, hover, scroll, upload, download, cookies, frames.',

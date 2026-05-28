@@ -84,7 +84,7 @@ export const xOAuthConnector = defineOAuth2Connector('x.oauth2_user', {
   surface: 'user_context',
   displayName: 'X API · OAuth User',
   description:
-    'X API v2 user-context access for posting, likes, follows, bookmarks, and media. media.write requires support in your X developer plan and app configuration.',
+    'X API v2 OAuth user-context access for posts, likes, follows, bookmarks, lists, DMs, Spaces, blocks, mutes, and media. Some scopes require support in your X developer plan and app configuration.',
   broker: {
     allowedHosts: ['api.x.com'] as const,
     injectedHeaderNames: ['authorization'] as const,
