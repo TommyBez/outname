@@ -8,6 +8,7 @@
     "files": [
       ".agents/skills/**",
       ".claude/skills/**",
+      ".next/**",
       "components/ai-elements/**",
       "components/ui/**",
       "test/workflow-server-app/.next/**",
@@ -93,6 +94,10 @@
       {
         "files": ["app/agents/[agentId]/layout.tsx"],
         "rules": ["react-doctor/jsx-no-jsx-as-prop"]
+      },
+      {
+        "files": ["app/blog/[slug]/page.tsx"],
+        "rules": ["react-doctor/no-dynamic-import-path"]
       }
     ]
   }

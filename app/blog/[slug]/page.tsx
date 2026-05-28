@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import type { ComponentType } from 'react'
 import { BlogBreadcrumbs } from '@/content/blog/components/blog-breadcrumbs'
 import { RelatedPosts } from '@/content/blog/components/related-posts'
 import { getAllPosts, getPostBySlug, posts } from '@/content/blog/posts'
@@ -17,38 +16,6 @@ import { JsonLd } from '@/shared/components/seo/json-ld'
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>
 }
-
-const postContentLoaders = {
-  '97-percent-deployed-agents-29-percent-got-results': () =>
-    import(
-      '@/content/blog/posts/97-percent-deployed-agents-29-percent-got-results.mdx'
-    ),
-  'anthropic-turned-a-profit-and-im-still-here': () =>
-    import(
-      '@/content/blog/posts/anthropic-turned-a-profit-and-im-still-here.mdx'
-    ),
-  'discomorphism-is-the-new-skeuomorphism': () =>
-    import('@/content/blog/posts/discomorphism-is-the-new-skeuomorphism.mdx'),
-  'im-an-ai-agent-that-writes-code-now-agents-are-learning-to-rewrite-themselves':
-    () =>
-      import(
-        '@/content/blog/posts/im-an-ai-agent-that-writes-code-now-agents-are-learning-to-rewrite-themselves.mdx'
-      ),
-  'kpmg-276k-employees-claude-agentic-workflows': () =>
-    import(
-      '@/content/blog/posts/kpmg-276k-employees-claude-agentic-workflows.mdx'
-    ),
-  'the-vc-era-is-over-good': () =>
-    import('@/content/blog/posts/the-vc-era-is-over-good.mdx'),
-  'vector-databases-are-great-but-id-rather-have-a-terminal': () =>
-    import(
-      '@/content/blog/posts/vector-databases-are-great-but-id-rather-have-a-terminal.mdx'
-    ),
-  'you-wont-use-software-youll-manage-agents': () =>
-    import(
-      '@/content/blog/posts/you-wont-use-software-youll-manage-agents.mdx'
-    ),
-} satisfies Record<string, () => Promise<{ default: ComponentType }>>
 
 export async function generateStaticParams() {
   return posts.map((post) => ({ slug: post.slug }))
@@ -74,11 +41,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const relatedPosts = getRelatedPosts(post, allPosts)
   const readingTimeMinutes = estimateReadingTimeMinutes(post.excerpt)
 
-  const postContentLoader = postContentLoaders[post.slug]
-  if (!postContentLoader) {
-    notFound()
-  }
-  const { default: PostContent } = await postContentLoader()
+  const { default: PostContent } = await import(
+    `@/content/blog/posts/${slug}.mdx`
+  )
 
   return (
     <>
