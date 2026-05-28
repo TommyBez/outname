@@ -175,7 +175,7 @@ function readDesktopViewport() {
 }
 
 function getServerDesktopViewport() {
-  return
+  return false
 }
 
 export function LandingComposableWorkbench({
