@@ -6,7 +6,7 @@ import type {
 } from '@/agent-runtime/workflows/session/steps/resolve-tool-plan'
 import { getMaintainerTool } from '@/tools/catalog/registry'
 import type { BuiltMaintainerTool, Reconnect } from '@/tools/catalog/types'
-import { buildAgentTool } from '@/tools/sub-agents/agent-tool'
+import type { BuildAgentTool } from '@/tools/sub-agents/agent-tool'
 import {
   noSubAgentProgressTarget,
   type SubAgentProgressTarget,
@@ -21,6 +21,7 @@ export interface BuildAttachedToolsResult {
 
 export interface BuildAttachedToolsArgs {
   agentId: string
+  buildSubAgentTool: BuildAgentTool
   callStack?: string[]
   conversationId?: string | null
   currentRunId?: string | null
@@ -84,6 +85,7 @@ function buildSubAgentEntry(args: {
   parentUserId: string
   callStack: string[]
   depth: number
+  buildSubAgentTool: BuildAgentTool
   sub: PlannedSubAgent
   reconnects: Reconnect[]
 }): { id: string; tool: Tool } | null {
@@ -95,13 +97,14 @@ function buildSubAgentEntry(args: {
     parentUserId,
     callStack,
     depth,
+    buildSubAgentTool,
     sub,
     reconnects,
   } = args
   try {
     return {
       id: sub.toolId,
-      tool: buildAgentTool({
+      tool: buildSubAgentTool({
         childAgentId: sub.childAgentId,
         childCapabilitySummary: sub.childCapabilitySummary,
         childName: sub.childName,
@@ -172,6 +175,7 @@ export function buildAttachedTools(
       parentUserId: userId,
       callStack,
       depth,
+      buildSubAgentTool: args.buildSubAgentTool,
       sub,
       reconnects,
     })

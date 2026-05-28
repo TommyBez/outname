@@ -1,3 +1,4 @@
+import { start } from 'workflow/api'
 import { replyNamespaceForEvent } from '@/agent-runtime/server/agent-event-keys'
 import type { AgentEventPayloads } from '@/agent-runtime/server/agent-event-store'
 import { currentWorkflowRunId } from '@/shared/server/workflow-run-id'
@@ -11,7 +12,6 @@ import {
   markAgentEventTerminalStep,
   type WorkflowAgentEvent,
 } from './steps/event-store'
-import { startNextQueuedEvent } from './steps/start-next-event'
 
 export async function agentEventWorkflow(input: {
   eventId: string
@@ -105,4 +105,23 @@ async function dispatchAgentEvent(event: WorkflowAgentEvent): Promise<void> {
 
 function payloadAs<T>(event: WorkflowAgentEvent): T {
   return event.payload as T
+}
+
+export async function startNextQueuedEvent(input: {
+  concurrencyKey: string | null
+}): Promise<void> {
+  'use step'
+  if (!input.concurrencyKey) {
+    return
+  }
+  const { startNextQueuedForConcurrencyKeyWithStarter } = await import(
+    '@/agent-runtime/server/agent-event-start'
+  )
+  await startNextQueuedForConcurrencyKeyWithStarter(
+    input.concurrencyKey,
+    async (eventId) => {
+      const run = await start(agentEventWorkflow, [{ eventId }])
+      return run.runId
+    }
+  )
 }

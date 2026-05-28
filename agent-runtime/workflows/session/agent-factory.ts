@@ -8,6 +8,7 @@ import {
 import { nonRetryableStepErrorFromUnknown } from '@/shared/server/workflow-step-errors'
 import type { SubAgentProgressTarget } from '@/tools/sub-agents/progress-target'
 import { workflowParentStreamTarget } from '@/tools/sub-agents/progress-target'
+import { buildWorkflowAgentTool } from '@/tools/sub-agents/workflow-agent-tool'
 import { composeSystemPrompt } from './compose-system-prompt'
 import {
   type AgentRuntimeMeta,
@@ -95,7 +96,10 @@ function buildDurableAgentRuntime(
     progressTarget?: SubAgentProgressTarget
   } = {}
 ): BuildAgentResult {
-  const tools = buildRuntimeToolset(spec, options)
+  const tools = buildRuntimeToolset(spec, {
+    ...options,
+    buildSubAgentTool: buildWorkflowAgentTool,
+  })
 
   const durableAgent = new DurableAgent({
     model: async () => {

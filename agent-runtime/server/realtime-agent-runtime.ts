@@ -12,6 +12,7 @@ import {
 } from '@/agent-runtime/workflows/session/runtime-spec-types'
 import { getUserModelForGateway } from '@/shared/server/ai-gateway-byok'
 import type { SubAgentProgressTarget } from '@/tools/sub-agents/progress-target'
+import { buildRealtimeAgentTool } from '@/tools/sub-agents/realtime-agent-tool'
 import { buildRuntimeToolset } from './runtime-toolset'
 
 export interface BuiltRealtimeAgentRuntime {
@@ -29,7 +30,10 @@ export async function buildRealtimeAgentRuntime(
     progressTarget?: SubAgentProgressTarget
   } = {}
 ): Promise<BuiltRealtimeAgentRuntime> {
-  const tools = buildRuntimeToolset(spec, options)
+  const tools = buildRuntimeToolset(spec, {
+    ...options,
+    buildSubAgentTool: buildRealtimeAgentTool,
+  })
   const model = await getUserModelForGateway({
     modelId: spec.modelId,
     userId: spec.userId,

@@ -98,6 +98,10 @@
       {
         "files": ["app/blog/[slug]/page.tsx"],
         "rules": ["react-doctor/no-dynamic-import-path"]
+      },
+      {
+        "files": ["agents/components/agent-events-workspace.tsx"],
+        "rules": ["react-doctor/react-compiler-destructure-method"]
       }
     ]
   }

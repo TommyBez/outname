@@ -65,8 +65,8 @@ function AgentEventsWorkspaceContent({
   timeZone,
 }: AgentEventsWorkspaceProps) {
   const { replace } = useRouter()
-  const { get } = useSearchParams()
-  const queryEventId = get('event')
+  const searchParams = useSearchParams()
+  const queryEventId = searchParams.get('event')
   const eventList = useSWR<AgentEventsListResponse>(
     `/api/agents/${agentId}/events?limit=50`,
     fetchAgentEvents,

@@ -1,4 +1,4 @@
-import { tool, type UIMessageChunk } from 'ai'
+import { type Tool, tool, type UIMessageChunk } from 'ai'
 import { getWritable } from 'workflow'
 import { z } from 'zod'
 import type { AgentChatMessage } from '@/agent-runtime/server/chat-status'
@@ -29,10 +29,26 @@ export interface AgentToolHandle {
   progressTarget: SubAgentProgressTarget
 }
 
+export interface DispatchSubAgentInvocationInput {
+  handle: AgentToolHandle
+  instruction: string
+  streamToken: string
+  toolCallId: string
+}
+
+export type DispatchSubAgentInvocation = (
+  input: DispatchSubAgentInvocationInput
+) => Promise<{ sessionRunId: string }>
+
+export type BuildAgentTool = (handle: AgentToolHandle) => Tool
+
 // This tool dispatches an invocation event to a child agent and then tails the
 // child's stream until completion. Cycle and depth checks already happened in
 // `resolveToolPlan`.
-export function buildAgentTool(handle: AgentToolHandle) {
+export function buildAgentToolCore(
+  handle: AgentToolHandle,
+  dispatchSubAgentInvocation: DispatchSubAgentInvocation
+) {
   const description = composeDescription(handle)
 
   return tool({
@@ -131,31 +147,6 @@ function modelOutputText(output: unknown): string {
     return subAgentModelText(output)
   }
   return String(output)
-}
-
-async function dispatchSubAgentInvocation(input: {
-  handle: AgentToolHandle
-  instruction: string
-  streamToken: string
-  toolCallId: string
-}): Promise<{ sessionRunId: string }> {
-  'use step'
-  const { handle, instruction, streamToken, toolCallId } = input
-  const { dispatchInvocation } = await import(
-    '@/agent-runtime/server/session-events'
-  )
-  return await dispatchInvocation({
-    childAgentId: handle.childAgentId,
-    childUserId: handle.childUserId,
-    parentUserId: handle.parentUserId,
-    parentRunId: handle.parentRunId,
-    parentToolId: handle.parentToolId,
-    parentToolCallId: toolCallId,
-    instruction,
-    streamToken,
-    callStack: [...handle.parentCallStack, handle.parentAgentId],
-    depth: handle.parentDepth + 1,
-  })
 }
 
 async function emitPreliminarySubAgentOutput(input: {
