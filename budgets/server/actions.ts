@@ -3,6 +3,7 @@
 import { and, eq } from 'drizzle-orm'
 import { revalidatePath, updateTag } from 'next/cache'
 import { requireSession } from '@/auth/server/auth-guard'
+import { BUDGET_PERIODS } from '@/budgets/server/periods'
 import { upsertBudgetRule } from '@/budgets/server/rules'
 import { db } from '@/shared/db'
 import {
@@ -12,12 +13,10 @@ import {
 } from '@/shared/db/schema'
 import { userBudgetTag } from '@/shared/server/cache-tags'
 
-const ALLOWED_PERIODS = new Set<BudgetPeriod>(['daily', 'weekly', 'monthly'])
-
 function normalizePeriod(value: unknown): BudgetPeriod {
   if (
     typeof value !== 'string' ||
-    !ALLOWED_PERIODS.has(value as BudgetPeriod)
+    !BUDGET_PERIODS.includes(value as BudgetPeriod)
   ) {
     throw new Error('Invalid period')
   }

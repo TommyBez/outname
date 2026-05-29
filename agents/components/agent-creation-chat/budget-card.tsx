@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import {
   type AgentBudgetValues,
-  AgentBudgetWidget,
   formatBudgetSummary,
-} from '@/agents/components/agent-budget-widget'
+} from '@/agents/components/agent-budget-values'
+import { AgentBudgetWidget } from '@/agents/components/agent-budget-widget'
 import {
   Tool,
   ToolContent,

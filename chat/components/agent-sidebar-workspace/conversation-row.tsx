@@ -3,9 +3,8 @@
 import { Check, MoreHorizontal, Pencil, Trash2, X } from 'lucide-react'
 import Link from 'next/link'
 import {
-  type FormEvent,
   type KeyboardEvent,
-  useEffect,
+  useCallback,
   useRef,
   useState,
   useTransition,
@@ -60,23 +59,20 @@ export function ConversationRow({
   const [draftTitle, setDraftTitle] = useState(conversation.title ?? '')
   const inputRef = useRef<HTMLInputElement | null>(null)
 
-  useEffect(() => {
-    if (isEditing) {
-      inputRef.current?.focus()
-      inputRef.current?.select()
-    }
-  }, [isEditing])
-
-  useEffect(() => {
-    if (!isEditing) {
-      setDraftTitle(conversation.title ?? '')
-    }
-  }, [conversation.title, isEditing])
-
   const displayTitle = conversation.title?.trim() || 'New chat'
 
-  function submitRename(event?: FormEvent) {
-    event?.preventDefault()
+  const setTitleInputRef = useCallback((node: HTMLInputElement | null) => {
+    inputRef.current = node
+    node?.focus()
+    node?.select()
+  }, [])
+
+  function startRename() {
+    setDraftTitle(conversation.title ?? '')
+    setIsEditing(true)
+  }
+
+  function submitRename() {
     const trimmed = draftTitle.trim()
     if (!trimmed) {
       toast.error('Title cannot be empty.')
@@ -130,11 +126,11 @@ export function ConversationRow({
     return (
       <SidebarMenuItem>
         <form
+          action={submitRename}
           className={cn(
             'flex items-center gap-1 border-2 border-sidebar-border bg-sidebar-accent px-2 py-1.5',
             isActive && 'border-foreground'
           )}
-          onSubmit={submitRename}
         >
           <input
             aria-label="Conversation title"
@@ -144,7 +140,7 @@ export function ConversationRow({
             onChange={(event) => setDraftTitle(event.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Conversation title"
-            ref={inputRef}
+            ref={setTitleInputRef}
             value={draftTitle}
           />
           <button
@@ -186,7 +182,7 @@ export function ConversationRow({
         <ConversationMenu
           displayTitle={displayTitle}
           onDelete={() => setShowDelete(true)}
-          onRename={() => setIsEditing(true)}
+          onRename={startRename}
         />
       </SidebarMenuItem>
 

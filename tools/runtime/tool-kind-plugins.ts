@@ -47,12 +47,8 @@ for (const plugin of TOOL_KIND_PLUGINS) {
   TOOL_KIND_BY_ID.set(plugin.kind, plugin)
 }
 
-export function getToolKindPlugin(kind: string): ToolKindPlugin | undefined {
+function getToolKindPlugin(kind: string): ToolKindPlugin | undefined {
   return TOOL_KIND_BY_ID.get(kind)
-}
-
-export function listToolKindPlugins(): readonly ToolKindPlugin[] {
-  return TOOL_KIND_PLUGINS
 }
 
 export function resolveToolKindRows(rows: AgentTool[]): ToolKindResolvedRow[] {

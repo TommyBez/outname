@@ -54,7 +54,7 @@ export function toolError(code: ToolErrorCode, message: string) {
   return createToolError(code, message)
 }
 
-export function defineMaintainerTool<
+function defineMaintainerTool<
   TInput,
   TConfig = Record<string, never>,
   TData = unknown,

@@ -59,7 +59,7 @@ export function AddBindingForm({
         </p>
         <button
           aria-label="Cancel"
-          className="inline-flex h-7 w-7 items-center justify-center border-2 border-foreground hover:bg-foreground hover:text-background"
+          className="inline-flex size-7 items-center justify-center border-2 border-foreground hover:bg-foreground hover:text-background"
           onClick={onCancel}
           type="button"
         >
@@ -149,10 +149,8 @@ function KindSelect({
         onChange={(event) => onChange(event.target.value as NewBindingKind)}
         value={kind}
       >
-        <option value="channel">
-          Channel — route a public/private channel
-        </option>
-        <option value="dm">Direct message — route DMs from one user</option>
+        <option value="channel">Channel, route a public/private channel</option>
+        <option value="dm">Direct message, route DMs from one user</option>
       </select>
     </label>
   )
@@ -177,6 +175,7 @@ function ExternalKeyField({
         {label}
       </span>
       <input
+        aria-label={label}
         className="h-10 w-full border-2 border-foreground bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}

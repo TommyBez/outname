@@ -50,7 +50,7 @@ async function FlashNotice({
   const sp = await searchParams
   if (sp.connection === 'error') {
     return (
-      <div className="mb-10 border-destructive border-l-4 bg-muted py-3 pl-4">
+      <div className="mb-10 border-destructive border-l-2 bg-muted py-3 pl-4">
         <p className="font-bold text-destructive text-xs uppercase tracking-[0.2em]">
           Connection failed
         </p>
@@ -62,7 +62,7 @@ async function FlashNotice({
   }
   if (sp.connection === 'connected') {
     return (
-      <div className="mb-10 border-foreground border-l-4 bg-muted py-3 pl-4">
+      <div className="mb-10 border-foreground border-l-2 bg-muted py-3 pl-4">
         <p className="font-black font-serif text-lg uppercase tracking-[-0.04em]">
           Connection saved.
         </p>

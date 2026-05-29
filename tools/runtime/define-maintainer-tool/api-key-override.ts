@@ -23,7 +23,7 @@ export type CredentialOverrideConfigResult =
   | { config: Record<string, unknown>; ok: true }
   | { error: string; ok: false }
 
-export class CredentialOverrideUnavailableError extends Error {
+class CredentialOverrideUnavailableError extends Error {
   readonly code = 'connection_unavailable' as const
   readonly connectorId: string
 

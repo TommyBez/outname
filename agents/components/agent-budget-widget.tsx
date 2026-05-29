@@ -2,13 +2,8 @@
 
 import { CheckIcon, WalletIcon, XIcon } from 'lucide-react'
 import { useState } from 'react'
+import type { AgentBudgetValues } from '@/agents/components/agent-budget-values'
 import { Button } from '@/components/ui/button'
-
-export interface AgentBudgetValues {
-  daily: number | null
-  monthly: number | null
-  weekly: number | null
-}
 
 interface Props {
   /** Apply button label; defaults to "Apply budget". */
@@ -168,6 +163,7 @@ function BudgetField({
         {label} (USD)
       </span>
       <input
+        aria-label={`${label} budget in USD`}
         className="h-10 border-2 border-foreground bg-background px-2 font-mono text-sm outline-none focus:border-accent disabled:opacity-60"
         disabled={disabled}
         inputMode="decimal"
@@ -185,20 +181,4 @@ function BudgetField({
       )}
     </label>
   )
-}
-
-export function formatBudgetSummary(values: AgentBudgetValues): string {
-  const lines: string[] = []
-  lines.push(
-    values.daily ? `- daily: $${values.daily.toFixed(2)}` : '- daily: none'
-  )
-  lines.push(
-    values.weekly ? `- weekly: $${values.weekly.toFixed(2)}` : '- weekly: none'
-  )
-  lines.push(
-    values.monthly
-      ? `- monthly: $${values.monthly.toFixed(2)}`
-      : '- monthly: none'
-  )
-  return lines.join('\n')
 }

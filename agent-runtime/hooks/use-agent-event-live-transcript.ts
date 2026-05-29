@@ -47,7 +47,7 @@ export function useAgentEventLiveTranscript(input: {
   onWorkflowUnavailable?: () => void
 }): UseAgentEventTranscriptResult {
   const { agentId, enabled, event, onWorkflowUnavailable } = input
-  const [state, setState] = useState<UseAgentEventTranscriptResult>(
+  const [state, setState] = useState<UseAgentEventTranscriptResult>(() =>
     unavailableTranscriptState()
   )
   const onWorkflowUnavailableRef = useRef(onWorkflowUnavailable)

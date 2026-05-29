@@ -6,6 +6,7 @@ import {
   MissingAiGatewayApiKeyError,
 } from '@/shared/server/ai-gateway-byok'
 import { nonRetryableStepErrorFromUnknown } from '@/shared/server/workflow-step-errors'
+import type { BuildAgentTool } from '@/tools/sub-agents/agent-tool'
 import type { SubAgentProgressTarget } from '@/tools/sub-agents/progress-target'
 import { workflowParentStreamTarget } from '@/tools/sub-agents/progress-target'
 import { composeSystemPrompt } from './compose-system-prompt'
@@ -22,6 +23,7 @@ import { resolveToolPlan } from './steps/resolve-tool-plan'
 // and attached maintainer/sub-agent tools.
 export interface BuildAgentArgs {
   agentId: string
+  buildSubAgentTool: BuildAgentTool
   callStack?: string[]
   conversationId?: string | null
   currentRunId?: string | null
@@ -81,21 +83,26 @@ export async function buildAgent(
   }
 
   return buildDurableAgentRuntime(spec, {
+    buildSubAgentTool: args.buildSubAgentTool,
     conversationId: args.conversationId,
     currentRunId: args.currentRunId,
     progressTarget: workflowParentStreamTarget(args.streamNamespace),
   })
 }
 
-export function buildDurableAgentRuntime(
+function buildDurableAgentRuntime(
   spec: AgentRuntimeSpec,
   options: {
+    buildSubAgentTool: BuildAgentTool
     conversationId?: string | null
     currentRunId?: string | null
     progressTarget?: SubAgentProgressTarget
-  } = {}
+  }
 ): BuildAgentResult {
-  const tools = buildRuntimeToolset(spec, options)
+  const tools = buildRuntimeToolset(spec, {
+    ...options,
+    buildSubAgentTool: options.buildSubAgentTool,
+  })
 
   const durableAgent = new DurableAgent({
     model: async () => {

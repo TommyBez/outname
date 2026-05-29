@@ -129,7 +129,7 @@ export const createSocialImageResponse = () =>
           </div>
           <div
             style={{
-              borderLeft: '8px solid #ff3000',
+              borderLeft: '2px solid #ff3000',
               display: 'flex',
               fontSize: 28,
               fontWeight: 700,

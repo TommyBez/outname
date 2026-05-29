@@ -49,18 +49,18 @@ export default function PrivacyPage() {
           <p>Depending on how you use the service, we may process:</p>
           <LegalList>
             <li>
-              <strong className="text-foreground">Account data</strong> — email
+              <strong className="text-foreground">Account data</strong>, email
               address, display name, timezone, and session information used for
               sign-in and security.
             </li>
             <li>
-              <strong className="text-foreground">Waitlist data</strong> — if
-              you request early access, we store your email and any optional
-              details you submit (such as use case or profile type), plus signup
+              <strong className="text-foreground">Waitlist data</strong>, if you
+              request early access, we store your email and any optional details
+              you submit (such as use case or profile type), plus signup
               metadata like source and UTM parameters.
             </li>
             <li>
-              <strong className="text-foreground">Product usage data</strong> —
+              <strong className="text-foreground">Product usage data</strong>,
               agent configuration, conversations, memory files, scheduled runs,
               tool activity, and related operational logs needed to run your
               agents.
@@ -69,12 +69,12 @@ export default function PrivacyPage() {
               <strong className="text-foreground">
                 Connected service data
               </strong>{' '}
-              — when you connect third-party accounts (for example Slack, email,
+              , when you connect third-party accounts (for example Slack, email,
               or analytics tools), we store credentials and tokens required to
               act on your behalf, encrypted at rest where applicable.
             </li>
             <li>
-              <strong className="text-foreground">Technical data</strong> — IP
+              <strong className="text-foreground">Technical data</strong>, IP
               address, browser type, and similar request metadata for security,
               rate limiting, and reliability.
             </li>

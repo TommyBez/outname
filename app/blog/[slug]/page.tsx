@@ -99,7 +99,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             itemScope
             itemType="https://schema.org/Person"
           >
-            <div className="flex h-8 w-8 items-center justify-center border-2 border-foreground bg-accent font-bold text-[10px] uppercase">
+            <div className="flex size-8 items-center justify-center border-2 border-foreground bg-accent font-bold text-[10px] uppercase">
               OB
             </div>
             <div>

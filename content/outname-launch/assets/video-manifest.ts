@@ -151,13 +151,3 @@ export const launchVideoManifest = [
 ] as const satisfies readonly LaunchVideoAsset[]
 
 export type LaunchVideoSlug = (typeof launchVideoManifest)[number]['slug']
-
-export function getLaunchVideoAsset(slug: LaunchVideoSlug) {
-  const asset = launchVideoManifest.find((item) => item.slug === slug)
-
-  if (!asset) {
-    throw new Error(`Launch video not found: ${slug}`)
-  }
-
-  return asset
-}

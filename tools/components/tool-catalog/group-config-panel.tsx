@@ -188,7 +188,7 @@ function GroupConfigRow({
   values: Record<string, string>
 }) {
   return (
-    <div className="grid gap-3 border border-foreground/20 px-2 py-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
+    <div className="grid gap-3 border border-foreground/20 p-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
       <div className="min-w-0">
         <p className="font-black font-mono text-xs uppercase tracking-[0.08em]">
           {group.section}

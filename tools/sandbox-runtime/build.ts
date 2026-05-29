@@ -161,23 +161,6 @@ function isUniqueViolation(err: unknown): boolean {
   )
 }
 
-// Polling fallback for the catalog UI when the workflow stream is unavailable.
-// In-flight progress stays stream-only; this exposes terminal row state only.
-export async function readToolSandboxBuildStatus(buildId: string): Promise<{
-  status: 'pending' | 'running' | 'ready' | 'failed'
-  errorText: string | null
-} | null> {
-  const [row] = await db
-    .select({
-      status: toolSandboxBuilds.status,
-      errorText: toolSandboxBuilds.errorText,
-    })
-    .from(toolSandboxBuilds)
-    .where(eq(toolSandboxBuilds.id, buildId))
-    .limit(1)
-  return row ?? null
-}
-
 // Used by the tools page to pair a pending attachment row with its latest build.
 export async function getLatestBuildForManifest(
   manifestId: string,

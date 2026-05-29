@@ -12,7 +12,20 @@ import { Button } from '@/components/ui/button'
 export function AiGatewayKeyCard({ hasKey }: { hasKey: boolean }) {
   const [apiKey, setApiKey] = useState('')
   const [pending, startTransition] = useTransition()
-  const router = useRouter()
+  const { refresh } = useRouter()
+
+  function saveKey() {
+    startTransition(async () => {
+      const result = await saveAiGatewayKeyAction(apiKey)
+      if (!result.ok) {
+        toast.error(result.error ?? 'Unable to save key.')
+        return
+      }
+      toast.success('Key saved.')
+      setApiKey('')
+      refresh()
+    })
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -25,23 +38,9 @@ export function AiGatewayKeyCard({ hasKey }: { hasKey: boolean }) {
           Status: {hasKey ? 'Configured' : 'Missing'}
         </span>
       </div>
-      <form
-        className="flex max-w-md flex-col gap-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          startTransition(async () => {
-            const result = await saveAiGatewayKeyAction(apiKey)
-            if (!result.ok) {
-              toast.error(result.error ?? 'Unable to save key.')
-              return
-            }
-            toast.success('Key saved.')
-            setApiKey('')
-            router.refresh()
-          })
-        }}
-      >
+      <form action={saveKey} className="flex max-w-md flex-col gap-2">
         <input
+          aria-label="AI Gateway API key"
           className="h-10 border-2 border-foreground bg-background px-3 font-mono text-sm"
           onChange={(event) => setApiKey(event.target.value)}
           placeholder="vck_..."
@@ -64,7 +63,7 @@ export function AiGatewayKeyCard({ hasKey }: { hasKey: boolean }) {
                     return
                   }
                   toast.success('Key removed.')
-                  router.refresh()
+                  refresh()
                 })
               }
               size="sm"

@@ -7,7 +7,6 @@ const {
   mockMarkEventTerminal,
   mockRefreshAgentFileCache,
   mockSetEventPublisherWorkflowRunId,
-  mockStartNextQueuedForConcurrencyKey,
   mockStopAllBrokeredHttpSandboxesForRun,
   mockStopAllRepoWorkspacesForRun,
   mockStopAllToolSandboxesForRun,
@@ -18,7 +17,6 @@ const {
   mockMarkEventTerminal: vi.fn(),
   mockRefreshAgentFileCache: vi.fn(),
   mockSetEventPublisherWorkflowRunId: vi.fn(),
-  mockStartNextQueuedForConcurrencyKey: vi.fn(),
   mockStopAllBrokeredHttpSandboxesForRun: vi.fn(),
   mockStopAllRepoWorkspacesForRun: vi.fn(),
   mockStopAllToolSandboxesForRun: vi.fn(),
@@ -36,10 +34,6 @@ vi.mock('@/agent-runtime/server/agent-event-store', () => ({
 
 vi.mock('@/agent-runtime/server/file-cache', () => ({
   refreshAgentFileCache: mockRefreshAgentFileCache,
-}))
-
-vi.mock('@/agent-runtime/server/agent-events', () => ({
-  startNextQueuedForConcurrencyKey: mockStartNextQueuedForConcurrencyKey,
 }))
 
 vi.mock('@/tools/runtime/brokered-http/sandbox', () => ({
@@ -62,7 +56,6 @@ import {
   markAgentEventTerminalStep,
   setAgentEventPublisherWorkflowRunIdStep,
 } from './event-store'
-import { startNextQueuedEvent } from './start-next-event'
 
 describe('event step wrappers', () => {
   it('maps persisted events into workflow-safe payloads', async () => {
@@ -160,19 +153,5 @@ describe('cleanupEventResources', () => {
       '[events] refreshAgentFileCache failed',
       refreshError
     )
-  })
-})
-
-describe('startNextQueuedEvent', () => {
-  it('skips queue-start logic when there is no concurrency key', async () => {
-    await startNextQueuedEvent({ concurrencyKey: null })
-
-    expect(mockStartNextQueuedForConcurrencyKey).not.toHaveBeenCalled()
-  })
-
-  it('starts the next queued event for the same concurrency key', async () => {
-    await startNextQueuedEvent({ concurrencyKey: 'key_123' })
-
-    expect(mockStartNextQueuedForConcurrencyKey).toHaveBeenCalledWith('key_123')
   })
 })

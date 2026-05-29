@@ -8,6 +8,7 @@ import type {
 import type { SubAgentToolOutput } from '@/agent-runtime/server/sub-agent-tool-output'
 import {
   progressStreamNamespace,
+  progressUiWriter,
   type SubAgentProgressTarget,
 } from './progress-target'
 
@@ -43,7 +44,6 @@ export async function collectSubAgentMessages(input: {
       progress: input.progress ?? null,
     })
   }
-
   return { error: streamError, messages }
 }
 
@@ -59,11 +59,35 @@ async function emitProgressUpdate(input: {
 }): Promise<void> {
   const progress = input.progress
   const streamNamespace = progressStreamNamespace(progress?.target)
-  if (!(streamNamespace && progress?.toolCallId)) {
+  const progressWriter = progressUiWriter(progress?.target)
+  if (!((streamNamespace || progressWriter) && progress?.toolCallId)) {
     return
   }
 
   try {
+    const output = {
+      childAgentId: progress.childAgentId,
+      childName: progress.childName,
+      kind: 'sub_agent',
+      messages: input.messages.slice(),
+      status: 'running',
+      toolName: progress.toolName,
+    } satisfies SubAgentToolOutput
+
+    if (progressWriter) {
+      progressWriter.write({
+        type: 'tool-output-available',
+        output,
+        preliminary: true,
+        toolCallId: progress.toolCallId,
+      })
+      return
+    }
+
+    if (!streamNamespace) {
+      return
+    }
+
     const writable = getWritable<UIMessageChunk>({
       namespace: streamNamespace,
     })
@@ -71,14 +95,7 @@ async function emitProgressUpdate(input: {
     try {
       await writer.write({
         type: 'tool-output-available',
-        output: {
-          childAgentId: progress.childAgentId,
-          childName: progress.childName,
-          kind: 'sub_agent',
-          messages: input.messages.slice(),
-          status: 'running',
-          toolName: progress.toolName,
-        } satisfies SubAgentToolOutput,
+        output,
         preliminary: true,
         toolCallId: progress.toolCallId,
       })

@@ -15,7 +15,7 @@ export function SlackInstallationsPanel({
   isAvailable: boolean
   isConfigured: boolean
 }) {
-  const router = useRouter()
+  const { refresh } = useRouter()
 
   if (!isAvailable) {
     return <SlackComingSoonNotice />
@@ -29,7 +29,7 @@ export function SlackInstallationsPanel({
     <InstallationsBlock
       installations={installations}
       installHref={slackInstallHref('/channels#slack')}
-      onChanged={() => router.refresh()}
+      onChanged={() => refresh()}
     />
   )
 }

@@ -42,6 +42,7 @@ export default function DashboardPage() {
 async function DashboardPageBody() {
   const session = await requireSession()
   const display = await getUserTimeDisplay(session.user.id)
+  const todayLabel = display.longDate(new Date())
 
   return (
     <>
@@ -49,7 +50,7 @@ async function DashboardPageBody() {
         <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(14rem,18rem)] xl:items-end">
           <div className="min-w-0">
             <p className="swiss-label mb-4 text-accent">
-              01. <TodayDate label={display.longDate(new Date())} />
+              01. <TodayDate label={todayLabel} />
             </p>
             <h1 className="text-balance font-black font-serif text-5xl uppercase leading-[0.86] tracking-tighter sm:text-6xl lg:text-[clamp(4.5rem,7vw,7rem)]">
               Dashboard
@@ -140,9 +141,14 @@ async function DashboardCockpit({
   const agentEventMap = new Map(
     agentEvents.map((entry) => [entry.agentId, entry.events])
   )
-  const activeEventCount = agentEvents
-    .flatMap((entry) => entry.events)
-    .filter(isActiveDashboardEvent).length
+  let activeEventCount = 0
+  for (const entry of agentEvents) {
+    for (const event of entry.events) {
+      if (isActiveDashboardEvent(event)) {
+        activeEventCount += 1
+      }
+    }
+  }
   const attentionAgentIds = new Set<string>()
   for (const agent of attentionAgents) {
     attentionAgentIds.add(agent.id)

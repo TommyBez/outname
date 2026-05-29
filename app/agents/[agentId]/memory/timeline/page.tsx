@@ -1,6 +1,12 @@
 import { AgentMemoryTimeline } from '@/agents/components/agent-memory-pages'
+import { createPrivatePageMetadata } from '@/shared/server/site-metadata'
 
 type Params = Promise<{ agentId: string }>
+
+export const metadata = createPrivatePageMetadata(
+  'Agent memory timeline',
+  'Review private OUTNA.ME agent memory and event timeline entries.'
+)
 
 export default function AgentMemoryTimelinePage({
   params,

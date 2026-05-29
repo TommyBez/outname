@@ -139,6 +139,73 @@ describe('collectSubAgentMessages', () => {
     })
   })
 
+  it('emits progressive parent updates to the realtime UI writer', async () => {
+    const write = vi.fn()
+
+    mockGetRun.mockReturnValue({
+      getReadable: mockGetReadable.mockReturnValue('readable-stream'),
+    })
+    mockGetWritable.mockImplementation(() => {
+      throw new Error('getWritable should not be called')
+    })
+    mockReadUIMessageStream.mockReturnValue(
+      (async function* () {
+        await Promise.resolve()
+        yield {
+          id: 'msg_1',
+          parts: [],
+          role: 'assistant',
+        }
+      })()
+    )
+
+    const result = await collectSubAgentMessages({
+      progress: {
+        childAgentId: 'child_123',
+        childName: 'Haiku-San',
+        target: {
+          kind: 'realtime-ui-writer',
+          writer: { write } as never,
+        },
+        toolCallId: 'tool_call_123',
+        toolName: 'agent_haiku_san',
+      },
+      sessionRunId: 'wrun_123',
+      streamToken: 'stream_123',
+    })
+
+    expect(mockGetWritable).not.toHaveBeenCalled()
+    expect(write).toHaveBeenCalledWith({
+      output: {
+        childAgentId: 'child_123',
+        childName: 'Haiku-San',
+        kind: 'sub_agent',
+        messages: [
+          {
+            id: 'msg_1',
+            parts: [],
+            role: 'assistant',
+          },
+        ],
+        status: 'running',
+        toolName: 'agent_haiku_san',
+      },
+      preliminary: true,
+      toolCallId: 'tool_call_123',
+      type: 'tool-output-available',
+    })
+    expect(result).toEqual({
+      error: null,
+      messages: [
+        {
+          id: 'msg_1',
+          parts: [],
+          role: 'assistant',
+        },
+      ],
+    })
+  })
+
   it('does not touch workflow writable streams when progress target is none', async () => {
     mockGetRun.mockReturnValue({
       getReadable: mockGetReadable.mockReturnValue('readable-stream'),

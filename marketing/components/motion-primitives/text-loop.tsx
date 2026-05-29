@@ -2,7 +2,9 @@
 import {
   AnimatePresence,
   type AnimatePresenceProps,
-  motion,
+  domAnimation,
+  LazyMotion,
+  m,
   type Transition,
   type Variants,
 } from 'motion/react'
@@ -61,19 +63,21 @@ export function TextLoop({
 
   return (
     <span className={cn('relative inline-block whitespace-nowrap', className)}>
-      <AnimatePresence initial={false} mode={mode}>
-        <motion.span
-          animate="animate"
-          className="inline-block"
-          exit="exit"
-          initial="initial"
-          key={currentIndex}
-          transition={transition}
-          variants={variants || motionVariants}
-        >
-          {items[currentIndex]}
-        </motion.span>
-      </AnimatePresence>
+      <LazyMotion features={domAnimation}>
+        <AnimatePresence initial={false} mode={mode}>
+          <m.span
+            animate="animate"
+            className="inline-block"
+            exit="exit"
+            initial="initial"
+            key={currentIndex}
+            transition={transition}
+            variants={variants || motionVariants}
+          >
+            {items[currentIndex]}
+          </m.span>
+        </AnimatePresence>
+      </LazyMotion>
     </span>
   )
 }

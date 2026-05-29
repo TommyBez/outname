@@ -6,8 +6,8 @@ import {
   AgentBudgetSection,
   AgentSlackSection,
   EditSkeleton,
-  summarizeBudgetRules,
 } from '@/agents/components/agent-edit-sections'
+import { summarizeBudgetRules } from '@/agents/components/agent-edit-sections-helpers'
 import { AgentForm } from '@/agents/components/agent-form'
 import { deleteAgentAction } from '@/agents/server/actions'
 import { customInstructionsFromAgentsMd } from '@/agents/server/bootstrap-files'
@@ -21,9 +21,15 @@ import {
   getCachedAgentByIdForUser,
   getCachedAgentMemoryFile,
 } from '@/shared/server/data'
+import { createPrivatePageMetadata } from '@/shared/server/site-metadata'
 import { getUserTimeDisplay } from '@/shared/server/user-time-display'
 
 type Params = Promise<{ agentId: string }>
+
+export const metadata = createPrivatePageMetadata(
+  'Agent configuration',
+  'Configure private OUTNA.ME agent identity, runtime, channels, and budgets.'
+)
 
 export default function AgentConfigurePage({ params }: { params: Params }) {
   return (
@@ -34,8 +40,7 @@ export default function AgentConfigurePage({ params }: { params: Params }) {
 }
 
 async function AgentConfigure({ params }: { params: Params }) {
-  const { agentId } = await params
-  const session = await requireSession()
+  const [{ agentId }, session] = await Promise.all([params, requireSession()])
 
   const [
     agentRow,

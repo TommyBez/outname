@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import {
   syncBrowserTimezoneAction,
@@ -29,15 +29,28 @@ function timezoneActionErrorMessage(error: unknown): string {
 }
 
 export function TimezoneCard({ timezone }: { timezone: string }) {
-  const [value, setValue] = useState(timezone)
+  const [selectedTimezone, setSelectedTimezone] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
-  const router = useRouter()
+  const { refresh } = useRouter()
+  const value = selectedTimezone ?? timezone
   const options = useMemo(() => buildTimezoneOptions(timezone), [timezone])
   const offsetPreview = formatTimezoneOffsetPreview(value)
 
-  useEffect(() => {
-    setValue(timezone)
-  }, [timezone])
+  function saveTimezone() {
+    startTransition(async () => {
+      try {
+        const result = await updateUserTimezoneAction(value)
+        if (!result.ok) {
+          toast.error(result.error)
+          return
+        }
+        toast.success('Timezone saved.')
+        refresh()
+      } catch (error) {
+        toast.error(timezoneActionErrorMessage(error))
+      }
+    })
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -46,26 +59,8 @@ export function TimezoneCard({ timezone }: { timezone: string }) {
         heartbeats are not affected. Use device timezone saves your
         browser&apos;s zone as an explicit account choice.
       </p>
-      <form
-        className="flex max-w-md flex-col gap-3"
-        onSubmit={(event) => {
-          event.preventDefault()
-          startTransition(async () => {
-            try {
-              const result = await updateUserTimezoneAction(value)
-              if (!result.ok) {
-                toast.error(result.error)
-                return
-              }
-              toast.success('Timezone saved.')
-              router.refresh()
-            } catch (error) {
-              toast.error(timezoneActionErrorMessage(error))
-            }
-          })
-        }}
-      >
-        <Select onValueChange={setValue} value={value}>
+      <form action={saveTimezone} className="flex max-w-md flex-col gap-3">
+        <Select onValueChange={setSelectedTimezone} value={value}>
           <SelectTrigger
             aria-label="Account timezone"
             className="h-10 border-2 border-foreground"
@@ -100,7 +95,7 @@ export function TimezoneCard({ timezone }: { timezone: string }) {
                     toast.error('Could not detect your device timezone.')
                     return
                   }
-                  setValue(browserTimezone)
+                  setSelectedTimezone(browserTimezone)
                   const result =
                     await syncBrowserTimezoneAction(browserTimezone)
                   if (!result.ok) {
@@ -108,7 +103,7 @@ export function TimezoneCard({ timezone }: { timezone: string }) {
                     return
                   }
                   toast.success('Timezone set from your device.')
-                  router.refresh()
+                  refresh()
                 } catch (error) {
                   toast.error(timezoneActionErrorMessage(error))
                 }

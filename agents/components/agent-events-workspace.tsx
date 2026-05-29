@@ -9,7 +9,8 @@ import {
   XCircle,
 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useMemo } from 'react'
+import useSWR from 'swr'
 import { useAgentEventTranscript } from '@/agent-runtime/hooks/use-agent-event-transcript'
 import { sortAgentEvents } from '@/agent-runtime/shared/compact-ledger-events'
 import {
@@ -34,70 +35,64 @@ interface AgentEventsWorkspaceProps {
   timeZone: string
 }
 
+async function fetchAgentEvents(url: string): Promise<AgentEventsListResponse> {
+  const response = await fetch(url, { cache: 'no-store' })
+  if (!response.ok) {
+    throw new Error('Unable to refresh agent events.')
+  }
+  return (await response.json()) as AgentEventsListResponse
+}
+
 export function AgentEventsWorkspace({
   agentId,
   initialEvents,
   timeZone,
 }: AgentEventsWorkspaceProps) {
-  const router = useRouter()
+  return (
+    <Suspense fallback={null}>
+      <AgentEventsWorkspaceContent
+        agentId={agentId}
+        initialEvents={initialEvents}
+        timeZone={timeZone}
+      />
+    </Suspense>
+  )
+}
+
+function AgentEventsWorkspaceContent({
+  agentId,
+  initialEvents,
+  timeZone,
+}: AgentEventsWorkspaceProps) {
+  const { replace } = useRouter()
   const searchParams = useSearchParams()
   const queryEventId = searchParams.get('event')
-  const [events, setEvents] = useState<AgentEventSummary[]>(initialEvents)
-  const [ledgerStale, setLedgerStale] = useState(false)
-  const pollMs = useMemo(() => (hasLiveEvents(events) ? 2500 : 6000), [events])
+  const eventList = useSWR<AgentEventsListResponse>(
+    `/api/agents/${agentId}/events?limit=50`,
+    fetchAgentEvents,
+    {
+      fallbackData: { events: initialEvents },
+      refreshInterval: (latest) =>
+        hasLiveEvents(latest?.events ?? []) ? 2500 : 6000,
+    }
+  )
+  const events = eventList.data?.events ?? initialEvents
+  const ledgerStale = Boolean(eventList.error)
   const sortedEvents = useMemo(() => sortAgentEvents(events), [events])
   const ledgerEvents = sortedEvents
   const selectedEvent =
     sortedEvents.find((event) => event.id === queryEventId) ??
     pickDefaultEvent(ledgerEvents)
-  const refreshEventsRef = useRef<() => Promise<void>>(async () => {
-    await Promise.resolve()
-  })
   const transcript = useAgentEventTranscript({
     agentId,
     event: selectedEvent ?? null,
     onWorkflowUnavailable: () => {
-      refreshEventsRef.current().catch(() => undefined)
+      eventList.mutate().catch(() => undefined)
     },
   })
 
-  useEffect(() => {
-    let cancelled = false
-
-    async function refreshEvents() {
-      try {
-        const response = await fetch(`/api/agents/${agentId}/events?limit=50`, {
-          cache: 'no-store',
-        })
-        if (!response.ok) {
-          if (!cancelled) {
-            setLedgerStale(true)
-          }
-          return
-        }
-        const body = (await response.json()) as AgentEventsListResponse
-        if (!cancelled) {
-          setEvents(body.events)
-          setLedgerStale(false)
-        }
-      } catch {
-        if (!cancelled) {
-          setLedgerStale(true)
-        }
-      }
-    }
-
-    refreshEventsRef.current = refreshEvents
-    refreshEvents().catch(() => undefined)
-    const interval = window.setInterval(refreshEvents, pollMs)
-    return () => {
-      cancelled = true
-      window.clearInterval(interval)
-    }
-  }, [agentId, pollMs])
-
   function selectEvent(eventId: string) {
-    router.replace(`/agents/${agentId}/events?event=${eventId}`, {
+    replace(`/agents/${agentId}/events?event=${eventId}`, {
       scroll: false,
     })
   }
@@ -136,7 +131,7 @@ export function AgentEventsWorkspace({
                   <button
                     aria-pressed={selectedEvent?.id === event.id}
                     className={cn(
-                      'grid w-full gap-3 px-4 py-4 text-left transition-colors hover:bg-accent',
+                      'grid w-full gap-3 p-4 text-left transition-colors hover:bg-accent',
                       selectedEvent?.id === event.id &&
                         'bg-foreground text-background hover:bg-foreground hover:text-background'
                     )}
@@ -227,7 +222,7 @@ function EventTranscriptHeader({
   const blockedByEventId = event?.blockedByEventId
 
   return (
-    <div className="border-foreground border-b-2 px-4 py-4">
+    <div className="border-foreground border-b-2 p-4">
       {event ? (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">

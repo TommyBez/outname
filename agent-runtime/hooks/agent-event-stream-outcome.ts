@@ -5,7 +5,7 @@ import { isWorkflowStreamUnavailableMessage } from '@/agent-runtime/shared/workf
 
 export const STREAM_MAX_ATTEMPTS = 5
 export const STREAM_PENDING_RETRY_MS = 1500
-export const STREAM_BACKOFF_MS = [1000, 2000, 4000, 8000] as const
+const STREAM_BACKOFF_MS = [1000, 2000, 4000, 8000] as const
 
 export interface ObservedStreamTerminalState {
   lastError: string | null

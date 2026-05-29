@@ -35,7 +35,7 @@ export function AgentForm({
   initial,
   timezoneLabel,
 }: AgentFormProps) {
-  const router = useRouter()
+  const { back, push, refresh } = useRouter()
   const [pending, startTransition] = useTransition()
   const [name, setName] = useState(initial?.name ?? '')
   const [identityCard, setIdentityCard] = useState(initial?.identityCard ?? '')
@@ -93,7 +93,7 @@ export function AgentForm({
           stepLimitMode,
           userProfile,
         },
-        router,
+        router: { push, refresh },
       })
     })
   }
@@ -181,7 +181,7 @@ export function AgentForm({
       <div className="flex items-center justify-end gap-3">
         <Button
           disabled={pending}
-          onClick={() => router.back()}
+          onClick={() => back()}
           type="button"
           variant="ghost"
         >
@@ -221,7 +221,7 @@ function ConfigureSection({
 
 async function saveAgent(input: {
   initial?: AgentFormInitial
-  router: ReturnType<typeof useRouter>
+  router: Pick<ReturnType<typeof useRouter>, 'push' | 'refresh'>
   trimmedName: string
   values: {
     heartbeatEnabled: boolean

@@ -1,5 +1,5 @@
 // Seed this into the system sandbox, then append operator-authored AGENTS.md instructions below it.
-export const AGENTS_MD_TEMPLATE = `# AGENTS.md
+const AGENTS_MD_TEMPLATE = `# AGENTS.md
 
 This file is your operational manual. Read it at the start of every
 event. It tells you which files exist in your system sandbox, what each

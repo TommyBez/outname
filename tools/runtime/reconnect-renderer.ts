@@ -6,7 +6,7 @@ export interface ReconnectView {
   title: string
 }
 
-export function renderReconnect(r: Reconnect): ReconnectView {
+function renderReconnect(r: Reconnect): ReconnectView {
   switch (r.reason) {
     case 'connection_unavailable':
       return {

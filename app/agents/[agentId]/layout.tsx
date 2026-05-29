@@ -24,14 +24,14 @@ export default function AgentLayout({
   children: React.ReactNode
   params: Params
 }) {
+  const sidebarExtras = (
+    <Suspense fallback={<AgentSidebarSectionSkeleton />}>
+      <AgentSidebarSection params={params} />
+    </Suspense>
+  )
+
   return (
-    <AppShell
-      sidebarExtras={
-        <Suspense fallback={<AgentSidebarSectionSkeleton />}>
-          <AgentSidebarSection params={params} />
-        </Suspense>
-      }
-    >
+    <AppShell sidebarExtras={sidebarExtras}>
       <Suspense fallback={<AgentWorkspaceSkeleton />}>
         <AgentWorkspaceFrame params={params}>{children}</AgentWorkspaceFrame>
       </Suspense>

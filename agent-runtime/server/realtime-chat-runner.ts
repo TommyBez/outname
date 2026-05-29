@@ -13,13 +13,13 @@ import {
 } from 'ai'
 import { nanoid } from 'nanoid'
 import { revalidateTag } from 'next/cache'
-import { startupSystemSandbox } from '@/agent-runtime/server/agent-sandbox'
 import { cleanupRealtimeRun } from '@/agent-runtime/server/realtime-cleanup'
 import {
   type AgentRuntimeSpec,
   buildAgentRuntimeSpec,
 } from '@/agent-runtime/server/runtime-spec'
 import { getAgentById } from '@/agent-runtime/server/start-agent-run'
+import { startupSystemSandbox } from '@/agent-runtime/server/system-sandbox-startup'
 import { formatBudgetExceededMessage } from '@/budgets/server/errors'
 import type { ChannelId } from '@/channels/server/types'
 import {
@@ -30,6 +30,7 @@ import { compactSubAgentToolOutputsForModel } from '@/chat/server/chat-model'
 import { maybeGenerateConversationTitle } from '@/chat/workflows/steps/generate-conversation-title'
 import { conversationListTag } from '@/shared/server/cache-tags'
 import { withToolRuntimeRunId } from '@/tools/runtime/realtime-run-id'
+import { realtimeUiWriterTarget } from '@/tools/sub-agents/progress-target'
 import {
   appendStepLimitNoticeToMessages,
   appendStepLimitNoticeToOutput,
@@ -208,6 +209,7 @@ async function streamUiMessageTurn(input: {
   writer: UIMessageStreamWriter<UIMessage>
 }): Promise<void> {
   const { input: turn } = input
+  const progressTarget = realtimeUiWriterTarget(input.writer)
   const stepLimitInput: {
     steps: OnFinishEvent<Record<string, Tool>>['steps'] | null
   } = { steps: null }
@@ -225,6 +227,7 @@ async function streamUiMessageTurn(input: {
         userId: input.spec.userId,
       })
     },
+    progressTarget,
   })
   const streamMessages = compactSubAgentToolOutputsForModel(turn.messages)
 

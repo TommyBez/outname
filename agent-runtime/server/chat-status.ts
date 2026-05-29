@@ -1,9 +1,8 @@
 import type { UIMessage, UIMessageChunk } from 'ai'
 
-export const CHAT_STATUS_PART_ID = 'workflow-bootstrap' as const
 export const CHAT_STATUS_PART_TYPE = 'data-workflow-status' as const
 
-export const CHAT_STATUS_PHASES = [
+const CHAT_STATUS_PHASES = [
   'agent-event',
   'system-sandbox',
   'agent-build',

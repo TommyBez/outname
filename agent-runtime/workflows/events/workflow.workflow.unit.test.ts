@@ -1,32 +1,44 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
+  mockBuildWorkflowAgentTool,
+  mockCleanupEventResources,
   mockGetWorkflowMetadata,
   mockHandleHeartbeat,
   mockHandleInvocation,
-  mockCleanupEventResources,
   mockLoadAgentEventStep,
   mockMarkAgentEventHeartbeatStep,
   mockMarkAgentEventRunningStep,
   mockMarkAgentEventTerminalStep,
-  mockStartNextQueuedEvent,
+  mockStart,
+  mockStartNextQueuedEventForWorkflow,
 } = vi.hoisted(() => ({
+  mockBuildWorkflowAgentTool: vi.fn((_handle: unknown) => ({ built: true })),
+  mockCleanupEventResources: vi.fn(),
   mockGetWorkflowMetadata: vi.fn(),
   mockHandleHeartbeat: vi.fn(),
   mockHandleInvocation: vi.fn(),
-  mockCleanupEventResources: vi.fn(),
   mockLoadAgentEventStep: vi.fn(),
   mockMarkAgentEventHeartbeatStep: vi.fn(),
   mockMarkAgentEventRunningStep: vi.fn(),
   mockMarkAgentEventTerminalStep: vi.fn(),
-  mockStartNextQueuedEvent: vi.fn(),
+  mockStart: vi.fn(),
+  mockStartNextQueuedEventForWorkflow: vi.fn(),
 }))
 
 vi.mock('workflow', () => ({
   getWorkflowMetadata: mockGetWorkflowMetadata,
 }))
 
+vi.mock('workflow/api', () => ({
+  start: mockStart,
+}))
+
 vi.mock('server-only', () => ({}))
+
+vi.mock('@/tools/sub-agents/workflow-agent-tool', () => ({
+  buildWorkflowAgentTool: mockBuildWorkflowAgentTool,
+}))
 
 vi.mock('../session/handlers/handle-heartbeat', () => ({
   handleHeartbeat: mockHandleHeartbeat,
@@ -47,11 +59,11 @@ vi.mock('./steps/event-store', () => ({
   markAgentEventTerminalStep: mockMarkAgentEventTerminalStep,
 }))
 
-vi.mock('./steps/start-next-event', () => ({
-  startNextQueuedEvent: mockStartNextQueuedEvent,
+vi.mock('./steps/start-next-queued-event', () => ({
+  startNextQueuedEventForWorkflow: mockStartNextQueuedEventForWorkflow,
 }))
 
-import { agentEventWorkflow } from './workflow'
+import { agentEventWorkflow, startNextQueuedEvent } from './workflow'
 
 function createEvent(overrides: Record<string, unknown> = {}) {
   return {
@@ -69,11 +81,27 @@ function createEvent(overrides: Record<string, unknown> = {}) {
   }
 }
 
+function createHandle() {
+  return {
+    childAgentId: 'agent_child',
+    childCapabilitySummary: null,
+    childName: 'Child Agent',
+    childUserId: 'user_123',
+    parentAgentId: 'agent_parent',
+    parentCallStack: ['agent_root'],
+    parentDepth: 2,
+    parentRunId: 'wrun_parent',
+    parentToolId: 'tool_sub_agent',
+    parentUserId: 'user_123',
+    progressTarget: { kind: 'none' } as const,
+  }
+}
+
 describe('agentEventWorkflow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGetWorkflowMetadata.mockReturnValue({
-      workflowRunId: 'wrun_default',
+      workflowRunId: 'wrun_runtime',
     })
   })
 
@@ -84,7 +112,7 @@ describe('agentEventWorkflow', () => {
 
     expect(mockMarkAgentEventRunningStep).not.toHaveBeenCalled()
     expect(mockCleanupEventResources).not.toHaveBeenCalled()
-    expect(mockStartNextQueuedEvent).not.toHaveBeenCalled()
+    expect(mockStartNextQueuedEventForWorkflow).not.toHaveBeenCalled()
   })
 
   it('dispatches heartbeat events', async () => {
@@ -98,9 +126,6 @@ describe('agentEventWorkflow', () => {
       workflowRunId: 'wrun_saved',
     })
 
-    mockGetWorkflowMetadata.mockReturnValue({
-      workflowRunId: 'wrun_runtime',
-    })
     mockLoadAgentEventStep.mockResolvedValue(event)
 
     await agentEventWorkflow({ eventId: event.id })
@@ -114,6 +139,7 @@ describe('agentEventWorkflow', () => {
     })
     expect(mockHandleHeartbeat).toHaveBeenCalledWith({
       agentId: 'agent_123',
+      buildSubAgentTool: expect.any(Function),
       eventId: 'evt_123',
       manual: true,
       mode: 'normal',
@@ -128,8 +154,9 @@ describe('agentEventWorkflow', () => {
     expect(mockCleanupEventResources).toHaveBeenCalledWith({
       agentId: 'agent_123',
     })
-    expect(mockStartNextQueuedEvent).toHaveBeenCalledWith({
+    expect(mockStartNextQueuedEventForWorkflow).toHaveBeenCalledWith({
       concurrencyKey: 'key_123',
+      startWorkflowRun: expect.any(Function),
     })
   })
 
@@ -149,6 +176,7 @@ describe('agentEventWorkflow', () => {
 
     expect(mockHandleHeartbeat).toHaveBeenCalledWith({
       agentId: 'agent_123',
+      buildSubAgentTool: expect.any(Function),
       eventId: 'evt_123',
       localDate: '2026-05-14',
       manual: false,
@@ -176,6 +204,7 @@ describe('agentEventWorkflow', () => {
 
     expect(mockHandleInvocation).toHaveBeenCalledWith({
       agentId: 'agent_123',
+      buildSubAgentTool: expect.any(Function),
       callStack: ['tool_a'],
       depth: 2,
       eventId: 'evt_123',
@@ -188,6 +217,29 @@ describe('agentEventWorkflow', () => {
       streamToken: 'stream_123',
       userId: 'user_123',
     })
+  })
+
+  it('passes the pre-PR workflow sub-agent builder to invocation handlers', async () => {
+    const event = createEvent({
+      payload: {
+        callStack: ['tool_a'],
+        depth: 2,
+        input: 'hello',
+        streamToken: 'stream_123',
+      },
+      type: 'invocation',
+    })
+
+    mockLoadAgentEventStep.mockResolvedValue(event)
+
+    await agentEventWorkflow({ eventId: event.id })
+
+    const workflowInput = mockHandleInvocation.mock.calls[0]?.[0]
+    const buildSubAgentTool = workflowInput?.buildSubAgentTool
+    expect(buildSubAgentTool).toBe(mockBuildWorkflowAgentTool)
+
+    const handle = createHandle()
+    expect(mockBuildWorkflowAgentTool(handle)).toEqual({ built: true })
   })
 
   it('marks failures as terminal but still runs cleanup and queue handoff', async () => {
@@ -219,8 +271,44 @@ describe('agentEventWorkflow', () => {
     expect(mockCleanupEventResources).toHaveBeenCalledWith({
       agentId: 'agent_123',
     })
-    expect(mockStartNextQueuedEvent).toHaveBeenCalledWith({
+    expect(mockStartNextQueuedEventForWorkflow).toHaveBeenCalledWith({
       concurrencyKey: 'key_123',
+      startWorkflowRun: expect.any(Function),
     })
+  })
+})
+
+describe('startNextQueuedEvent', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('skips queue-start logic when there is no concurrency key', async () => {
+    await startNextQueuedEvent({ concurrencyKey: null })
+
+    expect(mockStartNextQueuedEventForWorkflow).not.toHaveBeenCalled()
+  })
+
+  it('starts the next queued event for the same concurrency key', async () => {
+    mockStart.mockResolvedValue({ runId: 'wrun_next' })
+    mockStartNextQueuedEventForWorkflow.mockImplementationOnce(
+      async (input: {
+        startWorkflowRun: (eventId: string) => Promise<string>
+      }) => {
+        await expect(input.startWorkflowRun('evt_next')).resolves.toBe(
+          'wrun_next'
+        )
+      }
+    )
+
+    await startNextQueuedEvent({ concurrencyKey: 'key_123' })
+
+    expect(mockStartNextQueuedEventForWorkflow).toHaveBeenCalledWith({
+      concurrencyKey: 'key_123',
+      startWorkflowRun: expect.any(Function),
+    })
+    expect(mockStart).toHaveBeenCalledWith(agentEventWorkflow, [
+      { eventId: 'evt_next' },
+    ])
   })
 })

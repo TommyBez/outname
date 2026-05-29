@@ -126,22 +126,6 @@ export async function writeMarker(
   await sandbox.writeFiles([{ path, content: Buffer.from(value, 'utf8') }])
 }
 
-// Safe to call every event: ensure the persistent sandbox exists, then seed or
-// upgrade the bootstrap files if needed.
-export async function startupSystemSandbox(input: {
-  agentId: string
-}): Promise<void> {
-  'use step'
-  const { agentId } = input
-  const { created } = await ensureSystemSandbox(agentId)
-
-  // Avoid pulling workflow primitives into non-workflow import paths.
-  const { seedAgentsMd } = await import(
-    '@/agent-runtime/workflows/session/steps/seed-agents-md'
-  )
-  await seedAgentsMd({ agentId, created })
-}
-
 // Resume by name. Callers must cross this SDK boundary from inside a `"use
 // step"` body.
 export async function getSystemSandbox(agentId: string): Promise<Sandbox> {

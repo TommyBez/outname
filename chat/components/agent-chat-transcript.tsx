@@ -78,19 +78,6 @@ export function AgentChatTranscript({
   )
 }
 
-export function hasAssistantContentAfterLatestUser(
-  messages: AgentChatMessage[]
-) {
-  const latestUserIndex = messages.findLastIndex(
-    (message) => message.role === 'user'
-  )
-  if (latestUserIndex < 0) {
-    return false
-  }
-
-  return messages.slice(latestUserIndex + 1).some(hasVisibleAssistantContent)
-}
-
 function ChatMessage({ message }: { message: UIMessage }) {
   const activityMetadata = readEventActivityMetadata(message)
   if (activityMetadata) {
@@ -187,7 +174,7 @@ function WorkflowStatusMessage({
   // does not enter the conversation's aria-log as an assistant turn and does
   // not inherit assistant bubble styling.
   return (
-    <div
+    <output
       aria-live="polite"
       className={cn(
         'flex w-full max-w-[95%] items-center gap-2 border-2 px-3 py-3 font-medium text-xs uppercase leading-5 tracking-[0.12em]',
@@ -196,7 +183,6 @@ function WorkflowStatusMessage({
           : 'border-border bg-muted/40 text-muted-foreground'
       )}
       data-transient={transient ? 'true' : undefined}
-      role="status"
     >
       <span
         className={cn(
@@ -205,7 +191,7 @@ function WorkflowStatusMessage({
         )}
       />
       <span>{status.message}</span>
-    </div>
+    </output>
   )
 }
 
@@ -220,27 +206,6 @@ function readMessageText(message: UIMessage): string {
     .join(' ')
     .trim()
   return text || 'Event activity updated'
-}
-
-function hasVisibleAssistantContent(message: AgentChatMessage) {
-  if (message.role !== 'assistant') {
-    return false
-  }
-
-  return message.parts.some((part) => {
-    if (part.type === 'text' || part.type === 'reasoning') {
-      return part.text.trim().length > 0
-    }
-
-    return (
-      part.type === 'dynamic-tool' ||
-      part.type === 'source-url' ||
-      part.type === 'source-document' ||
-      part.type === 'file' ||
-      part.type === 'step-start' ||
-      (typeof part.type === 'string' && part.type.startsWith('tool-'))
-    )
-  })
 }
 
 function ToolBody({ part }: { part: ToolPart }) {
@@ -276,7 +241,7 @@ function SubAgentToolTrace({ output }: { output: SubAgentToolOutput }) {
        */}
       <TaskTrigger title={title}>
         <Button
-          className="h-auto w-full justify-start gap-2 border-0 px-0 py-0 font-medium text-muted-foreground text-sm normal-case tracking-normal hover:bg-transparent hover:text-foreground"
+          className="h-auto w-full justify-start gap-2 border-0 p-0 font-medium text-muted-foreground text-sm normal-case tracking-normal hover:bg-transparent hover:text-foreground"
           type="button"
           variant="ghost"
         >

@@ -25,7 +25,7 @@ interface WaitlistEmailLayoutProps {
   eyebrow: string
   footer?: ReactNode
   footerEyebrow?: string
-  footerText?: ReactNode
+  footerText?: string
   lead: string
   logoUrl: string
   preview: string
@@ -110,7 +110,9 @@ export function WaitlistEmailLayout({
                     {footerEyebrow ?? `${EMAIL_BRAND_NAME} / waitlist`}
                   </Text>
                   {footerText ? (
-                    footerText
+                    <Text className="m-0 mt-[12px] text-[12px] text-subtle leading-[20px]">
+                      {footerText}
+                    </Text>
                   ) : (
                     <Text className="m-0 mt-[12px] text-[12px] text-subtle leading-[20px]">
                       This email was sent because an address requested access to{' '}

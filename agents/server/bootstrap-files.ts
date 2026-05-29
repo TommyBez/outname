@@ -15,7 +15,7 @@ import {
   extractAgentsMdCustomInstructions,
 } from '@/agents/server/agents-md-template'
 
-export const BOOTSTRAP_FILE_PATHS = [
+const BOOTSTRAP_FILE_PATHS = [
   'AGENTS.md',
   'IDENTITY.md',
   'SOUL.md',

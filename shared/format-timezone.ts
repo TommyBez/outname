@@ -1,6 +1,6 @@
 import { formatTimezoneOffsetPreview } from '@/shared/timezone-options'
 
-export const DEFAULT_ACCOUNT_TIMEZONE = 'UTC'
+const DEFAULT_ACCOUNT_TIMEZONE = 'UTC'
 
 function toDate(value: Date | string | null | undefined): Date | null {
   if (!value) {

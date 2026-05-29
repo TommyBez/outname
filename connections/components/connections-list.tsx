@@ -192,7 +192,7 @@ function ConnectionControls({
 }) {
   const [open, setOpen] = useState(false)
   const [pending, startTransition] = useTransition()
-  const router = useRouter()
+  const { refresh } = useRouter()
   const [values, setValues] = useState<Record<string, string>>({})
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -209,7 +209,7 @@ function ConnectionControls({
       toast.success('Connected.')
       setOpen(false)
       setValues({})
-      router.refresh()
+      refresh()
     })
   }
 
@@ -221,7 +221,7 @@ function ConnectionControls({
         return
       }
       toast.success('Disconnected.')
-      router.refresh()
+      refresh()
     })
   }
 
@@ -276,6 +276,7 @@ function ConnectionControls({
                 {field.label}
               </span>
               <input
+                aria-label={field.label}
                 className="h-10 w-full border-2 border-foreground bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                 onChange={(e) =>
                   setValues((v) => ({ ...v, [field.name]: e.target.value }))

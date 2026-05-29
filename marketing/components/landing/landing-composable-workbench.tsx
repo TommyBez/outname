@@ -7,14 +7,16 @@ import {
   RadioTowerIcon,
 } from 'lucide-react'
 import {
+  domAnimation,
+  LazyMotion,
   type MotionValue,
-  motion,
+  m as motion,
   useMotionValue,
   useMotionValueEvent,
   useScroll,
   useTransform,
 } from 'motion/react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import {
@@ -155,17 +157,25 @@ function partSnapProgress(partId: string, sectionProgress: number) {
 const LG_BREAKPOINT_PX = 1024
 
 function useIsDesktopViewport() {
-  const [isDesktop, setIsDesktop] = useState<boolean | undefined>(undefined)
+  return useSyncExternalStore(
+    subscribeDesktopViewport,
+    readDesktopViewport,
+    getServerDesktopViewport
+  )
+}
 
-  useEffect(() => {
-    const mql = window.matchMedia(`(min-width: ${LG_BREAKPOINT_PX}px)`)
-    const update = () => setIsDesktop(mql.matches)
-    update()
-    mql.addEventListener('change', update)
-    return () => mql.removeEventListener('change', update)
-  }, [])
+function subscribeDesktopViewport(onStoreChange: () => void) {
+  const mql = window.matchMedia(`(min-width: ${LG_BREAKPOINT_PX}px)`)
+  mql.addEventListener('change', onStoreChange)
+  return () => mql.removeEventListener('change', onStoreChange)
+}
 
-  return isDesktop
+function readDesktopViewport() {
+  return window.matchMedia(`(min-width: ${LG_BREAKPOINT_PX}px)`).matches
+}
+
+function getServerDesktopViewport() {
+  return false
 }
 
 export function LandingComposableWorkbench({
@@ -180,40 +190,42 @@ export function LandingComposableWorkbench({
       className="px-4 py-20 sm:px-6 md:px-10 md:py-28 lg:px-12"
       id="workbench"
     >
-      <motion.div
-        className="mx-auto max-w-7xl"
-        initial={shouldReduceMotion ? false : 'hidden'}
-        variants={staggerVariants}
-        viewport={{ once: true, margin: '-80px' }}
-        whileInView="visible"
-      >
+      <LazyMotion features={domAnimation}>
         <motion.div
-          className="grid gap-5 border-foreground border-t-4 pt-5 md:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)] md:items-end"
-          variants={revealVariants}
+          className="mx-auto max-w-7xl"
+          initial={shouldReduceMotion ? false : 'hidden'}
+          variants={staggerVariants}
+          viewport={{ once: true, margin: '-80px' }}
+          whileInView="visible"
         >
-          <div>
-            <p className="swiss-label text-accent">Anatomy of an agent</p>
-            <h2 className="mt-4 text-balance font-black text-5xl uppercase leading-[0.88] tracking-normal md:text-7xl">
-              An agent is what you attach to it.
-            </h2>
-          </div>
-          <p className="max-w-2xl text-muted-foreground leading-relaxed">
-            The agent is a shell. Capabilities snap into named slots. You see
-            what's attached, what ran, what changed.
-          </p>
+          <motion.div
+            className="grid gap-5 border-foreground border-t-4 pt-5 md:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)] md:items-end"
+            variants={revealVariants}
+          >
+            <div>
+              <p className="swiss-label text-accent">Anatomy of an agent</p>
+              <h2 className="mt-4 text-balance font-black text-5xl uppercase leading-[0.88] tracking-normal md:text-7xl">
+                An agent is what you attach to it.
+              </h2>
+            </div>
+            <p className="max-w-2xl text-muted-foreground leading-relaxed">
+              The agent is a shell. Capabilities snap into named slots. You see
+              what's attached, what ran, what changed.
+            </p>
+          </motion.div>
         </motion.div>
-      </motion.div>
 
-      {(() => {
-        if (shouldReduceMotion || isDesktop === undefined) {
-          return <ComposabilityStacked />
-        }
-        return isDesktop ? (
-          <ComposabilityPinned />
-        ) : (
-          <ComposabilityMobileStory />
-        )
-      })()}
+        {(() => {
+          if (shouldReduceMotion || isDesktop === undefined) {
+            return <ComposabilityStacked />
+          }
+          return isDesktop ? (
+            <ComposabilityPinned />
+          ) : (
+            <ComposabilityMobileStory />
+          )
+        })()}
+      </LazyMotion>
     </section>
   )
 }
@@ -694,9 +706,11 @@ function AgentShellCard({
   compact?: boolean
   slotCounts: readonly number[]
 }) {
-  const allFilled = slotCounts.every(
-    (count, idx) => count === composabilityStages[idx].parts.length
-  )
+  const allFilled =
+    slotCounts.length === composabilityStages.length &&
+    slotCounts.every(
+      (count, idx) => count === composabilityStages[idx].parts.length
+    )
 
   return (
     <div

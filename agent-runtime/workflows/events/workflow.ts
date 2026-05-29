@@ -1,6 +1,8 @@
+import { start } from 'workflow/api'
 import { replyNamespaceForEvent } from '@/agent-runtime/server/agent-event-keys'
 import type { AgentEventPayloads } from '@/agent-runtime/server/agent-event-store'
 import { currentWorkflowRunId } from '@/shared/server/workflow-run-id'
+import { buildWorkflowAgentTool } from '@/tools/sub-agents/workflow-agent-tool'
 import { handleHeartbeat } from '../session/handlers/handle-heartbeat'
 import { handleInvocation } from '../session/handlers/handle-invocation'
 import { cleanupEventResources } from './steps/cleanup-event'
@@ -11,7 +13,7 @@ import {
   markAgentEventTerminalStep,
   type WorkflowAgentEvent,
 } from './steps/event-store'
-import { startNextQueuedEvent } from './steps/start-next-event'
+import { startNextQueuedEventForWorkflow } from './steps/start-next-queued-event'
 
 export async function agentEventWorkflow(input: {
   eventId: string
@@ -55,6 +57,7 @@ async function dispatchAgentEvent(event: WorkflowAgentEvent): Promise<void> {
       const payload = payloadAs<AgentEventPayloads['heartbeat']>(event)
       await handleHeartbeat({
         agentId: event.agentId,
+        buildSubAgentTool: buildWorkflowSubAgentTool,
         eventId: event.id,
         manual: payload.manual ?? false,
         mode: 'normal',
@@ -68,6 +71,7 @@ async function dispatchAgentEvent(event: WorkflowAgentEvent): Promise<void> {
       const payload = payloadAs<AgentEventPayloads['dreaming']>(event)
       await handleHeartbeat({
         agentId: event.agentId,
+        buildSubAgentTool: buildWorkflowSubAgentTool,
         eventId: event.id,
         localDate: payload.localDate,
         manual: payload.manual ?? false,
@@ -82,6 +86,7 @@ async function dispatchAgentEvent(event: WorkflowAgentEvent): Promise<void> {
       const payload = payloadAs<AgentEventPayloads['invocation']>(event)
       await handleInvocation({
         agentId: event.agentId,
+        buildSubAgentTool: buildWorkflowSubAgentTool,
         callStack: payload.callStack,
         depth: payload.depth,
         eventId: event.id,
@@ -105,4 +110,28 @@ async function dispatchAgentEvent(event: WorkflowAgentEvent): Promise<void> {
 
 function payloadAs<T>(event: WorkflowAgentEvent): T {
   return event.payload as T
+}
+
+const buildWorkflowSubAgentTool = buildWorkflowAgentTool
+
+// Keep this as a plain async helper so callers start child runs inside the
+// current step instead of nesting a second `use step` callback.
+async function startCurrentAgentEventWorkflowRun(
+  eventId: string
+): Promise<string> {
+  const run = await start(agentEventWorkflow, [{ eventId }])
+  return run.runId
+}
+
+export async function startNextQueuedEvent(input: {
+  concurrencyKey: string | null
+}): Promise<void> {
+  'use step'
+  if (!input.concurrencyKey) {
+    return
+  }
+  await startNextQueuedEventForWorkflow({
+    concurrencyKey: input.concurrencyKey,
+    startWorkflowRun: startCurrentAgentEventWorkflowRun,
+  })
 }

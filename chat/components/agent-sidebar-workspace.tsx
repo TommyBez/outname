@@ -94,7 +94,7 @@ function ChatHistoryGroup({
   conversations: ConversationSummary[]
   pathname: string | null
 }) {
-  const router = useRouter()
+  const { push } = useRouter()
   const newChatPath = `/agents/${agentId}/chat/new`
 
   return (
@@ -106,7 +106,7 @@ function ChatHistoryGroup({
             className="text-muted-foreground hover:text-foreground"
             isActive={pathname === newChatPath}
             onClick={() => {
-              router.push(`${newChatPath}?draft=${newChatConversationId()}`)
+              push(`${newChatPath}?draft=${newChatConversationId()}`)
             }}
             tooltip="New chat"
             type="button"

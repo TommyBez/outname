@@ -18,7 +18,7 @@ export function useAgentEventStoredTranscript(input: {
   event: AgentEventSummary | null
 }): UseAgentEventTranscriptResult {
   const { agentId, enabled, event } = input
-  const [state, setState] = useState<UseAgentEventTranscriptResult>(
+  const [state, setState] = useState<UseAgentEventTranscriptResult>(() =>
     unavailableTranscriptState()
   )
 

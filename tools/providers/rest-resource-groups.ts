@@ -10,12 +10,8 @@ export interface RestResourceDefinition {
   readOnlyDescription?: string
 }
 
-export function withGroupPrefix(group: string, description: string): string {
+function withGroupPrefix(group: string, description: string): string {
   return `[Group: ${group}] ${description}`
-}
-
-export function normalizeResourcePathname(base: string, path: string): string {
-  return new URL(path, base).pathname
 }
 
 function toResourceFieldSuffix(key: string): string {
@@ -132,10 +128,10 @@ export function enforceResourceAccess(args: {
   })
 }
 
-export const groupToggleField = (group: string, description: string) =>
+const groupToggleField = (group: string, description: string) =>
   z.boolean().default(true).describe(withGroupPrefix(group, description))
 
-export const groupReadOnlyField = (
+const groupReadOnlyField = (
   group: string,
   description: string,
   defaultValue = true

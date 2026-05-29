@@ -28,15 +28,3 @@ export function progressBetween(
     extrapolateRight: 'clamp',
   })
 }
-
-export function translateIn(
-  frame: number,
-  startFrame: number,
-  distance: number
-) {
-  const progress = appear(frame, startFrame, 18)
-  return {
-    opacity: progress,
-    transform: `translateY(${(1 - progress) * distance}px)`,
-  }
-}

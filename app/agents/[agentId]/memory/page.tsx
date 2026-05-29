@@ -3,8 +3,14 @@ import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { requireSession } from '@/auth/server/auth-guard'
 import { getCachedAgentByIdForUser } from '@/shared/server/data'
+import { createPrivatePageMetadata } from '@/shared/server/site-metadata'
 
 type Params = Promise<{ agentId: string }>
+
+export const metadata = createPrivatePageMetadata(
+  'Agent memory',
+  'Inspect private OUTNA.ME agent files, timelines, and dreaming output.'
+)
 
 export default function AgentMemoryPage({ params }: { params: Params }) {
   return (
@@ -15,8 +21,7 @@ export default function AgentMemoryPage({ params }: { params: Params }) {
 }
 
 async function ResolvedAgentMemoryPage({ params }: { params: Params }) {
-  const { agentId } = await params
-  const session = await requireSession()
+  const [{ agentId }, session] = await Promise.all([params, requireSession()])
   const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
   if (!agent) {
     notFound()

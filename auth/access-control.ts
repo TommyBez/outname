@@ -5,7 +5,7 @@ import {
   userAc,
 } from 'better-auth/plugins/admin/access'
 
-export const accessStatement = {
+const accessStatement = {
   ...defaultStatements,
   waitlist: ['manage'],
   slack: ['use'],
@@ -13,13 +13,13 @@ export const accessStatement = {
 
 export const ac = createAccessControl(accessStatement)
 
-export const adminRole = ac.newRole({
+const adminRole = ac.newRole({
   ...adminAc.statements,
   waitlist: ['manage'],
   slack: ['use'],
 })
 
-export const userRole = ac.newRole({
+const userRole = ac.newRole({
   ...userAc.statements,
 })
 
