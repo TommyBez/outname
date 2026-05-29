@@ -19,7 +19,7 @@ attachments, and Slack routing.
 - Neon Postgres + Drizzle ORM for persistent data
 - Vercel Workflow + Vercel Sandbox for agent execution
 - Upstash Redis for cache and coordination
-- Slack Chat SDK for channel integrations
+- Vercel Chat SDK for channel integrations
 - Resend for waitlist emails
 
 ## Repository guide
