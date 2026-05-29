@@ -172,6 +172,7 @@
     "test:workflow": "pnpm test:workflow:unit && pnpm test:workflow:integration && pnpm test:workflow:server",
     "test:workflow:integration": "cd test/workflow-fixtures && ../../node_modules/.bin/vitest run --config ../../vitest.workflow.config.ts",
     "test:workflow:server": "cd test/workflow-server-app && ../../node_modules/.bin/vitest run --config ../../vitest.workflow-server.config.ts",
-    "test:workflow:unit": "vitest run --config vitest.workflow-unit.config.ts"
+    "test:workflow:unit": "vitest run --config vitest.workflow-unit.config.ts",
+    "doctor": "npx react-doctor@latest"
   }
 }
