@@ -7,10 +7,7 @@ import {
   getApiDebugRequestId,
   logApiDebug,
 } from '@outname/shared/server/api-debug'
-import {
-  getRelatedProjectOrigins,
-  VERCEL_FRONTEND_PROJECT_IDENTIFIERS,
-} from '@outname/shared/vercel-related-projects'
+import { getRelatedProjectOrigins } from '@outname/shared/vercel-related-projects'
 import { checkBotId } from 'botid/server'
 import { NextResponse } from 'next/server'
 
@@ -52,7 +49,7 @@ function getBotIdExtraAllowedHosts(): string[] {
     process.env.NEXT_PUBLIC_APP_URL,
     process.env.NEXT_PUBLIC_ADMIN_URL,
     ...splitCommaSeparated(process.env.BETTER_AUTH_TRUSTED_ORIGINS),
-    ...getRelatedProjectOrigins(VERCEL_FRONTEND_PROJECT_IDENTIFIERS),
+    ...getRelatedProjectOrigins(),
   ].reduce<string[]>((hosts, value) => {
     if (!value) {
       return hosts

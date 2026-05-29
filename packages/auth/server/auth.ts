@@ -1,10 +1,7 @@
 import { ac, roles } from '@outname/auth/access-control'
 import { sendAuthSignInOtpEmail } from '@outname/auth/server/auth-email'
 import { db } from '@outname/db'
-import {
-  getRelatedProjectOrigins,
-  VERCEL_FRONTEND_PROJECT_IDENTIFIERS,
-} from '@outname/shared/vercel-related-projects'
+import { getRelatedProjectOrigins } from '@outname/shared/vercel-related-projects'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { admin as adminPlugin, emailOTP } from 'better-auth/plugins'
@@ -55,7 +52,7 @@ function configuredTrustedOrigins(): string[] {
     process.env.NEXT_PUBLIC_APP_URL,
     process.env.NEXT_PUBLIC_ADMIN_URL,
     process.env.NEXT_PUBLIC_API_BASE_URL,
-    ...getRelatedProjectOrigins(VERCEL_FRONTEND_PROJECT_IDENTIFIERS),
+    ...getRelatedProjectOrigins(),
     ...parseTrustedOriginsEnv(),
   ].filter((origin): origin is string => Boolean(origin))
 }

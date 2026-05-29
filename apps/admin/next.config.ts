@@ -3,13 +3,11 @@ import createMDX from '@next/mdx'
 import { withBotId } from 'botid/next/config'
 import type { NextConfig } from 'next'
 import { withWorkflow } from 'workflow/next'
-import {
-  getRelatedProjectOrigin,
-  VERCEL_API_PROJECT_IDENTIFIERS,
-  VERCEL_APP_PROJECT_IDENTIFIERS,
-} from '../../packages/shared/vercel-related-projects'
+import { getRelatedProjectOrigin } from '../../packages/shared/vercel-related-projects'
 
 const workspaceRoot = join(process.cwd(), '../..')
+const API_RELATED_PROJECT_NAME = 'outname-api'
+const APP_RELATED_PROJECT_NAME = 'outname-app'
 const workspacePackages = [
   '@outname/ai',
   '@outname/auth',
@@ -21,11 +19,11 @@ const workspacePackages = [
 ]
 const previewApiBaseUrl =
   process.env.VERCEL_ENV === 'preview'
-    ? getRelatedProjectOrigin(VERCEL_API_PROJECT_IDENTIFIERS)
+    ? getRelatedProjectOrigin(API_RELATED_PROJECT_NAME)
     : null
 const previewAppBaseUrl =
   process.env.VERCEL_ENV === 'preview'
-    ? getRelatedProjectOrigin(VERCEL_APP_PROJECT_IDENTIFIERS)
+    ? getRelatedProjectOrigin(APP_RELATED_PROJECT_NAME)
     : null
 
 const nextConfig: NextConfig = {

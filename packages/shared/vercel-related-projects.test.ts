@@ -2,10 +2,6 @@ import { afterEach, expect, test } from 'vitest'
 import {
   getRelatedProjectOrigin,
   getRelatedProjectOrigins,
-  VERCEL_API_PROJECT_IDENTIFIERS,
-  VERCEL_FRONTEND_PROJECT_IDENTIFIERS,
-  VERCEL_PROJECT_IDS,
-  VERCEL_PROJECT_NAMES,
 } from './vercel-related-projects'
 
 const originalRelatedProjects = process.env.VERCEL_RELATED_PROJECTS
@@ -34,8 +30,8 @@ test('uses the preview host from official Vercel related project metadata', () =
   setRelatedProjects([
     {
       project: {
-        id: VERCEL_PROJECT_IDS.api,
-        name: VERCEL_PROJECT_NAMES.api,
+        id: 'prj_api',
+        name: 'outname-api',
       },
       production: {
         alias: 'api.outname.com',
@@ -47,7 +43,7 @@ test('uses the preview host from official Vercel related project metadata', () =
     },
   ])
 
-  expect(getRelatedProjectOrigin(VERCEL_API_PROJECT_IDENTIFIERS)).toBe(
+  expect(getRelatedProjectOrigin('outname-api')).toBe(
     'https://outname-api-git-feature.vercel.app'
   )
 })
@@ -57,8 +53,8 @@ test('uses the production alias from official Vercel related project metadata', 
   setRelatedProjects([
     {
       project: {
-        id: VERCEL_PROJECT_IDS.api,
-        name: VERCEL_PROJECT_NAMES.api,
+        id: 'prj_api',
+        name: 'outname-api',
       },
       production: {
         alias: 'api.outname.com',
@@ -70,18 +66,16 @@ test('uses the production alias from official Vercel related project metadata', 
     },
   ])
 
-  expect(getRelatedProjectOrigin(VERCEL_API_PROJECT_IDENTIFIERS)).toBe(
-    'https://api.outname.com'
-  )
+  expect(getRelatedProjectOrigin('outname-api')).toBe('https://api.outname.com')
 })
 
-test('matches frontend related projects by nested project identity', () => {
+test('returns all related project origins when no project names are provided', () => {
   process.env.VERCEL_ENV = 'preview'
   setRelatedProjects([
     {
       project: {
-        id: VERCEL_PROJECT_IDS.app,
-        name: VERCEL_PROJECT_NAMES.app,
+        id: 'prj_app',
+        name: 'outname-app',
       },
       production: {
         alias: 'app.outname.com',
@@ -92,8 +86,8 @@ test('matches frontend related projects by nested project identity', () => {
     },
     {
       project: {
-        id: VERCEL_PROJECT_IDS.web,
-        name: VERCEL_PROJECT_NAMES.web,
+        id: 'prj_web',
+        name: 'outname',
       },
       production: {
         alias: 'outname.com',
@@ -104,10 +98,8 @@ test('matches frontend related projects by nested project identity', () => {
     },
   ])
 
-  expect(getRelatedProjectOrigins(VERCEL_FRONTEND_PROJECT_IDENTIFIERS)).toEqual(
-    [
-      'https://outname-app-git-feature.vercel.app',
-      'https://outname-git-feature.vercel.app',
-    ]
-  )
+  expect(getRelatedProjectOrigins()).toEqual([
+    'https://outname-app-git-feature.vercel.app',
+    'https://outname-git-feature.vercel.app',
+  ])
 })

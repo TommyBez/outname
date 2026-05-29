@@ -3,10 +3,7 @@ import createMDX from '@next/mdx'
 import { withBotId } from 'botid/next/config'
 import type { NextConfig } from 'next'
 import { withWorkflow } from 'workflow/next'
-import {
-  getRelatedProjectOrigin,
-  VERCEL_API_PROJECT_IDENTIFIERS,
-} from '../../packages/shared/vercel-related-projects'
+import { getRelatedProjectOrigin } from '../../packages/shared/vercel-related-projects'
 
 const workspaceRoot = join(process.cwd(), '../..')
 const workspacePackages = [
@@ -19,9 +16,7 @@ const workspacePackages = [
   '@outname/workflow',
 ]
 const previewApiBaseUrl =
-  process.env.VERCEL_ENV === 'preview'
-    ? getRelatedProjectOrigin(VERCEL_API_PROJECT_IDENTIFIERS)
-    : null
+  process.env.VERCEL_ENV === 'preview' ? getRelatedProjectOrigin() : null
 
 const nextConfig: NextConfig = {
   cacheComponents: true,

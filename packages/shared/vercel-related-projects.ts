@@ -6,39 +6,6 @@ import {
 const HOST_PATTERN = /^[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?$/i
 const HTTP_URL_PATTERN = /^https?:\/\//i
 
-export const VERCEL_PROJECT_IDS = {
-  admin: 'prj_Szw83dkoKByGB3DJb2AmmcrEpoEy',
-  api: 'prj_Jd3B9bnvYTqq5kzj5qZrrVAmpTHX',
-  app: 'prj_L9uLdZaSpoiY9pcIMazwhYQ2X5bG',
-  web: 'prj_k8JEeBeWTnlZ0FQy7WV1rNqr5EgU',
-} as const
-
-export const VERCEL_PROJECT_NAMES = {
-  admin: 'outname-admin',
-  api: 'outname-api',
-  app: 'outname-app',
-  web: 'outname',
-} as const
-
-export const VERCEL_API_PROJECT_IDENTIFIERS = [
-  VERCEL_PROJECT_IDS.api,
-  VERCEL_PROJECT_NAMES.api,
-] as const
-
-export const VERCEL_APP_PROJECT_IDENTIFIERS = [
-  VERCEL_PROJECT_IDS.app,
-  VERCEL_PROJECT_NAMES.app,
-] as const
-
-export const VERCEL_FRONTEND_PROJECT_IDENTIFIERS = [
-  VERCEL_PROJECT_IDS.admin,
-  VERCEL_PROJECT_IDS.app,
-  VERCEL_PROJECT_IDS.web,
-  VERCEL_PROJECT_NAMES.admin,
-  VERCEL_PROJECT_NAMES.app,
-  VERCEL_PROJECT_NAMES.web,
-] as const
-
 function unique(values: string[]): string[] {
   return [...new Set(values)]
 }
@@ -67,14 +34,11 @@ function toOrigin(value: string | undefined): string | null {
   }
 }
 
-function projectMatchesIdentifiers(
+function projectMatchesName(
   project: VercelRelatedProject,
-  identifiers: readonly string[]
+  projectName: string
 ): boolean {
-  return (
-    identifiers.includes(project.project.id) ||
-    identifiers.includes(project.project.name)
-  )
+  return project.project.name === projectName
 }
 
 function getProjectOrigin(project: VercelRelatedProject): string | null {
@@ -95,12 +59,14 @@ function getProjectOrigin(project: VercelRelatedProject): string | null {
 }
 
 export function getRelatedProjectOrigins(
-  identifiers?: readonly string[]
+  projectNames?: readonly string[]
 ): string[] {
   const projects = relatedProjects({ noThrow: true })
-  const matchingProjects = identifiers
+  const matchingProjects = projectNames
     ? projects.filter((project) =>
-        projectMatchesIdentifiers(project, identifiers)
+        projectNames.some((projectName) =>
+          projectMatchesName(project, projectName)
+        )
       )
     : projects
 
@@ -111,12 +77,9 @@ export function getRelatedProjectOrigins(
   )
 }
 
-export function getRelatedProjectOrigin(
-  identifiers: readonly string[]
-): string | null {
-  const matchingOrigins = getRelatedProjectOrigins(identifiers)
-  if (matchingOrigins[0]) {
-    return matchingOrigins[0]
+export function getRelatedProjectOrigin(projectName?: string): string | null {
+  if (projectName) {
+    return getRelatedProjectOrigins([projectName])[0] ?? null
   }
 
   const projects = relatedProjects({ noThrow: true })
