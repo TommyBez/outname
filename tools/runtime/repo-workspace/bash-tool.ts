@@ -1,4 +1,5 @@
 import type { Sandbox as VercelSandbox } from '@vercel/sandbox'
+import { nonRetryableStepError } from '@/shared/server/workflow-step-errors'
 import { RepoWorkspaceProviderError } from './errors'
 import {
   assertReadableRepoWorkspacePath,
@@ -7,7 +8,12 @@ import {
   normalizeRepoWorkspacePath,
   REPO_WORKSPACE_ROOT,
 } from './paths'
-import type { RepoWorkspaceBashToolkit } from './types'
+import type {
+  RepoWorkspaceBashTool,
+  RepoWorkspaceBashToolkit,
+  RepoWorkspaceReadTool,
+  RepoWorkspaceWriteTool,
+} from './types'
 
 const MAX_BASH_OUTPUT_CHARS = 64 * 1024
 
@@ -85,7 +91,13 @@ async function executeRepoWorkspaceBashTool(input: {
 }) {
   'use step'
   const bashTool = await createStepBashTool(input)
-  return await bashTool.bash.execute({ command: input.command })
+  const execute = bashTool.bash.execute as
+    | RepoWorkspaceBashTool['execute']
+    | undefined
+  if (!execute) {
+    throw nonRetryableStepError('bash tool execute handler is unavailable')
+  }
+  return await execute({ command: input.command })
 }
 
 async function executeRepoWorkspaceReadFileTool(input: {
@@ -95,7 +107,13 @@ async function executeRepoWorkspaceReadFileTool(input: {
 }) {
   'use step'
   const bashTool = await createStepBashTool(input)
-  return await bashTool.tools.readFile.execute({ path: input.path })
+  const execute = bashTool.tools.readFile.execute as
+    | RepoWorkspaceReadTool['execute']
+    | undefined
+  if (!execute) {
+    throw nonRetryableStepError('readFile tool execute handler is unavailable')
+  }
+  return await execute({ path: input.path })
 }
 
 async function executeRepoWorkspaceWriteFileTool(input: {
@@ -106,7 +124,13 @@ async function executeRepoWorkspaceWriteFileTool(input: {
 }) {
   'use step'
   const bashTool = await createStepBashTool(input)
-  return await bashTool.tools.writeFile.execute({
+  const execute = bashTool.tools.writeFile.execute as
+    | RepoWorkspaceWriteTool['execute']
+    | undefined
+  if (!execute) {
+    throw nonRetryableStepError('writeFile tool execute handler is unavailable')
+  }
+  return await execute({
     content: input.content,
     path: input.path,
   })
@@ -116,9 +140,7 @@ async function createStepBashTool(input: {
   rootPath: string
   sandbox: VercelSandbox
 }): Promise<RepoWorkspaceBashToolkit> {
-  const { createBashTool } = (await import(
-    bashToolModuleName()
-  )) as unknown as {
+  const { createBashTool } = (await import('bash-tool')) as unknown as {
     createBashTool(args: {
       destination: string
       maxFiles: number
@@ -138,10 +160,6 @@ async function createStepBashTool(input: {
     },
     sandbox: createRepoWorkspaceSandboxAdapter(input),
   })
-}
-
-function bashToolModuleName(): string {
-  return 'bash-tool'
 }
 
 function createRepoWorkspaceSandboxAdapter(input: {
