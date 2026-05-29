@@ -15,16 +15,27 @@ const workspacePackages = [
   '@outname/ui',
   '@outname/workflow',
 ]
-const previewApiBaseUrl =
-  process.env.VERCEL_ENV === 'preview' ? getRelatedProjectOrigin() : null
+const apiRewriteOrigin =
+  process.env.VERCEL_ENV === 'preview'
+    ? getRelatedProjectOrigin()
+    : (process.env.NEXT_PUBLIC_API_BASE_URL ?? null)
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
   env: {
-    NEXT_PUBLIC_API_BASE_URL:
-      previewApiBaseUrl ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? '',
+    NEXT_PUBLIC_API_BASE_URL: '',
   },
   outputFileTracingRoot: workspaceRoot,
+  async rewrites() {
+    return apiRewriteOrigin
+      ? [
+          {
+            destination: `${apiRewriteOrigin}/api/:path*`,
+            source: '/api/:path*',
+          },
+        ]
+      : []
+  },
   serverExternalPackages: ['better-auth', 'bash-tool', 'just-bash', 'pg'],
   pageExtensions: ['js', 'jsx', 'md', 'mdx', 'ts', 'tsx'],
   transpilePackages: workspacePackages,
