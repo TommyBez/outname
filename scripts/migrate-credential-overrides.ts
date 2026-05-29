@@ -1,7 +1,7 @@
+import { db } from '@outname/db'
+import { agentTools } from '@outname/db/schema'
+import { legacyProviderToConnectorId } from '@outname/shared/connections/legacy-provider-map'
 import { and, eq } from 'drizzle-orm'
-import { legacyProviderToConnectorId } from '@/connections/legacy-provider-map'
-import { db } from '@/shared/db'
-import { agentTools } from '@/shared/db/schema'
 
 const SECRETS_FIELD = '_secrets'
 const CREDENTIAL_OVERRIDES_FIELD = 'credentialOverrides'

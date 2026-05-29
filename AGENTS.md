@@ -128,11 +128,11 @@ Most formatting and common issues are automatically fixed by Biome. Run `pnpm dl
 
 ### Services overview
 
-This is a single Next.js 16 application (not a monorepo). The dev server is the only service needed locally.
+This is a Turborepo monorepo with deployable Next.js apps and local-only email/video workspaces.
 
-- **Dev server**: `pnpm dev` → http://localhost:3000
-- **Database**: Remote Neon Postgres via `DATABASE_URL` (no local DB required). Use `@/shared/db` (`pg` + `attachDatabasePool` per [Neon + Vercel connection methods](https://neon.com/docs/guides/vercel-connection-methods)). Use Neon's pooled connection string (hostname includes `-pooler`). In the session workflow codepath, prefer normal static imports even for step-oriented modules that touch `@/shared/db` or server helpers. Keep `await import(...)` only when you truly want optional-path lazy loading or package/runtime-local loading (for example the optional child-trace path or `bash-tool` package loading).
-- **Lint**: `pnpm check` (Ultracite/Biome)
+- **Dev servers**: `pnpm dev:app` → http://localhost:3000, `pnpm dev:api` → http://localhost:3001, `pnpm dev:web` → http://localhost:3002, `pnpm dev:admin` → http://localhost:3003, `pnpm dev:email` → http://localhost:3004, `pnpm dev:video` → http://localhost:3005
+- **Database**: Remote Neon Postgres via `DATABASE_URL` (no local DB required). Use `@outname/db` (`pg` + `attachDatabasePool` per [Neon + Vercel connection methods](https://neon.com/docs/guides/vercel-connection-methods)). Use Neon's pooled connection string (hostname includes `-pooler`). In the session workflow codepath, prefer normal static imports even for step-oriented modules that touch `@outname/db` or server helpers. Keep `await import(...)` only when you truly want optional-path lazy loading or package/runtime-local loading (for example the optional child-trace path or `bash-tool` package loading).
+- **Lint**: `pnpm lint` (Ultracite/Biome)
 - **Format**: `pnpm fix` (auto-fix lint/format issues)
 
 ### Environment variables
@@ -143,6 +143,12 @@ Required secrets are injected automatically. A `.env.local` must exist for Next.
 DATABASE_URL=<from env>
 BETTER_AUTH_SECRET=<from env>
 BETTER_AUTH_URL=http://localhost:3000
+BETTER_AUTH_TRUSTED_ORIGINS=http://localhost:3000,http://localhost:3002,http://localhost:3003
+NEXT_PUBLIC_WEB_URL=http://localhost:3002
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_ADMIN_URL=http://localhost:3003
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3001
+AUTH_COOKIE_DOMAIN=
 CONNECTION_ENCRYPTION_KEY=<from env>
 AI_GATEWAY_API_KEY=<from env>
 RESEND_API_KEY=<from env>
@@ -155,9 +161,9 @@ WAITLIST_ADMIN_EMAIL=<admin inbox for new waitlist signup notifications>
 
 ### Known caveats
 
-- **Sign-up is disabled** at the Better Auth level (`auth/server/auth.ts`); new users are provisioned from the waitlist and sign in with email OTP codes. The data model is multi-user — every user-owned table is scoped by `user_id` and routes verify ownership. Use a provisioned address such as `TEST_USER_EMAIL` to request a login code in dev.
+- **Sign-up is disabled** at the Better Auth level (`packages/auth/server/auth.ts`); new users are provisioned from the waitlist and sign in with email OTP codes. The data model is multi-user — every user-owned table is scoped by `user_id` and routes verify ownership. Use a provisioned address such as `TEST_USER_EMAIL` to request a login code in dev.
 - **Dev sign-in flow**: Request an OTP via `POST /api/auth/request-otp` with `{"email":"<existing-user>"}`, then read the code from the `verification` table (`SELECT value FROM verification ORDER BY "createdAt" DESC LIMIT 1` — the OTP is the part before the `:`). Submit it to `POST /api/auth/sign-in/email-otp` with `{"email":"...","otp":"..."}` to get a `better-auth.session_token` cookie. Existing test users can be found with `SELECT email FROM "user" LIMIT 5`.
 - **`drizzle-kit push`** requires a TTY for confirmation prompts. Use `drizzle-kit push --force` or run interactively if schema changes are needed.
 - **Do not commit `pnpm-workspace.yaml` allow-build overrides.** They make the production build fail in this app.
 - **UI/auth changes should be tested manually** via the browser. There is no comprehensive automated product test suite for waitlist and authentication flows.
-- **Running `pnpm test`** requires `DATABASE_URL` to be set in the environment (not just in `.env.local`). Use `DATABASE_URL="$DATABASE_URL" pnpm test` or export it before running vitest. Some test files import `shared/db` which throws at module load time if the variable is missing.
+- **Running `pnpm test`** requires `DATABASE_URL` to be set in the environment. Root scripts can load `.env.local` with `pnpm exec tsx scripts/with-root-env.ts pnpm test`. Some test files import `@outname/db` which throws at module load time if the variable is missing.

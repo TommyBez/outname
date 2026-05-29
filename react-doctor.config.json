@@ -9,22 +9,37 @@
       ".agents/skills/**",
       ".claude/skills/**",
       ".next/**",
+      "app/.well-known/**",
+      "apps/*/app/.well-known/**",
+      "apps/*/.next/**",
       "components/ai-elements/**",
       "components/ui/**",
+      "packages/ai/components/ai-elements/**",
+      "packages/ui/components/ui/**",
       "test/workflow-server-app/.next/**",
       "test/workflow-server-app/app/.well-known/**"
     ],
     "overrides": [
       {
-        "files": ["app/**/opengraph-image.tsx", "app/**/twitter-image.tsx"],
+        "files": [
+          "app/**/opengraph-image.tsx",
+          "app/**/twitter-image.tsx",
+          "apps/*/app/**/opengraph-image.tsx",
+          "apps/*/app/**/twitter-image.tsx"
+        ],
         "rules": ["react-doctor/only-export-components"]
       },
       {
-        "files": ["mdx-components.tsx"],
+        "files": ["apps/*/mdx-components.tsx", "mdx-components.tsx"],
         "rules": ["react-doctor/only-export-components"]
       },
       {
-        "files": ["remotion/**", "shared/components/social/**"],
+        "files": [
+          "apps/video/remotion/**",
+          "components/social/**",
+          "packages/ui/components/social/**",
+          "remotion/**"
+        ],
         "rules": [
           "react-doctor/design-no-em-dash-in-jsx-text",
           "react-doctor/design-no-redundant-padding-axes",
@@ -45,20 +60,33 @@
       },
       {
         "files": [
-          "emails/application-invite-email.tsx",
-          "emails/auth-sign-in-otp-email.tsx",
-          "emails/waitlist-admin-signup-email.tsx",
-          "emails/waitlist-confirmation-email.tsx",
-          "emails/waitlist-invite-email.tsx"
+          "application-invite-email.tsx",
+          "auth-sign-in-otp-email.tsx",
+          "packages/email/application-invite-email.tsx",
+          "packages/email/auth-sign-in-otp-email.tsx",
+          "packages/email/waitlist-admin-signup-email.tsx",
+          "packages/email/waitlist-confirmation-email.tsx",
+          "packages/email/waitlist-invite-email.tsx",
+          "waitlist-admin-signup-email.tsx",
+          "waitlist-confirmation-email.tsx",
+          "waitlist-invite-email.tsx"
         ],
         "rules": ["deslop/unused-export"]
       },
       {
-        "files": ["hooks/use-mobile.ts", "hooks/use-toast.ts"],
+        "files": [
+          "hooks/use-mobile.ts",
+          "hooks/use-toast.ts",
+          "packages/ui/hooks/use-mobile.ts",
+          "packages/ui/hooks/use-toast.ts"
+        ],
         "rules": ["deslop/unused-file"]
       },
       {
-        "files": ["shared/components/seo/json-ld.tsx"],
+        "files": [
+          "components/seo/json-ld.tsx",
+          "packages/ui/components/seo/json-ld.tsx"
+        ],
         "rules": ["react-doctor/no-danger"]
       },
       {
@@ -66,41 +94,64 @@
           "agents/components/agent-edit-sections.tsx",
           "agents/components/agent-form/runtime-settings.tsx",
           "marketing/components/landing/landing-links.tsx",
-          "marketing/components/legal/legal-prose.tsx"
+          "marketing/components/legal/legal-prose.tsx",
+          "packages/shared/agents/components/agent-edit-sections.tsx",
+          "packages/shared/agents/components/agent-form/runtime-settings.tsx",
+          "packages/shared/marketing/components/landing/landing-links.tsx",
+          "packages/shared/marketing/components/legal/legal-prose.tsx"
         ],
         "rules": ["react-doctor/no-multi-comp"]
       },
       {
         "files": [
           "agents/components/agent-form.tsx",
-          "auth/components/login-form.tsx",
+          "packages/shared/agents/components/agent-form.tsx",
+          "packages/auth/components/login-form.tsx",
+          "packages/shared/waitlist/components/waitlist-signup-form.tsx",
+          "components/login-form.tsx",
           "waitlist/components/waitlist-signup-form.tsx"
         ],
         "rules": ["react-doctor/prefer-useReducer"]
       },
       {
         "files": [
-          "marketing/components/landing/landing-composable-workbench.tsx"
+          "marketing/components/landing/landing-composable-workbench.tsx",
+          "packages/shared/marketing/components/landing/landing-composable-workbench.tsx"
         ],
         "rules": ["react-doctor/no-initialize-state"]
       },
       {
         "files": [
           "tools/components/tool-catalog/action-buttons.tsx",
-          "tools/components/tool-catalog/attachment-form.tsx"
+          "tools/components/tool-catalog/attachment-form.tsx",
+          "packages/ai/tools/components/tool-catalog/action-buttons.tsx",
+          "packages/ai/tools/components/tool-catalog/attachment-form.tsx"
         ],
         "rules": ["react-doctor/no-many-boolean-props"]
       },
       {
-        "files": ["app/agents/[agentId]/layout.tsx"],
+        "files": [
+          "app/agents/[agentId]/layout.tsx",
+          "apps/app/app/agents/[agentId]/layout.tsx"
+        ],
         "rules": ["react-doctor/jsx-no-jsx-as-prop"]
       },
       {
-        "files": ["app/blog/[slug]/page.tsx"],
+        "files": [
+          "app/blog/[slug]/page.tsx",
+          "apps/web/app/blog/[slug]/page.tsx"
+        ],
         "rules": ["react-doctor/no-dynamic-import-path"]
       },
       {
-        "files": ["agents/components/agent-events-workspace.tsx"],
+        "files": ["app/waitlist/page.tsx", "apps/admin/app/waitlist/page.tsx"],
+        "rules": ["react-doctor/async-parallel"]
+      },
+      {
+        "files": [
+          "agents/components/agent-events-workspace.tsx",
+          "packages/shared/agents/components/agent-events-workspace.tsx"
+        ],
         "rules": ["react-doctor/react-compiler-destructure-method"]
       }
     ]

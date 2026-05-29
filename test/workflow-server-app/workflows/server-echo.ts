@@ -1,4 +1,4 @@
-import { currentWorkflowRunId } from '@/shared/server/workflow-run-id'
+import { currentWorkflowRunId } from '@outname/shared/server/workflow-run-id'
 
 export async function serverEchoWorkflow(input: {
   documentId: string

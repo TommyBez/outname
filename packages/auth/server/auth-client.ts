@@ -1,0 +1,20 @@
+'use client'
+
+import { ac, roles } from '@outname/auth/access-control'
+import { adminClient, emailOTPClient } from 'better-auth/client/plugins'
+import { createAuthClient } from 'better-auth/react'
+
+const authClient = createAuthClient({
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
+  fetchOptions: {
+    credentials: 'include',
+  },
+  plugins: [
+    adminClient({
+      ac,
+      roles,
+    }),
+    emailOTPClient(),
+  ],
+})
+export const { signIn, signOut } = authClient

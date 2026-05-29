@@ -1,8 +1,8 @@
 # outname
 
-Open-source codebase for outname, a Next.js application for running personal AI
+Open-source codebase for outname, a Turborepo monorepo for running personal AI
 agents with persistent memory, scheduled work, sandboxed execution, tool
-attachments, and Slack routing.
+attachments, Slack routing, public web, admin, email preview, and video tooling.
 
 ## What the application does
 
@@ -14,7 +14,7 @@ attachments, and Slack routing.
 
 ## Stack
 
-- Next.js 16 + React 19
+- Turborepo + Next.js 16 + React 19
 - Better Auth for authentication and access control
 - Neon Postgres + Drizzle ORM for persistent data
 - Vercel Workflow + Vercel Sandbox for agent execution
@@ -36,13 +36,13 @@ attachments, and Slack routing.
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FTommyBez%2Fpersonal-assistant-agent)
 
 1. Fork this repository and create a new Vercel project from the fork.
-2. Set the project runtime to Node.js 22 or newer.
+2. Set the project runtime to Node.js 24 or newer.
 3. Add the environment variables from `.env.example`.
 4. Set `BETTER_AUTH_URL` to the production application URL.
-5. Use `pnpm build:vercel` as the build command so database migrations run
-   before the Next.js build.
-6. Deploy the project. `vercel.json` already provisions the scheduler cron for
-   `/api/cron/liveness`.
+5. Create Vercel projects for the deployable apps: `apps/web`, `apps/app`,
+   `apps/admin`, and `apps/api`. `apps/email` and `apps/video` are local-only.
+6. For the API project, keep the cron configuration from `apps/api/vercel.json`
+   for `/api/cron/liveness` and run migrations before deployment.
 
 ### Minimum environment variables for a working deploy
 
@@ -50,6 +50,12 @@ attachments, and Slack routing.
 DATABASE_URL=
 BETTER_AUTH_SECRET=
 BETTER_AUTH_URL=
+BETTER_AUTH_TRUSTED_ORIGINS=
+NEXT_PUBLIC_WEB_URL=
+NEXT_PUBLIC_APP_URL=
+NEXT_PUBLIC_ADMIN_URL=
+NEXT_PUBLIC_API_BASE_URL=
+AUTH_COOKIE_DOMAIN=
 CONNECTION_ENCRYPTION_KEY=
 AI_GATEWAY_API_KEY=
 RESEND_API_KEY=
@@ -69,7 +75,7 @@ AUTH_REPLY_TO=
 
 ### Prerequisites
 
-- Node.js 22 or newer
+- Node.js 24 or newer
 - pnpm
 - Access to the shared database and application secrets
 
@@ -80,18 +86,24 @@ pnpm install
 cp .env.example .env.local
 ```
 
-Fill in `.env.local`, then start the app:
+Fill in `.env.local`, then start the app workspace you need:
 
 ```bash
-pnpm dev
+pnpm dev:app
 ```
 
-Open `http://localhost:3000`.
+Open `http://localhost:3000`. Public web runs on `pnpm dev:web`
+(`http://localhost:3002`), API on `pnpm dev:api` (`http://localhost:3001`),
+admin on `pnpm dev:admin` (`http://localhost:3003`), React Email preview on
+`pnpm dev:email` (`http://localhost:3004`), and Remotion Studio on
+`pnpm dev:video` (`http://localhost:3005`).
 
 ### Local development notes
 
-- This is a single Next.js application, not a monorepo.
-- The only required local service is the Next.js dev server.
+- This is a Turborepo monorepo with deployable apps in `apps/*` and shared
+  packages in `packages/*`.
+- The only required local service is the relevant Next.js dev server; email and
+  video workspaces are local-only tools.
 - The database is remote; no local Postgres setup is required.
 - Sign-up stays disabled; accounts are provisioned from the waitlist and sign-in
   happens with one-time codes sent by email.
@@ -104,10 +116,19 @@ Open `http://localhost:3000`.
 
 ```bash
 pnpm dev
+pnpm dev:app
+pnpm dev:api
+pnpm dev:web
+pnpm dev:admin
+pnpm dev:email
+pnpm dev:video
 pnpm build
 pnpm build:vercel
 pnpm start
-pnpm check
+pnpm lint
+pnpm typecheck
+pnpm react-doctor
+pnpm verify
 pnpm fix
 pnpm db:generate
 pnpm db:migrate

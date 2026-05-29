@@ -1,0 +1,20 @@
+{
+  "name": "@outname/app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsx ../../scripts/with-root-env.ts next build",
+    "dev": "tsx ../../scripts/with-root-env.ts next dev -p 3000",
+    "lint": "ultracite check .",
+    "react-doctor": "npx react-doctor@latest --verbose .",
+    "start": "tsx ../../scripts/with-root-env.ts next start -p 3000",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@outname/ai": "workspace:*",
+    "@outname/auth": "workspace:*",
+    "@outname/db": "workspace:*",
+    "@outname/shared": "workspace:*",
+    "@outname/ui": "workspace:*"
+  }
+}
