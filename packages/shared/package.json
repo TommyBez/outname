@@ -9,5 +9,8 @@
     "lint": "ultracite check .",
     "react-doctor": "npx react-doctor@latest --verbose .",
     "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@vercel/related-projects": "1.1.0"
   }
 }

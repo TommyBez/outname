@@ -1,15 +1,10 @@
+import {
+  relatedProjects,
+  type VercelRelatedProject,
+} from '@vercel/related-projects'
+
 const HOST_PATTERN = /^[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?$/i
 const HTTP_URL_PATTERN = /^https?:\/\//i
-const RELATED_PROJECT_ARRAY_KEYS = ['projects', 'relatedProjects'] as const
-const RELATED_PROJECT_IDENTIFIER_KEYS = [
-  'id',
-  'name',
-  'projectId',
-  'projectName',
-  'slug',
-] as const
-const PREVIEW_ORIGIN_KEYS = ['customEnvironment', 'branch'] as const
-const PRODUCTION_ORIGIN_KEYS = ['alias', 'url'] as const
 
 export const VERCEL_PROJECT_IDS = {
   admin: 'prj_Szw83dkoKByGB3DJb2AmmcrEpoEy',
@@ -44,55 +39,12 @@ export const VERCEL_FRONTEND_PROJECT_IDENTIFIERS = [
   VERCEL_PROJECT_NAMES.web,
 ] as const
 
-interface RelatedProjectEntry {
-  key?: string
-  value: unknown
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === 'object'
-    ? (value as Record<string, unknown>)
-    : null
-}
-
 function unique(values: string[]): string[] {
   return [...new Set(values)]
 }
 
-function parseRelatedProjectEntries(
-  raw = process.env.VERCEL_RELATED_PROJECTS
-): RelatedProjectEntry[] {
-  if (!raw) {
-    return []
-  }
-
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(raw)
-  } catch {
-    return []
-  }
-
-  if (Array.isArray(parsed)) {
-    return parsed.map((value) => ({ value }))
-  }
-
-  if (!parsed || typeof parsed !== 'object') {
-    return []
-  }
-
-  for (const key of RELATED_PROJECT_ARRAY_KEYS) {
-    const value = (parsed as Record<string, unknown>)[key]
-    if (Array.isArray(value)) {
-      return value.map((entry) => ({ value: entry }))
-    }
-  }
-
-  return Object.entries(parsed).map(([key, value]) => ({ key, value }))
-}
-
-function toOrigin(value: string): string | null {
-  const trimmed = value.trim()
+function toOrigin(value: string | undefined): string | null {
+  const trimmed = value?.trim()
   if (!trimmed) {
     return null
   }
@@ -115,103 +67,47 @@ function toOrigin(value: string): string | null {
   }
 }
 
-function collectOrigins(value: unknown): string[] {
-  if (typeof value === 'string') {
-    const origin = toOrigin(value)
-    return origin ? [origin] : []
-  }
-
-  if (Array.isArray(value)) {
-    return unique(value.flatMap((entry) => collectOrigins(entry)))
-  }
-
-  if (!value || typeof value !== 'object') {
-    return []
-  }
-
-  return unique(
-    Object.values(value as Record<string, unknown>).flatMap((entry) =>
-      collectOrigins(entry)
-    )
+function projectMatchesIdentifiers(
+  project: VercelRelatedProject,
+  identifiers: readonly string[]
+): boolean {
+  return (
+    identifiers.includes(project.project.id) ||
+    identifiers.includes(project.project.name)
   )
 }
 
-function collectOriginKeys(
-  value: Record<string, unknown> | null,
-  keys: readonly string[]
-): string[] {
-  if (!value) {
-    return []
-  }
-
-  return keys.flatMap((key) => collectOrigins(value[key]))
-}
-
-function collectRelatedProjectOrigins(value: unknown): string[] {
-  const project = asRecord(value)
-  if (!project) {
-    return []
-  }
-
-  const preview = asRecord(project.preview)
-  const production = asRecord(project.production)
-  const isVercelRelatedProject =
-    Boolean(asRecord(project.project)) ||
-    Boolean(preview) ||
-    Boolean(production)
-
-  if (!isVercelRelatedProject) {
-    return collectOrigins(value)
-  }
-
+function getProjectOrigin(project: VercelRelatedProject): string | null {
   if (process.env.VERCEL_ENV === 'preview') {
-    return unique(collectOriginKeys(preview, PREVIEW_ORIGIN_KEYS))
+    return toOrigin(project.preview.customEnvironment ?? project.preview.branch)
   }
 
   if (process.env.VERCEL_ENV === 'production') {
-    return unique(collectOriginKeys(production, PRODUCTION_ORIGIN_KEYS))
+    return toOrigin(project.production.alias ?? project.production.url)
   }
 
-  return unique([
-    ...collectOriginKeys(preview, PREVIEW_ORIGIN_KEYS),
-    ...collectOriginKeys(production, PRODUCTION_ORIGIN_KEYS),
-  ])
-}
-
-function entryMatchesIdentifiers(
-  entry: RelatedProjectEntry,
-  identifiers: readonly string[]
-): boolean {
-  if (entry.key && identifiers.includes(entry.key)) {
-    return true
-  }
-
-  if (!entry.value || typeof entry.value !== 'object') {
-    return false
-  }
-
-  const project = entry.value as Record<string, unknown>
-  const projectMetadata = asRecord(project.project)
-  return [project, projectMetadata].some((candidate) =>
-    RELATED_PROJECT_IDENTIFIER_KEYS.some((key) => {
-      const value = candidate?.[key]
-      return typeof value === 'string' && identifiers.includes(value)
-    })
+  return toOrigin(
+    project.preview.customEnvironment ??
+      project.preview.branch ??
+      project.production.alias ??
+      project.production.url
   )
 }
 
 export function getRelatedProjectOrigins(
   identifiers?: readonly string[]
 ): string[] {
-  const entries = parseRelatedProjectEntries()
-  const matchingEntries = identifiers
-    ? entries.filter((entry) => entryMatchesIdentifiers(entry, identifiers))
-    : entries
+  const projects = relatedProjects({ noThrow: true })
+  const matchingProjects = identifiers
+    ? projects.filter((project) =>
+        projectMatchesIdentifiers(project, identifiers)
+      )
+    : projects
 
   return unique(
-    matchingEntries.flatMap((entry) =>
-      collectRelatedProjectOrigins(entry.value)
-    )
+    matchingProjects
+      .map((project) => getProjectOrigin(project))
+      .filter((origin): origin is string => Boolean(origin))
   )
 }
 
@@ -223,10 +119,10 @@ export function getRelatedProjectOrigin(
     return matchingOrigins[0]
   }
 
-  const allEntries = parseRelatedProjectEntries()
-  if (allEntries.length !== 1) {
+  const projects = relatedProjects({ noThrow: true })
+  if (projects.length !== 1) {
     return null
   }
 
-  return collectRelatedProjectOrigins(allEntries[0].value)[0] ?? null
+  return getProjectOrigin(projects[0])
 }
