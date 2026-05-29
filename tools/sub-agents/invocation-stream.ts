@@ -84,6 +84,10 @@ async function emitProgressUpdate(input: {
       return
     }
 
+    if (!streamNamespace) {
+      return
+    }
+
     const writable = getWritable<UIMessageChunk>({
       namespace: streamNamespace,
     })

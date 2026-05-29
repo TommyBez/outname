@@ -173,6 +173,10 @@ async function emitPreliminarySubAgentOutput(input: {
       return
     }
 
+    if (!streamNamespace) {
+      return
+    }
+
     const writable = getWritable<UIMessageChunk>({
       namespace: streamNamespace,
     })
