@@ -30,6 +30,7 @@ import { compactSubAgentToolOutputsForModel } from '@/chat/server/chat-model'
 import { maybeGenerateConversationTitle } from '@/chat/workflows/steps/generate-conversation-title'
 import { conversationListTag } from '@/shared/server/cache-tags'
 import { withToolRuntimeRunId } from '@/tools/runtime/realtime-run-id'
+import { realtimeUiWriterTarget } from '@/tools/sub-agents/progress-target'
 import {
   appendStepLimitNoticeToMessages,
   appendStepLimitNoticeToOutput,
@@ -208,6 +209,7 @@ async function streamUiMessageTurn(input: {
   writer: UIMessageStreamWriter<UIMessage>
 }): Promise<void> {
   const { input: turn } = input
+  const progressTarget = realtimeUiWriterTarget(input.writer)
   const stepLimitInput: {
     steps: OnFinishEvent<Record<string, Tool>>['steps'] | null
   } = { steps: null }
@@ -225,6 +227,7 @@ async function streamUiMessageTurn(input: {
         userId: input.spec.userId,
       })
     },
+    progressTarget,
   })
   const streamMessages = compactSubAgentToolOutputsForModel(turn.messages)
 

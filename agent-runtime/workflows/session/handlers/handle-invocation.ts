@@ -8,6 +8,7 @@ import {
 } from '@/agent-runtime/server/run-events'
 import { formatBudgetExceededMessage } from '@/budgets/server/errors'
 import { currentWorkflowRunId } from '@/shared/server/workflow-run-id'
+import type { BuildAgentTool } from '@/tools/sub-agents/agent-tool'
 import { buildAgent } from '../agent-factory'
 import {
   buildStepLimitNotice,
@@ -31,6 +32,7 @@ import {
 
 export async function handleInvocation(input: {
   agentId: string
+  buildSubAgentTool: BuildAgentTool
   eventId: string
   input: string
   streamToken: string
@@ -45,6 +47,7 @@ export async function handleInvocation(input: {
 }): Promise<void> {
   const {
     agentId,
+    buildSubAgentTool,
     eventId,
     input: instruction,
     streamToken,
@@ -73,6 +76,7 @@ export async function handleInvocation(input: {
 
     const built = await buildAgent({
       agentId,
+      buildSubAgentTool,
       runId,
       currentRunId: runId,
       callStack,

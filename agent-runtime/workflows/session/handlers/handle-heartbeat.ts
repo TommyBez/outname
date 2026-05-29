@@ -2,6 +2,7 @@ import type { StepResult, ToolSet, UIMessage, UIMessageChunk } from 'ai'
 import { getWritable } from 'workflow'
 import { emitActivity } from '@/agent-runtime/server/run-events'
 import { currentWorkflowRunId } from '@/shared/server/workflow-run-id'
+import type { BuildAgentTool } from '@/tools/sub-agents/agent-tool'
 import {
   buildAgent,
   buildDreamingKickoff,
@@ -32,6 +33,7 @@ import {
 
 export async function handleHeartbeat(input: {
   agentId: string
+  buildSubAgentTool: BuildAgentTool
   eventId: string
   localDate?: string
   manual?: boolean
@@ -80,9 +82,11 @@ export async function handleHeartbeat(input: {
 
     const { agent: durableAgent, meta } = await buildAgent({
       agentId,
+      buildSubAgentTool: input.buildSubAgentTool,
       runId,
       currentRunId: runId,
       eventKind: mode === 'dreaming' ? 'dreaming' : 'heartbeat',
+      streamNamespace: outputNamespace,
     })
 
     await emitActivity(runId, activityMessage(mode, 'Streaming model work'), {

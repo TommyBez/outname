@@ -10,6 +10,7 @@ import {
 import { collectSubAgentMessages } from './invocation-stream'
 import {
   progressStreamNamespace,
+  progressUiWriter,
   type SubAgentProgressTarget,
 } from './progress-target'
 
@@ -156,11 +157,22 @@ async function emitPreliminarySubAgentOutput(input: {
 }): Promise<void> {
   'use step'
   const streamNamespace = progressStreamNamespace(input.progressTarget)
-  if (!streamNamespace) {
+  const progressWriter = progressUiWriter(input.progressTarget)
+  if (!(streamNamespace || progressWriter)) {
     return
   }
 
   try {
+    if (progressWriter) {
+      progressWriter.write({
+        type: 'tool-output-available',
+        output: input.output,
+        preliminary: true,
+        toolCallId: input.toolCallId,
+      })
+      return
+    }
+
     const writable = getWritable<UIMessageChunk>({
       namespace: streamNamespace,
     })
