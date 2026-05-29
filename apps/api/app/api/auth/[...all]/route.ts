@@ -5,7 +5,7 @@ import { toNextJsHandler } from 'better-auth/next-js'
 const handler = toNextJsHandler(auth.handler)
 
 export async function POST(req: Request) {
-  const botDenied = await denyIfBot()
+  const botDenied = await denyIfBot(req)
   if (botDenied) {
     return botDenied
   }

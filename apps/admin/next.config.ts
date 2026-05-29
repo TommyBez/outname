@@ -3,6 +3,11 @@ import createMDX from '@next/mdx'
 import { withBotId } from 'botid/next/config'
 import type { NextConfig } from 'next'
 import { withWorkflow } from 'workflow/next'
+import {
+  getRelatedProjectOrigin,
+  VERCEL_API_PROJECT_IDENTIFIERS,
+  VERCEL_APP_PROJECT_IDENTIFIERS,
+} from '../../packages/shared/vercel-related-projects'
 
 const workspaceRoot = join(process.cwd(), '../..')
 const workspacePackages = [
@@ -14,9 +19,23 @@ const workspacePackages = [
   '@outname/ui',
   '@outname/workflow',
 ]
+const previewApiBaseUrl =
+  process.env.VERCEL_ENV === 'preview'
+    ? getRelatedProjectOrigin(VERCEL_API_PROJECT_IDENTIFIERS)
+    : null
+const previewAppBaseUrl =
+  process.env.VERCEL_ENV === 'preview'
+    ? getRelatedProjectOrigin(VERCEL_APP_PROJECT_IDENTIFIERS)
+    : null
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
+  env: {
+    NEXT_PUBLIC_API_BASE_URL:
+      previewApiBaseUrl ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? '',
+    NEXT_PUBLIC_APP_URL:
+      previewAppBaseUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? '',
+  },
   outputFileTracingRoot: workspaceRoot,
   serverExternalPackages: ['better-auth', 'bash-tool', 'just-bash', 'pg'],
   pageExtensions: ['js', 'jsx', 'md', 'mdx', 'ts', 'tsx'],

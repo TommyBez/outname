@@ -7,7 +7,7 @@ function buildRedirect(request: NextRequest, search: string) {
 }
 
 export async function POST(request: NextRequest) {
-  const botDenied = await denyIfBot()
+  const botDenied = await denyIfBot(request)
   if (botDenied) {
     return botDenied
   }

@@ -14,7 +14,9 @@
     "NEXT_PUBLIC_APP_URL",
     "NEXT_PUBLIC_WEB_URL",
     "NODE_ENV",
-    "RESEND_API_KEY"
+    "RESEND_API_KEY",
+    "VERCEL_ENV",
+    "VERCEL_RELATED_PROJECTS"
   ],
   "tasks": {
     "build": {

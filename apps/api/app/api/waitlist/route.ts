@@ -62,7 +62,7 @@ function getRequestIp(request: NextRequest): string {
 export async function POST(request: NextRequest) {
   await connection()
 
-  const botDenied = await denyIfBot()
+  const botDenied = await denyIfBot(request)
   if (botDenied) {
     return botDenied
   }
