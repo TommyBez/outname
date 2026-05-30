@@ -17,15 +17,13 @@ const workspacePackages = [
   '@outname/workflow',
 ]
 const apiRewriteOrigin = withRelatedProject({
-  defaultHost: process.env.NEXT_PUBLIC_API_BASE_URL ?? '',
+  defaultHost:
+    process.env.API_HOST ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? '',
   projectName: API_RELATED_PROJECT_NAME,
 })
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
-  env: {
-    NEXT_PUBLIC_API_BASE_URL: '',
-  },
   outputFileTracingRoot: workspaceRoot,
   async rewrites() {
     return apiRewriteOrigin

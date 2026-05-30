@@ -16,7 +16,6 @@ import { toast } from 'sonner'
 
 const OTP_LENGTH = 6
 const OTP_SLOT_IDS = ['otp-0', 'otp-1', 'otp-2', 'otp-3', 'otp-4', 'otp-5']
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? ''
 
 export function LoginForm({ redirectTo }: { redirectTo: string }) {
   const { push, refresh } = useRouter()
@@ -31,7 +30,7 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
     setIsRequestingOtp(true)
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/auth/request-otp`, {
+      const response = await fetch('/api/auth/request-otp', {
         credentials: 'include',
         method: 'POST',
         headers: {
