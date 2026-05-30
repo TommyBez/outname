@@ -1,17 +1,8 @@
 import 'server-only'
 
-import {
-  API_DEBUG_REQUEST_ID_HEADER,
-  createApiDebugRequestId,
-  getApiDebugHeaderSnapshot,
-  getApiDebugRequestId,
-  logApiDebug,
-} from '@outname/shared/server/api-debug'
 import { getRelatedProjectOrigins } from '@outname/shared/vercel-related-projects'
 import { checkBotId } from 'botid/server'
 import { NextResponse } from 'next/server'
-
-type BotIdVerification = Awaited<ReturnType<typeof checkBotId>>
 
 function splitCommaSeparated(value: string | undefined): string[] {
   if (!value) {
@@ -64,82 +55,22 @@ function getBotIdExtraAllowedHosts(): string[] {
   }, [])
 }
 
-function getVerificationDebugPayload(verification: BotIdVerification) {
-  const payload: Record<string, unknown> = {
-    bypassed: verification.bypassed,
-    isBot: verification.isBot,
-    isHuman: verification.isHuman,
-    isVerifiedBot: verification.isVerifiedBot,
-  }
-
-  if ('classificationReason' in verification) {
-    payload.classificationReason = verification.classificationReason ?? null
-  }
-
-  if ('verifiedBotCategory' in verification) {
-    payload.verifiedBotCategory = verification.verifiedBotCategory ?? null
-  }
-
-  if ('verifiedBotName' in verification) {
-    payload.verifiedBotName = verification.verifiedBotName ?? null
-  }
-
-  return payload
-}
-
 export async function denyIfBot(
-  request?: Request
+  _request?: Request
 ): Promise<NextResponse | null> {
-  const requestId = request
-    ? getApiDebugRequestId(request.headers)
-    : createApiDebugRequestId()
   const extraAllowedHosts = getBotIdExtraAllowedHosts()
 
-  logApiDebug('botid:before-check', {
-    extraAllowedHostCount: extraAllowedHosts.length,
-    extraAllowedHosts,
-    headers: request ? getApiDebugHeaderSnapshot(request.headers) : null,
-    requestId,
-  })
-
-  let verification: BotIdVerification
-  try {
-    verification =
-      extraAllowedHosts.length > 0
-        ? await checkBotId({
-            advancedOptions: {
-              extraAllowedHosts,
-            },
-          })
-        : await checkBotId()
-  } catch (error) {
-    logApiDebug('botid:check-error', {
-      error:
-        error instanceof Error
-          ? { message: error.message, name: error.name, stack: error.stack }
-          : String(error),
-      requestId,
-    })
-    throw error
-  }
-
-  logApiDebug('botid:after-check', {
-    requestId,
-    verification: getVerificationDebugPayload(verification),
-  })
+  const verification =
+    extraAllowedHosts.length > 0
+      ? await checkBotId({
+          advancedOptions: {
+            extraAllowedHosts,
+          },
+        })
+      : await checkBotId()
 
   if (verification.isBot) {
-    logApiDebug('botid:blocked', {
-      requestId,
-      verification: getVerificationDebugPayload(verification),
-    })
-
-    const response = NextResponse.json(
-      { error: 'Access denied' },
-      { status: 403 }
-    )
-    response.headers.set(API_DEBUG_REQUEST_ID_HEADER, requestId)
-    return response
+    return NextResponse.json({ error: 'Access denied' }, { status: 403 })
   }
 
   return null
