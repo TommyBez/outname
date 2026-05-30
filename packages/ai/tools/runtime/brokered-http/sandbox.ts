@@ -5,7 +5,10 @@ import { createInjectedHeadersNetworkPolicy } from '@outname/ai/tools/runtime/ne
 import { currentToolRuntimeRunId } from '@outname/ai/tools/runtime/run-id'
 import type { getConnector } from '@outname/shared/connections/registry'
 import type { RawCredential } from '@outname/shared/connections/types'
-import { brokeredHttpSandboxTags } from '@outname/shared/server/vercel-sandbox-config'
+import {
+  brokeredHttpSandboxTags,
+  withVercelSandboxCredentials,
+} from '@outname/shared/server/vercel-sandbox-config'
 import { Sandbox } from '@vercel/sandbox'
 import { validateInjectedHeaders } from './validation'
 
@@ -81,17 +84,19 @@ export async function createBrokerSandbox(input: {
     injectedHeaders,
     unauthenticatedHosts: input.unauthenticatedHosts,
   })
-  return await Sandbox.create({
-    runtime: 'node24',
-    timeout: 600_000,
-    networkPolicy,
-    persistent: false,
-    resources: { vcpus: 1 },
-    tags: brokeredHttpSandboxTags({
-      connectorId: input.connectorId,
-      runId: input.runId,
-    }),
-  })
+  return await Sandbox.create(
+    withVercelSandboxCredentials({
+      runtime: 'node24',
+      timeout: 600_000,
+      networkPolicy,
+      persistent: false,
+      resources: { vcpus: 1 },
+      tags: brokeredHttpSandboxTags({
+        connectorId: input.connectorId,
+        runId: input.runId,
+      }),
+    })
+  )
 }
 
 export async function stopAllBrokeredHttpSandboxesForRun(): Promise<void> {

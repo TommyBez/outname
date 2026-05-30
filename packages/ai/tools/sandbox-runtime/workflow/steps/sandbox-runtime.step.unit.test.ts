@@ -5,11 +5,18 @@ const {
   mockGetToolSandboxManifest,
   mockGetWritable,
   mockToolBuildSandboxTags,
+  mockWithVercelSandboxCredentials,
 } = vi.hoisted(() => ({
   mockSandboxCreate: vi.fn(),
   mockGetToolSandboxManifest: vi.fn(),
   mockGetWritable: vi.fn(),
   mockToolBuildSandboxTags: vi.fn(),
+  mockWithVercelSandboxCredentials: vi.fn((options) => ({
+    ...options,
+    projectId: 'prj_test',
+    teamId: 'team_test',
+    token: 'token_test',
+  })),
 }))
 
 vi.mock('@vercel/sandbox', () => ({
@@ -43,6 +50,7 @@ vi.mock('server-only', () => ({}))
 
 vi.mock('@outname/shared/server/vercel-sandbox-config', () => ({
   toolBuildSandboxTags: mockToolBuildSandboxTags,
+  withVercelSandboxCredentials: mockWithVercelSandboxCredentials,
 }))
 
 vi.mock('@outname/ai/tools/sandboxes/registry', () => ({
@@ -160,13 +168,16 @@ describe('runSandboxBuild', () => {
 
     expect(mockSandboxCreate).toHaveBeenCalledWith({
       persistent: false,
+      projectId: 'prj_test',
       resources: { vcpus: 2 },
       runtime: 'nodejs20.x',
       tags: {
         buildId: 'build_123',
         manifestId: 'manifest_123',
       },
+      teamId: 'team_test',
       timeout: 600,
+      token: 'token_test',
     })
     expect(runCommand).toHaveBeenCalledWith({
       args: ['-c', 'echo ok'],

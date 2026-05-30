@@ -1,6 +1,9 @@
 import { db } from '@outname/db'
 import { agent } from '@outname/db/schema'
-import { systemSandboxTags } from '@outname/shared/server/vercel-sandbox-config'
+import {
+  systemSandboxTags,
+  withVercelSandboxCredentials,
+} from '@outname/shared/server/vercel-sandbox-config'
 import { type NetworkPolicy, Sandbox } from '@vercel/sandbox'
 import { eq } from 'drizzle-orm'
 
@@ -87,7 +90,9 @@ export async function ensureSystemSandbox(
 
   if (persistedName) {
     try {
-      sandbox = await Sandbox.get({ name: persistedName })
+      sandbox = await Sandbox.get(
+        withVercelSandboxCredentials({ name: persistedName })
+      )
     } catch {
       sandbox = null
     }
@@ -95,11 +100,13 @@ export async function ensureSystemSandbox(
 
   let created = false
   if (!sandbox) {
-    sandbox = await Sandbox.create({
-      ...SYSTEM_SANDBOX_CREATE_OPTIONS,
-      name: desiredName,
-      tags: systemSandboxTags(agentId),
-    })
+    sandbox = await Sandbox.create(
+      withVercelSandboxCredentials({
+        ...SYSTEM_SANDBOX_CREATE_OPTIONS,
+        name: desiredName,
+        tags: systemSandboxTags(agentId),
+      })
+    )
     created = true
     if (persistedName !== desiredName) {
       await writeSandboxId(agentId, desiredName)
@@ -133,7 +140,7 @@ export async function getSystemSandbox(agentId: string): Promise<Sandbox> {
   if (!name) {
     throw new Error(missingSystemSandboxMessage(agentId))
   }
-  return Sandbox.get({ name, resume: true })
+  return Sandbox.get(withVercelSandboxCredentials({ name, resume: true }))
 }
 
 // Best-effort stop so the next operation resumes a fresh SDK session.
@@ -153,7 +160,9 @@ export async function destroyAgentSandboxes(agentId: string): Promise<void> {
     return
   }
   try {
-    const sb = await Sandbox.get({ name, resume: false })
+    const sb = await Sandbox.get(
+      withVercelSandboxCredentials({ name, resume: false })
+    )
     await sb.delete()
   } catch {
     /* already gone or unreachable */

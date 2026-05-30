@@ -1,5 +1,8 @@
 import { getToolSandboxManifest } from '@outname/ai/tools/sandboxes/registry'
-import { toolBuildSandboxTags } from '@outname/shared/server/vercel-sandbox-config'
+import {
+  toolBuildSandboxTags,
+  withVercelSandboxCredentials,
+} from '@outname/shared/server/vercel-sandbox-config'
 import {
   nonRetryableStepError,
   nonRetryableStepErrorFromUnknown,
@@ -54,16 +57,18 @@ export async function runSandboxBuild(input: {
   let sandbox: Sandbox | null = null
   try {
     await emit('Creating build sandbox...')
-    sandbox = await Sandbox.create({
-      runtime: manifest.build.runtime,
-      timeout: manifest.build.timeout,
-      persistent: false,
-      resources: { vcpus: 2 },
-      tags: toolBuildSandboxTags({
-        buildId: input.buildId,
-        manifestId: input.manifestId,
-      }),
-    })
+    sandbox = await Sandbox.create(
+      withVercelSandboxCredentials({
+        runtime: manifest.build.runtime,
+        timeout: manifest.build.timeout,
+        persistent: false,
+        resources: { vcpus: 2 },
+        tags: toolBuildSandboxTags({
+          buildId: input.buildId,
+          manifestId: input.manifestId,
+        }),
+      })
+    )
 
     // Emit coarse phase markers instead of noisy line-by-line installer output.
     await emit('Installing system dependencies...')

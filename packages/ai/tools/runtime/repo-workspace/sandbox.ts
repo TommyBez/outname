@@ -1,7 +1,10 @@
 import 'server-only'
 
 import { currentToolRuntimeRunId } from '@outname/ai/tools/runtime/run-id'
-import { repoWorkspaceSandboxTags } from '@outname/shared/server/vercel-sandbox-config'
+import {
+  repoWorkspaceSandboxTags,
+  withVercelSandboxCredentials,
+} from '@outname/shared/server/vercel-sandbox-config'
 import { type NetworkPolicy, Sandbox } from '@vercel/sandbox'
 import { createRepoWorkspaceBashTool } from './bash-tool'
 import { RepoWorkspaceProviderError } from './errors'
@@ -141,27 +144,29 @@ async function createWorkspaceSandbox(
   input: RepoWorkspaceCreateInput
 ): Promise<Sandbox> {
   try {
-    return await Sandbox.create({
-      source: {
-        type: 'git',
-        url: input.repoUrl,
-        username: input.gitCredentials.username,
-        password: input.gitCredentials.password,
-        depth: 10,
-      },
-      persistent: false,
-      ports: [3000],
-      runtime: 'node22',
-      timeout: REPO_WORKSPACE_SANDBOX_TIMEOUT_MS,
-      resources: { vcpus: 1 },
-      // Source credentials authenticate the initial clone. The remote URL is
-      // sanitized before the bash surface is returned to the model.
-      networkPolicy: input.networkPolicy,
-      tags: repoWorkspaceSandboxTags({
-        attachmentToolId: input.attachmentToolId,
-        runId: input.runId,
-      }),
-    })
+    return await Sandbox.create(
+      withVercelSandboxCredentials({
+        source: {
+          type: 'git' as const,
+          url: input.repoUrl,
+          username: input.gitCredentials.username,
+          password: input.gitCredentials.password,
+          depth: 10,
+        },
+        persistent: false,
+        ports: [3000],
+        runtime: 'node22',
+        timeout: REPO_WORKSPACE_SANDBOX_TIMEOUT_MS,
+        resources: { vcpus: 1 },
+        // Source credentials authenticate the initial clone. The remote URL is
+        // sanitized before the bash surface is returned to the model.
+        networkPolicy: input.networkPolicy,
+        tags: repoWorkspaceSandboxTags({
+          attachmentToolId: input.attachmentToolId,
+          runId: input.runId,
+        }),
+      })
+    )
   } catch (error) {
     throw new RepoWorkspaceProviderError(
       `Failed to create the repo workspace sandbox. ${describeSandboxApiError(error)}`

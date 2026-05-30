@@ -1,9 +1,19 @@
 import type { getConnector } from '@outname/shared/connections/registry'
 import { beforeEach, expect, test, vi } from 'vitest'
 
-const { mockReadConnectorCredential, mockSandboxCreate } = vi.hoisted(() => ({
+const {
+  mockReadConnectorCredential,
+  mockSandboxCreate,
+  mockWithVercelSandboxCredentials,
+} = vi.hoisted(() => ({
   mockReadConnectorCredential: vi.fn(),
   mockSandboxCreate: vi.fn(),
+  mockWithVercelSandboxCredentials: vi.fn((options) => ({
+    ...options,
+    projectId: 'prj_test',
+    teamId: 'team_test',
+    token: 'token_test',
+  })),
 }))
 
 vi.mock('server-only', () => ({}))
@@ -16,6 +26,7 @@ vi.mock('@vercel/sandbox', () => ({
 
 vi.mock('@outname/shared/server/vercel-sandbox-config', () => ({
   brokeredHttpSandboxTags: vi.fn(() => ({ run: 'run_test' })),
+  withVercelSandboxCredentials: mockWithVercelSandboxCredentials,
 }))
 
 vi.mock(
@@ -30,6 +41,7 @@ import { createBrokerSandbox } from './sandbox'
 beforeEach(() => {
   mockReadConnectorCredential.mockReset()
   mockSandboxCreate.mockReset()
+  mockWithVercelSandboxCredentials.mockClear()
 })
 
 test('brokered HTTP header injection receives connector-shaped override credentials', async () => {
@@ -94,6 +106,9 @@ test('brokered HTTP header injection receives connector-shaped override credenti
           ],
         },
       },
+      projectId: 'prj_test',
+      teamId: 'team_test',
+      token: 'token_test',
     })
   )
 })
@@ -131,6 +146,9 @@ test('unauthenticated broker sandboxes skip credential lookup and injected heade
           'cdn.x.com': [],
         },
       },
+      projectId: 'prj_test',
+      teamId: 'team_test',
+      token: 'token_test',
     })
   )
 })

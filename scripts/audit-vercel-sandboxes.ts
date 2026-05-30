@@ -1,6 +1,11 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
+import {
+  getVercelSandboxCredentials,
+  type VercelSandboxCredentials,
+  withVercelSandboxCredentials,
+} from '@outname/shared/server/vercel-sandbox-config'
 import { Sandbox } from '@vercel/sandbox'
 
 const VERCEL_PAGE_LIMIT = 50
@@ -13,25 +18,11 @@ interface ParsedEnvLine {
 
 interface ScriptOptions {
   help: boolean
-  project: string
-  teamId: string
 }
 
 interface ProjectRef {
   id: string
   name: string
-  teamId: string
-}
-
-interface LinkedProjectFile {
-  orgId?: unknown
-  projectId?: unknown
-  projectName?: unknown
-}
-
-interface VercelContext {
-  teamId: string
-  token: string
 }
 
 type ListedSandbox = Awaited<
@@ -46,10 +37,12 @@ Usage:
   pnpm exec tsx scripts/audit-vercel-sandboxes.ts [options]
 
 Options:
-  --project <id-or-name>  Fallback project id/name when .vercel/project.json
-                          and VERCEL_PROJECT_ID are unavailable.
-  --team-id <team_id>     Optional Vercel team id for the project.
   --help                  Show this help text.
+
+Environment:
+  SANDOX_TEAM_ID          Vercel team id for Sandbox API calls.
+  SANDBOX_PROJECT_ID      Vercel project id for Sandbox API calls.
+  SANDOX_ACCESS_TOKEN     Vercel access token for Sandbox API calls.
 `)
 }
 
@@ -105,25 +98,13 @@ function parseEnvLine(rawLine: string): ParsedEnvLine | null {
 function parseArgs(argv: string[]): ScriptOptions {
   const options: ScriptOptions = {
     help: false,
-    project: '',
-    teamId: process.env.VERCEL_TEAM_ID ?? '',
   }
 
-  for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index]
-
+  for (const arg of argv) {
     switch (arg) {
       case '--help':
       case '-h':
         options.help = true
-        break
-      case '--project':
-        options.project = argv[index + 1] ?? ''
-        index += 1
-        break
-      case '--team-id':
-        options.teamId = argv[index + 1] ?? ''
-        index += 1
         break
       default:
         throw new Error(`Unknown argument: ${arg}`)
@@ -133,87 +114,16 @@ function parseArgs(argv: string[]): ScriptOptions {
   return options
 }
 
-function readLinkedProject(): ProjectRef | null {
-  const filePath = path.join(process.cwd(), '.vercel', 'project.json')
-  if (!fs.existsSync(filePath)) {
-    return null
-  }
-
-  const parsed = JSON.parse(
-    fs.readFileSync(filePath, 'utf8')
-  ) as LinkedProjectFile
-  if (typeof parsed.projectId !== 'string' || parsed.projectId.length === 0) {
-    throw new Error(
-      '.vercel/project.json is missing projectId. Run `vercel link` again or pass --project.'
-    )
-  }
-
+function resolveSandboxProject(
+  credentials: VercelSandboxCredentials
+): ProjectRef {
   return {
-    id: parsed.projectId,
-    name:
-      typeof parsed.projectName === 'string' && parsed.projectName.length > 0
-        ? parsed.projectName
-        : parsed.projectId,
-    teamId: typeof parsed.orgId === 'string' ? parsed.orgId : '',
+    id: credentials.projectId,
+    name: credentials.projectId,
   }
 }
 
-function resolveCurrentProject(options: ScriptOptions): ProjectRef {
-  const linked = readLinkedProject()
-  if (linked) {
-    return {
-      ...linked,
-      teamId: options.teamId || linked.teamId,
-    }
-  }
-
-  const envProjectId = process.env.VERCEL_PROJECT_ID
-  if (envProjectId) {
-    return { id: envProjectId, name: envProjectId, teamId: options.teamId }
-  }
-
-  if (options.project) {
-    return {
-      id: options.project,
-      name: options.project,
-      teamId: options.teamId,
-    }
-  }
-
-  throw new Error(
-    'No Vercel project resolved. Run `vercel link`, set VERCEL_PROJECT_ID, or pass --project.'
-  )
-}
-
-function assertProjectScope(project: ProjectRef): void {
-  if (project.teamId) {
-    return
-  }
-
-  throw new Error(
-    'No Vercel team resolved for the current project. Run `vercel link`, set VERCEL_TEAM_ID, or pass --team-id.'
-  )
-}
-
-function resolveToken(): string {
-  const token =
-    process.env.VERCEL_TOKEN ??
-    process.env.VERCEL_ACCESS_TOKEN ??
-    process.env.VERCEL_OIDC_TOKEN
-
-  if (!token) {
-    throw new Error(
-      'Missing VERCEL_TOKEN (or VERCEL_ACCESS_TOKEN / VERCEL_OIDC_TOKEN).'
-    )
-  }
-
-  return token
-}
-
-async function listSandboxes(
-  project: ProjectRef,
-  context: VercelContext
-): Promise<ListedSandbox[]> {
+async function listSandboxes(project: ProjectRef): Promise<ListedSandbox[]> {
   const sandboxes: ListedSandbox[] = []
   let cursor = ''
   const seenCursors = new Set<string>()
@@ -228,13 +138,12 @@ async function listSandboxes(
       seenCursors.add(cursor)
     }
 
-    const response = await Sandbox.list({
-      projectId: project.id,
-      token: context.token,
-      teamId: context.teamId,
-      limit: VERCEL_PAGE_LIMIT,
-      cursor: cursor || undefined,
-    })
+    const response = await Sandbox.list(
+      withVercelSandboxCredentials({
+        limit: VERCEL_PAGE_LIMIT,
+        cursor: cursor || undefined,
+      })
+    )
 
     sandboxes.push(...response.sandboxes)
     cursor = response.pagination.next ?? ''
@@ -305,17 +214,12 @@ async function main(): Promise<void> {
     return
   }
 
-  const project = resolveCurrentProject(options)
-  assertProjectScope(project)
-  const context: VercelContext = {
-    token: resolveToken(),
-    teamId: project.teamId,
-  }
+  const project = resolveSandboxProject(getVercelSandboxCredentials())
 
   console.log(
     `Auditing current Vercel project sandboxes: ${project.name} (${project.id})`
   )
-  const sandboxes = await listSandboxes(project, context)
+  const sandboxes = await listSandboxes(project)
   if (sandboxes.length === 0) {
     console.log('No named sandboxes found.')
     return

@@ -3,11 +3,23 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const {
   mockCreateRepoWorkspaceBashTool,
   mockCurrentToolRuntimeRunId,
+  mockRepoWorkspaceSandboxTags,
   mockSandboxCreate,
+  mockWithVercelSandboxCredentials,
 } = vi.hoisted(() => ({
   mockCreateRepoWorkspaceBashTool: vi.fn(),
   mockCurrentToolRuntimeRunId: vi.fn(),
+  mockRepoWorkspaceSandboxTags: vi.fn(() => ({
+    attachmentToolId: 'github_repo',
+    runId: 'run_test',
+  })),
   mockSandboxCreate: vi.fn(),
+  mockWithVercelSandboxCredentials: vi.fn((options) => ({
+    ...options,
+    projectId: 'prj_test',
+    teamId: 'team_test',
+    token: 'token_test',
+  })),
 }))
 
 vi.mock('server-only', () => ({}))
@@ -20,6 +32,11 @@ vi.mock('@vercel/sandbox', () => ({
 
 vi.mock('@outname/ai/tools/runtime/run-id', () => ({
   currentToolRuntimeRunId: mockCurrentToolRuntimeRunId,
+}))
+
+vi.mock('@outname/shared/server/vercel-sandbox-config', () => ({
+  repoWorkspaceSandboxTags: mockRepoWorkspaceSandboxTags,
+  withVercelSandboxCredentials: mockWithVercelSandboxCredentials,
 }))
 
 vi.mock('./bash-tool', () => ({
@@ -67,7 +84,9 @@ describe('repo workspace sandbox', () => {
   beforeEach(() => {
     mockCreateRepoWorkspaceBashTool.mockReset()
     mockCurrentToolRuntimeRunId.mockReset()
+    mockRepoWorkspaceSandboxTags.mockClear()
     mockSandboxCreate.mockReset()
+    mockWithVercelSandboxCredentials.mockClear()
     runCounter += 1
     mockCurrentToolRuntimeRunId.mockReturnValue(`run_${runCounter}`)
     mockSandboxCreate.mockResolvedValue({ stop: vi.fn() })
@@ -91,7 +110,10 @@ describe('repo workspace sandbox', () => {
           url: 'https://github.com/acme/repo.git',
           username: 'x-access-token',
         }),
+        projectId: 'prj_test',
+        teamId: 'team_test',
         timeout: REPO_WORKSPACE_SANDBOX_TIMEOUT_MS,
+        token: 'token_test',
       })
     )
 

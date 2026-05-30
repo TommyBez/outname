@@ -3,7 +3,10 @@ import { currentToolRuntimeRunId } from '@outname/ai/tools/runtime/run-id'
 import { getToolSandboxManifest } from '@outname/ai/tools/sandboxes/registry'
 import { db } from '@outname/db'
 import { toolSandboxSnapshots } from '@outname/db/schema'
-import { toolRuntimeSandboxTags } from '@outname/shared/server/vercel-sandbox-config'
+import {
+  toolRuntimeSandboxTags,
+  withVercelSandboxCredentials,
+} from '@outname/shared/server/vercel-sandbox-config'
 import {
   nonRetryableStepError,
   nonRetryableStepErrorFromUnknown,
@@ -71,12 +74,14 @@ export async function getOrStartToolSandbox(
   }
 
   // Snapshot-backed sandboxes already encode their runtime in the snapshot.
-  const sandbox = await Sandbox.create({
-    source: { type: 'snapshot', snapshotId },
-    persistent: false,
-    tags: toolRuntimeSandboxTags({ manifestId, runId }),
-    timeout: 600_000,
-  })
+  const sandbox = await Sandbox.create(
+    withVercelSandboxCredentials({
+      source: { type: 'snapshot' as const, snapshotId },
+      persistent: false,
+      tags: toolRuntimeSandboxTags({ manifestId, runId }),
+      timeout: 600_000,
+    })
+  )
 
   if (!perRun) {
     perRun = new Map()
