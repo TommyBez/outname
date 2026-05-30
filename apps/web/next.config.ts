@@ -1,9 +1,9 @@
 import { join } from 'node:path'
 import createMDX from '@next/mdx'
+import { withRelatedProject } from '@vercel/related-projects'
 import { withBotId } from 'botid/next/config'
 import type { NextConfig } from 'next'
 import { withWorkflow } from 'workflow/next'
-import { getRelatedProjectOrigin } from '../../packages/shared/vercel-related-projects'
 
 const workspaceRoot = join(process.cwd(), '../..')
 const API_RELATED_PROJECT_NAME = 'outname-api'
@@ -16,10 +16,10 @@ const workspacePackages = [
   '@outname/ui',
   '@outname/workflow',
 ]
-const apiRewriteOrigin =
-  process.env.VERCEL_ENV === 'preview'
-    ? getRelatedProjectOrigin(API_RELATED_PROJECT_NAME)
-    : (process.env.NEXT_PUBLIC_API_BASE_URL ?? null)
+const apiRewriteOrigin = withRelatedProject({
+  defaultHost: process.env.NEXT_PUBLIC_API_BASE_URL ?? '',
+  projectName: API_RELATED_PROJECT_NAME,
+})
 
 const nextConfig: NextConfig = {
   cacheComponents: true,

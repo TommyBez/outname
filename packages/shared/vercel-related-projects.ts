@@ -76,16 +76,3 @@ export function getRelatedProjectOrigins(
       .filter((origin): origin is string => Boolean(origin))
   )
 }
-
-export function getRelatedProjectOrigin(projectName?: string): string | null {
-  if (projectName) {
-    return getRelatedProjectOrigins([projectName])[0] ?? null
-  }
-
-  const projects = relatedProjects({ noThrow: true })
-  if (projects.length !== 1) {
-    return null
-  }
-
-  return getProjectOrigin(projects[0])
-}
