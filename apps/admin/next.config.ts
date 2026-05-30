@@ -7,7 +7,6 @@ import { withWorkflow } from 'workflow/next'
 
 const workspaceRoot = join(process.cwd(), '../..')
 const API_RELATED_PROJECT_NAME = 'outname-api'
-const APP_RELATED_PROJECT_NAME = 'outname-app'
 const workspacePackages = [
   '@outname/ai',
   '@outname/auth',
@@ -21,16 +20,9 @@ const apiRewriteOrigin = withRelatedProject({
   defaultHost: process.env.NEXT_PUBLIC_API_BASE_URL ?? '',
   projectName: API_RELATED_PROJECT_NAME,
 })
-const appBaseUrl = withRelatedProject({
-  defaultHost: process.env.NEXT_PUBLIC_APP_URL ?? '',
-  projectName: APP_RELATED_PROJECT_NAME,
-})
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
-  env: {
-    NEXT_PUBLIC_APP_URL: appBaseUrl,
-  },
   outputFileTracingRoot: workspaceRoot,
   async rewrites() {
     return apiRewriteOrigin

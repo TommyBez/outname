@@ -1,6 +1,6 @@
 'use server'
 
-import { requireWaitlistManageAccess } from '@outname/auth/server/auth-guard'
+import { requireAdminAccess } from '@outname/auth/server/admin-guard'
 import {
   sendApplicationInviteEmail,
   sendWaitlistConfirmationEmail,
@@ -36,8 +36,8 @@ export type WaitlistAdminActionResult =
   | { error: string; ok: false }
 
 function revalidateWaitlistRoutes() {
-  revalidatePath('/settings')
-  revalidatePath('/settings/waitlist')
+  revalidatePath('/')
+  revalidatePath('/waitlist')
 }
 
 function getActionErrorMessage(error: unknown, fallback: string): string {
@@ -50,7 +50,7 @@ function getActionErrorMessage(error: unknown, fallback: string): string {
 export async function resendWaitlistConfirmationAction(
   entryId: string
 ): Promise<WaitlistAdminActionResult> {
-  await requireWaitlistManageAccess()
+  await requireAdminAccess()
   const parsed = entryIdSchema.safeParse({
     entryId,
   })
@@ -81,7 +81,7 @@ export async function inviteUserToApplicationAction(
   email: string,
   name?: string
 ): Promise<WaitlistAdminActionResult> {
-  await requireWaitlistManageAccess()
+  await requireAdminAccess()
   const parsed = inviteUserSchema.safeParse({
     email,
     name: name?.trim() ? name : undefined,
@@ -111,7 +111,7 @@ export async function inviteUserToApplicationAction(
 export async function sendWaitlistInviteAction(
   entryId: string
 ): Promise<WaitlistAdminActionResult> {
-  await requireWaitlistManageAccess()
+  await requireAdminAccess()
   const parsed = entryIdSchema.safeParse({
     entryId,
   })
@@ -140,7 +140,7 @@ export async function updateWaitlistStatusAction(
   entryId: string,
   status: 'converted' | 'unsubscribed'
 ): Promise<WaitlistAdminActionResult> {
-  await requireWaitlistManageAccess()
+  await requireAdminAccess()
   const parsed = statusSchema.safeParse({
     entryId,
     status,

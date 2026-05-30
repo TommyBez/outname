@@ -19,6 +19,18 @@ function getBaseUrl(): string {
   return process.env.BETTER_AUTH_URL || siteConfig.url
 }
 
+function getAdminBaseUrl(): string {
+  return process.env.NEXT_PUBLIC_ADMIN_URL || 'http://localhost:3003'
+}
+
+function getAppBaseUrl(): string {
+  return process.env.NEXT_PUBLIC_APP_URL || getBaseUrl()
+}
+
+function getWebBaseUrl(): string {
+  return process.env.NEXT_PUBLIC_WEB_URL || siteConfig.url
+}
+
 function createWaitlistEmailIdempotencyKey(
   eventType:
     | 'application-invite'
@@ -70,11 +82,11 @@ async function sendResendEmail(input: {
 }
 
 function getWaitlistLogoUrl(): string {
-  return `${getBaseUrl()}/email/outna-logo.png`
+  return `${getWebBaseUrl()}/email/outna-logo.png`
 }
 
 function buildWaitlistConfirmationUrl(token: string): string {
-  const url = new URL('/waitlist/confirm', getBaseUrl())
+  const url = new URL('/waitlist/confirm', getWebBaseUrl())
   url.searchParams.set('token', token)
   return url.toString()
 }
@@ -107,7 +119,7 @@ export async function sendWaitlistInviteEmail(input: { email: string }) {
     to: input.email,
     subject: 'Your OUTNA.ME access is ready',
     react: createElement(WaitlistInviteEmail, {
-      loginUrl: `${getBaseUrl()}/login`,
+      loginUrl: new URL('/login', getAppBaseUrl()).toString(),
       logoUrl: getWaitlistLogoUrl(),
     }),
   })
@@ -122,7 +134,7 @@ export async function sendApplicationInviteEmail(input: { email: string }) {
     to: input.email,
     subject: `You're invited to ${siteConfig.name}`,
     react: createElement(ApplicationInviteEmail, {
-      loginUrl: `${getBaseUrl()}/login`,
+      loginUrl: new URL('/login', getAppBaseUrl()).toString(),
       logoUrl: getWaitlistLogoUrl(),
     }),
   })
@@ -149,7 +161,7 @@ export async function sendWaitlistAdminSignupNotification(
     return
   }
 
-  const adminUrl = new URL('/settings/waitlist', getBaseUrl()).toString()
+  const adminUrl = new URL('/waitlist', getAdminBaseUrl()).toString()
   await sendResendEmail({
     idempotencyKey: createWaitlistEmailIdempotencyKey(
       'waitlist-admin-signup',

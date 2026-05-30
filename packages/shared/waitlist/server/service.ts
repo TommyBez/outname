@@ -13,7 +13,7 @@ import {
   hashWaitlistToken,
   issueWaitlistToken,
 } from '@outname/shared/waitlist/server/token'
-import { and, desc, eq, gt, ilike, isNotNull, type SQL } from 'drizzle-orm'
+import { and, desc, eq, gt, ilike, isNotNull, type SQL, sql } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 
 const ADMIN_INVITEABLE_STATUSES: WaitlistEntryStatus[] = [
@@ -57,6 +57,17 @@ export interface WaitlistFilters {
   search?: string
   source?: string
   status?: WaitlistEntryStatus
+}
+
+export interface WaitlistAdminOverview {
+  confirmed: number
+  converted: number
+  invited: number
+  pending: number
+  provisioned: number
+  recent: number
+  total: number
+  unsubscribed: number
 }
 
 export function normalizeWaitlistEmail(email: string): string {
@@ -639,5 +650,48 @@ export async function listWaitlistFilterValues() {
       .map((row) => row.source)
       .filter((value): value is string => Boolean(value))
       .sort((left, right) => left.localeCompare(right)),
+  }
+}
+
+export async function getWaitlistAdminOverview(): Promise<WaitlistAdminOverview> {
+  const recentSince = new Date(Date.now() - 7 * 86_400_000)
+  const [statusRows, provisionedRows, recentRows] = await Promise.all([
+    db
+      .select({
+        status: waitlistEntry.status,
+        total: sql<number>`count(*)::int`,
+      })
+      .from(waitlistEntry)
+      .groupBy(waitlistEntry.status),
+    db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(waitlistEntry)
+      .where(isNotNull(waitlistEntry.provisionedAt)),
+    db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(waitlistEntry)
+      .where(gt(waitlistEntry.createdAt, recentSince)),
+  ])
+
+  const byStatus = new Map<WaitlistEntryStatus, number>()
+  for (const row of statusRows) {
+    byStatus.set(row.status as WaitlistEntryStatus, Number(row.total))
+  }
+
+  const pending = byStatus.get('pending') ?? 0
+  const confirmed = byStatus.get('confirmed') ?? 0
+  const invited = byStatus.get('invited') ?? 0
+  const converted = byStatus.get('converted') ?? 0
+  const unsubscribed = byStatus.get('unsubscribed') ?? 0
+
+  return {
+    confirmed,
+    converted,
+    invited,
+    pending,
+    provisioned: Number(provisionedRows[0]?.total ?? 0),
+    recent: Number(recentRows[0]?.total ?? 0),
+    total: pending + confirmed + invited + converted + unsubscribed,
+    unsubscribed,
   }
 }
