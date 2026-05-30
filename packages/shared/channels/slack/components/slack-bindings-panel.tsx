@@ -1,6 +1,5 @@
 'use client'
 
-import { apiUrl } from '@outname/shared/api-url'
 import { Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
@@ -90,5 +89,5 @@ export function SlackBindingsPanel({
 
 function slackInstallHref(returnTo: string): string {
   const params = new URLSearchParams({ returnTo })
-  return apiUrl(`/api/channels/slack/install?${params.toString()}`)
+  return `/api/channels/slack/install?${params.toString()}`
 }

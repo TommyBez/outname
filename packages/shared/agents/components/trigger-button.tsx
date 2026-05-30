@@ -1,6 +1,5 @@
 'use client'
 
-import { apiUrl } from '@outname/shared/api-url'
 import { Button } from '@outname/ui/components/ui/button'
 import { Spinner } from '@outname/ui/components/ui/spinner'
 import { cn } from '@outname/ui/lib/utils'
@@ -32,7 +31,7 @@ export function TriggerButton({
   async function trigger() {
     setIsLoading(true)
     try {
-      const res = await fetch(apiUrl(`/api/agents/${agentId}/trigger`), {
+      const res = await fetch(`/api/agents/${agentId}/trigger`, {
         credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

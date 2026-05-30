@@ -20,7 +20,6 @@ import {
   PromptInputTextarea,
   PromptInputTools,
 } from '@outname/ai/components/ai-elements/prompt-input'
-import { apiUrl } from '@outname/shared/api-url'
 import { DefaultChatTransport } from 'ai'
 import { MessageSquarePlus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -53,7 +52,7 @@ export function AgentChat({
     useChat<AgentChatMessage>({
       messages: initialMessages,
       transport: new DefaultChatTransport({
-        api: apiUrl(`/api/agents/${agentId}/chat`),
+        api: `/api/agents/${agentId}/chat`,
         body: { conversationId },
       }),
       onData: (part) => {

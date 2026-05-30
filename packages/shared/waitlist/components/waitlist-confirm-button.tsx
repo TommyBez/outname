@@ -1,6 +1,5 @@
 'use client'
 
-import { apiUrl } from '@outname/shared/api-url'
 import { Button } from '@outname/ui/components/ui/button'
 import { Spinner } from '@outname/ui/components/ui/spinner'
 import { useRouter } from 'next/navigation'
@@ -21,7 +20,7 @@ export function WaitlistConfirmButton({ token }: { token: string }) {
       const formData = new FormData()
       formData.set('token', token)
 
-      const response = await fetch(apiUrl('/api/waitlist/confirm'), {
+      const response = await fetch('/api/waitlist/confirm', {
         credentials: 'include',
         method: 'POST',
         body: formData,

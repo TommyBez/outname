@@ -1,6 +1,5 @@
 'use client'
 
-import { apiUrl } from '@outname/shared/api-url'
 import { useRouter } from 'next/navigation'
 import { InstallationsBlock } from './slack-bindings-panel/installations-block'
 import type { InstallationView } from './slack-bindings-panel/types'
@@ -37,5 +36,5 @@ export function SlackInstallationsPanel({
 
 function slackInstallHref(returnTo: string): string {
   const params = new URLSearchParams({ returnTo })
-  return apiUrl(`/api/channels/slack/install?${params.toString()}`)
+  return `/api/channels/slack/install?${params.toString()}`
 }

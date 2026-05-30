@@ -11,7 +11,6 @@ import {
   isTerminalAgentEventStatus,
 } from '@outname/ai/agent-runtime/shared/event-types'
 import { AgentChatTranscript } from '@outname/ai/chat/components/agent-chat-transcript'
-import { apiUrl } from '@outname/shared/api-url'
 import {
   formatCompactDateTimeInTimeZone,
   formatTimeInTimeZone,
@@ -69,7 +68,7 @@ function AgentEventsWorkspaceContent({
   const searchParams = useSearchParams()
   const queryEventId = searchParams.get('event')
   const eventList = useSWR<AgentEventsListResponse>(
-    apiUrl(`/api/agents/${agentId}/events?limit=50`),
+    `/api/agents/${agentId}/events?limit=50`,
     fetchAgentEvents,
     {
       fallbackData: { events: initialEvents },

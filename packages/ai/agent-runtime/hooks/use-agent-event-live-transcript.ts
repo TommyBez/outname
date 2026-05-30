@@ -29,7 +29,6 @@ import {
   parseNdjsonChunk,
 } from '@outname/ai/agent-runtime/shared/ndjson'
 import { WORKFLOW_STREAM_UNAVAILABLE_MESSAGE } from '@outname/ai/agent-runtime/shared/workflow-stream-messages'
-import { apiUrl } from '@outname/shared/api-url'
 import { readUIMessageStream } from 'ai'
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -368,9 +367,7 @@ async function openEventStream<T>(input: {
   stream: 'activity' | 'output'
 }): Promise<ReadableStream<T>> {
   const response = await fetch(
-    apiUrl(
-      `/api/agents/${input.agentId}/events/${input.eventId}/stream?stream=${input.stream}&startIndex=${input.startIndex}`
-    ),
+    `/api/agents/${input.agentId}/events/${input.eventId}/stream?stream=${input.stream}&startIndex=${input.startIndex}`,
     {
       cache: 'no-store',
       signal: input.signal,

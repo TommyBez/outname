@@ -2,7 +2,6 @@
 
 import type { AgentEventTranscriptPayload } from '@outname/ai/agent-runtime/shared/event-transcript'
 import type { AgentEventSummary } from '@outname/ai/agent-runtime/shared/event-types'
-import { apiUrl } from '@outname/shared/api-url'
 import { useEffect, useState } from 'react'
 import {
   createStoredTranscriptFailureState,
@@ -72,7 +71,7 @@ async function loadStoredTranscript(input: {
   signal: AbortSignal
 }): Promise<AgentEventTranscriptPayload> {
   const response = await fetch(
-    apiUrl(`/api/agents/${input.agentId}/events/${input.event.id}/transcript`),
+    `/api/agents/${input.agentId}/events/${input.event.id}/transcript`,
     {
       cache: 'no-store',
       signal: input.signal,

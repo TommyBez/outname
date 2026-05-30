@@ -1,6 +1,5 @@
 'use client'
 
-import { apiUrl } from '@outname/shared/api-url'
 import {
   WAITLIST_GENERIC_SUCCESS_MESSAGE,
   WAITLIST_PRIMARY_INTEREST_OPTIONS,
@@ -48,7 +47,7 @@ export function WaitlistSignupForm({
     setIsSubmitting(true)
 
     try {
-      const response = await fetch(apiUrl('/api/waitlist'), {
+      const response = await fetch('/api/waitlist', {
         credentials: 'include',
         method: 'POST',
         headers: {

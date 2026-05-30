@@ -1,4 +1,3 @@
-import { apiUrl } from '@outname/shared/api-url'
 import { mutate as swrMutate } from 'swr'
 
 export interface ConversationSummary {
@@ -8,7 +7,7 @@ export interface ConversationSummary {
 }
 
 export function conversationsSwrKey(agentId: string): string {
-  return apiUrl(`/api/agents/${agentId}/conversations`)
+  return `/api/agents/${agentId}/conversations`
 }
 
 export function revalidateConversations(agentId: string) {

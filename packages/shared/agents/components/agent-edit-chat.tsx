@@ -19,7 +19,6 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
 } from '@outname/ai/components/ai-elements/prompt-input'
-import { apiUrl } from '@outname/shared/api-url'
 import type { UIMessage } from 'ai'
 import {
   DefaultChatTransport,
@@ -44,7 +43,7 @@ export function AgentEditChat({ agentId, currentBudget }: AgentEditChatProps) {
   } = useChat<UIMessage>({
     messages: [],
     transport: new DefaultChatTransport({
-      api: apiUrl(`/api/agents/${agentId}/edit/chat`),
+      api: `/api/agents/${agentId}/edit/chat`,
     }),
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
     onFinish: () => {

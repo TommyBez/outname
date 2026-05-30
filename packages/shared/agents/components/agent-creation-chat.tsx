@@ -9,7 +9,6 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
 } from '@outname/ai/components/ai-elements/prompt-input'
-import { apiUrl } from '@outname/shared/api-url'
 import { cn } from '@outname/ui/lib/utils'
 import {
   DefaultChatTransport,
@@ -41,7 +40,7 @@ export function AgentCreationChat({
   } = useChat<AgentCreationMessage>({
     messages: [],
     transport: new DefaultChatTransport({
-      api: apiUrl('/api/agent-creation/chat'),
+      api: '/api/agent-creation/chat',
     }),
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
     onFinish: () => {

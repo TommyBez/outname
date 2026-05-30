@@ -1,7 +1,6 @@
 'use client'
 
 import type { ConnectionStatus } from '@outname/db/schema'
-import { apiUrl } from '@outname/shared/api-url'
 import {
   disconnectConnectionAction,
   saveApiKeyConnectionAction,
@@ -240,9 +239,7 @@ function ConnectionControls({
         ) : (
           <a
             className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
-            href={apiUrl(
-              `/api/connections/oauth/${encodeURIComponent(connector.connectorId)}/start?returnTo=/connections`
-            )}
+            href={`/api/connections/oauth/${encodeURIComponent(connector.connectorId)}/start?returnTo=/connections`}
           >
             {connection
               ? `Reconnect ${connector.displayName}`
@@ -323,9 +320,7 @@ function ScopesSummary({
     (scope) => labelByScope.get(scope) ?? scope
   )
   const missing = scopeCatalog.filter((item) => !granted.has(item.scope))
-  const reconnectHref = apiUrl(
-    `/api/connections/oauth/${encodeURIComponent(connectorId)}/start?returnTo=/connections`
-  )
+  const reconnectHref = `/api/connections/oauth/${encodeURIComponent(connectorId)}/start?returnTo=/connections`
   if (missing.length > 0) {
     return (
       <div

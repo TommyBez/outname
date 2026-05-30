@@ -1,7 +1,6 @@
 'use client'
 
 import { getToolSandboxBuildStatusAction } from '@outname/ai/tools/sandbox-runtime/actions'
-import { apiUrl } from '@outname/shared/api-url'
 import { useEffect, useRef, useState } from 'react'
 
 export type ToolSandboxBuildState =
@@ -74,9 +73,7 @@ async function consumeStream(args: ConsumeStreamArgs): Promise<void> {
   const { buildId, abort, ctx, setState, onTerminal } = args
   try {
     const res = await fetch(
-      apiUrl(
-        `/api/tool-sandbox-builds/${encodeURIComponent(buildId)}/stream?startIndex=0`
-      ),
+      `/api/tool-sandbox-builds/${encodeURIComponent(buildId)}/stream?startIndex=0`,
       { signal: abort.signal }
     )
     if (!(res.ok && res.body)) {
