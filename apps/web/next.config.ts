@@ -1,10 +1,8 @@
-import { join } from 'node:path'
 import createMDX from '@next/mdx'
 import { withRelatedProject } from '@vercel/related-projects'
 import { withBotId } from 'botid/next/config'
 import type { NextConfig } from 'next'
 
-const workspaceRoot = join(process.cwd(), '../..')
 const API_RELATED_PROJECT_NAME = 'outname-api'
 const workspacePackages = [
   '@outname/ai',
@@ -21,7 +19,6 @@ const apiRewriteOrigin = withRelatedProject({
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
-  outputFileTracingRoot: workspaceRoot,
   async rewrites() {
     return apiRewriteOrigin
       ? [
