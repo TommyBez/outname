@@ -8,6 +8,15 @@ export interface BlogPost {
 
 export const posts: BlogPost[] = [
   {
+    slug: 'startup-raised-30m-to-secure-agents',
+    title:
+      "A Startup Just Raised $30M to Secure AI Agents. The Industry Has a Bigger Problem.",
+    date: '2026-05-31',
+    excerpt:
+      "Geordie AI closed a record $30M Series A for agent security and governance, proving the market is desperate for a safety net. But here's the uncomfortable truth: we're building monitoring layers because the underlying platforms were never designed for agents in the first place.",
+    tags: ['AI', 'agents', 'security', 'Geordie', 'sandboxing', 'Outname'],
+  },
+  {
     slug: 'openai-deployco-consulting-company',
     title:
       "OpenAI Just Became a Consulting Company. That's Not a Pivot — It's a Confession.",
