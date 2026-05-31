@@ -1,6 +1,5 @@
 'use client'
 
-import { getToolSandboxBuildStatusAction } from '@outname/ai/tools/sandbox-runtime/actions'
 import { useEffect, useRef, useState } from 'react'
 
 export type ToolSandboxBuildState =
@@ -120,7 +119,7 @@ async function recoverFromStatusAction(input: {
     return
   }
   try {
-    const status = await getToolSandboxBuildStatusAction(buildId)
+    const status = await getToolSandboxBuildStatus(buildId)
     if (ctx.cancelled) {
       return
     }
@@ -154,6 +153,42 @@ async function recoverFromStatusAction(input: {
         (err instanceof Error ? err.message : 'build status unavailable'),
     })
   }
+}
+
+async function getToolSandboxBuildStatus(buildId: string): Promise<
+  | {
+      status: 'pending' | 'running' | 'ready' | 'failed'
+      errorText: string | null
+    }
+  | { status: 'forbidden' }
+  | null
+> {
+  const res = await fetch(
+    `/api/tool-sandbox-builds/${encodeURIComponent(buildId)}/status`,
+    { cache: 'no-store' }
+  )
+  if (res.status === 404) {
+    return null
+  }
+  const body = (await res.json().catch(() => null)) as {
+    status: 'pending' | 'running' | 'ready' | 'failed' | 'forbidden'
+    errorText?: string | null
+  } | null
+  if (!body) {
+    return null
+  }
+  if (body.status === 'forbidden') {
+    return { status: 'forbidden' }
+  }
+  if (
+    body.status === 'pending' ||
+    body.status === 'running' ||
+    body.status === 'ready' ||
+    body.status === 'failed'
+  ) {
+    return { status: body.status, errorText: body.errorText ?? null }
+  }
+  return null
 }
 
 async function readNdjson(input: {

@@ -22,11 +22,18 @@ export interface TextLoopProps {
   variants?: Variants
 }
 
+const DEFAULT_TRANSITION: Transition = { duration: 0.3 }
+const DEFAULT_MOTION_VARIANTS: Variants = {
+  initial: { y: 20, opacity: 0 },
+  animate: { y: 0, opacity: 1 },
+  exit: { y: -20, opacity: 0 },
+}
+
 export function TextLoop({
   children,
   className,
   interval = 2,
-  transition = { duration: 0.3 },
+  transition = DEFAULT_TRANSITION,
   variants,
   onIndexChange,
   trigger = true,
@@ -55,12 +62,6 @@ export function TextLoop({
     return null
   }
 
-  const motionVariants: Variants = {
-    initial: { y: 20, opacity: 0 },
-    animate: { y: 0, opacity: 1 },
-    exit: { y: -20, opacity: 0 },
-  }
-
   return (
     <span className={cn('relative inline-block whitespace-nowrap', className)}>
       <LazyMotion features={domAnimation}>
@@ -72,7 +73,7 @@ export function TextLoop({
             initial="initial"
             key={currentIndex}
             transition={transition}
-            variants={variants || motionVariants}
+            variants={variants ?? DEFAULT_MOTION_VARIANTS}
           >
             {items[currentIndex]}
           </m.span>

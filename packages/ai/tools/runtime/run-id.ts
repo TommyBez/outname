@@ -1,4 +1,4 @@
-import { getWorkflowMetadata } from 'workflow'
+import { getWorkflowMetadata } from '@outname/workflow/runtime'
 
 let fallbackRunId: string | null = null
 

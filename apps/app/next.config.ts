@@ -3,7 +3,6 @@ import createMDX from '@next/mdx'
 import { withRelatedProject } from '@vercel/related-projects'
 import { withBotId } from 'botid/next/config'
 import type { NextConfig } from 'next'
-import { withWorkflow } from 'workflow/next'
 
 const workspaceRoot = join(process.cwd(), '../..')
 const API_RELATED_PROJECT_NAME = 'outname-api'
@@ -14,7 +13,6 @@ const workspacePackages = [
   '@outname/email',
   '@outname/shared',
   '@outname/ui',
-  '@outname/workflow',
 ]
 const apiRewriteOrigin = withRelatedProject({
   defaultHost: process.env.NEXT_PUBLIC_API_BASE_URL ?? '',
@@ -46,4 +44,4 @@ const withMDX = createMDX({
   },
 })
 
-export default withWorkflow(withMDX(withBotId(nextConfig)))
+export default withMDX(withBotId(nextConfig))

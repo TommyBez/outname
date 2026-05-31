@@ -1,9 +1,5 @@
 'use client'
 
-import {
-  attachSubAgentAction,
-  detachToolAction,
-} from '@outname/ai/tools/actions'
 import { useRouter } from 'next/navigation'
 import { useTransition } from 'react'
 import { toast } from 'sonner'
@@ -19,6 +15,11 @@ export interface SubAgentCatalogEntry {
 interface Props {
   candidates: SubAgentCatalogEntry[]
   parentAgentId: string
+}
+
+interface ToolMutationResult {
+  error?: string
+  ok: boolean
 }
 
 export function SubAgentCatalog({ parentAgentId, candidates }: Props) {
@@ -100,7 +101,7 @@ function SubAgentRow({
 
   function handleAttach() {
     startTransition(async () => {
-      const res = await attachSubAgentAction(parentAgentId, entry.agentId)
+      const res = await attachSubAgent(parentAgentId, entry.agentId)
       if (!res.ok) {
         toast.error(res.error ?? 'Attach failed.')
         return
@@ -112,10 +113,9 @@ function SubAgentRow({
 
   function handleDetach() {
     startTransition(async () => {
-      const res = await detachToolAction(
+      const res = await detachSubAgentTool(
         parentAgentId,
-        entry.attachedToolId ?? entry.displayToolId,
-        'sub_agent'
+        entry.attachedToolId ?? entry.displayToolId
       )
       if (!res.ok) {
         toast.error(res.error ?? 'Detach failed.')
@@ -173,4 +173,36 @@ function SubAgentRow({
       </div>
     </div>
   )
+}
+
+async function attachSubAgent(
+  parentAgentId: string,
+  childAgentId: string
+): Promise<ToolMutationResult> {
+  const res = await fetch(
+    `/api/agents/${encodeURIComponent(parentAgentId)}/sub-agents/${encodeURIComponent(childAgentId)}`,
+    { method: 'POST' }
+  )
+  return await readToolMutationResult(res)
+}
+
+async function detachSubAgentTool(
+  parentAgentId: string,
+  toolId: string
+): Promise<ToolMutationResult> {
+  const res = await fetch(
+    `/api/agents/${encodeURIComponent(parentAgentId)}/tools/${encodeURIComponent(toolId)}?kind=sub_agent`,
+    { method: 'DELETE' }
+  )
+  return await readToolMutationResult(res)
+}
+
+async function readToolMutationResult(
+  res: Response
+): Promise<ToolMutationResult> {
+  const body = (await res.json().catch(() => null)) as ToolMutationResult | null
+  if (body && typeof body.ok === 'boolean') {
+    return body
+  }
+  return { ok: false, error: `Request failed (${res.status})` }
 }

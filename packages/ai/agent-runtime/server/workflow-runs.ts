@@ -1,5 +1,5 @@
 import 'server-only'
-import { getRun } from 'workflow/api'
+import { getRun } from '@outname/workflow/api'
 
 const TERMINAL_STATUSES = new Set(['completed', 'failed', 'cancelled'])
 

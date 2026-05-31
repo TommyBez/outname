@@ -3,9 +3,9 @@ import type {
   AgentChatMessage,
 } from '@outname/ai/agent-runtime/server/chat-status'
 import type { SubAgentToolOutput } from '@outname/ai/agent-runtime/server/sub-agent-tool-output'
+import { getRun } from '@outname/workflow/api'
+import { getWritable } from '@outname/workflow/runtime'
 import { readUIMessageStream, type UIMessageChunk } from 'ai'
-import { getWritable } from 'workflow'
-import { getRun } from 'workflow/api'
 import {
   progressStreamNamespace,
   progressUiWriter,

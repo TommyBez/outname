@@ -10,6 +10,7 @@ import type {
 } from '@outname/shared/agents/server/creation-types'
 import { upsertBudgetRule } from '@outname/shared/budgets/server/rules'
 import type { BudgetPeriod } from '@outname/shared/budgets/server/types'
+import { revalidateAppAfter } from '@outname/shared/server/app-revalidation-after'
 import {
   agentTag,
   agentToolsTag,
@@ -17,6 +18,7 @@ import {
   userBudgetTag,
 } from '@outname/shared/server/cache-tags'
 import { getUserTimeDisplay } from '@outname/shared/server/user-time-display'
+import { ensureToolSandboxBuild } from '@outname/workflow/tool-sandbox-builds/build'
 import { revalidatePath, revalidateTag } from 'next/cache'
 
 export async function createRequestedAgent(input: {
@@ -85,6 +87,7 @@ async function attachRequestedTools(input: {
   for (const selection of input.request.tools.maintainer) {
     const result = await attachMaintainerToolForUser({
       agentId: input.agentId,
+      ensureSandboxBuild: ensureToolSandboxBuild,
       userId: input.userId,
       toolId: selection.toolId,
       rawConfig: normalizeRecord(selection.config),
@@ -253,10 +256,16 @@ function revalidateCreationSurfaces(input: {
   agentId: string
   userId: string
 }): void {
-  revalidateTag(userAgentsTag(input.userId), 'max')
-  revalidateTag(agentTag(input.agentId), 'max')
-  revalidateTag(agentToolsTag(input.agentId), 'max')
-  revalidateTag(userBudgetTag(input.userId), 'max')
+  const tags = [
+    userAgentsTag(input.userId),
+    agentTag(input.agentId),
+    agentToolsTag(input.agentId),
+    userBudgetTag(input.userId),
+  ] as const
+  for (const tag of tags) {
+    revalidateTag(tag, 'max')
+  }
+  revalidateAppAfter(tags.map((tag): [string, 'max'] => [tag, 'max']))
   revalidatePath('/agents')
   revalidatePath(`/agents/${input.agentId}`)
   revalidatePath('/')

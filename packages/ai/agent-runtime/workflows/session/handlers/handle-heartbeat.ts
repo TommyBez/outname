@@ -1,8 +1,8 @@
 import { emitActivity } from '@outname/ai/agent-runtime/server/run-events'
 import type { BuildAgentTool } from '@outname/ai/tools/sub-agents/agent-tool'
 import { currentWorkflowRunId } from '@outname/shared/server/workflow-run-id'
+import { getWritable } from '@outname/workflow/runtime'
 import type { StepResult, ToolSet, UIMessage, UIMessageChunk } from 'ai'
-import { getWritable } from 'workflow'
 import {
   buildAgent,
   buildDreamingKickoff,

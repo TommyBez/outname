@@ -13,9 +13,11 @@ import {
 import { compactSubAgentToolOutputsForModel } from '@outname/ai/chat/server/chat-model'
 import { maybeGenerateConversationTitle } from '@outname/ai/chat/workflows/steps/generate-conversation-title'
 import { withToolRuntimeRunId } from '@outname/ai/tools/runtime/realtime-run-id'
+import type { BuildAgentTool } from '@outname/ai/tools/sub-agents/agent-tool'
 import { realtimeUiWriterTarget } from '@outname/ai/tools/sub-agents/progress-target'
 import { formatBudgetExceededMessage } from '@outname/shared/budgets/server/errors'
 import type { ChannelId } from '@outname/shared/channels/server/types'
+import type { AppRevalidationPayload } from '@outname/shared/server/app-revalidation'
 import { conversationListTag } from '@outname/shared/server/cache-tags'
 import {
   createAgentUIStream,
@@ -50,12 +52,14 @@ export type RealtimeSource = 'chat' | ChannelId
 export interface RealtimeDelivery {
   postAgentStream?: (stream: AsyncIterable<unknown>) => Promise<void>
   postText?: (text: string) => Promise<void>
+  revalidateAppTags?: (tags: AppRevalidationPayload['tags']) => void
   scheduleBackgroundTask(task: () => Promise<void>): void
 }
 
 export interface RealtimeChatTurnBaseInput {
   abortSignal: AbortSignal
   agentId: string
+  buildSubAgentTool?: BuildAgentTool
   conversationId: string
   delivery: RealtimeDelivery
   externalScopeId?: string
@@ -214,6 +218,7 @@ async function streamUiMessageTurn(input: {
     steps: OnFinishEvent<Record<string, Tool>>['steps'] | null
   } = { steps: null }
   const built = await buildRealtimeAgentRuntime(input.spec, {
+    buildSubAgentTool: turn.buildSubAgentTool ?? missingRealtimeSubAgentTool,
     conversationId: turn.conversationId,
     currentRunId: turn.runId,
     onFinish: (event) => {
@@ -276,6 +281,7 @@ async function runTextOnlyTurn(input: {
     event: OnFinishEvent<Record<string, Tool>> | null
   } = { event: null }
   const built = await buildRealtimeAgentRuntime(input.spec, {
+    buildSubAgentTool: turn.buildSubAgentTool ?? missingRealtimeSubAgentTool,
     conversationId: turn.conversationId,
     currentRunId: turn.runId,
     onFinish: (event) => {
@@ -335,6 +341,7 @@ async function runTextOnlyTurn(input: {
     await persistAssistantTextOnly({
       agentId: turn.agentId,
       conversationId: turn.conversationId,
+      delivery: turn.delivery,
       externalThreadId: turn.externalThreadId,
       id: turn.assistantMessageId ?? `msg_${nanoid(12)}`,
       runId: turn.runId,
@@ -371,7 +378,7 @@ async function persistBudgetExceeded(
     conversationId: input.conversationId,
     uiMessages: [assistantMessage],
   })
-  revalidateTag(conversationListTag(input.agentId), 'max')
+  revalidateConversationList(input)
   return assistantMessage
 }
 
@@ -426,7 +433,7 @@ export async function handleUiMessageFinish(input: {
     conversationId: input.conversationId,
     uiMessages: messages,
   })
-  revalidateTag(conversationListTag(input.agentId), 'max')
+  revalidateConversationList(input)
   scheduleTitleGeneration({
     agentId: input.agentId,
     conversationId: input.conversationId,
@@ -453,6 +460,7 @@ function appendStepLimitNoticeForPersistence(
 async function persistAssistantTextOnly(input: {
   agentId: string
   conversationId: string
+  delivery: RealtimeDelivery
   externalThreadId?: string
   id: string
   runId: string
@@ -470,7 +478,16 @@ async function persistAssistantTextOnly(input: {
       source: input.source,
     },
   })
-  revalidateTag(conversationListTag(input.agentId), 'max')
+  revalidateConversationList(input)
+}
+
+function revalidateConversationList(input: {
+  agentId: string
+  delivery: RealtimeDelivery
+}): void {
+  const tag = conversationListTag(input.agentId)
+  revalidateTag(tag, 'max')
+  input.delivery.revalidateAppTags?.([[tag, 'max']])
 }
 
 function scheduleTitleGeneration(input: {
@@ -486,6 +503,9 @@ function scheduleTitleGeneration(input: {
         conversationId: input.conversationId,
         uiMessages: input.uiMessages,
       })
+      input.delivery.revalidateAppTags?.([
+        [conversationListTag(input.agentId), 'max'],
+      ])
     } catch (err) {
       console.error('[realtime-chat] title generation failed', err)
     }
@@ -530,6 +550,12 @@ function createAssistantTextMessage(input: {
     role: 'assistant',
     parts: [{ type: 'text', text: input.text }],
   }
+}
+
+const missingRealtimeSubAgentTool: BuildAgentTool = () => {
+  throw new Error(
+    'Realtime sub-agent workflow dispatcher is not configured for this runtime.'
+  )
 }
 
 async function* tapFullStreamGenerator(

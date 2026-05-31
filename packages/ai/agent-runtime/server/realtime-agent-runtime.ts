@@ -5,8 +5,8 @@ import {
   type AgentRuntimeSpec,
   runtimeMetaFromSpec,
 } from '@outname/ai/agent-runtime/workflows/session/runtime-spec-types'
+import type { BuildAgentTool } from '@outname/ai/tools/sub-agents/agent-tool'
 import type { SubAgentProgressTarget } from '@outname/ai/tools/sub-agents/progress-target'
-import { buildRealtimeAgentTool } from '@outname/ai/tools/sub-agents/realtime-agent-tool'
 import { getUserModelForGateway } from '@outname/shared/server/ai-gateway-byok'
 import {
   type Tool,
@@ -24,6 +24,7 @@ export interface BuiltRealtimeAgentRuntime {
 export async function buildRealtimeAgentRuntime(
   spec: AgentRuntimeSpec,
   options: {
+    buildSubAgentTool?: BuildAgentTool
     conversationId?: string | null
     currentRunId?: string | null
     onFinish?: ToolLoopAgentOnFinishCallback<Record<string, Tool>>
@@ -32,7 +33,7 @@ export async function buildRealtimeAgentRuntime(
 ): Promise<BuiltRealtimeAgentRuntime> {
   const tools = buildRuntimeToolset(spec, {
     ...options,
-    buildSubAgentTool: buildRealtimeAgentTool,
+    buildSubAgentTool: options.buildSubAgentTool ?? missingRealtimeSubAgentTool,
   })
   const model = await getUserModelForGateway({
     modelId: spec.modelId,
@@ -51,4 +52,10 @@ export async function buildRealtimeAgentRuntime(
     meta: runtimeMetaFromSpec(spec),
     tools,
   }
+}
+
+const missingRealtimeSubAgentTool: BuildAgentTool = () => {
+  throw new Error(
+    'Realtime sub-agent workflow dispatcher is not configured for this runtime.'
+  )
 }

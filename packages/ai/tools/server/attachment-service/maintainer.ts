@@ -8,7 +8,6 @@ import {
   toConfigRecord,
   withEncryptedCredentialOverrides,
 } from '@outname/ai/tools/runtime/define-maintainer-tool/api-key-override'
-import { ensureToolSandboxBuild } from '@outname/ai/tools/sandbox-runtime/build'
 import { manifestHash } from '@outname/ai/tools/sandboxes'
 import { db } from '@outname/db'
 import { agentTools } from '@outname/db/schema'
@@ -28,6 +27,13 @@ type SandboxAttachResult =
   | { ok: true; state: SandboxAttachState }
   | { error: string; ok: false }
 
+export type EnsureToolSandboxBuild = (input: {
+  manifestId: string
+}) => Promise<
+  | { state: 'ready'; snapshotId: string }
+  | { state: 'building'; buildId: string }
+>
+
 interface SandboxAttachState {
   pendingBuildId?: string
   rowStatus: 'connected' | 'pending'
@@ -38,6 +44,7 @@ interface SandboxAttachState {
 export async function attachMaintainerToolForUser(
   input: {
     agentId: string
+    ensureSandboxBuild?: EnsureToolSandboxBuild
     rawConfig: Record<string, unknown>
     toolId: string
     userId: string
@@ -70,7 +77,10 @@ export async function attachMaintainerToolForUser(
     return { ok: false, error: parsed.error }
   }
 
-  const sandbox = await resolveSandboxAttachState(tool)
+  const sandbox = await resolveSandboxAttachState({
+    ensureSandboxBuild: input.ensureSandboxBuild,
+    tool,
+  })
   if (!sandbox.ok) {
     return { ok: false, error: sandbox.error }
   }
@@ -151,12 +161,14 @@ async function readExistingMaintainerToolConfig(input: {
   return row?.config
 }
 
-async function resolveSandboxAttachState(
+async function resolveSandboxAttachState(input: {
+  ensureSandboxBuild?: EnsureToolSandboxBuild
   tool: MaintainerTool
-): Promise<SandboxAttachResult> {
+}): Promise<SandboxAttachResult> {
   const sandboxManifest =
-    tool.capabilities.find((capability) => capability.kind === 'tool_sandbox')
-      ?.manifest ?? null
+    input.tool.capabilities.find(
+      (capability) => capability.kind === 'tool_sandbox'
+    )?.manifest ?? null
   const sandboxManifestHash = sandboxManifest
     ? manifestHash(sandboxManifest)
     : null
@@ -172,8 +184,15 @@ async function resolveSandboxAttachState(
     }
   }
 
+  if (!input.ensureSandboxBuild) {
+    return {
+      ok: false,
+      error: 'Sandbox build workflow is not available in this runtime.',
+    }
+  }
+
   try {
-    const result = await ensureToolSandboxBuild({
+    const result = await input.ensureSandboxBuild({
       manifestId: sandboxManifest,
     })
     return {

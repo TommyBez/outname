@@ -2,7 +2,7 @@ import {
   FatalError,
   RetryableError,
   type RetryableErrorOptions,
-} from 'workflow'
+} from '@outname/workflow/runtime'
 
 export function nonRetryableStepError(message: string): FatalError {
   return new FatalError(message)

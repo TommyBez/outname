@@ -3,6 +3,7 @@
   "globalDependencies": [".env.local", ".env.example"],
   "globalEnv": [
     "AI_GATEWAY_API_KEY",
+    "APP_REVALIDATION_SECRET",
     "AUTH_COOKIE_DOMAIN",
     "BETTER_AUTH_SECRET",
     "BETTER_AUTH_TRUSTED_ORIGINS",

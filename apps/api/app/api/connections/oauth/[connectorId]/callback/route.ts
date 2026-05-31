@@ -12,6 +12,7 @@ import {
 import { exchangeAuthorizationCode } from '@outname/shared/connections/oauth-token-client'
 import { getConnector } from '@outname/shared/connections/registry'
 import { persistOAuth2Connection } from '@outname/shared/connections/runtime/store'
+import { revalidateAppAfter } from '@outname/shared/server/app-revalidation-after'
 import { userConnectionsTag } from '@outname/shared/server/cache-tags'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { headers } from 'next/headers'
@@ -164,6 +165,8 @@ function redirectWithCookieClear(
 }
 
 function updateConnectionSurfaces(userId: string): void {
-  revalidateTag(userConnectionsTag(userId), 'max')
+  const tag = userConnectionsTag(userId)
+  revalidateTag(tag, 'max')
+  revalidateAppAfter([[tag, 'max']])
   revalidatePath('/connections')
 }

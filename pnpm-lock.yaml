@@ -411,6 +411,9 @@ importers:
       '@outname/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@outname/workflow':
+        specifier: workspace:*
+        version: link:../../packages/workflow
 
   apps/app:
     dependencies:

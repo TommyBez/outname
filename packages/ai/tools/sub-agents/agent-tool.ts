@@ -4,8 +4,8 @@ import {
   type SubAgentToolOutput,
   subAgentModelText,
 } from '@outname/ai/agent-runtime/server/sub-agent-tool-output'
+import { getWritable } from '@outname/workflow/runtime'
 import { type Tool, tool, type UIMessageChunk } from 'ai'
-import { getWritable } from 'workflow'
 import { z } from 'zod'
 import { collectSubAgentMessages } from './invocation-stream'
 import {

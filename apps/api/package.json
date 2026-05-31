@@ -16,6 +16,7 @@
     "@outname/db": "workspace:*",
     "@outname/email": "workspace:*",
     "@outname/shared": "workspace:*",
-    "@outname/ui": "workspace:*"
+    "@outname/ui": "workspace:*",
+    "@outname/workflow": "workspace:*"
   }
 }

@@ -7,8 +7,8 @@ import {
 import type { BuildAgentTool } from '@outname/ai/tools/sub-agents/agent-tool'
 import { formatBudgetExceededMessage } from '@outname/shared/budgets/server/errors'
 import { currentWorkflowRunId } from '@outname/shared/server/workflow-run-id'
+import { getWritable } from '@outname/workflow/runtime'
 import { convertToModelMessages, type UIMessage, type UIMessageChunk } from 'ai'
-import { getWritable } from 'workflow'
 import { buildAgent } from '../agent-factory'
 import {
   buildStepLimitNotice,

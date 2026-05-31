@@ -4,6 +4,7 @@ import {
   upsertBudgetRule,
 } from '@outname/shared/budgets/server/rules'
 import type { BudgetPeriod } from '@outname/shared/budgets/server/types'
+import { revalidateAppAfter } from '@outname/shared/server/app-revalidation-after'
 import {
   agentTag,
   userAgentsTag,
@@ -89,9 +90,11 @@ export function revalidateAgentEditSurfaces(
   agentId: string,
   userId: string
 ): void {
-  revalidateTag(userAgentsTag(userId), 'max')
-  revalidateTag(agentTag(agentId), 'max')
-  revalidateTag(userBudgetTag(userId), 'max')
+  const tags = [userAgentsTag(userId), agentTag(agentId), userBudgetTag(userId)]
+  for (const tag of tags) {
+    revalidateTag(tag, 'max')
+  }
+  revalidateAppAfter(tags.map((tag): [string, 'max'] => [tag, 'max']))
   revalidatePath('/agents')
   revalidatePath(`/agents/${agentId}`)
   revalidatePath(`/agents/${agentId}/configure`)

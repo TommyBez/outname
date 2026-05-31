@@ -6,7 +6,7 @@ import type { AgentChatChunk } from '@outname/ai/agent-runtime/server/chat-statu
 import type { RunEvent } from '@outname/ai/agent-runtime/server/run-events'
 import { WORKFLOW_STREAM_UNAVAILABLE_MESSAGE } from '@outname/ai/agent-runtime/shared/workflow-stream-messages'
 import { getSession } from '@outname/auth/server/auth-guard'
-import { getRun } from 'workflow/api'
+import { getRun } from '@outname/workflow/api'
 
 export async function GET(
   request: Request,

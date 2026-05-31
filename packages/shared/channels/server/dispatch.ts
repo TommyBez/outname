@@ -7,6 +7,7 @@ import {
   upsertChatMessage,
 } from '@outname/ai/chat/server/chat'
 import { conversationListTag } from '@outname/shared/server/cache-tags'
+import { buildRealtimeAgentTool } from '@outname/workflow/sub-agents/realtime-agent-tool'
 import { convertToModelMessages, type UIMessage } from 'ai'
 import { revalidateTag } from 'next/cache'
 import {
@@ -86,7 +87,9 @@ export async function runChannelChatTurn(input: {
       handled = true
       continue
     }
-    revalidateTag(conversationListTag(agent.id), 'max')
+    const tag = conversationListTag(agent.id)
+    revalidateTag(tag, 'max')
+    sink.revalidateAppTags?.([[tag, 'max']])
 
     await sink.startTyping?.('Thinking...')
 
@@ -98,10 +101,12 @@ export async function runChannelChatTurn(input: {
         abortSignal: AbortSignal.timeout(240_000),
         agentId: agent.id,
         assistantMessageId: `msg_${crypto.randomUUID()}`,
+        buildSubAgentTool: buildRealtimeAgentTool,
         conversationId: route.conversationId,
         delivery: {
           postAgentStream: sink.postAgentStream,
           postText: sink.postText,
+          revalidateAppTags: sink.revalidateAppTags,
           scheduleBackgroundTask: sink.scheduleBackgroundTask,
         },
         externalScopeId: turn.externalScopeId,

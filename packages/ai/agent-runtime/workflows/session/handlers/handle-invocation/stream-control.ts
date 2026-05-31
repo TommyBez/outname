@@ -1,5 +1,5 @@
+import { getWritable } from '@outname/workflow/runtime'
 import type { UIMessage, UIMessageChunk } from 'ai'
-import { getWritable } from 'workflow'
 
 export async function finishUiMessageStream(namespace: string): Promise<void> {
   'use step'

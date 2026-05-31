@@ -2,6 +2,7 @@ import 'server-only'
 import { createSlackAdapter, type SlackAdapter } from '@chat-adapter/slack'
 import { runChannelChatTurn } from '@outname/shared/channels/server/dispatch'
 import type { IncomingChannelMessage } from '@outname/shared/channels/server/types'
+import { revalidateAppAfter } from '@outname/shared/server/app-revalidation-after'
 import { Chat, type StreamEvent } from 'chat'
 import { after } from 'next/server'
 import {
@@ -126,6 +127,9 @@ async function handleSlackMessage(input: {
       },
       postError: async (errorText) => {
         await thread.post(errorText)
+      },
+      revalidateAppTags(tags) {
+        revalidateAppAfter(tags)
       },
       scheduleBackgroundTask(task) {
         after(task)

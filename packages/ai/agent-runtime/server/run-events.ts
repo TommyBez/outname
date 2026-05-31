@@ -1,4 +1,4 @@
-import { getWritable } from 'workflow'
+import { getWritable } from '@outname/workflow/runtime'
 
 // Use a per-run stream namespace so concurrent chat, heartbeat, dreaming,
 // and invocation breadcrumbs never interleave.

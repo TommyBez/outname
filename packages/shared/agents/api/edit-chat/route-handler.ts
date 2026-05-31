@@ -4,7 +4,14 @@ import { attachSubAgentForUser } from '@outname/ai/tools/server/attachment-servi
 import { auth } from '@outname/auth/server/auth'
 import { updateAgentForUser } from '@outname/shared/agents/server/update-service'
 import { getUserModelForGateway } from '@outname/shared/server/ai-gateway-byok'
+import { revalidateAppAfter } from '@outname/shared/server/app-revalidation-after'
+import {
+  agentTag,
+  agentToolsTag,
+  userAgentsTag,
+} from '@outname/shared/server/cache-tags'
 import { getAgentByIdForUser } from '@outname/shared/server/data'
+import { ensureToolSandboxBuild } from '@outname/workflow/tool-sandbox-builds/build'
 import {
   createAgentUIStreamResponse,
   stepCountIs,
@@ -116,38 +123,54 @@ function buildEditTools(input: { agentId: string; userId: string }) {
         'Attach or update a maintainer tool on this agent after user approval. Use get_available_agent_tools first so you know the required config fields.',
       inputSchema: attachMaintainerToolSchema,
       needsApproval: true,
-      execute: async (edit) =>
-        attachMaintainerToolForUser({
+      execute: async (edit) => {
+        const result = await attachMaintainerToolForUser({
           agentId,
+          ensureSandboxBuild: ensureToolSandboxBuild,
           toolId: edit.toolId,
           rawConfig: edit.config ?? {},
           userId,
-        }),
+        })
+        if (result.ok) {
+          revalidateToolSurfaces(agentId, userId)
+        }
+        return result
+      },
     }),
     attach_sub_agent_tool: tool({
       description:
         'Attach one of the user-owned agents as a callable sub-agent tool after user approval.',
       inputSchema: attachSubAgentToolSchema,
       needsApproval: true,
-      execute: async (edit) =>
-        attachSubAgentForUser({
+      execute: async (edit) => {
+        const result = await attachSubAgentForUser({
           parentAgentId: agentId,
           childAgentId: edit.childAgentId,
           userId,
-        }),
+        })
+        if (result.ok) {
+          revalidateToolSurfaces(agentId, userId)
+        }
+        return result
+      },
     }),
     detach_agent_tool: tool({
       description:
         'Detach a maintainer or sub-agent tool from this agent after user approval. Use the exact attached toolId from get_available_agent_tools.',
       inputSchema: detachToolSchema,
       needsApproval: true,
-      execute: async (edit) =>
-        detachToolForUser({
+      execute: async (edit) => {
+        const result = await detachToolForUser({
           agentId,
           toolId: edit.toolId,
           kind: edit.kind,
           userId,
-        }),
+        })
+        if (result.ok) {
+          revalidateToolSurfaces(agentId, userId)
+        }
+        return result
+      },
     }),
     get_agent_budget: tool({
       description:
@@ -180,6 +203,14 @@ function buildEditTools(input: { agentId: string; userId: string }) {
       },
     }),
   }
+}
+
+function revalidateToolSurfaces(agentId: string, userId: string): void {
+  revalidateAppAfter([
+    [agentToolsTag(agentId), 'max'],
+    [agentTag(agentId), 'max'],
+    [userAgentsTag(userId), 'max'],
+  ])
 }
 
 async function readMessages(

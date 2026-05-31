@@ -7,8 +7,8 @@ import {
   nonRetryableStepError,
   nonRetryableStepErrorFromUnknown,
 } from '@outname/shared/server/workflow-step-errors'
+import { getWritable } from '@outname/workflow/runtime'
 import { Sandbox } from '@vercel/sandbox'
-import { getWritable } from 'workflow'
 import {
   buildToolSandboxNamespace,
   type ToolSandboxBuildEvent,

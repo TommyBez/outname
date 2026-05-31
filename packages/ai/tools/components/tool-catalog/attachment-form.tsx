@@ -1,6 +1,5 @@
 'use client'
 
-import { attachToolAction, detachToolAction } from '@outname/ai/tools/actions'
 import { useRouter } from 'next/navigation'
 import type { FormEventHandler } from 'react'
 import { useMemo, useState, useTransition } from 'react'
@@ -15,6 +14,12 @@ import type {
   ToolConfigField,
 } from './types'
 import { defaultValuesFor, submitButtonLabel } from './utils'
+
+interface ToolMutationResult {
+  error?: string
+  ok: boolean
+  pendingBuildId?: string
+}
 
 interface AttachmentFormProps {
   agentId: string
@@ -53,7 +58,7 @@ export function AttachmentForm({
   function handleAttach() {
     const config = buildToolConfig(entry, values)
     startTransition(async () => {
-      const result = await attachToolAction(agentId, entry.toolId, config)
+      const result = await attachTool(agentId, entry.toolId, config)
       if (!result.ok) {
         toast.error(result.error ?? 'Attach failed.')
         return
@@ -73,7 +78,7 @@ export function AttachmentForm({
       clearCredentialOverrideConnector: connectorId,
     })
     startTransition(async () => {
-      const result = await attachToolAction(agentId, entry.toolId, config)
+      const result = await attachTool(agentId, entry.toolId, config)
       if (!result.ok) {
         toast.error(result.error ?? 'Clear override failed.')
         return
@@ -91,7 +96,7 @@ export function AttachmentForm({
 
   function handleDetach() {
     startTransition(async () => {
-      const result = await detachToolAction(agentId, entry.toolId)
+      const result = await detachTool(agentId, entry.toolId)
       if (!result.ok) {
         toast.error(result.error ?? 'Detach failed.')
         return
@@ -192,6 +197,43 @@ export function AttachmentForm({
       )}
     </div>
   )
+}
+
+async function attachTool(
+  agentId: string,
+  toolId: string,
+  config: Record<string, unknown>
+): Promise<ToolMutationResult> {
+  const res = await fetch(toolEndpoint(agentId, toolId), {
+    body: JSON.stringify({ config }),
+    headers: { 'Content-Type': 'application/json' },
+    method: 'POST',
+  })
+  return await readToolMutationResult(res)
+}
+
+async function detachTool(
+  agentId: string,
+  toolId: string
+): Promise<ToolMutationResult> {
+  const res = await fetch(toolEndpoint(agentId, toolId), {
+    method: 'DELETE',
+  })
+  return await readToolMutationResult(res)
+}
+
+async function readToolMutationResult(
+  res: Response
+): Promise<ToolMutationResult> {
+  const body = (await res.json().catch(() => null)) as ToolMutationResult | null
+  if (body && typeof body.ok === 'boolean') {
+    return body
+  }
+  return { ok: false, error: `Request failed (${res.status})` }
+}
+
+function toolEndpoint(agentId: string, toolId: string): string {
+  return `/api/agents/${encodeURIComponent(agentId)}/tools/${encodeURIComponent(toolId)}`
 }
 
 function buildToolConfig(

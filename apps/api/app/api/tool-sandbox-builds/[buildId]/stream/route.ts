@@ -5,8 +5,8 @@ import {
 import { getSession } from '@outname/auth/server/auth-guard'
 import { db } from '@outname/db'
 import { agent, agentTools, toolSandboxBuilds } from '@outname/db/schema'
+import { getRun } from '@outname/workflow/api'
 import { and, eq } from 'drizzle-orm'
-import { getRun } from 'workflow/api'
 
 // Replay from `startIndex: 0` so reconnects see the full build event stream.
 // Auth gates on manifest ownership because the build snapshot itself is shared.

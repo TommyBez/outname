@@ -13,8 +13,8 @@ import {
   fallbackEventTranscriptMessages,
 } from '@outname/ai/agent-runtime/shared/event-transcript'
 import type { AgentEvent } from '@outname/db/schema'
+import { getRun } from '@outname/workflow/api'
 import { readUIMessageStream } from 'ai'
-import { getRun } from 'workflow/api'
 
 export interface AgentEventTranscriptData {
   messages: AgentChatMessage[]

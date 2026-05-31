@@ -1,5 +1,6 @@
 import 'server-only'
 import type { Agent } from '@outname/db/schema'
+import type { AppRevalidationPayload } from '@outname/shared/server/app-revalidation'
 
 export type ChannelId = 'slack'
 
@@ -41,6 +42,7 @@ export interface ChannelReplySink {
   postError: (text: string) => Promise<void>
   // Plain follow-up message for budget/step-limit notices.
   postText: (text: string) => Promise<void>
+  revalidateAppTags?: (tags: AppRevalidationPayload['tags']) => void
   // Schedule work after the platform response/handler has settled.
   scheduleBackgroundTask: (task: () => Promise<void>) => void
   // Optional typing/loading indicator.

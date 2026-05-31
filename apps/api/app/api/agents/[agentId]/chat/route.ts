@@ -7,7 +7,9 @@ import {
 } from '@outname/ai/chat/server/chat'
 import { auth } from '@outname/auth/server/auth'
 import type { ChatRole } from '@outname/db/schema'
+import { revalidateAppAfter } from '@outname/shared/server/app-revalidation-after'
 import { conversationListTag } from '@outname/shared/server/cache-tags'
+import { buildRealtimeAgentTool } from '@outname/workflow/sub-agents/realtime-agent-tool'
 import { revalidateTag } from 'next/cache'
 import { headers } from 'next/headers'
 import { after, type NextRequest, NextResponse } from 'next/server'
@@ -79,16 +81,22 @@ export async function POST(
       parts: last.parts,
       metadata: last.metadata,
     })
-    revalidateTag(conversationListTag(agent.id), 'max')
+    const tag = conversationListTag(agent.id)
+    revalidateTag(tag, 'max')
+    revalidateAppAfter([[tag, 'max']])
   }
 
   return await runRealtimeChatTurn({
     abortSignal: req.signal,
     agentId,
+    buildSubAgentTool: buildRealtimeAgentTool,
     conversationId,
     delivery: {
       scheduleBackgroundTask(task) {
         after(task)
+      },
+      revalidateAppTags(tags) {
+        revalidateAppAfter(tags)
       },
     },
     messages: uiMessages,

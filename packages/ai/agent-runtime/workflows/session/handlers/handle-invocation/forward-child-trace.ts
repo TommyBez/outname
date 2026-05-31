@@ -3,8 +3,8 @@ import type {
   AgentChatMessage,
 } from '@outname/ai/agent-runtime/server/chat-status'
 import type { SubAgentToolOutput } from '@outname/ai/agent-runtime/server/sub-agent-tool-output'
+import { getRun } from '@outname/workflow/api'
 import { readUIMessageStream, type UIMessageChunk } from 'ai'
-import { getRun } from 'workflow/api'
 
 export function startForwardingChildTrace(input: {
   childAgentId: string

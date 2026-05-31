@@ -1,10 +1,2 @@
-import 'server-only'
-import { agentEventWorkflow } from '@outname/ai/agent-runtime/workflows/events/workflow'
-import { start } from 'workflow/api'
-
-export async function startAgentEventWorkflowRun(
-  eventId: string
-): Promise<string> {
-  const run = await start(agentEventWorkflow, [{ eventId }])
-  return run.runId
-}
+// biome-ignore lint/performance/noBarrelFile: Legacy import path kept as a compatibility alias.
+export { startAgentEventWorkflowRun } from '@outname/workflow/agent-events/starter'

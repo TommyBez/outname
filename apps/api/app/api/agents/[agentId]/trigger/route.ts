@@ -6,6 +6,8 @@ import { getAgentById } from '@outname/ai/agent-runtime/server/start-agent-run'
 import { auth } from '@outname/auth/server/auth'
 import { db } from '@outname/db'
 import { user } from '@outname/db/schema'
+import { revalidateAppAfter } from '@outname/shared/server/app-revalidation-after'
+import { agentTag, userAgentsTag } from '@outname/shared/server/cache-tags'
 import { localDateKey } from '@outname/shared/server/timezone'
 import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
@@ -54,6 +56,10 @@ export async function POST(
     revalidatePath(`/agents/${agent.id}/dreams`)
     revalidatePath('/agents')
     revalidatePath('/')
+    revalidateAppAfter([
+      [agentTag(agent.id), 'max'],
+      [userAgentsTag(agent.userId), 'max'],
+    ])
 
     return NextResponse.json({
       eventId,
