@@ -131,6 +131,7 @@ async function DashboardCockpit({
         events: await listAgentEventSummaries({
           agentId: a.id,
           limit: 25,
+          reconcileActive: false,
         }),
       }))
     ),

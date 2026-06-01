@@ -34,6 +34,7 @@ export default async function AgentEventsPage({ params }: { params: Params }) {
   const events = await listAgentEventSummaries({
     agentId: agent.id,
     limit: 50,
+    reconcileActive: false,
     terminalEventsPerType: TERMINAL_LEDGER_EVENTS_PER_TYPE,
   })
 

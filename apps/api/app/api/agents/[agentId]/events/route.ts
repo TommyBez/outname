@@ -26,6 +26,7 @@ export async function GET(
   const events = await listAgentEventSummaries({
     agentId: agent.id,
     limit,
+    reconcileActive: true,
     terminalEventsPerType: TERMINAL_LEDGER_EVENTS_PER_TYPE,
   })
 

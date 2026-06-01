@@ -17,6 +17,7 @@ const PREVIEW_LIMIT = 160
 export async function listAgentEventSummaries(input: {
   agentId: string
   limit?: number
+  reconcileActive?: boolean
   /** When set, returns a ledger-shaped list: all live events plus this many recent terminal events per type. */
   terminalEventsPerType?: number
 }): Promise<AgentEventSummary[]> {
@@ -28,14 +29,9 @@ export async function listAgentEventSummaries(input: {
     }),
   ])
   const events = mergeEvents(liveEvents, recentEvents)
-  const reconciledEvents = await Promise.all(
-    events.map(async (event) => {
-      if (event.status === 'starting' || event.status === 'running') {
-        return await reconcileActiveAgentEvent(event)
-      }
-      return event
-    })
-  )
+  const reconciledEvents = input.reconcileActive
+    ? await reconcileActiveEvents(events)
+    : events
   const blockers = await findQueuedEventBlockers(reconciledEvents)
   const summaries = reconciledEvents.map((event) =>
     summarizeAgentEvent(event, blockers.get(event.id) ?? null)
@@ -46,6 +42,19 @@ export async function listAgentEventSummaries(input: {
   return compactLedgerEvents(summaries, {
     terminalEventsPerType: input.terminalEventsPerType,
   })
+}
+
+async function reconcileActiveEvents(
+  events: readonly AgentEvent[]
+): Promise<AgentEvent[]> {
+  return await Promise.all(
+    events.map(async (event) => {
+      if (event.status === 'starting' || event.status === 'running') {
+        return await reconcileActiveAgentEvent(event)
+      }
+      return event
+    })
+  )
 }
 
 export function summarizeAgentEvent(
