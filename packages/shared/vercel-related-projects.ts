@@ -45,7 +45,7 @@ export function getRelatedProjectOriginById(
 
   const relatedProjectsEntries = relatedProjects({ noThrow: true })
 
-  console.log('relatedProjectsEntries length', relatedProjectsEntries.length)
+  console.log('this is the relatedProjectsEntries length', relatedProjectsEntries.length)
 
   for (const project of relatedProjectsEntries) {
     console.dir(project, { depth: null })
