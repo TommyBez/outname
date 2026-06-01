@@ -8,6 +8,10 @@ if (!(apiProjectId && webProjectId && adminProjectId)) {
   throw new Error('No related projects found')
 }
 
+console.log('[vercel.ts]apiProjectId', apiProjectId)
+console.log('[vercel.ts]webProjectId', webProjectId)
+console.log('[vercel.ts]adminProjectId', adminProjectId)
+
 export const config: VercelConfig = {
   relatedProjects: [apiProjectId, webProjectId, adminProjectId],
 }
