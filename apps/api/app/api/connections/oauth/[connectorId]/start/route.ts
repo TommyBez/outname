@@ -43,12 +43,12 @@ export async function GET(
     return redirectWithError(request, returnTo, config.error)
   }
 
-  const baseUrl = process.env.BETTER_AUTH_URL
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
   if (!baseUrl) {
     return redirectWithError(
       request,
       returnTo,
-      'BETTER_AUTH_URL must be set to build the OAuth redirect URI.'
+      'NEXT_PUBLIC_API_BASE_URL must be set to build the OAuth redirect URI.'
     )
   }
 

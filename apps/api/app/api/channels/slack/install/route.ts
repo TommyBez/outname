@@ -53,10 +53,13 @@ export async function GET(request: NextRequest): Promise<Response> {
     return NextResponse.redirect(target)
   }
 
-  const baseUrl = process.env.BETTER_AUTH_URL
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
   if (!baseUrl) {
     return NextResponse.json(
-      { error: 'BETTER_AUTH_URL must be set to build the OAuth redirect URI.' },
+      {
+        error:
+          'NEXT_PUBLIC_API_BASE_URL must be set to build the OAuth redirect URI.',
+      },
       { status: 500 }
     )
   }

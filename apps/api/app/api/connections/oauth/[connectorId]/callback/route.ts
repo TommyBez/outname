@@ -84,11 +84,11 @@ export async function GET(
     })
   }
 
-  const baseUrl = process.env.BETTER_AUTH_URL
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
   if (!baseUrl) {
     return redirectWithCookieClear(request, connectorId, returnTo, {
       connection: 'error',
-      reason: 'BETTER_AUTH_URL must be set',
+      reason: 'NEXT_PUBLIC_API_BASE_URL must be set',
     })
   }
 

@@ -59,10 +59,10 @@ export async function GET(request: NextRequest): Promise<Response> {
       reason: 'state does not match session user',
     })
   }
-  const baseUrl = process.env.BETTER_AUTH_URL
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
   if (!baseUrl) {
     return NextResponse.json(
-      { error: 'BETTER_AUTH_URL must be set' },
+      { error: 'NEXT_PUBLIC_API_BASE_URL must be set' },
       { status: 500 }
     )
   }
