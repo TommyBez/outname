@@ -1,3 +1,5 @@
+import { getDateTimeFormat } from './intl/formatters'
+
 export interface TimezoneOption {
   label: string
   value: string
@@ -62,7 +64,7 @@ export function formatTimezoneOffsetPreview(
   date = new Date()
 ): string | null {
   try {
-    const parts = new Intl.DateTimeFormat('en-US', {
+    const parts = getDateTimeFormat('en-US', {
       timeZone,
       timeZoneName: 'shortOffset',
     }).formatToParts(date)

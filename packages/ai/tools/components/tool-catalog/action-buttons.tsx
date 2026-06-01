@@ -1,11 +1,10 @@
+import { Button } from '@outname/ui/components/ui/button'
 import type { ReactNode } from 'react'
+import type { ToolCatalogBuildPhase } from './build-phase'
 
 interface CatalogActionButtonsProps {
+  buildPhase: ToolCatalogBuildPhase
   hasFields: boolean
-  isAttached: boolean
-  isBuilding: boolean
-  isFailedPending: boolean
-  isPending: boolean
   onAttach: () => void
   onDetach: () => void
   onToggleOpen: () => void
@@ -14,17 +13,22 @@ interface CatalogActionButtonsProps {
 }
 
 export function CatalogActionButtons({
+  buildPhase,
   hasFields,
-  isAttached,
-  isBuilding,
-  isFailedPending,
-  isPending,
   onAttach,
   onDetach,
   onToggleOpen,
   open,
   pending,
 }: CatalogActionButtonsProps) {
+  const isAttached = buildPhase !== 'detached'
+  const isPending =
+    buildPhase === 'preparing' ||
+    buildPhase === 'building' ||
+    buildPhase === 'failed'
+  const isFailedPending = buildPhase === 'failed'
+  const isBuilding = buildPhase === 'building'
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       {!(isAttached || hasFields) && (
@@ -51,14 +55,16 @@ export function CatalogActionButtons({
         </PrimaryActionButton>
       )}
       {isAttached && (
-        <button
-          className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
+        <Button
+          className="hover:border-destructive hover:bg-destructive hover:text-destructive-foreground"
           disabled={pending || isBuilding}
           onClick={onDetach}
+          size="sm"
           type="button"
+          variant="outline"
         >
           {pending ? '...' : 'Detach'}
-        </button>
+        </Button>
       )}
       {isAttached && !isPending && (
         <output className="inline-flex h-10 items-center border-2 border-foreground bg-foreground px-3 font-bold text-[10px] text-background uppercase tracking-[0.16em]">
@@ -90,14 +96,9 @@ function PrimaryActionButton({
   onClick: () => void
 }) {
   return (
-    <button
-      className="inline-flex h-10 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
-      disabled={disabled}
-      onClick={onClick}
-      type="button"
-    >
+    <Button disabled={disabled} onClick={onClick} size="sm" type="button">
       {children}
-    </button>
+    </Button>
   )
 }
 
@@ -111,13 +112,14 @@ function SecondaryActionButton({
   onClick: () => void
 }) {
   return (
-    <button
-      className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background disabled:opacity-50"
+    <Button
       disabled={disabled}
       onClick={onClick}
+      size="sm"
       type="button"
+      variant="outline"
     >
       {children}
-    </button>
+    </Button>
   )
 }

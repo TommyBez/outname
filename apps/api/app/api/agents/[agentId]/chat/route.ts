@@ -5,11 +5,11 @@ import {
   getOrCreateConversationForAgent,
   insertChatMessage,
 } from '@outname/ai/chat/server/chat'
+import { buildRealtimeAgentTool } from '@outname/ai/tools/sub-agents/realtime-agent-tool'
 import { auth } from '@outname/auth/server/auth'
 import type { ChatRole } from '@outname/db/schema'
 import { revalidateAppAfter } from '@outname/shared/server/app-revalidation-after'
 import { conversationListTag } from '@outname/shared/server/cache-tags'
-import { buildRealtimeAgentTool } from '@outname/workflow/sub-agents/realtime-agent-tool'
 import { revalidateTag } from 'next/cache'
 import { headers } from 'next/headers'
 import { after, type NextRequest, NextResponse } from 'next/server'

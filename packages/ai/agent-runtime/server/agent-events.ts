@@ -1,4 +1,5 @@
 import 'server-only'
+import { startAgentEventWorkflowRun } from '@outname/ai/agent-runtime/workflows/agent-events/starter'
 import type {
   EnqueueAgentEventInput,
   EnqueueAgentEventResult,
@@ -7,7 +8,6 @@ import {
   enqueueAgentEventWithStarter,
   tryStartAgentEventWithStarter,
 } from './agent-event-start'
-import { startAgentEventWorkflowRun } from './agent-event-workflow-starter'
 
 export type {
   EnqueueAgentEventInput,

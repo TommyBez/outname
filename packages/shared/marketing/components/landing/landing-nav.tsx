@@ -1,7 +1,7 @@
 import { SiGithub } from '@icons-pack/react-simple-icons'
 import { getAppLoginUrl } from '@outname/shared/app-url'
-import { NavLink } from '@outname/shared/marketing/components/landing/landing-links'
 import { LandingSocialLink } from '@outname/shared/marketing/components/landing/landing-social-link'
+import { NavLink } from '@outname/shared/marketing/components/landing/nav-link'
 import { githubRepositoryUrl } from '@outname/shared/marketing/data/social-links'
 import Link from 'next/link'
 

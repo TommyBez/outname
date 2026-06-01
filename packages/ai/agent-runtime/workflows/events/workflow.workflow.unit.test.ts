@@ -26,9 +26,15 @@ const {
   mockStartNextQueuedEventForWorkflow: vi.fn(),
 }))
 
-vi.mock('workflow', () => ({
-  getWorkflowMetadata: mockGetWorkflowMetadata,
-}))
+vi.mock('@outname/workflow/runtime', async () => {
+  const { createWorkflowRuntimeMock } = await import(
+    '../../../../../test/helpers/workflow-runtime-mock'
+  )
+
+  return createWorkflowRuntimeMock({
+    getWorkflowMetadata: mockGetWorkflowMetadata,
+  })
+})
 
 vi.mock('workflow/api', () => ({
   start: mockStart,
@@ -63,7 +69,10 @@ vi.mock('./steps/start-next-queued-event', () => ({
   startNextQueuedEventForWorkflow: mockStartNextQueuedEventForWorkflow,
 }))
 
-import { agentEventWorkflow, startNextQueuedEvent } from './workflow'
+import {
+  agentEventWorkflow,
+  startNextQueuedEvent,
+} from '@outname/ai/agent-runtime/workflows/agent-events/workflow'
 
 function createEvent(overrides: Record<string, unknown> = {}) {
   return {

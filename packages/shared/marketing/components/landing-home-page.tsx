@@ -1,7 +1,7 @@
 'use client'
 
+import { LandingComposableWorkbench } from '@outname/shared/marketing/components/landing/composable-workbench/landing-composable-workbench'
 import { LandingChatShowcase } from '@outname/shared/marketing/components/landing/landing-chat-showcase'
-import { LandingComposableWorkbench } from '@outname/shared/marketing/components/landing/landing-composable-workbench'
 import { LandingFooter } from '@outname/shared/marketing/components/landing/landing-footer'
 import { LandingHeartbeatCloser } from '@outname/shared/marketing/components/landing/landing-heartbeat-closer'
 import { LandingHeroDemo } from '@outname/shared/marketing/components/landing/landing-hero-demo'

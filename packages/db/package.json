@@ -8,5 +8,10 @@
     "build": "pnpm typecheck",
     "lint": "ultracite check .",
     "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.2",
+    "pg": "^8.21.0",
+    "server-only": "^0.0.1"
   }
 }

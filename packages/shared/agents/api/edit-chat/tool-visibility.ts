@@ -9,9 +9,9 @@ import {
 } from '@outname/shared/server/data'
 import { describeConfigSchema } from '@outname/shared/server/zod-config-fields'
 
-export type ToolVisibility = Awaited<ReturnType<typeof getAvailableAgentTools>>
-
-export function buildEditInstructions(toolVisibility: ToolVisibility): string {
+export function buildEditInstructions(
+  toolVisibility: Awaited<ReturnType<typeof getAvailableAgentTools>>
+): string {
   return [
     'You are an agent editing assistant.',
     'Ask concise questions when the requested change is ambiguous. When the requested change is clear, summarize the planned edit and call the appropriate approval-gated tool.',
@@ -92,14 +92,28 @@ export async function getAvailableAgentTools(agentId: string, userId: string) {
   }
 }
 
+export type ToolVisibility = Awaited<ReturnType<typeof getAvailableAgentTools>>
+
 function removedMaintainerTools(
   maintainerAttachedRows: Awaited<ReturnType<typeof getAgentTools>>,
   catalogToolIds: Set<string>
 ) {
-  return maintainerAttachedRows
-    .filter((row) => !catalogToolIds.has(row.toolId))
-    .map((row) => ({
-      kind: 'maintainer' as const,
+  const removed: Array<{
+    kind: 'maintainer'
+    toolId: string
+    attached: {
+      toolId: string
+      config: Record<string, unknown>
+      status: (typeof maintainerAttachedRows)[number]['status']
+      toolSandboxError: (typeof maintainerAttachedRows)[number]['toolSandboxError']
+    }
+  }> = []
+  for (const row of maintainerAttachedRows) {
+    if (catalogToolIds.has(row.toolId)) {
+      continue
+    }
+    removed.push({
+      kind: 'maintainer',
       toolId: row.toolId,
       attached: {
         toolId: row.toolId,
@@ -107,7 +121,9 @@ function removedMaintainerTools(
         status: row.status,
         toolSandboxError: row.toolSandboxError,
       },
-    }))
+    })
+  }
+  return removed
 }
 
 function subAgentCandidates(input: {
@@ -139,7 +155,9 @@ function subAgentCandidates(input: {
     })
 }
 
-function formatToolVisibilitySummary(toolVisibility: ToolVisibility): string {
+function formatToolVisibilitySummary(
+  toolVisibility: Awaited<ReturnType<typeof getAvailableAgentTools>>
+): string {
   const maintainerTools = toolVisibility.maintainerTools
     .map((item) => {
       const status = item.attached

@@ -1,4 +1,5 @@
 import { formatTimezoneOffsetPreview } from '@outname/shared/timezone-options'
+import { formatWithDateTimeFormat, getDateTimeFormat } from './intl/formatters'
 
 const DEFAULT_ACCOUNT_TIMEZONE = 'UTC'
 
@@ -18,9 +19,7 @@ export function safeAccountTimeZone(
     return DEFAULT_ACCOUNT_TIMEZONE
   }
   try {
-    new Intl.DateTimeFormat('en-US', { timeZone: candidate }).format(
-      new Date(0)
-    )
+    getDateTimeFormat('en-US', { timeZone: candidate }).format(new Date(0))
     return candidate
   } catch {
     return DEFAULT_ACCOUNT_TIMEZONE
@@ -35,13 +34,17 @@ export function formatDateTimeInTimeZone(
   if (!parsed) {
     return '—'
   }
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    timeZone: safeAccountTimeZone(timeZone),
-  }).format(parsed)
+  return formatWithDateTimeFormat(
+    undefined,
+    {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZone: safeAccountTimeZone(timeZone),
+    },
+    parsed
+  )
 }
 
 export function formatTimeInTimeZone(
@@ -53,12 +56,16 @@ export function formatTimeInTimeZone(
   if (!parsed) {
     return '—'
   }
-  return new Intl.DateTimeFormat(undefined, {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: options?.includeSeconds ? '2-digit' : undefined,
-    timeZone: safeAccountTimeZone(timeZone),
-  }).format(parsed)
+  return formatWithDateTimeFormat(
+    undefined,
+    {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: options?.includeSeconds ? '2-digit' : undefined,
+      timeZone: safeAccountTimeZone(timeZone),
+    },
+    parsed
+  )
 }
 
 export function formatLongDateInTimeZone(
@@ -69,12 +76,16 @@ export function formatLongDateInTimeZone(
   if (!parsed) {
     return '—'
   }
-  return new Intl.DateTimeFormat(undefined, {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    timeZone: safeAccountTimeZone(timeZone),
-  }).format(parsed)
+  return formatWithDateTimeFormat(
+    undefined,
+    {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      timeZone: safeAccountTimeZone(timeZone),
+    },
+    parsed
+  )
 }
 
 export function formatMediumDateTimeInTimeZone(
@@ -85,11 +96,15 @@ export function formatMediumDateTimeInTimeZone(
   if (!parsed) {
     return '—'
   }
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone: safeAccountTimeZone(timeZone),
-  }).format(parsed)
+  return formatWithDateTimeFormat(
+    undefined,
+    {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZone: safeAccountTimeZone(timeZone),
+    },
+    parsed
+  )
 }
 
 export function formatCompactDateTimeInTimeZone(
@@ -100,13 +115,17 @@ export function formatCompactDateTimeInTimeZone(
   if (!parsed) {
     return '—'
   }
-  return new Intl.DateTimeFormat(undefined, {
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    month: 'short',
-    timeZone: safeAccountTimeZone(timeZone),
-  }).format(parsed)
+  return formatWithDateTimeFormat(
+    undefined,
+    {
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      month: 'short',
+      timeZone: safeAccountTimeZone(timeZone),
+    },
+    parsed
+  )
 }
 
 export function formatScheduleTimezoneSuffix(timeZone: string): string {
@@ -155,9 +174,13 @@ export function formatRelativeInTimeZone(
   if (day < 7) {
     return `${day}d ago`
   }
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-    timeZone: safeAccountTimeZone(timeZone),
-  }).format(parsed)
+  return formatWithDateTimeFormat(
+    undefined,
+    {
+      month: 'short',
+      day: 'numeric',
+      timeZone: safeAccountTimeZone(timeZone),
+    },
+    parsed
+  )
 }

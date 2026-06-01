@@ -19,6 +19,9 @@
     "@outname/email": "workspace:*",
     "@outname/shared": "workspace:*",
     "@outname/ui": "workspace:*",
-    "@outname/workflow": "workspace:*"
+    "@outname/workflow": "workspace:*",
+    "next": "16.2.4",
+    "react": "19.2.5",
+    "react-dom": "19.2.5"
   }
 }

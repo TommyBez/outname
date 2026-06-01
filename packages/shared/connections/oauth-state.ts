@@ -95,7 +95,7 @@ export function pkceHash(verifier: string): string {
 
 export function oauthScopeHash(scopes: readonly string[]): string {
   return createHash('sha256')
-    .update([...scopes].sort().join('\n'))
+    .update(scopes.toSorted().join('\n'))
     .digest('base64url')
 }
 

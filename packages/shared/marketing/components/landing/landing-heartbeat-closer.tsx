@@ -2,13 +2,11 @@
 
 import { getAppLoginUrl } from '@outname/shared/app-url'
 import {
-  PrimaryLink,
-  SecondaryLink,
-} from '@outname/shared/marketing/components/landing/landing-links'
-import {
   revealVariants,
   staggerVariants,
 } from '@outname/shared/marketing/components/landing/landing-motion'
+import { PrimaryLink } from '@outname/shared/marketing/components/landing/primary-link'
+import { SecondaryLink } from '@outname/shared/marketing/components/landing/secondary-link'
 import {
   type HeartbeatEvent,
   type HeartbeatKind,

@@ -30,7 +30,7 @@ vi.mock('workflow/api', () => ({
   start: mockStart,
 }))
 
-vi.mock('@outname/ai/agent-runtime/workflows/events/workflow', () => ({
+vi.mock('@outname/ai/agent-runtime/workflows/agent-events/workflow', () => ({
   agentEventWorkflow: 'mock-agent-event-workflow',
 }))
 

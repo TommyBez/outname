@@ -24,14 +24,16 @@ export async function setUserAiGatewayApiKey(input: {
   userId: string
 }): Promise<void> {
   const encrypted = await encryptCredential({ apiKey: input.apiKey.trim() })
-  await db
-    .update(user)
-    .set({ aiGatewayApiKey: encrypted })
-    .where(eq(user.id, input.userId))
-  await writeCachedUserAiGatewayApiKey({
-    encrypted,
-    userId: input.userId,
-  }).catch(() => undefined)
+  await Promise.all([
+    db
+      .update(user)
+      .set({ aiGatewayApiKey: encrypted })
+      .where(eq(user.id, input.userId)),
+    writeCachedUserAiGatewayApiKey({
+      encrypted,
+      userId: input.userId,
+    }).catch(() => undefined),
+  ])
 }
 
 export async function clearUserAiGatewayApiKey(userId: string): Promise<void> {

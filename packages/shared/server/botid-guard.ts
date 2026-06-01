@@ -8,10 +8,10 @@ function splitCommaSeparated(value: string | undefined): string[] {
     return []
   }
 
-  return value
-    .split(',')
-    .map((entry) => entry.trim())
-    .filter(Boolean)
+  return value.split(',').flatMap((entry) => {
+    const trimmed = entry.trim()
+    return trimmed ? [trimmed] : []
+  })
 }
 
 function toHost(value: string): string | null {
@@ -34,22 +34,21 @@ function toHost(value: string): string | null {
 }
 
 function getBotIdExtraAllowedHosts(): string[] {
-  return [
+  const hosts = new Set<string>()
+  for (const value of [
     process.env.NEXT_PUBLIC_WEB_URL,
     process.env.NEXT_PUBLIC_APP_URL,
     ...splitCommaSeparated(process.env.BETTER_AUTH_TRUSTED_ORIGINS),
-  ].reduce<string[]>((hosts, value) => {
+  ]) {
     if (!value) {
-      return hosts
+      continue
     }
-
     const host = toHost(value)
-    if (host && !hosts.includes(host)) {
-      hosts.push(host)
+    if (host) {
+      hosts.add(host)
     }
-
-    return hosts
-  }, [])
+  }
+  return [...hosts]
 }
 
 export async function denyIfBot(

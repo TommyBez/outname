@@ -10,20 +10,16 @@
     "moduleResolution": "bundler",
     "noEmit": true,
     "paths": {
-      "@outname/ai": ["./packages/ai/index.ts"],
       "@outname/ai/*": ["./packages/ai/*"],
-      "@outname/auth": ["./packages/auth/index.ts"],
       "@outname/auth/*": ["./packages/auth/*"],
       "@outname/db": ["./packages/db/index.ts"],
       "@outname/db/*": ["./packages/db/*"],
-      "@outname/email": ["./packages/email/index.ts"],
       "@outname/email/*": ["./packages/email/*"],
-      "@outname/shared": ["./packages/shared/index.ts"],
       "@outname/shared/*": ["./packages/shared/*"],
-      "@outname/ui": ["./packages/ui/index.ts"],
       "@outname/ui/*": ["./packages/ui/*"],
-      "@outname/workflow": ["./packages/workflow/index.ts"],
-      "@outname/workflow/*": ["./packages/workflow/*"]
+      "@outname/workflow/api": ["./packages/workflow/api.ts"],
+      "@outname/workflow/next": ["./packages/workflow/next.ts"],
+      "@outname/workflow/runtime": ["./packages/workflow/runtime.ts"]
     },
     "resolveJsonModule": true,
     "skipLibCheck": true,

@@ -6,8 +6,8 @@ import {
   loadChatHistory,
   upsertChatMessage,
 } from '@outname/ai/chat/server/chat'
+import { buildRealtimeAgentTool } from '@outname/ai/tools/sub-agents/realtime-agent-tool'
 import { conversationListTag } from '@outname/shared/server/cache-tags'
-import { buildRealtimeAgentTool } from '@outname/workflow/sub-agents/realtime-agent-tool'
 import { convertToModelMessages, type UIMessage } from 'ai'
 import { revalidateTag } from 'next/cache'
 import {

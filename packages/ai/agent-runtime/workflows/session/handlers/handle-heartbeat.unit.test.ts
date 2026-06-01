@@ -40,7 +40,7 @@ const {
   mockFinalizeRun: vi.fn(),
 }))
 
-vi.mock('workflow', () => ({
+vi.mock('@outname/workflow/runtime', () => ({
   getWritable: mockGetWritable,
 }))
 

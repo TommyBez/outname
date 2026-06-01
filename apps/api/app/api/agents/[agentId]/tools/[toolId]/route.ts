@@ -1,3 +1,4 @@
+import { ensureToolSandboxBuild } from '@outname/ai/tools/sandboxes/builds/build'
 import { detachToolForUser } from '@outname/ai/tools/server/attachment-service/detach'
 import { attachMaintainerToolForUser } from '@outname/ai/tools/server/attachment-service/maintainer'
 import { auth } from '@outname/auth/server/auth'
@@ -7,7 +8,6 @@ import {
   agentToolsTag,
   userAgentsTag,
 } from '@outname/shared/server/cache-tags'
-import { ensureToolSandboxBuild } from '@outname/workflow/tool-sandbox-builds/build'
 import { headers } from 'next/headers'
 import { type NextRequest, NextResponse } from 'next/server'
 

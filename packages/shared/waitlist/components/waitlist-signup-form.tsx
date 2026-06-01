@@ -12,7 +12,11 @@ import { Input } from '@outname/ui/components/ui/input'
 import { Label } from '@outname/ui/components/ui/label'
 import { Spinner } from '@outname/ui/components/ui/spinner'
 import { Textarea } from '@outname/ui/components/ui/textarea'
-import { useState } from 'react'
+import { useReducer } from 'react'
+import {
+  initialWaitlistSignupFormState,
+  waitlistSignupFormReducer,
+} from './waitlist-signup-form-state'
 
 interface WaitlistSignupFormProps {
   initialSource: string
@@ -29,22 +33,16 @@ export function WaitlistSignupForm({
   utmMedium,
   utmSource,
 }: WaitlistSignupFormProps) {
-  const [email, setEmail] = useState('')
-  const [name, setName] = useState('')
-  const [primaryInterest, setPrimaryInterest] = useState<
-    WaitlistPrimaryInterest | ''
-  >('')
-  const [profileType, setProfileType] = useState<WaitlistProfileType | ''>('')
-  const [useCase, setUseCase] = useState('')
-  const [company, setCompany] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [submittedMessage, setSubmittedMessage] = useState<string | null>(null)
+  const [state, dispatch] = useReducer(
+    waitlistSignupFormReducer,
+    initialWaitlistSignupFormState
+  )
 
   const referrer = typeof document === 'undefined' ? '' : document.referrer
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setIsSubmitting(true)
+    dispatch({ type: 'set_is_submitting', value: true })
 
     try {
       const response = await fetch('/api/waitlist', {
@@ -54,45 +52,57 @@ export function WaitlistSignupForm({
           'content-type': 'application/json',
         },
         body: JSON.stringify({
-          email,
-          name,
-          primaryInterest: primaryInterest || null,
-          profileType: profileType || null,
-          useCase,
+          email: state.email,
+          name: state.name,
+          primaryInterest: state.primaryInterest || null,
+          profileType: state.profileType || null,
+          useCase: state.useCase,
           source: initialSource,
           referrer,
           utmCampaign,
           utmContent,
           utmMedium,
           utmSource,
-          company,
+          company: state.company,
         }),
       })
 
       if (response.status === 404) {
-        setSubmittedMessage('Waitlist submissions are currently unavailable.')
+        dispatch({
+          type: 'set_submitted_message',
+          value: 'Waitlist submissions are currently unavailable.',
+        })
         return
       }
 
       if (!response.ok) {
-        setSubmittedMessage('Something went wrong. Please try again shortly.')
+        dispatch({
+          type: 'set_submitted_message',
+          value: 'Something went wrong. Please try again shortly.',
+        })
         return
       }
 
       const payload = (await response.json()) as { message?: string }
-      setSubmittedMessage(payload.message ?? WAITLIST_GENERIC_SUCCESS_MESSAGE)
+      dispatch({
+        type: 'set_submitted_message',
+        value: payload.message ?? WAITLIST_GENERIC_SUCCESS_MESSAGE,
+      })
     } catch {
-      setSubmittedMessage('Something went wrong. Please try again shortly.')
+      dispatch({
+        type: 'set_submitted_message',
+        value: 'Something went wrong. Please try again shortly.',
+      })
     } finally {
-      setIsSubmitting(false)
+      dispatch({ type: 'set_is_submitting', value: false })
     }
   }
 
-  if (submittedMessage) {
+  if (state.submittedMessage) {
     return (
       <div className="border-2 border-foreground bg-accent p-6">
         <p className="swiss-label text-foreground">Request received</p>
-        <p className="mt-3 text-sm leading-relaxed">{submittedMessage}</p>
+        <p className="mt-3 text-sm leading-relaxed">{state.submittedMessage}</p>
       </div>
     )
   }
@@ -106,10 +116,12 @@ export function WaitlistSignupForm({
         <Input
           autoComplete="email"
           id="waitlist-email"
-          onChange={(event) => setEmail(event.target.value)}
+          onChange={(event) =>
+            dispatch({ type: 'set_email', value: event.target.value })
+          }
           required
           type="email"
-          value={email}
+          value={state.email}
         />
       </div>
       <div className="flex flex-col gap-2">
@@ -119,9 +131,11 @@ export function WaitlistSignupForm({
         <Input
           autoComplete="name"
           id="waitlist-name"
-          onChange={(event) => setName(event.target.value)}
+          onChange={(event) =>
+            dispatch({ type: 'set_name', value: event.target.value })
+          }
           placeholder="Optional"
-          value={name}
+          value={state.name}
         />
       </div>
       <div className="flex flex-col gap-2">
@@ -135,10 +149,13 @@ export function WaitlistSignupForm({
           className="h-11 border-2 border-foreground bg-background px-3 text-sm"
           id="waitlist-primary-interest"
           onChange={(event) =>
-            setPrimaryInterest(event.target.value as WaitlistPrimaryInterest)
+            dispatch({
+              type: 'set_primary_interest',
+              value: event.target.value as WaitlistPrimaryInterest,
+            })
           }
           required
-          value={primaryInterest}
+          value={state.primaryInterest}
         >
           <option value="">Select one</option>
           {WAITLIST_PRIMARY_INTEREST_OPTIONS.map((option) => (
@@ -156,10 +173,13 @@ export function WaitlistSignupForm({
           className="h-11 border-2 border-foreground bg-background px-3 text-sm"
           id="waitlist-profile"
           onChange={(event) =>
-            setProfileType(event.target.value as WaitlistProfileType)
+            dispatch({
+              type: 'set_profile_type',
+              value: event.target.value as WaitlistProfileType,
+            })
           }
           required
-          value={profileType}
+          value={state.profileType}
         >
           <option value="">Select one</option>
           {WAITLIST_PROFILE_TYPE_OPTIONS.map((option) => (
@@ -175,10 +195,12 @@ export function WaitlistSignupForm({
         </Label>
         <Textarea
           id="waitlist-use-case"
-          onChange={(event) => setUseCase(event.target.value)}
+          onChange={(event) =>
+            dispatch({ type: 'set_use_case', value: event.target.value })
+          }
           placeholder="Optional: what would you use OUTNA.ME for?"
           rows={4}
-          value={useCase}
+          value={state.useCase}
         />
       </div>
 
@@ -187,14 +209,20 @@ export function WaitlistSignupForm({
         <Input
           autoComplete="organization"
           id="company"
-          onChange={(event) => setCompany(event.target.value)}
+          onChange={(event) =>
+            dispatch({ type: 'set_company', value: event.target.value })
+          }
           tabIndex={-1}
-          value={company}
+          value={state.company}
         />
       </div>
 
-      <Button className="mt-2" disabled={isSubmitting} type="submit">
-        {isSubmitting ? <Spinner className="size-4" /> : 'Join the waitlist'}
+      <Button className="mt-2" disabled={state.isSubmitting} type="submit">
+        {state.isSubmitting ? (
+          <Spinner className="size-4" />
+        ) : (
+          'Join the waitlist'
+        )}
       </Button>
     </form>
   )

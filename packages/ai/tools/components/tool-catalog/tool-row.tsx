@@ -19,12 +19,7 @@ export function ToolRow({
   attached: AttachedToolView | null
   connections: ConnectorConnectionView[]
 }) {
-  const isAttached = attached !== null
   const isPending = attached?.status === 'pending'
-  const isBuilding = Boolean(isPending && attached?.pendingBuildId)
-  const isFailedPending = Boolean(
-    isPending && !attached?.pendingBuildId && attached?.toolSandboxError
-  )
   const connectorStates = entry.connectors.map((connectorId) => {
     const connection = findConnection(connections, connectorId)
     return {
@@ -93,15 +88,7 @@ export function ToolRow({
           Last build failed: {attached.toolSandboxError}
         </p>
       )}
-      <AttachmentForm
-        agentId={agentId}
-        attached={attached}
-        entry={entry}
-        isAttached={isAttached}
-        isBuilding={isBuilding}
-        isFailedPending={isFailedPending}
-        isPending={isPending}
-      />
+      <AttachmentForm agentId={agentId} attached={attached} entry={entry} />
     </div>
   )
 }

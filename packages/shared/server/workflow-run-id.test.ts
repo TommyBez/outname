@@ -4,7 +4,7 @@ const { mockGetWorkflowMetadata } = vi.hoisted(() => ({
   mockGetWorkflowMetadata: vi.fn(),
 }))
 
-vi.mock('workflow', () => ({
+vi.mock('@outname/workflow/runtime', () => ({
   getWorkflowMetadata: mockGetWorkflowMetadata,
 }))
 

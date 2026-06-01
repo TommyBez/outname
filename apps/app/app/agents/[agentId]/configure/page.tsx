@@ -1,13 +1,11 @@
 import { requireSession } from '@outname/auth/server/auth-guard'
+import { AgentBudgetSection } from '@outname/shared/agents/components/agent-budget-section'
 import { AgentDeleteDialog } from '@outname/shared/agents/components/agent-delete-dialog'
 import { AgentEditChat } from '@outname/shared/agents/components/agent-edit-chat'
-import {
-  AgentBudgetSection,
-  AgentSlackSection,
-  EditSkeleton,
-} from '@outname/shared/agents/components/agent-edit-sections'
 import { summarizeBudgetRules } from '@outname/shared/agents/components/agent-edit-sections-helpers'
 import { AgentForm } from '@outname/shared/agents/components/agent-form'
+import { AgentSlackSection } from '@outname/shared/agents/components/agent-slack-section'
+import { EditSkeleton } from '@outname/shared/agents/components/edit-skeleton'
 import { deleteAgentAction } from '@outname/shared/agents/server/actions'
 import { customInstructionsFromAgentsMd } from '@outname/shared/agents/server/bootstrap-files'
 import { listAgentBudgetRules } from '@outname/shared/budgets/server/rules'

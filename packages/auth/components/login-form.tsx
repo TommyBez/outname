@@ -1,5 +1,9 @@
 'use client'
 
+import {
+  initialLoginFormState,
+  loginFormReducer,
+} from '@outname/auth/components/login-form-state'
 import { signIn } from '@outname/auth/server/auth-client'
 import { Button } from '@outname/ui/components/ui/button'
 import { Input } from '@outname/ui/components/ui/input'
@@ -11,7 +15,7 @@ import {
 import { Label } from '@outname/ui/components/ui/label'
 import { Spinner } from '@outname/ui/components/ui/spinner'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useReducer } from 'react'
 import { toast } from 'sonner'
 
 const OTP_LENGTH = 6
@@ -19,15 +23,12 @@ const OTP_SLOT_IDS = ['otp-0', 'otp-1', 'otp-2', 'otp-3', 'otp-4', 'otp-5']
 
 export function LoginForm({ redirectTo }: { redirectTo: string }) {
   const { push, refresh } = useRouter()
-  const [email, setEmail] = useState('')
-  const [otp, setOtp] = useState('')
-  const [isRequestingOtp, setIsRequestingOtp] = useState(false)
-  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false)
-  const [step, setStep] = useState<'request' | 'verify'>('request')
-  const [statusMessage, setStatusMessage] = useState<string | null>(null)
+  const [state, dispatch] = useReducer(loginFormReducer, initialLoginFormState)
+  const { email, otp, isRequestingOtp, isVerifyingOtp, step, statusMessage } =
+    state
 
   async function sendOtpRequest() {
-    setIsRequestingOtp(true)
+    dispatch({ type: 'set_requesting_otp', value: true })
 
     try {
       const response = await fetch('/api/auth/request-otp', {
@@ -48,20 +49,20 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
 
       if (!response.ok) {
         toast.error(payload?.error || 'Could not send a sign-in code')
+        dispatch({ type: 'set_requesting_otp', value: false })
         return
       }
 
-      setStatusMessage(
-        payload?.message ||
-          'Check your inbox for the one-time code, then enter it here.'
-      )
-      setStep('verify')
-      setOtp('')
+      dispatch({
+        type: 'otp_sent',
+        message:
+          payload?.message ||
+          'Check your inbox for the one-time code, then enter it here.',
+      })
       toast.success('Sign-in code sent')
     } catch {
       toast.error('Could not send a sign-in code')
-    } finally {
-      setIsRequestingOtp(false)
+      dispatch({ type: 'set_requesting_otp', value: false })
     }
   }
 
@@ -76,10 +77,10 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
 
   async function verifyOtp(e: React.FormEvent) {
     e.preventDefault()
-    setIsVerifyingOtp(true)
+    dispatch({ type: 'set_verifying_otp', value: true })
 
     const { error } = await signIn.emailOtp({ email, otp })
-    setIsVerifyingOtp(false)
+    dispatch({ type: 'set_verifying_otp', value: false })
 
     if (error) {
       toast.error(error.message || 'Invalid sign-in code')
@@ -105,8 +106,7 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
           disabled={isRequestingOtp || isVerifyingOtp || step === 'verify'}
           id="login-email"
           onChange={(e) => {
-            setEmail(e.target.value)
-            setStatusMessage(null)
+            dispatch({ type: 'set_email', value: e.target.value })
           }}
           required
           type="email"
@@ -129,9 +129,7 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
             <button
               className="font-bold text-[11px] text-foreground uppercase tracking-[0.14em] underline underline-offset-4"
               onClick={() => {
-                setStep('request')
-                setOtp('')
-                setStatusMessage(null)
+                dispatch({ type: 'back_to_request' })
               }}
               type="button"
             >
@@ -145,7 +143,9 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
               id="login-otp"
               inputMode="numeric"
               maxLength={OTP_LENGTH}
-              onChange={setOtp}
+              onChange={(value) => {
+                dispatch({ type: 'set_otp', value })
+              }}
               pattern="[0-9]*"
               value={otp}
             >

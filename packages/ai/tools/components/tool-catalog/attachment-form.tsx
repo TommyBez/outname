@@ -5,6 +5,7 @@ import type { FormEventHandler } from 'react'
 import { useMemo, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { CatalogActionButtons } from './action-buttons'
+import { toolCatalogBuildPhase } from './build-phase'
 import { ConfigField } from './config-field'
 import { partitionConfigFields } from './config-field-utils'
 import { GroupConfigPanel } from './group-config-panel'
@@ -25,21 +26,15 @@ interface AttachmentFormProps {
   agentId: string
   attached: AttachedToolView | null
   entry: ToolCatalogEntry
-  isAttached: boolean
-  isBuilding: boolean
-  isFailedPending: boolean
-  isPending: boolean
 }
 
 export function AttachmentForm({
   agentId,
   entry,
   attached,
-  isBuilding,
-  isAttached,
-  isFailedPending,
-  isPending,
 }: AttachmentFormProps) {
+  const buildPhase = toolCatalogBuildPhase(attached)
+  const isAttached = buildPhase !== 'detached'
   const [pending, startTransition] = useTransition()
   const { refresh } = useRouter()
   const initial = useMemo(
@@ -110,11 +105,8 @@ export function AttachmentForm({
   return (
     <div className="flex flex-col gap-3">
       <CatalogActionButtons
+        buildPhase={buildPhase}
         hasFields={hasFields}
-        isAttached={isAttached}
-        isBuilding={isBuilding}
-        isFailedPending={isFailedPending}
-        isPending={isPending}
         onAttach={() => handleAttach()}
         onDetach={handleDetach}
         onToggleOpen={() => setOpen((value) => !value)}

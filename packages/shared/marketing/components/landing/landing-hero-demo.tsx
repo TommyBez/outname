@@ -1,10 +1,8 @@
 'use client'
 
 import { getAppLoginUrl } from '@outname/shared/app-url'
-import {
-  PrimaryLink,
-  SecondaryLink,
-} from '@outname/shared/marketing/components/landing/landing-links'
+import { PrimaryLink } from '@outname/shared/marketing/components/landing/primary-link'
+import { SecondaryLink } from '@outname/shared/marketing/components/landing/secondary-link'
 import { TextLoop } from '@outname/shared/marketing/components/motion-primitives/text-loop'
 
 const loopWords = [

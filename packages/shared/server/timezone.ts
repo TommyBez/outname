@@ -1,3 +1,5 @@
+import { getDateTimeFormat } from '../intl/formatters'
+
 export const DEFAULT_TIMEZONE = 'UTC'
 
 const LOCAL_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/
@@ -74,7 +76,7 @@ function formatLocalDateTimeParts(
   date: Date,
   timeZone: string
 ): LocalDateTimeParts {
-  const parts = new Intl.DateTimeFormat('en-CA', {
+  const parts = getDateTimeFormat('en-CA', {
     day: '2-digit',
     hour: '2-digit',
     hourCycle: 'h23',
@@ -146,7 +148,7 @@ export function isValidIanaTimeZone(timezone: string): boolean {
     return false
   }
   try {
-    new Intl.DateTimeFormat('en-US', { timeZone: trimmed }).format(new Date(0))
+    getDateTimeFormat('en-US', { timeZone: trimmed }).format(new Date(0))
     return true
   } catch {
     return false

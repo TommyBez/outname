@@ -1,7 +1,7 @@
 import {
   buildToolSandboxNamespace,
   type ToolSandboxBuildEvent,
-} from '@outname/ai/tools/sandbox-runtime/workflow/events'
+} from '@outname/ai/tools/sandboxes/builds/events'
 import { getSession } from '@outname/auth/server/auth-guard'
 import { db } from '@outname/db'
 import { agent, agentTools, toolSandboxBuilds } from '@outname/db/schema'

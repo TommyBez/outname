@@ -1,3 +1,4 @@
+import { ensureToolSandboxBuild } from '@outname/ai/tools/sandboxes/builds/build'
 import { detachToolForUser } from '@outname/ai/tools/server/attachment-service/detach'
 import { attachMaintainerToolForUser } from '@outname/ai/tools/server/attachment-service/maintainer'
 import { attachSubAgentForUser } from '@outname/ai/tools/server/attachment-service/sub-agent'
@@ -11,7 +12,6 @@ import {
   userAgentsTag,
 } from '@outname/shared/server/cache-tags'
 import { getAgentByIdForUser } from '@outname/shared/server/data'
-import { ensureToolSandboxBuild } from '@outname/workflow/tool-sandbox-builds/build'
 import {
   createAgentUIStreamResponse,
   stepCountIs,
@@ -62,12 +62,13 @@ export async function POST(
     return messages.response
   }
 
-  const model = await getUserModelForGateway({
-    modelId: EDIT_MODEL,
-    userId: session.user.id,
-  })
-
-  const toolVisibility = await getAvailableAgentTools(agentId, session.user.id)
+  const [model, toolVisibility] = await Promise.all([
+    getUserModelForGateway({
+      modelId: EDIT_MODEL,
+      userId: session.user.id,
+    }),
+    getAvailableAgentTools(agentId, session.user.id),
+  ])
   const agent = new ToolLoopAgent({
     model,
     stopWhen: stepCountIs(8),

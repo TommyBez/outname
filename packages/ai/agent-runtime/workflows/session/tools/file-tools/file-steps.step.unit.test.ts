@@ -20,25 +20,13 @@ const {
   }
 })
 
-vi.mock('workflow', () => ({
-  FatalError: class FatalError extends Error {
-    fatal = true
+vi.mock('@outname/workflow/runtime', async () => {
+  const { createWorkflowRuntimeMock } = await import(
+    '../../../../../../../test/helpers/workflow-runtime-mock'
+  )
 
-    constructor(message: string) {
-      super(message)
-      this.name = 'FatalError'
-    }
-  },
-  RetryableError: class RetryableError extends Error {
-    retryAfter: Date
-
-    constructor(message: string) {
-      super(message)
-      this.name = 'RetryableError'
-      this.retryAfter = new Date()
-    }
-  },
-}))
+  return createWorkflowRuntimeMock()
+})
 
 vi.mock('@outname/ai/agent-runtime/server/agent-sandbox', () => ({
   getSystemSandbox: mockGetSystemSandbox,

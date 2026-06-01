@@ -44,16 +44,18 @@ Run the smallest high-signal checks for your change before opening a pull
 request:
 
 ```bash
-pnpm lint
-pnpm typecheck
-pnpm react-doctor
+pnpm verify
 ```
+
+`pnpm verify` runs the workflow boundary check plus `build`, `typecheck`,
+`lint`, and `react-doctor` across the monorepo.
 
 If you changed TypeScript runtime code, also run:
 
 ```bash
 pnpm test
 pnpm test:typecheck
+pnpm test:workflow:unit
 ```
 
 If your change affects cron, Slack delivery, or other hosted integrations,

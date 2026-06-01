@@ -1,3 +1,4 @@
+import { ensureToolSandboxBuild } from '@outname/ai/tools/sandboxes/builds/build'
 import { attachMaintainerToolForUser } from '@outname/ai/tools/server/attachment-service/maintainer'
 import { attachSubAgentForUser } from '@outname/ai/tools/server/attachment-service/sub-agent'
 import type { AttachResult } from '@outname/ai/tools/server/attachment-service/types'
@@ -18,7 +19,6 @@ import {
   userBudgetTag,
 } from '@outname/shared/server/cache-tags'
 import { getUserTimeDisplay } from '@outname/shared/server/user-time-display'
-import { ensureToolSandboxBuild } from '@outname/workflow/tool-sandbox-builds/build'
 import { revalidatePath, revalidateTag } from 'next/cache'
 
 export async function createRequestedAgent(input: {
@@ -83,43 +83,46 @@ async function attachRequestedTools(input: {
   request: AgentCreationRequest
   userId: string
 }): Promise<AgentCreationAttachmentResult[]> {
-  const attachments: AgentCreationAttachmentResult[] = []
-  for (const selection of input.request.tools.maintainer) {
-    const result = await attachMaintainerToolForUser({
-      agentId: input.agentId,
-      ensureSandboxBuild: ensureToolSandboxBuild,
-      userId: input.userId,
-      toolId: selection.toolId,
-      rawConfig: normalizeRecord(selection.config),
-      refreshSummary: false,
-      revalidate: false,
+  const maintainerAttachments = await Promise.all(
+    input.request.tools.maintainer.map(async (selection) => {
+      const result = await attachMaintainerToolForUser({
+        agentId: input.agentId,
+        ensureSandboxBuild: ensureToolSandboxBuild,
+        userId: input.userId,
+        toolId: selection.toolId,
+        rawConfig: normalizeRecord(selection.config),
+        refreshSummary: false,
+        revalidate: false,
+      })
+      return {
+        kind: 'maintainer' as const,
+        toolId: selection.toolId,
+        ok: result.ok,
+        error: result.error,
+        pendingBuildId: result.pendingBuildId,
+        status: attachmentStatus(result),
+      }
     })
-    attachments.push({
-      kind: 'maintainer',
-      toolId: selection.toolId,
-      ok: result.ok,
-      error: result.error,
-      pendingBuildId: result.pendingBuildId,
-      status: attachmentStatus(result),
+  )
+  const subAgentAttachments = await Promise.all(
+    input.request.tools.subAgents.map(async (selection) => {
+      const result = await attachSubAgentForUser({
+        parentAgentId: input.agentId,
+        childAgentId: selection.childAgentId,
+        userId: input.userId,
+        refreshSummary: false,
+        revalidate: false,
+      })
+      return {
+        kind: 'sub_agent' as const,
+        toolId: selection.childAgentId,
+        ok: result.ok,
+        error: result.error,
+        status: attachmentStatus(result),
+      }
     })
-  }
-  for (const selection of input.request.tools.subAgents) {
-    const result = await attachSubAgentForUser({
-      parentAgentId: input.agentId,
-      childAgentId: selection.childAgentId,
-      userId: input.userId,
-      refreshSummary: false,
-      revalidate: false,
-    })
-    attachments.push({
-      kind: 'sub_agent',
-      toolId: selection.childAgentId,
-      ok: result.ok,
-      error: result.error,
-      status: attachmentStatus(result),
-    })
-  }
-  return attachments
+  )
+  return [...maintainerAttachments, ...subAgentAttachments]
 }
 
 async function applyAgentBudget(input: {
@@ -135,25 +138,27 @@ async function applyAgentBudget(input: {
     { key: 'weekly', period: 'weekly' },
     { key: 'monthly', period: 'monthly' },
   ]
-  for (const { key, period } of periods) {
-    const limit = input.budget?.[key]
-    if (typeof limit !== 'number' || limit <= 0) {
-      continue
-    }
-    try {
-      await upsertBudgetRule({
-        userId: input.userId,
-        agentId: input.agentId,
-        period,
-        limitUsd: limit,
-      })
-    } catch (err) {
-      console.error('applyAgentBudget: failed to persist rule', {
-        period,
-        err,
-      })
-    }
-  }
+  await Promise.all(
+    periods.map(async ({ key, period }) => {
+      const limit = input.budget?.[key]
+      if (typeof limit !== 'number' || limit <= 0) {
+        return
+      }
+      try {
+        await upsertBudgetRule({
+          userId: input.userId,
+          agentId: input.agentId,
+          period,
+          limitUsd: limit,
+        })
+      } catch (err) {
+        console.error('applyAgentBudget: failed to persist rule', {
+          period,
+          err,
+        })
+      }
+    })
+  )
 }
 
 function resolveIdentityCard(input: AgentCreationRequest): string {

@@ -37,29 +37,34 @@ export function getRelatedPosts(
   limit = 3
 ): BlogPost[] {
   const tagSet = new Set(post.tags.map((tag) => tag.toLowerCase()))
+  const scored: Array<{ candidate: BlogPost; sharedTags: number }> = []
 
-  return allPosts
-    .filter((candidate) => candidate.slug !== post.slug)
-    .map((candidate) => {
-      const sharedTags = candidate.tags.filter((tag) =>
-        tagSet.has(tag.toLowerCase())
-      ).length
-
-      return { candidate, sharedTags }
-    })
-    .filter(({ sharedTags }) => sharedTags > 0)
-    .sort((left, right) => {
-      if (right.sharedTags !== left.sharedTags) {
-        return right.sharedTags - left.sharedTags
+  for (const candidate of allPosts) {
+    if (candidate.slug === post.slug) {
+      continue
+    }
+    let sharedTags = 0
+    for (const tag of candidate.tags) {
+      if (tagSet.has(tag.toLowerCase())) {
+        sharedTags += 1
       }
+    }
+    if (sharedTags > 0) {
+      scored.push({ candidate, sharedTags })
+    }
+  }
 
-      return (
-        new Date(right.candidate.date).getTime() -
-        new Date(left.candidate.date).getTime()
-      )
-    })
-    .slice(0, limit)
-    .map(({ candidate }) => candidate)
+  scored.sort((left, right) => {
+    if (right.sharedTags !== left.sharedTags) {
+      return right.sharedTags - left.sharedTags
+    }
+    return (
+      new Date(right.candidate.date).getTime() -
+      new Date(left.candidate.date).getTime()
+    )
+  })
+
+  return scored.slice(0, limit).map(({ candidate }) => candidate)
 }
 
 export function generateBlogMetadata(post?: BlogPost): Metadata {

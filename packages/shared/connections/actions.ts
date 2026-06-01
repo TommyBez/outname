@@ -86,16 +86,23 @@ export async function disconnectConnectionAction(connectorId: string) {
   }
 
   if (connector.authKind === 'oauth2') {
-    await revokeOAuthConnection({ connectorId, userId }).catch((err) => {
-      console.warn('disconnectConnectionAction: OAuth revoke failed', {
-        connectorId,
-        err,
-      })
-    })
+    revokeOAuthConnectionBestEffort({ connectorId, userId })
   }
   await disconnectConnection({ userId, connectorId })
   updateConnectionSurfaces(userId)
   return { ok: true }
+}
+
+function revokeOAuthConnectionBestEffort(input: {
+  connectorId: string
+  userId: string
+}): void {
+  revokeOAuthConnection(input).catch((err) => {
+    console.warn('disconnectConnectionAction: OAuth revoke failed', {
+      connectorId: input.connectorId,
+      err,
+    })
+  })
 }
 
 async function revokeOAuthConnection(input: {

@@ -77,18 +77,19 @@ export async function deleteAgentAction(agentId: string): Promise<void> {
     redirect('/agents')
   }
 
-  await db
-    .update(agentEvents)
-    .set({
-      completedAt: new Date(),
-      lastError: 'agent deleted',
-      status: 'cancelled',
-      updatedAt: new Date(),
-    })
-    .where(eq(agentEvents.agentId, agentId))
-
-  // Best-effort delete of the persistent sandbox before removing the agent row.
-  await destroyAgentSandboxes(agentId)
+  await Promise.all([
+    db
+      .update(agentEvents)
+      .set({
+        completedAt: new Date(),
+        lastError: 'agent deleted',
+        status: 'cancelled',
+        updatedAt: new Date(),
+      })
+      .where(eq(agentEvents.agentId, agentId)),
+    // Best-effort delete of the persistent sandbox before removing the agent row.
+    destroyAgentSandboxes(agentId),
+  ])
 
   await db
     .delete(agent)

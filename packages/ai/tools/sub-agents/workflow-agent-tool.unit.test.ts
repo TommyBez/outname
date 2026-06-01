@@ -28,7 +28,7 @@ const {
   }
 })
 
-vi.mock('workflow', () => ({
+vi.mock('@outname/workflow/runtime', () => ({
   getWorkflowMetadata: mockGetWorkflowMetadata,
 }))
 

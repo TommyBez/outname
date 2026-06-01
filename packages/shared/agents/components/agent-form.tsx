@@ -10,20 +10,19 @@ import { Button } from '@outname/ui/components/ui/button'
 import { Input } from '@outname/ui/components/ui/input'
 import { Label } from '@outname/ui/components/ui/label'
 import { useRouter } from 'next/navigation'
-import { type FormEvent, useState, useTransition } from 'react'
+import { type FormEvent, useReducer, useTransition } from 'react'
 import { toast } from 'sonner'
-import { BootstrapFiles } from './agent-form/bootstrap-files'
-import { ModelSelector } from './agent-form/model-selector'
-import type {
-  AgentFormInitial,
-  BootstrapFileValue,
-  StepLimitMode,
-} from './agent-form/options'
 import {
-  DreamingSettings,
-  HeartbeatSettings,
-  StepLimitSettings,
-} from './agent-form/runtime-settings'
+  agentFormReducer,
+  createAgentFormState,
+} from './agent-form/agent-form-state'
+import { BootstrapFiles } from './agent-form/bootstrap-files'
+import { ConfigureSection } from './agent-form/configure-section'
+import { DreamingSettings } from './agent-form/dreaming-settings'
+import { HeartbeatSettings } from './agent-form/heartbeat-settings'
+import { ModelSelector } from './agent-form/model-selector'
+import type { AgentFormInitial, StepLimitMode } from './agent-form/options'
+import { StepLimitSettings } from './agent-form/step-limit-settings'
 
 interface AgentFormProps {
   defaultModel: string
@@ -40,40 +39,17 @@ export function AgentForm({
 }: AgentFormProps) {
   const { back, push, refresh } = useRouter()
   const [pending, startTransition] = useTransition()
-  const [name, setName] = useState(initial?.name ?? '')
-  const [identityCard, setIdentityCard] = useState(initial?.identityCard ?? '')
-  const [identity, setIdentity] = useState(initial?.identity ?? '')
-  const [instructions, setInstructions] = useState(initial?.instructions ?? '')
-  const [userProfile, setUserProfile] = useState(initial?.userProfile ?? '')
-  const [activeBootstrapFile, setActiveBootstrapFile] =
-    useState<BootstrapFileValue>('identity-card')
-  const [model, setModel] = useState(initial?.model ?? defaultModel)
-  const [heartbeatEnabled, setHeartbeatEnabled] = useState(
-    initial?.heartbeatEnabled ?? true
-  )
-  const [heartbeatScheduleMode, setHeartbeatScheduleMode] =
-    useState<AgentScheduleMode>(initial?.heartbeatScheduleMode ?? 'interval')
-  const [heartbeatScheduleTimes, setHeartbeatScheduleTimes] = useState(
-    initial?.heartbeatScheduleTimes ?? []
-  )
-  const [intervalMinutes, setIntervalMinutes] = useState(
-    initial?.heartbeatIntervalMinutes ?? 30
-  )
-  const [dreamingEnabled, setDreamingEnabled] = useState(
-    initial?.dreamingEnabled ?? true
-  )
-  const [stepLimitMode, setStepLimitMode] = useState<StepLimitMode>(
-    initial?.stepLimitMode ?? 'medium'
-  )
-  const [stepLimitCustom, setStepLimitCustom] = useState(
-    initial?.stepLimitCustom ?? 30
+  const [state, dispatch] = useReducer(
+    agentFormReducer,
+    { defaultModel, initial },
+    createAgentFormState
   )
   const isEdit = Boolean(initial?.id)
   const submitLabel = isEdit ? 'Save changes' : 'Create agent'
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    const trimmed = name.trim()
+    const trimmed = state.name.trim()
     if (!trimmed) {
       toast.error('Name is required')
       return
@@ -83,18 +59,18 @@ export function AgentForm({
         trimmedName: trimmed,
         initial,
         values: {
-          heartbeatEnabled,
-          heartbeatScheduleMode,
-          heartbeatScheduleTimes,
-          identity,
-          identityCard,
-          instructions,
-          intervalMinutes,
-          model,
-          dreamingEnabled,
-          stepLimitCustom,
-          stepLimitMode,
-          userProfile,
+          heartbeatEnabled: state.heartbeatEnabled,
+          heartbeatScheduleMode: state.heartbeatScheduleMode,
+          heartbeatScheduleTimes: state.heartbeatScheduleTimes,
+          identity: state.identity,
+          identityCard: state.identityCard,
+          instructions: state.instructions,
+          intervalMinutes: state.intervalMinutes,
+          model: state.model,
+          dreamingEnabled: state.dreamingEnabled,
+          stepLimitCustom: state.stepLimitCustom,
+          stepLimitMode: state.stepLimitMode,
+          userProfile: state.userProfile,
         },
         router: { push, refresh },
       })
@@ -114,10 +90,12 @@ export function AgentForm({
             <Input
               id="agent-name"
               maxLength={120}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) =>
+                dispatch({ type: 'set_name', value: e.target.value })
+              }
               placeholder="Research Buddy"
               required
-              value={name}
+              value={state.name}
             />
             <p className="text-muted-foreground text-xs">
               Shown in the sidebar and at the top of every chat.
@@ -132,16 +110,24 @@ export function AgentForm({
         title="Memory seeds"
       >
         <BootstrapFiles
-          activeBootstrapFile={activeBootstrapFile}
-          identity={identity}
-          identityCard={identityCard}
-          instructions={instructions}
-          setActiveBootstrapFile={setActiveBootstrapFile}
-          setIdentity={setIdentity}
-          setIdentityCard={setIdentityCard}
-          setInstructions={setInstructions}
-          setUserProfile={setUserProfile}
-          userProfile={userProfile}
+          activeBootstrapFile={state.activeBootstrapFile}
+          identity={state.identity}
+          identityCard={state.identityCard}
+          instructions={state.instructions}
+          setActiveBootstrapFile={(value) =>
+            dispatch({ type: 'set_active_bootstrap_file', value })
+          }
+          setIdentity={(value) => dispatch({ type: 'set_identity', value })}
+          setIdentityCard={(value) =>
+            dispatch({ type: 'set_identity_card', value })
+          }
+          setInstructions={(value) =>
+            dispatch({ type: 'set_instructions', value })
+          }
+          setUserProfile={(value) =>
+            dispatch({ type: 'set_user_profile', value })
+          }
+          userProfile={state.userProfile}
         />
       </ConfigureSection>
 
@@ -153,30 +139,44 @@ export function AgentForm({
         <div className="flex flex-col gap-8">
           <ModelSelector
             defaultModel={defaultModel}
-            model={model}
+            model={state.model}
             models={models}
-            setModel={setModel}
+            setModel={(value) => dispatch({ type: 'set_model', value })}
           />
           <StepLimitSettings
-            setStepLimitCustom={setStepLimitCustom}
-            setStepLimitMode={setStepLimitMode}
-            stepLimitCustom={stepLimitCustom}
-            stepLimitMode={stepLimitMode}
+            setStepLimitCustom={(value) =>
+              dispatch({ type: 'set_step_limit_custom', value })
+            }
+            setStepLimitMode={(value) =>
+              dispatch({ type: 'set_step_limit_mode', value })
+            }
+            stepLimitCustom={state.stepLimitCustom}
+            stepLimitMode={state.stepLimitMode}
           />
           <HeartbeatSettings
-            heartbeatEnabled={heartbeatEnabled}
-            intervalMinutes={intervalMinutes}
-            scheduleMode={heartbeatScheduleMode}
-            scheduleTimes={heartbeatScheduleTimes}
-            setHeartbeatEnabled={setHeartbeatEnabled}
-            setIntervalMinutes={setIntervalMinutes}
-            setScheduleMode={setHeartbeatScheduleMode}
-            setScheduleTimes={setHeartbeatScheduleTimes}
+            heartbeatEnabled={state.heartbeatEnabled}
+            intervalMinutes={state.intervalMinutes}
+            scheduleMode={state.heartbeatScheduleMode}
+            scheduleTimes={state.heartbeatScheduleTimes}
+            setHeartbeatEnabled={(value) =>
+              dispatch({ type: 'set_heartbeat_enabled', value })
+            }
+            setIntervalMinutes={(value) =>
+              dispatch({ type: 'set_interval_minutes', value })
+            }
+            setScheduleMode={(value) =>
+              dispatch({ type: 'set_heartbeat_schedule_mode', value })
+            }
+            setScheduleTimes={(value) =>
+              dispatch({ type: 'set_heartbeat_schedule_times', value })
+            }
             timezoneLabel={timezoneLabel}
           />
           <DreamingSettings
-            dreamingEnabled={dreamingEnabled}
-            setDreamingEnabled={setDreamingEnabled}
+            dreamingEnabled={state.dreamingEnabled}
+            setDreamingEnabled={(value) =>
+              dispatch({ type: 'set_dreaming_enabled', value })
+            }
           />
         </div>
       </ConfigureSection>
@@ -195,30 +195,6 @@ export function AgentForm({
         </Button>
       </div>
     </form>
-  )
-}
-
-function ConfigureSection({
-  children,
-  description,
-  id,
-  title,
-}: {
-  children: React.ReactNode
-  description: string
-  id: string
-  title: string
-}) {
-  return (
-    <section className="scroll-mt-24" id={id}>
-      <div className="mb-6 grid gap-2 md:grid-cols-[12rem_minmax(0,1fr)]">
-        <h3 className="font-bold text-xs uppercase tracking-[0.18em]">
-          {title}
-        </h3>
-        <p className="max-w-2xl text-muted-foreground text-sm">{description}</p>
-      </div>
-      {children}
-    </section>
   )
 }
 

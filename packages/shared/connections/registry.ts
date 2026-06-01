@@ -134,7 +134,8 @@ export function validateConnectorRuntimeConfig(
     connector.oauth2.clientIdEnv,
     connector.oauth2.clientSecretEnv,
   ].filter((value): value is string => Boolean(value))
-  const missingEnvVars = envVars.filter((name) => !process.env[name])
+  const configuredEnvVars = new Set(Object.keys(process.env))
+  const missingEnvVars = envVars.filter((name) => !configuredEnvVars.has(name))
   if (missingEnvVars.length > 0) {
     return {
       ok: false,

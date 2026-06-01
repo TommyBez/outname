@@ -28,7 +28,7 @@ export function normalizeDailyScheduleTimes(
       normalized.add(trimmed)
     }
   }
-  return [...normalized].sort()
+  return [...normalized].toSorted()
 }
 
 export function validateDailyScheduleTimes(

@@ -1,8 +1,6 @@
-import {
-  LegalLink,
-  LegalList,
-  LegalSection,
-} from '@outname/shared/marketing/components/legal/legal-prose'
+import { LegalLink } from '@outname/shared/marketing/components/legal/legal-link'
+import { LegalList } from '@outname/shared/marketing/components/legal/legal-list'
+import { LegalSection } from '@outname/shared/marketing/components/legal/legal-section'
 import { MarketingLegalLayout } from '@outname/shared/marketing/components/legal/marketing-legal-layout'
 import { privacyEmail } from '@outname/shared/marketing/data/contact'
 import { siteConfig } from '@outname/shared/server/site-metadata'
