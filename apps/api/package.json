@@ -8,7 +8,7 @@
     "dev:fresh": "pnpm reset:workflow && pnpm dev",
     "lint": "ultracite check .",
     "react-doctor": "npx react-doctor@latest --verbose .",
-    "start": "ext start -p 3001",
+    "start": "next start -p 3001",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "reset:workflow": "rm -rf .swc .next app/.well-known"
   },
