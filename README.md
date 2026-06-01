@@ -41,8 +41,11 @@ attachments, Slack routing, public web, admin, email preview, and video tooling.
 4. Set `BETTER_AUTH_URL` to the production application URL.
 5. Create Vercel projects for the deployable apps: `apps/web`, `apps/app`,
    `apps/admin`, and `apps/api`. `apps/email` and `apps/video` are local-only.
-6. For the API project, keep the cron configuration from `apps/api/vercel.json`
-   for `/api/cron/liveness` and run migrations before deployment.
+6. Configure `VERCEL_API_PROJECT_ID`, `VERCEL_APP_PROJECT_ID`,
+   `VERCEL_WEB_PROJECT_ID`, and `VERCEL_ADMIN_PROJECT_ID` in the relevant
+   Vercel projects so related-project wiring can be resolved from project IDs.
+7. For the API project, keep the `/api/cron/liveness` cron and run migrations
+   before deployment.
 
 ### Minimum environment variables for a working deploy
 
@@ -51,16 +54,16 @@ DATABASE_URL=
 BETTER_AUTH_SECRET=
 BETTER_AUTH_URL=
 BETTER_AUTH_TRUSTED_ORIGINS=
-NEXT_PUBLIC_WEB_URL=
-NEXT_PUBLIC_APP_URL=
-NEXT_PUBLIC_ADMIN_URL=
-NEXT_PUBLIC_API_BASE_URL=
 AUTH_COOKIE_DOMAIN=
 CONNECTION_ENCRYPTION_KEY=
 AI_GATEWAY_API_KEY=
 RESEND_API_KEY=
 AUTH_FROM_EMAIL=
 AUTH_REPLY_TO=
+VERCEL_API_PROJECT_ID=
+VERCEL_APP_PROJECT_ID=
+VERCEL_WEB_PROJECT_ID=
+VERCEL_ADMIN_PROJECT_ID=
 ```
 
 ### Common optional integrations
@@ -102,6 +105,9 @@ admin on `pnpm dev:admin` (`http://localhost:3003`), React Email preview on
 
 - This is a Turborepo monorepo with deployable apps in `apps/*` and shared
   packages in `packages/*`.
+- Cross-project public URLs are derived in each app's `next.config.ts` from
+  Vercel related-project metadata. Outside Vercel they fall back to localhost
+  origins (`app` `:3000`, `api` `:3001`, `web` `:3002`, `admin` `:3003`).
 - The only required local service is the relevant Next.js dev server; email and
   video workspaces are local-only tools.
 - The database is remote; no local Postgres setup is required.

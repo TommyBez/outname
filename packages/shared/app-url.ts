@@ -1,4 +1,6 @@
-const DEFAULT_APP_URL = 'http://localhost:3000'
+import { LOCAL_PROJECT_ORIGINS } from './vercel-related-projects'
+
+const DEFAULT_APP_URL = LOCAL_PROJECT_ORIGINS.app
 const TRAILING_SLASHES = /\/+$/
 
 export function getAppBaseUrl(): string {

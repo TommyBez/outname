@@ -1,6 +1,5 @@
 import 'server-only'
 
-import { getRelatedProjectOrigins } from '@outname/shared/vercel-related-projects'
 import { checkBotId } from 'botid/server'
 import { NextResponse } from 'next/server'
 
@@ -40,7 +39,6 @@ function getBotIdExtraAllowedHosts(): string[] {
     process.env.NEXT_PUBLIC_APP_URL,
     process.env.NEXT_PUBLIC_ADMIN_URL,
     ...splitCommaSeparated(process.env.BETTER_AUTH_TRUSTED_ORIGINS),
-    ...getRelatedProjectOrigins(),
   ].reduce<string[]>((hosts, value) => {
     if (!value) {
       return hosts

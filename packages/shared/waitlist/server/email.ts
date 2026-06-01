@@ -14,21 +14,34 @@ import {
   type WaitlistProfileType,
 } from '@outname/shared/waitlist/server/constants'
 import { createElement, type ReactElement } from 'react'
+import {
+  getRelatedProjectOriginById,
+  LOCAL_PROJECT_ORIGINS,
+} from '../../vercel-related-projects'
 
-function getBaseUrl(): string {
-  return process.env.BETTER_AUTH_URL || siteConfig.url
+function getBaseUrl() {
+  return process.env.BETTER_AUTH_URL
 }
 
 function getAdminBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_ADMIN_URL || 'http://localhost:3003'
+  return getRelatedProjectOriginById(
+    process.env.VERCEL_ADMIN_PROJECT_ID,
+    LOCAL_PROJECT_ORIGINS.admin
+  )
 }
 
 function getAppBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL || getBaseUrl()
+  return getRelatedProjectOriginById(
+    process.env.VERCEL_APP_PROJECT_ID,
+    getBaseUrl()
+  )
 }
 
 function getWebBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_WEB_URL || siteConfig.url
+  return getRelatedProjectOriginById(
+    process.env.VERCEL_WEB_PROJECT_ID,
+    LOCAL_PROJECT_ORIGINS.web
+  )
 }
 
 function createWaitlistEmailIdempotencyKey(

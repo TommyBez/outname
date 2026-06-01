@@ -1,9 +1,12 @@
 import createMDX from '@next/mdx'
-import { withRelatedProject } from '@vercel/related-projects'
+import {
+  getCurrentProjectOrigin,
+  getRelatedProjectOriginById,
+  LOCAL_PROJECT_ORIGINS,
+} from '@outname/shared/vercel-related-projects'
 import { withBotId } from 'botid/next/config'
 import type { NextConfig } from 'next'
 
-const API_RELATED_PROJECT_NAME = 'outname-api'
 const workspacePackages = [
   '@outname/ai',
   '@outname/auth',
@@ -12,18 +15,33 @@ const workspacePackages = [
   '@outname/shared',
   '@outname/ui',
 ]
-const apiRewriteOrigin = withRelatedProject({
-  defaultHost: process.env.NEXT_PUBLIC_API_BASE_URL ?? '',
-  projectName: API_RELATED_PROJECT_NAME,
-})
+const apiOrigin = getRelatedProjectOriginById(
+  process.env.VERCEL_API_PROJECT_ID,
+  LOCAL_PROJECT_ORIGINS.api
+)
+const appOrigin = getRelatedProjectOriginById(
+  process.env.VERCEL_APP_PROJECT_ID,
+  LOCAL_PROJECT_ORIGINS.app
+)
+const webOrigin = getCurrentProjectOrigin(LOCAL_PROJECT_ORIGINS.web)
+const adminOrigin = getRelatedProjectOriginById(
+  process.env.VERCEL_ADMIN_PROJECT_ID,
+  LOCAL_PROJECT_ORIGINS.admin
+)
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
+  env: {
+    NEXT_PUBLIC_ADMIN_URL: adminOrigin,
+    NEXT_PUBLIC_API_BASE_URL: apiOrigin,
+    NEXT_PUBLIC_APP_URL: appOrigin,
+    NEXT_PUBLIC_WEB_URL: webOrigin,
+  },
   async rewrites() {
-    return apiRewriteOrigin
+    return apiOrigin
       ? [
           {
-            destination: `${apiRewriteOrigin}/api/:path*`,
+            destination: `${apiOrigin}/api/:path*`,
             source: '/api/:path*',
           },
         ]

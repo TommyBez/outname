@@ -142,16 +142,16 @@ Required secrets are injected automatically. A `.env.local` must exist for Next.
 ```
 DATABASE_URL=<from env>
 BETTER_AUTH_SECRET=<from env>
-BETTER_AUTH_URL=http://localhost:3000
-BETTER_AUTH_TRUSTED_ORIGINS=http://localhost:3000,http://localhost:3002,http://localhost:3003
-NEXT_PUBLIC_WEB_URL=http://localhost:3002
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-NEXT_PUBLIC_ADMIN_URL=http://localhost:3003
-NEXT_PUBLIC_API_BASE_URL=http://localhost:3001
+BETTER_AUTH_URL=http://localhost:3001
+BETTER_AUTH_TRUSTED_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3003
 AUTH_COOKIE_DOMAIN=
 CONNECTION_ENCRYPTION_KEY=<from env>
 AI_GATEWAY_API_KEY=<from env>
 APP_REVALIDATION_SECRET=<from env>
+VERCEL_API_PROJECT_ID=
+VERCEL_APP_PROJECT_ID=
+VERCEL_WEB_PROJECT_ID=
+VERCEL_ADMIN_PROJECT_ID=
 SANDOX_TEAM_ID=<from env>
 SANDBOX_PROJECT_ID=<from env>
 SANDOX_ACCESS_TOKEN=<from env>
@@ -170,4 +170,4 @@ WAITLIST_ADMIN_EMAIL=<admin inbox for new waitlist signup notifications>
 - **`drizzle-kit push`** requires a TTY for confirmation prompts. Use `drizzle-kit push --force` or run interactively if schema changes are needed.
 - **Do not commit `pnpm-workspace.yaml` allow-build overrides.** They make the production build fail in this app.
 - **UI/auth changes should be tested manually** via the browser. There is no comprehensive automated product test suite for waitlist and authentication flows.
-- **Running `pnpm test`** requires `DATABASE_URL` to be set in the environment. Root scripts can load `.env.local` with `pnpm exec tsx scripts/with-root-env.ts pnpm test`. Some test files import `@outname/db` which throws at module load time if the variable is missing.
+- **Running `pnpm test`** requires `DATABASE_URL` to be set in the environment. Export it before running tests or source it from `.env.local`. Some test files import `@outname/db` which throws at module load time if the variable is missing.

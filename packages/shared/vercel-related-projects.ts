@@ -5,10 +5,14 @@ import {
 
 const HOST_PATTERN = /^[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?$/i
 const HTTP_URL_PATTERN = /^https?:\/\//i
+const EMPTY_STRING = ''
 
-function unique(values: string[]): string[] {
-  return [...new Set(values)]
-}
+export const LOCAL_PROJECT_ORIGINS = {
+  admin: 'http://localhost:3003',
+  api: 'http://localhost:3001',
+  app: 'http://localhost:3000',
+  web: 'http://localhost:3002',
+} as const
 
 function toOrigin(value: string | undefined): string | null {
   const trimmed = value?.trim()
@@ -34,14 +38,43 @@ function toOrigin(value: string | undefined): string | null {
   }
 }
 
-function projectMatchesName(
-  project: VercelRelatedProject,
-  projectName: string
-): boolean {
-  return project.project.name === projectName
+export function getRelatedProjectOriginById(
+  projectId: string | undefined,
+  fallbackOrigin = EMPTY_STRING
+): string {
+  const trimmedProjectId = projectId?.trim()
+  if (!trimmedProjectId) {
+    return fallbackOrigin
+  }
+
+  const project = relatedProjects({ noThrow: true }).find(
+    (candidate) => candidate.project.id === trimmedProjectId
+  )
+
+  return getProjectOrigin(project ?? null) ?? fallbackOrigin
 }
 
-function getProjectOrigin(project: VercelRelatedProject): string | null {
+export function getCurrentProjectOrigin(fallbackOrigin: string): string {
+  if (process.env.VERCEL_ENV === 'preview') {
+    return toOrigin(process.env.VERCEL_URL) ?? fallbackOrigin
+  }
+
+  if (process.env.VERCEL_ENV === 'production') {
+    return (
+      toOrigin(process.env.VERCEL_PROJECT_PRODUCTION_URL) ??
+      toOrigin(process.env.VERCEL_URL) ??
+      fallbackOrigin
+    )
+  }
+
+  return fallbackOrigin
+}
+
+function getProjectOrigin(project: VercelRelatedProject | null): string | null {
+  if (!project) {
+    return null
+  }
+
   if (process.env.VERCEL_ENV === 'preview') {
     return toOrigin(project.preview.customEnvironment ?? project.preview.branch)
   }
@@ -55,24 +88,5 @@ function getProjectOrigin(project: VercelRelatedProject): string | null {
       project.preview.branch ??
       project.production.alias ??
       project.production.url
-  )
-}
-
-export function getRelatedProjectOrigins(
-  projectNames?: readonly string[]
-): string[] {
-  const projects = relatedProjects({ noThrow: true })
-  const matchingProjects = projectNames
-    ? projects.filter((project) =>
-        projectNames.some((projectName) =>
-          projectMatchesName(project, projectName)
-        )
-      )
-    : projects
-
-  return unique(
-    matchingProjects
-      .map((project) => getProjectOrigin(project))
-      .filter((origin): origin is string => Boolean(origin))
   )
 }

@@ -1,11 +1,13 @@
 import 'server-only'
-import { withRelatedProject } from '@vercel/related-projects'
+import {
+  getRelatedProjectOriginById,
+  LOCAL_PROJECT_ORIGINS,
+} from '../vercel-related-projects'
 import {
   type AppRevalidationPayload,
   signAppRevalidationBody,
 } from './app-revalidation'
 
-const APP_RELATED_PROJECT_NAME = 'outname-app'
 const TRAILING_SLASHES = /\/+$/
 
 export async function sendAppRevalidation(
@@ -33,14 +35,14 @@ export async function sendAppRevalidation(
 }
 
 function appRevalidationOrigin(): string {
-  const origin = withRelatedProject({
-    defaultHost: process.env.NEXT_PUBLIC_APP_URL ?? '',
-    projectName: APP_RELATED_PROJECT_NAME,
-  }).replace(TRAILING_SLASHES, '')
+  const origin = getRelatedProjectOriginById(
+    process.env.VERCEL_APP_PROJECT_ID,
+    LOCAL_PROJECT_ORIGINS.app
+  ).replace(TRAILING_SLASHES, '')
 
   if (!origin) {
     throw new Error(
-      'NEXT_PUBLIC_APP_URL or related project outname-app is required for app revalidation.'
+      'A related Vercel app project or NEXT_PUBLIC_APP_URL is required for app revalidation.'
     )
   }
 

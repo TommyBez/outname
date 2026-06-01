@@ -1,4 +1,3 @@
-import { getRelatedProjectOrigins } from '@outname/shared/vercel-related-projects'
 import { type NextRequest, NextResponse } from 'next/server'
 
 const DEFAULT_LOCAL_ORIGINS = [
@@ -14,7 +13,6 @@ function configuredOrigins(): string[] {
     process.env.NEXT_PUBLIC_ADMIN_URL,
     process.env.BETTER_AUTH_URL,
     ...(process.env.BETTER_AUTH_TRUSTED_ORIGINS?.split(',') ?? []),
-    ...getRelatedProjectOrigins(),
     ...DEFAULT_LOCAL_ORIGINS,
   ]
     .map((origin) => origin?.trim())
