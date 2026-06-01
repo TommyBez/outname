@@ -15,26 +15,23 @@ import {
 } from '@outname/shared/waitlist/server/constants'
 import { createElement, type ReactElement } from 'react'
 import {
-  getRelatedProjectOriginById,
   LOCAL_PROJECT_ORIGINS,
+  PROJECT_NAMES,
 } from '../../vercel-related-projects'
-
-function getBaseUrl() {
-  return process.env.BETTER_AUTH_URL
-}
+import { withRelatedProject } from '@vercel/related-projects'
 
 function getAppBaseUrl(): string {
-  return getRelatedProjectOriginById(
-    process.env.VERCEL_APP_PROJECT_ID,
-    getBaseUrl() ?? LOCAL_PROJECT_ORIGINS.app
-  )
+  return withRelatedProject({
+    defaultHost: LOCAL_PROJECT_ORIGINS.app,
+    projectName: PROJECT_NAMES.app,
+  })
 }
 
 function getWebBaseUrl(): string {
-  return getRelatedProjectOriginById(
-    process.env.VERCEL_WEB_PROJECT_ID,
-    LOCAL_PROJECT_ORIGINS.web
-  )
+  return withRelatedProject({
+    defaultHost: LOCAL_PROJECT_ORIGINS.web,
+    projectName: PROJECT_NAMES.web,
+  })
 }
 
 function createWaitlistEmailIdempotencyKey(
