@@ -94,9 +94,7 @@ function defaultApiRewrites(apiOrigin: string): NextConfig['rewrites'] {
 export function createOutnameNextConfig(
   input: CreateOutnameNextConfigInput
 ): NextConfig {
-  console.log('this is the input', input)
   const { apiOrigin, appOrigin, webOrigin } = resolveOrigins(input.role)
-  console.log({ apiOrigin, appOrigin, webOrigin })
   const transpilePackages = [
     ...BASE_WORKSPACE_PACKAGES,
     ...(input.extraTranspilePackages ?? []),
