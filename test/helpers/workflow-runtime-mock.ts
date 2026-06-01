@@ -56,8 +56,8 @@ export function createWorkflowRuntimeMock(overrides?: {
       overrides?.getWritable ??
       (() => ({
         getWriter: () => ({
-          releaseLock: () => {},
-          write: async () => {},
+          releaseLock: () => undefined,
+          write: async () => undefined,
         }),
       })),
     nonRetryableStepError,
