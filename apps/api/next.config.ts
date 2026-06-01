@@ -1,12 +1,12 @@
 import createMDX from '@next/mdx'
+import { withBotId } from 'botid/next/config'
+import type { NextConfig } from 'next'
+import { withWorkflow } from 'workflow/next'
 import {
   getCurrentProjectOrigin,
   getRelatedProjectOriginById,
   LOCAL_PROJECT_ORIGINS,
-} from '@outname/shared/vercel-related-projects'
-import { withBotId } from 'botid/next/config'
-import type { NextConfig } from 'next'
-import { withWorkflow } from 'workflow/next'
+} from '../../packages/shared/vercel-related-projects'
 
 const workspacePackages = [
   '@outname/ai',
