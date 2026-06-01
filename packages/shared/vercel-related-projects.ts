@@ -43,7 +43,14 @@ export function getRelatedProjectOriginById(
     return fallbackOrigin
   }
 
-  const project = relatedProjects({ noThrow: true }).find(
+  const relatedProjectsEntries = relatedProjects({ noThrow: true })
+
+    for (const project of relatedProjectsEntries) {
+      console.dir(project, { depth: null })
+    }
+    
+
+  const project = relatedProjectsEntries.find(
     (candidate) => candidate.project.id === trimmedProjectId
   )
 
