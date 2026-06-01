@@ -37,6 +37,15 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_APP_URL: appOrigin,
     NEXT_PUBLIC_WEB_URL: webOrigin,
   },
+  async redirects() {
+    return [
+      {
+        destination: '/dashboard',
+        permanent: false,
+        source: '/',
+      },
+    ]
+  },
   async rewrites() {
     return apiOrigin
       ? [
