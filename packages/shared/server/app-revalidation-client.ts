@@ -1,14 +1,13 @@
 import 'server-only'
+import { withRelatedProject } from '@vercel/related-projects'
 import {
-  getRelatedProjectOriginById,
   LOCAL_PROJECT_ORIGINS,
+  PROJECT_NAMES,
 } from '../vercel-related-projects'
 import {
   type AppRevalidationPayload,
   signAppRevalidationBody,
 } from './app-revalidation'
-
-const TRAILING_SLASHES = /\/+$/
 
 export async function sendAppRevalidation(
   payload: AppRevalidationPayload
@@ -35,10 +34,10 @@ export async function sendAppRevalidation(
 }
 
 function appRevalidationOrigin(): string {
-  const origin = getRelatedProjectOriginById(
-    process.env.VERCEL_APP_PROJECT_ID,
-    LOCAL_PROJECT_ORIGINS.app
-  ).replace(TRAILING_SLASHES, '')
+  const origin = withRelatedProject({
+    defaultHost: LOCAL_PROJECT_ORIGINS.app,
+    projectName: PROJECT_NAMES.app,
+  })
 
   if (!origin) {
     throw new Error(

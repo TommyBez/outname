@@ -13,12 +13,12 @@ import {
   type WaitlistPrimaryInterest,
   type WaitlistProfileType,
 } from '@outname/shared/waitlist/server/constants'
+import { withRelatedProject } from '@vercel/related-projects'
 import { createElement, type ReactElement } from 'react'
 import {
   LOCAL_PROJECT_ORIGINS,
   PROJECT_NAMES,
 } from '../../vercel-related-projects'
-import { withRelatedProject } from '@vercel/related-projects'
 
 function getAppBaseUrl(): string {
   return withRelatedProject({
