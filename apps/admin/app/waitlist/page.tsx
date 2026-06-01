@@ -23,7 +23,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { AdminShell } from '../_components/admin-shell'
+import { AdminShell } from '../components/admin-shell'
 
 export const metadata: Metadata = createPrivatePageMetadata(
   'Waitlist',
