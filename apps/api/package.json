@@ -3,12 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "tsx ../../scripts/with-root-env.ts next build",
-    "dev": "tsx ../../scripts/with-root-env.ts next dev -p 3001",
+    "build": "next build",
+    "dev": "next dev -p 3001",
+    "dev:fresh": "pnpm reset:workflow && pnpm dev",
     "lint": "ultracite check .",
     "react-doctor": "npx react-doctor@latest --verbose .",
-    "start": "tsx ../../scripts/with-root-env.ts next start -p 3001",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "start": "ext start -p 3001",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "reset:workflow": "rm -rf .swc .next app/.well-known"
   },
   "dependencies": {
     "@outname/ai": "workspace:*",
