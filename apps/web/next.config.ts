@@ -24,15 +24,10 @@ const appOrigin = getRelatedProjectOriginById(
   LOCAL_PROJECT_ORIGINS.app
 )
 const webOrigin = getCurrentProjectOrigin(LOCAL_PROJECT_ORIGINS.web)
-const adminOrigin = getRelatedProjectOriginById(
-  process.env.VERCEL_ADMIN_PROJECT_ID,
-  LOCAL_PROJECT_ORIGINS.admin
-)
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
   env: {
-    NEXT_PUBLIC_ADMIN_URL: adminOrigin,
     NEXT_PUBLIC_API_BASE_URL: apiOrigin,
     NEXT_PUBLIC_APP_URL: appOrigin,
     NEXT_PUBLIC_WEB_URL: webOrigin,
