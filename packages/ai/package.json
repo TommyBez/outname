@@ -20,6 +20,7 @@
     "@outname/db": "workspace:*",
     "@outname/shared": "workspace:*",
     "@outname/workflow": "workspace:*",
+    "@vercel/sandbox": "2.0.0",
     "ai": "^6.0.184",
     "drizzle-orm": "^0.45.2",
     "next": "16.2.4",

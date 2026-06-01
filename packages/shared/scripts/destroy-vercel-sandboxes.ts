@@ -2,13 +2,14 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import readline from 'node:readline/promises'
+import { Sandbox } from '@vercel/sandbox'
 import {
   getVercelSandboxCredentials,
   type VercelSandboxCredentials,
   withVercelSandboxCredentials,
-} from '@outname/shared/server/vercel-sandbox-config'
-import { Sandbox } from '@vercel/sandbox'
+} from '../server/vercel-sandbox-config'
 
+const REPO_ROOT = path.resolve(import.meta.dirname, '../../..')
 const VERCEL_PAGE_LIMIT = 50
 const ENV_LINE_SPLITTER = /\r?\n/u
 
@@ -42,7 +43,7 @@ function printUsage(): void {
 
 Usage:
   pnpm vercel:sandboxes:destroy-all [options]
-  pnpm exec tsx scripts/destroy-vercel-sandboxes.ts [options]
+  pnpm exec tsx packages/shared/scripts/destroy-vercel-sandboxes.ts [options]
 
 Options:
   --execute               Actually delete the sandboxes. Without this flag the
@@ -51,19 +52,19 @@ Options:
   --help                  Show this help text.
 
 Environment:
-  SANDOX_TEAM_ID          Vercel team id for Sandbox API calls.
+  SANDBOX_TEAM_ID          Vercel team id for Sandbox API calls.
   SANDBOX_PROJECT_ID      Vercel project id for Sandbox API calls.
-  SANDOX_ACCESS_TOKEN     Vercel access token for Sandbox API calls.
+  SANDBOX_ACCESS_TOKEN     Vercel access token for Sandbox API calls.
 
 Examples:
-  SANDOX_TEAM_ID=... SANDBOX_PROJECT_ID=... SANDOX_ACCESS_TOKEN=... pnpm vercel:sandboxes:destroy-all
-  SANDOX_TEAM_ID=... SANDBOX_PROJECT_ID=... SANDOX_ACCESS_TOKEN=... pnpm vercel:sandboxes:destroy-all --execute
+  SANDBOX_TEAM_ID=... SANDBOX_PROJECT_ID=... SANDBOX_ACCESS_TOKEN=... pnpm vercel:sandboxes:destroy-all
+  SANDBOX_TEAM_ID=... SANDBOX_PROJECT_ID=... SANDBOX_ACCESS_TOKEN=... pnpm vercel:sandboxes:destroy-all --execute
 `)
 }
 
 function loadDotEnvFiles(): void {
   for (const fileName of ['.env.local', '.env']) {
-    const filePath = path.join(process.cwd(), fileName)
+    const filePath = path.join(REPO_ROOT, fileName)
     if (!fs.existsSync(filePath)) {
       continue
     }
