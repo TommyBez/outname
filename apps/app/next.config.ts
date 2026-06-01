@@ -25,8 +25,6 @@ const webOrigin = getRelatedProjectOriginById(
   LOCAL_PROJECT_ORIGINS.web
 )
 
-console.log({ apiOrigin, appOrigin, webOrigin })
-
 const nextConfig: NextConfig = {
   cacheComponents: true,
   env: {
