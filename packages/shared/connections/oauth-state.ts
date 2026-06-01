@@ -136,6 +136,30 @@ export function oauthRedirectUri(baseUrl: string, connectorId: string): string {
   return `${baseUrl.replace(TRAILING_SLASH, '')}/api/connections/oauth/${encodeURIComponent(connectorId)}/callback`
 }
 
+/**
+ * Build an absolute URL for a user-facing page on the frontend App origin
+ * (e.g. /connections, /login) using the public env var. Falls back to a
+ * relative URL when the env is not available (dev without split).
+ */
+export function buildAppOriginUrl(
+  path: string,
+  searchParams?: Record<string, string>
+): string {
+  const rawBase = process.env.NEXT_PUBLIC_APP_URL
+  const base = rawBase ? rawBase.replace(TRAILING_SLASH, '') : ''
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`
+  const url = base
+    ? new URL(normalizedPath, `${base}/`)
+    : new URL(normalizedPath, 'http://localhost:3000/')
+
+  if (searchParams) {
+    for (const [key, value] of Object.entries(searchParams)) {
+      url.searchParams.set(key, value)
+    }
+  }
+  return url.toString()
+}
+
 export function unexpectedGrantedScopes(
   grantedScopes: readonly string[],
   requestedScopes: readonly string[]
