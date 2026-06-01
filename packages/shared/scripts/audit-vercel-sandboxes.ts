@@ -1,4 +1,3 @@
-import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { Sandbox } from '@vercel/sandbox'
@@ -7,15 +6,10 @@ import {
   type VercelSandboxCredentials,
   withVercelSandboxCredentials,
 } from '../server/vercel-sandbox-config'
+import { loadDotEnvFiles } from './load-dotenv-files'
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '../../..')
 const VERCEL_PAGE_LIMIT = 50
-const ENV_LINE_SPLITTER = /\r?\n/u
-
-interface ParsedEnvLine {
-  key: string
-  value: string
-}
 
 interface ScriptOptions {
   help: boolean
@@ -41,59 +35,13 @@ Options:
   --help                  Show this help text.
 
 Environment:
-  SANDBOX_TEAM_ID          Vercel team id for Sandbox API calls.
-  SANDBOX_PROJECT_ID      Vercel project id for Sandbox API calls.
+  SANDOX_TEAM_ID           Vercel team id for Sandbox API calls.
+  SANDBOX_PROJECT_ID       Vercel project id for Sandbox API calls.
   SANDBOX_ACCESS_TOKEN     Vercel access token for Sandbox API calls.
+
+  Values are loaded from .env.local and .env files under the repo root,
+  including app and package directories. Root env files take precedence.
 `)
-}
-
-function loadDotEnvFiles(): void {
-  for (const fileName of ['.env.local', '.env']) {
-    const filePath = path.join(REPO_ROOT, fileName)
-    if (!fs.existsSync(filePath)) {
-      continue
-    }
-
-    const content = fs.readFileSync(filePath, 'utf8')
-    for (const rawLine of content.split(ENV_LINE_SPLITTER)) {
-      const parsedEntry = parseEnvLine(rawLine)
-      if (!parsedEntry || process.env[parsedEntry.key] !== undefined) {
-        continue
-      }
-
-      process.env[parsedEntry.key] = parsedEntry.value
-    }
-  }
-}
-
-function parseEnvLine(rawLine: string): ParsedEnvLine | null {
-  const line = rawLine.trim()
-  if (!line || line.startsWith('#')) {
-    return null
-  }
-
-  const normalized = line.startsWith('export ')
-    ? line.slice('export '.length)
-    : line
-  const separatorIndex = normalized.indexOf('=')
-  if (separatorIndex === -1) {
-    return null
-  }
-
-  const key = normalized.slice(0, separatorIndex).trim()
-  if (!key) {
-    return null
-  }
-
-  let value = normalized.slice(separatorIndex + 1).trim()
-  const isWrappedInDoubleQuotes = value.startsWith('"') && value.endsWith('"')
-  const isWrappedInSingleQuotes = value.startsWith("'") && value.endsWith("'")
-
-  if (isWrappedInDoubleQuotes || isWrappedInSingleQuotes) {
-    value = value.slice(1, -1)
-  }
-
-  return { key, value }
 }
 
 function parseArgs(argv: string[]): ScriptOptions {
@@ -207,7 +155,7 @@ function printSandbox(sandbox: ListedSandbox, index: number): void {
 }
 
 async function main(): Promise<void> {
-  loadDotEnvFiles()
+  loadDotEnvFiles(REPO_ROOT)
 
   const options = parseArgs(process.argv.slice(2))
   if (options.help) {
