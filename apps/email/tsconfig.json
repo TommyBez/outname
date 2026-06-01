@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": ".tsbuildinfo/email-app.tsbuildinfo"
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "../../packages/email/**/*.ts",
+    "../../packages/email/**/*.tsx"
+  ],
+  "exclude": ["node_modules"]
+}

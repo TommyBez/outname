@@ -1,0 +1,162 @@
+import 'server-only'
+import type { MaintainerTool } from '@outname/ai/tools/catalog/types'
+import {
+  defineSandboxTool,
+  toolError,
+  toolSuccess,
+} from '@outname/ai/tools/runtime/define-maintainer-tool'
+import { z } from 'zod'
+
+const MAX_STDOUT_BYTES = 64 * 1024
+const MAX_STDERR_BYTES = 8 * 1024
+
+// Informational list for the model; unknown commands still pass through to the CLI.
+const KNOWN_COMMANDS = [
+  'open',
+  'close',
+  'snapshot',
+  'screenshot',
+  'click',
+  'type',
+  'press',
+  'eval',
+  'goto',
+  'reload',
+  'back',
+  'forward',
+  'wait',
+  'network',
+  'storage',
+  'list',
+  'select',
+  'hover',
+  'scroll',
+  'upload',
+  'download',
+  'cookies',
+  'frames',
+] as const
+
+function createInputSchema(input: {
+  argsDescription: string
+  commandDescription: string
+}) {
+  return z.object({
+    command: z.string().min(1).describe(input.commandDescription),
+    args: z.array(z.string()).default([]).describe(input.argsDescription),
+    timeoutMs: z
+      .number()
+      .int()
+      .min(500)
+      .max(120_000)
+      .default(30_000)
+      .describe(
+        'Per-call wall-clock budget. Most commands return in under 5 seconds; bump this only when you expect a long page load or a long script.'
+      ),
+  })
+}
+
+interface RunAgentBrowserInput {
+  args: string[]
+  command: string
+  timeoutMs: number
+}
+
+interface RunAgentBrowserResult {
+  exitCode: number
+  ok: boolean
+  stderr: string
+  stdout: string
+  timedOut?: true
+}
+
+async function runAgentBrowser(input: {
+  run: (args: {
+    args: string[]
+    cmd: string
+    stderrLimit?: number
+    stdoutLimit?: number
+    timeoutMs?: number
+  }) => Promise<{
+    exitCode: number
+    stderr: string
+    stdout: string
+    timedOut?: true
+  }>
+  value: RunAgentBrowserInput
+}): Promise<RunAgentBrowserResult> {
+  const result = await input.run({
+    cmd: 'agent-browser',
+    args: [input.value.command, ...input.value.args],
+    stdoutLimit: MAX_STDOUT_BYTES,
+    stderrLimit: MAX_STDERR_BYTES,
+    timeoutMs: input.value.timeoutMs,
+  })
+  if (result.timedOut) {
+    return {
+      ok: false,
+      exitCode: result.exitCode,
+      stdout: result.stdout,
+      stderr: `agent-browser ${input.value.command} timed out after ${input.value.timeoutMs}ms`,
+      timedOut: true,
+    }
+  }
+  return {
+    ok: result.exitCode === 0,
+    exitCode: result.exitCode,
+    stdout: result.stdout,
+    stderr: result.stderr,
+  }
+}
+
+interface AgentBrowserToolOptions {
+  argsDescription: string
+  commandDescription: string
+  description: string
+  displayDescription: string
+  displayName: string
+  id: string
+  manifestId: string
+}
+
+export function createAgentBrowserTool(
+  input: AgentBrowserToolOptions
+): MaintainerTool {
+  const inputSchema = createInputSchema({
+    commandDescription: input.commandDescription,
+    argsDescription: input.argsDescription,
+  })
+
+  return defineSandboxTool({
+    id: input.id,
+    category: 'browser',
+    displayName: input.displayName,
+    displayDescription: input.displayDescription,
+    description: input.description,
+    manifestId: input.manifestId,
+    inputSchema,
+    async execute({ input: { command, args, timeoutMs }, ctx }) {
+      const result = await runAgentBrowser({
+        run: ctx.sandbox.run,
+        value: { command, args: args ?? [], timeoutMs: timeoutMs ?? 30_000 },
+      })
+      if (result.timedOut) {
+        return toolError('provider_error', result.stderr)
+      }
+      return toolSuccess(result)
+    },
+  })
+}
+
+export const agentBrowserTool = createAgentBrowserTool({
+  id: 'agent_browser',
+  displayName: 'agent-browser',
+  displayDescription:
+    'Browse websites, click elements, fill forms, and capture page content.',
+  manifestId: 'agent-browser',
+  commandDescription: `agent-browser subcommand. This sandbox runs agent-browser on its default Chrome engine. See https://agent-browser.dev for the full reference. Common: ${KNOWN_COMMANDS.join(', ')}.`,
+  argsDescription:
+    'Positional + flag arguments to pass to the subcommand, in order. Example: ["https://example.com"] for `open`, or ["-i", "-c"] for `snapshot`. Quoting is handled by the runtime. This sandbox uses agent-browser on its default Chrome engine and bundled Chromium.',
+  description:
+    'Drive a headless browser via the agent-browser CLI using its default Chrome engine in this sandbox. The browser session persists across calls for the duration of this conversation, so you can chain `open` -> `snapshot` -> `click @ref` etc. Returns exit code, stdout, and stderr per call.',
+})

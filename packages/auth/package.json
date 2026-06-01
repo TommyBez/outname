@@ -1,0 +1,22 @@
+{
+  "name": "@outname/auth",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    "./*": "./*"
+  },
+  "scripts": {
+    "build": "pnpm typecheck",
+    "lint": "ultracite check .",
+    "react-doctor": "npx react-doctor@latest --verbose .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@outname/db": "workspace:*",
+    "@outname/email": "workspace:*",
+    "@outname/shared": "workspace:*",
+    "better-auth": "^1.6.11",
+    "drizzle-orm": "^0.45.2",
+    "server-only": "^0.0.1"
+  }
+}

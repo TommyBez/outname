@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "esModuleInterop": true,
+    "incremental": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "paths": {
+      "@outname/ai/*": ["./packages/ai/*"],
+      "@outname/auth/*": ["./packages/auth/*"],
+      "@outname/db": ["./packages/db/index.ts"],
+      "@outname/db/*": ["./packages/db/*"],
+      "@outname/email/*": ["./packages/email/*"],
+      "@outname/shared/*": ["./packages/shared/*"],
+      "@outname/ui/*": ["./packages/ui/*"],
+      "@outname/workflow/api": ["./packages/workflow/api.ts"],
+      "@outname/workflow/next": ["./packages/workflow/next.ts"],
+      "@outname/workflow/runtime": ["./packages/workflow/runtime.ts"]
+    },
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "ES2020",
+    "types": ["node", "react", "react-dom", "next", "mdx"]
+  }
+}
