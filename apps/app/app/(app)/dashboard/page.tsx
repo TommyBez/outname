@@ -15,7 +15,6 @@ import type { BudgetSummaryEntry } from '@outname/shared/budgets/server/types'
 import { getCachedAgentsForUser } from '@outname/shared/server/data'
 import { createPrivatePageMetadata } from '@outname/shared/server/site-metadata'
 import { getUserTimeDisplay } from '@outname/shared/server/user-time-display'
-import { AppShell } from '@outname/ui/components/layout/app-shell'
 import {
   AgentCardSkeleton,
   RunResultSkeleton,
@@ -31,11 +30,9 @@ export const metadata = createPrivatePageMetadata(
 
 export default function DashboardPage() {
   return (
-    <AppShell>
-      <Suspense fallback={<DashboardPageFallback />}>
-        <DashboardPageBody />
-      </Suspense>
-    </AppShell>
+    <Suspense fallback={<DashboardPageFallback />}>
+      <DashboardPageBody />
+    </Suspense>
   )
 }
 

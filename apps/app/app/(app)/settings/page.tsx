@@ -13,7 +13,6 @@ import { hasUserAiGatewayApiKey } from '@outname/shared/server/ai-gateway-byok'
 import { getCachedAgentsForUser } from '@outname/shared/server/data'
 import { createPrivatePageMetadata } from '@outname/shared/server/site-metadata'
 import { getUserTimezone } from '@outname/shared/server/user-timezone'
-import { AppShell } from '@outname/ui/components/layout/app-shell'
 import { AccountSkeleton } from '@outname/ui/components/skeletons'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -28,7 +27,7 @@ export const metadata: Metadata = createPrivatePageMetadata(
 
 export default function SettingsPage() {
   return (
-    <AppShell>
+    <>
       <header className="mb-12 border-foreground border-t-4 pt-6 md:mb-16">
         <p className="swiss-label mb-4 text-accent">10. Settings</p>
         <h1 className="font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
@@ -71,7 +70,7 @@ export default function SettingsPage() {
           <WaitlistAdminSection />
         </Suspense>
       </div>
-    </AppShell>
+    </>
   )
 }
 

@@ -1,3 +1,4 @@
+import { requireWaitlistManageAccess } from '@outname/auth/server/auth-guard'
 import type { WaitlistEntry } from '@outname/db/schema'
 import { formatDateTime, formatRelative } from '@outname/shared/server/format'
 import { createPrivatePageMetadata } from '@outname/shared/server/site-metadata'
@@ -8,8 +9,11 @@ import {
   WAITLIST_PRIMARY_INTEREST_OPTIONS,
   WAITLIST_PROFILE_TYPE_OPTIONS,
 } from '@outname/shared/waitlist/server/constants'
-import type { WaitlistFilters } from '@outname/shared/waitlist/server/service'
-import { AppShell } from '@outname/ui/components/layout/app-shell'
+import {
+  listWaitlistEntries,
+  listWaitlistFilterValues,
+  type WaitlistFilters,
+} from '@outname/shared/waitlist/server/service'
 import { Badge } from '@outname/ui/components/ui/badge'
 import { Button } from '@outname/ui/components/ui/button'
 import {
@@ -86,11 +90,9 @@ export default async function WaitlistSettingsPage({
   }>
 }) {
   return (
-    <AppShell>
-      <Suspense fallback={<WaitlistSettingsFallback />}>
-        <WaitlistSettingsContent searchParams={searchParams} />
-      </Suspense>
-    </AppShell>
+    <Suspense fallback={<WaitlistSettingsFallback />}>
+      <WaitlistSettingsContent searchParams={searchParams} />
+    </Suspense>
   )
 }
 
@@ -106,24 +108,12 @@ async function WaitlistSettingsContent({
     status?: string
   }>
 }) {
-  await connection()
-  const [
-    { requireWaitlistManageAccess },
-    { listWaitlistEntries, listWaitlistFilterValues },
-    params,
-  ] = await Promise.all([
-    import('@outname/auth/server/auth-guard'),
-    import('@outname/shared/waitlist/server/service'),
-    searchParams,
-  ])
+  const [, params] = await Promise.all([connection(), searchParams])
 
-  await requireWaitlistManageAccess()
   const filters = buildFilters(params)
-
-  const [entries, filterValues] = await Promise.all([
-    listWaitlistEntries(filters),
-    listWaitlistFilterValues(),
-  ])
+  const [entries, filterValues] = await requireWaitlistManageAccess().then(() =>
+    Promise.all([listWaitlistEntries(filters), listWaitlistFilterValues()])
+  )
 
   return (
     <>

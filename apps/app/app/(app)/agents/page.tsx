@@ -7,7 +7,6 @@ import {
 import { getCachedAgentsForUser } from '@outname/shared/server/data'
 import { createPrivatePageMetadata } from '@outname/shared/server/site-metadata'
 import { getUserTimeDisplay } from '@outname/shared/server/user-time-display'
-import { AppShell } from '@outname/ui/components/layout/app-shell'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Suspense } from 'react'
@@ -19,7 +18,7 @@ export const metadata: Metadata = createPrivatePageMetadata(
 
 export default function AgentsListPage() {
   return (
-    <AppShell>
+    <>
       <header className="mb-12 border-foreground border-t-4 pt-6">
         <div className="grid gap-8 md:grid-cols-[minmax(0,7fr)_minmax(14rem,3fr)] md:items-end">
           <div>
@@ -44,7 +43,7 @@ export default function AgentsListPage() {
       <Suspense fallback={<AgentsListSkeleton />}>
         <AgentsListBody />
       </Suspense>
-    </AppShell>
+    </>
   )
 }
 

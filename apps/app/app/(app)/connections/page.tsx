@@ -3,7 +3,6 @@ import { ConnectionsList } from '@outname/shared/connections/components/connecti
 import { listConnectors } from '@outname/shared/connections/registry'
 import { getCachedUserConnections } from '@outname/shared/server/data'
 import { createPrivatePageMetadata } from '@outname/shared/server/site-metadata'
-import { AppShell } from '@outname/ui/components/layout/app-shell'
 import { ConnectionsSectionSkeleton } from '@outname/ui/components/skeletons'
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
@@ -19,7 +18,7 @@ export default function ConnectionsPage({
   searchParams: Promise<{ connection?: string; reason?: string }>
 }) {
   return (
-    <AppShell>
+    <>
       <header className="mb-12 border-foreground border-t-4 pt-6 md:mb-16">
         <p className="swiss-label mb-4 text-accent">09. Connections</p>
         <h1 className="font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
@@ -38,7 +37,7 @@ export default function ConnectionsPage({
       <Suspense fallback={<ConnectionsSectionSkeleton />}>
         <ConnectionsSection />
       </Suspense>
-    </AppShell>
+    </>
   )
 }
 

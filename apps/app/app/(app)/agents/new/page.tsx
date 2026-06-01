@@ -2,7 +2,6 @@ import { requireSession } from '@outname/auth/server/auth-guard'
 import { AgentCreationChat } from '@outname/shared/agents/components/agent-creation-chat'
 import { createPrivatePageMetadata } from '@outname/shared/server/site-metadata'
 import { getUserTimeDisplay } from '@outname/shared/server/user-time-display'
-import { AppShell } from '@outname/ui/components/layout/app-shell'
 import { Suspense } from 'react'
 
 export const metadata = createPrivatePageMetadata(
@@ -12,7 +11,7 @@ export const metadata = createPrivatePageMetadata(
 
 export default function NewAgentPage() {
   return (
-    <AppShell>
+    <>
       <header className="mb-8 border-foreground border-t-4 pt-6">
         <p className="swiss-label mb-4 text-accent">03. New agent</p>
         <h1 className="max-w-4xl font-black font-serif text-4xl uppercase leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl xl:text-7xl">
@@ -33,7 +32,7 @@ export default function NewAgentPage() {
           <NewAgentChat />
         </Suspense>
       </section>
-    </AppShell>
+    </>
   )
 }
 
