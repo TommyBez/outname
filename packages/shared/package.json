@@ -1,0 +1,26 @@
+{
+  "name": "@outname/shared",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    "./next/create-outname-next-config": "./next/create-outname-next-config.ts",
+    "./vercel-related-projects": "./vercel-related-projects.ts",
+    "./*": "./*"
+  },
+  "scripts": {
+    "build": "pnpm typecheck",
+    "lint": "ultracite check .",
+    "react-doctor": "npx react-doctor@latest --verbose .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@next/mdx": "^16.2.6",
+    "@vercel/related-projects": "1.1.0",
+    "@vercel/sandbox": "2.0.0",
+    "botid": "^1.5.11",
+    "next": "16.2.4",
+    "remark-gfm": "^4.0.1",
+    "server-only": "^0.0.1",
+    "zod": "^4.4.3"
+  }
+}

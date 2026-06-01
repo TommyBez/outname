@@ -1,7 +1,6 @@
 import createMDX from '@next/mdx'
 import { withBotId } from 'botid/next/config'
 import type { NextConfig } from 'next'
-import { withWorkflow } from 'workflow/next'
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
@@ -16,4 +15,4 @@ const withMDX = createMDX({
   },
 })
 
-export default withWorkflow(withMDX(withBotId(nextConfig)))
+export default withMDX(withBotId(nextConfig))

@@ -1,0 +1,24 @@
+{
+  "name": "@outname/workflow",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    "./api": "./api.ts",
+    "./next": "./next.ts",
+    "./runtime": "./runtime.ts"
+  },
+  "scripts": {
+    "build": "pnpm typecheck",
+    "lint": "ultracite check .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "turbo": {
+    "typecheck": {
+      "dependsOn": []
+    }
+  },
+  "dependencies": {
+    "next": "16.2.4",
+    "workflow": "^4.2.4"
+  }
+}

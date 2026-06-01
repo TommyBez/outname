@@ -1,0 +1,13 @@
+import { AgentMemoryFiles } from '@outname/shared/agents/components/agent-memory-pages'
+import { createPrivatePageMetadata } from '@outname/shared/server/site-metadata'
+
+type Params = Promise<{ agentId: string }>
+
+export const metadata = createPrivatePageMetadata(
+  'Agent memory files',
+  'Browse private OUTNA.ME agent sandbox memory files.'
+)
+
+export default function AgentMemoryFilesPage({ params }: { params: Params }) {
+  return <AgentMemoryFiles params={params} />
+}

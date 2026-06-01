@@ -1,0 +1,20 @@
+{
+  "name": "@outname/email",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    "./*": "./*"
+  },
+  "scripts": {
+    "build": "pnpm typecheck",
+    "lint": "ultracite check .",
+    "react-doctor": "npx react-doctor@latest --verbose .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@outname/shared": "workspace:*",
+    "react": "19.2.5",
+    "react-dom": "19.2.5",
+    "react-email": "^6.1.4"
+  }
+}

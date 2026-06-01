@@ -1,0 +1,92 @@
+{
+  "serverAuthFunctionNames": [
+    "requireSession",
+    "requireUserId",
+    "requireWaitlistManageAccess"
+  ],
+  "ignore": {
+    "files": [
+      ".agents/skills/**",
+      ".claude/skills/**",
+      ".next/**",
+      "apps/*/app/.well-known/**",
+      "apps/*/.next/**",
+      "packages/ai/components/ai-elements/**",
+      "packages/ui/components/ui/**",
+      "test/workflow-server-app/.next/**",
+      "test/workflow-server-app/app/.well-known/**"
+    ],
+    "overrides": [
+      {
+        "files": [
+          "apps/*/app/**/opengraph-image.tsx",
+          "apps/*/app/**/twitter-image.tsx"
+        ],
+        "rules": ["react-doctor/only-export-components"]
+      },
+      {
+        "files": ["apps/*/mdx-components.tsx"],
+        "rules": ["react-doctor/only-export-components"]
+      },
+      {
+        "files": [
+          "apps/video/remotion/**",
+          "packages/shared/marketing/components/landing/composable-workbench/**",
+          "packages/ui/components/social/**"
+        ],
+        "rules": [
+          "react-doctor/design-no-em-dash-in-jsx-text",
+          "react-doctor/design-no-redundant-padding-axes",
+          "react-doctor/design-no-redundant-size-axes",
+          "react-doctor/design-no-three-period-ellipsis",
+          "react-doctor/no-inline-exhaustive-style",
+          "react-doctor/no-long-transition-duration",
+          "react-doctor/no-multi-comp",
+          "react-doctor/no-pure-black-background",
+          "react-doctor/no-render-in-render",
+          "react-doctor/no-wide-letter-spacing",
+          "react-doctor/rendering-svg-precision"
+        ]
+      },
+      {
+        "files": ["package.json"],
+        "rules": ["deslop/unused-dependency", "deslop/unused-dev-dependency"]
+      },
+      {
+        "files": [
+          "packages/ui/components/ui/use-mobile.tsx",
+          "packages/ui/hooks/use-mobile.ts",
+          "packages/ui/hooks/use-toast.ts"
+        ],
+        "rules": ["deslop/unused-file"]
+      },
+      {
+        "files": ["apps/app/app/agents/[agentId]/layout.tsx"],
+        "rules": ["react-doctor/jsx-no-jsx-as-prop"]
+      },
+      {
+        "files": ["apps/web/app/blog/[slug]/page.tsx"],
+        "rules": ["react-doctor/no-dynamic-import-path"]
+      },
+      {
+        "files": [
+          "packages/shared/agents/components/agent-events-workspace.tsx"
+        ],
+        "rules": ["react-doctor/react-compiler-destructure-method"]
+      },
+      {
+        "files": [
+          "packages/shared/waitlist/server/actions.ts",
+          "packages/shared/budgets/server/spend.ts",
+          "packages/shared/channels/server/dispatch.ts",
+          "packages/shared/channels/server/routing.ts",
+          "packages/shared/connections/runtime/credential.ts"
+        ],
+        "rules": [
+          "react-doctor/async-parallel",
+          "react-doctor/async-await-in-loop"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,103 @@
+import {
+  deleteBudgetRuleForScope,
+  listAgentBudgetRules,
+  upsertBudgetRule,
+} from '@outname/shared/budgets/server/rules'
+import type { BudgetPeriod } from '@outname/shared/budgets/server/types'
+import { revalidateAppAfter } from '@outname/shared/server/app-revalidation-after'
+import {
+  agentTag,
+  userAgentsTag,
+  userBudgetTag,
+} from '@outname/shared/server/cache-tags'
+import { revalidatePath, revalidateTag } from 'next/cache'
+
+const BUDGET_PERIOD_KEYS: Array<{
+  key: 'daily' | 'weekly' | 'monthly'
+  period: BudgetPeriod
+}> = [
+  { key: 'daily', period: 'daily' },
+  { key: 'weekly', period: 'weekly' },
+  { key: 'monthly', period: 'monthly' },
+]
+
+export async function loadAgentBudget(
+  agentId: string,
+  userId: string
+): Promise<{
+  daily: number | null
+  weekly: number | null
+  monthly: number | null
+}> {
+  const rules = await listAgentBudgetRules({ userId, agentId })
+  const result = { daily: null, weekly: null, monthly: null } as {
+    daily: number | null
+    weekly: number | null
+    monthly: number | null
+  }
+  for (const rule of rules) {
+    if (!rule.enabled) {
+      continue
+    }
+    const limit = Number(rule.limitUsd)
+    if (!Number.isFinite(limit) || limit <= 0) {
+      continue
+    }
+    result[rule.period] = limit
+  }
+  return result
+}
+
+export async function applyAgentBudget(input: {
+  agentId: string
+  userId: string
+  daily: number | null
+  weekly: number | null
+  monthly: number | null
+}): Promise<{
+  ok: true
+  applied: Array<{ period: BudgetPeriod; limitUsd: number | null }>
+}> {
+  const applied: Array<{ period: BudgetPeriod; limitUsd: number | null }> = []
+  for (const { key, period } of BUDGET_PERIOD_KEYS) {
+    const value = input[key]
+    if (value === null) {
+      const removed = await deleteBudgetRuleForScope({
+        userId: input.userId,
+        agentId: input.agentId,
+        period,
+      })
+      if (removed) {
+        applied.push({ period, limitUsd: null })
+      }
+      continue
+    }
+    if (!Number.isFinite(value) || value <= 0) {
+      continue
+    }
+    await upsertBudgetRule({
+      userId: input.userId,
+      agentId: input.agentId,
+      period,
+      limitUsd: value,
+    })
+    applied.push({ period, limitUsd: value })
+  }
+  return { ok: true, applied }
+}
+
+export function revalidateAgentEditSurfaces(
+  agentId: string,
+  userId: string
+): void {
+  const tags = [userAgentsTag(userId), agentTag(agentId), userBudgetTag(userId)]
+  for (const tag of tags) {
+    revalidateTag(tag, 'max')
+  }
+  revalidateAppAfter(tags.map((tag): [string, 'max'] => [tag, 'max']))
+  revalidatePath('/agents')
+  revalidatePath(`/agents/${agentId}`)
+  revalidatePath(`/agents/${agentId}/configure`)
+  revalidatePath(`/agents/${agentId}/edit`)
+  revalidatePath('/')
+}
