@@ -44,6 +44,8 @@ export function getRelatedProjectOriginById(
 
   const relatedProjectsEntries = relatedProjects({ noThrow: true })
 
+  console.log('this is the relatedProjectsEntries length', relatedProjectsEntries.length)
+
   const project = relatedProjectsEntries.find(
     (candidate) => candidate.project.id === trimmedProjectId
   )

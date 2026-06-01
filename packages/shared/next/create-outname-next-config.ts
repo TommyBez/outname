@@ -39,8 +39,7 @@ function resolveOrigins(role: OutnameAppRole): {
 } {
   const apiOrigin =
     role === 'api'
-      ? process.env.BETTER_AUTH_URL?.trim() ||
-        getCurrentProjectOrigin(LOCAL_PROJECT_ORIGINS.api)
+      ? getCurrentProjectOrigin(LOCAL_PROJECT_ORIGINS.api)
       : getRelatedProjectOriginById(
           process.env.VERCEL_API_PROJECT_ID,
           LOCAL_PROJECT_ORIGINS.api
