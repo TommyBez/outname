@@ -1,5 +1,3 @@
-import { relatedProjects, withRelatedProject } from '@vercel/related-projects'
-
 const HOST_PATTERN = /^[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?$/i
 const HTTP_URL_PATTERN = /^https?:\/\//i
 
@@ -7,6 +5,12 @@ export const LOCAL_PROJECT_ORIGINS = {
   api: 'http://localhost:3001',
   app: 'http://localhost:3000',
   web: 'http://localhost:3002',
+} as const
+
+export const PROJECT_NAMES = {
+  api: 'outname-api',
+  app: 'outname-app',
+  web: 'outname',
 } as const
 
 function toOrigin(value: string | undefined): string | null {
@@ -31,29 +35,6 @@ function toOrigin(value: string | undefined): string | null {
   } catch {
     return null
   }
-}
-
-export function getRelatedProjectOriginById(
-  projectId: string | undefined,
-  fallbackOrigin: string
-): string {
-  const trimmedProjectId = projectId?.trim()
-  if (!trimmedProjectId) {
-    return fallbackOrigin
-  }
-
-  const relatedProjectsEntries = relatedProjects({ noThrow: true })
-
-  console.log('this is the relatedProjectsEntries length', relatedProjectsEntries.length)
-
-  const project = relatedProjectsEntries.find(
-    (candidate) => candidate.project.id === trimmedProjectId
-  )
-
-  return withRelatedProject({
-    defaultHost: fallbackOrigin,
-    projectName: project?.project?.name ?? '',
-  })
 }
 
 export function getCurrentProjectOrigin(fallbackOrigin: string): string {
