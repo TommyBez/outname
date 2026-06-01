@@ -1,3 +1,4 @@
+import { getAppLoginUrl } from '@outname/shared/app-url'
 import { WaitlistSignupForm } from '@outname/shared/waitlist/components/waitlist-signup-form'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -71,7 +72,7 @@ async function WaitlistPageContent({
         Already have access?{' '}
         <Link
           className="font-bold text-accent underline-offset-4 hover:underline"
-          href="/login?from=/dashboard"
+          href={getAppLoginUrl('/dashboard')}
         >
           Sign in
         </Link>

@@ -1,4 +1,5 @@
 import { SiGithub } from '@icons-pack/react-simple-icons'
+import { getAppLoginUrl } from '@outname/shared/app-url'
 import { NavLink } from '@outname/shared/marketing/components/landing/landing-links'
 import { LandingSocialLink } from '@outname/shared/marketing/components/landing/landing-social-link'
 import { githubRepositoryUrl } from '@outname/shared/marketing/data/social-links'
@@ -24,7 +25,7 @@ export function LandingNav({ waitlistEnabled }: { waitlistEnabled: boolean }) {
             {waitlistEnabled ? (
               <NavLink href="/waitlist?source=landing-nav">Waitlist</NavLink>
             ) : null}
-            <NavLink href="/login?from=/dashboard">Login</NavLink>
+            <NavLink href={getAppLoginUrl('/dashboard')}>Login</NavLink>
           </div>
           <LandingSocialLink
             className="border-foreground sm:border-l-2"

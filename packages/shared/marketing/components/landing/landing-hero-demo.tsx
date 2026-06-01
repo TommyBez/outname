@@ -1,5 +1,6 @@
 'use client'
 
+import { getAppLoginUrl } from '@outname/shared/app-url'
 import {
   PrimaryLink,
   SecondaryLink,
@@ -55,7 +56,9 @@ export function LandingHeroDemo({
                 Join the waitlist
               </PrimaryLink>
             ) : null}
-            <SecondaryLink href="/login?from=/agents/new">Login</SecondaryLink>
+            <SecondaryLink href={getAppLoginUrl('/agents/new')}>
+              Login
+            </SecondaryLink>
           </div>
         </div>
       </div>

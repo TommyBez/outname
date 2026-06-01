@@ -1,3 +1,4 @@
+import { getAppLoginUrl } from '@outname/shared/app-url'
 import {
   LegalLink,
   LegalList,
@@ -55,8 +56,9 @@ export default function SupportPage() {
           <LegalList>
             <li>
               <strong className="text-foreground">Sign in</strong>, use email
-              OTP at <LegalLink href="/login?from=/dashboard">/login</LegalLink>
-              . Codes expire quickly; request a new one if needed.
+              OTP at{' '}
+              <LegalLink href={getAppLoginUrl('/dashboard')}>/login</LegalLink>.
+              Codes expire quickly; request a new one if needed.
             </li>
             {waitlistEnabled ? (
               <li>
