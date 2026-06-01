@@ -1,7 +1,4 @@
-import {
-  relatedProjects,
-  type VercelRelatedProject,
-} from '@vercel/related-projects'
+import { relatedProjects, withRelatedProject } from '@vercel/related-projects'
 
 const HOST_PATTERN = /^[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?$/i
 const HTTP_URL_PATTERN = /^https?:\/\//i
@@ -50,7 +47,10 @@ export function getRelatedProjectOriginById(
     (candidate) => candidate.project.id === trimmedProjectId
   )
 
-  return getProjectOrigin(project ?? null) ?? fallbackOrigin
+  return withRelatedProject({
+    defaultHost: fallbackOrigin,
+    projectName: project?.project?.name ?? '',
+  })
 }
 
 export function getCurrentProjectOrigin(fallbackOrigin: string): string {
@@ -67,25 +67,4 @@ export function getCurrentProjectOrigin(fallbackOrigin: string): string {
   }
 
   return fallbackOrigin
-}
-
-function getProjectOrigin(project: VercelRelatedProject | null): string | null {
-  if (!project) {
-    return null
-  }
-
-  if (process.env.VERCEL_ENV === 'preview') {
-    return toOrigin(project.preview.customEnvironment ?? project.preview.branch)
-  }
-
-  if (process.env.VERCEL_ENV === 'production') {
-    return toOrigin(project.production.alias ?? project.production.url)
-  }
-
-  return toOrigin(
-    project.preview.customEnvironment ??
-      project.preview.branch ??
-      project.production.alias ??
-      project.production.url
-  )
 }
