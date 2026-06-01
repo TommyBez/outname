@@ -1,0 +1,14 @@
+{
+  "name": "@outname/email-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "pnpm typecheck",
+    "dev": "email dev --dir ../../packages/email --port 3004",
+    "lint": "ultracite check .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@outname/email": "workspace:*"
+  }
+}
