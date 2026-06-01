@@ -5,7 +5,6 @@ import {
 
 const HOST_PATTERN = /^[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?$/i
 const HTTP_URL_PATTERN = /^https?:\/\//i
-const EMPTY_STRING = ''
 
 export const LOCAL_PROJECT_ORIGINS = {
   admin: 'http://localhost:3003',
@@ -40,7 +39,7 @@ function toOrigin(value: string | undefined): string | null {
 
 export function getRelatedProjectOriginById(
   projectId: string | undefined,
-  fallbackOrigin = EMPTY_STRING
+  fallbackOrigin: string
 ): string {
   const trimmedProjectId = projectId?.trim()
   if (!trimmedProjectId) {
