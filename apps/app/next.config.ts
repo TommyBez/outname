@@ -29,6 +29,8 @@ const adminOrigin = getRelatedProjectOriginById(
   LOCAL_PROJECT_ORIGINS.admin
 )
 
+console.log({ adminOrigin, apiOrigin, appOrigin, webOrigin })
+
 const nextConfig: NextConfig = {
   cacheComponents: true,
   env: {
