@@ -33,7 +33,7 @@ type ListedSandbox = Awaited<
 >['sandboxes'][number]
 
 function printUsage(): void {
-  console.log(`Destroy Vercel sandboxes for the current Vercel project.
+  console.log(`Destroy non-persistent Vercel sandboxes for the current Vercel project.
 
 Usage:
   pnpm vercel:sandboxes:destroy-all [options]
@@ -44,6 +44,9 @@ Options:
                           script only prints a dry-run plan.
   --yes                   Skip the interactive confirmation prompt.
   --help                  Show this help text.
+
+Notes:
+  Persistent sandboxes are listed for visibility but are never deleted.
 
 Environment:
   SANDOX_TEAM_ID           Vercel team id for Sandbox API calls.
@@ -124,19 +127,29 @@ async function listSandboxes(project: ProjectRef): Promise<ListedSandbox[]> {
   return sandboxes
 }
 
+function selectNonPersistentSandboxes(
+  sandboxes: readonly ListedSandbox[]
+): ListedSandbox[] {
+  return sandboxes.filter((sandbox) => !sandbox.persistent)
+}
+
 function printPlan(
   project: ProjectRef,
-  sandboxes: readonly ListedSandbox[]
+  sandboxes: readonly ListedSandbox[],
+  skippedPersistentCount: number
 ): void {
   console.log(
-    `Found ${sandboxes.length} named sandboxes to delete in ${project.name} (${project.id}).`
+    `Found ${sandboxes.length} non-persistent named sandbox(es) to delete in ${project.name} (${project.id}).`
   )
+  if (skippedPersistentCount > 0) {
+    console.log(`Skipping ${skippedPersistentCount} persistent sandbox(es).`)
+  }
 
   if (sandboxes.length === 0) {
     return
   }
 
-  console.log('\nNamed sandboxes')
+  console.log('\nNon-persistent sandboxes')
   for (const sandbox of sandboxes) {
     console.log(`  - ${sandbox.name} [${sandbox.status}]`)
   }
@@ -242,11 +255,13 @@ async function main(): Promise<void> {
   const project = resolveSandboxProject(getVercelSandboxCredentials())
 
   console.log(
-    `Scanning current Vercel project for sandboxes: ${project.name} (${project.id})`
+    `Scanning current Vercel project for non-persistent sandboxes: ${project.name} (${project.id})`
   )
 
-  const sandboxes = await listSandboxes(project)
-  printPlan(project, sandboxes)
+  const listedSandboxes = await listSandboxes(project)
+  const sandboxes = selectNonPersistentSandboxes(listedSandboxes)
+  const skippedPersistentCount = listedSandboxes.length - sandboxes.length
+  printPlan(project, sandboxes, skippedPersistentCount)
 
   if (sandboxes.length === 0) {
     console.log('\nNothing to do.')
@@ -265,7 +280,9 @@ async function main(): Promise<void> {
     return
   }
 
-  console.log(`\nCleanup complete for ${sandboxes.length} named sandboxes.`)
+  console.log(
+    `\nCleanup complete for ${sandboxes.length} non-persistent named sandbox(es).`
+  )
 }
 
 main().catch((error: unknown) => {
