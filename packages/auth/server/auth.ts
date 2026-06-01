@@ -14,7 +14,6 @@ const isProduction = process.env.NODE_ENV === 'production'
 const devTrustedOrigins = [
   'http://localhost:3000',
   'http://localhost:3002',
-  'http://localhost:3003',
   'https://*.vercel.app',
   'https://*.vercel.run',
   'https://*.v0.app',
@@ -49,7 +48,6 @@ function configuredTrustedOrigins(): string[] {
     process.env.BETTER_AUTH_URL,
     process.env.NEXT_PUBLIC_WEB_URL,
     process.env.NEXT_PUBLIC_APP_URL,
-    process.env.NEXT_PUBLIC_ADMIN_URL,
     process.env.NEXT_PUBLIC_API_BASE_URL,
     ...parseTrustedOriginsEnv(),
   ].filter((origin): origin is string => Boolean(origin))

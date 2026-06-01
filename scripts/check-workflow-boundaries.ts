@@ -11,7 +11,7 @@ const ignoredDirectories = new Set([
   'test',
 ])
 const workflowPackagePrefix = 'packages/workflow/'
-const frontendAppPrefixes = ['apps/app/', 'apps/web/', 'apps/admin/']
+const frontendAppPrefixes = ['apps/app/', 'apps/web/']
 const sourceExtensions = new Set(['.ts', '.tsx', '.mts', '.cts'])
 
 const directWorkflowImportPattern =

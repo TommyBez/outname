@@ -11,12 +11,7 @@ console.log('[vercel.ts]apiProjectId', apiProjectId)
 console.log('[vercel.ts]webProjectId', webProjectId)
 
 /**
- * This app (and the api + web trio) uses its full allowance of 3 Related Projects
- * to reference the other two apps in the main group + the admin project.
- *
- * Admin itself is excluded from declaring any related projects (see apps/admin/vercel.ts).
- * The admin deployment receives the api/app/web origins via explicit
- * NEXT_PUBLIC_*_URL environment variables set on the admin Vercel project.
+ * Related projects for cross-app URL resolution in preview/production.
  */
 export const config: VercelConfig = {
   relatedProjects: [apiProjectId, webProjectId],

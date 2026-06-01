@@ -144,7 +144,10 @@
         "rules": ["react-doctor/no-dynamic-import-path"]
       },
       {
-        "files": ["app/waitlist/page.tsx", "apps/admin/app/waitlist/page.tsx"],
+        "files": [
+          "app/waitlist/page.tsx",
+          "apps/app/app/settings/waitlist/page.tsx"
+        ],
         "rules": ["react-doctor/async-parallel"]
       },
       {

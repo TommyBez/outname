@@ -130,7 +130,7 @@ Most formatting and common issues are automatically fixed by Biome. Run `pnpm dl
 
 This is a Turborepo monorepo with deployable Next.js apps and local-only email/video workspaces.
 
-- **Dev servers**: `pnpm dev:app` → http://localhost:3000, `pnpm dev:api` → http://localhost:3001, `pnpm dev:web` → http://localhost:3002, `pnpm dev:admin` → http://localhost:3003, `pnpm dev:email` → http://localhost:3004, `pnpm dev:video` → http://localhost:3005
+- **Dev servers**: `pnpm dev:app` → http://localhost:3000, `pnpm dev:api` → http://localhost:3001, `pnpm dev:web` → http://localhost:3002, `pnpm dev:email` → http://localhost:3004, `pnpm dev:video` → http://localhost:3005
 - **Database**: Remote Neon Postgres via `DATABASE_URL` (no local DB required). Use `@outname/db` (`pg` + `attachDatabasePool` per [Neon + Vercel connection methods](https://neon.com/docs/guides/vercel-connection-methods)). Use Neon's pooled connection string (hostname includes `-pooler`). In the session workflow codepath, prefer normal static imports even for step-oriented modules that touch `@outname/db` or server helpers. Keep `await import(...)` only when you truly want optional-path lazy loading or package/runtime-local loading (for example the optional child-trace path or `bash-tool` package loading).
 - **Lint**: `pnpm lint` (Ultracite/Biome)
 - **Format**: `pnpm fix` (auto-fix lint/format issues)
@@ -143,7 +143,7 @@ Required secrets are injected automatically. A `.env.local` must exist for Next.
 DATABASE_URL=<from env>
 BETTER_AUTH_SECRET=<from env>
 BETTER_AUTH_URL=http://localhost:3001
-BETTER_AUTH_TRUSTED_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3003
+BETTER_AUTH_TRUSTED_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:3002
 AUTH_COOKIE_DOMAIN=
 CONNECTION_ENCRYPTION_KEY=<from env>
 AI_GATEWAY_API_KEY=<from env>
@@ -151,7 +151,6 @@ APP_REVALIDATION_SECRET=<from env>
 VERCEL_API_PROJECT_ID=
 VERCEL_APP_PROJECT_ID=
 VERCEL_WEB_PROJECT_ID=
-VERCEL_ADMIN_PROJECT_ID=
 SANDOX_TEAM_ID=<from env>
 SANDBOX_PROJECT_ID=<from env>
 SANDOX_ACCESS_TOKEN=<from env>

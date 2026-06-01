@@ -155,7 +155,6 @@
     "dev": "turbo run dev --parallel",
     "dev:web": "turbo run dev --filter=@outname/web",
     "dev:app": "turbo run dev --filter=@outname/app",
-    "dev:admin": "turbo run dev --filter=@outname/admin",
     "dev:api": "turbo run dev --filter=@outname/api",
     "dev:email": "turbo run dev --filter=@outname/email-app",
     "dev:video": "turbo run dev --filter=@outname/video-app",

@@ -2,7 +2,7 @@
 
 Open-source codebase for outname, a Turborepo monorepo for running personal AI
 agents with persistent memory, scheduled work, sandboxed execution, tool
-attachments, Slack routing, public web, admin, email preview, and video tooling.
+attachments, Slack routing, public web, email preview, and video tooling.
 
 ## What the application does
 
@@ -40,10 +40,10 @@ attachments, Slack routing, public web, admin, email preview, and video tooling.
 3. Add the environment variables from `.env.example`.
 4. Set `BETTER_AUTH_URL` to the production application URL.
 5. Create Vercel projects for the deployable apps: `apps/web`, `apps/app`,
-   `apps/admin`, and `apps/api`. `apps/email` and `apps/video` are local-only.
-6. Configure `VERCEL_API_PROJECT_ID`, `VERCEL_APP_PROJECT_ID`,
-   `VERCEL_WEB_PROJECT_ID`, and `VERCEL_ADMIN_PROJECT_ID` in the relevant
-   Vercel projects so related-project wiring can be resolved from project IDs.
+   and `apps/api`. `apps/email` and `apps/video` are local-only.
+6. Configure `VERCEL_API_PROJECT_ID`, `VERCEL_APP_PROJECT_ID`, and
+   `VERCEL_WEB_PROJECT_ID` in the relevant Vercel projects so related-project
+   wiring can be resolved from project IDs.
 7. For the API project, keep the `/api/cron/liveness` cron and run migrations
    before deployment.
 
@@ -63,7 +63,6 @@ AUTH_REPLY_TO=
 VERCEL_API_PROJECT_ID=
 VERCEL_APP_PROJECT_ID=
 VERCEL_WEB_PROJECT_ID=
-VERCEL_ADMIN_PROJECT_ID=
 ```
 
 ### Common optional integrations
@@ -97,9 +96,8 @@ pnpm dev:app
 
 Open `http://localhost:3000`. Public web runs on `pnpm dev:web`
 (`http://localhost:3002`), API on `pnpm dev:api` (`http://localhost:3001`),
-admin on `pnpm dev:admin` (`http://localhost:3003`), React Email preview on
-`pnpm dev:email` (`http://localhost:3004`), and Remotion Studio on
-`pnpm dev:video` (`http://localhost:3005`).
+React Email preview on `pnpm dev:email` (`http://localhost:3004`), and Remotion
+Studio on `pnpm dev:video` (`http://localhost:3005`).
 
 ### Local development notes
 
@@ -107,7 +105,7 @@ admin on `pnpm dev:admin` (`http://localhost:3003`), React Email preview on
   packages in `packages/*`.
 - Cross-project public URLs are derived in each app's `next.config.ts` from
   Vercel related-project metadata. Outside Vercel they fall back to localhost
-  origins (`app` `:3000`, `api` `:3001`, `web` `:3002`, `admin` `:3003`).
+  origins (`app` `:3000`, `api` `:3001`, `web` `:3002`).
 - The only required local service is the relevant Next.js dev server; email and
   video workspaces are local-only tools.
 - The database is remote; no local Postgres setup is required.
@@ -125,7 +123,6 @@ pnpm dev
 pnpm dev:app
 pnpm dev:api
 pnpm dev:web
-pnpm dev:admin
 pnpm dev:email
 pnpm dev:video
 pnpm build

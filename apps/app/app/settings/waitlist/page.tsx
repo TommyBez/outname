@@ -9,6 +9,7 @@ import {
   WAITLIST_PROFILE_TYPE_OPTIONS,
 } from '@outname/shared/waitlist/server/constants'
 import type { WaitlistFilters } from '@outname/shared/waitlist/server/service'
+import { AppShell } from '@outname/ui/components/layout/app-shell'
 import { Badge } from '@outname/ui/components/ui/badge'
 import { Button } from '@outname/ui/components/ui/button'
 import {
@@ -23,7 +24,6 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { AdminShell } from '../components/admin-shell'
 
 export const metadata: Metadata = createPrivatePageMetadata(
   'Waitlist',
@@ -86,11 +86,11 @@ export default async function WaitlistSettingsPage({
   }>
 }) {
   return (
-    <AdminShell>
+    <AppShell>
       <Suspense fallback={<WaitlistSettingsFallback />}>
         <WaitlistSettingsContent searchParams={searchParams} />
       </Suspense>
-    </AdminShell>
+    </AppShell>
   )
 }
 
@@ -108,16 +108,16 @@ async function WaitlistSettingsContent({
 }) {
   await connection()
   const [
-    { requireAdminAccess },
+    { requireWaitlistManageAccess },
     { listWaitlistEntries, listWaitlistFilterValues },
     params,
   ] = await Promise.all([
-    import('@outname/auth/server/admin-guard'),
+    import('@outname/auth/server/auth-guard'),
     import('@outname/shared/waitlist/server/service'),
     searchParams,
   ])
 
-  await requireAdminAccess()
+  await requireWaitlistManageAccess()
   const filters = buildFilters(params)
 
   const [entries, filterValues] = await Promise.all([
@@ -128,7 +128,7 @@ async function WaitlistSettingsContent({
   return (
     <>
       <header className="mb-12 border-foreground border-t-4 pt-6 md:mb-16">
-        <p className="swiss-label mb-4 text-accent">10. Admin / Waitlist</p>
+        <p className="swiss-label mb-4 text-accent">10. Settings / Waitlist</p>
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
@@ -142,9 +142,9 @@ async function WaitlistSettingsContent({
           </div>
           <Link
             className="inline-flex min-h-11 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
-            href="/"
+            href="/settings"
           >
-            Back to overview
+            Back to settings
           </Link>
         </div>
       </header>

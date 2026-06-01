@@ -23,17 +23,10 @@ function getBaseUrl() {
   return process.env.BETTER_AUTH_URL
 }
 
-function getAdminBaseUrl(): string {
-  return getRelatedProjectOriginById(
-    process.env.VERCEL_ADMIN_PROJECT_ID,
-    LOCAL_PROJECT_ORIGINS.admin
-  )
-}
-
 function getAppBaseUrl(): string {
   return getRelatedProjectOriginById(
     process.env.VERCEL_APP_PROJECT_ID,
-    getBaseUrl()
+    getBaseUrl() ?? LOCAL_PROJECT_ORIGINS.app
   )
 }
 
@@ -174,7 +167,7 @@ export async function sendWaitlistAdminSignupNotification(
     return
   }
 
-  const adminUrl = new URL('/waitlist', getAdminBaseUrl()).toString()
+  const adminUrl = new URL('/settings/waitlist', getAppBaseUrl()).toString()
   await sendResendEmail({
     idempotencyKey: createWaitlistEmailIdempotencyKey(
       'waitlist-admin-signup',

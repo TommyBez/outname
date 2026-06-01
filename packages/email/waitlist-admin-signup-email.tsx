@@ -70,7 +70,7 @@ export function WaitlistAdminSignupEmail({
 }
 
 WaitlistAdminSignupEmail.PreviewProps = {
-  adminUrl: 'https://admin.outna.me/waitlist',
+  adminUrl: 'https://app.outna.me/settings/waitlist',
   email: 'alex@example.com',
   logoUrl: '/static/outna-logo.png',
   name: 'Alex Rivera',

@@ -1,4 +1,8 @@
-import { getSession, requireSession } from '@outname/auth/server/auth-guard'
+import {
+  getSession,
+  hasWaitlistManageAccess,
+  requireSession,
+} from '@outname/auth/server/auth-guard'
 import {
   BudgetRules,
   type BudgetRuleView,
@@ -62,6 +66,10 @@ export default function SettingsPage() {
             <AiGatewaySection />
           </Suspense>
         </Section>
+
+        <Suspense fallback={null}>
+          <WaitlistAdminSection />
+        </Suspense>
       </div>
     </AppShell>
   )
@@ -134,6 +142,41 @@ async function TimezoneSection() {
   const session = await requireSession()
   const timezone = await getUserTimezone(session.user.id)
   return <TimezoneCard timezone={timezone} />
+}
+
+async function WaitlistAdminSection() {
+  const session = await getSession()
+  if (!(session && (await hasWaitlistManageAccess(session.user.id)))) {
+    return null
+  }
+
+  return (
+    <Section title="Waitlist">
+      <WaitlistSection />
+    </Section>
+  )
+}
+
+function WaitlistSection() {
+  return (
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+      <div>
+        <p className="font-black font-serif text-xl uppercase tracking-[-0.04em]">
+          Invite users and manage the waitlist
+        </p>
+        <p className="mt-0.5 text-muted-foreground text-xs">
+          Send product invites by email, review signups, and resend confirmation
+          or access messages.
+        </p>
+      </div>
+      <Link
+        className="inline-flex h-11 shrink-0 items-center justify-center self-start border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background sm:self-auto"
+        href="/settings/waitlist"
+      >
+        Open waitlist →
+      </Link>
+    </div>
+  )
 }
 
 function Section({

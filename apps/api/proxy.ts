@@ -1,16 +1,11 @@
 import { type NextRequest, NextResponse } from 'next/server'
 
-const DEFAULT_LOCAL_ORIGINS = [
-  'http://localhost:3000',
-  'http://localhost:3002',
-  'http://localhost:3003',
-]
+const DEFAULT_LOCAL_ORIGINS = ['http://localhost:3000', 'http://localhost:3002']
 
 function configuredOrigins(): string[] {
   return [
     process.env.NEXT_PUBLIC_WEB_URL,
     process.env.NEXT_PUBLIC_APP_URL,
-    process.env.NEXT_PUBLIC_ADMIN_URL,
     process.env.BETTER_AUTH_URL,
     ...(process.env.BETTER_AUTH_TRUSTED_ORIGINS?.split(',') ?? []),
     ...DEFAULT_LOCAL_ORIGINS,

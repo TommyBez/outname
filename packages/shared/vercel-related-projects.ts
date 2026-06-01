@@ -4,7 +4,6 @@ const HOST_PATTERN = /^[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?$/i
 const HTTP_URL_PATTERN = /^https?:\/\//i
 
 export const LOCAL_PROJECT_ORIGINS = {
-  admin: 'http://localhost:3003',
   api: 'http://localhost:3001',
   app: 'http://localhost:3000',
   web: 'http://localhost:3002',
@@ -45,7 +44,10 @@ export function getRelatedProjectOriginById(
 
   const relatedProjectsEntries = relatedProjects({ noThrow: true })
 
-  console.log('this is the relatedProjectsEntries length', relatedProjectsEntries.length)
+  console.log(
+    'this is the relatedProjectsEntries length',
+    relatedProjectsEntries.length
+  )
 
   // for (const project of relatedProjectsEntries) {
   //   console.dir(project, { depth: null })

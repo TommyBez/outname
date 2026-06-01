@@ -37,7 +37,6 @@ function getBotIdExtraAllowedHosts(): string[] {
   return [
     process.env.NEXT_PUBLIC_WEB_URL,
     process.env.NEXT_PUBLIC_APP_URL,
-    process.env.NEXT_PUBLIC_ADMIN_URL,
     ...splitCommaSeparated(process.env.BETTER_AUTH_TRUSTED_ORIGINS),
   ].reduce<string[]>((hosts, value) => {
     if (!value) {
