@@ -95,6 +95,7 @@ export function createOutnameNextConfig(
   input: CreateOutnameNextConfigInput
 ): NextConfig {
   const { apiOrigin, appOrigin, webOrigin } = resolveOrigins(input.role)
+  console.log({ apiOrigin, appOrigin, webOrigin })
   const transpilePackages = [
     ...BASE_WORKSPACE_PACKAGES,
     ...(input.extraTranspilePackages ?? []),
