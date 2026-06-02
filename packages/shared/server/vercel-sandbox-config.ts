@@ -3,9 +3,9 @@ import type { Sandbox } from '@vercel/sandbox'
 const APP_TAG = 'outname'
 const DEFAULT_ENV_TAG = 'development'
 const SANDBOX_CREDENTIAL_KEYS = [
-  'SANDOX_TEAM_ID',
+  'SANDBOX_TEAM_ID',
   'SANDBOX_PROJECT_ID',
-  'SANDOX_ACCESS_TOKEN',
+  'SANDBOX_ACCESS_TOKEN',
 ] as const
 
 type SandboxCreateOptions = NonNullable<Parameters<typeof Sandbox.create>[0]>
@@ -55,8 +55,8 @@ function requiredSandboxCredential(key: SandboxCredentialKey): string {
 export function getVercelSandboxCredentials(): VercelSandboxCredentials {
   return {
     projectId: requiredSandboxCredential('SANDBOX_PROJECT_ID'),
-    teamId: requiredSandboxCredential('SANDOX_TEAM_ID'),
-    token: requiredSandboxCredential('SANDOX_ACCESS_TOKEN'),
+    teamId: requiredSandboxCredential('SANDBOX_TEAM_ID'),
+    token: requiredSandboxCredential('SANDBOX_ACCESS_TOKEN'),
   }
 }
 

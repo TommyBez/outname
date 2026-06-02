@@ -1,5 +1,3 @@
-import type { Sandbox } from '@vercel/sandbox'
-
 export interface RepoWorkspaceCommandResult {
   exitCode: number
   stderr: string
@@ -42,8 +40,16 @@ export interface RepoWorkspaceBashToolkit {
   }
 }
 
+export interface RepoWorkspaceHandle {
+  attachmentToolId: string
+  repoUrl: string
+  rootPath: string
+  runId: string
+  sandboxName: string
+  workspaceKey: string
+}
+
 export interface RepoWorkspace {
   bashTool: RepoWorkspaceBashToolkit
-  rootPath: string
-  sandbox: Sandbox
+  handle: RepoWorkspaceHandle
 }
