@@ -1,5 +1,6 @@
 import { auth } from '@outname/auth/server/auth'
 import {
+  buildAppOriginUrl,
   decodeOAuthState,
   oauthPkceCookieName,
   oauthRedirectUri,
@@ -146,15 +147,12 @@ async function readProfileMetadata(
 }
 
 function redirectWithCookieClear(
-  request: NextRequest,
+  _request: NextRequest,
   connectorId: string,
   returnTo: string,
   params: Record<string, string>
 ): Response {
-  const target = new URL(returnTo, request.url)
-  for (const [key, value] of Object.entries(params)) {
-    target.searchParams.set(key, value)
-  }
+  const target = buildAppOriginUrl(returnTo, params)
   const response = NextResponse.redirect(target)
   response.cookies.set({
     name: oauthPkceCookieName(connectorId),

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { auth } from '@outname/auth/server/auth'
 import {
+  buildAppOriginUrl,
   createPkceVerifier,
   encodeOAuthState,
   normalizeConnectionReturnTo,
@@ -26,7 +27,7 @@ export async function GET(
 ): Promise<Response> {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    return NextResponse.redirect(buildAppOriginUrl('/login'))
   }
 
   const { connectorId } = await params
@@ -90,12 +91,11 @@ export async function GET(
 }
 
 function redirectWithError(
-  request: NextRequest,
+  _request: NextRequest,
   returnTo: string,
   reason: string
 ): Response {
-  const target = new URL(returnTo, request.url)
-  target.searchParams.set('connection', 'error')
-  target.searchParams.set('reason', reason)
-  return NextResponse.redirect(target)
+  return NextResponse.redirect(
+    buildAppOriginUrl(returnTo, { connection: 'error', reason })
+  )
 }
