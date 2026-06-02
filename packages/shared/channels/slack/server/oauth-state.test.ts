@@ -27,6 +27,14 @@ describe('Slack OAuth state helpers', () => {
     )
   })
 
+  it('builds Slack callback URLs when the app origin has no trailing slash', () => {
+    process.env.NEXT_PUBLIC_APP_URL = 'https://app.example.com'
+
+    expect(slackOAuthRedirectUri()).toBe(
+      'https://app.example.com/api/channels/slack/oauth/callback'
+    )
+  })
+
   it('normalizes return targets to app-local paths', () => {
     expect(normalizeSlackOAuthReturnTo('/channels?tab=slack#install')).toBe(
       '/channels?tab=slack#install'

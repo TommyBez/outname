@@ -143,8 +143,8 @@ export function connectionOAuthRedirectUri(connectorId: string): string {
 
 /**
  * Build an absolute URL for a user-facing page on the frontend App origin
- * (e.g. /connections, /login) using the public env var. Falls back to the
- * local app origin when the env is not available.
+ * (e.g. /connections, /login). This delegates to buildAppUrl, which uses
+ * getAppBaseUrl; both require NEXT_PUBLIC_APP_URL and throw if it is not set.
  */
 export function buildAppOriginUrl(
   path: string,

@@ -40,6 +40,14 @@ describe('app url helpers', () => {
     )
   })
 
+  it('keeps repeated leading slashes on the app origin', () => {
+    process.env.NEXT_PUBLIC_APP_URL = 'https://app.example.com/'
+
+    expect(buildAppUrl('//evil.example/path')).toBe(
+      'https://app.example.com/evil.example/path'
+    )
+  })
+
   it('builds login URLs on the app origin', () => {
     process.env.NEXT_PUBLIC_APP_URL = 'https://app.example.com'
 

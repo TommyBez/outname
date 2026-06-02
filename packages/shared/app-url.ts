@@ -1,4 +1,5 @@
 const TRAILING_SLASHES = /\/+$/
+const LEADING_SLASHES = /^\/+/
 
 export function getAppBaseUrl(): string {
   return normalizePublicUrl(process.env.NEXT_PUBLIC_APP_URL)
@@ -8,7 +9,7 @@ export function buildAppUrl(
   path: string,
   searchParams?: Record<string, string>
 ): string {
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`
+  const normalizedPath = `/${path.replace(LEADING_SLASHES, '')}`
   const url = new URL(normalizedPath, `${getAppBaseUrl()}/`)
 
   if (searchParams) {
