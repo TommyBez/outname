@@ -7,6 +7,7 @@ import {
   randomBytes,
   timingSafeEqual,
 } from 'node:crypto'
+import { buildAppUrl, getAppBaseUrl } from '../app-url'
 
 export const OAUTH_STATE_TTL_SECONDS = 60 * 10
 const TRAILING_SLASH = /\/$/
@@ -136,28 +137,20 @@ export function oauthRedirectUri(baseUrl: string, connectorId: string): string {
   return `${baseUrl.replace(TRAILING_SLASH, '')}/api/connections/oauth/${encodeURIComponent(connectorId)}/callback`
 }
 
+export function connectionOAuthRedirectUri(connectorId: string): string {
+  return oauthRedirectUri(getAppBaseUrl(), connectorId)
+}
+
 /**
  * Build an absolute URL for a user-facing page on the frontend App origin
- * (e.g. /connections, /login) using the public env var. Falls back to a
- * relative URL when the env is not available (dev without split).
+ * (e.g. /connections, /login) using the public env var. Falls back to the
+ * local app origin when the env is not available.
  */
 export function buildAppOriginUrl(
   path: string,
   searchParams?: Record<string, string>
 ): string {
-  const rawBase = process.env.NEXT_PUBLIC_APP_URL
-  const base = rawBase ? rawBase.replace(TRAILING_SLASH, '') : ''
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`
-  const url = base
-    ? new URL(normalizedPath, `${base}/`)
-    : new URL(normalizedPath, 'http://localhost:3000/')
-
-  if (searchParams) {
-    for (const [key, value] of Object.entries(searchParams)) {
-      url.searchParams.set(key, value)
-    }
-  }
-  return url.toString()
+  return buildAppUrl(path, searchParams)
 }
 
 export function unexpectedGrantedScopes(

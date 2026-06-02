@@ -2,12 +2,12 @@ import { randomUUID } from 'node:crypto'
 import { auth } from '@outname/auth/server/auth'
 import {
   buildAppOriginUrl,
+  connectionOAuthRedirectUri,
   createPkceVerifier,
   encodeOAuthState,
   normalizeConnectionReturnTo,
   OAUTH_STATE_TTL_SECONDS,
   oauthPkceCookieName,
-  oauthRedirectUri,
   oauthScopeHash,
   pkceCookieOptions,
   pkceHash,
@@ -44,15 +44,6 @@ export async function GET(
     return redirectWithError(request, returnTo, config.error)
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
-  if (!baseUrl) {
-    return redirectWithError(
-      request,
-      returnTo,
-      'NEXT_PUBLIC_API_BASE_URL must be set to build the OAuth redirect URI.'
-    )
-  }
-
   const client = readOAuthClientCredentials(connector)
   if (!client.ok) {
     return redirectWithError(request, returnTo, client.error)
@@ -61,7 +52,7 @@ export async function GET(
   const verifier = createPkceVerifier()
   const nonce = randomUUID()
   const scopes = [...connector.oauth2.defaultScopes]
-  const redirectUri = oauthRedirectUri(baseUrl, connectorId)
+  const redirectUri = connectionOAuthRedirectUri(connectorId)
   const state = encodeOAuthState({
     userId: session.user.id,
     connectorId,

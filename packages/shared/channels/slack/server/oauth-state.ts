@@ -1,8 +1,11 @@
 import 'server-only'
 
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
+import { getAppBaseUrl } from '../../../app-url'
 
 const OAUTH_STATE_TTL_SECONDS = 60 * 10
+const TRAILING_SLASH = /\/$/
+const SLACK_OAUTH_CALLBACK_PATH = '/api/channels/slack/oauth/callback'
 
 export interface SlackOAuthState {
   returnTo: string | null
@@ -87,6 +90,10 @@ export function normalizeSlackOAuthReturnTo(raw: string | null): string | null {
   } catch {
     return null
   }
+}
+
+export function slackOAuthRedirectUri(): string {
+  return `${getAppBaseUrl().replace(TRAILING_SLASH, '')}${SLACK_OAUTH_CALLBACK_PATH}`
 }
 
 function getOAuthStateSecret(): string {

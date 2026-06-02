@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('server-only', () => ({}))
 
 import {
+  connectionOAuthRedirectUri,
   decodeOAuthState,
   encodeOAuthState,
   normalizeConnectionReturnTo,
@@ -15,6 +16,8 @@ import {
 } from './oauth-state'
 import { X_OAUTH_SCOPES } from './x-oauth-scopes'
 
+const originalAppUrl = process.env.NEXT_PUBLIC_APP_URL
+
 describe('OAuth state helpers', () => {
   beforeEach(() => {
     process.env.BETTER_AUTH_SECRET = 'test-oauth-secret'
@@ -23,6 +26,11 @@ describe('OAuth state helpers', () => {
   afterEach(() => {
     vi.useRealTimers()
     delete process.env.BETTER_AUTH_SECRET
+    if (originalAppUrl === undefined) {
+      delete process.env.NEXT_PUBLIC_APP_URL
+    } else {
+      process.env.NEXT_PUBLIC_APP_URL = originalAppUrl
+    }
   })
 
   it('rejects tampered and expired state', () => {
@@ -87,6 +95,14 @@ describe('OAuth state helpers', () => {
   it('hashes OAuth scopes deterministically regardless of order', () => {
     expect(oauthScopeHash(['tweet.read', 'users.read'])).toBe(
       oauthScopeHash(['users.read', 'tweet.read'])
+    )
+  })
+
+  it('builds connection callback URLs on the app origin', () => {
+    process.env.NEXT_PUBLIC_APP_URL = 'https://app.example.com/'
+
+    expect(connectionOAuthRedirectUri('x.oauth2_user')).toBe(
+      'https://app.example.com/api/connections/oauth/x.oauth2_user/callback'
     )
   })
 

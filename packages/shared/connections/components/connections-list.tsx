@@ -5,6 +5,7 @@ import {
   disconnectConnectionAction,
   saveApiKeyConnectionAction,
 } from '@outname/shared/connections/actions'
+import { connectionOAuthStartPath } from '@outname/shared/connections/oauth-paths'
 import type { ScopeDescriptor } from '@outname/shared/connections/types'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
@@ -239,7 +240,7 @@ function ConnectionControls({
         ) : (
           <a
             className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
-            href={`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/connections/oauth/${encodeURIComponent(connector.connectorId)}/start?returnTo=/connections`}
+            href={connectionOAuthStartPath(connector.connectorId)}
           >
             {connection
               ? `Reconnect ${connector.displayName}`
@@ -320,7 +321,7 @@ function ScopesSummary({
     (scope) => labelByScope.get(scope) ?? scope
   )
   const missing = scopeCatalog.filter((item) => !granted.has(item.scope))
-  const reconnectHref = `/api/connections/oauth/${encodeURIComponent(connectorId)}/start?returnTo=/connections`
+  const reconnectHref = connectionOAuthStartPath(connectorId)
   if (missing.length > 0) {
     return (
       <div

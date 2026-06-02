@@ -1,9 +1,9 @@
 import { auth } from '@outname/auth/server/auth'
 import {
   buildAppOriginUrl,
+  connectionOAuthRedirectUri,
   decodeOAuthState,
   oauthPkceCookieName,
-  oauthRedirectUri,
   oauthScopeHash,
   pkceCookieOptions,
   pkceHash,
@@ -29,7 +29,7 @@ export async function GET(
   const returnTo = decoded?.returnTo ?? '/connections'
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) {
-    return redirectWithCookieClear(request, connectorId, returnTo, {
+    return redirectWithCookieClear(connectorId, returnTo, {
       connection: 'error',
       reason: 'unauthorized',
     })
@@ -39,19 +39,19 @@ export async function GET(
 
   const error = request.nextUrl.searchParams.get('error')
   if (error) {
-    return redirectWithCookieClear(request, connectorId, returnTo, {
+    return redirectWithCookieClear(connectorId, returnTo, {
       connection: 'error',
       reason: `oauth: ${error}`,
     })
   }
   if (!connector || connector.authKind !== 'oauth2') {
-    return redirectWithCookieClear(request, connectorId, returnTo, {
+    return redirectWithCookieClear(connectorId, returnTo, {
       connection: 'error',
       reason: 'Unknown OAuth connector.',
     })
   }
   if (!decoded) {
-    return redirectWithCookieClear(request, connectorId, returnTo, {
+    return redirectWithCookieClear(connectorId, returnTo, {
       connection: 'error',
       reason: 'invalid state',
     })
@@ -61,7 +61,7 @@ export async function GET(
     decoded.connectorId !== connectorId ||
     decoded.scopeHash !== oauthScopeHash(connector.oauth2.defaultScopes)
   ) {
-    return redirectWithCookieClear(request, connectorId, returnTo, {
+    return redirectWithCookieClear(connectorId, returnTo, {
       connection: 'error',
       reason: 'state does not match session user, connector, or scopes',
     })
@@ -71,7 +71,7 @@ export async function GET(
     request.cookies.get(oauthPkceCookieName(connectorId))?.value
   )
   if (!verifier || pkceHash(verifier) !== decoded.pkceHash) {
-    return redirectWithCookieClear(request, connectorId, returnTo, {
+    return redirectWithCookieClear(connectorId, returnTo, {
       connection: 'error',
       reason: 'invalid PKCE verifier',
     })
@@ -79,24 +79,16 @@ export async function GET(
 
   const code = request.nextUrl.searchParams.get('code')
   if (!code) {
-    return redirectWithCookieClear(request, connectorId, returnTo, {
+    return redirectWithCookieClear(connectorId, returnTo, {
       connection: 'error',
       reason: 'missing code',
-    })
-  }
-
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
-  if (!baseUrl) {
-    return redirectWithCookieClear(request, connectorId, returnTo, {
-      connection: 'error',
-      reason: 'NEXT_PUBLIC_API_BASE_URL must be set',
     })
   }
 
   try {
     const token = await exchangeAuthorizationCode(connector, {
       code,
-      redirectUri: oauthRedirectUri(baseUrl, connectorId),
+      redirectUri: connectionOAuthRedirectUri(connectorId),
       verifier,
     })
     if (!token.ok) {
@@ -121,11 +113,11 @@ export async function GET(
       metadata,
     })
     updateConnectionSurfaces(session.user.id)
-    return redirectWithCookieClear(request, connectorId, returnTo, {
+    return redirectWithCookieClear(connectorId, returnTo, {
       connection: 'connected',
     })
   } catch (err) {
-    return redirectWithCookieClear(request, connectorId, returnTo, {
+    return redirectWithCookieClear(connectorId, returnTo, {
       connection: 'error',
       reason: err instanceof Error ? err.message : 'oauth failed',
     })
@@ -147,7 +139,6 @@ async function readProfileMetadata(
 }
 
 function redirectWithCookieClear(
-  _request: NextRequest,
   connectorId: string,
   returnTo: string,
   params: Record<string, string>
