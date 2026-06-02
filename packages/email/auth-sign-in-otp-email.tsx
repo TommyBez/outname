@@ -1,5 +1,6 @@
 import { WaitlistEmailLayout } from '@outname/email/components/waitlist-email-layout'
 import { EMAIL_BRAND_NAME } from '@outname/email/email-brand'
+import { EMAIL_PREVIEW_URLS } from '@outname/email/email-preview-urls'
 import { Link, Section, Text } from 'react-email'
 
 export interface AuthSignInOtpEmailProps {
@@ -52,8 +53,8 @@ export function AuthSignInOtpEmail({
 AuthSignInOtpEmail.PreviewProps = {
   code: '483921',
   expiresInMinutes: 10,
-  loginUrl: 'https://outna.me/login',
-  logoUrl: '/static/outna-logo.png',
+  loginUrl: EMAIL_PREVIEW_URLS.appLogin,
+  logoUrl: EMAIL_PREVIEW_URLS.logo,
 } satisfies AuthSignInOtpEmailProps
 
 export default AuthSignInOtpEmail

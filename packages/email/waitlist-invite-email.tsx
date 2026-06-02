@@ -1,6 +1,7 @@
 import { AiGatewaySetupNote } from '@outname/email/components/ai-gateway-setup-note'
 import { WaitlistEmailLayout } from '@outname/email/components/waitlist-email-layout'
 import { EMAIL_BRAND_NAME } from '@outname/email/email-brand'
+import { EMAIL_PREVIEW_URLS } from '@outname/email/email-preview-urls'
 import { Link, Text } from 'react-email'
 
 export interface WaitlistInviteEmailProps {
@@ -43,8 +44,8 @@ export function WaitlistInviteEmail({
 }
 
 WaitlistInviteEmail.PreviewProps = {
-  loginUrl: 'https://outna.me/login',
-  logoUrl: '/static/outna-logo.png',
+  loginUrl: EMAIL_PREVIEW_URLS.appLogin,
+  logoUrl: EMAIL_PREVIEW_URLS.logo,
 } satisfies WaitlistInviteEmailProps
 
 export default WaitlistInviteEmail

@@ -5,6 +5,11 @@ import { WaitlistAdminSignupEmail } from '@outname/email/waitlist-admin-signup-e
 import { WaitlistConfirmationEmail } from '@outname/email/waitlist-confirmation-email'
 import { WaitlistInviteEmail } from '@outname/email/waitlist-invite-email'
 import { getEmailLogoUrl } from '@outname/shared/server/email-logo-url'
+import {
+  getEmailAppLoginUrl,
+  getEmailWaitlistAdminUrl,
+  getEmailWaitlistConfirmationUrl,
+} from '@outname/shared/server/email-urls'
 import { sendResendReactEmail } from '@outname/shared/server/resend'
 import { siteConfig } from '@outname/shared/server/site-metadata'
 import { getWaitlistAdminEmail } from '@outname/shared/waitlist/server/admin-email-config'
@@ -14,26 +19,7 @@ import {
   type WaitlistPrimaryInterest,
   type WaitlistProfileType,
 } from '@outname/shared/waitlist/server/constants'
-import { withRelatedProject } from '@vercel/related-projects'
 import { createElement, type ReactElement } from 'react'
-import {
-  LOCAL_PROJECT_ORIGINS,
-  PROJECT_NAMES,
-} from '../../vercel-related-projects'
-
-function getAppBaseUrl(): string {
-  return withRelatedProject({
-    defaultHost: LOCAL_PROJECT_ORIGINS.app,
-    projectName: PROJECT_NAMES.app,
-  })
-}
-
-function getWebBaseUrl(): string {
-  return withRelatedProject({
-    defaultHost: LOCAL_PROJECT_ORIGINS.web,
-    projectName: PROJECT_NAMES.web,
-  })
-}
 
 function createWaitlistEmailIdempotencyKey(
   eventType:
@@ -85,17 +71,11 @@ async function sendResendEmail(input: {
   })
 }
 
-function buildWaitlistConfirmationUrl(token: string): string {
-  const url = new URL('/waitlist/confirm', getWebBaseUrl())
-  url.searchParams.set('token', token)
-  return url.toString()
-}
-
 export async function sendWaitlistConfirmationEmail(input: {
   email: string
   token: string
 }) {
-  const confirmationUrl = buildWaitlistConfirmationUrl(input.token)
+  const confirmationUrl = getEmailWaitlistConfirmationUrl(input.token)
   await sendResendEmail({
     idempotencyKey: createWaitlistEmailIdempotencyKey(
       'waitlist-confirmation',
@@ -119,7 +99,7 @@ export async function sendWaitlistInviteEmail(input: { email: string }) {
     to: input.email,
     subject: 'Your OUTNA.ME access is ready',
     react: createElement(WaitlistInviteEmail, {
-      loginUrl: new URL('/login', getAppBaseUrl()).toString(),
+      loginUrl: getEmailAppLoginUrl(),
       logoUrl: getEmailLogoUrl(),
     }),
   })
@@ -134,7 +114,7 @@ export async function sendApplicationInviteEmail(input: { email: string }) {
     to: input.email,
     subject: `You're invited to ${siteConfig.name}`,
     react: createElement(ApplicationInviteEmail, {
-      loginUrl: new URL('/login', getAppBaseUrl()).toString(),
+      loginUrl: getEmailAppLoginUrl(),
       logoUrl: getEmailLogoUrl(),
     }),
   })
@@ -161,7 +141,6 @@ export async function sendWaitlistAdminSignupNotification(
     return
   }
 
-  const adminUrl = new URL('/settings/waitlist', getAppBaseUrl()).toString()
   await sendResendEmail({
     idempotencyKey: createWaitlistEmailIdempotencyKey(
       'waitlist-admin-signup',
@@ -170,7 +149,7 @@ export async function sendWaitlistAdminSignupNotification(
     to: adminEmail,
     subject: `New waitlist signup: ${input.email}`,
     react: createElement(WaitlistAdminSignupEmail, {
-      adminUrl,
+      adminUrl: getEmailWaitlistAdminUrl(),
       email: input.email,
       logoUrl: getEmailLogoUrl(),
       name: input.name,

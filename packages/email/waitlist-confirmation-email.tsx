@@ -1,5 +1,6 @@
 import { WaitlistEmailLayout } from '@outname/email/components/waitlist-email-layout'
 import { EMAIL_BRAND_NAME } from '@outname/email/email-brand'
+import { EMAIL_PREVIEW_URLS } from '@outname/email/email-preview-urls'
 import { Text } from 'react-email'
 
 export interface WaitlistConfirmationEmailProps {
@@ -35,8 +36,8 @@ export function WaitlistConfirmationEmail({
 }
 
 WaitlistConfirmationEmail.PreviewProps = {
-  confirmationUrl: 'https://outna.me/waitlist/confirm?token=example-token',
-  logoUrl: '/static/outna-logo.png',
+  confirmationUrl: EMAIL_PREVIEW_URLS.webWaitlistConfirm,
+  logoUrl: EMAIL_PREVIEW_URLS.logo,
 } satisfies WaitlistConfirmationEmailProps
 
 export default WaitlistConfirmationEmail

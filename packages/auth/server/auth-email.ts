@@ -2,15 +2,11 @@ import 'server-only'
 
 import { AuthSignInOtpEmail } from '@outname/email/auth-sign-in-otp-email'
 import { getEmailLogoUrl } from '@outname/shared/server/email-logo-url'
+import { getEmailAppLoginUrl } from '@outname/shared/server/email-urls'
 import { sendResendReactEmail } from '@outname/shared/server/resend'
-import { siteConfig } from '@outname/shared/server/site-metadata'
 import { createElement } from 'react'
 
 const AUTH_EMAIL_OTP_EXPIRES_IN_SECONDS = 60 * 10
-
-function getBaseUrl(): string {
-  return process.env.BETTER_AUTH_URL || siteConfig.url
-}
 
 function getAuthFromEmail(): string {
   const fromEmail = process.env.AUTH_FROM_EMAIL
@@ -45,7 +41,7 @@ export async function sendAuthSignInOtpEmail(input: {
     react: createElement(AuthSignInOtpEmail, {
       code: input.otp,
       expiresInMinutes: AUTH_EMAIL_OTP_EXPIRES_IN_SECONDS / 60,
-      loginUrl: `${getBaseUrl()}/login`,
+      loginUrl: getEmailAppLoginUrl(),
       logoUrl: getEmailLogoUrl(),
     }),
   })
