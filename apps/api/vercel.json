@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/liveness",
+      "schedule": "*/5 * * * *"
+    }
+  ],
+  "relatedProjects": [
+    "prj_k8JEeBeWTnlZ0FQy7WV1rNqr5EgU",
+    "prj_L9uLdZaSpoiY9pcIMazwhYQ2X5bG"
+  ]
+}

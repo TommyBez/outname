@@ -1,0 +1,17 @@
+{
+  "name": "@outname/video-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "pnpm typecheck",
+    "dev": "remotion studio remotion/index.ts --port=3005",
+    "lint": "ultracite check .",
+    "render:launch": "tsx scripts/render-launch-videos.ts render",
+    "still:launch": "tsx scripts/render-launch-videos.ts still",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@outname/ai": "workspace:*",
+    "@outname/shared": "workspace:*"
+  }
+}

@@ -1,0 +1,77 @@
+import 'server-only'
+import { getAgentById } from '@outname/ai/agent-runtime/server/start-agent-run'
+import { composeSystemPrompt } from '@outname/ai/agent-runtime/workflows/session/compose-system-prompt'
+import {
+  resolveStepLimit,
+  type StepLimitMode,
+} from '@outname/ai/agent-runtime/workflows/session/step-limit'
+import { resolveToolPlan } from '@outname/ai/agent-runtime/workflows/session/steps/resolve-tool-plan'
+
+export type {
+  AgentRuntimeEventKind,
+  AgentRuntimeMeta,
+  AgentRuntimeSpec,
+} from '@outname/ai/agent-runtime/workflows/session/runtime-spec-types'
+
+import type {
+  AgentRuntimeEventKind,
+  AgentRuntimeSpec,
+} from '@outname/ai/agent-runtime/workflows/session/runtime-spec-types'
+
+export interface BuildAgentRuntimeSpecInput {
+  agentId: string
+  callStack?: string[]
+  depth?: number
+  eventKind: AgentRuntimeEventKind
+  nowIso?: string
+  runId?: string
+}
+
+export async function buildAgentRuntimeSpec(
+  input: BuildAgentRuntimeSpecInput
+): Promise<AgentRuntimeSpec> {
+  const callStack = input.callStack ?? []
+  const depth = input.depth ?? 0
+  const row = await getAgentById(input.agentId)
+  if (!row) {
+    const suffix = input.runId ? ` (run ${input.runId})` : ''
+    throw new Error(
+      `buildAgentRuntimeSpec: agent ${input.agentId} not found${suffix}`
+    )
+  }
+
+  const toolPlan = await resolveToolPlan({
+    agentId: input.agentId,
+    userId: row.userId,
+    callStack,
+    depth,
+  })
+  const systemPrompt = await composeSystemPrompt({
+    agentId: input.agentId,
+    agentName: row.name,
+    eventKind: input.eventKind,
+    nowIso: input.nowIso ?? new Date().toISOString(),
+    reconnects: toolPlan.reconnects,
+  })
+
+  return {
+    agentId: input.agentId,
+    agentName: row.name,
+    callStack,
+    depth,
+    eventKind: input.eventKind,
+    modelId: row.model,
+    stepLimitCustom: row.stepLimitCustom,
+    stepLimitMode: row.stepLimitMode as StepLimitMode,
+    systemPrompt,
+    toolPlan,
+    userId: row.userId,
+  }
+}
+
+export function stopWhenFromSpec(spec: AgentRuntimeSpec) {
+  return resolveStepLimit({
+    custom: spec.stepLimitCustom,
+    mode: spec.stepLimitMode,
+  })
+}

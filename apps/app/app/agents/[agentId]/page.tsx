@@ -1,0 +1,13 @@
+import { AgentOverview } from '@outname/shared/agents/components/agent-overview'
+import { createPrivatePageMetadata } from '@outname/shared/server/site-metadata'
+
+type Params = Promise<{ agentId: string }>
+
+export const metadata = createPrivatePageMetadata(
+  'Agent overview',
+  'Review private OUTNA.ME agent status, memory, and recent work.'
+)
+
+export default function AgentRootPage({ params }: { params: Params }) {
+  return <AgentOverview params={params} />
+}

@@ -1,0 +1,174 @@
+import type { AgentScheduleMode } from '@outname/shared/agent-schedule'
+import { sql } from 'drizzle-orm'
+import {
+  boolean,
+  index,
+  integer,
+  jsonb,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+} from 'drizzle-orm/pg-core'
+import { user } from './auth'
+
+export type AgentEventStatus =
+  | 'queued'
+  | 'starting'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
+
+const agentEventTypeValues = ['heartbeat', 'dreaming', 'invocation'] as const
+
+export type AgentEventType = (typeof agentEventTypeValues)[number]
+
+const agentEventTypeEnum = pgEnum('agent_event_type', agentEventTypeValues)
+
+const agentEventSourceValues = ['scheduler', 'manual', 'invocation'] as const
+
+export type AgentEventSource = (typeof agentEventSourceValues)[number]
+
+const agentEventSourceEnum = pgEnum(
+  'agent_event_source',
+  agentEventSourceValues
+)
+
+export const agent = pgTable(
+  'agent',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    capabilitySummary: text('capability_summary'),
+    // Soft-delete / UI reachability flag. Heartbeat opt-in lives on
+    // `heartbeatEnabled`, so disabling heartbeat no longer hides the agent.
+    enabled: boolean('enabled').notNull().default(true),
+    // Persist only model ids the AI Gateway can route.
+    model: text('model').notNull().default('openai/gpt-5-mini'),
+    // Per-agent model-step budget for `stopWhen` guards.
+    stepLimitMode: text('step_limit_mode').notNull().default('medium'),
+    stepLimitCustom: integer('step_limit_custom'),
+    // Heartbeat opt-in and cadence; used by the scheduler cron.
+    heartbeatEnabled: boolean('heartbeat_enabled').notNull().default(true),
+    heartbeatScheduleMode: text('heartbeat_schedule_mode')
+      .$type<AgentScheduleMode>()
+      .notNull()
+      .default('interval'),
+    heartbeatScheduleTimes: jsonb('heartbeat_schedule_times')
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    heartbeatIntervalMinutes: integer('heartbeat_interval_minutes')
+      .notNull()
+      .default(30),
+    lastHeartbeatAt: timestamp('last_heartbeat_at', { withTimezone: true }),
+    // Dreaming is on/off only: when enabled, the scheduler runs it the first
+    // time each local day in the owner's timezone that it has not yet run.
+    dreamingEnabled: boolean('dreaming_enabled').notNull().default(true),
+    lastDreamingAt: timestamp('last_dreaming_at', { withTimezone: true }),
+    lastDreamingLocalDate: text('last_dreaming_local_date'),
+    // Persistent system sandbox name. Null before first boot; after that, the
+    // same sandbox is resumed on each event.
+    sandboxSystemId: text('sandbox_system_id'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index('agent_user_idx').on(t.userId)]
+)
+
+export const agentEvents = pgTable(
+  'agent_events',
+  {
+    id: text('id').primaryKey(),
+    agentId: text('agent_id')
+      .notNull()
+      .references(() => agent.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    type: agentEventTypeEnum('type').notNull(),
+    source: agentEventSourceEnum('source').notNull(),
+    status: text('status').$type<AgentEventStatus>().notNull(),
+    idempotencyKey: text('idempotency_key').notNull(),
+    concurrencyKey: text('concurrency_key'),
+    payload: jsonb('payload')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    scheduledFor: timestamp('scheduled_for', { withTimezone: true }),
+    attempt: integer('attempt').notNull().default(0),
+    workflowRunId: text('workflow_run_id'),
+    publisherWorkflowRunId: text('publisher_workflow_run_id'),
+    queuedAt: timestamp('queued_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    startedAt: timestamp('started_at', { withTimezone: true }),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    heartbeatAt: timestamp('heartbeat_at', { withTimezone: true }),
+    claimExpiresAt: timestamp('claim_expires_at', { withTimezone: true }),
+    lastError: text('last_error'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('agent_events_idempotency_idx').on(t.idempotencyKey),
+    uniqueIndex('agent_events_active_concurrency_idx')
+      .on(t.concurrencyKey)
+      .where(
+        sql`concurrency_key IS NOT NULL AND status in ('starting', 'running')`
+      ),
+    index('agent_events_agent_status_idx').on(t.agentId, t.status, t.queuedAt),
+    index('agent_events_user_status_idx').on(t.userId, t.status, t.queuedAt),
+    index('agent_events_concurrency_status_idx').on(
+      t.concurrencyKey,
+      t.status,
+      t.queuedAt
+    ),
+    index('agent_events_scheduled_idx').on(t.scheduledFor, t.status),
+  ]
+)
+
+export const agentEventMessage = pgTable(
+  'agent_event_message',
+  {
+    id: text('id').primaryKey(),
+    eventId: text('event_id')
+      .notNull()
+      .references(() => agentEvents.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    messageId: text('message_id').notNull(),
+    messageOrder: integer('message_order').notNull(),
+    role: text('role').notNull(),
+    parts: jsonb('parts').notNull(),
+    metadata: jsonb('metadata'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('agent_event_message_event_order_idx').on(
+      t.eventId,
+      t.messageOrder
+    ),
+    index('agent_event_message_user_event_idx').on(t.userId, t.eventId),
+  ]
+)
+
+export type Agent = typeof agent.$inferSelect
+export type AgentEvent = typeof agentEvents.$inferSelect
+export type AgentEventMessage = typeof agentEventMessage.$inferSelect

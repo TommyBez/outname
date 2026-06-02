@@ -1,5 +1,5 @@
+import { normalizeDatabaseUrlForPg } from '@outname/db/connection-string'
 import { defineConfig } from 'drizzle-kit'
-import { normalizeDatabaseUrlForPg } from './shared/db/connection-string'
 
 const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl) {
@@ -7,8 +7,8 @@ if (!databaseUrl) {
 }
 
 export default defineConfig({
-  schema: './shared/db/schema/index.ts',
-  out: './drizzle',
+  schema: './packages/db/schema/index.ts',
+  out: './packages/db/drizzle',
   dialect: 'postgresql',
   dbCredentials: {
     url: normalizeDatabaseUrlForPg(databaseUrl),
