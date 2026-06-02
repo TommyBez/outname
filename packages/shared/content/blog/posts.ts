@@ -13,7 +13,7 @@ export const posts: BlogPost[] = [
       'GitLab 19.0 Just Made AGENTS.md an Industry Standard. Outname Saw This Coming.',
     date: '2026-06-02',
     excerpt:
-      "GitLab 19.0 now reads AGENTS.md natively. Anthropic says multi-agent coordination is the future. The industry is converging on exactly the architecture Outname built from day one.",
+      'GitLab 19.0 now reads AGENTS.md natively. Anthropic says multi-agent coordination is the future. The industry is converging on exactly the architecture Outname built from day one.',
     tags: [
       'AI',
       'agents',
