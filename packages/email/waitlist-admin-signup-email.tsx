@@ -1,5 +1,6 @@
 import { WaitlistEmailLayout } from '@outname/email/components/waitlist-email-layout'
 import { EMAIL_BRAND_NAME } from '@outname/email/email-brand'
+import { EMAIL_PREVIEW_URLS } from '@outname/email/email-preview-urls'
 import { Text } from 'react-email'
 
 export interface WaitlistAdminSignupEmailProps {
@@ -70,9 +71,9 @@ export function WaitlistAdminSignupEmail({
 }
 
 WaitlistAdminSignupEmail.PreviewProps = {
-  adminUrl: 'https://app.outna.me/settings/waitlist',
+  adminUrl: EMAIL_PREVIEW_URLS.appWaitlistAdmin,
   email: 'alex@example.com',
-  logoUrl: '/static/outna-logo.png',
+  logoUrl: EMAIL_PREVIEW_URLS.logo,
   name: 'Alex Rivera',
   primaryInterestLabel: 'Try early access',
   profileTypeLabel: 'Developer',
