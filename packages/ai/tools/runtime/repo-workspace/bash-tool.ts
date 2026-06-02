@@ -1,16 +1,17 @@
+import { withVercelSandboxCredentials } from '@outname/shared/server/vercel-sandbox-config'
 import { nonRetryableStepError } from '@outname/shared/server/workflow-step-errors'
-import type { Sandbox as VercelSandbox } from '@vercel/sandbox'
+import { Sandbox, type Sandbox as VercelSandbox } from '@vercel/sandbox'
 import { RepoWorkspaceProviderError } from './errors'
 import {
   assertReadableRepoWorkspacePath,
   assertWritableRepoWorkspacePath,
   type NormalizedRepoWorkspacePath,
   normalizeRepoWorkspacePath,
-  REPO_WORKSPACE_ROOT,
 } from './paths'
 import type {
   RepoWorkspaceBashTool,
   RepoWorkspaceBashToolkit,
+  RepoWorkspaceHandle,
   RepoWorkspaceReadTool,
   RepoWorkspaceWriteTool,
 } from './types'
@@ -33,29 +34,15 @@ interface RepoWorkspaceBashToolSandbox {
 }
 
 export async function createRepoWorkspaceBashTool(input: {
-  rootPath?: string
-  sandbox: VercelSandbox
+  handle: RepoWorkspaceHandle
 }): Promise<RepoWorkspaceBashToolkit> {
-  const rootPath = input.rootPath ?? REPO_WORKSPACE_ROOT
-  await input.sandbox.mkDir(rootPath).catch(async () => {
-    const result = await input.sandbox.runCommand({
-      cmd: 'mkdir',
-      args: ['-p', rootPath],
-    })
-    if (result.exitCode !== 0) {
-      const stderr = await result.stderr()
-      throw new RepoWorkspaceProviderError(
-        stderr.trim() || `Failed to create repo workspace root: ${rootPath}`
-      )
-    }
-  })
+  await ensureRepoWorkspaceRoot(input.handle)
 
   const bash: RepoWorkspaceBashToolkit['bash'] = {
     execute: async ({ command }) =>
       await executeRepoWorkspaceBashTool({
         command,
-        rootPath,
-        sandbox: input.sandbox,
+        handle: input.handle,
       }),
   }
 
@@ -67,27 +54,42 @@ export async function createRepoWorkspaceBashTool(input: {
         execute: async ({ path }) =>
           await executeRepoWorkspaceReadFileTool({
             path,
-            rootPath,
-            sandbox: input.sandbox,
+            handle: input.handle,
           }),
       },
       writeFile: {
         execute: async ({ content, path }) =>
           await executeRepoWorkspaceWriteFileTool({
             content,
+            handle: input.handle,
             path,
-            rootPath,
-            sandbox: input.sandbox,
           }),
       },
     },
   }
 }
 
+async function ensureRepoWorkspaceRoot(handle: RepoWorkspaceHandle) {
+  'use step'
+  const sandbox = await getRepoWorkspaceSandbox(handle)
+  await sandbox.mkDir(handle.rootPath).catch(async () => {
+    const result = await sandbox.runCommand({
+      cmd: 'mkdir',
+      args: ['-p', handle.rootPath],
+    })
+    if (result.exitCode !== 0) {
+      const stderr = await result.stderr()
+      throw new RepoWorkspaceProviderError(
+        stderr.trim() ||
+          `Failed to create repo workspace root: ${handle.rootPath}`
+      )
+    }
+  })
+}
+
 async function executeRepoWorkspaceBashTool(input: {
   command: string
-  rootPath: string
-  sandbox: VercelSandbox
+  handle: RepoWorkspaceHandle
 }) {
   'use step'
   const bashTool = await createStepBashTool(input)
@@ -101,9 +103,8 @@ async function executeRepoWorkspaceBashTool(input: {
 }
 
 async function executeRepoWorkspaceReadFileTool(input: {
+  handle: RepoWorkspaceHandle
   path: string
-  rootPath: string
-  sandbox: VercelSandbox
 }) {
   'use step'
   const bashTool = await createStepBashTool(input)
@@ -118,9 +119,8 @@ async function executeRepoWorkspaceReadFileTool(input: {
 
 async function executeRepoWorkspaceWriteFileTool(input: {
   content: string
+  handle: RepoWorkspaceHandle
   path: string
-  rootPath: string
-  sandbox: VercelSandbox
 }) {
   'use step'
   const bashTool = await createStepBashTool(input)
@@ -137,9 +137,9 @@ async function executeRepoWorkspaceWriteFileTool(input: {
 }
 
 async function createStepBashTool(input: {
-  rootPath: string
-  sandbox: VercelSandbox
+  handle: RepoWorkspaceHandle
 }): Promise<RepoWorkspaceBashToolkit> {
+  const sandbox = await getRepoWorkspaceSandbox(input.handle)
   const { createBashTool } = (await import('bash-tool')) as unknown as {
     createBashTool(args: {
       destination: string
@@ -151,15 +151,26 @@ async function createStepBashTool(input: {
   }
 
   return await createBashTool({
-    destination: input.rootPath,
+    destination: input.handle.rootPath,
     maxFiles: 0,
     maxOutputLength: MAX_BASH_OUTPUT_CHARS,
     promptOptions: {
       toolPrompt:
         'This bash toolkit is used internally by repo workspace maintainer tools.',
     },
-    sandbox: createRepoWorkspaceSandboxAdapter(input),
+    sandbox: createRepoWorkspaceSandboxAdapter({
+      rootPath: input.handle.rootPath,
+      sandbox,
+    }),
   })
+}
+
+async function getRepoWorkspaceSandbox(
+  handle: RepoWorkspaceHandle
+): Promise<VercelSandbox> {
+  return await Sandbox.get(
+    withVercelSandboxCredentials({ name: handle.sandboxName })
+  )
 }
 
 function createRepoWorkspaceSandboxAdapter(input: {

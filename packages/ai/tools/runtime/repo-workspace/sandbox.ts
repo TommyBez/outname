@@ -9,11 +9,13 @@ import { type NetworkPolicy, Sandbox } from '@vercel/sandbox'
 import { createRepoWorkspaceBashTool } from './bash-tool'
 import { RepoWorkspaceProviderError } from './errors'
 import { REPO_WORKSPACE_ROOT } from './paths'
+import { hashRepoWorkspaceIdentityStep } from './sandbox-name-step'
 import { shellQuote } from './shell'
 import type {
   RepoWorkspace,
   RepoWorkspaceBashTool,
   RepoWorkspaceBashToolkit,
+  RepoWorkspaceHandle,
   RepoWorkspaceReadTool,
   RepoWorkspaceWriteTool,
 } from './types'
@@ -23,19 +25,23 @@ interface CachedRepoWorkspace {
 }
 
 interface RepoWorkspaceCreateInput {
-  attachmentToolId: string
   gitCredentials: {
     password: string
     username: string
   }
+  handle: RepoWorkspaceHandle
   networkPolicy: NetworkPolicy
   repoUrl: string
-  runId: string
-  workspaceKey: string
 }
 
 const repoWorkspaceCache = new Map<string, Map<string, CachedRepoWorkspace>>()
 export const REPO_WORKSPACE_SANDBOX_TIMEOUT_MS = 60 * 60 * 1000
+const REPO_WORKSPACE_SANDBOX_NAME_PREFIX = 'repo'
+const REPO_WORKSPACE_SANDBOX_NAME_RUN_ID_LENGTH = 32
+const REPO_WORKSPACE_SANDBOX_NAME_MAX_LENGTH = 64
+const SANDBOX_NAME_INVALID_CHARS_PATTERN = /[^a-z0-9-]+/g
+const SANDBOX_NAME_REPEATED_DASHES_PATTERN = /-+/g
+const SANDBOX_NAME_EDGE_DASHES_PATTERN = /^-+|-+$/g
 
 export async function getOrCreateRepoWorkspace(input: {
   attachmentToolId: string
@@ -48,6 +54,12 @@ export async function getOrCreateRepoWorkspace(input: {
 }): Promise<RepoWorkspace> {
   const runId = currentToolRuntimeRunId()
   const workspaceKey = [input.attachmentToolId, input.repoUrl].join('::')
+  const handle = await createRepoWorkspaceHandle({
+    attachmentToolId: input.attachmentToolId,
+    repoUrl: input.repoUrl,
+    runId,
+    workspaceKey,
+  })
 
   let perRun = repoWorkspaceCache.get(runId)
   if (!perRun) {
@@ -61,9 +73,10 @@ export async function getOrCreateRepoWorkspace(input: {
   }
 
   const workspacePromise = createRepoWorkspace({
-    ...input,
-    runId,
-    workspaceKey,
+    gitCredentials: input.gitCredentials,
+    handle,
+    networkPolicy: input.networkPolicy,
+    repoUrl: input.repoUrl,
   }).catch((error) => {
     evictRepoWorkspace(runId, workspaceKey)
     throw error
@@ -71,6 +84,53 @@ export async function getOrCreateRepoWorkspace(input: {
 
   perRun.set(workspaceKey, { workspacePromise })
   return await workspacePromise
+}
+
+async function createRepoWorkspaceHandle(input: {
+  attachmentToolId: string
+  repoUrl: string
+  runId: string
+  workspaceKey: string
+}): Promise<RepoWorkspaceHandle> {
+  return {
+    ...input,
+    rootPath: REPO_WORKSPACE_ROOT,
+    sandboxName: await createRepoWorkspaceSandboxName(input),
+  }
+}
+
+async function createRepoWorkspaceSandboxName(input: {
+  attachmentToolId: string
+  repoUrl: string
+  runId: string
+}): Promise<string> {
+  const runIdPart = sanitizeSandboxNamePart(
+    input.runId,
+    REPO_WORKSPACE_SANDBOX_NAME_RUN_ID_LENGTH,
+    'run'
+  )
+  const workspaceHash = await hashRepoWorkspaceIdentityStep(input)
+
+  return [REPO_WORKSPACE_SANDBOX_NAME_PREFIX, runIdPart, workspaceHash]
+    .join('-')
+    .slice(0, REPO_WORKSPACE_SANDBOX_NAME_MAX_LENGTH)
+    .replace(SANDBOX_NAME_EDGE_DASHES_PATTERN, '')
+}
+
+function sanitizeSandboxNamePart(
+  value: string,
+  maxLength: number,
+  fallback: string
+): string {
+  const sanitized = value
+    .toLowerCase()
+    .replace(SANDBOX_NAME_INVALID_CHARS_PATTERN, '-')
+    .replace(SANDBOX_NAME_REPEATED_DASHES_PATTERN, '-')
+    .replace(SANDBOX_NAME_EDGE_DASHES_PATTERN, '')
+    .slice(0, maxLength)
+    .replace(SANDBOX_NAME_EDGE_DASHES_PATTERN, '')
+
+  return sanitized || fallback
 }
 
 export async function stopAllRepoWorkspacesForRun(): Promise<void> {
@@ -91,7 +151,7 @@ export async function stopAllRepoWorkspacesForRun(): Promise<void> {
     Array.from(perRun.values()).map(async ({ workspacePromise }) => {
       try {
         const workspace = await workspacePromise
-        await workspace.sandbox.stop()
+        await stopWorkspaceSandboxByHandle(workspace.handle)
       } catch (error) {
         console.error('[repo-workspace] stopAllRepoWorkspacesForRun failed', {
           error,
@@ -109,12 +169,11 @@ async function createRepoWorkspace(
   let sandbox: Sandbox | null = null
   try {
     sandbox = await createWorkspaceSandbox(input)
-    const bashTool = await createWorkspaceBashTool(sandbox)
+    const bashTool = await createWorkspaceBashTool(input.handle)
 
     const workspace: RepoWorkspace = {
       bashTool,
-      rootPath: REPO_WORKSPACE_ROOT,
-      sandbox,
+      handle: input.handle,
     }
 
     await configureWorkspaceCheckout(workspace, input.repoUrl)
@@ -123,8 +182,8 @@ async function createRepoWorkspace(
       ...workspace,
       bashTool: wrapBashToolWithStoppedSandboxEviction({
         bashTool,
-        runId: input.runId,
-        workspaceKey: input.workspaceKey,
+        runId: input.handle.runId,
+        workspaceKey: input.handle.workspaceKey,
       }),
     }
   } catch (error) {
@@ -144,8 +203,9 @@ async function createWorkspaceSandbox(
   input: RepoWorkspaceCreateInput
 ): Promise<Sandbox> {
   try {
-    return await Sandbox.create(
+    return await Sandbox.getOrCreate(
       withVercelSandboxCredentials({
+        name: input.handle.sandboxName,
         source: {
           type: 'git' as const,
           url: input.repoUrl,
@@ -162,23 +222,22 @@ async function createWorkspaceSandbox(
         // sanitized before the bash surface is returned to the model.
         networkPolicy: input.networkPolicy,
         tags: repoWorkspaceSandboxTags({
-          attachmentToolId: input.attachmentToolId,
-          runId: input.runId,
+          attachmentToolId: input.handle.attachmentToolId,
+          runId: input.handle.runId,
         }),
       })
     )
   } catch (error) {
     throw new RepoWorkspaceProviderError(
-      `Failed to create the repo workspace sandbox. ${describeSandboxApiError(error)}`
+      `Failed to get or create the repo workspace sandbox. ${describeSandboxApiError(error)}`
     )
   }
 }
 
-async function createWorkspaceBashTool(sandbox: Sandbox) {
+async function createWorkspaceBashTool(handle: RepoWorkspaceHandle) {
   try {
     return await createRepoWorkspaceBashTool({
-      rootPath: REPO_WORKSPACE_ROOT,
-      sandbox,
+      handle,
     })
   } catch (error) {
     throw new RepoWorkspaceProviderError(
@@ -197,7 +256,7 @@ async function configureWorkspaceCheckout(
   try {
     const result = await workspace.bashTool.bash.execute({
       command: [
-        `git config --local --add safe.directory ${shellQuote(workspace.rootPath)}`,
+        `git config --local --add safe.directory ${shellQuote(workspace.handle.rootPath)}`,
         `git remote set-url origin ${shellQuote(repoUrl)}`,
         `git config user.name ${shellQuote(DEFAULT_COMMIT_AUTHOR_NAME)}`,
         `git config user.email ${shellQuote(DEFAULT_COMMIT_AUTHOR_EMAIL)}`,
@@ -331,7 +390,7 @@ function isStoppedSandboxError(error: unknown): boolean {
   if (status === null) {
     return false
   }
-  if (status === 410) {
+  if (status === 404 || status === 410) {
     return true
   }
 
@@ -373,6 +432,52 @@ async function stopWorkspaceSandbox(sandbox: Sandbox | null): Promise<void> {
     await sandbox.stop()
   } catch {
     // Best-effort cleanup on failed workspace startup.
+  }
+
+  try {
+    await sandbox.delete()
+  } catch {
+    // Best-effort cleanup on failed workspace startup.
+  }
+}
+
+async function stopWorkspaceSandboxByHandle(
+  handle: RepoWorkspaceHandle
+): Promise<void> {
+  let sandbox: Sandbox
+  try {
+    sandbox = await Sandbox.get(
+      withVercelSandboxCredentials({
+        name: handle.sandboxName,
+        resume: false,
+      })
+    )
+  } catch (error) {
+    if (isStoppedSandboxError(error)) {
+      return
+    }
+    throw error
+  }
+
+  let stopError: unknown
+  try {
+    await sandbox.stop()
+  } catch (error) {
+    if (!isStoppedSandboxError(error)) {
+      stopError = error
+    }
+  }
+
+  try {
+    await sandbox.delete()
+  } catch (error) {
+    if (!isStoppedSandboxError(error)) {
+      throw error
+    }
+  }
+
+  if (stopError) {
+    throw stopError
   }
 }
 
