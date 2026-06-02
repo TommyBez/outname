@@ -31,7 +31,6 @@ interface CommandResult {
 }
 
 interface FakeSandbox {
-  mkDir(path: string): Promise<void>
   readFileToBuffer(file: { path: string }): Promise<Buffer | null>
   runCommand(command: { args?: string[]; cmd: string }): Promise<CommandResult>
   writeFiles(
@@ -56,7 +55,6 @@ function createHandle(
 
 function createSandbox(overrides: Partial<FakeSandbox> = {}): FakeSandbox {
   return {
-    mkDir: vi.fn(async () => undefined),
     readFileToBuffer: vi.fn(async ({ path }) =>
       Buffer.from(`content:${path}`, 'utf8')
     ),
@@ -83,6 +81,8 @@ describe('createRepoWorkspaceBashTool', () => {
 
     const toolkit = await createRepoWorkspaceBashTool({ handle })
 
+    expect(mockSandboxGet).not.toHaveBeenCalled()
+
     await expect(toolkit.bash.execute({ command: 'pwd' })).resolves.toEqual({
       exitCode: 0,
       stderr: '',
@@ -94,11 +94,11 @@ describe('createRepoWorkspaceBashTool', () => {
       content: `content:${REPO_WORKSPACE_ROOT}/README.md`,
     })
 
-    expect(sandbox.mkDir).toHaveBeenCalledWith(REPO_WORKSPACE_ROOT)
     expect(sandbox.runCommand).toHaveBeenCalledWith({
       args: ['-lc', `cd "${REPO_WORKSPACE_ROOT}" && pwd`],
       cmd: 'bash',
     })
+    expect(mockSandboxGet).toHaveBeenCalledTimes(2)
     expect(mockSandboxGet).toHaveBeenCalledWith(
       expect.objectContaining({ name: handle.sandboxName })
     )
@@ -110,27 +110,6 @@ describe('createRepoWorkspaceBashTool', () => {
         ([options]) => 'resume' in options
       )
     ).toBe(false)
-  })
-
-  it('surfaces stderr when the workspace root cannot be created', async () => {
-    const handle = createHandle()
-    const sandbox = createSandbox({
-      mkDir: vi.fn(() => Promise.reject(new Error('mkDir failed'))),
-      runCommand: vi.fn(async () => ({
-        exitCode: 1,
-        stderr: async () => 'mkdir: permission denied',
-        stdout: async () => '',
-      })),
-    })
-    mockSandboxGet.mockResolvedValue(sandbox)
-
-    await expect(createRepoWorkspaceBashTool({ handle })).rejects.toThrow(
-      'mkdir: permission denied'
-    )
-    expect(sandbox.runCommand).toHaveBeenCalledWith({
-      args: ['-p', REPO_WORKSPACE_ROOT],
-      cmd: 'mkdir',
-    })
   })
 
   it('creates parent directories relative to the handle workspace root', async () => {
@@ -155,7 +134,6 @@ describe('createRepoWorkspaceBashTool', () => {
       path: 'src/index.ts',
     })
 
-    expect(sandbox.mkDir).toHaveBeenCalledWith(rootPath)
     expect(sandbox.runCommand).toHaveBeenCalledWith({
       args: ['-p', `${rootPath}/src`],
       cmd: 'mkdir',

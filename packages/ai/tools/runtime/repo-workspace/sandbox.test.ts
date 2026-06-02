@@ -78,6 +78,12 @@ function createToolkit(
 function createSandbox() {
   return {
     delete: vi.fn(async () => undefined),
+    mkDir: vi.fn(async () => undefined),
+    runCommand: vi.fn(async () => ({
+      exitCode: 0,
+      stderr: async () => '',
+      stdout: async () => '',
+    })),
     stop: vi.fn(async () => undefined),
   }
 }
@@ -110,6 +116,8 @@ describe('repo workspace sandbox', () => {
 
   it('creates named git source sandboxes and exposes only a serializable handle', async () => {
     const bashExecute = vi.fn(async () => commandSucceeded)
+    const sandbox = createSandbox()
+    mockSandboxGetOrCreate.mockResolvedValue(sandbox)
     mockCreateRepoWorkspaceBashTool.mockResolvedValue(
       createToolkit(bashExecute)
     )
@@ -150,6 +158,8 @@ describe('repo workspace sandbox', () => {
     expect(mockCreateRepoWorkspaceBashTool).toHaveBeenCalledWith({
       handle: workspace.handle,
     })
+    expect(sandbox.mkDir).toHaveBeenCalledWith('/vercel/sandbox')
+    expect(mockSandboxGet).not.toHaveBeenCalled()
     expect(
       mockWithVercelSandboxCredentials.mock.calls.some(
         ([options]) => 'resume' in options
@@ -167,6 +177,25 @@ describe('repo workspace sandbox', () => {
       "git remote set-url origin 'https://github.com/acme/repo.git'"
     )
     expect(command).not.toContain('ghp_secret-token')
+  })
+
+  it('surfaces stderr when provisioning cannot create the workspace root', async () => {
+    const sandbox = createSandbox()
+    sandbox.mkDir.mockRejectedValue(new Error('mkDir failed'))
+    sandbox.runCommand.mockResolvedValue({
+      exitCode: 1,
+      stderr: async () => 'mkdir: permission denied',
+      stdout: async () => '',
+    })
+    mockSandboxGetOrCreate.mockResolvedValue(sandbox)
+
+    await expect(createWorkspace()).rejects.toThrow('mkdir: permission denied')
+
+    expect(sandbox.runCommand).toHaveBeenCalledWith({
+      args: ['-p', '/vercel/sandbox'],
+      cmd: 'mkdir',
+    })
+    expect(mockCreateRepoWorkspaceBashTool).not.toHaveBeenCalled()
   })
 
   it('sanitizes the run id and keeps repo identity hashed in the sandbox name', async () => {

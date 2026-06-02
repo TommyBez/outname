@@ -33,11 +33,9 @@ interface RepoWorkspaceBashToolSandbox {
   ): Promise<void>
 }
 
-export async function createRepoWorkspaceBashTool(input: {
+export function createRepoWorkspaceBashTool(input: {
   handle: RepoWorkspaceHandle
-}): Promise<RepoWorkspaceBashToolkit> {
-  await ensureRepoWorkspaceRoot(input.handle)
-
+}): RepoWorkspaceBashToolkit {
   const bash: RepoWorkspaceBashToolkit['bash'] = {
     execute: async ({ command }) =>
       await executeRepoWorkspaceBashTool({
@@ -67,24 +65,6 @@ export async function createRepoWorkspaceBashTool(input: {
       },
     },
   }
-}
-
-async function ensureRepoWorkspaceRoot(handle: RepoWorkspaceHandle) {
-  'use step'
-  const sandbox = await getRepoWorkspaceSandbox(handle)
-  await sandbox.mkDir(handle.rootPath).catch(async () => {
-    const result = await sandbox.runCommand({
-      cmd: 'mkdir',
-      args: ['-p', handle.rootPath],
-    })
-    if (result.exitCode !== 0) {
-      const stderr = await result.stderr()
-      throw new RepoWorkspaceProviderError(
-        stderr.trim() ||
-          `Failed to create repo workspace root: ${handle.rootPath}`
-      )
-    }
-  })
 }
 
 async function executeRepoWorkspaceBashTool(input: {

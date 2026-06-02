@@ -166,9 +166,8 @@ export async function stopAllRepoWorkspacesForRun(): Promise<void> {
 async function createRepoWorkspace(
   input: RepoWorkspaceCreateInput
 ): Promise<RepoWorkspace> {
-  let sandbox: Sandbox | null = null
   try {
-    sandbox = await createWorkspaceSandbox(input)
+    await provisionWorkspaceSandbox(input)
     const bashTool = await createWorkspaceBashTool(input.handle)
 
     const workspace: RepoWorkspace = {
@@ -187,7 +186,7 @@ async function createRepoWorkspace(
       }),
     }
   } catch (error) {
-    await stopWorkspaceSandbox(sandbox)
+    await stopWorkspaceSandboxByHandle(input.handle).catch(() => undefined)
 
     if (error instanceof RepoWorkspaceProviderError) {
       throw error
@@ -199,11 +198,13 @@ async function createRepoWorkspace(
   }
 }
 
-async function createWorkspaceSandbox(
+async function provisionWorkspaceSandbox(
   input: RepoWorkspaceCreateInput
-): Promise<Sandbox> {
+): Promise<void> {
+  'use step'
+  let sandbox: Sandbox
   try {
-    return await Sandbox.getOrCreate(
+    sandbox = await Sandbox.getOrCreate(
       withVercelSandboxCredentials({
         name: input.handle.sandboxName,
         source: {
@@ -232,6 +233,26 @@ async function createWorkspaceSandbox(
       `Failed to get or create the repo workspace sandbox. ${describeSandboxApiError(error)}`
     )
   }
+
+  await ensureWorkspaceRoot(sandbox, input.handle.rootPath)
+}
+
+async function ensureWorkspaceRoot(
+  sandbox: Sandbox,
+  rootPath: string
+): Promise<void> {
+  await sandbox.mkDir(rootPath).catch(async () => {
+    const result = await sandbox.runCommand({
+      cmd: 'mkdir',
+      args: ['-p', rootPath],
+    })
+    if (result.exitCode !== 0) {
+      const stderr = await result.stderr()
+      throw new RepoWorkspaceProviderError(
+        stderr.trim() || `Failed to create repo workspace root: ${rootPath}`
+      )
+    }
+  })
 }
 
 async function createWorkspaceBashTool(handle: RepoWorkspaceHandle) {
@@ -421,24 +442,6 @@ function sandboxApiErrorCode(error: object): string | null {
   }
   const body = json as { error?: { code?: unknown } }
   return typeof body.error?.code === 'string' ? body.error.code : null
-}
-
-async function stopWorkspaceSandbox(sandbox: Sandbox | null): Promise<void> {
-  if (!sandbox) {
-    return
-  }
-
-  try {
-    await sandbox.stop()
-  } catch {
-    // Best-effort cleanup on failed workspace startup.
-  }
-
-  try {
-    await sandbox.delete()
-  } catch {
-    // Best-effort cleanup on failed workspace startup.
-  }
 }
 
 async function stopWorkspaceSandboxByHandle(
