@@ -4,6 +4,7 @@ import { ApplicationInviteEmail } from '@outname/email/application-invite-email'
 import { WaitlistAdminSignupEmail } from '@outname/email/waitlist-admin-signup-email'
 import { WaitlistConfirmationEmail } from '@outname/email/waitlist-confirmation-email'
 import { WaitlistInviteEmail } from '@outname/email/waitlist-invite-email'
+import { getEmailLogoUrl } from '@outname/shared/server/email-logo-url'
 import { sendResendReactEmail } from '@outname/shared/server/resend'
 import { siteConfig } from '@outname/shared/server/site-metadata'
 import { getWaitlistAdminEmail } from '@outname/shared/waitlist/server/admin-email-config'
@@ -84,10 +85,6 @@ async function sendResendEmail(input: {
   })
 }
 
-function getWaitlistLogoUrl(): string {
-  return `${getWebBaseUrl()}/email/outna-logo.png`
-}
-
 function buildWaitlistConfirmationUrl(token: string): string {
   const url = new URL('/waitlist/confirm', getWebBaseUrl())
   url.searchParams.set('token', token)
@@ -108,7 +105,7 @@ export async function sendWaitlistConfirmationEmail(input: {
     subject: 'Confirm your OUTNA.ME waitlist request',
     react: createElement(WaitlistConfirmationEmail, {
       confirmationUrl,
-      logoUrl: getWaitlistLogoUrl(),
+      logoUrl: getEmailLogoUrl(),
     }),
   })
 }
@@ -123,7 +120,7 @@ export async function sendWaitlistInviteEmail(input: { email: string }) {
     subject: 'Your OUTNA.ME access is ready',
     react: createElement(WaitlistInviteEmail, {
       loginUrl: new URL('/login', getAppBaseUrl()).toString(),
-      logoUrl: getWaitlistLogoUrl(),
+      logoUrl: getEmailLogoUrl(),
     }),
   })
 }
@@ -138,7 +135,7 @@ export async function sendApplicationInviteEmail(input: { email: string }) {
     subject: `You're invited to ${siteConfig.name}`,
     react: createElement(ApplicationInviteEmail, {
       loginUrl: new URL('/login', getAppBaseUrl()).toString(),
-      logoUrl: getWaitlistLogoUrl(),
+      logoUrl: getEmailLogoUrl(),
     }),
   })
 }
@@ -175,7 +172,7 @@ export async function sendWaitlistAdminSignupNotification(
     react: createElement(WaitlistAdminSignupEmail, {
       adminUrl,
       email: input.email,
-      logoUrl: getWaitlistLogoUrl(),
+      logoUrl: getEmailLogoUrl(),
       name: input.name,
       primaryInterestLabel: getWaitlistOptionLabel(
         WAITLIST_PRIMARY_INTEREST_OPTIONS,

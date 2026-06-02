@@ -2,6 +2,8 @@ import { resolve } from 'node:path'
 import { Config } from '@remotion/cli/config'
 import { enableTailwind } from '@remotion/tailwind-v4'
 
+Config.setPublicDir(resolve(process.cwd(), '../../packages/email/static'))
+
 Config.overrideWebpackConfig((currentConfiguration) => {
   const tailwindConfiguration = enableTailwind(currentConfiguration)
 

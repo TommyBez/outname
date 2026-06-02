@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { AuthSignInOtpEmail } from '@outname/email/auth-sign-in-otp-email'
+import { getEmailLogoUrl } from '@outname/shared/server/email-logo-url'
 import { sendResendReactEmail } from '@outname/shared/server/resend'
 import { siteConfig } from '@outname/shared/server/site-metadata'
 import { createElement } from 'react'
@@ -25,10 +26,6 @@ function getAuthReplyTo(): string {
     throw new Error('AUTH_REPLY_TO is not set')
   }
   return replyTo
-}
-
-function getEmailLogoUrl(): string {
-  return `${getBaseUrl()}/email/outna-logo.png`
 }
 
 function createOtpIdempotencyKey(email: string, otp: string): string {
