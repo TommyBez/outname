@@ -1,24 +1,37 @@
-import { LOCAL_PROJECT_ORIGINS } from './vercel-related-projects'
-
-const DEFAULT_APP_URL = LOCAL_PROJECT_ORIGINS.app
 const TRAILING_SLASHES = /\/+$/
+const LEADING_SLASHES = /^\/+/
 
 export function getAppBaseUrl(): string {
-  return normalizePublicUrl(process.env.NEXT_PUBLIC_APP_URL, DEFAULT_APP_URL)
+  return normalizePublicUrl(process.env.NEXT_PUBLIC_APP_URL)
+}
+
+export function buildAppUrl(
+  path: string,
+  searchParams?: Record<string, string>
+): string {
+  const normalizedPath = `/${path.replace(LEADING_SLASHES, '')}`
+  const url = new URL(normalizedPath, `${getAppBaseUrl()}/`)
+
+  if (searchParams) {
+    for (const [key, value] of Object.entries(searchParams)) {
+      url.searchParams.set(key, value)
+    }
+  }
+
+  return url.toString()
 }
 
 export function getAppLoginUrl(from?: string): string {
-  const loginUrl = new URL('/login', `${getAppBaseUrl()}/`)
-  if (from) {
-    loginUrl.searchParams.set('from', from)
-  }
-  return loginUrl.toString()
+  return buildAppUrl('/login', from ? { from } : undefined)
 }
 
-function normalizePublicUrl(
-  value: string | undefined,
-  fallback: string
-): string {
+function normalizePublicUrl(value: string | undefined): string {
   const trimmed = value?.trim()
-  return (trimmed || fallback).replace(TRAILING_SLASHES, '')
+  if (!trimmed) {
+    throw new Error(
+      'NEXT_PUBLIC_APP_URL must be set by createOutnameNextConfig.'
+    )
+  }
+
+  return trimmed.replace(TRAILING_SLASHES, '')
 }
