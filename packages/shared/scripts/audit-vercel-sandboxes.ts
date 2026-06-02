@@ -35,7 +35,7 @@ Options:
   --help                  Show this help text.
 
 Environment:
-  SANDOX_TEAM_ID           Vercel team id for Sandbox API calls.
+  SANDBOX_TEAM_ID          Vercel team id for Sandbox API calls.
   SANDBOX_PROJECT_ID       Vercel project id for Sandbox API calls.
   SANDBOX_ACCESS_TOKEN     Vercel access token for Sandbox API calls.
 

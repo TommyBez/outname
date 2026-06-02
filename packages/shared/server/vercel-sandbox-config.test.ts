@@ -5,9 +5,9 @@ import {
 } from './vercel-sandbox-config'
 
 const CREDENTIAL_ENV_KEYS = [
-  'SANDOX_TEAM_ID',
+  'SANDBOX_TEAM_ID',
   'SANDBOX_PROJECT_ID',
-  'SANDOX_ACCESS_TOKEN',
+  'SANDBOX_ACCESS_TOKEN',
 ] as const
 const MISSING_PROJECT_ID_ERROR = /SANDBOX_PROJECT_ID/u
 
@@ -27,9 +27,9 @@ function restoreEnv(): void {
 }
 
 function setSandboxCredentialEnv(): void {
-  process.env.SANDOX_TEAM_ID = ' team_123 '
+  process.env.SANDBOX_TEAM_ID = ' team_123 '
   process.env.SANDBOX_PROJECT_ID = ' prj_123 '
-  process.env.SANDOX_ACCESS_TOKEN = ' token_123 '
+  process.env.SANDBOX_ACCESS_TOKEN = ' token_123 '
 }
 
 afterEach(() => {

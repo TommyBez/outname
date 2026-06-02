@@ -49,7 +49,7 @@ Notes:
   Persistent sandboxes are listed for visibility but are never deleted.
 
 Environment:
-  SANDOX_TEAM_ID           Vercel team id for Sandbox API calls.
+  SANDBOX_TEAM_ID          Vercel team id for Sandbox API calls.
   SANDBOX_PROJECT_ID       Vercel project id for Sandbox API calls.
   SANDBOX_ACCESS_TOKEN     Vercel access token for Sandbox API calls.
 
