@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { AuthSignInOtpEmail } from '@outname/email/auth-sign-in-otp-email'
+import { buildEmailLogoUrl } from '@outname/email/email-logo'
 import { sendResendReactEmail } from '@outname/shared/server/resend'
 import { siteConfig } from '@outname/shared/server/site-metadata'
 import { createElement } from 'react'
@@ -27,10 +28,6 @@ function getAuthReplyTo(): string {
   return replyTo
 }
 
-function getEmailLogoUrl(): string {
-  return `${getBaseUrl()}/email/outna-logo.png`
-}
-
 function createOtpIdempotencyKey(email: string, otp: string): string {
   return `auth-email-otp/${encodeURIComponent(email.toLowerCase())}/${otp}`
 }
@@ -49,7 +46,7 @@ export async function sendAuthSignInOtpEmail(input: {
       code: input.otp,
       expiresInMinutes: AUTH_EMAIL_OTP_EXPIRES_IN_SECONDS / 60,
       loginUrl: `${getBaseUrl()}/login`,
-      logoUrl: getEmailLogoUrl(),
+      logoUrl: buildEmailLogoUrl(getBaseUrl()),
     }),
   })
 }
