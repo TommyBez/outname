@@ -4295,7 +4295,7 @@ function FilmEndCard({
       >
         <Img
           alt="OUTNA.ME logo"
-          src={staticFile('email/outna-logo.png')}
+          src={staticFile('outna-logo.png')}
           style={{
             height: layout.finalLogoSize,
             width: layout.finalLogoSize,
@@ -4571,7 +4571,7 @@ function BrandClosingOverlay({
       >
         <Img
           alt="OUTNA.ME logo"
-          src={staticFile('email/outna-logo.png')}
+          src={staticFile('outna-logo.png')}
           style={{
             height: layout.logoSize,
             width: layout.logoSize,

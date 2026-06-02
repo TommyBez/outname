@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { AuthSignInOtpEmail } from '@outname/email/auth-sign-in-otp-email'
-import { buildEmailLogoUrl } from '@outname/email/email-logo'
+import { getEmailLogoUrl } from '@outname/shared/server/email-logo-url'
 import { sendResendReactEmail } from '@outname/shared/server/resend'
 import { siteConfig } from '@outname/shared/server/site-metadata'
 import { createElement } from 'react'
@@ -46,7 +46,7 @@ export async function sendAuthSignInOtpEmail(input: {
       code: input.otp,
       expiresInMinutes: AUTH_EMAIL_OTP_EXPIRES_IN_SECONDS / 60,
       loginUrl: `${getBaseUrl()}/login`,
-      logoUrl: buildEmailLogoUrl(getBaseUrl()),
+      logoUrl: getEmailLogoUrl(),
     }),
   })
 }

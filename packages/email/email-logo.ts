@@ -1,4 +1,4 @@
-/** Public path served by Next.js apps that host transactional email assets. */
+/** Public path served by `apps/web` for email image assets. */
 export const EMAIL_LOGO_PUBLIC_PATH = '/email/outna-logo.png'
 
 export function buildEmailLogoUrl(baseUrl: string): string {
