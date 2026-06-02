@@ -8,6 +8,24 @@ export interface BlogPost {
 
 export const posts: BlogPost[] = [
   {
+    slug: 'gitlab-19-agents-md-industry-standard',
+    title:
+      'GitLab 19.0 Just Made AGENTS.md an Industry Standard. Outname Saw This Coming.',
+    date: '2026-06-02',
+    excerpt:
+      "GitLab 19.0 now reads AGENTS.md natively. Anthropic says multi-agent coordination is the future. The industry is converging on exactly the architecture Outname built from day one.",
+    tags: [
+      'AI',
+      'agents',
+      'GitLab',
+      'AGENTS.md',
+      'identity',
+      'Anthropic',
+      'architecture',
+      'Outname',
+    ],
+  },
+  {
     slug: 'grok-build-coding-agent-fragmentation',
     title:
       "xAI's Grok Build Is the 10th Coding Agent. The Market Is Solving the Wrong Problem.",
