@@ -239,7 +239,7 @@ function ConnectionControls({
         ) : (
           <a
             className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
-            href={`/api/connections/oauth/${encodeURIComponent(connector.connectorId)}/start?returnTo=/connections`}
+            href={`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/connections/oauth/${encodeURIComponent(connector.connectorId)}/start?returnTo=/connections`}
           >
             {connection
               ? `Reconnect ${connector.displayName}`
