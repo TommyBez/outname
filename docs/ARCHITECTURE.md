@@ -20,10 +20,10 @@ flowchart LR
   Next --> Workflow[Vercel Workflow]
   Next --> Resend[Resend]
 
-  Next --> Gateway[Vercel AI Gateway]
+  Next --> Inference[Vercel AI Gateway or OpenRouter]
   Next --> Sandbox[Vercel Sandbox]
   Workflow --> Sandbox
-  Workflow --> Gateway
+  Workflow --> Inference
   Workflow --> DB
   Workflow --> Redis
   Workflow --> Tools[Tool catalog and providers]
@@ -120,7 +120,7 @@ sequenceDiagram
   participant R as ToolLoopAgent
   participant W as agentEventWorkflow
   participant S as Vercel Sandbox
-  participant M as AI Gateway and tools
+  participant M as Inference provider and tools
 
   Ingress->>Next: request or trigger
   Next->>DB: validate ownership and persist visible input
@@ -166,6 +166,9 @@ final Postgres persistence, no delivery ledger reconciles that gap yet.
 | Concern | Source of truth | Notes |
 | --- | --- | --- |
 | Users, sessions, agents, tools, conversations | Neon Postgres | Stored through Drizzle ORM and Better Auth. |
+| User inference credentials | Neon Postgres | Provider keys live in `user_inference_credentials`, encrypted per user. There is no server fallback key. |
+| Per-agent inference provider and model | Neon Postgres | `agent.inference_provider` scopes `agent.model`; model ids are not globally meaningful by themselves. |
+| Token usage and cost estimates | Neon Postgres | `agent_token_usage` stores provider, requested model, cache/read/write/reasoning tokens, pricing snapshot, and estimated or actual USD cost. |
 | Agent event ledger | Neon Postgres | `agent_events` drives durable orchestration and recovery for heartbeat, dreaming, and invocation. |
 | Agent filesystem and bootstrap files | Vercel Sandbox | Persistent per-agent filesystem. |
 | Cache and distributed coordination | Upstash Redis | Used for locks, scheduling, and cached file reads. |

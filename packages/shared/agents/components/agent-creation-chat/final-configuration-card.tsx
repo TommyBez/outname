@@ -8,6 +8,11 @@ import {
   stepLimitLabel,
 } from './review-labels'
 
+const INFERENCE_PROVIDER_DISPLAY_NAMES = {
+  openrouter: 'OpenRouter',
+  'vercel-ai-gateway': 'Vercel AI Gateway',
+} satisfies Record<AgentCreationRequest['inferenceProvider'], string>
+
 export function FinalConfigurationCard({
   config,
   timeZone,
@@ -42,6 +47,7 @@ export function FinalConfigurationCard({
           <ReviewBlock
             label="Runtime"
             value={[
+              `Provider: ${displayInferenceProvider(config.inferenceProvider)}`,
               `Model: ${config.model}`,
               `Step limit: ${stepLimitLabel(config.stepLimit)}`,
               `Heartbeat: ${scheduleLabel(config.heartbeat, timeZone)}`,
@@ -73,6 +79,12 @@ export function FinalConfigurationCard({
       </div>
     </section>
   )
+}
+
+function displayInferenceProvider(
+  provider: AgentCreationRequest['inferenceProvider']
+): string {
+  return INFERENCE_PROVIDER_DISPLAY_NAMES[provider] ?? provider
 }
 
 function ToolList({

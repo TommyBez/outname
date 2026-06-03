@@ -12,6 +12,7 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/pg-core'
 import { user } from './auth'
+import type { InferenceProvider } from './inference'
 
 export type AgentEventStatus =
   | 'queued'
@@ -48,7 +49,11 @@ export const agent = pgTable(
     // Soft-delete / UI reachability flag. Heartbeat opt-in lives on
     // `heartbeatEnabled`, so disabling heartbeat no longer hides the agent.
     enabled: boolean('enabled').notNull().default(true),
-    // Persist only model ids the AI Gateway can route.
+    // Persist provider-scoped model ids for the selected inference provider.
+    inferenceProvider: text('inference_provider')
+      .$type<InferenceProvider>()
+      .notNull()
+      .default('vercel-ai-gateway'),
     model: text('model').notNull().default('openai/gpt-5-mini'),
     // Per-agent model-step budget for `stopWhen` guards.
     stepLimitMode: text('step_limit_mode').notNull().default('medium'),

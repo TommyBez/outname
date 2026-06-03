@@ -1,5 +1,10 @@
 import { auth } from '@outname/auth/server/auth'
-import { getUserModelForGateway } from '@outname/shared/server/ai-gateway-byok'
+import { MissingInferenceCredentialError } from '@outname/shared/server/inference-provider-errors'
+import {
+  getRequiredDefaultInferenceProvider,
+  getUserLanguageModel,
+  listEnabledInferenceProviders,
+} from '@outname/shared/server/inference-providers'
 import {
   createAgentUIStreamResponse,
   stepCountIs,
@@ -26,14 +31,15 @@ export async function POST(req: Request) {
     return messages.response
   }
 
-  const model = await getUserModelForGateway({
-    modelId: CREATOR_MODEL,
-    userId: session.user.id,
-  })
+  const providerSetup = await resolveProviderSetup(session.user.id)
+  if (!providerSetup.ok) {
+    return providerSetup.response
+  }
+  const { enabledProviders, model } = providerSetup.value
 
   const agent = new ToolLoopAgent({
     model,
-    instructions: creatorInstructions(),
+    instructions: creatorInstructions({ enabledProviders }),
     stopWhen: stepCountIs(8),
     tools: {
       list_available_tools: tool({
@@ -101,4 +107,50 @@ async function readMessages(
     }
   }
   return { ok: true, value: body.messages }
+}
+
+interface ProviderSetup {
+  enabledProviders: Awaited<ReturnType<typeof listEnabledInferenceProviders>>
+  model: Awaited<ReturnType<typeof getUserLanguageModel>>
+}
+
+async function resolveProviderSetup(userId: string): Promise<
+  | {
+      ok: true
+      value: ProviderSetup
+    }
+  | { ok: false; response: ReturnType<typeof NextResponse.json> }
+> {
+  try {
+    const [enabledProviders, inferenceProvider] = await Promise.all([
+      listEnabledInferenceProviders(userId),
+      getRequiredDefaultInferenceProvider(userId),
+    ])
+    return {
+      ok: true,
+      value: {
+        enabledProviders,
+        model: await getUserLanguageModel({
+          inferenceProvider,
+          modelId: CREATOR_MODEL,
+          userId,
+        }),
+      },
+    }
+  } catch (error) {
+    if (error instanceof MissingInferenceCredentialError) {
+      return {
+        ok: false,
+        response: NextResponse.json(
+          {
+            code: 'inference_provider_missing',
+            error:
+              'Configure an inference provider in Settings before creating agents.',
+          },
+          { status: 428 }
+        ),
+      }
+    }
+    throw error
+  }
 }

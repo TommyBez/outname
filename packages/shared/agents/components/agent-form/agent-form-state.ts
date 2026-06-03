@@ -1,3 +1,4 @@
+import type { InferenceProvider } from '@outname/db/schema'
 import type { AgentScheduleMode } from '@outname/shared/agent-schedule'
 import type {
   AgentFormInitial,
@@ -13,6 +14,7 @@ export interface AgentFormState {
   heartbeatScheduleTimes: string[]
   identity: string
   identityCard: string
+  inferenceProvider: InferenceProvider
   instructions: string
   intervalMinutes: number
   model: string
@@ -29,6 +31,7 @@ export type AgentFormAction =
   | { type: 'set_instructions'; value: string }
   | { type: 'set_user_profile'; value: string }
   | { type: 'set_active_bootstrap_file'; value: BootstrapFileValue }
+  | { type: 'set_inference_provider'; value: InferenceProvider }
   | { type: 'set_model'; value: string }
   | { type: 'set_heartbeat_enabled'; value: boolean }
   | { type: 'set_heartbeat_schedule_mode'; value: AgentScheduleMode }
@@ -39,6 +42,7 @@ export type AgentFormAction =
   | { type: 'set_step_limit_custom'; value: number }
 
 export function createAgentFormState(input: {
+  defaultInferenceProvider: InferenceProvider
   defaultModel: string
   initial?: AgentFormInitial
 }): AgentFormState {
@@ -49,6 +53,8 @@ export function createAgentFormState(input: {
     instructions: input.initial?.instructions ?? '',
     userProfile: input.initial?.userProfile ?? '',
     activeBootstrapFile: 'identity-card',
+    inferenceProvider:
+      input.initial?.inferenceProvider ?? input.defaultInferenceProvider,
     model: input.initial?.model ?? input.defaultModel,
     heartbeatEnabled: input.initial?.heartbeatEnabled ?? true,
     heartbeatScheduleMode: input.initial?.heartbeatScheduleMode ?? 'interval',
@@ -77,6 +83,8 @@ export function agentFormReducer(
       return { ...state, userProfile: action.value }
     case 'set_active_bootstrap_file':
       return { ...state, activeBootstrapFile: action.value }
+    case 'set_inference_provider':
+      return { ...state, inferenceProvider: action.value }
     case 'set_model':
       return { ...state, model: action.value }
     case 'set_heartbeat_enabled':

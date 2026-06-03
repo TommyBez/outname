@@ -1,0 +1,60 @@
+import 'server-only'
+
+import type { InferenceProvider } from '@outname/db/schema'
+import { InferenceCredentialVerificationError } from './inference-provider-errors'
+import {
+  displayInferenceProvider,
+  inferenceProviderVerifyUrl,
+  summarizeProviderVerificationBody,
+} from './inference-provider-registry'
+
+export async function verifyInferenceCredential(input: {
+  apiKey: string
+  inferenceProvider: InferenceProvider
+}): Promise<Record<string, unknown>> {
+  let response: Response
+  try {
+    response = await fetch(
+      inferenceProviderVerifyUrl(input.inferenceProvider),
+      {
+        headers: {
+          authorization: `Bearer ${input.apiKey}`,
+        },
+        cache: 'no-store',
+      }
+    )
+  } catch {
+    throw new InferenceCredentialVerificationError(
+      input.inferenceProvider,
+      `Could not verify ${displayInferenceProvider(input.inferenceProvider)} right now. Try again in a moment.`
+    )
+  }
+
+  if (!response.ok) {
+    throw new InferenceCredentialVerificationError(
+      input.inferenceProvider,
+      verificationErrorMessage(input.inferenceProvider, response.status),
+      response.status
+    )
+  }
+
+  const body = await response.json().catch(() => ({}))
+  return {
+    providerStatus: response.status,
+    verifiedAt: new Date().toISOString(),
+    verification: summarizeProviderVerificationBody({
+      body,
+      inferenceProvider: input.inferenceProvider,
+    }),
+  }
+}
+
+function verificationErrorMessage(
+  provider: InferenceProvider,
+  status: number
+): string {
+  if (status === 401 || status === 403) {
+    return `${displayInferenceProvider(provider)} rejected this API key.`
+  }
+  return `${displayInferenceProvider(provider)} key verification failed with status ${status}.`
+}

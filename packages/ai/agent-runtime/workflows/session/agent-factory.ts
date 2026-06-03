@@ -2,10 +2,8 @@ import { buildRuntimeToolset } from '@outname/ai/agent-runtime/server/runtime-to
 import type { BuildAgentTool } from '@outname/ai/tools/sub-agents/agent-tool'
 import type { SubAgentProgressTarget } from '@outname/ai/tools/sub-agents/progress-target'
 import { workflowParentStreamTarget } from '@outname/ai/tools/sub-agents/progress-target'
-import {
-  getUserModelForGateway,
-  MissingAiGatewayApiKeyError,
-} from '@outname/shared/server/ai-gateway-byok'
+import { MissingInferenceCredentialError } from '@outname/shared/server/inference-provider-errors'
+import { getUserLanguageModel } from '@outname/shared/server/inference-providers'
 import { nonRetryableStepErrorFromUnknown } from '@outname/shared/server/workflow-step-errors'
 import { DurableAgent } from '@workflow/ai/agent'
 import type { Tool } from 'ai'
@@ -74,6 +72,7 @@ export async function buildAgent(
     callStack,
     depth,
     eventKind,
+    inferenceProvider: row.inferenceProvider,
     modelId: row.model,
     stepLimitCustom: row.stepLimitCustom,
     stepLimitMode: row.stepLimitMode as StepLimitMode,
@@ -108,16 +107,14 @@ function buildDurableAgentRuntime(
     model: async () => {
       'use step'
       try {
-        return await getUserModelForGateway({
+        return await getUserLanguageModel({
+          inferenceProvider: spec.inferenceProvider,
           modelId: spec.modelId,
           userId: spec.userId,
         })
       } catch (error) {
-        if (error instanceof MissingAiGatewayApiKeyError) {
-          throw nonRetryableStepErrorFromUnknown(
-            error,
-            'AI Gateway API key is missing'
-          )
+        if (error instanceof MissingInferenceCredentialError) {
+          throw nonRetryableStepErrorFromUnknown(error, error.message)
         }
         throw error
       }

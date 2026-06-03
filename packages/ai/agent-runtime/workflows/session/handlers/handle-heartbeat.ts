@@ -119,6 +119,7 @@ export async function handleHeartbeat(input: {
         rootAgentId: agentId,
         sourceType: mode === 'dreaming' ? 'dreaming' : 'heartbeat',
         sourceId: runId,
+        inferenceProvider: meta.inferenceProvider,
         model: meta.model,
         usage: extractTotalUsage(result),
       })

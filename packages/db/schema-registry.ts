@@ -14,6 +14,7 @@ import {
   session,
   user,
   userConnections,
+  userInferenceCredentials,
   verification,
   waitlistEntry,
 } from './schema'
@@ -29,6 +30,7 @@ export const dbSchema = {
   chatConversation,
   chatMessage,
   userConnections,
+  userInferenceCredentials,
   agentTools,
   budgetRule,
   agentTokenUsage,

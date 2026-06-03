@@ -147,6 +147,7 @@ export async function handleInvocation(input: {
       rootAgentId,
       sourceType: 'invocation',
       sourceId: runId,
+      inferenceProvider: built.meta.inferenceProvider,
       model: built.meta.model,
       usage: extractTotalUsage(result),
     })

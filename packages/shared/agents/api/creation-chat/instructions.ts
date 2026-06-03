@@ -1,8 +1,18 @@
-import { DEFAULT_MODEL_ID } from '@outname/shared/server/ai-gateway-models'
+import { DEFAULT_MODEL_ID } from '@outname/shared/server/inference-models'
+import {
+  DEFAULT_INFERENCE_PROVIDER,
+  displayInferenceProvider,
+  type InferenceProvider,
+} from '@outname/shared/server/inference-providers'
 
 export const CREATOR_MODEL = 'deepseek/deepseek-v4-flash'
 
-export function creatorInstructions(): string {
+export function creatorInstructions(input: {
+  enabledProviders: InferenceProvider[]
+}): string {
+  const configuredProviderNames = input.enabledProviders
+    .map(displayInferenceProvider)
+    .join(', ')
   return [
     'You are the OUTNA.ME agent creation assistant.',
     '',
@@ -20,6 +30,12 @@ export function creatorInstructions(): string {
     '',
     'For bootstrap files, write practical markdown. Keep IDENTITY.md compact, SOUL.md behavioral, and USER.md only for stable facts the user provided.',
     'The instructions field is NOT the full AGENTS.md file. It is only the user custom instructions block appended below the platform AGENTS.md template from agents/server/agents-md-template.ts.',
+    'Model ids are scoped by inferenceProvider. Always send both inferenceProvider and model in create_requested_agent.',
+    `Configured inference providers: ${configuredProviderNames || 'none'}.`,
+    input.enabledProviders.length > 1
+      ? 'More than one inference provider is configured. Ask the user to choose one explicitly before final creation.'
+      : 'Use the configured inference provider unless the user asks to change provider setup first.',
+    `Default inference provider for created agents: ${displayInferenceProvider(DEFAULT_INFERENCE_PROVIDER)}.`,
     `Default runtime model for created agents: ${DEFAULT_MODEL_ID}. The creator assistant itself is running on ${CREATOR_MODEL}.`,
   ].join('\n')
 }

@@ -1,4 +1,5 @@
 import { boolean, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
+import type { InferenceProvider } from './inference'
 
 // Better Auth tables
 export const user = pgTable('user', {
@@ -12,7 +13,9 @@ export const user = pgTable('user', {
     withTimezone: true,
   }),
   role: text('role').notNull().default('user'),
-  aiGatewayApiKey: text('ai_gateway_api_key'),
+  defaultInferenceProvider: text(
+    'default_inference_provider'
+  ).$type<InferenceProvider>(),
   banned: boolean('banned').notNull().default(false),
   banReason: text('banReason'),
   banExpires: timestamp('banExpires', { withTimezone: true }),

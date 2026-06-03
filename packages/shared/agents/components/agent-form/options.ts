@@ -1,6 +1,8 @@
+import type { InferenceProvider } from '@outname/db/schema'
 import type { AgentScheduleMode } from '@outname/shared/agent-schedule'
 import { formatAgentCadence } from '@outname/shared/agents/format'
-import type { ModelOption } from '@outname/shared/server/ai-gateway-models'
+import { emptyModelPricing } from '@outname/shared/model-pricing'
+import type { ModelOption } from '@outname/shared/server/inference-models'
 
 export const INTERVAL_OPTIONS = [
   { value: 5, label: formatAgentCadence(5) },
@@ -40,6 +42,12 @@ export type BootstrapFileValue =
   (typeof BOOTSTRAP_FILE_OPTIONS)[number]['value']
 export type StepLimitMode = 'custom' | 'grind' | 'high' | 'low' | 'medium'
 
+export interface InferenceProviderOption {
+  configured: boolean
+  label: string
+  value: InferenceProvider
+}
+
 export interface AgentFormInitial {
   dreamingEnabled: boolean
   heartbeatEnabled: boolean
@@ -49,6 +57,7 @@ export interface AgentFormInitial {
   id: string
   identity: string
   identityCard: string
+  inferenceProvider: InferenceProvider
   instructions: string
   model: string
   name: string
@@ -93,7 +102,8 @@ export function uniqueModelsById(options: ModelOption[]) {
 
 export function resolveModelOptions(
   models: ModelOption[],
-  defaultModel: string
+  defaultModel: string,
+  inferenceProvider: InferenceProvider
 ): ModelOption[] {
   if (models.length > 0) {
     return models
@@ -102,10 +112,11 @@ export function resolveModelOptions(
     {
       contextWindow: 0,
       id: defaultModel,
+      inferenceProvider,
       name: defaultModel,
-      ownedBy: 'gateway',
-      inputUsdPerToken: null,
-      outputUsdPerToken: null,
+      ownedBy: inferenceProvider,
+      pricing: emptyModelPricing(),
+      supportedParameters: ['tools'],
     },
   ]
 }

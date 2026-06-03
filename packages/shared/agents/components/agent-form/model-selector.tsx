@@ -1,4 +1,5 @@
-import type { ModelOption } from '@outname/shared/server/ai-gateway-models'
+import type { InferenceProvider } from '@outname/db/schema'
+import type { ModelOption } from '@outname/shared/server/inference-models'
 import { Button } from '@outname/ui/components/ui/button'
 import {
   CommandDialog,
@@ -14,6 +15,7 @@ import { CheckIcon, ChevronsUpDownIcon } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import {
   groupModelsByProvider,
+  type InferenceProviderOption,
   modelMatchesSearch,
   resolveModelOptions,
   selectedModelSort,
@@ -22,19 +24,37 @@ import {
 
 export function ModelSelector({
   defaultModel,
+  defaultModelByProvider,
+  inferenceProvider,
   model,
   models,
+  providers,
+  setInferenceProvider,
   setModel,
 }: {
   defaultModel: string
+  defaultModelByProvider: Record<InferenceProvider, string>
+  inferenceProvider: InferenceProvider
   model: string
   models: ModelOption[]
+  providers: InferenceProviderOption[]
+  setInferenceProvider: (value: InferenceProvider) => void
   setModel: (value: string) => void
 }) {
   const [modelDialogOpen, setModelDialogOpen] = useState(false)
   const [modelSearch, setModelSearch] = useState('')
+  const selectedProvider =
+    providers.find((option) => option.value === inferenceProvider) ??
+    providers[0]
+  const providerModels = models.filter(
+    (option) => option.inferenceProvider === inferenceProvider
+  )
   const availableModels = uniqueModelsById(
-    resolveModelOptions(models, defaultModel)
+    resolveModelOptions(
+      providerModels,
+      defaultModelByProvider[inferenceProvider] ?? defaultModel,
+      inferenceProvider
+    )
   )
   const selectedModel =
     availableModels.find((option) => option.id === model) ?? availableModels[0]
@@ -53,9 +73,32 @@ export function ModelSelector({
   )
 
   return (
-    <div className="grid gap-3 border-foreground border-b-2 pb-8 md:grid-cols-[12rem_minmax(0,1fr)]">
-      <Label htmlFor="agent-model">Model</Label>
-      <div className="flex flex-col gap-2">
+    <div className="grid gap-6 border-foreground border-b-2 pb-8 md:grid-cols-[12rem_minmax(0,1fr)]">
+      <div className="flex flex-col gap-1">
+        <Label htmlFor="agent-provider">Inference</Label>
+      </div>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
+          <select
+            className="h-11 w-full border-2 border-foreground bg-background px-3 font-bold text-sm"
+            id="agent-provider"
+            onChange={(event) =>
+              setInferenceProvider(event.target.value as InferenceProvider)
+            }
+            value={inferenceProvider}
+          >
+            {providers.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+                {option.configured ? '' : ' (not configured)'}
+              </option>
+            ))}
+          </select>
+          <p className="text-muted-foreground text-xs">
+            New runs use this provider and the provider-scoped model below.
+          </p>
+        </div>
+
         <Button
           aria-expanded={modelDialogOpen}
           aria-haspopup="dialog"
@@ -119,8 +162,8 @@ export function ModelSelector({
           </CommandList>
         </CommandDialog>
         <p className="text-muted-foreground text-xs">
-          Routed through the Vercel AI Gateway. Filtered to models that support
-          tool calling.
+          {selectedProvider?.label ?? 'Selected provider'} model catalog,
+          filtered to models that support tool calling.
         </p>
       </div>
     </div>

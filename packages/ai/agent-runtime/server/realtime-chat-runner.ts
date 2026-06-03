@@ -19,6 +19,7 @@ import { formatBudgetExceededMessage } from '@outname/shared/budgets/server/erro
 import type { ChannelId } from '@outname/shared/channels/server/types'
 import type { AppRevalidationPayload } from '@outname/shared/server/app-revalidation'
 import { conversationListTag } from '@outname/shared/server/cache-tags'
+import type { InferenceProvider } from '@outname/shared/server/inference-providers'
 import {
   createAgentUIStream,
   createUIMessageStream,
@@ -228,6 +229,7 @@ async function streamUiMessageTurn(input: {
         conversationId: turn.conversationId,
         delivery: turn.delivery,
         event,
+        inferenceProvider: input.spec.inferenceProvider,
         model: input.spec.modelId,
         userId: input.spec.userId,
       })
@@ -291,6 +293,7 @@ async function runTextOnlyTurn(input: {
         conversationId: turn.conversationId,
         delivery: turn.delivery,
         event,
+        inferenceProvider: input.spec.inferenceProvider,
         model: input.spec.modelId,
         userId: input.spec.userId,
       })
@@ -517,6 +520,7 @@ function scheduleUsageRecording(input: {
   conversationId: string
   delivery: RealtimeDelivery
   event: OnFinishEvent<Record<string, Tool>>
+  inferenceProvider: InferenceProvider
   model: string
   userId: string
 }): void {
@@ -528,6 +532,7 @@ function scheduleUsageRecording(input: {
         rootAgentId: input.agentId,
         sourceType: 'chat',
         sourceId: input.conversationId,
+        inferenceProvider: input.inferenceProvider,
         model: input.model,
         usage: extractTotalUsage(input.event),
       })

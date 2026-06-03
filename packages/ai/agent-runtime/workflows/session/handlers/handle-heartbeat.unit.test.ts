@@ -128,9 +128,12 @@ describe('handleHeartbeat', () => {
         stream: vi.fn().mockResolvedValue({ steps: [] }),
       },
       meta: {
+        inferenceProvider: 'vercel-ai-gateway',
         model: 'test-model',
+        name: 'Test Agent',
         stepLimitCustom: null,
         stepLimitMode: 'default',
+        userId: 'user_123',
       },
     })
   })
