@@ -1,4 +1,4 @@
-import { AiGatewaySetupNote } from '@outname/email/components/ai-gateway-setup-note'
+import { InferenceProviderSetupNote } from '@outname/email/components/inference-provider-setup-note'
 import { WaitlistEmailLayout } from '@outname/email/components/waitlist-email-layout'
 import { EMAIL_BRAND_NAME } from '@outname/email/email-brand'
 import { EMAIL_PREVIEW_URLS } from '@outname/email/email-preview-urls'
@@ -28,7 +28,7 @@ export function WaitlistInviteEmail({
         for you. Open the login page, enter the same email address used for the
         waitlist confirmation, and we will send you a one-time code.
       </Text>
-      <AiGatewaySetupNote />
+      <InferenceProviderSetupNote />
       <Text className="m-0 mt-[16px] text-[14px] text-subtle leading-[22px]">
         If you were not expecting this message, ignore it or reply to this email
         and we will help you sort it out.

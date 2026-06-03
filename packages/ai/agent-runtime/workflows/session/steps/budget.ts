@@ -1,62 +1,17 @@
 import { checkBudgetExceeded } from '@outname/shared/budgets/server/spend'
 import type { BudgetExceededInfo } from '@outname/shared/budgets/server/types'
 import { recordAgentTokenUsage } from '@outname/shared/budgets/server/usage'
+import type { InferenceProvider } from '@outname/shared/server/inference-providers'
+import {
+  extractTotalUsage as extractTotalUsageFromResult,
+  type UsageBearingResult,
+} from '@outname/shared/server/model-costs'
 import type { LanguageModelUsage } from 'ai'
 
-interface UsageBearingStep {
-  usage?: LanguageModelUsage
-}
-
-interface UsageBearingResult {
-  steps?: readonly UsageBearingStep[]
-  totalUsage?: LanguageModelUsage
-  usage?: LanguageModelUsage
-}
-
-// AI SDK usage shapes drift (`totalUsage`, root `usage`, per-step `usage`), so
-// aggregate defensively instead of assuming a single result shape.
 export function extractTotalUsage(
   result: UsageBearingResult | undefined
 ): LanguageModelUsage | undefined {
-  if (!result) {
-    return
-  }
-  const direct = result.totalUsage ?? result.usage
-  if (direct) {
-    return direct
-  }
-  const steps = result.steps ?? []
-  if (steps.length === 0) {
-    return
-  }
-  let inputTokens = 0
-  let outputTokens = 0
-  let totalTokens = 0
-  let reasoningTokens = 0
-  let cachedInputTokens = 0
-  let sawAny = false
-  for (const step of steps) {
-    const u = step.usage
-    if (!u) {
-      continue
-    }
-    sawAny = true
-    inputTokens += u.inputTokens ?? 0
-    outputTokens += u.outputTokens ?? 0
-    totalTokens += u.totalTokens ?? 0
-    reasoningTokens += u.reasoningTokens ?? 0
-    cachedInputTokens += u.cachedInputTokens ?? 0
-  }
-  if (!sawAny) {
-    return
-  }
-  return {
-    inputTokens,
-    outputTokens,
-    totalTokens: totalTokens || inputTokens + outputTokens,
-    reasoningTokens,
-    cachedInputTokens,
-  } as LanguageModelUsage
+  return extractTotalUsageFromResult(result)
 }
 
 // These budget helpers touch services that are unavailable in the workflow
@@ -75,6 +30,7 @@ export async function recordTokenUsageStep(input: {
   rootAgentId: string
   sourceType: 'chat' | 'heartbeat' | 'dreaming' | 'invocation'
   sourceId?: string | null
+  inferenceProvider: InferenceProvider
   model: string
   usage: LanguageModelUsage | undefined
 }): Promise<void> {

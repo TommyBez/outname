@@ -2,7 +2,10 @@ import 'server-only'
 
 import { db } from '@outname/db'
 import { agent } from '@outname/db/schema'
-import { getUserModelForGateway } from '@outname/shared/server/ai-gateway-byok'
+import {
+  getRequiredDefaultInferenceProvider,
+  getUserLanguageModel,
+} from '@outname/shared/server/inference-providers'
 import { generateText } from 'ai'
 import { eq } from 'drizzle-orm'
 import { loadSummaryContext } from './capability-summary/context'
@@ -30,10 +33,7 @@ export async function refreshAgentCapabilitySummary(input: {
 
     try {
       const { text } = await generateText({
-        model: await getUserModelForGateway({
-          modelId: SUMMARY_MODEL,
-          userId: context.userId,
-        }),
+        model: await getSummaryModel(context.userId),
         system: [
           'You write model-facing descriptions for AI sub-agents.',
           'Return one short paragraph, 1-2 sentences, maximum 450 characters.',
@@ -69,4 +69,13 @@ export async function refreshAgentCapabilitySummary(input: {
     console.error('refreshAgentCapabilitySummary failed', err)
     return null
   }
+}
+
+async function getSummaryModel(userId: string) {
+  const inferenceProvider = await getRequiredDefaultInferenceProvider(userId)
+  return await getUserLanguageModel({
+    inferenceProvider,
+    modelId: SUMMARY_MODEL,
+    userId,
+  })
 }

@@ -13,7 +13,11 @@ import {
   clampInterval,
   normalizeNewlines,
 } from '@outname/shared/agents/server/creation-service'
-import { isModelIdValid } from '@outname/shared/server/ai-gateway-models'
+import { isModelSelectionValid } from '@outname/shared/server/inference-models'
+import {
+  hasEnabledInferenceProvider,
+  type InferenceProvider,
+} from '@outname/shared/server/inference-providers'
 import { and, eq } from 'drizzle-orm'
 
 export interface UpdateAgentInput {
@@ -25,6 +29,7 @@ export interface UpdateAgentInput {
   id: string
   identityCard: string
   identityCardOriginal: string
+  inferenceProvider: InferenceProvider
   instructions: string
   instructionsOriginal: string
   model: string
@@ -50,11 +55,27 @@ export async function updateAgentForUser(
   }
 
   const name = input.name.trim() || existing.name
-  // Skip the catalog fetch when the model did not change.
-  const model =
-    input.model === existing.model || (await isModelIdValid(input.model))
-      ? input.model
-      : existing.model
+  const providerAndModelUnchanged =
+    input.inferenceProvider === existing.inferenceProvider &&
+    input.model === existing.model
+  const providerIsEnabled =
+    providerAndModelUnchanged ||
+    (await hasEnabledInferenceProvider({
+      inferenceProvider: input.inferenceProvider,
+      userId: input.userId,
+    }))
+  if (!providerIsEnabled) {
+    throw new Error('Selected inference provider is not configured.')
+  }
+  const modelIsValid =
+    providerAndModelUnchanged ||
+    (await isModelSelectionValid({
+      inferenceProvider: input.inferenceProvider,
+      modelId: input.model,
+    }))
+  if (!modelIsValid) {
+    throw new Error('Selected model is not available for this provider.')
+  }
   const heartbeatIntervalMinutes = clampInterval(input.heartbeatIntervalMinutes)
   const heartbeatScheduleMode = normalizeAgentScheduleMode(
     input.heartbeatScheduleMode
@@ -69,7 +90,8 @@ export async function updateAgentForUser(
     .update(agent)
     .set({
       name,
-      model,
+      inferenceProvider: input.inferenceProvider,
+      model: input.model,
       heartbeatEnabled: input.heartbeatEnabled,
       heartbeatScheduleMode,
       heartbeatScheduleTimes,

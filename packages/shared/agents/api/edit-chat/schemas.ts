@@ -1,3 +1,4 @@
+import { inferenceProviderValues } from '@outname/db/schema'
 import { MAX_DAILY_SCHEDULE_TIMES } from '@outname/shared/agent-schedule'
 import { z } from 'zod'
 
@@ -10,6 +11,7 @@ const scheduleTimesSchema = z
 export const updateSchema = z
   .object({
     name: z.string().min(1),
+    inferenceProvider: z.enum(inferenceProviderValues),
     model: z.string().min(1),
     heartbeatEnabled: z.boolean(),
     heartbeatScheduleMode: scheduleModeSchema.default('interval'),

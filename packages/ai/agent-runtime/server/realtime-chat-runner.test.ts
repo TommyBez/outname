@@ -47,15 +47,12 @@ vi.mock('@outname/ai/chat/workflows/steps/generate-conversation-title', () => ({
   maybeGenerateConversationTitle: mocks.maybeGenerateConversationTitle,
 }))
 
-vi.mock('../workflows/session/steps/budget', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('../workflows/session/steps/budget')>()
-  return {
-    ...actual,
-    preflightBudget: mocks.preflightBudget,
-    recordTokenUsageStep: mocks.recordTokenUsageStep,
-  }
-})
+vi.mock('../workflows/session/steps/budget', () => ({
+  extractTotalUsage: (event: { totalUsage?: unknown; usage?: unknown }) =>
+    event.totalUsage ?? event.usage,
+  preflightBudget: mocks.preflightBudget,
+  recordTokenUsageStep: mocks.recordTokenUsageStep,
+}))
 
 vi.mock('./realtime-agent-runtime', () => ({
   buildRealtimeAgentRuntime: mocks.buildRealtimeAgentRuntime,
@@ -386,6 +383,7 @@ describe('realtime chat runner persistence policy', () => {
     await delivery.tasks[0]()
     expect(mocks.recordTokenUsageStep).toHaveBeenCalledWith({
       agentId: 'agent_123',
+      inferenceProvider: 'vercel-ai-gateway',
       model: 'openai/gpt-5.1',
       rootAgentId: 'agent_123',
       sourceId: 'conv_123',
@@ -569,6 +567,7 @@ function runtimeSpec(): AgentRuntimeSpec {
     callStack: [],
     depth: 0,
     eventKind: 'chat',
+    inferenceProvider: 'vercel-ai-gateway',
     modelId: 'openai/gpt-5.1',
     stepLimitCustom: null,
     stepLimitMode: 'medium',

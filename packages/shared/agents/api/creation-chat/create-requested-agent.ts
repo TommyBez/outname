@@ -37,6 +37,7 @@ export async function createRequestedAgent(input: {
     userId: input.userId,
     idempotencyKey: input.toolCallId,
     name: input.input.name,
+    inferenceProvider: input.input.inferenceProvider,
     model: input.input.model,
     heartbeatEnabled: input.input.heartbeat.enabled,
     heartbeatScheduleMode: input.input.heartbeat.mode,

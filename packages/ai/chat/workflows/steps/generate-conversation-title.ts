@@ -4,8 +4,11 @@ import {
 } from '@outname/ai/chat/server/chat'
 import { db } from '@outname/db'
 import { agent } from '@outname/db/schema'
-import { getUserModelForGateway } from '@outname/shared/server/ai-gateway-byok'
 import { conversationListTag } from '@outname/shared/server/cache-tags'
+import {
+  getRequiredDefaultInferenceProvider,
+  getUserLanguageModel,
+} from '@outname/shared/server/inference-providers'
 import type { UIMessage } from 'ai'
 import { generateText } from 'ai'
 import { eq } from 'drizzle-orm'
@@ -91,10 +94,7 @@ export async function maybeGenerateConversationTitle(input: {
   let didSetTitle = false
   try {
     const { text } = await generateText({
-      model: await getUserModelForGateway({
-        modelId: 'openai/gpt-5.4-nano',
-        userId: agentRow.userId,
-      }),
+      model: await getTitleModel(agentRow.userId),
       system: [
         'You name chat conversations.',
         'Return a concise 3-6 word title summarising what the user is asking.',
@@ -122,4 +122,13 @@ export async function maybeGenerateConversationTitle(input: {
     await setConversationTitleIfUnset(input.conversationId, fallback)
   }
   revalidateTag(conversationListTag(input.agentId), 'max')
+}
+
+async function getTitleModel(userId: string) {
+  const inferenceProvider = await getRequiredDefaultInferenceProvider(userId)
+  return await getUserLanguageModel({
+    inferenceProvider,
+    modelId: 'openai/gpt-5.4-nano',
+    userId,
+  })
 }

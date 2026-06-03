@@ -42,6 +42,7 @@ export function FinalConfigurationCard({
           <ReviewBlock
             label="Runtime"
             value={[
+              `Provider: ${config.inferenceProvider}`,
               `Model: ${config.model}`,
               `Step limit: ${stepLimitLabel(config.stepLimit)}`,
               `Heartbeat: ${scheduleLabel(config.heartbeat, timeZone)}`,

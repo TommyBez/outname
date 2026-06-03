@@ -1,3 +1,4 @@
+import type { InferenceProvider } from '@outname/shared/server/inference-providers'
 import type { StepLimitMode } from './step-limit'
 import type { ResolveToolPlanResult } from './steps/resolve-tool-plan/types'
 
@@ -13,6 +14,7 @@ export interface AgentRuntimeSpec {
   callStack: string[]
   depth: number
   eventKind: AgentRuntimeEventKind
+  inferenceProvider: InferenceProvider
   modelId: string
   stepLimitCustom: number | null
   stepLimitMode: StepLimitMode
@@ -22,6 +24,7 @@ export interface AgentRuntimeSpec {
 }
 
 export interface AgentRuntimeMeta {
+  inferenceProvider: InferenceProvider
   model: string
   name: string
   stepLimitCustom: number | null
@@ -31,6 +34,7 @@ export interface AgentRuntimeMeta {
 
 export function runtimeMetaFromSpec(spec: AgentRuntimeSpec): AgentRuntimeMeta {
   return {
+    inferenceProvider: spec.inferenceProvider,
     model: spec.modelId,
     name: spec.agentName,
     stepLimitCustom: spec.stepLimitCustom,

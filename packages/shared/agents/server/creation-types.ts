@@ -1,3 +1,4 @@
+import type { InferenceProvider } from '@outname/db/schema'
 import type { AgentScheduleMode } from '@outname/shared/agent-schedule'
 
 export type StepLimitMode = 'custom' | 'grind' | 'high' | 'low' | 'medium'
@@ -49,6 +50,7 @@ export interface AgentCreationRequest {
   dreaming: AgentCreationDreaming
   heartbeat: AgentCreationSchedule
   identityCard?: string
+  inferenceProvider: InferenceProvider
   instructions?: string
   model: string
   name: string

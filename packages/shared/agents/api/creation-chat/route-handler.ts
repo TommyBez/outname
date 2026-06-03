@@ -1,5 +1,9 @@
 import { auth } from '@outname/auth/server/auth'
-import { getUserModelForGateway } from '@outname/shared/server/ai-gateway-byok'
+import {
+  getRequiredDefaultInferenceProvider,
+  getUserLanguageModel,
+  listEnabledInferenceProviders,
+} from '@outname/shared/server/inference-providers'
 import {
   createAgentUIStreamResponse,
   stepCountIs,
@@ -26,14 +30,19 @@ export async function POST(req: Request) {
     return messages.response
   }
 
-  const model = await getUserModelForGateway({
+  const [enabledProviders, inferenceProvider] = await Promise.all([
+    listEnabledInferenceProviders(session.user.id),
+    getRequiredDefaultInferenceProvider(session.user.id),
+  ])
+  const model = await getUserLanguageModel({
+    inferenceProvider,
     modelId: CREATOR_MODEL,
     userId: session.user.id,
   })
 
   const agent = new ToolLoopAgent({
     model,
-    instructions: creatorInstructions(),
+    instructions: creatorInstructions({ enabledProviders }),
     stopWhen: stepCountIs(8),
     tools: {
       list_available_tools: tool({

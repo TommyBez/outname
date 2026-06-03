@@ -1,3 +1,4 @@
+import type { InferenceProvider } from '@outname/db/schema'
 import type { AgentScheduleMode } from '@outname/shared/agent-schedule'
 import type { AgentBudgetValues } from '@outname/shared/agents/components/agent-budget-values'
 
@@ -21,6 +22,7 @@ export interface AgentEditSettings {
   heartbeatIntervalMinutes: number
   heartbeatScheduleMode: AgentScheduleMode
   heartbeatScheduleTimes: string[]
+  inferenceProvider: InferenceProvider
   model: string
   name: string
   stepLimitCustom: null | number
@@ -38,6 +40,7 @@ export type MarkdownFileKey = (typeof MARKDOWN_FILE_FIELDS)[number]['key']
 
 const SETTINGS_FIELDS = [
   { key: 'name', label: 'Name' },
+  { key: 'inferenceProvider', label: 'Inference provider' },
   { key: 'model', label: 'Model' },
   { key: 'heartbeatEnabled', label: 'Heartbeat' },
   { key: 'heartbeatScheduleMode', label: 'Heartbeat schedule mode' },

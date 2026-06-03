@@ -134,6 +134,13 @@
       "when": 1780200000000,
       "tag": "0015_agent_event_transcripts",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1780300000000,
+      "tag": "0016_inference_providers",
+      "breakpoints": true
     }
   ]
 }

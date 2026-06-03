@@ -2,7 +2,6 @@
   "$schema": "https://turborepo.com/schema.json",
   "globalDependencies": [".env.local", ".env.example"],
   "globalEnv": [
-    "AI_GATEWAY_API_KEY",
     "APP_REVALIDATION_SECRET",
     "AUTH_COOKIE_DOMAIN",
     "AUTH_FROM_EMAIL",

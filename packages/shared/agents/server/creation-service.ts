@@ -11,9 +11,13 @@ import { writeBootstrapFiles } from '@outname/shared/agents/server/bootstrap-fil
 import { refreshAgentCapabilitySummary } from '@outname/shared/agents/server/capability-summary'
 import type { StepLimitMode } from '@outname/shared/agents/server/creation-types'
 import {
-  DEFAULT_MODEL_ID,
-  isModelIdValid,
-} from '@outname/shared/server/ai-gateway-models'
+  DEFAULT_MODEL_BY_PROVIDER,
+  isModelSelectionValid,
+} from '@outname/shared/server/inference-models'
+import {
+  hasEnabledInferenceProvider,
+  type InferenceProvider,
+} from '@outname/shared/server/inference-providers'
 import { eq } from 'drizzle-orm'
 
 const HEARTBEAT_MIN = 5
@@ -27,6 +31,7 @@ export interface CreateAgentInput {
   heartbeatScheduleTimes?: string[]
   idempotencyKey?: string
   identityCard: string
+  inferenceProvider: InferenceProvider
   instructions: string
   model: string
   name: string
@@ -84,9 +89,20 @@ export async function createAgentForUser(
   input: CreateAgentInput
 ): Promise<CreateAgentResult> {
   const name = input.name.trim() || 'New agent'
-  const model = (await isModelIdValid(input.model))
+  if (
+    !(await hasEnabledInferenceProvider({
+      inferenceProvider: input.inferenceProvider,
+      userId: input.userId,
+    }))
+  ) {
+    throw new Error('Selected inference provider is not configured.')
+  }
+  const model = (await isModelSelectionValid({
+    inferenceProvider: input.inferenceProvider,
+    modelId: input.model,
+  }))
     ? input.model
-    : DEFAULT_MODEL_ID
+    : DEFAULT_MODEL_BY_PROVIDER[input.inferenceProvider]
   const heartbeatIntervalMinutes = clampInterval(input.heartbeatIntervalMinutes)
   const heartbeatScheduleMode = normalizeAgentScheduleMode(
     input.heartbeatScheduleMode
@@ -111,6 +127,7 @@ export async function createAgentForUser(
       name,
       model,
       enabled: true,
+      inferenceProvider: input.inferenceProvider,
       heartbeatEnabled: input.heartbeatEnabled,
       heartbeatScheduleMode,
       heartbeatScheduleTimes,

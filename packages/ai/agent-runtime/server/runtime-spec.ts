@@ -60,6 +60,7 @@ export async function buildAgentRuntimeSpec(
     callStack,
     depth,
     eventKind: input.eventKind,
+    inferenceProvider: row.inferenceProvider,
     modelId: row.model,
     stepLimitCustom: row.stepLimitCustom,
     stepLimitMode: row.stepLimitMode as StepLimitMode,

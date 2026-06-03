@@ -15,6 +15,7 @@ import {
   conversationListTag,
   userAgentsTag,
 } from '@outname/shared/server/cache-tags'
+import type { InferenceProvider } from '@outname/shared/server/inference-providers'
 import { and, eq } from 'drizzle-orm'
 import { revalidatePath, updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
@@ -26,6 +27,7 @@ interface CreateInput {
   heartbeatScheduleMode?: AgentScheduleMode
   heartbeatScheduleTimes?: string[]
   identityCard: string
+  inferenceProvider: InferenceProvider
   instructions: string
   model: string
   name: string

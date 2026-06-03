@@ -1,10 +1,13 @@
 'use server'
 
 import { requireUserId } from '@outname/auth/server/auth-guard'
+import type { InferenceProvider } from '@outname/db/schema'
 import {
-  clearUserAiGatewayApiKey,
-  setUserAiGatewayApiKey,
-} from '@outname/shared/server/ai-gateway-byok'
+  clearUserInferenceCredential,
+  InferenceCredentialVerificationError,
+  setDefaultInferenceProvider,
+  setUserInferenceCredential,
+} from '@outname/shared/server/inference-providers'
 import {
   setUserTimezone,
   type TimezoneSetSource,
@@ -48,19 +51,54 @@ export async function syncBrowserTimezoneAction(
   return result
 }
 
-export async function saveAiGatewayKeyAction(apiKey: string) {
+export async function saveInferenceProviderKeyAction(input: {
+  apiKey: string
+  inferenceProvider: InferenceProvider
+}) {
   const userId = await requireUserId()
-  if (!apiKey.trim()) {
+  if (!input.apiKey.trim()) {
     return { ok: false, error: 'API key is required.' }
   }
-  await setUserAiGatewayApiKey({ userId, apiKey })
+  try {
+    await setUserInferenceCredential({
+      userId,
+      apiKey: input.apiKey,
+      inferenceProvider: input.inferenceProvider,
+    })
+    revalidatePath('/settings')
+    return { ok: true }
+  } catch (error) {
+    if (error instanceof InferenceCredentialVerificationError) {
+      return { ok: false, error: error.message }
+    }
+    return { ok: false, error: 'Could not save API key.' }
+  }
+}
+
+export async function removeInferenceProviderKeyAction(
+  inferenceProvider: InferenceProvider
+) {
+  const userId = await requireUserId()
+  await clearUserInferenceCredential({ userId, inferenceProvider })
   revalidatePath('/settings')
   return { ok: true }
 }
 
-export async function removeAiGatewayKeyAction() {
+export async function setDefaultInferenceProviderAction(
+  inferenceProvider: InferenceProvider
+) {
   const userId = await requireUserId()
-  await clearUserAiGatewayApiKey(userId)
-  revalidatePath('/settings')
-  return { ok: true }
+  try {
+    await setDefaultInferenceProvider({ userId, inferenceProvider })
+    revalidatePath('/settings')
+    return { ok: true }
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Could not update default provider.',
+    }
+  }
 }

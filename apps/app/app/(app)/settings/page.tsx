@@ -9,15 +9,18 @@ import {
 } from '@outname/shared/budgets/components/budget-rules'
 import { listGeneralBudgetRulesForUser } from '@outname/shared/budgets/server/rules'
 import { sumSpendUsd } from '@outname/shared/budgets/server/spend'
-import { hasUserAiGatewayApiKey } from '@outname/shared/server/ai-gateway-byok'
 import { getCachedAgentsForUser } from '@outname/shared/server/data'
+import {
+  displayInferenceProvider,
+  listUserInferenceProviderStates,
+} from '@outname/shared/server/inference-providers'
 import { createPrivatePageMetadata } from '@outname/shared/server/site-metadata'
 import { getUserTimezone } from '@outname/shared/server/user-timezone'
 import { AccountSkeleton } from '@outname/ui/components/skeletons'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Suspense } from 'react'
-import { AiGatewayKeyCard } from './ai-gateway-key-card'
+import { InferenceProvidersCard } from './inference-providers-card'
 import { TimezoneCard } from './timezone-card'
 
 export const metadata: Metadata = createPrivatePageMetadata(
@@ -60,9 +63,9 @@ export default function SettingsPage() {
           </Suspense>
         </Section>
 
-        <Section title="AI Gateway (BYOK)">
+        <Section title="Inference providers">
           <Suspense fallback={<div className="h-10" />}>
-            <AiGatewaySection />
+            <InferenceProvidersSection />
           </Suspense>
         </Section>
 
@@ -74,10 +77,18 @@ export default function SettingsPage() {
   )
 }
 
-async function AiGatewaySection() {
+async function InferenceProvidersSection() {
   const session = await requireSession()
-  const hasKey = await hasUserAiGatewayApiKey(session.user.id)
-  return <AiGatewayKeyCard hasKey={hasKey} />
+  const providers = await listUserInferenceProviderStates(session.user.id)
+  return (
+    <InferenceProvidersCard
+      providers={providers.map((provider) => ({
+        ...provider,
+        label: displayInferenceProvider(provider.inferenceProvider),
+        verifiedAt: provider.verifiedAt?.toISOString() ?? null,
+      }))}
+    />
+  )
 }
 
 async function BudgetSection() {

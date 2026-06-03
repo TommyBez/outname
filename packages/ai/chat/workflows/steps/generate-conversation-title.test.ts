@@ -4,7 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   generateText: vi.fn(),
   getConversationForAgent: vi.fn(),
-  getUserModelForGateway: vi.fn(),
+  getRequiredDefaultInferenceProvider: vi.fn(),
+  getUserLanguageModel: vi.fn(),
   revalidateTag: vi.fn(),
   selectLimit: vi.fn(),
   setConversationTitleIfUnset: vi.fn(),
@@ -37,8 +38,10 @@ vi.mock('@outname/db', () => ({
   },
 }))
 
-vi.mock('@outname/shared/server/ai-gateway-byok', () => ({
-  getUserModelForGateway: mocks.getUserModelForGateway,
+vi.mock('@outname/shared/server/inference-providers', () => ({
+  getRequiredDefaultInferenceProvider:
+    mocks.getRequiredDefaultInferenceProvider,
+  getUserLanguageModel: mocks.getUserLanguageModel,
 }))
 
 vi.mock('@outname/shared/server/cache-tags', () => ({
@@ -52,7 +55,10 @@ describe('maybeGenerateConversationTitle', () => {
       id: 'conv_123',
       title: null,
     })
-    mocks.getUserModelForGateway.mockResolvedValue('title-model')
+    mocks.getRequiredDefaultInferenceProvider.mockResolvedValue(
+      'vercel-ai-gateway'
+    )
+    mocks.getUserLanguageModel.mockResolvedValue('title-model')
     mocks.selectLimit.mockResolvedValue([{ userId: 'user_123' }])
     mocks.setConversationTitleIfUnset.mockResolvedValue(undefined)
   })

@@ -17,6 +17,7 @@ export async function getCurrent(agentId: string, userId: string) {
   ])
   return {
     name: agentRow.name,
+    inferenceProvider: agentRow.inferenceProvider,
     model: agentRow.model,
     heartbeatEnabled: agentRow.heartbeatEnabled,
     heartbeatScheduleMode: agentRow.heartbeatScheduleMode,

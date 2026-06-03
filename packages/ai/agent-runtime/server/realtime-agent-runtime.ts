@@ -7,7 +7,7 @@ import {
 } from '@outname/ai/agent-runtime/workflows/session/runtime-spec-types'
 import type { BuildAgentTool } from '@outname/ai/tools/sub-agents/agent-tool'
 import type { SubAgentProgressTarget } from '@outname/ai/tools/sub-agents/progress-target'
-import { getUserModelForGateway } from '@outname/shared/server/ai-gateway-byok'
+import { getUserLanguageModel } from '@outname/shared/server/inference-providers'
 import {
   type Tool,
   ToolLoopAgent,
@@ -35,7 +35,8 @@ export async function buildRealtimeAgentRuntime(
     ...options,
     buildSubAgentTool: options.buildSubAgentTool ?? missingRealtimeSubAgentTool,
   })
-  const model = await getUserModelForGateway({
+  const model = await getUserLanguageModel({
+    inferenceProvider: spec.inferenceProvider,
     modelId: spec.modelId,
     userId: spec.userId,
   })

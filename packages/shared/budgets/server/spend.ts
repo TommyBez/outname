@@ -24,7 +24,7 @@ export async function sumSpendUsd(input: {
 
   const [row] = await db
     .select({
-      total: sql<string>`COALESCE(SUM(${agentTokenUsage.costUsd}), 0)`,
+      total: sql<string>`COALESCE(SUM(COALESCE(${agentTokenUsage.actualCostUsd}, ${agentTokenUsage.estimatedCostUsd}, 0)), 0)`,
     })
     .from(agentTokenUsage)
     .where(and(...filters))

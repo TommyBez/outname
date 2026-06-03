@@ -4,7 +4,6 @@ import { attachMaintainerToolForUser } from '@outname/ai/tools/server/attachment
 import { attachSubAgentForUser } from '@outname/ai/tools/server/attachment-service/sub-agent'
 import { auth } from '@outname/auth/server/auth'
 import { updateAgentForUser } from '@outname/shared/agents/server/update-service'
-import { getUserModelForGateway } from '@outname/shared/server/ai-gateway-byok'
 import { revalidateAppAfter } from '@outname/shared/server/app-revalidation-after'
 import {
   agentTag,
@@ -12,6 +11,10 @@ import {
   userAgentsTag,
 } from '@outname/shared/server/cache-tags'
 import { getAgentByIdForUser } from '@outname/shared/server/data'
+import {
+  getRequiredDefaultInferenceProvider,
+  getUserLanguageModel,
+} from '@outname/shared/server/inference-providers'
 import {
   createAgentUIStreamResponse,
   stepCountIs,
@@ -62,8 +65,12 @@ export async function POST(
     return messages.response
   }
 
+  const inferenceProvider = await getRequiredDefaultInferenceProvider(
+    session.user.id
+  )
   const [model, toolVisibility] = await Promise.all([
-    getUserModelForGateway({
+    getUserLanguageModel({
+      inferenceProvider,
       modelId: EDIT_MODEL,
       userId: session.user.id,
     }),

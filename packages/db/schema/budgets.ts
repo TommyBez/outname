@@ -4,6 +4,7 @@ import {
   boolean,
   index,
   integer,
+  jsonb,
   numeric,
   pgTable,
   text,
@@ -12,6 +13,11 @@ import {
 } from 'drizzle-orm/pg-core'
 import { agent } from './agents'
 import { user } from './auth'
+import type { InferenceProvider } from './inference'
+
+export const costSourceValues = ['estimated', 'actual', 'unknown'] as const
+
+export type CostSource = (typeof costSourceValues)[number]
 
 export const budgetRule = pgTable(
   'budget_rule',
@@ -65,25 +71,44 @@ export const agentTokenUsage = pgTable(
       .$type<'chat' | 'heartbeat' | 'dreaming' | 'invocation'>()
       .notNull(),
     sourceId: text('source_id'),
-    model: text('model').notNull(),
+    inferenceProvider: text('inference_provider')
+      .$type<InferenceProvider>()
+      .notNull()
+      .default('vercel-ai-gateway'),
+    requestedModel: text('requested_model').notNull(),
     inputTokens: integer('input_tokens').notNull().default(0),
     outputTokens: integer('output_tokens').notNull().default(0),
     reasoningTokens: integer('reasoning_tokens').notNull().default(0),
-    cachedInputTokens: integer('cached_input_tokens').notNull().default(0),
+    cacheReadTokens: integer('cache_read_tokens').notNull().default(0),
+    cacheWriteTokens: integer('cache_write_tokens').notNull().default(0),
     totalTokens: bigint('total_tokens', { mode: 'number' })
       .notNull()
       .default(0),
-    costUsd: numeric('cost_usd', { precision: 14, scale: 9 })
+    estimatedCostUsd: numeric('estimated_cost_usd', {
+      precision: 18,
+      scale: 12,
+    })
       .notNull()
       .default('0'),
-    inputRateUsdPerToken: numeric('input_rate_usd_per_token', {
-      precision: 14,
+    actualCostUsd: numeric('actual_cost_usd', {
+      precision: 18,
       scale: 12,
     }),
-    outputRateUsdPerToken: numeric('output_rate_usd_per_token', {
-      precision: 14,
-      scale: 12,
-    }),
+    costSource: text('cost_source')
+      .$type<CostSource>()
+      .notNull()
+      .default('estimated'),
+    generationId: text('generation_id'),
+    upstreamProvider: text('upstream_provider'),
+    billedModel: text('billed_model'),
+    pricingSnapshot: jsonb('pricing_snapshot')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    costMetadata: jsonb('cost_metadata')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

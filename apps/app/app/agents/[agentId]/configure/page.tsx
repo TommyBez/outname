@@ -1,4 +1,5 @@
 import { requireSession } from '@outname/auth/server/auth-guard'
+import type { InferenceProvider } from '@outname/db/schema'
 import { AgentBudgetSection } from '@outname/shared/agents/components/agent-budget-section'
 import { AgentDeleteDialog } from '@outname/shared/agents/components/agent-delete-dialog'
 import { AgentEditChat } from '@outname/shared/agents/components/agent-edit-chat'
@@ -10,13 +11,19 @@ import { deleteAgentAction } from '@outname/shared/agents/server/actions'
 import { customInstructionsFromAgentsMd } from '@outname/shared/agents/server/bootstrap-files'
 import { listAgentBudgetRules } from '@outname/shared/budgets/server/rules'
 import {
-  DEFAULT_MODEL_ID,
-  getAvailableModels,
-} from '@outname/shared/server/ai-gateway-models'
-import {
   getCachedAgentByIdForUser,
   getCachedAgentMemoryFile,
 } from '@outname/shared/server/data'
+import {
+  DEFAULT_MODEL_BY_PROVIDER,
+  DEFAULT_MODEL_ID,
+  getAvailableModels,
+} from '@outname/shared/server/inference-models'
+import {
+  DEFAULT_INFERENCE_PROVIDER,
+  displayInferenceProvider,
+  listEnabledInferenceProviders,
+} from '@outname/shared/server/inference-providers'
 import { createPrivatePageMetadata } from '@outname/shared/server/site-metadata'
 import { getUserTimeDisplay } from '@outname/shared/server/user-time-display'
 import { notFound } from 'next/navigation'
@@ -42,26 +49,37 @@ async function AgentConfigure({ params }: { params: Params }) {
 
   const [
     agentRow,
-    models,
     identityFile,
     soulFile,
     agentsMdFile,
     userMdFile,
     budgetRules,
     display,
+    enabledProviders,
   ] = await Promise.all([
     getCachedAgentByIdForUser(agentId, session.user.id),
-    getAvailableModels(),
     getCachedAgentMemoryFile({ agentId, path: 'IDENTITY.md' }),
     getCachedAgentMemoryFile({ agentId, path: 'SOUL.md' }),
     getCachedAgentMemoryFile({ agentId, path: 'AGENTS.md' }),
     getCachedAgentMemoryFile({ agentId, path: 'USER.md' }),
     listAgentBudgetRules({ userId: session.user.id, agentId }),
     getUserTimeDisplay(session.user.id),
+    listEnabledInferenceProviders(session.user.id),
   ])
   if (!agentRow) {
     notFound()
   }
+  const providers = providerOptions({
+    current: agentRow.inferenceProvider,
+    enabled: enabledProviders,
+  })
+  const models = (
+    await Promise.all(
+      providers.map((provider) =>
+        getAvailableModels({ inferenceProvider: provider.value })
+      )
+    )
+  ).flat()
   const instructions = agentsMdFile?.content
     ? customInstructionsFromAgentsMd(agentsMdFile.content)
     : ''
@@ -79,7 +97,9 @@ async function AgentConfigure({ params }: { params: Params }) {
       <section className="border-foreground border-t-2 py-10">
         <h2 className="swiss-label mb-6 text-accent">Configuration</h2>
         <AgentForm
+          defaultInferenceProvider={DEFAULT_INFERENCE_PROVIDER}
           defaultModel={DEFAULT_MODEL_ID}
+          defaultModelByProvider={DEFAULT_MODEL_BY_PROVIDER}
           initial={{
             id: agentRow.id,
             name: agentRow.name,
@@ -87,6 +107,7 @@ async function AgentConfigure({ params }: { params: Params }) {
             identity: soulFile?.content ?? '',
             instructions,
             userProfile,
+            inferenceProvider: agentRow.inferenceProvider,
             model: agentRow.model,
             heartbeatEnabled: agentRow.heartbeatEnabled,
             heartbeatScheduleMode: agentRow.heartbeatScheduleMode,
@@ -102,6 +123,7 @@ async function AgentConfigure({ params }: { params: Params }) {
             stepLimitCustom: agentRow.stepLimitCustom,
           }}
           models={models}
+          providers={providers}
           timezoneLabel={display.timezoneLabel}
         />
       </section>
@@ -151,6 +173,7 @@ async function AgentConfigure({ params }: { params: Params }) {
             heartbeatScheduleMode: agentRow.heartbeatScheduleMode,
             heartbeatScheduleTimes: agentRow.heartbeatScheduleTimes,
             heartbeatIntervalMinutes: agentRow.heartbeatIntervalMinutes,
+            inferenceProvider: agentRow.inferenceProvider,
             model: agentRow.model,
             name: agentRow.name,
             dreamingEnabled: agentRow.dreamingEnabled,
@@ -180,4 +203,16 @@ async function AgentConfigure({ params }: { params: Params }) {
       </section>
     </>
   )
+}
+
+function providerOptions(input: {
+  current: InferenceProvider
+  enabled: InferenceProvider[]
+}) {
+  const values = new Set<InferenceProvider>([input.current, ...input.enabled])
+  return [...values].map((value) => ({
+    configured: input.enabled.includes(value),
+    label: displayInferenceProvider(value),
+    value,
+  }))
 }

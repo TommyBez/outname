@@ -1,11 +1,12 @@
 'use client'
 
+import type { InferenceProvider } from '@outname/db/schema'
 import type { AgentScheduleMode } from '@outname/shared/agent-schedule'
 import {
   createAgentAction,
   updateAgentAction,
 } from '@outname/shared/agents/server/actions'
-import type { ModelOption } from '@outname/shared/server/ai-gateway-models'
+import type { ModelOption } from '@outname/shared/server/inference-models'
 import { Button } from '@outname/ui/components/ui/button'
 import { Input } from '@outname/ui/components/ui/input'
 import { Label } from '@outname/ui/components/ui/label'
@@ -21,27 +22,37 @@ import { ConfigureSection } from './agent-form/configure-section'
 import { DreamingSettings } from './agent-form/dreaming-settings'
 import { HeartbeatSettings } from './agent-form/heartbeat-settings'
 import { ModelSelector } from './agent-form/model-selector'
-import type { AgentFormInitial, StepLimitMode } from './agent-form/options'
+import type {
+  AgentFormInitial,
+  InferenceProviderOption,
+  StepLimitMode,
+} from './agent-form/options'
 import { StepLimitSettings } from './agent-form/step-limit-settings'
 
 interface AgentFormProps {
+  defaultInferenceProvider: InferenceProvider
   defaultModel: string
+  defaultModelByProvider: Record<InferenceProvider, string>
   initial?: AgentFormInitial
   models: ModelOption[]
+  providers: InferenceProviderOption[]
   timezoneLabel: string
 }
 
 export function AgentForm({
+  defaultInferenceProvider,
   models,
   defaultModel,
+  defaultModelByProvider,
   initial,
+  providers,
   timezoneLabel,
 }: AgentFormProps) {
   const { back, push, refresh } = useRouter()
   const [pending, startTransition] = useTransition()
   const [state, dispatch] = useReducer(
     agentFormReducer,
-    { defaultModel, initial },
+    { defaultInferenceProvider, defaultModel, initial },
     createAgentFormState
   )
   const isEdit = Boolean(initial?.id)
@@ -64,6 +75,7 @@ export function AgentForm({
           heartbeatScheduleTimes: state.heartbeatScheduleTimes,
           identity: state.identity,
           identityCard: state.identityCard,
+          inferenceProvider: state.inferenceProvider,
           instructions: state.instructions,
           intervalMinutes: state.intervalMinutes,
           model: state.model,
@@ -139,8 +151,23 @@ export function AgentForm({
         <div className="flex flex-col gap-8">
           <ModelSelector
             defaultModel={defaultModel}
+            defaultModelByProvider={defaultModelByProvider}
+            inferenceProvider={state.inferenceProvider}
             model={state.model}
             models={models}
+            providers={providers}
+            setInferenceProvider={(value) => {
+              const providerModels = models.filter(
+                (option) => option.inferenceProvider === value
+              )
+              const nextModel = providerModels.some(
+                (option) => option.id === state.model
+              )
+                ? state.model
+                : defaultModelByProvider[value]
+              dispatch({ type: 'set_inference_provider', value })
+              dispatch({ type: 'set_model', value: nextModel })
+            }}
             setModel={(value) => dispatch({ type: 'set_model', value })}
           />
           <StepLimitSettings
@@ -208,6 +235,7 @@ async function saveAgent(input: {
     heartbeatScheduleTimes: string[]
     identity: string
     identityCard: string
+    inferenceProvider: InferenceProvider
     instructions: string
     intervalMinutes: number
     model: string
@@ -228,6 +256,7 @@ async function saveAgent(input: {
         instructionsOriginal: input.initial.instructions,
         userProfile: input.values.userProfile,
         userProfileOriginal: input.initial.userProfile,
+        inferenceProvider: input.values.inferenceProvider,
         model: input.values.model,
         heartbeatEnabled: input.values.heartbeatEnabled,
         heartbeatScheduleMode: input.values.heartbeatScheduleMode,
@@ -249,6 +278,7 @@ async function saveAgent(input: {
       identityCard: input.values.identityCard,
       instructions: input.values.instructions,
       userProfile: input.values.userProfile,
+      inferenceProvider: input.values.inferenceProvider,
       model: input.values.model,
       heartbeatEnabled: input.values.heartbeatEnabled,
       heartbeatScheduleMode: input.values.heartbeatScheduleMode,
