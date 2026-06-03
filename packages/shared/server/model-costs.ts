@@ -241,12 +241,18 @@ function priceTokens(input: {
 }
 
 function selectRate(tokens: number, tiers: PricingTier[]): string | null {
-  for (const tier of tiers) {
-    if (tokens >= tier.min && (tier.max === undefined || tokens < tier.max)) {
-      return tier.cost
+  const sortedTiers = [...tiers].sort((a, b) => a.min - b.min)
+  let selectedRate: string | null = null
+  for (const tier of sortedTiers) {
+    if (tokens < tier.min) {
+      break
     }
+    if (tier.max !== undefined && tokens >= tier.max) {
+      continue
+    }
+    selectedRate = tier.cost
   }
-  return null
+  return selectedRate
 }
 
 function zeroBreakdown(tokens: number): CostCategoryBreakdown {

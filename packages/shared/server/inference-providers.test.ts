@@ -119,7 +119,10 @@ describe('inference-providers', () => {
     })
     expect(mockRedisSet).toHaveBeenCalledWith(
       'user:user_123:provider:vercel-ai-gateway:inference-credential',
-      'enc_from_db'
+      {
+        encrypted: 'enc_from_db',
+        status: 'enabled',
+      }
     )
   })
 
@@ -150,7 +153,10 @@ describe('inference-providers', () => {
   })
 
   it('uses cached encrypted credentials before querying the database', async () => {
-    mockRedisGet.mockResolvedValue('enc_from_cache')
+    mockRedisGet.mockResolvedValue({
+      encrypted: 'enc_from_cache',
+      status: 'enabled',
+    })
 
     await expect(
       getUserLanguageModel({
@@ -166,6 +172,30 @@ describe('inference-providers', () => {
 
     expect(mockDbSelect).not.toHaveBeenCalled()
     expect(mockDecryptCredential).toHaveBeenCalledWith('enc_from_cache')
+  })
+
+  it('ignores cached credentials when the cached status is not enabled', async () => {
+    mockRedisGet.mockResolvedValue({
+      encrypted: 'enc_from_cache',
+      status: 'invalid',
+    })
+    mockDbSelectLimit.mockResolvedValue([
+      {
+        encryptedCredentials: 'enc_from_db',
+        status: 'invalid',
+      },
+    ])
+
+    await expect(
+      getUserLanguageModel({
+        inferenceProvider: 'openrouter',
+        modelId: 'openai/gpt-4o',
+        userId: 'user_123',
+      })
+    ).rejects.toBeInstanceOf(MissingInferenceCredentialError)
+
+    expect(mockDbSelect).toHaveBeenCalled()
+    expect(mockDecryptCredential).not.toHaveBeenCalled()
   })
 
   it('throws a non-retryable missing-credential error when the provider is not enabled', async () => {

@@ -2,6 +2,7 @@ import 'server-only'
 
 import { db } from '@outname/db'
 import { agent } from '@outname/db/schema'
+import { SUMMARY_MODEL_ID } from '@outname/shared/server/inference-model-defaults'
 import {
   getRequiredDefaultInferenceProvider,
   getUserLanguageModel,
@@ -15,8 +16,6 @@ import {
   formatSummaryPrompt,
 } from './capability-summary/format'
 import type { BootstrapContent } from './capability-summary/types'
-
-const SUMMARY_MODEL = 'openai/gpt-5.4-nano'
 
 export async function refreshAgentCapabilitySummary(input: {
   agentId: string
@@ -75,7 +74,7 @@ async function getSummaryModel(userId: string) {
   const inferenceProvider = await getRequiredDefaultInferenceProvider(userId)
   return await getUserLanguageModel({
     inferenceProvider,
-    modelId: SUMMARY_MODEL,
+    modelId: SUMMARY_MODEL_ID,
     userId,
   })
 }

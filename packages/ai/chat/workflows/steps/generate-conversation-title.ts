@@ -5,6 +5,7 @@ import {
 import { db } from '@outname/db'
 import { agent } from '@outname/db/schema'
 import { conversationListTag } from '@outname/shared/server/cache-tags'
+import { SUMMARY_MODEL_ID } from '@outname/shared/server/inference-model-defaults'
 import {
   getRequiredDefaultInferenceProvider,
   getUserLanguageModel,
@@ -128,7 +129,7 @@ async function getTitleModel(userId: string) {
   const inferenceProvider = await getRequiredDefaultInferenceProvider(userId)
   return await getUserLanguageModel({
     inferenceProvider,
-    modelId: 'openai/gpt-5.4-nano',
+    modelId: SUMMARY_MODEL_ID,
     userId,
   })
 }

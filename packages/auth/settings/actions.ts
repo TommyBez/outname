@@ -56,13 +56,14 @@ export async function saveInferenceProviderKeyAction(input: {
   inferenceProvider: InferenceProvider
 }) {
   const userId = await requireUserId()
-  if (!input.apiKey.trim()) {
+  const apiKey = input.apiKey.trim()
+  if (!apiKey) {
     return { ok: false, error: 'API key is required.' }
   }
   try {
     await setUserInferenceCredential({
       userId,
-      apiKey: input.apiKey,
+      apiKey,
       inferenceProvider: input.inferenceProvider,
     })
     revalidatePath('/settings')

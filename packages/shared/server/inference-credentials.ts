@@ -22,6 +22,11 @@ import { verifyInferenceCredential } from './inference-provider-verify'
 
 const INFERENCE_CREDENTIAL_CACHE_SUFFIX = 'inference-credential'
 
+interface CachedInferenceCredential {
+  encrypted: string
+  status: 'enabled' | 'invalid'
+}
+
 export interface UserInferenceProviderState {
   enabled: boolean
   inferenceProvider: InferenceProvider
@@ -111,6 +116,7 @@ export async function setUserInferenceCredential(input: {
   await writeCachedEncryptedInferenceCredential({
     encrypted,
     inferenceProvider: input.inferenceProvider,
+    status: 'enabled',
     userId: input.userId,
   }).catch(() => undefined)
 
@@ -246,8 +252,8 @@ async function readEncryptedUserInferenceCredential(input: {
   const cached = await readCachedEncryptedInferenceCredential(input).catch(
     () => null
   )
-  if (cached) {
-    return cached
+  if (cached?.status === 'enabled') {
+    return cached.encrypted
   }
 
   const [row] = await db
@@ -270,6 +276,7 @@ async function readEncryptedUserInferenceCredential(input: {
   await writeCachedEncryptedInferenceCredential({
     encrypted: row.encryptedCredentials,
     inferenceProvider: input.inferenceProvider,
+    status: 'enabled',
     userId: input.userId,
   }).catch(() => undefined)
 
@@ -279,18 +286,24 @@ async function readEncryptedUserInferenceCredential(input: {
 async function readCachedEncryptedInferenceCredential(input: {
   inferenceProvider: InferenceProvider
   userId: string
-}): Promise<string | null> {
+}): Promise<CachedInferenceCredential | null> {
   const redis = getUpstashRedis()
   if (!redis) {
     return null
   }
 
-  return (await redis.get<string>(inferenceCredentialCacheKey(input))) ?? null
+  const cached = await redis.get<unknown>(inferenceCredentialCacheKey(input))
+  if (!isCachedInferenceCredential(cached)) {
+    return null
+  }
+
+  return cached
 }
 
 async function writeCachedEncryptedInferenceCredential(input: {
   encrypted: string
   inferenceProvider: InferenceProvider
+  status: CachedInferenceCredential['status']
   userId: string
 }): Promise<void> {
   const redis = getUpstashRedis()
@@ -298,7 +311,10 @@ async function writeCachedEncryptedInferenceCredential(input: {
     return
   }
 
-  await redis.set(inferenceCredentialCacheKey(input), input.encrypted)
+  await redis.set(inferenceCredentialCacheKey(input), {
+    encrypted: input.encrypted,
+    status: input.status,
+  } satisfies CachedInferenceCredential)
 }
 
 async function clearCachedEncryptedInferenceCredential(input: {
@@ -318,6 +334,19 @@ function inferenceCredentialCacheKey(input: {
   userId: string
 }): string {
   return `user:${input.userId}:provider:${input.inferenceProvider}:${INFERENCE_CREDENTIAL_CACHE_SUFFIX}`
+}
+
+function isCachedInferenceCredential(
+  value: unknown
+): value is CachedInferenceCredential {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+  const record = value as Record<string, unknown>
+  return (
+    typeof record.encrypted === 'string' &&
+    (record.status === 'enabled' || record.status === 'invalid')
+  )
 }
 
 async function ensureDefaultInferenceProvider(input: {

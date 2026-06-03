@@ -1,7 +1,5 @@
 import { inferenceProviderValues } from '@outname/db/schema'
 import { MAX_DAILY_SCHEDULE_TIMES } from '@outname/shared/agent-schedule'
-import { DEFAULT_MODEL_BY_PROVIDER } from '@outname/shared/server/inference-models'
-import { DEFAULT_INFERENCE_PROVIDER } from '@outname/shared/server/inference-providers'
 import { z } from 'zod'
 
 const DEFAULT_TOOLS = { maintainer: [], subAgents: [] }
@@ -133,10 +131,7 @@ export const createAgentInputSchema = z.object({
     .string()
     .default('')
     .describe('Optional USER.md seed about the owner.'),
-  model: z
-    .string()
-    .default(DEFAULT_MODEL_BY_PROVIDER[DEFAULT_INFERENCE_PROVIDER])
-    .describe('Runtime model id for the created agent.'),
+  model: z.string().describe('Runtime model id for the created agent.'),
   inferenceProvider: z
     .enum(inferenceProviderValues)
     .describe(
