@@ -101,6 +101,11 @@ export function createOutnameNextConfig(
   ]
 
   return {
+    allowedDevOrigins: [
+      'outname.localhost',
+      '*.outname.localhost',
+      'localhost',
+    ],
     cacheComponents: true,
     env: {
       NEXT_PUBLIC_API_BASE_URL: apiOrigin,

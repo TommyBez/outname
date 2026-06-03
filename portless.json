@@ -1,0 +1,9 @@
+{
+  "apps": {
+    "apps/api": { "name": "api.outname" },
+    "apps/app": { "name": "app.outname" },
+    "apps/email": { "name": "email.outname" },
+    "apps/video": { "name": "video.outname" },
+    "apps/web": { "name": "web.outname" }
+  }
+}

@@ -90,13 +90,18 @@ cp .env.example .env.local
 Fill in `.env.local`, then start the app workspace you need:
 
 ```bash
+pnpm portless:trust   # once, if HTTPS shows a certificate warning
 pnpm dev:app
 ```
 
-Open `http://localhost:3000`. Public web runs on `pnpm dev:web`
-(`http://localhost:3002`), API on `pnpm dev:api` (`http://localhost:3001`),
-React Email preview on `pnpm dev:email` (`http://localhost:3004`), and Remotion
-Studio on `pnpm dev:video` (`http://localhost:3005`).
+Open https://app.outname.localhost. Public web runs on `pnpm dev:web`
+(https://web.outname.localhost), API on `pnpm dev:api`
+(https://api.outname.localhost), React Email preview on `pnpm dev:email`
+(https://email.outname.localhost), and Remotion Studio on `pnpm dev:video`
+(https://video.outname.localhost).
+
+Use `pnpm dev:local` (or `pnpm dev:app:local`, etc.) to run without Portless on
+the original localhost ports (`:3000`, `:3001`, `:3002`, `:3004`, `:3005`).
 
 ### Local development notes
 

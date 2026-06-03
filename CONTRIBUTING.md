@@ -14,10 +14,15 @@ Thanks for your interest in improving `outname`.
 ```bash
 pnpm install
 cp .env.example .env.local
+pnpm portless:trust   # once, if HTTPS shows a certificate warning
 pnpm dev:app
 ```
 
 Notes:
+
+- Local dev uses [Portless](https://portless.sh/) for stable HTTPS URLs on
+  `*.outname.localhost`. Use `pnpm dev:local` to bypass Portless and run on
+  localhost ports instead.
 
 - Use Node.js 24 or newer.
 - This repository is a Turborepo monorepo with apps in `apps/*` and shared

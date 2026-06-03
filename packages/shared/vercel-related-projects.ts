@@ -1,11 +1,32 @@
 const HOST_PATTERN = /^[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?$/i
 const HTTP_URL_PATTERN = /^https?:\/\//i
 
-export const LOCAL_PROJECT_ORIGINS = {
+export const LOCALHOST_PROJECT_ORIGINS = {
   api: 'http://localhost:3001',
   app: 'http://localhost:3000',
   web: 'http://localhost:3002',
 } as const
+
+export const PORTLESS_PROJECT_ORIGINS = {
+  api: 'https://api.outname.localhost',
+  app: 'https://app.outname.localhost',
+  web: 'https://web.outname.localhost',
+} as const
+
+export function resolveLocalProjectOrigins(): typeof LOCALHOST_PROJECT_ORIGINS {
+  if (process.env.PORTLESS === '0') {
+    return LOCALHOST_PROJECT_ORIGINS
+  }
+
+  if (process.env.PORTLESS_URL) {
+    return PORTLESS_PROJECT_ORIGINS
+  }
+
+  return LOCALHOST_PROJECT_ORIGINS
+}
+
+/** Active local dev origins (portless when `PORTLESS_URL` is set, else localhost). */
+export const LOCAL_PROJECT_ORIGINS = resolveLocalProjectOrigins()
 
 export const PROJECT_NAMES = {
   api: 'outname-api',

@@ -142,8 +142,8 @@ Required secrets are injected automatically. A `.env.local` must exist for Next.
 ```
 DATABASE_URL=<from env>
 BETTER_AUTH_SECRET=<from env>
-BETTER_AUTH_URL=http://localhost:3001
-BETTER_AUTH_TRUSTED_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:3002
+BETTER_AUTH_URL=https://api.outname.localhost
+BETTER_AUTH_TRUSTED_ORIGINS=https://app.outname.localhost,https://api.outname.localhost,https://web.outname.localhost
 AUTH_COOKIE_DOMAIN=
 CONNECTION_ENCRYPTION_KEY=<from env>
 APP_REVALIDATION_SECRET=<from env>

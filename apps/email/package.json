@@ -2,9 +2,15 @@
   "name": "@outname/email-app",
   "version": "0.1.0",
   "private": true,
+  "portless": {
+    "name": "email.outname",
+    "script": "dev:server"
+  },
   "scripts": {
     "build": "pnpm typecheck",
-    "dev": "email dev --dir ../../packages/email --port 3004",
+    "dev": "portless",
+    "dev:local": "email dev --dir ../../packages/email --port 3004",
+    "dev:server": "email dev --dir ../../packages/email",
     "lint": "ultracite check .",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },

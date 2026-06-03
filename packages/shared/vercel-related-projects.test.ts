@@ -1,8 +1,10 @@
 import { afterEach, expect, test } from 'vitest'
 import {
   getCurrentProjectOrigin,
-  LOCAL_PROJECT_ORIGINS,
+  LOCALHOST_PROJECT_ORIGINS,
+  PORTLESS_PROJECT_ORIGINS,
   PROJECT_NAMES,
+  resolveLocalProjectOrigins,
 } from './vercel-related-projects'
 
 const originalVercelEnv = process.env.VERCEL_ENV
@@ -28,12 +30,38 @@ afterEach(() => {
   restoreEnv('VERCEL_URL', originalVercelUrl)
 })
 
-test('exports local dev origins for each app role', () => {
-  expect(LOCAL_PROJECT_ORIGINS).toEqual({
+test('exports localhost dev origins for each app role', () => {
+  expect(LOCALHOST_PROJECT_ORIGINS).toEqual({
     api: 'http://localhost:3001',
     app: 'http://localhost:3000',
     web: 'http://localhost:3002',
   })
+})
+
+test('exports portless dev origins for each app role', () => {
+  expect(PORTLESS_PROJECT_ORIGINS).toEqual({
+    api: 'https://api.outname.localhost',
+    app: 'https://app.outname.localhost',
+    web: 'https://web.outname.localhost',
+  })
+})
+
+test('uses portless origins when PORTLESS_URL is set', () => {
+  process.env.PORTLESS_URL = 'https://app.outname.localhost'
+
+  expect(resolveLocalProjectOrigins()).toEqual(PORTLESS_PROJECT_ORIGINS)
+
+  delete process.env.PORTLESS_URL
+})
+
+test('uses localhost origins when PORTLESS=0', () => {
+  process.env.PORTLESS = '0'
+  process.env.PORTLESS_URL = 'https://app.outname.localhost'
+
+  expect(resolveLocalProjectOrigins()).toEqual(LOCALHOST_PROJECT_ORIGINS)
+
+  delete process.env.PORTLESS
+  delete process.env.PORTLESS_URL
 })
 
 test('exports Vercel project names for each app role', () => {

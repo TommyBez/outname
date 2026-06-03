@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LOCAL_PROJECT_ORIGINS } from '../vercel-related-projects'
+import { LOCALHOST_PROJECT_ORIGINS } from '../vercel-related-projects'
 import { createOutnameNextConfig } from './create-outname-next-config'
 
 describe('createOutnameNextConfig', () => {
@@ -10,7 +10,7 @@ describe('createOutnameNextConfig', () => {
 
     expect(rewrites).toEqual([
       {
-        destination: `${LOCAL_PROJECT_ORIGINS.api}/api/:path*`,
+        destination: `${LOCALHOST_PROJECT_ORIGINS.api}/api/:path*`,
         source: '/api/:path*',
       },
     ])
