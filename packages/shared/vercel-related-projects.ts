@@ -8,13 +8,6 @@ export const LOCAL_PROJECT_ORIGINS = {
   web: 'https://outname.localhost',
 } as const
 
-/** Numeric-port fallbacks when running `pnpm run dev:raw` without Portless. */
-export const LOCALHOST_PROJECT_ORIGINS = {
-  api: 'http://localhost:3001',
-  app: 'http://localhost:3000',
-  web: 'http://localhost:3002',
-} as const
-
 export const PROJECT_NAMES = {
   api: 'outname-api',
   app: 'outname-app',
