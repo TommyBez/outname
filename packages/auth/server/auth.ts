@@ -13,7 +13,11 @@ const isProduction = process.env.NODE_ENV === 'production'
 // Dev-only static allowlist.
 const devTrustedOrigins = [
   'http://localhost:3000',
+  'http://localhost:3001',
   'http://localhost:3002',
+  'https://outname-app.localhost',
+  'https://outname-api.localhost',
+  'https://outname.localhost',
   'https://*.vercel.app',
   'https://*.vercel.run',
   'https://*.v0.app',

@@ -2,9 +2,14 @@
   "name": "@outname/web",
   "version": "0.1.0",
   "private": true,
+  "portless": {
+    "name": "outname",
+    "script": "dev:raw"
+  },
   "scripts": {
     "build": "next build",
-    "dev": "next dev -p 3002",
+    "dev": "portless",
+    "dev:raw": "next dev",
     "lint": "ultracite check .",
     "react-doctor": "npx react-doctor@latest --verbose .",
     "start": "next start -p 3002",
