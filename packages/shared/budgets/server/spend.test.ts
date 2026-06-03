@@ -1,9 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+type SpendSelection = {
+  total: { queryChunks: unknown[] }
+}
+
 const { mockDbSelect, mockDbWhere } = vi.hoisted(() => {
   const mockDbWhere = vi.fn()
   const mockDbFrom = vi.fn(() => ({ where: mockDbWhere }))
-  const mockDbSelect = vi.fn(() => ({ from: mockDbFrom }))
+  const mockDbSelect = vi.fn((_selection: SpendSelection) => ({
+    from: mockDbFrom,
+  }))
 
   return {
     mockDbSelect,
@@ -21,9 +27,7 @@ vi.mock('@outname/db', () => ({
 
 import { sumSpendUsd } from './spend'
 
-function columnNamesFromSelection(selection: {
-  total: { queryChunks: unknown[] }
-}) {
+function columnNamesFromSelection(selection: SpendSelection) {
   const names: string[] = []
   for (const chunk of selection.total.queryChunks) {
     if (
@@ -53,7 +57,10 @@ describe('sumSpendUsd', () => {
     })
 
     expect(mockDbSelect).toHaveBeenCalledTimes(1)
-    const [selection] = mockDbSelect.mock.calls[0] ?? []
+    const selection = mockDbSelect.mock.calls[0]?.[0]
+    if (!selection) {
+      throw new Error('expected db.select to be called with a selection')
+    }
     expect(columnNamesFromSelection(selection)).toEqual([
       'actual_cost_usd',
       'estimated_cost_usd',
