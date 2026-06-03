@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "next build",
+    "build": "pnpm --filter @outname/db db:migrate && next build",
     "dev": "next dev -p 3001",
     "dev:fresh": "pnpm reset:workflow && pnpm dev",
     "lint": "ultracite check .",
