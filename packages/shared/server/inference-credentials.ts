@@ -11,6 +11,7 @@ import {
   decryptCredential,
   encryptCredential,
 } from '@outname/shared/connections/crypto'
+import { getUpstashRedis } from '@outname/shared/server/upstash-redis'
 import { and, eq } from 'drizzle-orm'
 import {
   InferenceCredentialVerificationError,
@@ -18,6 +19,8 @@ import {
 } from './inference-provider-errors'
 import { DEFAULT_INFERENCE_PROVIDER } from './inference-provider-registry'
 import { verifyInferenceCredential } from './inference-provider-verify'
+
+const INFERENCE_CREDENTIAL_CACHE_SUFFIX = 'inference-credential'
 
 export interface UserInferenceProviderState {
   enabled: boolean
@@ -105,6 +108,12 @@ export async function setUserInferenceCredential(input: {
       },
     })
 
+  await writeCachedEncryptedInferenceCredential({
+    encrypted,
+    inferenceProvider: input.inferenceProvider,
+    userId: input.userId,
+  }).catch(() => undefined)
+
   await ensureDefaultInferenceProvider({
     inferenceProvider: input.inferenceProvider,
     userId: input.userId,
@@ -123,6 +132,8 @@ export async function clearUserInferenceCredential(input: {
         eq(userInferenceCredentials.inferenceProvider, input.inferenceProvider)
       )
     )
+
+  await clearCachedEncryptedInferenceCredential(input).catch(() => undefined)
 
   const [row] = await db
     .select({ defaultInferenceProvider: user.defaultInferenceProvider })
@@ -219,6 +230,26 @@ export async function readUserInferenceCredentialApiKey(input: {
   inferenceProvider: InferenceProvider
   userId: string
 }): Promise<string> {
+  const encrypted = await readEncryptedUserInferenceCredential(input)
+  const decrypted = await decryptCredential<{ apiKey?: string }>(encrypted)
+  const apiKey = decrypted.apiKey?.trim()
+  if (!apiKey) {
+    throw new MissingInferenceCredentialError(input.inferenceProvider)
+  }
+  return apiKey
+}
+
+async function readEncryptedUserInferenceCredential(input: {
+  inferenceProvider: InferenceProvider
+  userId: string
+}): Promise<string> {
+  const cached = await readCachedEncryptedInferenceCredential(input).catch(
+    () => null
+  )
+  if (cached) {
+    return cached
+  }
+
   const [row] = await db
     .select({
       encryptedCredentials: userInferenceCredentials.encryptedCredentials,
@@ -236,14 +267,57 @@ export async function readUserInferenceCredentialApiKey(input: {
     throw new MissingInferenceCredentialError(input.inferenceProvider)
   }
 
-  const decrypted = await decryptCredential<{ apiKey?: string }>(
-    row.encryptedCredentials
-  )
-  const apiKey = decrypted.apiKey?.trim()
-  if (!apiKey) {
-    throw new MissingInferenceCredentialError(input.inferenceProvider)
+  await writeCachedEncryptedInferenceCredential({
+    encrypted: row.encryptedCredentials,
+    inferenceProvider: input.inferenceProvider,
+    userId: input.userId,
+  }).catch(() => undefined)
+
+  return row.encryptedCredentials
+}
+
+async function readCachedEncryptedInferenceCredential(input: {
+  inferenceProvider: InferenceProvider
+  userId: string
+}): Promise<string | null> {
+  const redis = getUpstashRedis()
+  if (!redis) {
+    return null
   }
-  return apiKey
+
+  return (await redis.get<string>(inferenceCredentialCacheKey(input))) ?? null
+}
+
+async function writeCachedEncryptedInferenceCredential(input: {
+  encrypted: string
+  inferenceProvider: InferenceProvider
+  userId: string
+}): Promise<void> {
+  const redis = getUpstashRedis()
+  if (!redis) {
+    return
+  }
+
+  await redis.set(inferenceCredentialCacheKey(input), input.encrypted)
+}
+
+async function clearCachedEncryptedInferenceCredential(input: {
+  inferenceProvider: InferenceProvider
+  userId: string
+}): Promise<void> {
+  const redis = getUpstashRedis()
+  if (!redis) {
+    return
+  }
+
+  await redis.del(inferenceCredentialCacheKey(input))
+}
+
+function inferenceCredentialCacheKey(input: {
+  inferenceProvider: InferenceProvider
+  userId: string
+}): string {
+  return `user:${input.userId}:provider:${input.inferenceProvider}:${INFERENCE_CREDENTIAL_CACHE_SUFFIX}`
 }
 
 async function ensureDefaultInferenceProvider(input: {

@@ -6,10 +6,18 @@ const {
   mockDbSelect,
   mockDbSelectLimit,
   mockDecryptCredential,
+  mockGetUpstashRedis,
+  mockRedisDel,
+  mockRedisGet,
+  mockRedisSet,
 } = vi.hoisted(() => {
   const mockCreateGateway = vi.fn()
   const mockCreateOpenRouter = vi.fn()
   const mockDecryptCredential = vi.fn()
+  const mockGetUpstashRedis = vi.fn()
+  const mockRedisDel = vi.fn()
+  const mockRedisGet = vi.fn()
+  const mockRedisSet = vi.fn()
 
   const mockDbSelectLimit = vi.fn()
   const mockDbSelectWhere = vi.fn(() => ({ limit: mockDbSelectLimit }))
@@ -22,6 +30,10 @@ const {
     mockDbSelect,
     mockDbSelectLimit,
     mockDecryptCredential,
+    mockGetUpstashRedis,
+    mockRedisDel,
+    mockRedisGet,
+    mockRedisSet,
   }
 })
 
@@ -46,12 +58,24 @@ vi.mock('@outname/db', () => ({
   },
 }))
 
+vi.mock('@outname/shared/server/upstash-redis', () => ({
+  getUpstashRedis: mockGetUpstashRedis,
+}))
+
 import { MissingInferenceCredentialError } from './inference-provider-errors'
 import { getUserLanguageModel } from './inference-providers'
 
 describe('inference-providers', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetUpstashRedis.mockReturnValue({
+      del: mockRedisDel,
+      get: mockRedisGet,
+      set: mockRedisSet,
+    })
+    mockRedisDel.mockResolvedValue(undefined)
+    mockRedisGet.mockResolvedValue(null)
+    mockRedisSet.mockResolvedValue(undefined)
     mockDbSelectLimit.mockResolvedValue([
       {
         encryptedCredentials: 'enc_from_db',
@@ -93,6 +117,10 @@ describe('inference-providers', () => {
     expect(mockCreateGateway).toHaveBeenCalledWith({
       apiKey: 'provider_secret',
     })
+    expect(mockRedisSet).toHaveBeenCalledWith(
+      'user:user_123:provider:vercel-ai-gateway:inference-credential',
+      'enc_from_db'
+    )
   })
 
   it('creates an OpenRouter language model with strict tool-provider options', async () => {
@@ -119,6 +147,25 @@ describe('inference-providers', () => {
         },
       },
     })
+  })
+
+  it('uses cached encrypted credentials before querying the database', async () => {
+    mockRedisGet.mockResolvedValue('enc_from_cache')
+
+    await expect(
+      getUserLanguageModel({
+        inferenceProvider: 'openrouter',
+        modelId: 'anthropic/claude-sonnet-4.5',
+        userId: 'user_123',
+      })
+    ).resolves.toEqual({
+      apiKey: 'provider_secret',
+      kind: 'openrouter',
+      modelId: 'anthropic/claude-sonnet-4.5',
+    })
+
+    expect(mockDbSelect).not.toHaveBeenCalled()
+    expect(mockDecryptCredential).toHaveBeenCalledWith('enc_from_cache')
   })
 
   it('throws a non-retryable missing-credential error when the provider is not enabled', async () => {
