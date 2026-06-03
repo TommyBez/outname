@@ -1,5 +1,10 @@
 import 'server-only'
 
+import {
+  emptyModelPricing,
+  type ModelPricing,
+  type PricingTier,
+} from '@outname/shared/model-pricing'
 import type { LanguageModelUsage } from 'ai'
 import Decimal from 'decimal.js'
 
@@ -12,24 +17,7 @@ export interface NormalizedUsage {
   totalTokens: number
 }
 
-export interface PricingTier {
-  cost: string
-  max?: number
-  min: number
-}
-
-export interface ModelPricing {
-  cacheRead: string | null
-  cacheReadTiers: PricingTier[]
-  cacheWrite: string | null
-  cacheWriteTiers: PricingTier[]
-  input: string | null
-  inputTiers: PricingTier[]
-  output: string | null
-  outputTiers: PricingTier[]
-  reasoning: string | null
-  reasoningTiers: PricingTier[]
-}
+export type { ModelPricing, PricingTier } from '@outname/shared/model-pricing'
 
 export interface CostCategoryBreakdown {
   costUsd: string
@@ -157,7 +145,7 @@ export function estimateModelCost(input: {
   pricing: ModelPricing | null
   usage: NormalizedUsage
 }): EstimatedModelCost {
-  const pricing = input.pricing ?? emptyPricing()
+  const pricing = input.pricing ?? emptyModelPricing()
   const nonCachedInputTokens = Math.max(
     0,
     input.usage.inputTokens -
@@ -280,21 +268,6 @@ function zeroCost(tokens: number): {
   }
 }
 
-function emptyPricing(): ModelPricing {
-  return {
-    cacheRead: null,
-    cacheReadTiers: [],
-    cacheWrite: null,
-    cacheWriteTiers: [],
-    input: null,
-    inputTiers: [],
-    output: null,
-    outputTiers: [],
-    reasoning: null,
-    reasoningTiers: [],
-  }
-}
-
 function pricingSnapshot(pricing: ModelPricing): Record<string, unknown> {
   return {
     cacheRead: pricing.cacheRead,
@@ -314,7 +287,7 @@ function formatUsd(value: Decimal): string {
   return value.toFixed(12)
 }
 
-interface UsageInput {
+export interface UsageInput {
   cachedInputTokens?: number
   inputTokenDetails?: {
     cacheReadTokens?: number

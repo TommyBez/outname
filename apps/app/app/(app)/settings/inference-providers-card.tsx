@@ -15,6 +15,7 @@ interface ProviderState {
   enabled: boolean
   inferenceProvider: InferenceProvider
   isDefault: boolean
+  keyPlaceholder: string
   label: string
   lastError: string | null
   status: 'enabled' | 'invalid' | null
@@ -26,17 +27,16 @@ export function InferenceProvidersCard({
 }: {
   providers: ProviderState[]
 }) {
-  const [apiKeys, setApiKeys] = useState<Record<InferenceProvider, string>>({
-    openrouter: '',
-    'vercel-ai-gateway': '',
-  })
+  const [apiKeys, setApiKeys] = useState<
+    Partial<Record<InferenceProvider, string>>
+  >(() => initialApiKeys(providers))
   const [pending, startTransition] = useTransition()
   const { refresh } = useRouter()
 
   function saveKey(inferenceProvider: InferenceProvider) {
     startTransition(async () => {
       const result = await saveInferenceProviderKeyAction({
-        apiKey: apiKeys[inferenceProvider],
+        apiKey: apiKeys[inferenceProvider] ?? '',
         inferenceProvider,
       })
       if (!result.ok) {
@@ -110,10 +110,10 @@ export function InferenceProvidersCard({
                   [provider.inferenceProvider]: event.target.value,
                 }))
               }
-              placeholder={providerPlaceholder(provider.inferenceProvider)}
+              placeholder={provider.keyPlaceholder}
               required={!provider.enabled}
               type="password"
-              value={apiKeys[provider.inferenceProvider]}
+              value={apiKeys[provider.inferenceProvider] ?? ''}
             />
             <div className="flex flex-wrap gap-2">
               <Button disabled={pending} size="sm" type="submit">
@@ -158,6 +158,10 @@ export function InferenceProvidersCard({
   )
 }
 
-function providerPlaceholder(provider: InferenceProvider): string {
-  return provider === 'openrouter' ? 'sk-or-...' : 'vck_...'
+function initialApiKeys(
+  providers: ProviderState[]
+): Partial<Record<InferenceProvider, string>> {
+  return Object.fromEntries(
+    providers.map((provider) => [provider.inferenceProvider, ''])
+  )
 }

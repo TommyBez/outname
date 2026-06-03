@@ -7,6 +7,7 @@ import type { InferenceProvider } from '@outname/shared/server/inference-provide
 import {
   estimateModelCost,
   normalizeUsage,
+  type UsageInput,
 } from '@outname/shared/server/model-costs'
 import type { LanguageModelUsage } from 'ai'
 
@@ -62,19 +63,4 @@ export async function recordAgentTokenUsage(input: {
       note: pricing ? null : 'pricing_unavailable',
     },
   })
-}
-
-interface UsageInput {
-  cachedInputTokens?: number
-  inputTokenDetails?: {
-    cacheReadTokens?: number
-    cacheWriteTokens?: number
-  }
-  inputTokens?: number
-  outputTokenDetails?: {
-    reasoningTokens?: number
-  }
-  outputTokens?: number
-  reasoningTokens?: number
-  totalTokens?: number
 }

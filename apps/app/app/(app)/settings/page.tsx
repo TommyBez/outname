@@ -12,6 +12,7 @@ import { sumSpendUsd } from '@outname/shared/budgets/server/spend'
 import { getCachedAgentsForUser } from '@outname/shared/server/data'
 import {
   displayInferenceProvider,
+  inferenceProviderKeyPlaceholder,
   listUserInferenceProviderStates,
 } from '@outname/shared/server/inference-providers'
 import { createPrivatePageMetadata } from '@outname/shared/server/site-metadata'
@@ -84,6 +85,9 @@ async function InferenceProvidersSection() {
     <InferenceProvidersCard
       providers={providers.map((provider) => ({
         ...provider,
+        keyPlaceholder: inferenceProviderKeyPlaceholder(
+          provider.inferenceProvider
+        ),
         label: displayInferenceProvider(provider.inferenceProvider),
         verifiedAt: provider.verifiedAt?.toISOString() ?? null,
       }))}

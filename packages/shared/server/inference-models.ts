@@ -1,7 +1,11 @@
 import 'server-only'
 
 import type { InferenceProvider } from '@outname/db/schema'
-import type { ModelPricing, PricingTier } from './model-costs'
+import {
+  emptyModelPricing,
+  type ModelPricing,
+  type PricingTier,
+} from '@outname/shared/model-pricing'
 
 export interface ModelOption {
   contextWindow: number
@@ -15,6 +19,8 @@ export interface ModelOption {
 
 const AI_GATEWAY_MODELS_ENDPOINT = 'https://ai-gateway.vercel.sh/v1/models'
 const OPENROUTER_MODELS_ENDPOINT = 'https://openrouter.ai/api/v1/models'
+const MODEL_CATALOG_REVALIDATE_SECONDS = 3600
+const MODEL_CATALOG_REVALIDATE_MS = MODEL_CATALOG_REVALIDATE_SECONDS * 1000
 
 export const DEFAULT_MODEL_BY_PROVIDER: Record<InferenceProvider, string> = {
   openrouter: 'deepseek/deepseek-v4-flash',
@@ -23,7 +29,7 @@ export const DEFAULT_MODEL_BY_PROVIDER: Record<InferenceProvider, string> = {
 
 export const DEFAULT_MODEL_ID = DEFAULT_MODEL_BY_PROVIDER['vercel-ai-gateway']
 
-const FALLBACK: Record<InferenceProvider, readonly ModelOption[]> = {
+const FALLBACK_MODELS: Record<InferenceProvider, readonly ModelOption[]> = {
   openrouter: [
     fallbackModel({
       id: 'deepseek/deepseek-v4-flash',
@@ -103,119 +109,160 @@ interface RawPricingTier {
   min?: number
 }
 
-export function getAvailableModels(input: {
+type ModelCatalogSource = 'fallback' | 'live'
+
+interface ModelCatalog {
+  models: ModelOption[]
+  pricingByModelId: Map<string, ModelPricing>
+  source: ModelCatalogSource
+}
+
+interface ModelCatalogDefinition {
+  endpoint: string
+  fallbackModels: readonly ModelOption[]
+  isToolModel: (model: unknown) => boolean
+  provider: InferenceProvider
+  toOption: (model: unknown) => ModelOption
+}
+
+const MODEL_CATALOG_DEFINITIONS = {
+  openrouter: {
+    endpoint: OPENROUTER_MODELS_ENDPOINT,
+    fallbackModels: FALLBACK_MODELS.openrouter,
+    isToolModel: isOpenRouterToolModel,
+    provider: 'openrouter',
+    toOption: (model) =>
+      openRouterModelToOption(model as OpenRouterRawModel & { id: string }),
+  },
+  'vercel-ai-gateway': {
+    endpoint: AI_GATEWAY_MODELS_ENDPOINT,
+    fallbackModels: FALLBACK_MODELS['vercel-ai-gateway'],
+    isToolModel: isAiGatewayToolLanguageModel,
+    provider: 'vercel-ai-gateway',
+    toOption: (model) =>
+      aiGatewayModelToOption(model as AiGatewayRawModel & { id: string }),
+  },
+} satisfies Record<InferenceProvider, ModelCatalogDefinition>
+
+const modelCatalogCache = new Map<
+  InferenceProvider,
+  { expiresAt: number; promise: Promise<ModelCatalog> }
+>()
+
+export async function getAvailableModels(input: {
   inferenceProvider: InferenceProvider
 }): Promise<ModelOption[]> {
-  return input.inferenceProvider === 'openrouter'
-    ? getOpenRouterModels()
-    : getAiGatewayModels()
+  return (await getModelCatalog(input)).models
 }
 
 export async function isModelSelectionValid(input: {
   inferenceProvider: InferenceProvider
   modelId: string
 }): Promise<boolean> {
-  const list = await getAvailableModels({
+  const catalog = await getModelCatalog({
     inferenceProvider: input.inferenceProvider,
   })
-  if (isFallbackList(input.inferenceProvider, list)) {
+  if (catalog.source === 'fallback') {
     return true
   }
-  return list.some((option) => option.id === input.modelId)
+  return catalog.pricingByModelId.has(input.modelId)
 }
 
 export async function getModelPricing(input: {
   inferenceProvider: InferenceProvider
   modelId: string
 }): Promise<ModelPricing | null> {
-  const list = await getAvailableModels({
+  const catalog = await getModelCatalog({
     inferenceProvider: input.inferenceProvider,
   })
-  return list.find((model) => model.id === input.modelId)?.pricing ?? null
+  return catalog.pricingByModelId.get(input.modelId) ?? null
 }
 
-async function getAiGatewayModels(): Promise<ModelOption[]> {
-  try {
-    const response = await fetch(AI_GATEWAY_MODELS_ENDPOINT, {
-      cache: 'force-cache',
-      next: { revalidate: 3600 },
-    })
-    if (!response.ok) {
-      console.error('getAiGatewayModels: non-OK response, using fallback', {
-        status: response.status,
-      })
-      return [...FALLBACK['vercel-ai-gateway']]
-    }
-
-    const json = (await response.json()) as RawResponse<AiGatewayRawModel>
-    const models = Array.isArray(json.data) ? json.data : []
-    const mapped: ModelOption[] = []
-    for (const model of models) {
-      if (!isAiGatewayToolLanguageModel(model)) {
-        continue
-      }
-      mapped.push(aiGatewayModelToOption(model))
-    }
-    return sortedOrFallback('vercel-ai-gateway', mapped)
-  } catch (error) {
-    console.error('getAiGatewayModels: fetch threw, using fallback', error)
-    return [...FALLBACK['vercel-ai-gateway']]
+async function getModelCatalog(input: {
+  inferenceProvider: InferenceProvider
+}): Promise<ModelCatalog> {
+  const now = Date.now()
+  const cached = modelCatalogCache.get(input.inferenceProvider)
+  if (cached && cached.expiresAt > now) {
+    return await cached.promise
   }
+
+  const definition = MODEL_CATALOG_DEFINITIONS[input.inferenceProvider]
+  const promise = fetchModelCatalog(definition)
+  modelCatalogCache.set(input.inferenceProvider, {
+    expiresAt: now + MODEL_CATALOG_REVALIDATE_MS,
+    promise,
+  })
+  return await promise
 }
 
-async function getOpenRouterModels(): Promise<ModelOption[]> {
+async function fetchModelCatalog(
+  definition: ModelCatalogDefinition
+): Promise<ModelCatalog> {
   try {
-    const response = await fetch(OPENROUTER_MODELS_ENDPOINT, {
+    const response = await fetch(definition.endpoint, {
       cache: 'force-cache',
-      next: { revalidate: 3600 },
+      next: { revalidate: MODEL_CATALOG_REVALIDATE_SECONDS },
     })
     if (!response.ok) {
-      console.error('getOpenRouterModels: non-OK response, using fallback', {
+      console.error('getAvailableModels: non-OK response, using fallback', {
+        provider: definition.provider,
         status: response.status,
       })
-      return [...FALLBACK.openrouter]
+      return fallbackCatalog(definition)
     }
 
-    const json = (await response.json()) as RawResponse<OpenRouterRawModel>
+    const json = (await response.json()) as RawResponse<unknown>
     const models = Array.isArray(json.data) ? json.data : []
     const mapped: ModelOption[] = []
     for (const model of models) {
-      if (!isOpenRouterToolModel(model)) {
+      if (!definition.isToolModel(model)) {
         continue
       }
-      mapped.push(openRouterModelToOption(model))
+      mapped.push(definition.toOption(model))
     }
-    return sortedOrFallback('openrouter', mapped)
+    return liveCatalogOrFallback(definition, mapped)
   } catch (error) {
-    console.error('getOpenRouterModels: fetch threw, using fallback', error)
-    return [...FALLBACK.openrouter]
+    console.error('getAvailableModels: fetch threw, using fallback', {
+      error,
+      provider: definition.provider,
+    })
+    return fallbackCatalog(definition)
   }
 }
 
 function isAiGatewayToolLanguageModel(
-  model: AiGatewayRawModel
+  model: unknown
 ): model is AiGatewayRawModel & { id: string } {
-  if (!model.id || typeof model.id !== 'string') {
+  if (!model || typeof model !== 'object') {
     return false
   }
-  if (model.type !== 'language') {
+  const value = model as AiGatewayRawModel
+  if (!value.id || typeof value.id !== 'string') {
     return false
   }
-  return Boolean(Array.isArray(model.tags) && model.tags.includes('tool-use'))
+  if (value.type !== 'language') {
+    return false
+  }
+  return Boolean(Array.isArray(value.tags) && value.tags.includes('tool-use'))
 }
 
 function isOpenRouterToolModel(
-  model: OpenRouterRawModel
+  model: unknown
 ): model is OpenRouterRawModel & { id: string } {
-  if (!model.id || typeof model.id !== 'string') {
+  if (!model || typeof model !== 'object') {
     return false
   }
-  if (model.id.startsWith('openrouter/')) {
+  const value = model as OpenRouterRawModel
+  if (!value.id || typeof value.id !== 'string') {
+    return false
+  }
+  if (value.id.startsWith('openrouter/')) {
     return false
   }
   return Boolean(
-    Array.isArray(model.supported_parameters) &&
-      model.supported_parameters.includes('tools')
+    Array.isArray(value.supported_parameters) &&
+      value.supported_parameters.includes('tools')
   )
 }
 
@@ -315,33 +362,49 @@ function parseRate(value: number | string | undefined): string | null {
   return asString
 }
 
-function sortedOrFallback(
-  provider: InferenceProvider,
+function liveCatalogOrFallback(
+  definition: ModelCatalogDefinition,
   models: ModelOption[]
-): ModelOption[] {
+): ModelCatalog {
   if (models.length === 0) {
     console.error(
-      `getAvailableModels: zero tool-capable models for ${provider}, using fallback`
+      `getAvailableModels: zero tool-capable models for ${definition.provider}, using fallback`
     )
-    return [...FALLBACK[provider]]
+    return fallbackCatalog(definition)
   }
+  return createCatalog({
+    models: sortedModels(models),
+    source: 'live',
+  })
+}
+
+function fallbackCatalog(definition: ModelCatalogDefinition): ModelCatalog {
+  return createCatalog({
+    models: [...definition.fallbackModels],
+    source: 'fallback',
+  })
+}
+
+function createCatalog(input: {
+  models: ModelOption[]
+  source: ModelCatalogSource
+}): ModelCatalog {
+  return {
+    models: input.models,
+    pricingByModelId: new Map(
+      input.models.map((model) => [model.id, model.pricing])
+    ),
+    source: input.source,
+  }
+}
+
+function sortedModels(models: ModelOption[]): ModelOption[] {
   return models.toSorted((a, b) => {
     if (a.ownedBy !== b.ownedBy) {
       return a.ownedBy.localeCompare(b.ownedBy)
     }
     return a.id.localeCompare(b.id)
   })
-}
-
-function isFallbackList(
-  provider: InferenceProvider,
-  models: ModelOption[]
-): boolean {
-  const fallback = FALLBACK[provider]
-  return (
-    models.length === fallback.length &&
-    models.every((model, index) => model.id === fallback[index]?.id)
-  )
 }
 
 function fallbackModel(input: {
@@ -356,7 +419,7 @@ function fallbackModel(input: {
     inferenceProvider: input.inferenceProvider,
     name: input.name,
     ownedBy: input.ownedBy,
-    pricing: rawPricingToModelPricing({}),
+    pricing: emptyModelPricing(),
     supportedParameters: ['tools'],
   }
 }

@@ -2,9 +2,9 @@
 
 import { requireUserId } from '@outname/auth/server/auth-guard'
 import type { InferenceProvider } from '@outname/db/schema'
+import { InferenceCredentialVerificationError } from '@outname/shared/server/inference-provider-errors'
 import {
   clearUserInferenceCredential,
-  InferenceCredentialVerificationError,
   setDefaultInferenceProvider,
   setUserInferenceCredential,
 } from '@outname/shared/server/inference-providers'

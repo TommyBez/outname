@@ -1,6 +1,7 @@
 import type { InferenceProvider } from '@outname/db/schema'
 import type { AgentScheduleMode } from '@outname/shared/agent-schedule'
 import { formatAgentCadence } from '@outname/shared/agents/format'
+import { emptyModelPricing } from '@outname/shared/model-pricing'
 import type { ModelOption } from '@outname/shared/server/inference-models'
 
 export const INTERVAL_OPTIONS = [
@@ -114,18 +115,7 @@ export function resolveModelOptions(
       inferenceProvider,
       name: defaultModel,
       ownedBy: inferenceProvider,
-      pricing: {
-        cacheRead: null,
-        cacheReadTiers: [],
-        cacheWrite: null,
-        cacheWriteTiers: [],
-        input: null,
-        inputTiers: [],
-        output: null,
-        outputTiers: [],
-        reasoning: null,
-        reasoningTiers: [],
-      },
+      pricing: emptyModelPricing(),
       supportedParameters: ['tools'],
     },
   ]

@@ -46,10 +46,8 @@ vi.mock('@outname/db', () => ({
   },
 }))
 
-import {
-  getUserLanguageModel,
-  MissingInferenceCredentialError,
-} from './inference-providers'
+import { MissingInferenceCredentialError } from './inference-provider-errors'
+import { getUserLanguageModel } from './inference-providers'
 
 describe('inference-providers', () => {
   beforeEach(() => {
