@@ -13,7 +13,13 @@ export const PORTLESS_PROJECT_ORIGINS = {
   web: 'https://web.outname.localhost',
 } as const
 
-export function resolveLocalProjectOrigins(): typeof LOCALHOST_PROJECT_ORIGINS {
+export type LocalProjectOrigins = {
+  readonly api: string
+  readonly app: string
+  readonly web: string
+}
+
+export function resolveLocalProjectOrigins(): LocalProjectOrigins {
   if (process.env.PORTLESS === '0') {
     return LOCALHOST_PROJECT_ORIGINS
   }
