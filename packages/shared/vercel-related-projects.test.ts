@@ -28,11 +28,11 @@ afterEach(() => {
   restoreEnv('VERCEL_URL', originalVercelUrl)
 })
 
-test('exports local dev origins for each app role', () => {
+test('exports Portless local dev origins for each app role', () => {
   expect(LOCAL_PROJECT_ORIGINS).toEqual({
-    api: 'http://localhost:3001',
-    app: 'http://localhost:3000',
-    web: 'http://localhost:3002',
+    api: 'https://outname-api.localhost',
+    app: 'https://outname-app.localhost',
+    web: 'https://outname.localhost',
   })
 })
 
