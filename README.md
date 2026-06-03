@@ -87,39 +87,24 @@ pnpm install
 cp .env.example .env.local
 ```
 
-Fill in `.env.local`, then start the app workspace you need. Dev servers run
-through [Portless](https://portless.sh/) for stable HTTPS `.localhost` URLs
-(installs with `pnpm install`).
-
-On first run, trust the local CA once (avoids repeated prompts):
+Fill in `.env.local`, then start the app workspace you need:
 
 ```bash
-pnpm exec portless trust
-```
-
-If your machine cannot bind port 443, use a non-privileged proxy port:
-
-```bash
-export PORTLESS_PORT=1355
 pnpm dev:app
 ```
 
-Then open https://outname-app.localhost (or the URL Portless prints). Other
-workspaces: `pnpm dev:web` → https://outname.localhost, `pnpm dev:api` →
-https://outname-api.localhost, `pnpm dev:email` → https://outname-email.localhost,
-`pnpm dev:video` → https://outname-video.localhost.
-
-Without Portless, run the raw script in a package, e.g.
-`pnpm --filter @outname/app dev:raw` → http://localhost:3000.
+Open `http://localhost:3000`. Public web runs on `pnpm dev:web`
+(`http://localhost:3002`), API on `pnpm dev:api` (`http://localhost:3001`),
+React Email preview on `pnpm dev:email` (`http://localhost:3004`), and Remotion
+Studio on `pnpm dev:video` (`http://localhost:3005`).
 
 ### Local development notes
 
 - This is a Turborepo monorepo with deployable apps in `apps/*` and shared
   packages in `packages/*`.
 - Cross-project public URLs are derived in each app's `next.config.ts` from
-  Vercel related-project metadata. Outside Vercel they use Portless hostnames
-  (`outname-app`, `outname-api`, `outname`). Use `dev:raw` for numeric localhost
-  ports.
+  Vercel related-project metadata. Outside Vercel they fall back to localhost
+  origins (`app` `:3000`, `api` `:3001`, `web` `:3002`).
 - The only required local service is the relevant Next.js dev server; email and
   video workspaces are local-only tools.
 - The database is remote; no local Postgres setup is required.

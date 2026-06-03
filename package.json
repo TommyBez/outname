@@ -144,7 +144,6 @@
     "remotion": "4.0.461",
     "tailwindcss": "^4.2.0",
     "tsx": "^4.21.0",
-    "portless": "^0.12.0",
     "turbo": "2.9.14",
     "tw-animate-css": "1.3.3",
     "typescript": "6.0.3",
@@ -153,7 +152,6 @@
   },
   "scripts": {
     "dev": "turbo run dev --parallel",
-    "dev:raw": "turbo run dev:raw --parallel",
     "dev:web": "turbo run dev --filter=@outname/web",
     "dev:app": "turbo run dev --filter=@outname/app",
     "dev:api": "turbo run dev --filter=@outname/api",

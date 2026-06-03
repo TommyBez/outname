@@ -1,11 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 
-const DEFAULT_LOCAL_ORIGINS = [
-  'http://localhost:3000',
-  'http://localhost:3002',
-  'https://outname-app.localhost',
-  'https://outname.localhost',
-]
+const DEFAULT_LOCAL_ORIGINS = ['http://localhost:3000', 'http://localhost:3002']
 
 function configuredOrigins(): string[] {
   return [

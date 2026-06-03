@@ -1,11 +1,10 @@
 const HOST_PATTERN = /^[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?$/i
 const HTTP_URL_PATTERN = /^https?:\/\//i
 
-/** Stable [Portless](https://portless.sh/) URLs for local cross-app routing. */
 export const LOCAL_PROJECT_ORIGINS = {
-  api: 'https://outname-api.localhost',
-  app: 'https://outname-app.localhost',
-  web: 'https://outname.localhost',
+  api: 'http://localhost:3001',
+  app: 'http://localhost:3000',
+  web: 'http://localhost:3002',
 } as const
 
 export const PROJECT_NAMES = {
