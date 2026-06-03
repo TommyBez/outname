@@ -90,15 +90,24 @@ cp .env.example .env.local
 
 Fill in `.env.local`, then start the app workspace you need. Dev servers run
 through [Portless](https://portless.sh/) for stable HTTPS `.localhost` URLs
-(installs with `pnpm install`; first run may prompt to trust the local CA):
+(installs with `pnpm install`).
+
+On first run, trust the local CA once (avoids repeated prompts):
 
 ```bash
+pnpm exec portless trust
+```
+
+If your machine cannot bind port 443, use a non-privileged proxy port:
+
+```bash
+export PORTLESS_PORT=1355
 pnpm dev:app
 ```
 
-Open https://outname-app.localhost. Public web: `pnpm dev:web` →
-https://outname.localhost, API: `pnpm dev:api` → https://outname-api.localhost,
-React Email: `pnpm dev:email` → https://outname-email.localhost, Remotion Studio:
+Then open https://outname-app.localhost (or the URL Portless prints). Other
+workspaces: `pnpm dev:web` → https://outname.localhost, `pnpm dev:api` →
+https://outname-api.localhost, `pnpm dev:email` → https://outname-email.localhost,
 `pnpm dev:video` → https://outname-video.localhost.
 
 Without Portless, run the raw script in a package, e.g.

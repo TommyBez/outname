@@ -18,7 +18,6 @@ const devTrustedOrigins = [
   'https://outname-app.localhost',
   'https://outname-api.localhost',
   'https://outname.localhost',
-  'https://*.localhost',
   'https://*.vercel.app',
   'https://*.vercel.run',
   'https://*.v0.app',
