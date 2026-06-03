@@ -2,14 +2,9 @@
   "name": "@outname/video-app",
   "version": "0.1.0",
   "private": true,
-  "portless": {
-    "name": "outname-video",
-    "script": "dev:raw"
-  },
   "scripts": {
     "build": "pnpm typecheck",
-    "dev": "portless",
-    "dev:raw": "remotion studio remotion/index.ts",
+    "dev": "remotion studio remotion/index.ts --port=3005",
     "lint": "ultracite check .",
     "render:launch": "tsx scripts/render-launch-videos.ts render",
     "still:launch": "tsx scripts/render-launch-videos.ts still",
