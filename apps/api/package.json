@@ -7,7 +7,7 @@
     "script": "dev:server"
   },
   "scripts": {
-    "build": "next build",
+    "build": "pnpm --filter @outname/db db:migrate && next build",
     "dev": "portless",
     "dev:local": "next dev -p 3001",
     "dev:server": "next dev",
