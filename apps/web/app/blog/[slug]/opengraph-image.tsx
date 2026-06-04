@@ -25,6 +25,7 @@ export async function generateImageMetadata({ params }: BlogPostOgImageProps) {
 
   return [
     {
+      id: 'default',
       alt: `${post.title} — OUTNA.ME Blog`,
       contentType: 'image/png',
       size: socialImageSize,
