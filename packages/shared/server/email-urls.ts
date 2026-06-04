@@ -2,22 +2,24 @@ import 'server-only'
 
 import { withRelatedProject } from '@vercel/related-projects'
 import {
-  LOCAL_PROJECT_ORIGINS,
   PROJECT_NAMES,
+  resolveLocalProjectOrigins,
 } from '../vercel-related-projects'
 
 /** App origin for transactional email links (login, settings). */
 export function getEmailAppOrigin(): string {
+  const localOrigins = resolveLocalProjectOrigins()
   return withRelatedProject({
-    defaultHost: LOCAL_PROJECT_ORIGINS.app,
+    defaultHost: localOrigins.app,
     projectName: PROJECT_NAMES.app,
   })
 }
 
 /** Marketing web origin for waitlist confirmation and hosted assets. */
 export function getEmailWebOrigin(): string {
+  const localOrigins = resolveLocalProjectOrigins()
   return withRelatedProject({
-    defaultHost: LOCAL_PROJECT_ORIGINS.web,
+    defaultHost: localOrigins.web,
     projectName: PROJECT_NAMES.web,
   })
 }

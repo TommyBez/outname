@@ -4,8 +4,8 @@ import { withBotId } from 'botid/next/config'
 import type { NextConfig } from 'next'
 import {
   getCurrentProjectOrigin,
-  LOCAL_PROJECT_ORIGINS,
   PROJECT_NAMES,
+  resolveLocalProjectOrigins,
 } from '../vercel-related-projects'
 
 export type OutnameAppRole = 'api' | 'app' | 'web'
@@ -38,27 +38,29 @@ function resolveOrigins(role: OutnameAppRole): {
   appOrigin: string
   webOrigin: string
 } {
+  const localOrigins = resolveLocalProjectOrigins()
+
   const apiOrigin =
     role === 'api'
-      ? getCurrentProjectOrigin(LOCAL_PROJECT_ORIGINS.api)
+      ? getCurrentProjectOrigin(localOrigins.api)
       : withRelatedProject({
-          defaultHost: LOCAL_PROJECT_ORIGINS.api,
+          defaultHost: localOrigins.api,
           projectName: PROJECT_NAMES.api,
         })
 
   const appOrigin =
     role === 'app'
-      ? getCurrentProjectOrigin(LOCAL_PROJECT_ORIGINS.app)
+      ? getCurrentProjectOrigin(localOrigins.app)
       : withRelatedProject({
-          defaultHost: LOCAL_PROJECT_ORIGINS.app,
+          defaultHost: localOrigins.app,
           projectName: PROJECT_NAMES.app,
         })
 
   const webOrigin =
     role === 'web'
-      ? getCurrentProjectOrigin(LOCAL_PROJECT_ORIGINS.web)
+      ? getCurrentProjectOrigin(localOrigins.web)
       : withRelatedProject({
-          defaultHost: LOCAL_PROJECT_ORIGINS.web,
+          defaultHost: localOrigins.web,
           projectName: PROJECT_NAMES.web,
         })
 

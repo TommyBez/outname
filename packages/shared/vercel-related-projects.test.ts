@@ -1,5 +1,6 @@
 import { afterEach, expect, test } from 'vitest'
 import {
+  derivePortlessOriginsFromUrl,
   getCurrentProjectOrigin,
   LOCALHOST_PROJECT_ORIGINS,
   PORTLESS_PROJECT_ORIGINS,
@@ -11,6 +12,8 @@ const originalVercelEnv = process.env.VERCEL_ENV
 const originalVercelProjectProductionUrl =
   process.env.VERCEL_PROJECT_PRODUCTION_URL
 const originalVercelUrl = process.env.VERCEL_URL
+const originalPortless = process.env.PORTLESS
+const originalPortlessUrl = process.env.PORTLESS_URL
 
 function restoreEnv(key: string, value: string | undefined) {
   if (value === undefined) {
@@ -28,6 +31,8 @@ afterEach(() => {
     originalVercelProjectProductionUrl
   )
   restoreEnv('VERCEL_URL', originalVercelUrl)
+  restoreEnv('PORTLESS', originalPortless)
+  restoreEnv('PORTLESS_URL', originalPortlessUrl)
 })
 
 test('exports localhost dev origins for each app role', () => {
@@ -46,10 +51,48 @@ test('exports portless dev origins for each app role', () => {
   })
 })
 
+test('derives sibling portless origins from PORTLESS_URL', () => {
+  expect(derivePortlessOriginsFromUrl('https://app.outname.localhost')).toEqual(
+    PORTLESS_PROJECT_ORIGINS
+  )
+})
+
+test('derives worktree-prefixed portless origins from PORTLESS_URL', () => {
+  expect(
+    derivePortlessOriginsFromUrl('https://fix-ui.app.outname.localhost')
+  ).toEqual({
+    api: 'https://fix-ui.api.outname.localhost',
+    app: 'https://fix-ui.app.outname.localhost',
+    web: 'https://fix-ui.web.outname.localhost',
+  })
+})
+
+test('preserves custom proxy port when deriving portless origins', () => {
+  expect(
+    derivePortlessOriginsFromUrl('http://fix-ui.app.outname.localhost:1355')
+  ).toEqual({
+    api: 'http://fix-ui.api.outname.localhost:1355',
+    app: 'http://fix-ui.app.outname.localhost:1355',
+    web: 'http://fix-ui.web.outname.localhost:1355',
+  })
+})
+
 test('uses portless origins when PORTLESS_URL is set', () => {
   process.env.PORTLESS_URL = 'https://app.outname.localhost'
 
   expect(resolveLocalProjectOrigins()).toEqual(PORTLESS_PROJECT_ORIGINS)
+
+  delete process.env.PORTLESS_URL
+})
+
+test('uses worktree portless origins when PORTLESS_URL has a branch prefix', () => {
+  process.env.PORTLESS_URL = 'https://fix-ui.api.outname.localhost'
+
+  expect(resolveLocalProjectOrigins()).toEqual({
+    api: 'https://fix-ui.api.outname.localhost',
+    app: 'https://fix-ui.app.outname.localhost',
+    web: 'https://fix-ui.web.outname.localhost',
+  })
 
   delete process.env.PORTLESS_URL
 })

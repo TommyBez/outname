@@ -1,8 +1,8 @@
 import 'server-only'
 import { withRelatedProject } from '@vercel/related-projects'
 import {
-  LOCAL_PROJECT_ORIGINS,
   PROJECT_NAMES,
+  resolveLocalProjectOrigins,
 } from '../vercel-related-projects'
 import {
   type AppRevalidationPayload,
@@ -34,8 +34,9 @@ export async function sendAppRevalidation(
 }
 
 function appRevalidationOrigin(): string {
+  const localOrigins = resolveLocalProjectOrigins()
   const origin = withRelatedProject({
-    defaultHost: LOCAL_PROJECT_ORIGINS.app,
+    defaultHost: localOrigins.app,
     projectName: PROJECT_NAMES.app,
   })
 
