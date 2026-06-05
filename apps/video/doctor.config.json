@@ -5,10 +5,10 @@
     "requireWaitlistManageAccess"
   ],
   "ignore": {
-    "files": ["components/ui/**"],
+    "files": [".next/**"],
     "overrides": [
       {
-        "files": ["components/social/**"],
+        "files": ["remotion/**"],
         "rules": [
           "react-doctor/design-no-em-dash-in-jsx-text",
           "react-doctor/design-no-redundant-padding-axes",
@@ -26,14 +26,6 @@
       {
         "files": ["package.json"],
         "rules": ["deslop/unused-dependency", "deslop/unused-dev-dependency"]
-      },
-      {
-        "files": [
-          "components/ui/use-mobile.tsx",
-          "hooks/use-mobile.ts",
-          "hooks/use-toast.ts"
-        ],
-        "rules": ["deslop/unused-file"]
       }
     ]
   }

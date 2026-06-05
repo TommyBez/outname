@@ -10,9 +10,12 @@
       ".claude/skills/**",
       ".next/**",
       "apps/*/app/.well-known/**",
+      "app/.well-known/**",
       "apps/*/.next/**",
       "packages/ai/components/ai-elements/**",
+      "components/ai-elements/**",
       "packages/ui/components/ui/**",
+      "components/ui/**",
       "test/workflow-server-app/.next/**",
       "test/workflow-server-app/app/.well-known/**"
     ],
@@ -20,19 +23,24 @@
       {
         "files": [
           "apps/*/app/**/opengraph-image.tsx",
-          "apps/*/app/**/twitter-image.tsx"
+          "app/**/opengraph-image.tsx",
+          "apps/*/app/**/twitter-image.tsx",
+          "app/**/twitter-image.tsx"
         ],
         "rules": ["react-doctor/only-export-components"]
       },
       {
-        "files": ["apps/*/mdx-components.tsx"],
+        "files": ["apps/*/mdx-components.tsx", "mdx-components.tsx"],
         "rules": ["react-doctor/only-export-components"]
       },
       {
         "files": [
           "apps/video/remotion/**",
+          "remotion/**",
           "packages/shared/marketing/components/landing/composable-workbench/**",
-          "packages/ui/components/social/**"
+          "marketing/components/landing/composable-workbench/**",
+          "packages/ui/components/social/**",
+          "components/social/**"
         ],
         "rules": [
           "react-doctor/design-no-em-dash-in-jsx-text",
@@ -45,7 +53,8 @@
           "react-doctor/no-pure-black-background",
           "react-doctor/no-render-in-render",
           "react-doctor/no-wide-letter-spacing",
-          "react-doctor/rendering-svg-precision"
+          "react-doctor/rendering-svg-precision",
+          "react-doctor/rerender-lazy-ref-init"
         ]
       },
       {
@@ -55,32 +64,104 @@
       {
         "files": [
           "packages/ui/components/ui/use-mobile.tsx",
+          "components/ui/use-mobile.tsx",
           "packages/ui/hooks/use-mobile.ts",
-          "packages/ui/hooks/use-toast.ts"
+          "hooks/use-mobile.ts",
+          "packages/ui/hooks/use-toast.ts",
+          "hooks/use-toast.ts"
         ],
         "rules": ["deslop/unused-file"]
       },
       {
-        "files": ["apps/app/app/agents/[agentId]/layout.tsx"],
+        "files": [
+          "apps/app/app/agents/[agentId]/layout.tsx",
+          "app/agents/[agentId]/layout.tsx"
+        ],
         "rules": ["react-doctor/jsx-no-jsx-as-prop"]
       },
       {
-        "files": ["apps/web/app/blog/[slug]/page.tsx"],
+        "files": [
+          "apps/web/app/blog/[slug]/page.tsx",
+          "app/blog/[slug]/page.tsx"
+        ],
         "rules": ["react-doctor/no-dynamic-import-path"]
       },
       {
         "files": [
-          "packages/shared/agents/components/agent-events-workspace.tsx"
+          "packages/shared/agents/components/agent-events-workspace.tsx",
+          "agents/components/agent-events-workspace.tsx"
         ],
         "rules": ["react-doctor/react-compiler-destructure-method"]
       },
       {
         "files": [
+          "packages/shared/agents/api/creation-chat/create-requested-agent.ts",
+          "agents/api/creation-chat/create-requested-agent.ts",
+          "packages/shared/server/inference-credentials.ts",
+          "server/inference-credentials.ts"
+        ],
+        "rules": ["react-doctor/server-sequential-independent-await"]
+      },
+      {
+        "files": [
+          "packages/shared/agents/api/edit-chat/budget-tools.ts",
+          "agents/api/edit-chat/budget-tools.ts",
+          "packages/shared/agents/server/skills.ts",
+          "agents/server/skills.ts"
+        ],
+        "rules": ["react-doctor/async-await-in-loop"]
+      },
+      {
+        "files": [
+          "packages/shared/agents/api/edit-chat/tool-visibility.ts",
+          "agents/api/edit-chat/tool-visibility.ts",
+          "packages/shared/agents/server/skills.ts",
+          "agents/server/skills.ts"
+        ],
+        "rules": ["react-doctor/js-combine-iterations"]
+      },
+      {
+        "files": [
+          "packages/shared/connections/actions.ts",
+          "connections/actions.ts"
+        ],
+        "rules": ["react-doctor/server-after-nonblocking"]
+      },
+      {
+        "files": [
+          "packages/shared/connections/registry.ts",
+          "connections/registry.ts"
+        ],
+        "rules": ["react-doctor/js-set-map-lookups"]
+      },
+      {
+        "files": [
+          "packages/shared/intl/formatters.ts",
+          "intl/formatters.ts"
+        ],
+        "rules": ["react-doctor/js-hoist-intl"]
+      },
+      {
+        "files": [
+          "packages/shared/server/model-costs.ts",
+          "server/model-costs.ts"
+        ],
+        "rules": ["react-doctor/js-tosorted-immutable"]
+      },
+      {
+        "files": [
+          "packages/shared/server/inference-credentials.ts",
+          "server/inference-credentials.ts",
           "packages/shared/waitlist/server/actions.ts",
+          "waitlist/server/actions.ts",
           "packages/shared/budgets/server/spend.ts",
+          "budgets/server/spend.ts",
           "packages/shared/channels/server/dispatch.ts",
+          "channels/server/dispatch.ts",
           "packages/shared/channels/server/routing.ts",
-          "packages/shared/connections/runtime/credential.ts"
+          "channels/server/routing.ts",
+          "packages/shared/connections/runtime/credential.ts",
+          "connections/runtime/credential.ts"
         ],
         "rules": [
           "react-doctor/async-parallel",

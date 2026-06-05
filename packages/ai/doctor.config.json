@@ -1,0 +1,16 @@
+{
+  "serverAuthFunctionNames": [
+    "requireSession",
+    "requireUserId",
+    "requireWaitlistManageAccess"
+  ],
+  "ignore": {
+    "files": ["components/ai-elements/**"],
+    "overrides": [
+      {
+        "files": ["package.json"],
+        "rules": ["deslop/unused-dependency", "deslop/unused-dev-dependency"]
+      }
+    ]
+  }
+}

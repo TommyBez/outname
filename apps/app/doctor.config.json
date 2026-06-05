@@ -1,0 +1,28 @@
+{
+  "serverAuthFunctionNames": [
+    "requireSession",
+    "requireUserId",
+    "requireWaitlistManageAccess"
+  ],
+  "ignore": {
+    "files": [".next/**", "app/.well-known/**"],
+    "overrides": [
+      {
+        "files": ["app/**/opengraph-image.tsx", "app/**/twitter-image.tsx"],
+        "rules": ["react-doctor/only-export-components"]
+      },
+      {
+        "files": ["mdx-components.tsx"],
+        "rules": ["react-doctor/only-export-components"]
+      },
+      {
+        "files": ["package.json"],
+        "rules": ["deslop/unused-dependency", "deslop/unused-dev-dependency"]
+      },
+      {
+        "files": ["app/agents/[agentId]/layout.tsx"],
+        "rules": ["react-doctor/jsx-no-jsx-as-prop"]
+      }
+    ]
+  }
+}

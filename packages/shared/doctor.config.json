@@ -1,0 +1,87 @@
+{
+  "serverAuthFunctionNames": [
+    "requireSession",
+    "requireUserId",
+    "requireWaitlistManageAccess"
+  ],
+  "ignore": {
+    "overrides": [
+      {
+        "files": ["marketing/components/landing/composable-workbench/**"],
+        "rules": [
+          "react-doctor/design-no-em-dash-in-jsx-text",
+          "react-doctor/design-no-redundant-padding-axes",
+          "react-doctor/design-no-redundant-size-axes",
+          "react-doctor/design-no-three-period-ellipsis",
+          "react-doctor/no-inline-exhaustive-style",
+          "react-doctor/no-long-transition-duration",
+          "react-doctor/no-multi-comp",
+          "react-doctor/no-pure-black-background",
+          "react-doctor/no-render-in-render",
+          "react-doctor/no-wide-letter-spacing",
+          "react-doctor/rendering-svg-precision",
+          "react-doctor/rerender-lazy-ref-init"
+        ]
+      },
+      {
+        "files": ["package.json"],
+        "rules": ["deslop/unused-dependency", "deslop/unused-dev-dependency"]
+      },
+      {
+        "files": ["agents/components/agent-events-workspace.tsx"],
+        "rules": ["react-doctor/react-compiler-destructure-method"]
+      },
+      {
+        "files": [
+          "agents/api/creation-chat/create-requested-agent.ts",
+          "server/inference-credentials.ts"
+        ],
+        "rules": ["react-doctor/server-sequential-independent-await"]
+      },
+      {
+        "files": [
+          "agents/api/edit-chat/budget-tools.ts",
+          "agents/server/skills.ts"
+        ],
+        "rules": ["react-doctor/async-await-in-loop"]
+      },
+      {
+        "files": [
+          "agents/api/edit-chat/tool-visibility.ts",
+          "agents/server/skills.ts"
+        ],
+        "rules": ["react-doctor/js-combine-iterations"]
+      },
+      {
+        "files": ["connections/actions.ts"],
+        "rules": ["react-doctor/server-after-nonblocking"]
+      },
+      {
+        "files": ["connections/registry.ts"],
+        "rules": ["react-doctor/js-set-map-lookups"]
+      },
+      {
+        "files": ["intl/formatters.ts"],
+        "rules": ["react-doctor/js-hoist-intl"]
+      },
+      {
+        "files": ["server/model-costs.ts"],
+        "rules": ["react-doctor/js-tosorted-immutable"]
+      },
+      {
+        "files": [
+          "server/inference-credentials.ts",
+          "waitlist/server/actions.ts",
+          "budgets/server/spend.ts",
+          "channels/server/dispatch.ts",
+          "channels/server/routing.ts",
+          "connections/runtime/credential.ts"
+        ],
+        "rules": [
+          "react-doctor/async-parallel",
+          "react-doctor/async-await-in-loop"
+        ]
+      }
+    ]
+  }
+}
