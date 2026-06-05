@@ -49,6 +49,13 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     source: body.source,
     userId: session.user.id,
   })
+  if (!result.ok) {
+    console.error('Agent skill install failed', {
+      agentId,
+      code: result.code,
+      message: result.message,
+    })
+  }
 
   return NextResponse.json(result, {
     status: result.ok ? 200 : statusForErrorCode(result.code),

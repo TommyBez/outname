@@ -5,6 +5,7 @@ import {
 import { db } from '@outname/db'
 import { agent } from '@outname/db/schema'
 import {
+  getVercelSandboxCredentials,
   skillSandboxTags,
   withVercelSandboxCredentials,
 } from '@outname/shared/server/vercel-sandbox-config'
@@ -21,6 +22,10 @@ export interface CreateOptions {
   tags?: Record<string, string>
   timeout?: number
 }
+
+type SkillSandboxGetOrCreateOptions = NonNullable<
+  Parameters<typeof Sandbox.getOrCreate>[0]
+>
 
 const SKILL_SANDBOX_CREATE_OPTIONS: CreateOptions = {
   runtime: 'node22',
@@ -79,33 +84,23 @@ export interface EnsureSkillSandboxResult {
 export async function ensureSkillSandbox(
   agentId: string
 ): Promise<EnsureSkillSandboxResult> {
-  const persistedName = await readSandboxId(agentId)
   const desiredName = nameFor(agentId)
-  let sandbox: Sandbox | null = null
-
-  if (persistedName) {
-    try {
-      sandbox = await Sandbox.get(
-        withVercelSandboxCredentials({ name: persistedName, resume: true })
-      )
-    } catch {
-      sandbox = null
-    }
-  }
-
+  const persistedName = await readSandboxId(agentId)
   let created = false
-  if (!sandbox) {
-    sandbox = await Sandbox.create(
-      withVercelSandboxCredentials({
-        ...SKILL_SANDBOX_CREATE_OPTIONS,
-        name: desiredName,
-        tags: skillSandboxTags(agentId),
-      })
-    )
-    created = true
-    if (persistedName !== desiredName) {
-      await writeSandboxId(agentId, desiredName)
-    }
+  const options: SkillSandboxGetOrCreateOptions = {
+    ...SKILL_SANDBOX_CREATE_OPTIONS,
+    ...getVercelSandboxCredentials(),
+    name: persistedName ?? desiredName,
+    tags: skillSandboxTags(agentId),
+    onCreate: () => {
+      created = true
+      return Promise.resolve()
+    },
+  }
+  const sandbox = await Sandbox.getOrCreate(options)
+
+  if (!persistedName) {
+    await writeSandboxId(agentId, desiredName)
   }
 
   await ensureSkillSandboxDirectories(sandbox)
