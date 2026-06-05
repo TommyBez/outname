@@ -27,17 +27,17 @@ import {
 import {
   AlertTriangle,
   Archive,
+  BookOpenCheck,
   FileText,
   Github,
   RefreshCw,
-  Sparkles,
   Trash2,
   Upload,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import {
   type ChangeEvent,
-  type FormEvent,
+  type SubmitEvent,
   useReducer,
   useState,
   useTransition,
@@ -224,7 +224,7 @@ function InstalledSkillsList({
   if (skills.length === 0) {
     return (
       <div className="flex min-h-48 flex-col items-start justify-center border-2 border-foreground border-dashed p-6">
-        <Sparkles aria-hidden className="mb-4 size-6 text-accent" />
+        <BookOpenCheck aria-hidden className="mb-4 size-6 text-accent" />
         <p className="font-black font-serif text-2xl uppercase leading-none tracking-tighter">
           No skills installed.
         </p>
@@ -355,7 +355,7 @@ function AddSkillDialog({
     })
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
     submit(false)
   }

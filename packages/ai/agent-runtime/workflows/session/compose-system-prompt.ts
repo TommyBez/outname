@@ -277,9 +277,10 @@ function renderAgentSkillsSection(): string {
   return [
     '## Agent Skills',
     '',
-    'This agent has installed Agent Skills. Use skill({ skillName }) to',
-    "load a skill's instructions before relying on it. Use bash for",
-    'commands in the Skill Sandbox only. The system memory sandbox still',
-    'uses readFile, writeFile, listFiles, and grepFiles.',
+    'This agent has installed Agent Skills. Use them when they are present',
+    "and useful for the task. Use skill({ skillName }) to load a skill's",
+    'instructions before relying on it. Use bash for commands in the Skill',
+    'Sandbox only. The system memory sandbox still uses readFile, writeFile,',
+    'listFiles, and grepFiles.',
   ].join('\n')
 }

@@ -129,6 +129,47 @@ describe('skill package preparation', () => {
     expect(prepared.name).toBe('Grill With Docs')
     expect(prepared.files.map((file) => file.path)).toEqual(['SKILL.md'])
   })
+
+  it('ignores unsupported GitHub archive entries outside the selected source path', async () => {
+    const prepared = await prepareGitHubSkillZip({
+      content: makeZip([
+        {
+          content: Buffer.from('AGENTS.md'),
+          mode: 0o12_0777,
+          path: 'repo-main/CLAUDE.md',
+        },
+        {
+          content: VALID_SKILL_MD,
+          mode: 0o10_0644,
+          path: 'repo-main/skills/grill/SKILL.md',
+        },
+      ]),
+      sourcePath: 'skills/grill',
+    })
+
+    expect(prepared.name).toBe('Grill With Docs')
+    expect(prepared.files.map((file) => file.path)).toEqual(['SKILL.md'])
+  })
+
+  it('rejects unsupported GitHub archive entries inside the selected source path', async () => {
+    await expect(
+      prepareGitHubSkillZip({
+        content: makeZip([
+          {
+            content: VALID_SKILL_MD,
+            mode: 0o10_0644,
+            path: 'repo-main/skills/grill/SKILL.md',
+          },
+          {
+            content: Buffer.from('target'),
+            mode: 0o12_0777,
+            path: 'repo-main/skills/grill/link',
+          },
+        ]),
+        sourcePath: 'skills/grill',
+      })
+    ).rejects.toThrow(SkillPackageError)
+  })
 })
 
 interface ZipFixtureFile {

@@ -49,6 +49,10 @@ interface RawZipFile {
   path: string
 }
 
+interface ReadZipFilesOptions {
+  mapPath?: (path: string) => string | null
+}
+
 export function prepareSkillMdUpload(input: {
   content: Buffer
 }): PreparedSkillPackage {
@@ -68,22 +72,27 @@ export async function prepareGitHubSkillZip(input: {
   content: Buffer
   sourcePath: string
 }): Promise<PreparedSkillPackage> {
-  const files = await readZipFiles(input.content)
-  const strippedArchiveRoot = stripArchiveRoot(files)
   const sourcePrefix = normalizeSourcePath(input.sourcePath)
-  const scoped = sourcePrefix
-    ? strippedArchiveRoot
-        .filter((file) => pathMatchesPrefix(file.path, sourcePrefix))
-        .map((file) => ({
-          ...file,
-          path:
-            file.path === sourcePrefix
-              ? ''
-              : file.path.slice(sourcePrefix.length + 1),
-        }))
-        .filter((file) => file.path.length > 0)
-    : strippedArchiveRoot
-  return prepareSkillPackage(scoped)
+  const files = await readZipFiles(input.content, {
+    mapPath: (path) => {
+      const archivePath = stripArchiveRootPath(path)
+      if (!archivePath) {
+        return null
+      }
+      if (!sourcePrefix) {
+        return archivePath
+      }
+      if (!pathMatchesPrefix(archivePath, sourcePrefix)) {
+        return null
+      }
+      const packagePath =
+        archivePath === sourcePrefix
+          ? ''
+          : archivePath.slice(sourcePrefix.length + 1)
+      return packagePath || null
+    },
+  })
+  return prepareSkillPackage(files)
 }
 
 function prepareSkillPackage(files: SkillPackageFile[]): PreparedSkillPackage {
@@ -189,16 +198,10 @@ function normalizeZipSkillRoot(files: RawZipFile[]): SkillPackageFile[] {
   return stripped
 }
 
-function stripArchiveRoot(files: RawZipFile[]): RawZipFile[] {
-  return files
-    .map((file) => {
-      const segments = file.path.split('/')
-      return { ...file, path: segments.slice(1).join('/') }
-    })
-    .filter((file) => file.path.length > 0)
-}
-
-async function readZipFiles(content: Buffer): Promise<RawZipFile[]> {
+async function readZipFiles(
+  content: Buffer,
+  options: ReadZipFilesOptions = {}
+): Promise<RawZipFile[]> {
   if (content.byteLength > MAX_PACKAGE_BYTES) {
     throw new SkillPackageError(
       `Zip is too large (max ${MAX_PACKAGE_BYTES} bytes).`
@@ -232,6 +235,14 @@ async function readZipFiles(content: Buffer): Promise<RawZipFile[]> {
       let safePath: string
       try {
         safePath = normalizePackagePath(rawPath)
+        const mappedPath = options.mapPath
+          ? options.mapPath(safePath)
+          : safePath
+        if (mappedPath === null) {
+          zip.readEntry()
+          return
+        }
+        safePath = normalizePackagePath(mappedPath)
         assertRegularZipEntry(entry, safePath)
       } catch (error) {
         fail(error)
@@ -387,6 +398,10 @@ function normalizeSourcePath(path: string): string {
   return path
     .replace(LEADING_SLASHES_PATTERN, '')
     .replace(TRAILING_SLASHES_PATTERN, '')
+}
+
+function stripArchiveRootPath(path: string): string {
+  return path.split('/').slice(1).join('/')
 }
 
 function pathMatchesPrefix(path: string, prefix: string): boolean {
