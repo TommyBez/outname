@@ -19,15 +19,16 @@ import {
 import {
   AlertTriangle,
   Archive,
+  ArrowRight,
   BookOpenCheck,
   FileText,
   Github,
   RefreshCw,
   Search,
-  ShieldCheck,
   Trash2,
   Upload,
 } from 'lucide-react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   type ChangeEvent,
@@ -104,39 +105,10 @@ interface CatalogListResult {
   totalSkills: number
 }
 
-interface CatalogDetailResult {
-  audit: {
-    audits: {
-      provider: string
-      riskLevel?: string
-      status: string
-      summary: string
-    }[]
-  } | null
-  detail: {
-    hash: string | null
-    id: string
-    installs: number
-    source: string
-  }
-  message?: string
-  ok?: false
-  package: {
-    contentHash: string
-    description: string
-    fileCount: number
-    name: string
-    totalBytes: number
-  }
-}
-
 interface CatalogPickerState {
   catalog: CatalogListResult | null
   catalogError: string | null
   catalogPending: boolean
-  detail: CatalogDetailResult | null
-  detailError: string | null
-  detailPending: boolean
 }
 
 interface SkillInstallRequest {
@@ -146,19 +118,16 @@ interface SkillInstallRequest {
 interface SkillInstallState {
   catalogCurated: boolean
   catalogQuery: string
-  catalogSkillId: string | null
   conflict: SkillConflict | null
   file: File | null
   githubUrl: string
   manualSourceType: ManualSkillSourceType
-  sourceType: SkillSourceType
 }
 
 type SkillInstallAction =
   | { sourceType: ManualSkillSourceType; type: 'setManualSourceType' }
   | { curated: boolean; type: 'setCatalogCurated' }
   | { query: string; type: 'setCatalogQuery' }
-  | { skillId: string | null; type: 'setCatalogSkill' }
   | { githubUrl: string; type: 'setGithubUrl' }
   | { file: File | null; type: 'setFile' }
   | { type: 'clearConflict' }
@@ -170,41 +139,30 @@ type CatalogPickerAction =
   | { type: 'catalogLoading' }
   | { catalog: CatalogListResult; type: 'catalogLoaded' }
   | { error: string; type: 'catalogFailed' }
-  | { type: 'detailClear' }
-  | { type: 'detailLoading' }
-  | { detail: CatalogDetailResult; type: 'detailLoaded' }
-  | { error: string; type: 'detailFailed' }
 
 const INITIAL_SKILL_INSTALL_STATE: SkillInstallState = {
   catalogCurated: false,
   catalogQuery: '',
-  catalogSkillId: null,
   conflict: null,
   file: null,
   githubUrl: '',
   manualSourceType: 'github',
-  sourceType: 'skills_sh',
 }
 
 const INITIAL_CATALOG_PICKER_STATE: CatalogPickerState = {
   catalog: null,
   catalogError: null,
   catalogPending: false,
-  detail: null,
-  detailError: null,
-  detailPending: false,
 }
 
 function resetSkillInstallFields(state: SkillInstallState): SkillInstallState {
   return {
     ...state,
     catalogQuery: '',
-    catalogSkillId: null,
     conflict: null,
     file: null,
     githubUrl: '',
     manualSourceType: 'github',
-    sourceType: 'skills_sh',
   }
 }
 
@@ -216,28 +174,18 @@ function skillInstallReducer(
     case 'setManualSourceType':
       return {
         ...state,
-        catalogSkillId: null,
         conflict: null,
         file: null,
         manualSourceType: action.sourceType,
-        sourceType: action.sourceType,
       }
     case 'setCatalogCurated':
       return {
         ...state,
         catalogCurated: action.curated,
-        catalogSkillId: null,
         conflict: null,
       }
     case 'setCatalogQuery':
-      return { ...state, catalogQuery: action.query, catalogSkillId: null }
-    case 'setCatalogSkill':
-      return {
-        ...state,
-        catalogSkillId: action.skillId,
-        conflict: null,
-        sourceType: 'skills_sh',
-      }
+      return { ...state, catalogQuery: action.query }
     case 'setGithubUrl':
       return { ...state, githubUrl: action.githubUrl }
     case 'setFile':
@@ -278,34 +226,6 @@ function catalogPickerReducer(
         catalog: null,
         catalogError: action.error,
         catalogPending: false,
-      }
-    case 'detailClear':
-      return {
-        ...state,
-        detail: null,
-        detailError: null,
-        detailPending: false,
-      }
-    case 'detailLoading':
-      return {
-        ...state,
-        detail: null,
-        detailError: null,
-        detailPending: true,
-      }
-    case 'detailLoaded':
-      return {
-        ...state,
-        detail: action.detail,
-        detailError: null,
-        detailPending: false,
-      }
-    case 'detailFailed':
-      return {
-        ...state,
-        detail: null,
-        detailError: action.error,
-        detailPending: false,
       }
     default:
       return state
@@ -511,18 +431,15 @@ function AgentSkillInstallSurface({
   const {
     catalogCurated,
     catalogQuery,
-    catalogSkillId,
     conflict,
     file,
     githubUrl,
     manualSourceType,
-    sourceType,
   } = state
   const canSubmit = canInstallSkill({
-    catalogSkillId,
     file,
     githubUrl,
-    sourceType,
+    sourceType: manualSourceType,
   })
 
   useEffect(() => {
@@ -537,11 +454,10 @@ function AgentSkillInstallSurface({
     startTransition(async () => {
       const result = await installSkill({
         agentId,
-        catalogSkillId,
         file,
         githubUrl,
         replace,
-        sourceType,
+        sourceType: manualSourceType,
       })
       if (result.ok && result.skill) {
         onInstalled(result.skill)
@@ -572,22 +488,17 @@ function AgentSkillInstallSurface({
         </h2>
       </div>
 
-      <form className="grid gap-5" onSubmit={handleSubmit}>
-        <SkillCatalogPicker
-          curated={catalogCurated}
-          onCuratedChange={(curated) =>
-            dispatch({ curated, type: 'setCatalogCurated' })
-          }
-          onQueryChange={(query) =>
-            dispatch({ query, type: 'setCatalogQuery' })
-          }
-          onSkillSelect={(skillId) =>
-            dispatch({ skillId, type: 'setCatalogSkill' })
-          }
-          query={catalogQuery}
-          selectedSkillId={catalogSkillId}
-        />
+      <SkillCatalogPicker
+        agentId={agentId}
+        curated={catalogCurated}
+        onCuratedChange={(curated) =>
+          dispatch({ curated, type: 'setCatalogCurated' })
+        }
+        onQueryChange={(query) => dispatch({ query, type: 'setCatalogQuery' })}
+        query={catalogQuery}
+      />
 
+      <form className="grid gap-5" onSubmit={handleSubmit}>
         <ManualSkillSourcePicker
           file={file}
           githubUrl={githubUrl}
@@ -641,32 +552,23 @@ function AgentSkillInstallSurface({
 }
 
 function SkillCatalogPicker({
+  agentId,
   curated,
   onCuratedChange,
   onQueryChange,
-  onSkillSelect,
   query,
-  selectedSkillId,
 }: {
+  agentId: string
   curated: boolean
   onCuratedChange: (curated: boolean) => void
   onQueryChange: (query: string) => void
-  onSkillSelect: (skillId: string | null) => void
   query: string
-  selectedSkillId: string | null
 }) {
   const [catalogState, dispatchCatalogState] = useReducer(
     catalogPickerReducer,
     INITIAL_CATALOG_PICKER_STATE
   )
-  const {
-    catalog,
-    catalogError,
-    catalogPending,
-    detail,
-    detailError,
-    detailPending,
-  } = catalogState
+  const { catalog, catalogError, catalogPending } = catalogState
   const trimmedQuery = query.trim()
 
   useEffect(() => {
@@ -710,47 +612,6 @@ function SkillCatalogPicker({
       window.clearTimeout(timeout)
     }
   }, [curated, trimmedQuery])
-
-  useEffect(() => {
-    if (!selectedSkillId) {
-      dispatchCatalogState({ type: 'detailClear' })
-      return
-    }
-
-    const selectedId = selectedSkillId
-    const controller = new AbortController()
-    dispatchCatalogState({ type: 'detailLoading' })
-
-    async function loadDetail() {
-      try {
-        const nextDetail = await fetchCatalogDetail({
-          signal: controller.signal,
-          skillId: selectedId,
-        })
-        if (!controller.signal.aborted) {
-          dispatchCatalogState({
-            detail: nextDetail,
-            type: 'detailLoaded',
-          })
-        }
-      } catch (error) {
-        if (controller.signal.aborted) {
-          return
-        }
-        dispatchCatalogState({
-          error:
-            error instanceof Error
-              ? error.message
-              : 'Could not load skill detail.',
-          type: 'detailFailed',
-        })
-      }
-    }
-
-    loadDetail()
-
-    return () => controller.abort()
-  }, [selectedSkillId])
 
   const visibleSkills = visibleCatalogSkills({
     curated,
@@ -797,151 +658,53 @@ function SkillCatalogPicker({
         </Alert>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:items-start">
-        <div className="grid max-h-[520px] gap-2 overflow-y-auto pr-1">
-          {catalogPending && (
-            <p className="py-10 text-center text-muted-foreground text-sm">
-              Loading catalog...
-            </p>
-          )}
-          {!catalogPending &&
-            visibleSkills.map((skill) => (
-              <CatalogSkillButton
-                key={skill.id}
-                onSelect={() => onSkillSelect(skill.id)}
-                selected={skill.id === selectedSkillId}
-                skill={skill}
-              />
-            ))}
-          {!(catalogPending || catalogError) && visibleSkills.length === 0 && (
-            <p className="py-10 text-center text-muted-foreground text-sm">
-              {curated
-                ? 'No curated skills match this query.'
-                : 'No skills found.'}
-            </p>
-          )}
-        </div>
-        <CatalogSkillDetail
-          detail={detail}
-          error={detailError}
-          pending={detailPending}
-        />
+      <div className="grid max-h-[520px] gap-2 overflow-y-auto pr-1">
+        {catalogPending && (
+          <p className="py-10 text-center text-muted-foreground text-sm">
+            Loading catalog...
+          </p>
+        )}
+        {!catalogPending &&
+          visibleSkills.map((skill) => (
+            <CatalogSkillLink agentId={agentId} key={skill.id} skill={skill} />
+          ))}
+        {!(catalogPending || catalogError) && visibleSkills.length === 0 && (
+          <p className="py-10 text-center text-muted-foreground text-sm">
+            {curated
+              ? 'No curated skills match this query.'
+              : 'No skills found.'}
+          </p>
+        )}
       </div>
     </section>
   )
 }
 
-function CatalogSkillButton({
-  onSelect,
-  selected,
+function CatalogSkillLink({
+  agentId,
   skill,
 }: {
-  onSelect: () => void
-  selected: boolean
+  agentId: string
   skill: CatalogSkillView
 }) {
   return (
-    <button
-      className={`grid gap-2 border-2 p-3 text-left transition-colors ${
-        selected
-          ? 'border-accent bg-accent/10'
-          : 'border-foreground hover:bg-muted'
-      }`}
-      onClick={onSelect}
-      type="button"
+    <Link
+      className="grid gap-2 border-2 border-foreground p-3 text-left transition-colors hover:bg-muted"
+      href={`/agents/${encodeURIComponent(agentId)}/skills/catalog/${encodeCatalogSkillIdForPath(skill.id)}`}
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="font-bold text-sm">{skill.name}</span>
-        <Badge variant="outline">{skill.sourceType}</Badge>
-        {skill.isDuplicate && <Badge variant="secondary">Duplicate</Badge>}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-bold text-sm">{skill.name}</span>
+          <Badge variant="outline">{skill.sourceType}</Badge>
+          {skill.isDuplicate && <Badge variant="secondary">Duplicate</Badge>}
+        </div>
+        <ArrowRight aria-hidden className="mt-0.5 size-4 shrink-0" />
       </div>
       <div className="flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground text-xs">
         <span>{skill.source}</span>
         <span>{formatInteger(skill.installs)} installs</span>
       </div>
-    </button>
-  )
-}
-
-function CatalogSkillDetail({
-  detail,
-  error,
-  pending,
-}: {
-  detail: CatalogDetailResult | null
-  error: string | null
-  pending: boolean
-}) {
-  if (pending) {
-    return (
-      <div className="min-h-40 border-foreground border-l-2 pl-3 text-muted-foreground text-sm">
-        Loading skill detail...
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <Alert className="border-2 border-destructive">
-        <AlertTriangle className="size-4" />
-        <AlertTitle>Skill preview unavailable</AlertTitle>
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
-    )
-  }
-
-  if (!detail) {
-    return (
-      <div className="min-h-40 border-foreground border-l-2 pl-3 text-muted-foreground text-sm">
-        No skill selected.
-      </div>
-    )
-  }
-
-  return (
-    <div className="grid gap-3 border-foreground border-l-2 pl-3">
-      <div>
-        <p className="font-black font-serif text-xl uppercase leading-none tracking-tighter">
-          {detail.package.name}
-        </p>
-        <p className="mt-2 text-muted-foreground text-sm">
-          {detail.package.description}
-        </p>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="secondary">
-          {detail.package.fileCount} files ·{' '}
-          {formatBytes(detail.package.totalBytes)}
-        </Badge>
-        <Badge variant="outline">
-          {formatInteger(detail.detail.installs)} installs
-        </Badge>
-        <AuditBadge detail={detail} />
-      </div>
-    </div>
-  )
-}
-
-function AuditBadge({ detail }: { detail: CatalogDetailResult }) {
-  const audits = detail.audit?.audits ?? []
-  if (audits.length === 0) {
-    return (
-      <Badge className="gap-1" variant="outline">
-        <ShieldCheck aria-hidden className="size-3" />
-        No audit yet
-      </Badge>
-    )
-  }
-
-  const hasFail = audits.some((audit) => audit.status === 'fail')
-  const hasWarn = audits.some((audit) => audit.status === 'warn')
-  const label = auditStatusLabel({ hasFail, hasWarn })
-  const variant = hasFail || hasWarn ? 'secondary' : 'outline'
-  return (
-    <Badge className="gap-1" variant={variant}>
-      <ShieldCheck aria-hidden className="size-3" />
-      {label}
-    </Badge>
+    </Link>
   )
 }
 
@@ -1139,18 +902,15 @@ function UninstallSkillButton({
 
 async function installSkill(input: {
   agentId: string
-  catalogSkillId: string | null
   file: File | null
   githubUrl: string
   replace: boolean
-  sourceType: SkillSourceType
+  sourceType: ManualSkillSourceType
 }): Promise<SkillMutationResult> {
   const form = new FormData()
   form.set('kind', input.sourceType)
   form.set('replace', String(input.replace))
-  if (input.sourceType === 'skills_sh' && input.catalogSkillId) {
-    form.set('id', input.catalogSkillId)
-  } else if (input.sourceType === 'github') {
+  if (input.sourceType === 'github') {
     form.set('url', input.githubUrl)
   } else if (input.file) {
     form.set('file', input.file)
@@ -1198,25 +958,6 @@ async function fetchCatalogList(input: {
   if (!(response.ok && body && Array.isArray(body.skills))) {
     throw new Error(
       body?.message ?? `Catalog request failed (${response.status}).`
-    )
-  }
-  return body
-}
-
-async function fetchCatalogDetail(input: {
-  signal: AbortSignal
-  skillId: string
-}): Promise<CatalogDetailResult> {
-  const response = await fetch(
-    `/api/skills/catalog/${encodeCatalogSkillIdForPath(input.skillId)}`,
-    { signal: input.signal }
-  )
-  const body = (await response
-    .json()
-    .catch(() => null)) as CatalogDetailResult | null
-  if (!(response.ok && body?.package)) {
-    throw new Error(
-      body?.message ?? `Catalog detail request failed (${response.status}).`
     )
   }
   return body
@@ -1304,29 +1045,12 @@ function encodeCatalogSkillIdForPath(skillId: string): string {
 }
 
 function canInstallSkill(input: {
-  catalogSkillId: string | null
   file: File | null
   githubUrl: string
-  sourceType: SkillSourceType
+  sourceType: ManualSkillSourceType
 }): boolean {
-  if (input.sourceType === 'skills_sh') {
-    return Boolean(input.catalogSkillId)
-  }
   if (input.sourceType === 'github') {
     return input.githubUrl.trim().length > 0
   }
   return Boolean(input.file)
-}
-
-function auditStatusLabel(input: {
-  hasFail: boolean
-  hasWarn: boolean
-}): string {
-  if (input.hasFail) {
-    return 'Audit fail'
-  }
-  if (input.hasWarn) {
-    return 'Audit warning'
-  }
-  return 'Audit pass'
 }
