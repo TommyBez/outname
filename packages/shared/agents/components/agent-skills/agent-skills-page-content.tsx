@@ -18,6 +18,7 @@ import {
 } from '@outname/ui/components/ui/dialog'
 import { Input } from '@outname/ui/components/ui/input'
 import { Label } from '@outname/ui/components/ui/label'
+import { Switch } from '@outname/ui/components/ui/switch'
 import {
   Tabs,
   TabsContent,
@@ -31,6 +32,8 @@ import {
   FileText,
   Github,
   RefreshCw,
+  Search,
+  ShieldCheck,
   Trash2,
   Upload,
 } from 'lucide-react'
@@ -38,18 +41,21 @@ import { useRouter } from 'next/navigation'
 import {
   type ChangeEvent,
   type SubmitEvent,
+  useEffect,
   useReducer,
   useState,
   useTransition,
 } from 'react'
 import { toast } from 'sonner'
 
-type SkillSourceType = 'github' | 'skill_md' | 'zip'
+type ManualSkillSourceType = 'github' | 'skill_md' | 'zip'
+type SkillSourceType = ManualSkillSourceType | 'skills_sh'
 
 const SKILL_DATE_FORMATTER = new Intl.DateTimeFormat(undefined, {
   dateStyle: 'medium',
   timeStyle: 'short',
 })
+const SKILL_INTEGER_FORMATTER = new Intl.NumberFormat()
 
 interface InstalledSkillView {
   contentHash: string
@@ -83,29 +89,117 @@ interface SkillMutationResult {
   skill?: InstalledSkillView
 }
 
+interface CatalogSkillView {
+  id: string
+  installs: number
+  installUrl: string | null
+  isDuplicate?: boolean
+  name: string
+  owner: string | null
+  slug: string
+  source: string
+  sourceType: string
+  url: string
+}
+
+interface CatalogListResult {
+  curated: boolean
+  message?: string
+  ok?: false
+  query?: string
+  searchType?: string
+  skills: CatalogSkillView[]
+  totalSkills: number
+}
+
+interface CatalogDetailResult {
+  audit: {
+    audits: {
+      provider: string
+      riskLevel?: string
+      status: string
+      summary: string
+    }[]
+  } | null
+  detail: {
+    hash: string | null
+    id: string
+    installs: number
+    source: string
+  }
+  message?: string
+  ok?: false
+  package: {
+    contentHash: string
+    description: string
+    fileCount: number
+    name: string
+    totalBytes: number
+  }
+}
+
+interface CatalogPickerState {
+  catalog: CatalogListResult | null
+  catalogError: string | null
+  catalogPending: boolean
+  detail: CatalogDetailResult | null
+  detailError: string | null
+  detailPending: boolean
+}
+
 interface AddSkillDialogState {
+  catalogCurated: boolean
+  catalogQuery: string
+  catalogSkillId: string | null
   conflict: SkillConflict | null
   file: File | null
   githubUrl: string
+  manualSourceType: ManualSkillSourceType
   open: boolean
   sourceType: SkillSourceType
 }
 
 type AddSkillDialogAction =
   | { open: boolean; type: 'setOpen' }
-  | { sourceType: SkillSourceType; type: 'setSourceType' }
+  | { sourceType: ManualSkillSourceType; type: 'setManualSourceType' }
+  | { curated: boolean; type: 'setCatalogCurated' }
+  | { query: string; type: 'setCatalogQuery' }
+  | { skillId: string | null; type: 'setCatalogSkill' }
   | { githubUrl: string; type: 'setGithubUrl' }
   | { file: File | null; type: 'setFile' }
   | { type: 'clearConflict' }
   | { conflict: SkillConflict; type: 'setConflict' }
   | { type: 'installed' }
 
+type CatalogPickerAction =
+  | { catalog: CatalogListResult; type: 'catalogIdle' }
+  | { type: 'catalogLoading' }
+  | { catalog: CatalogListResult; type: 'catalogLoaded' }
+  | { error: string; type: 'catalogFailed' }
+  | { type: 'detailClear' }
+  | { type: 'detailLoading' }
+  | { detail: CatalogDetailResult; type: 'detailLoaded' }
+  | { error: string; type: 'detailFailed' }
+
 const INITIAL_ADD_SKILL_DIALOG_STATE: AddSkillDialogState = {
+  catalogCurated: true,
+  catalogQuery: '',
+  catalogSkillId: null,
   conflict: null,
   file: null,
   githubUrl: '',
+  manualSourceType: 'github',
   open: false,
-  sourceType: 'github',
+  sourceType: 'skills_sh',
+}
+
+const INITIAL_CATALOG_PICKER_STATE: CatalogPickerState = {
+  catalog: null,
+  catalogError: null,
+  catalogPending: false,
+  detail: null,
+  detailError: null,
+  detailPending: false,
 }
 
 function resetAddSkillDialogFields(
@@ -113,9 +207,13 @@ function resetAddSkillDialogFields(
 ): AddSkillDialogState {
   return {
     ...state,
+    catalogQuery: '',
+    catalogSkillId: null,
     conflict: null,
     file: null,
     githubUrl: '',
+    manualSourceType: 'github',
+    sourceType: 'skills_sh',
   }
 }
 
@@ -129,12 +227,30 @@ function addSkillDialogReducer(
         return { ...state, open: true }
       }
       return resetAddSkillDialogFields({ ...state, open: false })
-    case 'setSourceType':
+    case 'setManualSourceType':
       return {
         ...state,
+        catalogSkillId: null,
         conflict: null,
         file: null,
+        manualSourceType: action.sourceType,
         sourceType: action.sourceType,
+      }
+    case 'setCatalogCurated':
+      return {
+        ...state,
+        catalogCurated: action.curated,
+        catalogSkillId: null,
+        conflict: null,
+      }
+    case 'setCatalogQuery':
+      return { ...state, catalogQuery: action.query, catalogSkillId: null }
+    case 'setCatalogSkill':
+      return {
+        ...state,
+        catalogSkillId: action.skillId,
+        conflict: null,
+        sourceType: 'skills_sh',
       }
     case 'setGithubUrl':
       return { ...state, githubUrl: action.githubUrl }
@@ -146,6 +262,65 @@ function addSkillDialogReducer(
       return { ...state, conflict: action.conflict }
     case 'installed':
       return resetAddSkillDialogFields({ ...state, open: false })
+    default:
+      return state
+  }
+}
+
+function catalogPickerReducer(
+  state: CatalogPickerState,
+  action: CatalogPickerAction
+): CatalogPickerState {
+  switch (action.type) {
+    case 'catalogIdle':
+    case 'catalogLoaded':
+      return {
+        ...state,
+        catalog: action.catalog,
+        catalogError: null,
+        catalogPending: false,
+      }
+    case 'catalogLoading':
+      return {
+        ...state,
+        catalogError: null,
+        catalogPending: true,
+      }
+    case 'catalogFailed':
+      return {
+        ...state,
+        catalog: null,
+        catalogError: action.error,
+        catalogPending: false,
+      }
+    case 'detailClear':
+      return {
+        ...state,
+        detail: null,
+        detailError: null,
+        detailPending: false,
+      }
+    case 'detailLoading':
+      return {
+        ...state,
+        detail: null,
+        detailError: null,
+        detailPending: true,
+      }
+    case 'detailLoaded':
+      return {
+        ...state,
+        detail: action.detail,
+        detailError: null,
+        detailPending: false,
+      }
+    case 'detailFailed':
+      return {
+        ...state,
+        detail: null,
+        detailError: action.error,
+        detailPending: false,
+      }
     default:
       return state
   }
@@ -229,8 +404,8 @@ function InstalledSkillsList({
           No skills installed.
         </p>
         <p className="mt-3 max-w-xl text-muted-foreground text-sm">
-          Add a GitHub skill path, upload a SKILL.md file, or upload a zip
-          package.
+          Search the catalog or use manual import for GitHub, SKILL.md, and zip
+          packages.
         </p>
       </div>
     )
@@ -324,7 +499,23 @@ function AddSkillDialog({
   )
   const [pending, startTransition] = useTransition()
   const { refresh } = useRouter()
-  const { conflict, file, githubUrl, open, sourceType } = state
+  const {
+    catalogCurated,
+    catalogQuery,
+    catalogSkillId,
+    conflict,
+    file,
+    githubUrl,
+    manualSourceType,
+    open,
+    sourceType,
+  } = state
+  const canSubmit = canInstallSkill({
+    catalogSkillId,
+    file,
+    githubUrl,
+    sourceType,
+  })
 
   function handleOpenChange(nextOpen: boolean) {
     dispatch({ open: nextOpen, type: 'setOpen' })
@@ -335,6 +526,7 @@ function AddSkillDialog({
     startTransition(async () => {
       const result = await installSkill({
         agentId,
+        catalogSkillId,
         file,
         githubUrl,
         replace,
@@ -377,19 +569,42 @@ function AddSkillDialog({
         </DialogHeader>
 
         <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
-          <SkillSourcePicker
+          <SkillCatalogPicker
+            curated={catalogCurated}
+            onCuratedChange={(curated) =>
+              dispatch({ curated, type: 'setCatalogCurated' })
+            }
+            onQueryChange={(query) =>
+              dispatch({ query, type: 'setCatalogQuery' })
+            }
+            onSkillSelect={(skillId) =>
+              dispatch({ skillId, type: 'setCatalogSkill' })
+            }
+            query={catalogQuery}
+            selectedSkillId={catalogSkillId}
+          />
+
+          <ManualSkillSourcePicker
             file={file}
             githubUrl={githubUrl}
-            onFileChange={(nextFile) =>
+            onFileChange={(nextFile) => {
+              dispatch({
+                sourceType: manualSourceType,
+                type: 'setManualSourceType',
+              })
               dispatch({ file: nextFile, type: 'setFile' })
-            }
-            onGithubUrlChange={(nextGithubUrl) =>
-              dispatch({ githubUrl: nextGithubUrl, type: 'setGithubUrl' })
-            }
-            onSourceTypeChange={(value) => {
-              dispatch({ sourceType: value, type: 'setSourceType' })
             }}
-            sourceType={sourceType}
+            onGithubUrlChange={(nextGithubUrl) => {
+              dispatch({ sourceType: 'github', type: 'setManualSourceType' })
+              dispatch({ githubUrl: nextGithubUrl, type: 'setGithubUrl' })
+            }}
+            onSourceTypeChange={(sourceTypeValue) => {
+              dispatch({
+                sourceType: sourceTypeValue,
+                type: 'setManualSourceType',
+              })
+            }}
+            sourceType={manualSourceType}
           />
 
           {conflict && <SkillInstallPreview conflict={conflict} />}
@@ -409,7 +624,7 @@ function AddSkillDialog({
             ) : (
               <span />
             )}
-            <Button disabled={pending} type="submit">
+            <Button disabled={pending || !canSubmit} type="submit">
               {pending ? 'Installing...' : 'Install'}
             </Button>
           </DialogFooter>
@@ -419,7 +634,322 @@ function AddSkillDialog({
   )
 }
 
-function SkillSourcePicker({
+function SkillCatalogPicker({
+  curated,
+  onCuratedChange,
+  onQueryChange,
+  onSkillSelect,
+  query,
+  selectedSkillId,
+}: {
+  curated: boolean
+  onCuratedChange: (curated: boolean) => void
+  onQueryChange: (query: string) => void
+  onSkillSelect: (skillId: string | null) => void
+  query: string
+  selectedSkillId: string | null
+}) {
+  const [catalogState, dispatchCatalogState] = useReducer(
+    catalogPickerReducer,
+    INITIAL_CATALOG_PICKER_STATE
+  )
+  const {
+    catalog,
+    catalogError,
+    catalogPending,
+    detail,
+    detailError,
+    detailPending,
+  } = catalogState
+  const trimmedQuery = query.trim()
+
+  useEffect(() => {
+    const controller = new AbortController()
+    const debounceMs = curated ? 0 : 250
+
+    if (!curated && trimmedQuery.length < 2) {
+      dispatchCatalogState({
+        catalog: {
+          curated: false,
+          query: trimmedQuery,
+          skills: [],
+          totalSkills: 0,
+        },
+        type: 'catalogIdle',
+      })
+      return () => controller.abort()
+    }
+
+    const timeout = window.setTimeout(() => {
+      dispatchCatalogState({ type: 'catalogLoading' })
+      async function loadCatalog() {
+        try {
+          const nextCatalog = await fetchCatalogList({
+            curated,
+            query: trimmedQuery,
+            signal: controller.signal,
+          })
+          if (!controller.signal.aborted) {
+            dispatchCatalogState({
+              catalog: nextCatalog,
+              type: 'catalogLoaded',
+            })
+          }
+        } catch (error) {
+          if (controller.signal.aborted) {
+            return
+          }
+          dispatchCatalogState({
+            error:
+              error instanceof Error
+                ? error.message
+                : 'Could not load catalog.',
+            type: 'catalogFailed',
+          })
+        }
+      }
+
+      loadCatalog()
+    }, debounceMs)
+
+    return () => {
+      controller.abort()
+      window.clearTimeout(timeout)
+    }
+  }, [curated, trimmedQuery])
+
+  useEffect(() => {
+    if (!selectedSkillId) {
+      dispatchCatalogState({ type: 'detailClear' })
+      return
+    }
+
+    const selectedId = selectedSkillId
+    const controller = new AbortController()
+    dispatchCatalogState({ type: 'detailLoading' })
+
+    async function loadDetail() {
+      try {
+        const nextDetail = await fetchCatalogDetail({
+          signal: controller.signal,
+          skillId: selectedId,
+        })
+        if (!controller.signal.aborted) {
+          dispatchCatalogState({
+            detail: nextDetail,
+            type: 'detailLoaded',
+          })
+        }
+      } catch (error) {
+        if (controller.signal.aborted) {
+          return
+        }
+        dispatchCatalogState({
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Could not load skill detail.',
+          type: 'detailFailed',
+        })
+      }
+    }
+
+    loadDetail()
+
+    return () => controller.abort()
+  }, [selectedSkillId])
+
+  const visibleSkills = visibleCatalogSkills({
+    curated,
+    query: trimmedQuery,
+    skills: catalog?.skills ?? [],
+  })
+
+  return (
+    <section className="grid gap-4 border-2 border-foreground p-4">
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+        <div className="grid gap-2">
+          <Label htmlFor="skill-catalog-search">Catalog</Label>
+          <div className="relative">
+            <Search
+              aria-hidden
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+            />
+            <Input
+              className="pl-9"
+              id="skill-catalog-search"
+              onChange={(event) => onQueryChange(event.target.value)}
+              placeholder={
+                curated ? 'Filter curated skills' : 'Search all skills'
+              }
+              value={query}
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-2 border-foreground border-l-2 pl-3">
+          <Switch
+            checked={curated}
+            id="skill-catalog-curated"
+            onCheckedChange={onCuratedChange}
+          />
+          <Label htmlFor="skill-catalog-curated">Curated</Label>
+        </div>
+      </div>
+
+      {catalogError && (
+        <Alert className="border-2 border-destructive">
+          <AlertTriangle className="size-4" />
+          <AlertTitle>Catalog unavailable</AlertTitle>
+          <AlertDescription>{catalogError}</AlertDescription>
+        </Alert>
+      )}
+
+      <div className="grid max-h-72 gap-2 overflow-y-auto pr-1">
+        {catalogPending && (
+          <p className="py-6 text-center text-muted-foreground text-sm">
+            Loading catalog...
+          </p>
+        )}
+        {!catalogPending &&
+          visibleSkills.map((skill) => (
+            <CatalogSkillButton
+              key={skill.id}
+              onSelect={() => onSkillSelect(skill.id)}
+              selected={skill.id === selectedSkillId}
+              skill={skill}
+            />
+          ))}
+        {!(catalogPending || catalogError) && visibleSkills.length === 0 && (
+          <p className="py-6 text-center text-muted-foreground text-sm">
+            {curated
+              ? 'No curated skills match this query.'
+              : 'Search requires at least two characters.'}
+          </p>
+        )}
+      </div>
+
+      {selectedSkillId && (
+        <CatalogSkillDetail
+          detail={detail}
+          error={detailError}
+          pending={detailPending}
+        />
+      )}
+    </section>
+  )
+}
+
+function CatalogSkillButton({
+  onSelect,
+  selected,
+  skill,
+}: {
+  onSelect: () => void
+  selected: boolean
+  skill: CatalogSkillView
+}) {
+  return (
+    <button
+      className={`grid gap-2 border-2 p-3 text-left transition-colors ${
+        selected
+          ? 'border-accent bg-accent/10'
+          : 'border-foreground hover:bg-muted'
+      }`}
+      onClick={onSelect}
+      type="button"
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-bold text-sm">{skill.name}</span>
+        <Badge variant="outline">{skill.sourceType}</Badge>
+        {skill.isDuplicate && <Badge variant="secondary">Duplicate</Badge>}
+      </div>
+      <div className="flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground text-xs">
+        <span>{skill.source}</span>
+        <span>{formatInteger(skill.installs)} installs</span>
+      </div>
+    </button>
+  )
+}
+
+function CatalogSkillDetail({
+  detail,
+  error,
+  pending,
+}: {
+  detail: CatalogDetailResult | null
+  error: string | null
+  pending: boolean
+}) {
+  if (pending) {
+    return (
+      <div className="border-foreground border-l-2 pl-3 text-muted-foreground text-sm">
+        Loading skill detail...
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <Alert className="border-2 border-destructive">
+        <AlertTriangle className="size-4" />
+        <AlertTitle>Skill preview unavailable</AlertTitle>
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    )
+  }
+
+  if (!detail) {
+    return null
+  }
+
+  return (
+    <div className="grid gap-3 border-foreground border-l-2 pl-3">
+      <div>
+        <p className="font-black font-serif text-xl uppercase leading-none tracking-tighter">
+          {detail.package.name}
+        </p>
+        <p className="mt-2 text-muted-foreground text-sm">
+          {detail.package.description}
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="secondary">
+          {detail.package.fileCount} files ·{' '}
+          {formatBytes(detail.package.totalBytes)}
+        </Badge>
+        <Badge variant="outline">
+          {formatInteger(detail.detail.installs)} installs
+        </Badge>
+        <AuditBadge detail={detail} />
+      </div>
+    </div>
+  )
+}
+
+function AuditBadge({ detail }: { detail: CatalogDetailResult }) {
+  const audits = detail.audit?.audits ?? []
+  if (audits.length === 0) {
+    return (
+      <Badge className="gap-1" variant="outline">
+        <ShieldCheck aria-hidden className="size-3" />
+        No audit yet
+      </Badge>
+    )
+  }
+
+  const hasFail = audits.some((audit) => audit.status === 'fail')
+  const hasWarn = audits.some((audit) => audit.status === 'warn')
+  const label = auditStatusLabel({ hasFail, hasWarn })
+  const variant = hasFail || hasWarn ? 'secondary' : 'outline'
+  return (
+    <Badge className="gap-1" variant={variant}>
+      <ShieldCheck aria-hidden className="size-3" />
+      {label}
+    </Badge>
+  )
+}
+
+function ManualSkillSourcePicker({
   file,
   githubUrl,
   onFileChange,
@@ -431,61 +961,69 @@ function SkillSourcePicker({
   githubUrl: string
   onFileChange: (file: File | null) => void
   onGithubUrlChange: (value: string) => void
-  onSourceTypeChange: (value: SkillSourceType) => void
-  sourceType: SkillSourceType
+  onSourceTypeChange: (value: ManualSkillSourceType) => void
+  sourceType: ManualSkillSourceType
 }) {
   return (
-    <Tabs
-      onValueChange={(value) => onSourceTypeChange(value as SkillSourceType)}
-      value={sourceType}
-    >
-      <TabsList className="grid w-full grid-cols-3">
-        <TabsTrigger className="gap-2" value="github">
-          <Github aria-hidden className="size-4" />
-          GitHub
-        </TabsTrigger>
-        <TabsTrigger className="gap-2" value="skill_md">
-          <FileText aria-hidden className="size-4" />
-          SKILL.md
-        </TabsTrigger>
-        <TabsTrigger className="gap-2" value="zip">
-          <Archive aria-hidden className="size-4" />
-          Zip
-        </TabsTrigger>
-      </TabsList>
+    <details className="border-2 border-foreground p-4">
+      <summary className="cursor-pointer font-bold text-sm uppercase tracking-[0.16em]">
+        Manual import
+      </summary>
+      <Tabs
+        className="mt-4"
+        onValueChange={(value) =>
+          onSourceTypeChange(value as ManualSkillSourceType)
+        }
+        value={sourceType}
+      >
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger className="gap-2" value="github">
+            <Github aria-hidden className="size-4" />
+            GitHub
+          </TabsTrigger>
+          <TabsTrigger className="gap-2" value="skill_md">
+            <FileText aria-hidden className="size-4" />
+            SKILL.md
+          </TabsTrigger>
+          <TabsTrigger className="gap-2" value="zip">
+            <Archive aria-hidden className="size-4" />
+            Zip
+          </TabsTrigger>
+        </TabsList>
 
-      <TabsContent className="mt-5" value="github">
-        <div className="grid gap-2">
-          <Label htmlFor="skill-github-url">GitHub URL</Label>
-          <Input
-            id="skill-github-url"
-            onChange={(event) => onGithubUrlChange(event.target.value)}
-            placeholder="https://github.com/owner/repo/tree/main/skill"
-            value={githubUrl}
+        <TabsContent className="mt-5" value="github">
+          <div className="grid gap-2">
+            <Label htmlFor="skill-github-url">GitHub URL</Label>
+            <Input
+              id="skill-github-url"
+              onChange={(event) => onGithubUrlChange(event.target.value)}
+              placeholder="https://github.com/owner/repo/tree/main/skill"
+              value={githubUrl}
+            />
+          </div>
+        </TabsContent>
+
+        <TabsContent className="mt-5" value="skill_md">
+          <SkillFileInput
+            accept=".md,text/markdown,text/plain"
+            file={file}
+            id="skill-md-upload"
+            label="SKILL.md file"
+            onFileChange={onFileChange}
           />
-        </div>
-      </TabsContent>
+        </TabsContent>
 
-      <TabsContent className="mt-5" value="skill_md">
-        <SkillFileInput
-          accept=".md,text/markdown,text/plain"
-          file={file}
-          id="skill-md-upload"
-          label="SKILL.md file"
-          onFileChange={onFileChange}
-        />
-      </TabsContent>
-
-      <TabsContent className="mt-5" value="zip">
-        <SkillFileInput
-          accept=".zip,application/zip"
-          file={file}
-          id="skill-zip-upload"
-          label="Zip package"
-          onFileChange={onFileChange}
-        />
-      </TabsContent>
-    </Tabs>
+        <TabsContent className="mt-5" value="zip">
+          <SkillFileInput
+            accept=".zip,application/zip"
+            file={file}
+            id="skill-zip-upload"
+            label="Zip package"
+            onFileChange={onFileChange}
+          />
+        </TabsContent>
+      </Tabs>
+    </details>
   )
 }
 
@@ -605,6 +1143,7 @@ function UninstallSkillButton({
 
 async function installSkill(input: {
   agentId: string
+  catalogSkillId: string | null
   file: File | null
   githubUrl: string
   replace: boolean
@@ -613,7 +1152,9 @@ async function installSkill(input: {
   const form = new FormData()
   form.set('kind', input.sourceType)
   form.set('replace', String(input.replace))
-  if (input.sourceType === 'github') {
+  if (input.sourceType === 'skills_sh' && input.catalogSkillId) {
+    form.set('id', input.catalogSkillId)
+  } else if (input.sourceType === 'github') {
     form.set('url', input.githubUrl)
   } else if (input.file) {
     form.set('file', input.file)
@@ -640,6 +1181,51 @@ async function uninstallSkill(
   return await readMutationResult(response)
 }
 
+async function fetchCatalogList(input: {
+  curated: boolean
+  query: string
+  signal: AbortSignal
+}): Promise<CatalogListResult> {
+  const params = new URLSearchParams({
+    curated: String(input.curated),
+  })
+  if (input.query) {
+    params.set('query', input.query)
+  }
+
+  const response = await fetch(`/api/skills/catalog?${params}`, {
+    signal: input.signal,
+  })
+  const body = (await response
+    .json()
+    .catch(() => null)) as CatalogListResult | null
+  if (!(response.ok && body && Array.isArray(body.skills))) {
+    throw new Error(
+      body?.message ?? `Catalog request failed (${response.status}).`
+    )
+  }
+  return body
+}
+
+async function fetchCatalogDetail(input: {
+  signal: AbortSignal
+  skillId: string
+}): Promise<CatalogDetailResult> {
+  const response = await fetch(
+    `/api/skills/catalog/${encodeCatalogSkillIdForPath(input.skillId)}`,
+    { signal: input.signal }
+  )
+  const body = (await response
+    .json()
+    .catch(() => null)) as CatalogDetailResult | null
+  if (!(response.ok && body?.package)) {
+    throw new Error(
+      body?.message ?? `Catalog detail request failed (${response.status}).`
+    )
+  }
+  return body
+}
+
 async function readMutationResult(
   response: Response
 ): Promise<SkillMutationResult> {
@@ -661,6 +1247,8 @@ function sourceLabel(sourceType: SkillSourceType): string {
       return 'GitHub'
     case 'skill_md':
       return 'SKILL.md'
+    case 'skills_sh':
+      return 'Catalog'
     case 'zip':
       return 'Zip'
     default:
@@ -669,7 +1257,7 @@ function sourceLabel(sourceType: SkillSourceType): string {
 }
 
 function sourceDetail(skill: InstalledSkillView): string {
-  if (skill.sourceType === 'github') {
+  if (skill.sourceType === 'github' || skill.sourceType === 'skills_sh') {
     return [skill.sourceUrl, skill.sourceRef, skill.sourcePath]
       .filter(Boolean)
       .join(' · ')
@@ -687,6 +1275,62 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+function formatInteger(value: number): string {
+  return SKILL_INTEGER_FORMATTER.format(value)
+}
+
 function formatDate(value: string): string {
   return SKILL_DATE_FORMATTER.format(new Date(value))
+}
+
+function visibleCatalogSkills(input: {
+  curated: boolean
+  query: string
+  skills: CatalogSkillView[]
+}): CatalogSkillView[] {
+  if (!(input.curated && input.query)) {
+    return input.skills
+  }
+
+  const query = input.query.toLocaleLowerCase()
+  return input.skills.filter((skill) =>
+    [skill.name, skill.source, skill.slug, skill.owner ?? ''].some((value) =>
+      value.toLocaleLowerCase().includes(query)
+    )
+  )
+}
+
+function encodeCatalogSkillIdForPath(skillId: string): string {
+  return skillId
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/')
+}
+
+function canInstallSkill(input: {
+  catalogSkillId: string | null
+  file: File | null
+  githubUrl: string
+  sourceType: SkillSourceType
+}): boolean {
+  if (input.sourceType === 'skills_sh') {
+    return Boolean(input.catalogSkillId)
+  }
+  if (input.sourceType === 'github') {
+    return input.githubUrl.trim().length > 0
+  }
+  return Boolean(input.file)
+}
+
+function auditStatusLabel(input: {
+  hasFail: boolean
+  hasWarn: boolean
+}): string {
+  if (input.hasFail) {
+    return 'Audit fail'
+  }
+  if (input.hasWarn) {
+    return 'Audit warning'
+  }
+  return 'Audit pass'
 }

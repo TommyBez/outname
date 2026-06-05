@@ -9,7 +9,7 @@ import {
 } from 'drizzle-orm/pg-core'
 import { agent } from './agents'
 
-export type AgentSkillSourceType = 'github' | 'skill_md' | 'zip'
+export type AgentSkillSourceType = 'github' | 'skill_md' | 'skills_sh' | 'zip'
 
 export const agentSkills = pgTable(
   'agent_skills',

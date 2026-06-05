@@ -1,0 +1,104 @@
+import {
+  getCuratedSkillsShSkills,
+  type SkillsShSkill,
+  searchSkillsShSkills,
+} from '@outname/ai/agent-runtime/skills/skills-sh-import'
+import { auth } from '@outname/auth/server/auth'
+import { headers } from 'next/headers'
+import { type NextRequest, NextResponse } from 'next/server'
+
+const SEARCH_LIMIT = 50
+
+interface CatalogSkillView {
+  id: string
+  installs: number
+  installUrl: string | null
+  isDuplicate?: boolean
+  name: string
+  owner: string | null
+  slug: string
+  source: string
+  sourceType: string
+  url: string
+}
+
+export async function GET(req: NextRequest) {
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+
+  const { searchParams } = req.nextUrl
+  const curated = searchParams.get('curated') !== 'false'
+  const query = searchParams.get('query')?.trim() ?? ''
+
+  try {
+    if (curated) {
+      const result = await getCuratedSkillsShSkills()
+      const skills = result.data.flatMap((owner) =>
+        owner.skills.map((skill) => toCatalogSkillView(skill, owner.owner))
+      )
+      return NextResponse.json({
+        curated: true,
+        generatedAt: result.generatedAt,
+        skills,
+        totalSkills: result.totalSkills,
+      })
+    }
+
+    if (query.length < 2) {
+      return NextResponse.json({
+        curated: false,
+        query,
+        skills: [],
+        totalSkills: 0,
+      })
+    }
+
+    const result = await searchSkillsShSkills({
+      limit: SEARCH_LIMIT,
+      query,
+    })
+    return NextResponse.json({
+      curated: false,
+      query: result.query,
+      searchType: result.searchType,
+      skills: result.data.map((skill) => toCatalogSkillView(skill, null)),
+      totalSkills: result.count,
+    })
+  } catch (error) {
+    return catalogErrorResponse(error)
+  }
+}
+
+function toCatalogSkillView(
+  skill: SkillsShSkill,
+  owner: string | null
+): CatalogSkillView {
+  return {
+    id: skill.id,
+    installUrl: skill.installUrl,
+    installs: skill.installs,
+    isDuplicate: skill.isDuplicate,
+    name: skill.name,
+    owner,
+    slug: skill.slug,
+    source: skill.source,
+    sourceType: skill.sourceType,
+    url: skill.url,
+  }
+}
+
+function catalogErrorResponse(error: unknown): NextResponse {
+  return NextResponse.json(
+    {
+      code: 'catalog_fetch_failed',
+      message:
+        error instanceof Error
+          ? error.message
+          : 'Could not load skills catalog.',
+      ok: false,
+    },
+    { status: 502 }
+  )
+}

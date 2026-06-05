@@ -92,6 +92,18 @@ async function readInstallForm(
     }
   }
 
+  if (kind === 'skills_sh') {
+    const id = form.get('id')
+    if (typeof id !== 'string' || !id.trim()) {
+      return invalidRequest('skills.sh skill id is required.')
+    }
+    return {
+      ok: true,
+      replace,
+      source: { id: id.trim(), type: 'skills_sh' },
+    }
+  }
+
   if (kind === 'skill_md' || kind === 'zip') {
     const file = form.get('file')
     if (!isFormFile(file)) {
@@ -138,6 +150,8 @@ function statusForErrorCode(code: string): number {
       return 409
     case 'sandbox_unavailable':
       return 503
+    case 'catalog_fetch_failed':
+      return 502
     default:
       return 400
   }

@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   prepareGitHubSkillZip,
+  prepareSkillFiles,
   prepareSkillMdUpload,
   prepareSkillZipUpload,
   SkillPackageError,
@@ -28,6 +29,24 @@ describe('skill package preparation', () => {
       executable: false,
       path: 'SKILL.md',
     })
+  })
+
+  it('prepares file-tree packages and preserves explicit executable flags', () => {
+    const prepared = prepareSkillFiles({
+      files: [
+        { content: VALID_SKILL_MD, executable: false, path: 'SKILL.md' },
+        {
+          content: Buffer.from('#!/usr/bin/env bash\necho ok\n', 'utf8'),
+          executable: true,
+          path: 'scripts/run.sh',
+        },
+      ],
+    })
+
+    expect(prepared.name).toBe('Grill With Docs')
+    expect(
+      prepared.files.find((file) => file.path === 'scripts/run.sh')
+    ).toMatchObject({ executable: true })
   })
 
   it('accepts root zip packages and preserves executable bits', async () => {

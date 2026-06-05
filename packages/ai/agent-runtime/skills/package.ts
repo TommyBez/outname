@@ -61,6 +61,12 @@ export function prepareSkillMdUpload(input: {
   ])
 }
 
+export function prepareSkillFiles(input: {
+  files: SkillPackageFile[]
+}): PreparedSkillPackage {
+  return prepareSkillPackage(input.files)
+}
+
 export async function prepareSkillZipUpload(input: {
   content: Buffer
 }): Promise<PreparedSkillPackage> {

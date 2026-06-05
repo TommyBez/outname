@@ -12,6 +12,7 @@ import {
   type SkillPackageFile,
 } from '@outname/ai/agent-runtime/skills/package'
 import { SKILL_PACKAGES_DIR } from '@outname/ai/agent-runtime/skills/paths'
+import { importSkillsShSkill } from '@outname/ai/agent-runtime/skills/skills-sh-import'
 import {
   slugFromSkillName,
   uniqueSkillSlug,
@@ -38,6 +39,7 @@ export type SkillInstallSource =
   | { content: Buffer; type: 'skill_md' }
   | { content: Buffer; type: 'zip' }
   | { type: 'github'; url: string }
+  | { id: string; type: 'skills_sh' }
 
 export interface InstalledSkillView {
   contentHash: string
@@ -64,6 +66,7 @@ export interface SkillConflict {
 
 export type SkillInstallErrorCode =
   | 'agent_not_found'
+  | 'catalog_fetch_failed'
   | 'github_fetch_failed'
   | 'invalid_package'
   | 'name_conflict'
@@ -276,6 +279,20 @@ async function prepareInstallSource(
       }
     }
 
+    if (source.type === 'skills_sh') {
+      const imported = await importSkillsShSkill(source.id)
+      return {
+        ok: true,
+        value: {
+          package: imported.package,
+          sourcePath: imported.detail.id,
+          sourceRef: imported.detail.hash,
+          sourceType: source.type,
+          sourceUrl: `https://skills.sh/${imported.detail.id}`,
+        },
+      }
+    }
+
     const imported = await importGitHubSkill(source.url)
     return {
       ok: true,
@@ -290,14 +307,25 @@ async function prepareInstallSource(
   } catch (error) {
     return {
       error: {
-        code:
-          source.type === 'github' ? 'github_fetch_failed' : 'invalid_package',
+        code: installErrorCodeForSource(source.type),
         message: errorMessage(error, 'Invalid skill package.'),
         ok: false,
       },
       ok: false,
     }
   }
+}
+
+function installErrorCodeForSource(
+  sourceType: SkillInstallSource['type']
+): SkillInstallErrorCode {
+  if (sourceType === 'github') {
+    return 'github_fetch_failed'
+  }
+  if (sourceType === 'skills_sh') {
+    return 'catalog_fetch_failed'
+  }
+  return 'invalid_package'
 }
 
 async function readAgentForUser(input: { agentId: string; userId: string }) {
