@@ -139,6 +139,91 @@ const videoMeta: Record<LaunchVideoSlug, VideoMeta> = {
   },
 }
 
+const AGENT_MODEL_OPTIONS = [
+  { delay: 206, text: 'FAST' },
+  { delay: 226, text: 'DEEP' },
+  { delay: 246, text: 'CHEAP' },
+] as const
+
+const AGENT_ASSEMBLY_BLOCKS = [
+  { color: '#ffffff', text: 'MODEL', x: -1, y: -1 },
+  { color: '#ff3000', text: 'IDENTITY', x: 1, y: -0.2 },
+  { color: '#ffffff', text: 'SCHEDULE', x: -0.2, y: 1 },
+] as const
+
+const RUN_MEMORY_UPDATE_ROWS = ['TODAY', 'FOLLOW-UPS', 'CONTEXT'] as const
+const MEMORY_STATE_ROWS = ['MEMORY', 'TASKS', 'GOAL'] as const
+
+const MEMORY_DREAMING_FRAGMENTS = [
+  { label: 'MEMORY', x: -24, y: -22 },
+  { label: 'TASKS', x: 18, y: -4 },
+  { label: 'GOAL', x: -6, y: 22 },
+] as const
+
+const MEMORY_STATE_FILE_WIDTHS = [0.86, 0.64, 0.74] as const
+
+const COMPOSABLE_TOOLS = [
+  { accent: true, label: 'RESEND', rotation: -3, x: -30, y: -25 },
+  { accent: false, label: 'PARALLEL', rotation: 3, x: 29, y: -17 },
+  { accent: false, label: 'AGENT BROWSER', rotation: -2, x: -24, y: 28 },
+  { accent: true, label: 'GITHUB', rotation: 4, x: 30, y: 23 },
+] as const
+
+const COMPOSABLE_CHANNEL_DOORS = [
+  { accent: false, label: 'SLACK', side: 'left', y: 34 },
+  { accent: true, label: 'TELEGRAM', side: 'right', y: 45 },
+  { accent: false, label: 'DISCORD', side: 'left', y: 62 },
+  { accent: true, label: 'WEBHOOKS', side: 'right', y: 73 },
+] as const
+
+const COMPOSABLE_PAYOFF_PIECES = [
+  { color: '#ffffff', height: 0.48, width: 0.52, x: -18, y: 21 },
+  { color: '#ff3000', height: 0.32, width: 0.46, x: 15, y: -18 },
+  { color: '#ffffff', height: 0.24, width: 0.38, x: 22, y: 19 },
+] as const
+
+const VERCEL_AI_SDK_MODULES = [
+  { accent: false, delay: 98, label: 'REASONING', x: -22, y: -18 },
+  { accent: true, delay: 116, label: 'TOOLS', x: 24, y: 0 },
+  { accent: false, delay: 134, label: 'STREAMING', x: -14, y: 22 },
+] as const
+
+const VERCEL_WORKFLOW_BLOCKS = ['RUN 01', 'WAIT', 'RESUME', 'RETURN'] as const
+const VERCEL_CRONS_TICKS = ['00', '15', '30', '45'] as const
+const VERCEL_SANDBOX_JOBS = ['PLAN', 'RUN TOOL', 'WRITE FILE'] as const
+
+const VERCEL_CHAT_CHANNELS = [
+  { color: '#ffffff', label: 'SLACK', x: -26, y: 18 },
+  { color: '#ff3000', label: 'DISCORD', x: 22, y: -16 },
+  { color: '#ffffff', label: 'TELEGRAM', x: -12, y: -2 },
+  { color: '#ffffff', label: 'GITHUB', x: 27, y: 18 },
+] as const
+
+const BUILDER_LOAD_WORDS = [
+  { delay: 282, text: 'BUILD.', x: 0.1, y: 0.2 },
+  { delay: 312, text: 'SHIP.', x: 0.5, y: 0.36 },
+  { delay: 342, text: 'FOLLOW UP.', x: 0.08, y: 0.56 },
+  { delay: 372, text: 'REMEMBER.', x: 0.24, y: 0.72 },
+] as const
+
+const CONFIG_WORKBENCH_FIELDS = [
+  ['model', 'Sonnet'],
+  ['identity', 'Writer'],
+  ['schedule', '09:00'],
+  ['memory', 'Context'],
+] as const
+
+const RUN_PIPELINE_NODES = ['Channel', 'Tool', 'Sub-agent', 'Memory'] as const
+const COMPOSABLE_HUB_ITEMS = ['Tools', 'Sub-agents', 'Channels', 'Memory']
+
+const VERCEL_LAYER_BUILD_LAYERS = [
+  'AI SDK',
+  'Workflow',
+  'Sandbox',
+  'Crons',
+  'Chat SDK',
+] as const
+
 export function LaunchVideo(props: LaunchVideoProps) {
   const frame = useCurrentFrame()
   const aspect = getLaunchVideoAspect(props.aspect)
@@ -440,11 +525,6 @@ function AgentModelZoom({
 }) {
   const scene = sceneOpacity(frame, 168, 304, 16)
   const zoom = ease(frame, 178, 286, [0, 1])
-  const options = [
-    { delay: 206, text: 'FAST' },
-    { delay: 226, text: 'DEEP' },
-    { delay: 246, text: 'CHEAP' },
-  ] as const
   const isWide = aspect === '16x9'
 
   return (
@@ -501,7 +581,7 @@ function AgentModelZoom({
           width: isWide ? '38%' : '72%',
         }}
       >
-        {options.map((option) => {
+        {AGENT_MODEL_OPTIONS.map((option) => {
           const enter = appear(frame, option.delay, 18)
           const selected = option.text === 'DEEP'
           const sweep = selected ? ease(frame, 250, 286, [0, 1]) : 0
@@ -819,11 +899,6 @@ function AgentAssembly({
   const textIn = appear(frame, 512, 22)
   const clearBlocks = ease(frame, 512, 532, [0, 1])
   const isWide = aspect === '16x9'
-  const blocks = [
-    { color: '#ffffff', text: 'MODEL', x: -1, y: -1 },
-    { color: '#ff3000', text: 'IDENTITY', x: 1, y: -0.2 },
-    { color: '#ffffff', text: 'SCHEDULE', x: -0.2, y: 1 },
-  ] as const
 
   return (
     <AbsoluteFill
@@ -845,7 +920,7 @@ function AgentAssembly({
           transformOrigin: 'center',
         }}
       >
-        {blocks.map((block) => (
+        {AGENT_ASSEMBLY_BLOCKS.map((block) => (
           <div
             key={block.text}
             style={{
@@ -1428,7 +1503,6 @@ function RunMemoryUpdate({
   const enter = appear(frame, 388, 24)
   const link = ease(frame, 410, 446, [0, 1])
   const isWide = aspect === '16x9'
-  const rows = ['TODAY', 'FOLLOW-UPS', 'CONTEXT'] as const
 
   return (
     <AbsoluteFill
@@ -1467,7 +1541,7 @@ function RunMemoryUpdate({
           width: isWide ? '55%' : '82%',
         }}
       >
-        {rows.map((row, index) => {
+        {RUN_MEMORY_UPDATE_ROWS.map((row, index) => {
           const rowIn = appear(frame, 398 + index * 10, 14)
           const active = index === 1
 
@@ -1777,7 +1851,6 @@ function MemoryStateChanges({
   const enter = appear(frame, 148, 22)
   const sweep = ease(frame, 168, 228, [0, 1])
   const isWide = aspect === '16x9'
-  const rows = ['MEMORY', 'TASKS', 'GOAL'] as const
 
   return (
     <AbsoluteFill
@@ -1836,7 +1909,7 @@ function MemoryStateChanges({
           transformOrigin: 'center',
         }}
       >
-        {rows.map((row, index) => {
+        {MEMORY_STATE_ROWS.map((row, index) => {
           const rowIn = appear(frame, 160 + index * 12, 16)
           const active = index === 1
 
@@ -1902,11 +1975,6 @@ function MemoryDreaming({
   const enter = appear(frame, 236, 24)
   const consolidate = ease(frame, 256, 318, [0, 1])
   const isWide = aspect === '16x9'
-  const fragments = [
-    { label: 'MEMORY', x: -24, y: -22 },
-    { label: 'TASKS', x: 18, y: -4 },
-    { label: 'GOAL', x: -6, y: 22 },
-  ] as const
 
   return (
     <AbsoluteFill
@@ -1927,7 +1995,7 @@ function MemoryDreaming({
           width: Math.max(18, layout.monoSize),
         }}
       />
-      {fragments.map((fragment, index) => {
+      {MEMORY_DREAMING_FRAGMENTS.map((fragment, index) => {
         const inFrame = appear(frame, 238 + index * 8, 18)
         const left = 50 + fragment.x * (1 - consolidate)
         const top = 50 + fragment.y * (1 - consolidate)
@@ -2015,7 +2083,6 @@ function MemoryRunTwo({
   const enter = appear(frame, 324, 24)
   const settle = ease(frame, 350, 414, [0, 1])
   const isWide = aspect === '16x9'
-  const rows = ['MEMORY', 'TASKS', 'GOAL'] as const
 
   return (
     <AbsoluteFill
@@ -2076,7 +2143,7 @@ function MemoryRunTwo({
           transformOrigin: 'center',
         }}
       >
-        {rows.map((row, index) => {
+        {MEMORY_STATE_ROWS.map((row, index) => {
           const rowIn = appear(frame, 346 + index * 12, 16)
           const selected = index === 0
 
@@ -2217,8 +2284,6 @@ function MemoryStateFile({
   lineProgress: number
   style: CSSProperties
 }) {
-  const widths = [0.86, 0.64, 0.74] as const
-
   return (
     <div
       style={{
@@ -2261,7 +2326,7 @@ function MemoryStateFile({
           marginTop: 34,
         }}
       >
-        {widths.map((width, index) => {
+        {MEMORY_STATE_FILE_WIDTHS.map((width, index) => {
           const line = appear(frame, 78 + index * 8, 12)
 
           return (
@@ -2414,12 +2479,6 @@ function ComposableToolsAttach({
   const titleIn = appear(frame, 68, 18)
   const coreIn = appear(frame, 86, 20)
   const isWide = aspect === '16x9'
-  const tools = [
-    { accent: true, label: 'RESEND', rotation: -3, x: -30, y: -25 },
-    { accent: false, label: 'PARALLEL', rotation: 3, x: 29, y: -17 },
-    { accent: false, label: 'AGENT BROWSER', rotation: -2, x: -24, y: 28 },
-    { accent: true, label: 'GITHUB', rotation: 4, x: 30, y: 23 },
-  ] as const
 
   return (
     <AbsoluteFill
@@ -2474,7 +2533,7 @@ function ComposableToolsAttach({
           }}
         />
       </div>
-      {tools.map((tool, index) => {
+      {COMPOSABLE_TOOLS.map((tool, index) => {
         const inFrame = appear(frame, 92 + index * 12, 18)
         const lock = ease(frame, 116 + index * 8, 170, [0, 1])
         const x = tool.x * (1 - lock * 0.42)
@@ -2654,12 +2713,6 @@ function ComposableChannelDoors({
   const titleIn = appear(frame, 258, 20)
   const coreIn = appear(frame, 276, 20)
   const isWide = aspect === '16x9'
-  const doors = [
-    { accent: false, label: 'SLACK', side: 'left', y: 34 },
-    { accent: true, label: 'TELEGRAM', side: 'right', y: 45 },
-    { accent: false, label: 'DISCORD', side: 'left', y: 62 },
-    { accent: true, label: 'WEBHOOKS', side: 'right', y: 73 },
-  ] as const
 
   return (
     <AbsoluteFill
@@ -2712,7 +2765,7 @@ function ComposableChannelDoors({
           }}
         />
       </div>
-      {doors.map((door, index) => {
+      {COMPOSABLE_CHANNEL_DOORS.map((door, index) => {
         const doorIn = appear(frame, 280 + index * 10, 18)
         const lock = ease(frame, 302 + index * 8, 364, [0, 1])
         const from = door.side === 'left' ? -112 : 112
@@ -2890,11 +2943,6 @@ function ComposablePayoff({
   const enter = appear(frame, 436, 22)
   const lock = ease(frame, 446, 494, [0, 1])
   const isWide = aspect === '16x9'
-  const pieces = [
-    { color: '#ffffff', height: 0.48, width: 0.52, x: -18, y: 21 },
-    { color: '#ff3000', height: 0.32, width: 0.46, x: 15, y: -18 },
-    { color: '#ffffff', height: 0.24, width: 0.38, x: 22, y: 19 },
-  ] as const
 
   return (
     <AbsoluteFill
@@ -2903,7 +2951,7 @@ function ComposablePayoff({
         opacity: scene,
       }}
     >
-      {pieces.map((piece, index) => {
+      {COMPOSABLE_PAYOFF_PIECES.map((piece, index) => {
         const pieceIn = appear(frame, 430 + index * 8, 16)
 
         return (
@@ -3159,11 +3207,6 @@ function VercelAiSdkLayer({
   const enter = appear(frame, 74, 22)
   const zoom = ease(frame, 76, 166, [0, 1])
   const isWide = aspect === '16x9'
-  const modules = [
-    { accent: false, delay: 98, label: 'REASONING', x: -22, y: -18 },
-    { accent: true, delay: 116, label: 'TOOLS', x: 24, y: 0 },
-    { accent: false, delay: 134, label: 'STREAMING', x: -14, y: 22 },
-  ] as const
 
   return (
     <AbsoluteFill
@@ -3227,7 +3270,7 @@ function VercelAiSdkLayer({
           }}
         />
       </div>
-      {modules.map((module, index) => {
+      {VERCEL_AI_SDK_MODULES.map((module, index) => {
         const moduleIn = appear(frame, module.delay, 16)
         const drift = ease(frame, module.delay, 170, [0, 1])
         const left = isWide ? 62 + module.x * 0.9 : 50 + module.x * 0.8
@@ -3265,7 +3308,6 @@ function VercelWorkflowLayer({
   const enter = appear(frame, 158, 22)
   const rail = ease(frame, 168, 250, [0, 1])
   const isWide = aspect === '16x9'
-  const blocks = ['RUN 01', 'WAIT', 'RESUME', 'RETURN'] as const
 
   return (
     <AbsoluteFill
@@ -3322,7 +3364,7 @@ function VercelWorkflowLayer({
             width: '100%',
           }}
         />
-        {blocks.map((block, index) => {
+        {VERCEL_WORKFLOW_BLOCKS.map((block, index) => {
           const blockIn = appear(frame, 176 + index * 14, 16)
           const travel = ease(frame, 180 + index * 8, 258, [0, 1])
 
@@ -3371,7 +3413,6 @@ function VercelCronsLayer({
   const enter = appear(frame, 256, 22)
   const sweep = ease(frame, 270, 338, [0, 1])
   const isWide = aspect === '16x9'
-  const ticks = ['00', '15', '30', '45'] as const
   const dialSize = isWide ? layout.edge * 5.1 : layout.edge * 5.4
 
   return (
@@ -3405,7 +3446,7 @@ function VercelCronsLayer({
             width: '43%',
           }}
         />
-        {ticks.map((tick, index) => {
+        {VERCEL_CRONS_TICKS.map((tick, index) => {
           const tickIn = appear(frame, 268 + index * 10, 14)
           const angle = index * 90
 
@@ -3471,7 +3512,6 @@ function VercelSandboxLayer({
   const enter = appear(frame, 336, 22)
   const chamber = ease(frame, 348, 426, [0, 1])
   const isWide = aspect === '16x9'
-  const jobs = ['PLAN', 'RUN TOOL', 'WRITE FILE'] as const
 
   return (
     <AbsoluteFill
@@ -3505,7 +3545,7 @@ function VercelSandboxLayer({
             width: '100%',
           }}
         />
-        {jobs.map((job, index) => {
+        {VERCEL_SANDBOX_JOBS.map((job, index) => {
           const jobIn = appear(frame, 354 + index * 14, 16)
           const settle = ease(frame, 364 + index * 10, 432, [0, 1])
 
@@ -3577,12 +3617,6 @@ function VercelChatLayer({
   const enter = appear(frame, 420, 20)
   const stack = ease(frame, 428, 486, [0, 1])
   const isWide = aspect === '16x9'
-  const channels = [
-    { color: '#ffffff', label: 'SLACK', x: -26, y: 18 },
-    { color: '#ff3000', label: 'DISCORD', x: 22, y: -16 },
-    { color: '#ffffff', label: 'TELEGRAM', x: -12, y: -2 },
-    { color: '#ffffff', label: 'GITHUB', x: 27, y: 18 },
-  ] as const
 
   return (
     <AbsoluteFill
@@ -3591,7 +3625,7 @@ function VercelChatLayer({
         opacity: scene,
       }}
     >
-      {channels.map((channel, index) => {
+      {VERCEL_CHAT_CHANNELS.map((channel, index) => {
         const channelIn = appear(frame, 424 + index * 7, 16)
         const x = channel.x * (1 - stack * 0.22)
         const y = channel.y * (1 - stack * 0.34)
@@ -3998,12 +4032,6 @@ function BuilderLoad({
   layout: WhyFilmLayout
 }) {
   const scene = sceneOpacity(frame, 270, 420, 12)
-  const words = [
-    { delay: 282, text: 'BUILD.', x: 0.1, y: 0.2 },
-    { delay: 312, text: 'SHIP.', x: 0.5, y: 0.36 },
-    { delay: 342, text: 'FOLLOW UP.', x: 0.08, y: 0.56 },
-    { delay: 372, text: 'REMEMBER.', x: 0.24, y: 0.72 },
-  ] as const
   const isWide = aspect === '16x9'
 
   return (
@@ -4026,7 +4054,7 @@ function BuilderLoad({
           width: layout.edge * 2.2,
         }}
       />
-      {words.map((word, index) => {
+      {BUILDER_LOAD_WORDS.map((word, index) => {
         const enter = appear(frame, word.delay, 14)
         const leave = ease(frame, word.delay + 44, word.delay + 72, [0, 1])
         const emphasis = index === 3
@@ -5110,12 +5138,6 @@ function ProfileStrip({
 }
 
 function ConfigWorkbench({ aspect, frame, layout }: StoryProps) {
-  const fields = [
-    ['model', 'Sonnet'],
-    ['identity', 'Writer'],
-    ['schedule', '09:00'],
-    ['memory', 'Context'],
-  ] as const
   const panelMove = progressBetween(frame, 182, 314)
 
   return (
@@ -5132,7 +5154,7 @@ function ConfigWorkbench({ aspect, frame, layout }: StoryProps) {
     >
       <SectionTitle kicker="workbench" title="Configuration first." />
       <div style={{ display: 'grid', gap: 14 }}>
-        {fields.map(([label, value], index) => {
+        {CONFIG_WORKBENCH_FIELDS.map(([label, value], index) => {
           const progress = appear(frame, 188 + index * 22, 16)
           const focus = progressBetween(
             frame,
@@ -5300,7 +5322,6 @@ function ScheduleTrigger({ aspect, frame, layout }: StoryProps) {
 }
 
 function RunPipeline({ aspect, frame, layout }: StoryProps) {
-  const nodes = ['Channel', 'Tool', 'Sub-agent', 'Memory'] as const
   const travel = progressBetween(frame, 194, 292)
 
   return (
@@ -5324,7 +5345,7 @@ function RunPipeline({ aspect, frame, layout }: StoryProps) {
           gridTemplateColumns: aspect === '16x9' ? 'repeat(4, 1fr)' : '1fr',
         }}
       >
-        {nodes.map((node, index) => {
+        {RUN_PIPELINE_NODES.map((node, index) => {
           const progress = appear(frame, 194 + index * 28, 18)
           const active = progressBetween(
             frame,
@@ -5572,7 +5593,6 @@ function LessSetupScene({ aspect, frame, layout }: StoryProps) {
 }
 
 function ComposableHub({ aspect, frame, layout }: StoryProps) {
-  const items = ['Tools', 'Sub-agents', 'Channels', 'Memory']
   const assemble = progressBetween(frame, 104, 186)
 
   return (
@@ -5595,7 +5615,7 @@ function ComposableHub({ aspect, frame, layout }: StoryProps) {
           gridTemplateColumns: '1fr 1fr',
         }}
       >
-        {items.map((item, index) => {
+        {COMPOSABLE_HUB_ITEMS.map((item, index) => {
           const progress = appear(frame, 104 + index * 20, 18)
           const focus = progressBetween(
             frame,
@@ -5755,7 +5775,6 @@ function ComingSoonSlots({ aspect, frame, layout }: StoryProps) {
 }
 
 function VercelLayerBuild({ aspect, frame, layout }: StoryProps) {
-  const layers = ['AI SDK', 'Workflow', 'Sandbox', 'Crons', 'Chat SDK'] as const
   const layerMove = progressBetween(frame, 104, 196)
 
   return (
@@ -5772,7 +5791,7 @@ function VercelLayerBuild({ aspect, frame, layout }: StoryProps) {
     >
       <SectionTitle kicker="platform stack" title="Primitives, not glue." />
       <div style={{ display: 'grid', gap: 10 }}>
-        {layers.map((layer, index) => {
+        {VERCEL_LAYER_BUILD_LAYERS.map((layer, index) => {
           const progress = appear(frame, 102 + index * 20, 18)
           const focus = progressBetween(
             frame,
