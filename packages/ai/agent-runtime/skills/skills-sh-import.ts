@@ -30,6 +30,16 @@ const skillsShSearchResponseSchema = z.object({
   searchType: z.string(),
 })
 
+const skillsShLeaderboardResponseSchema = z.object({
+  data: z.array(skillsShSkillSchema),
+  pagination: z.object({
+    hasMore: z.boolean(),
+    page: z.number(),
+    perPage: z.number(),
+    total: z.number(),
+  }),
+})
+
 const skillsShCuratedOwnerSchema = z.object({
   featuredRepo: z.string(),
   featuredSkill: z.string(),
@@ -86,6 +96,9 @@ export type SkillsShCuratedResponse = z.infer<
 export type SkillsShSearchResponse = z.infer<
   typeof skillsShSearchResponseSchema
 >
+export type SkillsShLeaderboardResponse = z.infer<
+  typeof skillsShLeaderboardResponseSchema
+>
 export type SkillsShDetailResponse = z.infer<
   typeof skillsShDetailResponseSchema
 >
@@ -117,6 +130,31 @@ export async function searchSkillsShSkills(input: {
   return await fetchSkillsShJson(
     `/skills/search?${params.toString()}`,
     skillsShSearchResponseSchema
+  )
+}
+
+export async function getSkillsShLeaderboard(
+  input: {
+    page?: number
+    perPage?: number
+    view?: 'all-time' | 'hot' | 'trending'
+  } = {}
+): Promise<SkillsShLeaderboardResponse> {
+  const params = new URLSearchParams()
+  if (input.view) {
+    params.set('view', input.view)
+  }
+  if (input.page !== undefined) {
+    params.set('page', String(input.page))
+  }
+  if (input.perPage !== undefined) {
+    params.set('per_page', String(input.perPage))
+  }
+
+  const query = params.toString()
+  return await fetchSkillsShJson(
+    query ? `/skills?${query}` : '/skills',
+    skillsShLeaderboardResponseSchema
   )
 }
 

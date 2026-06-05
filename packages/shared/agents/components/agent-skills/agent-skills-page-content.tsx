@@ -673,19 +673,6 @@ function SkillCatalogPicker({
     const controller = new AbortController()
     const debounceMs = curated ? 0 : 250
 
-    if (!curated && trimmedQuery.length < 2) {
-      dispatchCatalogState({
-        catalog: {
-          curated: false,
-          query: trimmedQuery,
-          skills: [],
-          totalSkills: 0,
-        },
-        type: 'catalogIdle',
-      })
-      return () => controller.abort()
-    }
-
     const timeout = window.setTimeout(() => {
       dispatchCatalogState({ type: 'catalogLoading' })
       async function loadCatalog() {
@@ -830,7 +817,7 @@ function SkillCatalogPicker({
             <p className="py-10 text-center text-muted-foreground text-sm">
               {curated
                 ? 'No curated skills match this query.'
-                : 'Search requires at least two characters.'}
+                : 'No skills found.'}
             </p>
           )}
         </div>

@@ -1,6 +1,7 @@
 import { getVercelOidcToken } from '@vercel/oidc'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  getSkillsShLeaderboard,
   getSkillsShSkillAudit,
   importSkillsShSkill,
   searchSkillsShSkills,
@@ -43,6 +44,36 @@ describe('skills.sh import', () => {
     expect(result.data[0]?.id).toBe('vercel-labs/skills/find-skills')
     expect(fetchMock).toHaveBeenCalledWith(
       'https://skills.sh/api/v1/skills/search?q=nextjs',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer oidc-token',
+        }),
+      })
+    )
+  })
+
+  it('loads the all-time leaderboard with install-count ordering from skills.sh', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        data: [catalogSkill()],
+        pagination: {
+          hasMore: true,
+          page: 0,
+          perPage: 50,
+          total: 8420,
+        },
+      })
+    )
+
+    const result = await getSkillsShLeaderboard({
+      page: 0,
+      perPage: 50,
+      view: 'all-time',
+    })
+
+    expect(result.data[0]?.id).toBe('vercel-labs/skills/find-skills')
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://skills.sh/api/v1/skills?view=all-time&page=0&per_page=50',
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: 'Bearer oidc-token',

@@ -1,5 +1,6 @@
 import {
   getCuratedSkillsShSkills,
+  getSkillsShLeaderboard,
   type SkillsShSkill,
   searchSkillsShSkills,
 } from '@outname/ai/agent-runtime/skills/skills-sh-import'
@@ -41,17 +42,23 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({
         curated: true,
         generatedAt: result.generatedAt,
-        skills,
+        skills: sortSkillsByInstalls(skills),
         totalSkills: result.totalSkills,
       })
     }
 
     if (query.length < 2) {
+      const result = await getSkillsShLeaderboard({
+        page: 0,
+        perPage: SEARCH_LIMIT,
+        view: 'all-time',
+      })
       return NextResponse.json({
         curated: false,
         query,
-        skills: [],
-        totalSkills: 0,
+        searchType: 'leaderboard',
+        skills: result.data.map((skill) => toCatalogSkillView(skill, null)),
+        totalSkills: result.pagination.total,
       })
     }
 
@@ -69,6 +76,16 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     return catalogErrorResponse(error)
   }
+}
+
+function sortSkillsByInstalls(skills: CatalogSkillView[]): CatalogSkillView[] {
+  return [...skills].sort((a, b) => {
+    const installsDiff = b.installs - a.installs
+    if (installsDiff !== 0) {
+      return installsDiff
+    }
+    return a.name.localeCompare(b.name)
+  })
 }
 
 function toCatalogSkillView(
