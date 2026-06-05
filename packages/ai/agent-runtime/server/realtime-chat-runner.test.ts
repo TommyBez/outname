@@ -572,6 +572,7 @@ function runtimeSpec(): AgentRuntimeSpec {
     stepLimitCustom: null,
     stepLimitMode: 'medium',
     systemPrompt: 'You are Agent.',
+    skillPlan: { sandboxName: null, skills: [] },
     toolPlan: { planned: [], reconnects: [], subAgents: [] },
     userId: 'user_123',
   }

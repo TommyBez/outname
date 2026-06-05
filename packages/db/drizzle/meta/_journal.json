@@ -141,6 +141,20 @@
       "when": 1780300000000,
       "tag": "0016_inference_providers",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1780580086620,
+      "tag": "0019_auth_user_id_snake_case",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1780600000000,
+      "tag": "0020_agent_skills",
+      "breakpoints": true
     }
   ]
 }

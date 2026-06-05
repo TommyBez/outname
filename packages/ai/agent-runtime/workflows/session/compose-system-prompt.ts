@@ -16,6 +16,7 @@ export interface ComposeSystemPromptArgs {
   agentId: string
   agentName: string
   eventKind?: 'chat' | 'dreaming' | 'heartbeat' | 'invocation'
+  hasSkillTools?: boolean
   nowIso?: string
   reconnects?: readonly Reconnect[]
 }
@@ -24,7 +25,7 @@ const PLATFORM_INVARIANTS = `## Platform invariants
 
 - Your persistent system sandbox is rooted at /vercel/sandbox. Use
   readFile, writeFile, listFiles, and grepFiles for durable file work.
-  Direct bash execution is not available.
+  Direct bash execution is not available in the system memory sandbox.
 - AGENTS.md and SOUL.md are user-owned bootstrap files. writeFile will
   refuse to modify them. If a change is needed, ask the user to make it
   through the agent settings UI.
@@ -90,6 +91,10 @@ export async function composeSystemPrompt(
   const reconnectsBlock = renderReconnects(args.reconnects ?? [])
   if (reconnectsBlock) {
     sections.push(reconnectsBlock)
+  }
+
+  if (args.hasSkillTools) {
+    sections.push(renderAgentSkillsSection())
   }
 
   sections.push(PLATFORM_INVARIANTS)
@@ -265,5 +270,16 @@ function renderReconnects(reconnects: readonly Reconnect[]): string | null {
     'Do not pretend these tools succeeded. If the user asks you to do',
     'something that requires one of them, tell them which connection',
     'needs attention and stop.',
+  ].join('\n')
+}
+
+function renderAgentSkillsSection(): string {
+  return [
+    '## Agent Skills',
+    '',
+    'This agent has installed Agent Skills. Use skill({ skillName }) to',
+    "load a skill's instructions before relying on it. Use bash for",
+    'commands in the Skill Sandbox only. The system memory sandbox still',
+    'uses readFile, writeFile, listFiles, and grepFiles.',
   ].join('\n')
 }

@@ -15,6 +15,7 @@ import {
 } from './runtime-spec-types'
 import type { StepLimitMode } from './step-limit'
 import { loadAgentStep } from './steps/db/load-agent'
+import { resolveSkillPlan } from './steps/resolve-skill-plan'
 import { resolveToolPlan } from './steps/resolve-tool-plan'
 
 // Build one event-scoped agent: prompt from sandbox files, built-in file tools,
@@ -57,11 +58,15 @@ export async function buildAgent(
     callStack,
     depth,
   })
+  const skillPlan = await resolveSkillPlan({
+    agentId: args.agentId,
+  })
 
   const systemPrompt = await composeSystemPrompt({
     agentId: args.agentId,
     agentName: row.name,
     eventKind,
+    hasSkillTools: skillPlan.skills.length > 0,
     nowIso: args.nowIso ?? new Date().toISOString(),
     reconnects: toolPlan.reconnects,
   })
@@ -77,6 +82,7 @@ export async function buildAgent(
     stepLimitCustom: row.stepLimitCustom,
     stepLimitMode: row.stepLimitMode as StepLimitMode,
     systemPrompt,
+    skillPlan,
     toolPlan,
     userId: row.userId,
   }

@@ -1,5 +1,6 @@
 import type { InferenceProvider } from '@outname/shared/server/inference-providers'
 import type { StepLimitMode } from './step-limit'
+import type { SkillPlan } from './steps/resolve-skill-plan'
 import type { ResolveToolPlanResult } from './steps/resolve-tool-plan/types'
 
 export type AgentRuntimeEventKind =
@@ -16,6 +17,7 @@ export interface AgentRuntimeSpec {
   eventKind: AgentRuntimeEventKind
   inferenceProvider: InferenceProvider
   modelId: string
+  skillPlan: SkillPlan
   stepLimitCustom: number | null
   stepLimitMode: StepLimitMode
   systemPrompt: string

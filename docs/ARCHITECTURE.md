@@ -79,7 +79,7 @@ Key files:
 - `agent-runtime/workflows/events/workflow.ts`
 - `agent-runtime/workflows/session/handlers/*`
 
-### Agent filesystem
+### Agent filesystems
 
 Each agent has a named persistent Vercel Sandbox. The sandbox is the canonical
 filesystem for bootstrap files and durable agent-authored files.
@@ -87,6 +87,12 @@ filesystem for bootstrap files and durable agent-authored files.
 - UI-authored bootstrap edits write directly into the sandbox.
 - Redis only caches selected file reads for faster UI access.
 - If Redis and sandbox contents disagree, the sandbox is authoritative.
+
+Agents with installed Agent Skills also get a separate persistent Skill Sandbox,
+created lazily on first skill install. The Skill Sandbox contains installed
+skill packages under `skills/<slug>` and a writable `workspace` for skill script
+execution. It is intentionally separate from the system sandbox so scripts can
+run freely without making the agent memory filesystem executable.
 
 ## Event model
 
@@ -170,7 +176,8 @@ final Postgres persistence, no delivery ledger reconciles that gap yet.
 | Per-agent inference provider and model | Neon Postgres | `agent.inference_provider` scopes `agent.model`; model ids are not globally meaningful by themselves. |
 | Token usage and cost estimates | Neon Postgres | `agent_token_usage` stores provider, requested model, cache/read/write/reasoning tokens, pricing snapshot, and estimated or actual USD cost. |
 | Agent event ledger | Neon Postgres | `agent_events` drives durable orchestration and recovery for heartbeat, dreaming, and invocation. |
-| Agent filesystem and bootstrap files | Vercel Sandbox | Persistent per-agent filesystem. |
+| Agent filesystem and bootstrap files | Vercel Sandbox | Persistent per-agent system sandbox. |
+| Installed skills and skill workspace | Vercel Sandbox | Separate persistent Skill Sandbox for agents that have skills. |
 | Cache and distributed coordination | Upstash Redis | Used for locks, scheduling, and cached file reads. |
 | Channel thread state | Postgres plus Redis | Installations and canonical transcripts live in Postgres; Chat SDK locks, queue, dedupe, subscriptions, and ephemeral state require Redis. |
 

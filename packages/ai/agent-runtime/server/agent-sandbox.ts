@@ -1,3 +1,4 @@
+import { destroySkillSandbox } from '@outname/ai/agent-runtime/server/agent-skill-sandbox'
 import { db } from '@outname/db'
 import { agent } from '@outname/db/schema'
 import {
@@ -155,6 +156,7 @@ export async function releaseSandbox(sandbox: Sandbox): Promise<void> {
 // Best-effort delete before removing the agent row so we do not leak a
 // persistent sandbox.
 export async function destroyAgentSandboxes(agentId: string): Promise<void> {
+  await destroySkillSandbox(agentId)
   const name = await readSandboxId(agentId)
   if (!name) {
     return

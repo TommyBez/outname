@@ -80,6 +80,8 @@ export const agent = pgTable(
     // Persistent system sandbox name. Null before first boot; after that, the
     // same sandbox is resumed on each event.
     sandboxSystemId: text('sandbox_system_id'),
+    // Persistent skill sandbox name. Null until the first Agent Skill install.
+    sandboxSkillsId: text('sandbox_skills_id'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

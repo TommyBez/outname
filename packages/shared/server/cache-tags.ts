@@ -14,6 +14,10 @@ export function agentToolsTag(agentId: string) {
   return `agent-tools-${agentId}`
 }
 
+export function agentSkillsTag(agentId: string) {
+  return `agent-skills-${agentId}`
+}
+
 export function conversationListTag(agentId: string) {
   return `conversation-list-${agentId}`
 }
