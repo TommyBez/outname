@@ -7,15 +7,6 @@ import {
 } from '@outname/ui/components/ui/alert'
 import { Badge } from '@outname/ui/components/ui/badge'
 import { Button } from '@outname/ui/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@outname/ui/components/ui/dialog'
 import { Input } from '@outname/ui/components/ui/input'
 import { Label } from '@outname/ui/components/ui/label'
 import { Switch } from '@outname/ui/components/ui/switch'
@@ -43,6 +34,7 @@ import {
   type SubmitEvent,
   useEffect,
   useReducer,
+  useRef,
   useState,
   useTransition,
 } from 'react'
@@ -147,7 +139,11 @@ interface CatalogPickerState {
   detailPending: boolean
 }
 
-interface AddSkillDialogState {
+interface SkillInstallRequest {
+  query: string
+}
+
+interface SkillInstallState {
   catalogCurated: boolean
   catalogQuery: string
   catalogSkillId: string | null
@@ -155,12 +151,10 @@ interface AddSkillDialogState {
   file: File | null
   githubUrl: string
   manualSourceType: ManualSkillSourceType
-  open: boolean
   sourceType: SkillSourceType
 }
 
-type AddSkillDialogAction =
-  | { open: boolean; type: 'setOpen' }
+type SkillInstallAction =
   | { sourceType: ManualSkillSourceType; type: 'setManualSourceType' }
   | { curated: boolean; type: 'setCatalogCurated' }
   | { query: string; type: 'setCatalogQuery' }
@@ -181,7 +175,7 @@ type CatalogPickerAction =
   | { detail: CatalogDetailResult; type: 'detailLoaded' }
   | { error: string; type: 'detailFailed' }
 
-const INITIAL_ADD_SKILL_DIALOG_STATE: AddSkillDialogState = {
+const INITIAL_SKILL_INSTALL_STATE: SkillInstallState = {
   catalogCurated: true,
   catalogQuery: '',
   catalogSkillId: null,
@@ -189,7 +183,6 @@ const INITIAL_ADD_SKILL_DIALOG_STATE: AddSkillDialogState = {
   file: null,
   githubUrl: '',
   manualSourceType: 'github',
-  open: false,
   sourceType: 'skills_sh',
 }
 
@@ -202,9 +195,7 @@ const INITIAL_CATALOG_PICKER_STATE: CatalogPickerState = {
   detailPending: false,
 }
 
-function resetAddSkillDialogFields(
-  state: AddSkillDialogState
-): AddSkillDialogState {
+function resetSkillInstallFields(state: SkillInstallState): SkillInstallState {
   return {
     ...state,
     catalogQuery: '',
@@ -217,16 +208,11 @@ function resetAddSkillDialogFields(
   }
 }
 
-function addSkillDialogReducer(
-  state: AddSkillDialogState,
-  action: AddSkillDialogAction
-): AddSkillDialogState {
+function skillInstallReducer(
+  state: SkillInstallState,
+  action: SkillInstallAction
+): SkillInstallState {
   switch (action.type) {
-    case 'setOpen':
-      if (action.open) {
-        return { ...state, open: true }
-      }
-      return resetAddSkillDialogFields({ ...state, open: false })
     case 'setManualSourceType':
       return {
         ...state,
@@ -261,7 +247,7 @@ function addSkillDialogReducer(
     case 'setConflict':
       return { ...state, conflict: action.conflict }
     case 'installed':
-      return resetAddSkillDialogFields({ ...state, open: false })
+      return resetSkillInstallFields(state)
     default:
       return state
   }
@@ -336,6 +322,9 @@ export function AgentSkillsPageContent({
   initialSkills: InstalledSkillView[]
 }) {
   const [skills, setSkills] = useState(initialSkills)
+  const [installRequest, setInstallRequest] =
+    useState<SkillInstallRequest | null>(null)
+  const installSurfaceRef = useRef<HTMLDivElement>(null)
 
   function upsertSkill(skill: InstalledSkillView) {
     setSkills((current) => [
@@ -348,21 +337,28 @@ export function AgentSkillsPageContent({
     setSkills((current) => current.filter((item) => item.slug !== slug))
   }
 
+  function requestReplace(skill: InstalledSkillView) {
+    setInstallRequest({
+      query: skill.name,
+    })
+    installSurfaceRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <header className="border-foreground border-t-4 pt-6">
-        <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
-          <div className="min-w-0">
-            <p className="swiss-label mb-4 text-accent">{agentName}</p>
-            <h1 className="font-black font-serif text-4xl uppercase leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl xl:text-7xl">
-              Skills
-            </h1>
-            <p className="mt-5 max-w-2xl border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
-              Install one Agent Skill package for this agent and run its scripts
-              in the dedicated Skill Sandbox.
-            </p>
-          </div>
-          <AddSkillDialog agentId={agentId} onInstalled={upsertSkill} />
+        <div className="min-w-0">
+          <p className="swiss-label mb-4 text-accent">{agentName}</p>
+          <h1 className="font-black font-serif text-4xl uppercase leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl xl:text-7xl">
+            Skills
+          </h1>
+          <p className="mt-5 max-w-2xl border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
+            Install one Agent Skill package for this agent and run its scripts
+            in the dedicated Skill Sandbox.
+          </p>
         </div>
       </header>
 
@@ -375,10 +371,18 @@ export function AgentSkillsPageContent({
         </AlertDescription>
       </Alert>
 
+      <div ref={installSurfaceRef}>
+        <AgentSkillInstallSurface
+          agentId={agentId}
+          installRequest={installRequest}
+          onInstalled={upsertSkill}
+        />
+      </div>
+
       <InstalledSkillsList
         agentId={agentId}
         onRemoved={removeSkill}
-        onReplaced={upsertSkill}
+        onReplaceRequested={requestReplace}
         skills={skills}
       />
     </div>
@@ -388,12 +392,12 @@ export function AgentSkillsPageContent({
 function InstalledSkillsList({
   agentId,
   onRemoved,
-  onReplaced,
+  onReplaceRequested,
   skills,
 }: {
   agentId: string
   onRemoved: (slug: string) => void
-  onReplaced: (skill: InstalledSkillView) => void
+  onReplaceRequested: (skill: InstalledSkillView) => void
   skills: InstalledSkillView[]
 }) {
   if (skills.length === 0) {
@@ -418,7 +422,7 @@ function InstalledSkillsList({
           agentId={agentId}
           key={skill.slug}
           onRemoved={onRemoved}
-          onReplaced={onReplaced}
+          onReplaceRequested={onReplaceRequested}
           skill={skill}
         />
       ))}
@@ -429,12 +433,12 @@ function InstalledSkillsList({
 function SkillRow({
   agentId,
   onRemoved,
-  onReplaced,
+  onReplaceRequested,
   skill,
 }: {
   agentId: string
   onRemoved: (slug: string) => void
-  onReplaced: (skill: InstalledSkillView) => void
+  onReplaceRequested: (skill: InstalledSkillView) => void
   skill: InstalledSkillView
 }) {
   return (
@@ -458,11 +462,16 @@ function SkillRow({
         </dl>
       </div>
       <div className="flex flex-wrap items-start gap-2 md:justify-end">
-        <AddSkillDialog
-          agentId={agentId}
-          onInstalled={onReplaced}
-          triggerLabel="Replace"
-        />
+        <Button
+          className="gap-2"
+          onClick={() => onReplaceRequested(skill)}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          <RefreshCw aria-hidden className="size-4" />
+          Replace
+        </Button>
         <UninstallSkillButton
           agentId={agentId}
           onRemoved={onRemoved}
@@ -484,18 +493,18 @@ function SkillMeta({ label, value }: { label: string; value: string }) {
   )
 }
 
-function AddSkillDialog({
+function AgentSkillInstallSurface({
   agentId,
+  installRequest,
   onInstalled,
-  triggerLabel = 'Add skill',
 }: {
   agentId: string
+  installRequest: SkillInstallRequest | null
   onInstalled: (skill: InstalledSkillView) => void
-  triggerLabel?: string
 }) {
   const [state, dispatch] = useReducer(
-    addSkillDialogReducer,
-    INITIAL_ADD_SKILL_DIALOG_STATE
+    skillInstallReducer,
+    INITIAL_SKILL_INSTALL_STATE
   )
   const [pending, startTransition] = useTransition()
   const { refresh } = useRouter()
@@ -507,7 +516,6 @@ function AddSkillDialog({
     file,
     githubUrl,
     manualSourceType,
-    open,
     sourceType,
   } = state
   const canSubmit = canInstallSkill({
@@ -517,9 +525,12 @@ function AddSkillDialog({
     sourceType,
   })
 
-  function handleOpenChange(nextOpen: boolean) {
-    dispatch({ open: nextOpen, type: 'setOpen' })
-  }
+  useEffect(() => {
+    if (!installRequest) {
+      return
+    }
+    dispatch({ query: installRequest.query, type: 'setCatalogQuery' })
+  }, [installRequest])
 
   function submit(replace: boolean) {
     dispatch({ type: 'clearConflict' })
@@ -553,84 +564,79 @@ function AddSkillDialog({
   }
 
   return (
-    <Dialog onOpenChange={handleOpenChange} open={open}>
-      <DialogTrigger asChild>
-        <Button className="gap-2" size="sm">
-          <Upload aria-hidden className="size-4" />
-          {triggerLabel}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Install skill</DialogTitle>
-          <DialogDescription>
-            Add a single Agent Skill package to this agent&apos;s Skill Sandbox.
-          </DialogDescription>
-        </DialogHeader>
+    <section className="grid gap-5">
+      <div className="grid gap-2 border-foreground border-t-4 pt-4">
+        <p className="swiss-label text-accent">Catalog</p>
+        <h2 className="font-black font-serif text-3xl uppercase leading-none tracking-tighter">
+          Add skill
+        </h2>
+      </div>
 
-        <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
-          <SkillCatalogPicker
-            curated={catalogCurated}
-            onCuratedChange={(curated) =>
-              dispatch({ curated, type: 'setCatalogCurated' })
-            }
-            onQueryChange={(query) =>
-              dispatch({ query, type: 'setCatalogQuery' })
-            }
-            onSkillSelect={(skillId) =>
-              dispatch({ skillId, type: 'setCatalogSkill' })
-            }
-            query={catalogQuery}
-            selectedSkillId={catalogSkillId}
-          />
+      <form className="grid gap-5" onSubmit={handleSubmit}>
+        <SkillCatalogPicker
+          curated={catalogCurated}
+          onCuratedChange={(curated) =>
+            dispatch({ curated, type: 'setCatalogCurated' })
+          }
+          onQueryChange={(query) =>
+            dispatch({ query, type: 'setCatalogQuery' })
+          }
+          onSkillSelect={(skillId) =>
+            dispatch({ skillId, type: 'setCatalogSkill' })
+          }
+          query={catalogQuery}
+          selectedSkillId={catalogSkillId}
+        />
 
-          <ManualSkillSourcePicker
-            file={file}
-            githubUrl={githubUrl}
-            onFileChange={(nextFile) => {
-              dispatch({
-                sourceType: manualSourceType,
-                type: 'setManualSourceType',
-              })
-              dispatch({ file: nextFile, type: 'setFile' })
-            }}
-            onGithubUrlChange={(nextGithubUrl) => {
-              dispatch({ sourceType: 'github', type: 'setManualSourceType' })
-              dispatch({ githubUrl: nextGithubUrl, type: 'setGithubUrl' })
-            }}
-            onSourceTypeChange={(sourceTypeValue) => {
-              dispatch({
-                sourceType: sourceTypeValue,
-                type: 'setManualSourceType',
-              })
-            }}
-            sourceType={manualSourceType}
-          />
+        <ManualSkillSourcePicker
+          file={file}
+          githubUrl={githubUrl}
+          onFileChange={(nextFile) => {
+            dispatch({
+              sourceType: manualSourceType,
+              type: 'setManualSourceType',
+            })
+            dispatch({ file: nextFile, type: 'setFile' })
+          }}
+          onGithubUrlChange={(nextGithubUrl) => {
+            dispatch({ sourceType: 'github', type: 'setManualSourceType' })
+            dispatch({ githubUrl: nextGithubUrl, type: 'setGithubUrl' })
+          }}
+          onSourceTypeChange={(sourceTypeValue) => {
+            dispatch({
+              sourceType: sourceTypeValue,
+              type: 'setManualSourceType',
+            })
+          }}
+          sourceType={manualSourceType}
+        />
 
-          {conflict && <SkillInstallPreview conflict={conflict} />}
+        {conflict && <SkillInstallPreview conflict={conflict} />}
 
-          <DialogFooter className="gap-2 sm:justify-between">
-            {conflict ? (
-              <Button
-                className="gap-2"
-                disabled={pending}
-                onClick={() => submit(true)}
-                type="button"
-                variant="destructive"
-              >
-                <RefreshCw aria-hidden className="size-4" />
-                Replace
-              </Button>
-            ) : (
-              <span />
-            )}
-            <Button disabled={pending || !canSubmit} type="submit">
-              {pending ? 'Installing...' : 'Install'}
+        <div className="flex flex-wrap justify-end gap-2">
+          {conflict && (
+            <Button
+              className="gap-2"
+              disabled={pending}
+              onClick={() => submit(true)}
+              type="button"
+              variant="destructive"
+            >
+              <RefreshCw aria-hidden className="size-4" />
+              Replace
             </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+          )}
+          <Button
+            className="gap-2"
+            disabled={pending || !canSubmit}
+            type="submit"
+          >
+            <Upload aria-hidden className="size-4" />
+            {pending ? 'Installing...' : 'Install'}
+          </Button>
+        </div>
+      </form>
+    </section>
   )
 }
 
@@ -766,10 +772,10 @@ function SkillCatalogPicker({
   })
 
   return (
-    <section className="grid gap-4 border-2 border-foreground p-4">
+    <section className="grid gap-5 border-2 border-foreground p-4 lg:p-5">
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
         <div className="grid gap-2">
-          <Label htmlFor="skill-catalog-search">Catalog</Label>
+          <Label htmlFor="skill-catalog-search">Search catalog</Label>
           <div className="relative">
             <Search
               aria-hidden
@@ -804,37 +810,36 @@ function SkillCatalogPicker({
         </Alert>
       )}
 
-      <div className="grid max-h-72 gap-2 overflow-y-auto pr-1">
-        {catalogPending && (
-          <p className="py-6 text-center text-muted-foreground text-sm">
-            Loading catalog...
-          </p>
-        )}
-        {!catalogPending &&
-          visibleSkills.map((skill) => (
-            <CatalogSkillButton
-              key={skill.id}
-              onSelect={() => onSkillSelect(skill.id)}
-              selected={skill.id === selectedSkillId}
-              skill={skill}
-            />
-          ))}
-        {!(catalogPending || catalogError) && visibleSkills.length === 0 && (
-          <p className="py-6 text-center text-muted-foreground text-sm">
-            {curated
-              ? 'No curated skills match this query.'
-              : 'Search requires at least two characters.'}
-          </p>
-        )}
-      </div>
-
-      {selectedSkillId && (
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:items-start">
+        <div className="grid max-h-[520px] gap-2 overflow-y-auto pr-1">
+          {catalogPending && (
+            <p className="py-10 text-center text-muted-foreground text-sm">
+              Loading catalog...
+            </p>
+          )}
+          {!catalogPending &&
+            visibleSkills.map((skill) => (
+              <CatalogSkillButton
+                key={skill.id}
+                onSelect={() => onSkillSelect(skill.id)}
+                selected={skill.id === selectedSkillId}
+                skill={skill}
+              />
+            ))}
+          {!(catalogPending || catalogError) && visibleSkills.length === 0 && (
+            <p className="py-10 text-center text-muted-foreground text-sm">
+              {curated
+                ? 'No curated skills match this query.'
+                : 'Search requires at least two characters.'}
+            </p>
+          )}
+        </div>
         <CatalogSkillDetail
           detail={detail}
           error={detailError}
           pending={detailPending}
         />
-      )}
+      </div>
     </section>
   )
 }
@@ -882,7 +887,7 @@ function CatalogSkillDetail({
 }) {
   if (pending) {
     return (
-      <div className="border-foreground border-l-2 pl-3 text-muted-foreground text-sm">
+      <div className="min-h-40 border-foreground border-l-2 pl-3 text-muted-foreground text-sm">
         Loading skill detail...
       </div>
     )
@@ -899,7 +904,11 @@ function CatalogSkillDetail({
   }
 
   if (!detail) {
-    return null
+    return (
+      <div className="min-h-40 border-foreground border-l-2 pl-3 text-muted-foreground text-sm">
+        No skill selected.
+      </div>
+    )
   }
 
   return (
