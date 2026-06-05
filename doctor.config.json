@@ -135,10 +135,7 @@
         "rules": ["react-doctor/js-set-map-lookups"]
       },
       {
-        "files": [
-          "packages/shared/intl/formatters.ts",
-          "intl/formatters.ts"
-        ],
+        "files": ["packages/shared/intl/formatters.ts", "intl/formatters.ts"],
         "rules": ["react-doctor/js-hoist-intl"]
       },
       {
