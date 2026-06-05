@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = req.nextUrl
-  const curated = searchParams.get('curated') !== 'false'
+  const curated = searchParams.get('curated') === 'true'
   const query = searchParams.get('query')?.trim() ?? ''
 
   try {

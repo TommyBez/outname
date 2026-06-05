@@ -176,7 +176,7 @@ type CatalogPickerAction =
   | { error: string; type: 'detailFailed' }
 
 const INITIAL_SKILL_INSTALL_STATE: SkillInstallState = {
-  catalogCurated: true,
+  catalogCurated: false,
   catalogQuery: '',
   catalogSkillId: null,
   conflict: null,
