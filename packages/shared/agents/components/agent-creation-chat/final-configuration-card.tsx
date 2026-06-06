@@ -9,6 +9,7 @@ import {
 } from './review-labels'
 
 const INFERENCE_PROVIDER_DISPLAY_NAMES = {
+  'llm-gateway': 'LLM Gateway',
   openrouter: 'OpenRouter',
   'vercel-ai-gateway': 'Vercel AI Gateway',
 } satisfies Record<AgentCreationRequest['inferenceProvider'], string>

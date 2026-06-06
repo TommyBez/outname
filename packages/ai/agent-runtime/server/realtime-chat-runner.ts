@@ -41,6 +41,7 @@ import {
   didReachStepLimit,
 } from '../workflows/session/step-limit'
 import {
+  extractActualCost,
   extractTotalUsage,
   preflightBudget,
   recordTokenUsageStep,
@@ -534,6 +535,10 @@ function scheduleUsageRecording(input: {
         sourceId: input.conversationId,
         inferenceProvider: input.inferenceProvider,
         model: input.model,
+        actualCost: extractActualCost({
+          inferenceProvider: input.inferenceProvider,
+          result: input.event,
+        }),
         usage: extractTotalUsage(input.event),
       })
     } catch (err) {

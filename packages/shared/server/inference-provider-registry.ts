@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { createLLMGateway } from '@llmgateway/ai-sdk-provider'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import {
   type InferenceProvider,
@@ -11,7 +12,16 @@ export type { InferenceProvider } from '@outname/db/schema'
 
 export const DEFAULT_INFERENCE_PROVIDER: InferenceProvider = 'vercel-ai-gateway'
 
+type LlmGatewayModelId = Parameters<ReturnType<typeof createLLMGateway>>[0]
 type ProviderLanguageModel = ReturnType<ReturnType<typeof createGateway>>
+
+// LLM Gateway's model and MCP discovery endpoints are public, so key
+// verification uses the smallest authenticated OpenAI-compatible request.
+const LLM_GATEWAY_VERIFICATION_BODY = {
+  max_tokens: 1,
+  messages: [{ role: 'user', content: 'ping' }],
+  model: 'gpt-4o-mini',
+} as const
 
 const OPENROUTER_EXTRA_BODY = {
   provider: {
@@ -25,15 +35,47 @@ interface ProviderDefinition {
     apiKey: string
     modelId: string
   }) => ProviderLanguageModel
+  createVerificationRequest: (apiKey: string) => ProviderVerificationRequest
   keyPlaceholder: string
   label: string
   summarizeVerificationBody: (
     body: Record<string, unknown>
   ) => Record<string, unknown>
-  verifyUrl: string
+}
+
+interface ProviderVerificationRequest {
+  init?: RequestInit
+  url: string
 }
 
 const PROVIDER_DEFINITIONS = {
+  'llm-gateway': {
+    createLanguageModel: ({ apiKey, modelId }) => {
+      const llmGateway = createLLMGateway({
+        apiKey,
+        compatibility: 'strict',
+      })
+      return llmGateway(modelId as LlmGatewayModelId)
+    },
+    createVerificationRequest: (apiKey) => ({
+      url: 'https://api.llmgateway.io/v1/chat/completions',
+      init: {
+        body: JSON.stringify(LLM_GATEWAY_VERIFICATION_BODY),
+        headers: {
+          authorization: `Bearer ${apiKey}`,
+          'content-type': 'application/json',
+        },
+        method: 'POST',
+      },
+    }),
+    keyPlaceholder: 'llmgtwy_...',
+    label: 'LLM Gateway',
+    summarizeVerificationBody: (body) => ({
+      id: body.id,
+      model: body.model,
+      usage: body.usage,
+    }),
+  },
   openrouter: {
     createLanguageModel: ({ apiKey, modelId }) => {
       const openrouter = createOpenRouter({
@@ -44,6 +86,14 @@ const PROVIDER_DEFINITIONS = {
       })
       return openrouter(modelId)
     },
+    createVerificationRequest: (apiKey) => ({
+      url: 'https://openrouter.ai/api/v1/key',
+      init: {
+        headers: {
+          authorization: `Bearer ${apiKey}`,
+        },
+      },
+    }),
     keyPlaceholder: 'sk-or-...',
     label: 'OpenRouter',
     summarizeVerificationBody: (body) => ({
@@ -52,20 +102,26 @@ const PROVIDER_DEFINITIONS = {
       usage: body.usage,
       isFreeTier: body.is_free_tier,
     }),
-    verifyUrl: 'https://openrouter.ai/api/v1/key',
   },
   'vercel-ai-gateway': {
     createLanguageModel: ({ apiKey, modelId }) => {
       const gateway = createGateway({ apiKey })
       return gateway(modelId)
     },
+    createVerificationRequest: (apiKey) => ({
+      url: 'https://ai-gateway.vercel.sh/v1/credits',
+      init: {
+        headers: {
+          authorization: `Bearer ${apiKey}`,
+        },
+      },
+    }),
     keyPlaceholder: 'vck_...',
     label: 'Vercel AI Gateway',
     summarizeVerificationBody: (body) => ({
       balance: body.balance,
       totalUsed: body.total_used,
     }),
-    verifyUrl: 'https://ai-gateway.vercel.sh/v1/credits',
   },
 } satisfies Record<InferenceProvider, ProviderDefinition>
 
@@ -94,10 +150,13 @@ export function inferenceProviderKeyPlaceholder(
   return PROVIDER_DEFINITIONS[provider].keyPlaceholder
 }
 
-export function inferenceProviderVerifyUrl(
+export function inferenceProviderVerificationRequest(input: {
+  apiKey: string
   provider: InferenceProvider
-): string {
-  return PROVIDER_DEFINITIONS[provider].verifyUrl
+}): ProviderVerificationRequest {
+  return PROVIDER_DEFINITIONS[input.provider].createVerificationRequest(
+    input.apiKey
+  )
 }
 
 export function summarizeProviderVerificationBody(input: {

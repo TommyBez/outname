@@ -4,7 +4,7 @@ import type { InferenceProvider } from '@outname/db/schema'
 import { InferenceCredentialVerificationError } from './inference-provider-errors'
 import {
   displayInferenceProvider,
-  inferenceProviderVerifyUrl,
+  inferenceProviderVerificationRequest,
   summarizeProviderVerificationBody,
 } from './inference-provider-registry'
 
@@ -14,15 +14,14 @@ export async function verifyInferenceCredential(input: {
 }): Promise<Record<string, unknown>> {
   let response: Response
   try {
-    response = await fetch(
-      inferenceProviderVerifyUrl(input.inferenceProvider),
-      {
-        headers: {
-          authorization: `Bearer ${input.apiKey}`,
-        },
-        cache: 'no-store',
-      }
-    )
+    const request = inferenceProviderVerificationRequest({
+      apiKey: input.apiKey,
+      provider: input.inferenceProvider,
+    })
+    response = await fetch(request.url, {
+      ...request.init,
+      cache: 'no-store',
+    })
   } catch {
     throw new InferenceCredentialVerificationError(
       input.inferenceProvider,

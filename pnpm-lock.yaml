@@ -580,6 +580,9 @@ importers:
 
   packages/shared:
     dependencies:
+      '@llmgateway/ai-sdk-provider':
+        specifier: ^3.8.0
+        version: 3.8.0(ai@6.0.191(zod@4.4.3))(zod@4.4.3)
       '@next/mdx':
         specifier: ^16.2.6
         version: 16.2.6(@mdx-js/loader@3.1.1(webpack@5.105.0(@swc/core@1.15.3)(esbuild@0.28.0)(postcss@8.5.15)))(@mdx-js/react@3.1.1(@types/react@19.2.15)(react@19.2.5))
@@ -2000,6 +2003,16 @@ packages:
 
   '@keyv/serialize@1.1.1':
     resolution: {integrity: sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA==}
+
+  '@llmgateway/ai-sdk-provider@3.8.0':
+    resolution: {integrity: sha512-3Yr5evl5b2QtXAPSl+kHLN0Zjni+MFAv0h0bW6nQrbqPaEmC28P4gNnRNyMkrpsGptPB7ahTl66ZXg+wi0NunA==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      ai: ^6.0.0
+      zod: ^3.24.1 || ^v4
+
+  '@llmgateway/models@1.100.0':
+    resolution: {integrity: sha512-xe28vSAq0XjXzADf6tc3+ewkQcnpJHBa97ZZ0pbwa4AImmTEygpkXkQSBYItYJEXbI6Vjp/VaKjei+QsjvTuug==}
 
   '@lukeed/csprng@1.1.0':
     resolution: {integrity: sha512-Z7C/xXCiGWsg0KuKsHTKJxbWhpI3Vs5GwLfOean7MGyVFGqdRgBbAjOCh6u4bbjPc/8MJ2pZmK/0DLdCbivLDA==}
@@ -9677,6 +9690,14 @@ snapshots:
       '@jridgewell/sourcemap-codec': 1.5.5
 
   '@keyv/serialize@1.1.1': {}
+
+  '@llmgateway/ai-sdk-provider@3.8.0(ai@6.0.191(zod@4.4.3))(zod@4.4.3)':
+    dependencies:
+      '@llmgateway/models': 1.100.0
+      ai: 6.0.191(zod@4.4.3)
+      zod: 4.4.3
+
+  '@llmgateway/models@1.100.0': {}
 
   '@lukeed/csprng@1.1.0': {}
 

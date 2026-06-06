@@ -15,6 +15,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@llmgateway/ai-sdk-provider": "^3.8.0",
     "@next/mdx": "^16.2.6",
     "@openrouter/ai-sdk-provider": "^2.9.0",
     "@vercel/related-projects": "1.1.0",

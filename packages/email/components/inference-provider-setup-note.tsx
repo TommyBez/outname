@@ -1,6 +1,7 @@
 import { Link, Text } from 'react-email'
 
 const VERCEL_AI_GATEWAY_URL = 'https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai'
+const LLM_GATEWAY_URL = 'https://llmgateway.io/'
 const OPENROUTER_URL = 'https://openrouter.ai/settings/keys'
 
 export function InferenceProviderSetupNote() {
@@ -14,8 +15,12 @@ export function InferenceProviderSetupNote() {
         You can use{' '}
         <Link className="text-signal no-underline" href={VERCEL_AI_GATEWAY_URL}>
           Vercel AI Gateway
-        </Link>{' '}
-        or{' '}
+        </Link>
+        {', '}
+        <Link className="text-signal no-underline" href={LLM_GATEWAY_URL}>
+          LLM Gateway
+        </Link>
+        {', or '}
         <Link className="text-signal no-underline" href={OPENROUTER_URL}>
           OpenRouter
         </Link>

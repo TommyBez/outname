@@ -48,6 +48,7 @@ vi.mock('@outname/ai/chat/workflows/steps/generate-conversation-title', () => ({
 }))
 
 vi.mock('../workflows/session/steps/budget', () => ({
+  extractActualCost: () => null,
   extractTotalUsage: (event: { totalUsage?: unknown; usage?: unknown }) =>
     event.totalUsage ?? event.usage,
   preflightBudget: mocks.preflightBudget,
@@ -388,6 +389,7 @@ describe('realtime chat runner persistence policy', () => {
       rootAgentId: 'agent_123',
       sourceId: 'conv_123',
       sourceType: 'chat',
+      actualCost: null,
       usage: {
         inputTokens: 3,
         outputTokens: 4,

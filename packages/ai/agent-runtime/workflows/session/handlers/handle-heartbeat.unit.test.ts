@@ -65,6 +65,7 @@ vi.mock('../step-limit', () => ({
 }))
 
 vi.mock('../steps/budget', () => ({
+  extractActualCost: () => null,
   extractTotalUsage: mockExtractTotalUsage,
   recordTokenUsageStep: mockRecordTokenUsageStep,
 }))

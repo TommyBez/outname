@@ -20,7 +20,7 @@ flowchart LR
   Next --> Workflow[Vercel Workflow]
   Next --> Resend[Resend]
 
-  Next --> Inference[Vercel AI Gateway or OpenRouter]
+  Next --> Inference[Vercel AI Gateway, LLM Gateway, or OpenRouter]
   Next --> Sandbox[Vercel Sandbox]
   Workflow --> Sandbox
   Workflow --> Inference

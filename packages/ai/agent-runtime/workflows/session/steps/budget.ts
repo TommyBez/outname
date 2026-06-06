@@ -3,6 +3,8 @@ import type { BudgetExceededInfo } from '@outname/shared/budgets/server/types'
 import { recordAgentTokenUsage } from '@outname/shared/budgets/server/usage'
 import type { InferenceProvider } from '@outname/shared/server/inference-providers'
 import {
+  type ActualModelCost,
+  extractActualModelCost,
   extractTotalUsage as extractTotalUsageFromResult,
   type UsageBearingResult,
 } from '@outname/shared/server/model-costs'
@@ -12,6 +14,13 @@ export function extractTotalUsage(
   result: UsageBearingResult | undefined
 ): LanguageModelUsage | undefined {
   return extractTotalUsageFromResult(result)
+}
+
+export function extractActualCost(input: {
+  inferenceProvider: InferenceProvider
+  result: UsageBearingResult | undefined
+}): ActualModelCost | null {
+  return extractActualModelCost(input)
 }
 
 // These budget helpers touch services that are unavailable in the workflow
@@ -32,6 +41,7 @@ export async function recordTokenUsageStep(input: {
   sourceId?: string | null
   inferenceProvider: InferenceProvider
   model: string
+  actualCost?: ActualModelCost | null
   usage: LanguageModelUsage | undefined
 }): Promise<void> {
   'use step'

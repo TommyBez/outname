@@ -7,6 +7,7 @@ import {
 } from '@outname/shared/model-pricing'
 import type { LanguageModelUsage } from 'ai'
 import Decimal from 'decimal.js'
+import type { InferenceProvider } from './inference-providers'
 
 export interface NormalizedUsage {
   cacheReadTokens: number
@@ -39,11 +40,18 @@ export interface EstimatedModelCost {
   usage: NormalizedUsage
 }
 
+export interface ActualModelCost {
+  costMetadata: Record<string, unknown>
+  costUsd: string
+}
+
 export interface UsageBearingStep {
+  providerMetadata?: unknown
   usage?: LanguageModelUsage
 }
 
 export interface UsageBearingResult {
+  providerMetadata?: unknown
   steps?: readonly UsageBearingStep[]
   totalUsage?: LanguageModelUsage
   usage?: LanguageModelUsage
@@ -203,6 +211,34 @@ export function estimateModelCost(input: {
   }
 }
 
+export function extractActualModelCost(input: {
+  inferenceProvider: InferenceProvider
+  result: UsageBearingResult | undefined
+}): ActualModelCost | null {
+  if (input.inferenceProvider !== 'llm-gateway') {
+    return null
+  }
+  return extractActualLlmGatewayCost(input.result)
+}
+
+function extractActualLlmGatewayCost(
+  result: UsageBearingResult | undefined
+): ActualModelCost | null {
+  if (!result) {
+    return null
+  }
+
+  let lastCost: ActualModelCost | null = null
+  for (const metadata of providerMetadataCandidates(result)) {
+    const usage = llmGatewayUsageFromProviderMetadata(metadata)
+    const cost = usage ? parseLlmGatewayActualCost(usage) : null
+    if (cost) {
+      lastCost = cost
+    }
+  }
+  return lastCost
+}
+
 function priceTokens(input: {
   baseRate: string | null
   tiers: PricingTier[]
@@ -291,6 +327,94 @@ function pricingSnapshot(pricing: ModelPricing): Record<string, unknown> {
 
 function formatUsd(value: Decimal): string {
   return value.toFixed(12)
+}
+
+function providerMetadataCandidates(
+  result: UsageBearingResult
+): readonly unknown[] {
+  const candidates: unknown[] = []
+  if (result.providerMetadata) {
+    candidates.push(result.providerMetadata)
+  }
+  for (const step of result.steps ?? []) {
+    if (step.providerMetadata) {
+      candidates.push(step.providerMetadata)
+    }
+  }
+  return candidates
+}
+
+function llmGatewayUsageFromProviderMetadata(
+  metadata: unknown
+): Record<string, unknown> | null {
+  if (!metadata || typeof metadata !== 'object') {
+    return null
+  }
+  const providerMetadata = metadata as Record<string, unknown>
+  const llmGateway = providerMetadata.llmgateway
+  if (!llmGateway || typeof llmGateway !== 'object') {
+    return null
+  }
+  const usage = (llmGateway as Record<string, unknown>).usage
+  return usage && typeof usage === 'object'
+    ? (usage as Record<string, unknown>)
+    : null
+}
+
+function parseLlmGatewayActualCost(
+  usage: Record<string, unknown>
+): ActualModelCost | null {
+  const totalCost =
+    decimalFromUnknown(usage.cost) ??
+    decimalFromUnknown(usage.cost_usd_total) ??
+    decimalFromUnknown(readNestedField(usage, ['costDetails', 'totalCost'])) ??
+    decimalFromUnknown(readNestedField(usage, ['costDetails', 'total_cost'])) ??
+    decimalFromUnknown(readNestedField(usage, ['cost_details', 'totalCost'])) ??
+    decimalFromUnknown(readNestedField(usage, ['cost_details', 'total_cost']))
+
+  if (!totalCost) {
+    return null
+  }
+
+  return {
+    costUsd: formatUsd(totalCost),
+    costMetadata: {
+      llmGatewayUsage: usage,
+    },
+  }
+}
+
+function readNestedField(
+  value: Record<string, unknown>,
+  path: readonly string[]
+): unknown {
+  let current: unknown = value
+  for (const key of path) {
+    if (!current || typeof current !== 'object') {
+      return
+    }
+    current = (current as Record<string, unknown>)[key]
+  }
+  return current
+}
+
+function decimalFromUnknown(value: unknown): Decimal | null {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) && value >= 0 ? new Decimal(value) : null
+  }
+  if (typeof value !== 'string') {
+    return null
+  }
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return null
+  }
+  try {
+    const decimal = new Decimal(trimmed)
+    return decimal.isFinite() && !decimal.isNegative() ? decimal : null
+  } catch {
+    return null
+  }
 }
 
 export interface UsageInput {

@@ -5,6 +5,7 @@ import { agentTokenUsage } from '@outname/db/schema'
 import { getModelPricing } from '@outname/shared/server/inference-models'
 import type { InferenceProvider } from '@outname/shared/server/inference-providers'
 import {
+  type ActualModelCost,
   estimateModelCost,
   normalizeUsage,
   type UsageInput,
@@ -19,6 +20,7 @@ export async function recordAgentTokenUsage(input: {
   sourceId?: string | null
   inferenceProvider: InferenceProvider
   model: string
+  actualCost?: ActualModelCost | null
   usage: LanguageModelUsage | UsageInput | undefined
 }): Promise<void> {
   const usage = normalizeUsage(input.usage)
@@ -38,6 +40,10 @@ export async function recordAgentTokenUsage(input: {
     modelId: input.model,
   }).catch(() => null)
   const estimate = estimateModelCost({ pricing, usage })
+  const costSource = resolveCostSource({
+    hasActualCost: Boolean(input.actualCost),
+    hasPricing: Boolean(pricing),
+  })
 
   await db.insert(agentTokenUsage).values({
     id: `tu_${Math.random().toString(36).slice(2)}${Date.now().toString(36).slice(-4)}`,
@@ -55,12 +61,26 @@ export async function recordAgentTokenUsage(input: {
     cacheWriteTokens: usage.cacheWriteTokens,
     totalTokens: usage.totalTokens,
     estimatedCostUsd: estimate.estimatedCostUsd,
-    actualCostUsd: null,
-    costSource: pricing ? 'estimated' : 'unknown',
+    actualCostUsd: input.actualCost?.costUsd ?? null,
+    costSource,
     pricingSnapshot: estimate.pricingSnapshot,
     costMetadata: {
+      actual: input.actualCost?.costMetadata ?? null,
       breakdown: estimate.breakdown,
       note: pricing ? null : 'pricing_unavailable',
     },
   })
+}
+
+function resolveCostSource(input: {
+  hasActualCost: boolean
+  hasPricing: boolean
+}): 'actual' | 'estimated' | 'unknown' {
+  if (input.hasActualCost) {
+    return 'actual'
+  }
+  if (input.hasPricing) {
+    return 'estimated'
+  }
+  return 'unknown'
 }
