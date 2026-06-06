@@ -1,6 +1,7 @@
 {
   "name": "@outname/shared",
   "version": "0.1.0",
+  "description": "Shared application modules for Outname.",
   "private": true,
   "exports": {
     "./next/create-outname-next-config": "./next/create-outname-next-config.ts",
