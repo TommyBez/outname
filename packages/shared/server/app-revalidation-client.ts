@@ -18,17 +18,29 @@ export async function sendAppRevalidation(
 
   const origin = appRevalidationOrigin()
   const body = JSON.stringify(payload)
+  const protectionBypassSecret =
+    process.env.APP_VERCEL_AUTOMATION_BYPASS_SECRET?.trim()
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-Outname-Revalidation-Signature': signAppRevalidationBody(body),
+  }
+  if (protectionBypassSecret) {
+    headers['x-vercel-protection-bypass'] = protectionBypassSecret
+  }
+
   const res = await fetch(`${origin}/api/internal/revalidate`, {
     body,
     cache: 'no-store',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Outname-Revalidation-Signature': signAppRevalidationBody(body),
-    },
+    headers,
     method: 'POST',
   })
 
   if (!res.ok) {
+    if (res.status === 401) {
+      throw new Error(
+        'App revalidation failed with status 401. If the app preview deployment is protected, set APP_VERCEL_AUTOMATION_BYPASS_SECRET on the API project to the app project protection bypass secret.'
+      )
+    }
     throw new Error(`App revalidation failed with status ${res.status}`)
   }
 }

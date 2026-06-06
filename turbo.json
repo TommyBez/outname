@@ -3,6 +3,7 @@
   "globalDependencies": [".env.local", ".env.example"],
   "globalEnv": [
     "APP_REVALIDATION_SECRET",
+    "APP_VERCEL_AUTOMATION_BYPASS_SECRET",
     "AUTH_COOKIE_DOMAIN",
     "AUTH_FROM_EMAIL",
     "AUTH_REPLY_TO",
