@@ -58,3 +58,28 @@ _Avoid_: Estimated cost, spend
 A user-defined operational guardrail for limiting agent spend; it is not a
 billing ledger or financial guarantee.
 _Avoid_: Billing, invoice, charge
+
+**Agent Skill**:
+A user-installed capability package that teaches an agent a specialized workflow
+and may include supporting files or executable scripts.
+_Avoid_: Tool, connector, prompt
+
+**Skill Slug**:
+The stable directory identifier for an installed Agent Skill on a specific
+agent. Agents load skills by skill name; the slug is internal to OUTNA.ME.
+_Avoid_: Skill name, display name
+
+**Skill Sandbox**:
+An agent-owned isolated, persistent execution environment dedicated to installed
+skills and skill script execution. It exists only for agents that have skills.
+_Avoid_: System sandbox, tool sandbox, workspace
+
+**Skill Workspace**:
+The writable area inside a Skill Sandbox where an agent runs skill scripts and
+keeps working files across turns.
+_Avoid_: Agent filesystem, memory, system sandbox
+
+**Skill Permission**:
+A user approval that lets a specific installed Agent Skill use external services
+or credential brokers beyond the Skill Sandbox filesystem.
+_Avoid_: Secret, connector, tool

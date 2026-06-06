@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-type SpendSelection = {
+interface SpendSelection {
   total: { queryChunks: unknown[] }
 }
 

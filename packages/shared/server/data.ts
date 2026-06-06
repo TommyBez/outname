@@ -9,13 +9,16 @@ import {
 import { db } from '@outname/db'
 import {
   type Agent,
+  type AgentSkill,
   type AgentTool,
   agent,
+  agentSkills,
   agentTools,
   type UserConnection,
   userConnections,
 } from '@outname/db/schema'
 import {
+  agentSkillsTag,
   agentTag,
   agentToolsTag,
   userAgentsTag,
@@ -161,4 +164,22 @@ export async function getCachedAgentTools(
   cacheLife('minutes')
   cacheTag(agentToolsTag(agentId))
   return await getAgentTools(agentId)
+}
+
+export async function getAgentSkills(agentId: string): Promise<AgentSkill[]> {
+  return await db
+    .select()
+    .from(agentSkills)
+    .where(eq(agentSkills.agentId, agentId))
+    .orderBy(desc(agentSkills.updatedAt))
+}
+
+export async function getCachedAgentSkills(
+  agentId: string
+): Promise<AgentSkill[]> {
+  'use cache'
+
+  cacheLife('minutes')
+  cacheTag(agentSkillsTag(agentId))
+  return await getAgentSkills(agentId)
 }

@@ -7,6 +7,7 @@ import { Button } from '@outname/ui/components/ui/button'
 import { cn } from '@outname/ui/lib/utils'
 import {
   Activity,
+  BookOpenCheck,
   Bot,
   ChevronRight,
   Database,
@@ -35,6 +36,7 @@ const WORKSPACE_TABS = [
   { key: 'events', label: 'Events', icon: Activity },
   { key: 'configure', label: 'Configure', icon: Settings },
   { key: 'tools', label: 'Tools', icon: Wrench },
+  { key: 'skills', label: 'Skills', icon: BookOpenCheck },
   { key: 'memory', label: 'Memory', icon: Database },
 ] as const
 
@@ -149,6 +151,8 @@ function tabHref(agentId: string, key: (typeof WORKSPACE_TABS)[number]['key']) {
       return `/agents/${agentId}/configure`
     case 'tools':
       return `/agents/${agentId}/tools`
+    case 'skills':
+      return `/agents/${agentId}/skills`
     case 'memory':
       return `/agents/${agentId}/memory`
     default:

@@ -489,6 +489,9 @@ importers:
       '@outname/workflow':
         specifier: workspace:*
         version: link:../workflow
+      '@vercel/oidc':
+        specifier: ^3.5.0
+        version: 3.5.0
       '@vercel/sandbox':
         specifier: 2.0.0
         version: 2.0.0
@@ -513,9 +516,19 @@ importers:
       workflow:
         specifier: ^4.2.4
         version: 4.2.5(@nestjs/common@11.1.24(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.24(@nestjs/common@11.1.24(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(@opentelemetry/api@1.9.1)(@swc/cli@0.8.1(@swc/core@1.15.3)(chokidar@5.0.0))(@swc/core@1.15.3)(next@16.2.4(@opentelemetry/api@1.9.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(typescript@6.0.3)
+      yaml:
+        specifier: ^2.9.0
+        version: 2.9.0
+      yauzl:
+        specifier: ^3.3.1
+        version: 3.3.1
       zod:
         specifier: ^4.4.3
         version: 4.4.3
+    devDependencies:
+      '@types/yauzl':
+        specifier: ^2.10.3
+        version: 2.10.3
 
   packages/auth:
     dependencies:
@@ -588,6 +601,9 @@ importers:
       next:
         specifier: 16.2.4
         version: 16.2.4(@opentelemetry/api@1.9.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      react:
+        specifier: ^19.2.0
+        version: 19.2.5
       remark-gfm:
         specifier: ^4.0.1
         version: 4.0.1
@@ -4250,6 +4266,10 @@ packages:
 
   '@vercel/oidc@3.4.1':
     resolution: {integrity: sha512-H6B+/ig/GoahccL3WZjiHayHw1H5KhvTJNceqYulwfK9kkz5iul2hTmYzcJ7tTCQzyd0dutuL9xYFZCyLUqsog==}
+    engines: {node: '>= 20'}
+
+  '@vercel/oidc@3.5.0':
+    resolution: {integrity: sha512-jo7GgeJx2YMkjg9A28pFM5p88n5SnSHvDeNlf9898bRWiG9jPxwedj/gn/2XTw4UOTyQ50uHlrTGSlf/XU5tgw==}
     engines: {node: '>= 20'}
 
   '@vercel/queue@0.1.7':
@@ -11906,7 +11926,6 @@ snapshots:
   '@types/yauzl@2.10.3':
     dependencies:
       '@types/node': 22.19.19
-    optional: true
 
   '@ungap/structured-clone@1.3.1': {}
 
@@ -11962,9 +11981,11 @@ snapshots:
 
   '@vercel/oidc@3.4.1': {}
 
+  '@vercel/oidc@3.5.0': {}
+
   '@vercel/queue@0.1.7':
     dependencies:
-      '@vercel/oidc': 3.4.1
+      '@vercel/oidc': 3.5.0
       minimatch: 10.2.5
       mixpart: 0.0.6
       picocolors: 1.1.1

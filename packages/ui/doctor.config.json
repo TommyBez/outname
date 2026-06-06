@@ -1,5 +1,40 @@
 {
+  "serverAuthFunctionNames": [
+    "requireSession",
+    "requireUserId",
+    "requireWaitlistManageAccess"
+  ],
   "ignore": {
-    "files": ["components/ui/**"]
+    "files": ["components/ui/**"],
+    "overrides": [
+      {
+        "files": ["components/social/**"],
+        "rules": [
+          "react-doctor/design-no-em-dash-in-jsx-text",
+          "react-doctor/design-no-redundant-padding-axes",
+          "react-doctor/design-no-redundant-size-axes",
+          "react-doctor/design-no-three-period-ellipsis",
+          "react-doctor/no-inline-exhaustive-style",
+          "react-doctor/no-long-transition-duration",
+          "react-doctor/no-multi-comp",
+          "react-doctor/no-pure-black-background",
+          "react-doctor/no-render-in-render",
+          "react-doctor/no-wide-letter-spacing",
+          "react-doctor/rendering-svg-precision"
+        ]
+      },
+      {
+        "files": ["package.json"],
+        "rules": ["deslop/unused-dependency", "deslop/unused-dev-dependency"]
+      },
+      {
+        "files": [
+          "components/ui/use-mobile.tsx",
+          "hooks/use-mobile.ts",
+          "hooks/use-toast.ts"
+        ],
+        "rules": ["deslop/unused-file"]
+      }
+    ]
   }
 }

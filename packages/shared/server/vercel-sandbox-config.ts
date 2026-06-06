@@ -77,6 +77,14 @@ export function systemSandboxTags(agentId: string): Record<string, string> {
   }
 }
 
+export function skillSandboxTags(agentId: string): Record<string, string> {
+  return {
+    ...baseSandboxTags(),
+    kind: 'agent-skills',
+    agentId,
+  }
+}
+
 export function toolRuntimeSandboxTags(input: {
   manifestId: string
   runId: string

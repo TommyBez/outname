@@ -1,6 +1,7 @@
 import 'server-only'
 import type { AgentRuntimeSpec } from '@outname/ai/agent-runtime/server/runtime-spec'
 import { createFileTools } from '@outname/ai/agent-runtime/workflows/session/tools/file-tools'
+import { createSkillTools } from '@outname/ai/agent-runtime/workflows/session/tools/skill-tools'
 import { buildAttachedTools } from '@outname/ai/tools/runtime/build-attached-tools'
 import type { BuildAgentTool } from '@outname/ai/tools/sub-agents/agent-tool'
 import {
@@ -31,7 +32,11 @@ export function buildRuntimeToolset(
   })
 
   return {
-    ...createFileTools({ agentId: spec.agentId }),
     ...attached.tools,
+    ...createFileTools({ agentId: spec.agentId }),
+    ...createSkillTools({
+      agentId: spec.agentId,
+      skillPlan: spec.skillPlan,
+    }),
   }
 }

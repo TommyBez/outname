@@ -1,6 +1,7 @@
 {
   "name": "@outname/shared",
   "version": "0.1.0",
+  "description": "Shared application modules for Outname.",
   "private": true,
   "exports": {
     "./next/create-outname-next-config": "./next/create-outname-next-config.ts",
@@ -24,5 +25,8 @@
     "remark-gfm": "^4.0.1",
     "server-only": "^0.0.1",
     "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "react": "^19.2.0"
   }
 }

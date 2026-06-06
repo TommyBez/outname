@@ -5,6 +5,7 @@ import {
   resolveStepLimit,
   type StepLimitMode,
 } from '@outname/ai/agent-runtime/workflows/session/step-limit'
+import { resolveSkillPlan } from '@outname/ai/agent-runtime/workflows/session/steps/resolve-skill-plan'
 import { resolveToolPlan } from '@outname/ai/agent-runtime/workflows/session/steps/resolve-tool-plan'
 
 export type {
@@ -46,10 +47,14 @@ export async function buildAgentRuntimeSpec(
     callStack,
     depth,
   })
+  const skillPlan = await resolveSkillPlan({
+    agentId: input.agentId,
+  })
   const systemPrompt = await composeSystemPrompt({
     agentId: input.agentId,
     agentName: row.name,
     eventKind: input.eventKind,
+    hasSkillTools: skillPlan.skills.length > 0,
     nowIso: input.nowIso ?? new Date().toISOString(),
     reconnects: toolPlan.reconnects,
   })
@@ -65,6 +70,7 @@ export async function buildAgentRuntimeSpec(
     stepLimitCustom: row.stepLimitCustom,
     stepLimitMode: row.stepLimitMode as StepLimitMode,
     systemPrompt,
+    skillPlan,
     toolPlan,
     userId: row.userId,
   }

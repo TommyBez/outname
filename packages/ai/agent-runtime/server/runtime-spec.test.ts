@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   composeSystemPrompt: vi.fn(),
   getAgentById: vi.fn(),
+  resolveSkillPlan: vi.fn(),
   resolveToolPlan: vi.fn(),
 }))
 
@@ -23,6 +24,13 @@ vi.mock(
   '@outname/ai/agent-runtime/workflows/session/steps/resolve-tool-plan',
   () => ({
     resolveToolPlan: mocks.resolveToolPlan,
+  })
+)
+
+vi.mock(
+  '@outname/ai/agent-runtime/workflows/session/steps/resolve-skill-plan',
+  () => ({
+    resolveSkillPlan: mocks.resolveSkillPlan,
   })
 )
 
@@ -49,7 +57,21 @@ describe('buildAgentRuntimeSpec', () => {
         },
       ],
     }
+    const skillPlan = {
+      sandboxName: 'agent-agent_123-skills',
+      skills: [
+        {
+          description: 'Stress-test a plan against project docs.',
+          name: 'Grill With Docs',
+          nameNormalized: 'grill with docs',
+          path: '/vercel/sandbox/skills/grill-with-docs',
+          skillMdPath: '/vercel/sandbox/skills/grill-with-docs/SKILL.md',
+          slug: 'grill-with-docs',
+        },
+      ],
+    }
     mocks.getAgentById.mockResolvedValue({
+      inferenceProvider: 'vercel-ai-gateway',
       id: 'agent_123',
       model: 'openai/gpt-5.1',
       name: 'Main Agent',
@@ -58,6 +80,7 @@ describe('buildAgentRuntimeSpec', () => {
       userId: 'user_123',
     })
     mocks.resolveToolPlan.mockResolvedValue(toolPlan)
+    mocks.resolveSkillPlan.mockResolvedValue(skillPlan)
     mocks.composeSystemPrompt.mockResolvedValue('You are Main Agent.')
 
     const { buildAgentRuntimeSpec } = await import('./runtime-spec')
@@ -76,7 +99,9 @@ describe('buildAgentRuntimeSpec', () => {
       callStack: ['agent_root'],
       depth: 1,
       eventKind: 'chat',
+      inferenceProvider: 'vercel-ai-gateway',
       modelId: 'openai/gpt-5.1',
+      skillPlan,
       stepLimitCustom: null,
       stepLimitMode: 'medium',
       systemPrompt: 'You are Main Agent.',
@@ -94,6 +119,7 @@ describe('buildAgentRuntimeSpec', () => {
       agentId: 'agent_123',
       agentName: 'Main Agent',
       eventKind: 'chat',
+      hasSkillTools: true,
       nowIso: '2026-05-21T10:00:00.000Z',
       reconnects: [],
     })
