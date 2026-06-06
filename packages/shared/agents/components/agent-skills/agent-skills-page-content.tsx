@@ -9,6 +9,7 @@ import { Badge } from '@outname/ui/components/ui/badge'
 import { Button } from '@outname/ui/components/ui/button'
 import { Input } from '@outname/ui/components/ui/input'
 import { Label } from '@outname/ui/components/ui/label'
+import { Skeleton } from '@outname/ui/components/ui/skeleton'
 import { Switch } from '@outname/ui/components/ui/switch'
 import {
   Tabs,
@@ -49,6 +50,13 @@ const SKILL_DATE_FORMATTER = new Intl.DateTimeFormat(undefined, {
   timeStyle: 'short',
 })
 const SKILL_INTEGER_FORMATTER = new Intl.NumberFormat()
+const CATALOG_SKILL_SKELETON_IDS = [
+  'first',
+  'second',
+  'third',
+  'fourth',
+  'fifth',
+] as const
 
 interface InstalledSkillView {
   contentHash: string
@@ -658,12 +666,11 @@ function SkillCatalogPicker({
         </Alert>
       )}
 
-      <div className="grid max-h-[520px] gap-2 overflow-y-auto pr-1">
-        {catalogPending && (
-          <p className="py-10 text-center text-muted-foreground text-sm">
-            Loading catalog...
-          </p>
-        )}
+      <div
+        aria-busy={catalogPending}
+        className="grid max-h-[520px] gap-2 overflow-y-auto pr-1"
+      >
+        {catalogPending && <CatalogSkillListSkeleton />}
         {!catalogPending &&
           visibleSkills.map((skill) => (
             <CatalogSkillLink agentId={agentId} key={skill.id} skill={skill} />
@@ -678,6 +685,24 @@ function SkillCatalogPicker({
       </div>
     </section>
   )
+}
+
+function CatalogSkillListSkeleton() {
+  return CATALOG_SKILL_SKELETON_IDS.map((id) => (
+    <div className="grid gap-2 border-2 border-foreground p-3" key={id}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Skeleton className="h-4 w-36" />
+          <Skeleton className="h-5 w-16" />
+        </div>
+        <Skeleton className="mt-0.5 size-4 shrink-0" />
+      </div>
+      <div className="flex flex-wrap gap-x-3 gap-y-1">
+        <Skeleton className="h-3 w-28" />
+        <Skeleton className="h-3 w-20" />
+      </div>
+    </div>
+  ))
 }
 
 function CatalogSkillLink({
