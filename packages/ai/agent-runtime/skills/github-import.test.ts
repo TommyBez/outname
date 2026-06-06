@@ -30,6 +30,20 @@ describe('parseGitHubSkillUrl', () => {
     })
   })
 
+  it('accepts tree directory URLs when the ref contains slashes', () => {
+    expect(
+      parseGitHubSkillUrl(
+        'https://github.com/acme/skills/tree/feature/agents/copywriting'
+      )
+    ).toMatchObject({
+      isSkillMdFile: false,
+      owner: 'acme',
+      path: 'copywriting',
+      ref: 'feature/agents',
+      repo: 'skills',
+    })
+  })
+
   it('infers the parent directory from blob SKILL.md URLs', () => {
     expect(
       parseGitHubSkillUrl(
@@ -39,6 +53,18 @@ describe('parseGitHubSkillUrl', () => {
       isSkillMdFile: true,
       path: 'grill',
       ref: 'main',
+    })
+  })
+
+  it('infers blob SKILL.md URLs when the ref contains slashes', () => {
+    expect(
+      parseGitHubSkillUrl(
+        'https://github.com/acme/skills/blob/feature/agents/copywriting/SKILL.md'
+      )
+    ).toMatchObject({
+      isSkillMdFile: true,
+      path: 'copywriting',
+      ref: 'feature/agents',
     })
   })
 

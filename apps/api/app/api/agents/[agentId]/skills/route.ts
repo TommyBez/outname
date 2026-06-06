@@ -11,6 +11,8 @@ import {
 import { headers } from 'next/headers'
 import { type NextRequest, NextResponse } from 'next/server'
 
+const MAX_SKILL_FILE_SIZE = 10 * 1024 * 1024
+
 interface RouteParams {
   params: Promise<{ agentId: string }>
 }
@@ -115,6 +117,11 @@ async function readInstallForm(
     const file = form.get('file')
     if (!isFormFile(file)) {
       return invalidRequest('File upload is required.')
+    }
+    if (file.size > MAX_SKILL_FILE_SIZE) {
+      return invalidRequest(
+        `File upload is too large (max ${MAX_SKILL_FILE_SIZE} bytes).`
+      )
     }
     const content = Buffer.from(await file.arrayBuffer())
     return {

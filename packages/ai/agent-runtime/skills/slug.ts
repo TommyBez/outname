@@ -10,7 +10,7 @@ export function slugFromSkillName(name: string): string {
 export function sanitizeSkillSlug(value: string): string {
   const slug = value
     .trim()
-    .toLocaleLowerCase()
+    .toLowerCase()
     .replace(INVALID_SLUG_CHARS_PATTERN, '-')
     .replace(REPEATED_DASHES_PATTERN, '-')
     .replace(EDGE_DASHES_PATTERN, '')

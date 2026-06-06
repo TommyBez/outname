@@ -218,6 +218,7 @@ async function readZipFiles(
   return await new Promise((resolve, reject) => {
     const files: RawZipFile[] = []
     let finished = false
+    let totalBytes = 0
 
     const fail = (error: unknown) => {
       if (finished) {
@@ -275,10 +276,30 @@ async function readZipFiles(
             )
             return
           }
+          totalBytes += chunk.byteLength
+          if (totalBytes > MAX_PACKAGE_BYTES) {
+            stream.destroy(
+              new SkillPackageError(
+                `Skill package is too large (max ${MAX_PACKAGE_BYTES} bytes).`
+              )
+            )
+            return
+          }
           chunks.push(chunk)
         })
         stream.on('error', fail)
         stream.on('end', () => {
+          if (finished) {
+            return
+          }
+          if (totalBytes > MAX_PACKAGE_BYTES) {
+            fail(
+              new SkillPackageError(
+                `Skill package is too large (max ${MAX_PACKAGE_BYTES} bytes).`
+              )
+            )
+            return
+          }
           files.push({
             content: Buffer.concat(chunks),
             executable: zipEntryIsExecutable(entry),

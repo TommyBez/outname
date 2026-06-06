@@ -4,6 +4,15 @@ const GITHUB_HOSTNAME = 'github.com'
 const GITHUB_CODELOAD_HOSTNAME = 'codeload.github.com'
 const GITHUB_API_HOSTNAME = 'api.github.com'
 const MAX_GITHUB_ARCHIVE_BYTES = 25 * 1024 * 1024
+const COMMON_SINGLE_SEGMENT_REFS = new Set([
+  'dev',
+  'develop',
+  'development',
+  'main',
+  'master',
+  'trunk',
+])
+const SKILL_PATH_ROOTS = new Set(['skill', 'skills'])
 
 export interface GitHubSkillSource {
   isSkillMdFile: boolean
@@ -78,8 +87,7 @@ export function parseGitHubSkillUrl(url: string): GitHubSkillSource {
     )
   }
 
-  const [ref, ...pathSegments] = rest
-  const path = pathSegments.join('/')
+  const { path, ref } = splitRefAndPath({ kind, rest })
   if (kind === 'blob') {
     if (!path.endsWith('SKILL.md')) {
       throw new GitHubSkillImportError(
@@ -104,6 +112,58 @@ export function parseGitHubSkillUrl(url: string): GitHubSkillSource {
     ref,
     repo: stripGitSuffix(repo),
   }
+}
+
+function splitRefAndPath(input: { kind: 'blob' | 'tree'; rest: string[] }): {
+  path: string
+  ref: string
+} {
+  const skillRootIndex = input.rest.findIndex(
+    (segment, index) => index > 0 && SKILL_PATH_ROOTS.has(segment.toLowerCase())
+  )
+  if (skillRootIndex > 0) {
+    return {
+      path: input.rest.slice(skillRootIndex).join('/'),
+      ref: input.rest.slice(0, skillRootIndex).join('/'),
+    }
+  }
+  if (shouldPreferSlashRef(input.rest)) {
+    if (input.kind === 'blob' && input.rest.length > 3) {
+      return {
+        path: input.rest.slice(-2).join('/'),
+        ref: input.rest.slice(0, -2).join('/'),
+      }
+    }
+    if (input.kind === 'tree') {
+      return {
+        path: input.rest.at(-1) ?? '',
+        ref: input.rest.slice(0, -1).join('/'),
+      }
+    }
+  }
+
+  const [ref, ...pathSegments] = input.rest
+  const path = pathSegments.join('/')
+  if (input.kind === 'blob' && !path.endsWith('SKILL.md')) {
+    throw new GitHubSkillImportError(
+      'GitHub file URLs must point to a SKILL.md file.'
+    )
+  }
+  if (input.kind === 'tree' && !path) {
+    throw new GitHubSkillImportError(
+      'GitHub directory URLs must include a skill directory path.'
+    )
+  }
+  return { path, ref }
+}
+
+function shouldPreferSlashRef(rest: string[]): boolean {
+  const [firstSegment] = rest
+  return (
+    rest.length > 2 &&
+    typeof firstSegment === 'string' &&
+    !COMMON_SINGLE_SEGMENT_REFS.has(firstSegment)
+  )
 }
 
 export async function importGitHubSkill(

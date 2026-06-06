@@ -18,7 +18,7 @@ export class SkillMdError extends Error {
 }
 
 export function normalizeSkillName(name: string): string {
-  return name.trim().toLocaleLowerCase()
+  return name.trim().normalize('NFC').toLowerCase()
 }
 
 export function parseSkillMd(content: string): ParsedSkillMd {

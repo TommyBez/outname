@@ -52,6 +52,10 @@ async function ResolvedSkillCatalogDetailPage({ params }: { params: Params }) {
     getSkillsShSkillAudit(catalogSkillId).catch(() => null),
     getCachedAgentSkills(agentId),
   ])
+  if (!catalogSkill) {
+    notFound()
+  }
+
   const installedSkill =
     installedSkills.find(
       (skill) =>
@@ -148,7 +152,7 @@ function SkillCatalogDetailContent({
             skillId={detail.id}
           />
           <Button asChild className="gap-2" size="sm" variant="outline">
-            <a href={sourceUrl} rel="noopener" target="_blank">
+            <a href={sourceUrl} rel="noreferrer" target="_blank">
               <ExternalLink aria-hidden className="size-4" />
               Open on skills.sh
             </a>
@@ -287,12 +291,14 @@ function Metric({ label, value }: { label: string; value: string }) {
   )
 }
 
-async function loadCatalogSkill(id: string): Promise<ImportedSkillsShSkill> {
+async function loadCatalogSkill(
+  id: string
+): Promise<ImportedSkillsShSkill | null> {
   try {
     return await importSkillsShSkill(id)
   } catch (error) {
     if (error instanceof SkillsShImportError && error.status === 404) {
-      notFound()
+      return null
     }
     throw error
   }

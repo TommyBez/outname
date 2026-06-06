@@ -132,9 +132,19 @@ export async function removeInferenceProviderKeyAction(
   inferenceProvider: InferenceProvider
 ) {
   const userId = await requireUserId()
-  await clearUserInferenceCredential({ userId, inferenceProvider })
-  revalidatePath('/settings')
-  return { ok: true }
+  try {
+    await clearUserInferenceCredential({ userId, inferenceProvider })
+    revalidatePath('/settings')
+    return { ok: true }
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? `Could not remove ${inferenceProvider} key: ${error.message}`
+          : `Could not remove ${inferenceProvider} key.`,
+    }
+  }
 }
 
 export async function setDefaultInferenceProviderAction(

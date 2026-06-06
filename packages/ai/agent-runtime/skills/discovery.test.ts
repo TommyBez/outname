@@ -55,9 +55,12 @@ describe('discoverRuntimeSkills', () => {
 
 function createSandbox(files: Record<string, string>) {
   return {
-    readFileToBuffer: vi.fn(async ({ path }: { path: string }) =>
-      files[path] ? Buffer.from(files[path], 'utf8') : null
-    ),
+    readFileToBuffer: vi.fn(({ path }: { path: string }) => {
+      if (!Object.hasOwn(files, path)) {
+        return Promise.resolve(null)
+      }
+      return Promise.resolve(Buffer.from(files[path], 'utf8'))
+    }),
     runCommand: vi.fn(async () => ({
       exitCode: 0,
       stderr: async () => '',

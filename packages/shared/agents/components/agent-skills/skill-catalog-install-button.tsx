@@ -44,18 +44,18 @@ export function SkillCatalogInstallButton({
   skillId: string
 }) {
   const [conflict, setConflict] = useState<SkillConflict | null>(null)
-  const [installed, setInstalled] = useState<InstalledSkillView | null>(
-    installedSkill
-  )
+  const [installedAfterMutation, setInstalledAfterMutation] =
+    useState<InstalledSkillView | null>(null)
   const [pending, startTransition] = useTransition()
   const router = useRouter()
+  const installed = installedAfterMutation ?? installedSkill
 
   function submit(replace: boolean) {
     setConflict(null)
     startTransition(async () => {
       const result = await installCatalogSkill({ agentId, replace, skillId })
       if (result.ok && result.skill) {
-        setInstalled(result.skill)
+        setInstalledAfterMutation(result.skill)
         toast.success(result.replaced ? 'Skill replaced.' : 'Skill installed.')
         router.refresh()
         return

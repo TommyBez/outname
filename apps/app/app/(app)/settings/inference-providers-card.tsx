@@ -9,7 +9,13 @@ import {
 import type { InferenceProvider } from '@outname/db/schema'
 import { Button } from '@outname/ui/components/ui/button'
 import { useRouter } from 'next/navigation'
-import { useActionState, useEffect, useState, useTransition } from 'react'
+import {
+  type FormEvent,
+  useActionState,
+  useEffect,
+  useState,
+  useTransition,
+} from 'react'
 import { toast } from 'sonner'
 
 const INITIAL_SAVE_KEY_FORM_STATE: SaveInferenceProviderKeyFormState = {
@@ -62,6 +68,17 @@ function InferenceProviderForm({ provider }: { provider: ProviderState }) {
   const { refresh } = useRouter()
   const pending = savePending || mutationPending
 
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    if (!(provider.enabled && apiKey.trim() === '')) {
+      return
+    }
+    event.preventDefault()
+    const field = event.currentTarget.elements.namedItem('apiKey')
+    if (field instanceof HTMLInputElement) {
+      field.reportValidity()
+    }
+  }
+
   useEffect(() => {
     if (saveState.submittedAt === 0) {
       return
@@ -81,6 +98,7 @@ function InferenceProviderForm({ provider }: { provider: ProviderState }) {
     <form
       action={saveKeyAction}
       className="flex flex-col gap-3 border-2 border-foreground p-4"
+      onSubmit={handleSubmit}
     >
       <input
         name="inferenceProvider"
@@ -129,7 +147,7 @@ function InferenceProviderForm({ provider }: { provider: ProviderState }) {
         name="apiKey"
         onChange={(event) => setApiKey(event.target.value)}
         placeholder={provider.keyPlaceholder}
-        required={!provider.enabled}
+        required
         type="password"
         value={apiKey}
       />
@@ -146,7 +164,7 @@ function InferenceProviderForm({ provider }: { provider: ProviderState }) {
                   provider.inferenceProvider
                 )
                 if (!result.ok) {
-                  toast.error('Unable to remove key.')
+                  toast.error(result.error ?? 'Unable to remove key.')
                   return
                 }
                 toast.success('Key removed.')

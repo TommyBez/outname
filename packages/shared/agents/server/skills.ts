@@ -170,11 +170,9 @@ export async function installSkillForUser(input: {
   }
 
   try {
-    if (existing) {
-      await removeSkillPackageDir(sandbox, slug)
-    }
-    await writeSkillPackageToSandbox({
+    await installSkillPackageInSandbox({
       package: prepared.value.package,
+      replacing: Boolean(existing),
       sandbox,
       slug,
     })
@@ -245,6 +243,58 @@ export async function uninstallSkillForUser(input: {
     )
   revalidateSkillSurfaces(input.agentId, input.userId)
   return { ok: true }
+}
+
+async function installSkillPackageInSandbox(input: {
+  package: PreparedSkillPackage
+  replacing: boolean
+  sandbox: Sandbox
+  slug: string
+}): Promise<void> {
+  if (!input.replacing) {
+    await writeSkillPackageToSandbox({
+      package: input.package,
+      sandbox: input.sandbox,
+      slug: input.slug,
+    })
+    return
+  }
+
+  const tempSlug = tempSkillSlug(input.slug)
+  const backupSlug = backupSkillSlug(input.slug)
+  let swapped = false
+  try {
+    await removeSkillPackageDir(input.sandbox, tempSlug)
+    await removeSkillPackageDir(input.sandbox, backupSlug)
+    await writeSkillPackageToSandbox({
+      package: input.package,
+      sandbox: input.sandbox,
+      slug: tempSlug,
+    })
+    await swapSkillPackageDir({
+      backupSlug,
+      sandbox: input.sandbox,
+      slug: input.slug,
+      tempSlug,
+    })
+    swapped = true
+  } catch (error) {
+    await removeSkillPackageDir(input.sandbox, tempSlug).catch(() => undefined)
+    if (!swapped) {
+      await restoreSkillPackageBackup({
+        backupSlug,
+        sandbox: input.sandbox,
+        slug: input.slug,
+      }).catch(() => undefined)
+    }
+    throw error
+  } finally {
+    if (swapped) {
+      await removeSkillPackageDir(input.sandbox, backupSlug).catch(
+        () => undefined
+      )
+    }
+  }
 }
 
 async function prepareInstallSource(
@@ -443,6 +493,10 @@ async function writeSkillPackageToSandbox(input: {
   sandbox: Sandbox
   slug: string
 }): Promise<void> {
+  if (!input.package.files.some((file) => file.path === SKILL_MD_PATH)) {
+    throw new Error('Prepared package is missing SKILL.md.')
+  }
+
   const packageDir = skillPackageDir(input.slug)
   await runSandboxCommand({
     args: ['-p', packageDir],
@@ -451,32 +505,16 @@ async function writeSkillPackageToSandbox(input: {
     sandbox: input.sandbox,
   })
 
-  const nonSkillFiles = input.package.files.filter(
-    (file) => file.path !== SKILL_MD_PATH
-  )
   await writePackageFiles({
-    files: nonSkillFiles,
+    files: input.package.files,
     packageDir,
     sandbox: input.sandbox,
   })
   await chmodExecutableFiles({
-    files: nonSkillFiles,
+    files: input.package.files.filter((file) => file.path !== SKILL_MD_PATH),
     packageDir,
     sandbox: input.sandbox,
   })
-
-  const skillMd = input.package.files.find(
-    (file) => file.path === SKILL_MD_PATH
-  )
-  if (!skillMd) {
-    throw new Error('Prepared package is missing SKILL.md.')
-  }
-  await input.sandbox.writeFiles([
-    {
-      content: skillMd.content,
-      path: skillPackageFilePath(packageDir, skillMd.path),
-    },
-  ])
 }
 
 async function writePackageFiles(input: {
@@ -543,6 +581,46 @@ async function removeSkillPackageDir(
   })
 }
 
+async function swapSkillPackageDir(input: {
+  backupSlug: string
+  sandbox: Sandbox
+  slug: string
+  tempSlug: string
+}): Promise<void> {
+  const targetDir = skillPackageDir(input.slug)
+  const tempDir = skillPackageDir(input.tempSlug)
+  const backupDir = skillPackageDir(input.backupSlug)
+  await runSandboxCommand({
+    args: ['--', targetDir, backupDir],
+    cmd: 'mv',
+    errorPrefix: `Could not back up skill package ${input.slug}`,
+    sandbox: input.sandbox,
+  })
+  await runSandboxCommand({
+    args: ['--', tempDir, targetDir],
+    cmd: 'mv',
+    errorPrefix: `Could not activate skill package ${input.slug}`,
+    sandbox: input.sandbox,
+  })
+}
+
+async function restoreSkillPackageBackup(input: {
+  backupSlug: string
+  sandbox: Sandbox
+  slug: string
+}): Promise<void> {
+  await runSandboxCommand({
+    args: [
+      '--',
+      skillPackageDir(input.backupSlug),
+      skillPackageDir(input.slug),
+    ],
+    cmd: 'mv',
+    errorPrefix: `Could not restore skill package ${input.slug}`,
+    sandbox: input.sandbox,
+  })
+}
+
 async function runSandboxCommand(input: {
   args: string[]
   cmd: string
@@ -565,6 +643,14 @@ function skillPackageDir(slug: string): string {
 
 function skillPackageFilePath(packageDir: string, path: string): string {
   return `${packageDir}/${path}`
+}
+
+function tempSkillSlug(slug: string): string {
+  return `.${slug}.tmp`
+}
+
+function backupSkillSlug(slug: string): string {
+  return `.${slug}.backup`
 }
 
 function pathDirname(path: string): string {

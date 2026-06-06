@@ -107,13 +107,11 @@ function toCatalogSkillView(
 }
 
 function catalogErrorResponse(error: unknown): NextResponse {
+  console.error('Skills catalog request failed', { error })
   return NextResponse.json(
     {
       code: 'catalog_fetch_failed',
-      message:
-        error instanceof Error
-          ? error.message
-          : 'Could not load skills catalog.',
+      message: 'Could not load skills catalog.',
       ok: false,
     },
     { status: 502 }

@@ -1,4 +1,5 @@
 // biome-ignore-all lint/suspicious/noBitwiseOperators: ZIP fixtures need CRC32 and external mode bits.
+import { deflateRawSync } from 'node:zlib'
 import { describe, expect, it } from 'vitest'
 import {
   prepareGitHubSkillZip,
@@ -189,9 +190,40 @@ describe('skill package preparation', () => {
       })
     ).rejects.toThrow(SkillPackageError)
   })
+
+  it('rejects zips whose inflated package size exceeds the package cap', async () => {
+    const nineMb = Buffer.alloc(9 * 1024 * 1024, 'a')
+
+    await expect(
+      prepareSkillZipUpload({
+        content: makeZip([
+          { content: VALID_SKILL_MD, mode: 0o10_0644, path: 'SKILL.md' },
+          {
+            compressed: true,
+            content: nineMb,
+            mode: 0o10_0644,
+            path: 'a.txt',
+          },
+          {
+            compressed: true,
+            content: nineMb,
+            mode: 0o10_0644,
+            path: 'b.txt',
+          },
+          {
+            compressed: true,
+            content: nineMb,
+            mode: 0o10_0644,
+            path: 'c.txt',
+          },
+        ]),
+      })
+    ).rejects.toThrow(SkillPackageError)
+  })
 })
 
 interface ZipFixtureFile {
+  compressed?: boolean
   content: Buffer
   mode: number
   path: string
@@ -205,31 +237,35 @@ function makeZip(files: ZipFixtureFile[]): Buffer {
   for (const file of files) {
     const name = Buffer.from(file.path, 'utf8')
     const content = file.content
+    const compressedContent = file.compressed
+      ? deflateRawSync(content)
+      : content
+    const compressionMethod = file.compressed ? 8 : 0
     const crc = crc32(content)
     const local = Buffer.alloc(30)
     local.writeUInt32LE(0x04_03_4b_50, 0)
     local.writeUInt16LE(20, 4)
     local.writeUInt16LE(0, 6)
-    local.writeUInt16LE(0, 8)
+    local.writeUInt16LE(compressionMethod, 8)
     local.writeUInt16LE(0, 10)
     local.writeUInt16LE(0, 12)
     local.writeUInt32LE(crc, 14)
-    local.writeUInt32LE(content.byteLength, 18)
+    local.writeUInt32LE(compressedContent.byteLength, 18)
     local.writeUInt32LE(content.byteLength, 22)
     local.writeUInt16LE(name.byteLength, 26)
     local.writeUInt16LE(0, 28)
-    localParts.push(local, name, content)
+    localParts.push(local, name, compressedContent)
 
     const central = Buffer.alloc(46)
     central.writeUInt32LE(0x02_01_4b_50, 0)
     central.writeUInt16LE(0x03_14, 4)
     central.writeUInt16LE(20, 6)
     central.writeUInt16LE(0, 8)
-    central.writeUInt16LE(0, 10)
+    central.writeUInt16LE(compressionMethod, 10)
     central.writeUInt16LE(0, 12)
     central.writeUInt16LE(0, 14)
     central.writeUInt32LE(crc, 16)
-    central.writeUInt32LE(content.byteLength, 20)
+    central.writeUInt32LE(compressedContent.byteLength, 20)
     central.writeUInt32LE(content.byteLength, 24)
     central.writeUInt16LE(name.byteLength, 28)
     central.writeUInt16LE(0, 30)
@@ -240,7 +276,7 @@ function makeZip(files: ZipFixtureFile[]): Buffer {
     central.writeUInt32LE(offset, 42)
     centralParts.push(central, name)
 
-    offset += local.byteLength + name.byteLength + content.byteLength
+    offset += local.byteLength + name.byteLength + compressedContent.byteLength
   }
 
   const centralOffset = offset

@@ -63,4 +63,8 @@ Body`)
   it('normalizes names case-insensitively', () => {
     expect(normalizeSkillName('  Grill With Docs  ')).toBe('grill with docs')
   })
+
+  it('normalizes names with locale-stable NFC casing', () => {
+    expect(normalizeSkillName('  E\u0301lite Skill  ')).toBe('élite skill')
+  })
 })

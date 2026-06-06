@@ -32,11 +32,11 @@ export function buildRuntimeToolset(
   })
 
   return {
+    ...attached.tools,
     ...createFileTools({ agentId: spec.agentId }),
     ...createSkillTools({
       agentId: spec.agentId,
       skillPlan: spec.skillPlan,
     }),
-    ...attached.tools,
   }
 }
