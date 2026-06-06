@@ -21,6 +21,10 @@ export async function recordAgentTokenUsage(input: {
   inferenceProvider: InferenceProvider
   model: string
   actualCost?: ActualModelCost | null
+  actualCostUnavailableReason?: string | null
+  billedModel?: string | null
+  generationId?: string | null
+  upstreamProvider?: string | null
   usage: LanguageModelUsage | UsageInput | undefined
 }): Promise<void> {
   const usage = normalizeUsage(input.usage)
@@ -30,7 +34,8 @@ export async function recordAgentTokenUsage(input: {
     usage.totalTokens === 0 &&
     usage.reasoningTokens === 0 &&
     usage.cacheReadTokens === 0 &&
-    usage.cacheWriteTokens === 0
+    usage.cacheWriteTokens === 0 &&
+    !input.actualCost
   ) {
     return
   }
@@ -54,6 +59,10 @@ export async function recordAgentTokenUsage(input: {
     sourceId: input.sourceId ?? null,
     inferenceProvider: input.inferenceProvider,
     requestedModel: input.model,
+    generationId: input.actualCost?.generationId ?? input.generationId ?? null,
+    upstreamProvider:
+      input.actualCost?.upstreamProvider ?? input.upstreamProvider ?? null,
+    billedModel: input.actualCost?.billedModel ?? input.billedModel ?? null,
     inputTokens: usage.inputTokens,
     outputTokens: usage.outputTokens,
     reasoningTokens: usage.reasoningTokens,
@@ -66,6 +75,9 @@ export async function recordAgentTokenUsage(input: {
     pricingSnapshot: estimate.pricingSnapshot,
     costMetadata: {
       actual: input.actualCost?.costMetadata ?? null,
+      actualUnavailableReason: input.actualCost
+        ? null
+        : (input.actualCostUnavailableReason ?? null),
       breakdown: estimate.breakdown,
       note: pricing ? null : 'pricing_unavailable',
     },

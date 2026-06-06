@@ -14,8 +14,7 @@ import {
   resolveStepLimitCount,
 } from '../step-limit'
 import {
-  extractActualCost,
-  extractTotalUsage,
+  buildGenerationUsageObservations,
   recordTokenUsageStep,
 } from '../steps/budget'
 import {
@@ -125,11 +124,7 @@ export async function handleHeartbeat(input: {
         sourceId: runId,
         inferenceProvider: meta.inferenceProvider,
         model: meta.model,
-        actualCost: extractActualCost({
-          inferenceProvider: meta.inferenceProvider,
-          result,
-        }),
-        usage: extractTotalUsage(result),
+        generations: buildGenerationUsageObservations(result),
       })
     }
 

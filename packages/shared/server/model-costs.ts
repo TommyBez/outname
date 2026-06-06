@@ -5,7 +5,7 @@ import {
   type ModelPricing,
   type PricingTier,
 } from '@outname/shared/model-pricing'
-import type { LanguageModelUsage } from 'ai'
+import type { LanguageModelResponseMetadata, LanguageModelUsage } from 'ai'
 import Decimal from 'decimal.js'
 import type { InferenceProvider } from './inference-providers'
 
@@ -41,17 +41,34 @@ export interface EstimatedModelCost {
 }
 
 export interface ActualModelCost {
+  billedModel?: string | null
   costMetadata: Record<string, unknown>
   costUsd: string
+  generationId?: string
+  source: 'generation_lookup' | 'response_usage'
+  upstreamProvider?: string | null
+}
+
+export interface GenerationUsageObservation {
+  generationId: string
+  modelId: string
+  rawUsage: Record<string, unknown> | null
+  responseMetadata: {
+    id: string
+    modelId: string
+  }
+  usage: LanguageModelUsage
 }
 
 export interface UsageBearingStep {
   providerMetadata?: unknown
-  usage?: LanguageModelUsage
+  response: Pick<LanguageModelResponseMetadata, 'id' | 'modelId'>
+  usage: LanguageModelUsage
 }
 
 export interface UsageBearingResult {
   providerMetadata?: unknown
+  response?: Pick<LanguageModelResponseMetadata, 'id' | 'modelId'>
   steps?: readonly UsageBearingStep[]
   totalUsage?: LanguageModelUsage
   usage?: LanguageModelUsage
@@ -119,6 +136,35 @@ export function extractTotalUsage(
     reasoningTokens,
     totalTokens: totalTokens || inputTokens + outputTokens,
   } as LanguageModelUsage
+}
+
+export function buildGenerationUsageObservations(
+  result: UsageBearingResult | undefined
+): GenerationUsageObservation[] {
+  if (!result) {
+    return []
+  }
+
+  const steps = result.steps ?? []
+  if (steps.length > 0) {
+    return steps.map((step) =>
+      generationUsageObservation({
+        response: step.response,
+        usage: step.usage,
+      })
+    )
+  }
+
+  if (!(result.response && result.usage)) {
+    return []
+  }
+
+  return [
+    generationUsageObservation({
+      response: result.response,
+      usage: result.usage,
+    }),
+  ]
 }
 
 export function normalizeUsage(
@@ -211,39 +257,51 @@ export function estimateModelCost(input: {
   }
 }
 
-export function extractActualModelCost(input: {
+export function extractActualModelCostFromObservation(input: {
+  observation: GenerationUsageObservation
   inferenceProvider: InferenceProvider
-  result: UsageBearingResult | undefined
 }): ActualModelCost | null {
-  if (input.inferenceProvider !== 'llm-gateway') {
+  if (!input.observation.rawUsage) {
     return null
   }
-  return extractActualLlmGatewayCost(input.result)
+  if (input.inferenceProvider === 'llm-gateway') {
+    return extractActualLlmGatewayCost(input.observation)
+  }
+  if (input.inferenceProvider === 'openrouter') {
+    return extractActualOpenRouterCost(input.observation)
+  }
+  return null
 }
 
-function extractActualLlmGatewayCost(
-  result: UsageBearingResult | undefined
-): ActualModelCost | null {
-  if (!result) {
+export function extractActualVercelGatewayCost(input: {
+  generation: Record<string, unknown>
+  generationId: string
+}): ActualModelCost | null {
+  const data = readRecordFromUnknown(input.generation.data)
+  if (!data) {
+    return null
+  }
+  const totalCost = decimalFromNumber(data.total_cost)
+  if (!totalCost) {
     return null
   }
 
-  const aggregateUsage = aggregateLlmGatewayUsage(result)
-  const aggregateCost = aggregateUsage
-    ? parseLlmGatewayActualCost(aggregateUsage)
-    : null
-  if (aggregateCost) {
-    return aggregateCost
+  return {
+    billedModel: stringOrNull(data.model),
+    costMetadata: {
+      vercelAiGatewayGeneration: {
+        generationTime: data.generation_time,
+        isByok: data.is_byok,
+        latency: data.latency,
+        streamed: data.streamed,
+        usage: data.usage,
+      },
+    },
+    costUsd: formatUsd(totalCost),
+    generationId: input.generationId,
+    source: 'generation_lookup',
+    upstreamProvider: stringOrNull(data.provider_name),
   }
-
-  const stepCosts: ActualModelCost[] = []
-  for (const usage of stepLlmGatewayUsages(result)) {
-    const cost = parseLlmGatewayActualCost(usage)
-    if (cost) {
-      stepCosts.push(cost)
-    }
-  }
-  return combineLlmGatewayActualCosts(stepCosts)
 }
 
 function priceTokens(input: {
@@ -336,120 +394,94 @@ function formatUsd(value: Decimal): string {
   return value.toFixed(12)
 }
 
-function aggregateLlmGatewayUsage(
-  result: UsageBearingResult
-): Record<string, unknown> | null {
-  return (
-    llmGatewayUsageFromRawUsage(result.totalUsage) ??
-    llmGatewayUsageFromRawUsage(result.usage)
-  )
+function generationUsageObservation(input: {
+  response: Pick<LanguageModelResponseMetadata, 'id' | 'modelId'>
+  usage: LanguageModelUsage
+}): GenerationUsageObservation {
+  return {
+    generationId: input.response.id,
+    modelId: input.response.modelId,
+    rawUsage: rawUsageFromLanguageModelUsage(input.usage),
+    responseMetadata: {
+      id: input.response.id,
+      modelId: input.response.modelId,
+    },
+    usage: input.usage,
+  }
 }
 
-function stepLlmGatewayUsages(
-  result: UsageBearingResult
-): readonly Record<string, unknown>[] {
-  const usages: Record<string, unknown>[] = []
-  for (const step of result.steps ?? []) {
-    const usage = llmGatewayUsageFromRawUsage(step.usage)
-    if (usage) {
-      usages.push(usage)
-    }
-  }
-  return usages
-}
-
-function llmGatewayUsageFromRawUsage(
-  usage: LanguageModelUsage | undefined
-): Record<string, unknown> | null {
-  if (!usage || typeof usage !== 'object') {
-    return null
-  }
-  const raw = (usage as Record<string, unknown>).raw
-  if (!raw || typeof raw !== 'object') {
-    return null
-  }
-  const rawRecord = raw as Record<string, unknown>
-  const nestedUsage = rawRecord.usage
-  return nestedUsage && typeof nestedUsage === 'object'
-    ? (nestedUsage as Record<string, unknown>)
-    : rawRecord
-}
-
-function parseLlmGatewayActualCost(
-  usage: Record<string, unknown>
+function extractActualLlmGatewayCost(
+  observation: GenerationUsageObservation
 ): ActualModelCost | null {
-  // LLM Gateway documents per-request costs on response usage as
-  // cost_usd_total, or cost/cost_details.total_cost for native web search.
+  const usage = observation.rawUsage
   const totalCost =
-    decimalFromUnknown(usage.cost_usd_total) ??
-    decimalFromUnknown(usage.cost) ??
-    decimalFromUnknown(readNestedField(usage, ['cost_details', 'total_cost']))
-
+    decimalFromNumber(usage?.cost_usd_total) ?? decimalFromNumber(usage?.cost)
   if (!totalCost) {
     return null
   }
 
   return {
+    billedModel: observation.modelId,
     costUsd: formatUsd(totalCost),
     costMetadata: {
       llmGatewayUsage: usage,
     },
+    generationId: observation.generationId,
+    source: 'response_usage',
   }
 }
 
-function combineLlmGatewayActualCosts(
-  costs: readonly ActualModelCost[]
+function extractActualOpenRouterCost(
+  observation: GenerationUsageObservation
 ): ActualModelCost | null {
-  if (costs.length === 0) {
+  const usage = observation.rawUsage
+  const totalCost = decimalFromNumber(usage?.cost)
+  if (!totalCost) {
     return null
   }
-  if (costs.length === 1) {
-    return costs[0] ?? null
-  }
 
-  const totalCost = costs.reduce(
-    (sum, cost) => sum.plus(cost.costUsd),
-    new Decimal(0)
-  )
+  const costDetails = readRecordFromUnknown(usage?.cost_details)
   return {
+    billedModel: observation.modelId,
     costUsd: formatUsd(totalCost),
     costMetadata: {
-      llmGatewayUsage: costs.map((cost) => cost.costMetadata.llmGatewayUsage),
+      currencySource: 'openrouter_usd_credits',
+      openRouterUsage: {
+        costDetails: costDetails
+          ? {
+              upstreamInferenceCost: costDetails.upstream_inference_cost,
+            }
+          : null,
+        rawUsage: usage,
+      },
     },
+    generationId: observation.generationId,
+    source: 'response_usage',
   }
 }
 
-function readNestedField(
-  value: Record<string, unknown>,
-  path: readonly string[]
-): unknown {
-  let current: unknown = value
-  for (const key of path) {
-    if (!current || typeof current !== 'object') {
-      return
-    }
-    current = (current as Record<string, unknown>)[key]
-  }
-  return current
+function rawUsageFromLanguageModelUsage(
+  usage: LanguageModelUsage
+): Record<string, unknown> | null {
+  const raw = (usage as Record<string, unknown>).raw
+  return readRecordFromUnknown(raw)
 }
 
-function decimalFromUnknown(value: unknown): Decimal | null {
+function readRecordFromUnknown(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object'
+    ? (value as Record<string, unknown>)
+    : null
+}
+
+function stringOrNull(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null
+}
+
+function decimalFromNumber(value: unknown): Decimal | null {
   if (typeof value === 'number') {
     return Number.isFinite(value) && value >= 0 ? new Decimal(value) : null
   }
-  if (typeof value !== 'string') {
-    return null
-  }
-  const trimmed = value.trim()
-  if (!trimmed) {
-    return null
-  }
-  try {
-    const decimal = new Decimal(trimmed)
-    return decimal.isFinite() && !decimal.isNegative() ? decimal : null
-  } catch {
-    return null
-  }
+  return null
 }
 
 export interface UsageInput {

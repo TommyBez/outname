@@ -33,6 +33,10 @@ const OPENROUTER_EXTRA_BODY = {
 } as const
 
 interface ProviderDefinition {
+  createGenerationLookupRequest?: (input: {
+    apiKey: string
+    generationId: string
+  }) => ProviderGenerationLookupRequest
   createLanguageModel: (input: {
     apiKey: string
     modelId: string
@@ -46,6 +50,11 @@ interface ProviderDefinition {
 }
 
 interface ProviderVerificationRequest {
+  init?: RequestInit
+  url: string
+}
+
+interface ProviderGenerationLookupRequest {
   init?: RequestInit
   url: string
 }
@@ -110,6 +119,14 @@ const PROVIDER_DEFINITIONS = {
       const gateway = createGateway({ apiKey })
       return gateway(modelId)
     },
+    createGenerationLookupRequest: ({ apiKey, generationId }) => ({
+      url: `https://ai-gateway.vercel.sh/v1/generation?id=${encodeURIComponent(generationId)}`,
+      init: {
+        headers: {
+          authorization: `Bearer ${apiKey}`,
+        },
+      },
+    }),
     createVerificationRequest: (apiKey) => ({
       url: 'https://ai-gateway.vercel.sh/v1/credits',
       init: {
@@ -158,6 +175,20 @@ export function inferenceProviderVerificationRequest(input: {
 }): ProviderVerificationRequest {
   return PROVIDER_DEFINITIONS[input.provider].createVerificationRequest(
     input.apiKey
+  )
+}
+
+export function inferenceProviderGenerationLookupRequest(input: {
+  apiKey: string
+  generationId: string
+  provider: InferenceProvider
+}): ProviderGenerationLookupRequest | null {
+  const definition = PROVIDER_DEFINITIONS[input.provider] as ProviderDefinition
+  return (
+    definition.createGenerationLookupRequest?.({
+      apiKey: input.apiKey,
+      generationId: input.generationId,
+    }) ?? null
   )
 }
 

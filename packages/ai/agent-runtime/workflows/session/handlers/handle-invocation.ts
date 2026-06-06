@@ -16,8 +16,7 @@ import {
   resolveStepLimit,
 } from '../step-limit'
 import {
-  extractActualCost,
-  extractTotalUsage,
+  buildGenerationUsageObservations,
   preflightBudget,
   recordTokenUsageStep,
 } from '../steps/budget'
@@ -150,11 +149,7 @@ export async function handleInvocation(input: {
       sourceId: runId,
       inferenceProvider: built.meta.inferenceProvider,
       model: built.meta.model,
-      actualCost: extractActualCost({
-        inferenceProvider: built.meta.inferenceProvider,
-        result,
-      }),
-      usage: extractTotalUsage(result),
+      generations: buildGenerationUsageObservations(result),
     })
     await finishSuccessfulInvocation({
       result,

@@ -1,26 +1,18 @@
 import { checkBudgetExceeded } from '@outname/shared/budgets/server/spend'
 import type { BudgetExceededInfo } from '@outname/shared/budgets/server/types'
 import { recordAgentTokenUsage } from '@outname/shared/budgets/server/usage'
+import { resolveActualModelCost } from '@outname/shared/server/inference-actual-costs'
 import type { InferenceProvider } from '@outname/shared/server/inference-providers'
 import {
-  type ActualModelCost,
-  extractActualModelCost,
-  extractTotalUsage as extractTotalUsageFromResult,
+  buildGenerationUsageObservations as buildGenerationUsageObservationsFromResult,
+  type GenerationUsageObservation,
   type UsageBearingResult,
 } from '@outname/shared/server/model-costs'
-import type { LanguageModelUsage } from 'ai'
 
-export function extractTotalUsage(
+export function buildGenerationUsageObservations(
   result: UsageBearingResult | undefined
-): LanguageModelUsage | undefined {
-  return extractTotalUsageFromResult(result)
-}
-
-export function extractActualCost(input: {
-  inferenceProvider: InferenceProvider
-  result: UsageBearingResult | undefined
-}): ActualModelCost | null {
-  return extractActualModelCost(input)
+): GenerationUsageObservation[] {
+  return buildGenerationUsageObservationsFromResult(result)
 }
 
 // These budget helpers touch services that are unavailable in the workflow
@@ -41,12 +33,31 @@ export async function recordTokenUsageStep(input: {
   sourceId?: string | null
   inferenceProvider: InferenceProvider
   model: string
-  actualCost?: ActualModelCost | null
-  usage: LanguageModelUsage | undefined
+  generations: GenerationUsageObservation[]
 }): Promise<void> {
   'use step'
   try {
-    await recordAgentTokenUsage(input)
+    for (const generation of input.generations) {
+      const actualCost = await resolveActualModelCost({
+        userId: input.userId,
+        inferenceProvider: input.inferenceProvider,
+        observation: generation,
+      })
+      await recordAgentTokenUsage({
+        userId: input.userId,
+        agentId: input.agentId,
+        rootAgentId: input.rootAgentId,
+        sourceType: input.sourceType,
+        sourceId: input.sourceId,
+        inferenceProvider: input.inferenceProvider,
+        model: input.model,
+        actualCost: actualCost.actualCost,
+        actualCostUnavailableReason: actualCost.unavailableReason,
+        billedModel: generation.modelId,
+        generationId: generation.generationId,
+        usage: generation.usage,
+      })
+    }
   } catch (err) {
     // Usage persistence is best-effort because the run already happened.
     console.error('recordTokenUsageStep: failed to persist usage', err)
