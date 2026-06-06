@@ -228,15 +228,22 @@ function extractActualLlmGatewayCost(
     return null
   }
 
-  let lastCost: ActualModelCost | null = null
-  for (const metadata of providerMetadataCandidates(result)) {
-    const usage = llmGatewayUsageFromProviderMetadata(metadata)
-    const cost = usage ? parseLlmGatewayActualCost(usage) : null
+  const aggregateUsage = aggregateLlmGatewayUsage(result)
+  const aggregateCost = aggregateUsage
+    ? parseLlmGatewayActualCost(aggregateUsage)
+    : null
+  if (aggregateCost) {
+    return aggregateCost
+  }
+
+  const stepCosts: ActualModelCost[] = []
+  for (const usage of stepLlmGatewayUsages(result)) {
+    const cost = parseLlmGatewayActualCost(usage)
     if (cost) {
-      lastCost = cost
+      stepCosts.push(cost)
     }
   }
-  return lastCost
+  return combineLlmGatewayActualCosts(stepCosts)
 }
 
 function priceTokens(input: {
@@ -329,47 +336,53 @@ function formatUsd(value: Decimal): string {
   return value.toFixed(12)
 }
 
-function providerMetadataCandidates(
+function aggregateLlmGatewayUsage(
   result: UsageBearingResult
-): readonly unknown[] {
-  const candidates: unknown[] = []
-  if (result.providerMetadata) {
-    candidates.push(result.providerMetadata)
-  }
-  for (const step of result.steps ?? []) {
-    if (step.providerMetadata) {
-      candidates.push(step.providerMetadata)
-    }
-  }
-  return candidates
+): Record<string, unknown> | null {
+  return (
+    llmGatewayUsageFromRawUsage(result.totalUsage) ??
+    llmGatewayUsageFromRawUsage(result.usage)
+  )
 }
 
-function llmGatewayUsageFromProviderMetadata(
-  metadata: unknown
+function stepLlmGatewayUsages(
+  result: UsageBearingResult
+): readonly Record<string, unknown>[] {
+  const usages: Record<string, unknown>[] = []
+  for (const step of result.steps ?? []) {
+    const usage = llmGatewayUsageFromRawUsage(step.usage)
+    if (usage) {
+      usages.push(usage)
+    }
+  }
+  return usages
+}
+
+function llmGatewayUsageFromRawUsage(
+  usage: LanguageModelUsage | undefined
 ): Record<string, unknown> | null {
-  if (!metadata || typeof metadata !== 'object') {
+  if (!usage || typeof usage !== 'object') {
     return null
   }
-  const providerMetadata = metadata as Record<string, unknown>
-  const llmGateway = providerMetadata.llmgateway
-  if (!llmGateway || typeof llmGateway !== 'object') {
+  const raw = (usage as Record<string, unknown>).raw
+  if (!raw || typeof raw !== 'object') {
     return null
   }
-  const usage = (llmGateway as Record<string, unknown>).usage
-  return usage && typeof usage === 'object'
-    ? (usage as Record<string, unknown>)
-    : null
+  const rawRecord = raw as Record<string, unknown>
+  const nestedUsage = rawRecord.usage
+  return nestedUsage && typeof nestedUsage === 'object'
+    ? (nestedUsage as Record<string, unknown>)
+    : rawRecord
 }
 
 function parseLlmGatewayActualCost(
   usage: Record<string, unknown>
 ): ActualModelCost | null {
+  // LLM Gateway documents per-request costs on response usage as
+  // cost_usd_total, or cost/cost_details.total_cost for native web search.
   const totalCost =
-    decimalFromUnknown(usage.cost) ??
     decimalFromUnknown(usage.cost_usd_total) ??
-    decimalFromUnknown(readNestedField(usage, ['costDetails', 'totalCost'])) ??
-    decimalFromUnknown(readNestedField(usage, ['costDetails', 'total_cost'])) ??
-    decimalFromUnknown(readNestedField(usage, ['cost_details', 'totalCost'])) ??
+    decimalFromUnknown(usage.cost) ??
     decimalFromUnknown(readNestedField(usage, ['cost_details', 'total_cost']))
 
   if (!totalCost) {
@@ -380,6 +393,28 @@ function parseLlmGatewayActualCost(
     costUsd: formatUsd(totalCost),
     costMetadata: {
       llmGatewayUsage: usage,
+    },
+  }
+}
+
+function combineLlmGatewayActualCosts(
+  costs: readonly ActualModelCost[]
+): ActualModelCost | null {
+  if (costs.length === 0) {
+    return null
+  }
+  if (costs.length === 1) {
+    return costs[0] ?? null
+  }
+
+  const totalCost = costs.reduce(
+    (sum, cost) => sum.plus(cost.costUsd),
+    new Decimal(0)
+  )
+  return {
+    costUsd: formatUsd(totalCost),
+    costMetadata: {
+      llmGatewayUsage: costs.map((cost) => cost.costMetadata.llmGatewayUsage),
     },
   }
 }

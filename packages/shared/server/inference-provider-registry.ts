@@ -15,12 +15,14 @@ export const DEFAULT_INFERENCE_PROVIDER: InferenceProvider = 'vercel-ai-gateway'
 type LlmGatewayModelId = Parameters<ReturnType<typeof createLLMGateway>>[0]
 type ProviderLanguageModel = ReturnType<ReturnType<typeof createGateway>>
 
-// LLM Gateway's model and MCP discovery endpoints are public, so key
-// verification uses the smallest authenticated OpenAI-compatible request.
+// LLM Gateway's discovery endpoints are public, so key verification sends a
+// one-token authenticated ping through a small OpenAI-compatible model. Update
+// this if LLM Gateway deprecates or renames the route.
+const LLM_GATEWAY_VERIFICATION_MODEL = 'gpt-4o-mini'
 const LLM_GATEWAY_VERIFICATION_BODY = {
   max_tokens: 1,
   messages: [{ role: 'user', content: 'ping' }],
-  model: 'gpt-4o-mini',
+  model: LLM_GATEWAY_VERIFICATION_MODEL,
 } as const
 
 const OPENROUTER_EXTRA_BODY = {

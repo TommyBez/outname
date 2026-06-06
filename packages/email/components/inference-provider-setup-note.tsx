@@ -1,7 +1,7 @@
 import { Link, Text } from 'react-email'
 
 const VERCEL_AI_GATEWAY_URL = 'https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai'
-const LLM_GATEWAY_URL = 'https://llmgateway.io/'
+const LLM_GATEWAY_URL = 'https://llmgateway.io/dashboard'
 const OPENROUTER_URL = 'https://openrouter.ai/settings/keys'
 
 export function InferenceProviderSetupNote() {
