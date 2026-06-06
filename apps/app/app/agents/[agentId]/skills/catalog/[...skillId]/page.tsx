@@ -107,7 +107,10 @@ function SkillCatalogDetailContent({
   return (
     <div className="flex flex-col gap-6">
       <Button asChild className="w-fit gap-2" size="sm" variant="outline">
-        <Link href={`/agents/${encodeURIComponent(agentId)}/skills`}>
+        <Link
+          href={`/agents/${encodeURIComponent(agentId)}/skills`}
+          prefetch={false}
+        >
           <ArrowLeft aria-hidden className="size-4" />
           Back to skills
         </Link>

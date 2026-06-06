@@ -12,7 +12,7 @@ import {
 export async function sendAppRevalidation(
   payload: AppRevalidationPayload
 ): Promise<void> {
-  if (payload.tags.length === 0) {
+  if (payload.tags.length === 0 && (payload.paths?.length ?? 0) === 0) {
     return
   }
 

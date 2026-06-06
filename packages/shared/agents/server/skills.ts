@@ -24,7 +24,7 @@ import {
   agent,
   agentSkills,
 } from '@outname/db/schema'
-import { revalidateAppAfter } from '@outname/shared/server/app-revalidation-after'
+import { sendAppRevalidation } from '@outname/shared/server/app-revalidation-client'
 import {
   agentSkillsTag,
   agentTag,
@@ -193,7 +193,7 @@ export async function installSkillForUser(input: {
     sourceType: prepared.value.sourceType,
     sourceUrl: prepared.value.sourceUrl,
   })
-  revalidateSkillSurfaces(input.agentId, input.userId)
+  await revalidateSkillSurfaces(input.agentId, input.userId)
 
   return {
     ok: true,
@@ -241,7 +241,7 @@ export async function uninstallSkillForUser(input: {
         eq(agentSkills.slug, row.slug)
       )
     )
-  revalidateSkillSurfaces(input.agentId, input.userId)
+  await revalidateSkillSurfaces(input.agentId, input.userId)
   return { ok: true }
 }
 
@@ -667,12 +667,22 @@ function toConflictSkill(
   }
 }
 
-function revalidateSkillSurfaces(agentId: string, userId: string): void {
-  revalidateAppAfter([
-    [agentSkillsTag(agentId), 'max'],
-    [agentTag(agentId), 'max'],
-    [userAgentsTag(userId), 'max'],
-  ])
+async function revalidateSkillSurfaces(
+  agentId: string,
+  userId: string
+): Promise<void> {
+  try {
+    await sendAppRevalidation({
+      paths: [`/agents/${agentId}/skills`],
+      tags: [
+        [agentSkillsTag(agentId), 'max'],
+        [agentTag(agentId), 'max'],
+        [userAgentsTag(userId), 'max'],
+      ],
+    })
+  } catch (error) {
+    console.error('[agent-skills] app revalidation failed', error)
+  }
 }
 
 function dateToIso(value: Date): string {

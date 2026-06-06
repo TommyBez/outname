@@ -2,7 +2,7 @@ import {
   parseAppRevalidationPayload,
   verifyAppRevalidationBody,
 } from '@outname/shared/server/app-revalidation'
-import { revalidateTag } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request) {
@@ -29,6 +29,9 @@ export async function POST(req: Request) {
 
   for (const [tag, profile] of payload.tags) {
     revalidateTag(tag, profile)
+  }
+  for (const path of payload.paths ?? []) {
+    revalidatePath(path)
   }
 
   return NextResponse.json({ ok: true })

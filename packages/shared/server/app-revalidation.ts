@@ -4,6 +4,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto'
 export type AppRevalidationProfile = 'max' | { expire: 0 }
 
 export interface AppRevalidationPayload {
+  paths?: string[]
   tags: [tag: string, profile: AppRevalidationProfile][]
 }
 
@@ -38,6 +39,7 @@ export function parseAppRevalidationPayload(
   if (!Array.isArray(rawTags)) {
     return null
   }
+  const rawPaths = Reflect.get(value, 'paths') as unknown
 
   const tags: AppRevalidationPayload['tags'] = []
   for (const item of rawTags) {
@@ -54,7 +56,30 @@ export function parseAppRevalidationPayload(
     tags.push([tag, profile])
   }
 
-  return { tags }
+  const paths = parseAppRevalidationPaths(rawPaths)
+  if (!paths) {
+    return null
+  }
+
+  return paths.length > 0 ? { paths, tags } : { tags }
+}
+
+function parseAppRevalidationPaths(value: unknown): string[] | null {
+  if (typeof value === 'undefined') {
+    return []
+  }
+  if (!Array.isArray(value)) {
+    return null
+  }
+
+  const paths: string[] = []
+  for (const path of value) {
+    if (typeof path !== 'string' || !path.startsWith('/')) {
+      return null
+    }
+    paths.push(path)
+  }
+  return paths
 }
 
 function isAppRevalidationProfile(
