@@ -602,7 +602,7 @@ importers:
         specifier: 16.2.4
         version: 16.2.4(@opentelemetry/api@1.9.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       react:
-        specifier: 19.2.5
+        specifier: ^19.2.0
         version: 19.2.5
       remark-gfm:
         specifier: ^4.0.1
