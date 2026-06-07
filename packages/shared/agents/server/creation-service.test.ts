@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const {
   mockDbInsert,
   mockDbSelect,
+  mockDbTransaction,
   mockHasEnabledInferenceProvider,
   mockIsModelSelectionValid,
   mockRefreshAgentCapabilitySummary,
@@ -12,6 +13,7 @@ const {
 } = vi.hoisted(() => ({
   mockDbInsert: vi.fn(),
   mockDbSelect: vi.fn(),
+  mockDbTransaction: vi.fn(),
   mockHasEnabledInferenceProvider: vi.fn(),
   mockIsModelSelectionValid: vi.fn(),
   mockRefreshAgentCapabilitySummary: vi.fn(),
@@ -24,6 +26,7 @@ vi.mock('@outname/db', () => ({
   db: {
     insert: mockDbInsert,
     select: mockDbSelect,
+    transaction: mockDbTransaction,
   },
 }))
 
@@ -62,9 +65,22 @@ describe('createAgentForUser', () => {
     mockIsModelSelectionValid.mockResolvedValue(true)
     mockRefreshAgentCapabilitySummary.mockResolvedValue(undefined)
     mockWriteBootstrapFiles.mockResolvedValue(undefined)
+    mockDbTransaction.mockImplementation(
+      async (
+        callback: (tx: {
+          insert: typeof mockDbInsert
+          select: typeof mockDbSelect
+        }) => Promise<unknown>
+      ) =>
+        callback({
+          insert: mockDbInsert,
+          select: mockDbSelect,
+        })
+    )
   })
 
   it('blocks non-admin users once they already have three agents', async () => {
+    queueSelectRows([{ lock: null }])
     queueSelectWithLimit([{ role: 'user' }])
     queueSelectWithWhere([{ total: NON_ADMIN_AGENT_LIMIT }])
 
@@ -73,12 +89,14 @@ describe('createAgentForUser', () => {
     )
 
     expect(mockDbInsert).not.toHaveBeenCalled()
+    expect(mockDbTransaction).toHaveBeenCalledOnce()
     expect(mockWriteBootstrapFiles).not.toHaveBeenCalled()
     expect(mockRefreshAgentCapabilitySummary).not.toHaveBeenCalled()
   })
 
   it('allows non-admin users below the three-agent limit', async () => {
     const createdAgent = agentRow({ id: 'ag_created' })
+    queueSelectRows([{ lock: null }])
     queueSelectWithLimit([{ role: 'user' }])
     queueSelectWithWhere([{ total: NON_ADMIN_AGENT_LIMIT - 1 }])
     mockInsertReturning([createdAgent])
@@ -89,12 +107,14 @@ describe('createAgentForUser', () => {
     })
 
     expect(mockDbInsert).toHaveBeenCalledOnce()
+    expect(mockDbTransaction).toHaveBeenCalledOnce()
     expect(mockWriteBootstrapFiles).toHaveBeenCalledOnce()
     expect(mockRefreshAgentCapabilitySummary).toHaveBeenCalledOnce()
   })
 
   it('does not apply the limit to admin users', async () => {
     const createdAgent = agentRow({ id: 'ag_admin' })
+    queueSelectRows([{ lock: null }])
     queueSelectWithLimit([{ role: 'admin' }])
     mockInsertReturning([createdAgent])
 
@@ -103,8 +123,9 @@ describe('createAgentForUser', () => {
       created: true,
     })
 
-    expect(mockDbSelect).toHaveBeenCalledTimes(1)
+    expect(mockDbSelect).toHaveBeenCalledTimes(2)
     expect(mockDbInsert).toHaveBeenCalledOnce()
+    expect(mockDbTransaction).toHaveBeenCalledOnce()
   })
 
   it('allows idempotent creation retries for an existing agent at the limit', async () => {
@@ -115,6 +136,7 @@ describe('createAgentForUser', () => {
         userId: input.userId,
       }),
     })
+    queueSelectRows([{ lock: null }])
     queueSelectWithLimit([existingAgent])
 
     await expect(createAgentForUser(input)).resolves.toMatchObject({
@@ -123,8 +145,9 @@ describe('createAgentForUser', () => {
       id: existingAgent.id,
     })
 
-    expect(mockDbSelect).toHaveBeenCalledTimes(1)
+    expect(mockDbSelect).toHaveBeenCalledTimes(2)
     expect(mockDbInsert).not.toHaveBeenCalled()
+    expect(mockDbTransaction).toHaveBeenCalledOnce()
     expect(mockWriteBootstrapFiles).toHaveBeenCalledOnce()
     expect(mockRefreshAgentCapabilitySummary).toHaveBeenCalledOnce()
   })
@@ -198,6 +221,10 @@ function queueSelectWithWhere(rows: unknown[]): void {
   const where = vi.fn().mockResolvedValue(rows)
   const from = vi.fn(() => ({ where }))
   mockDbSelect.mockImplementationOnce(() => ({ from }))
+}
+
+function queueSelectRows(rows: unknown[]): void {
+  mockDbSelect.mockImplementationOnce(() => Promise.resolve(rows))
 }
 
 function stableAgentIdForCreation(input: {
