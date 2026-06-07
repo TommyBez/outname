@@ -309,12 +309,6 @@ function isLlmGatewayToolModel(
   if (!value.id || typeof value.id !== 'string') {
     return false
   }
-  if (
-    Array.isArray(value.supported_parameters) &&
-    value.supported_parameters.includes('tools')
-  ) {
-    return true
-  }
   return Boolean(
     Array.isArray(value.providers) &&
       value.providers.some((provider) => provider.tools === true)
