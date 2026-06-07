@@ -53,7 +53,7 @@ type AgentCreationStore = Pick<typeof db, 'insert' | 'select'>
 
 export class AgentCreationLimitExceededError extends Error {
   constructor() {
-    super(`Non-admin users can create at most ${NON_ADMIN_AGENT_LIMIT} agents.`)
+    super(`You can create at most ${NON_ADMIN_AGENT_LIMIT} agents.`)
     this.name = 'AgentCreationLimitExceededError'
   }
 }
