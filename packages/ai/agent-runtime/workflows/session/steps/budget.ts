@@ -36,8 +36,8 @@ export async function recordTokenUsageStep(input: {
   generations: GenerationUsageObservation[]
 }): Promise<void> {
   'use step'
-  try {
-    for (const generation of input.generations) {
+  for (const generation of input.generations) {
+    try {
       const actualCost = await resolveActualModelCost({
         userId: input.userId,
         inferenceProvider: input.inferenceProvider,
@@ -57,9 +57,17 @@ export async function recordTokenUsageStep(input: {
         generationId: generation.generationId,
         usage: generation.usage,
       })
+    } catch (err) {
+      // Usage persistence is best-effort because the run already happened.
+      console.error(
+        'recordTokenUsageStep: failed to persist generation usage',
+        {
+          err,
+          generationId: generation.generationId,
+          inferenceProvider: input.inferenceProvider,
+          userId: input.userId,
+        }
+      )
     }
-  } catch (err) {
-    // Usage persistence is best-effort because the run already happened.
-    console.error('recordTokenUsageStep: failed to persist usage', err)
   }
 }

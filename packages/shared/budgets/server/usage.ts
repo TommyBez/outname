@@ -40,9 +40,11 @@ export async function recordAgentTokenUsage(input: {
     return
   }
 
+  const billedModel = input.actualCost?.billedModel ?? input.billedModel ?? null
+  const pricedModelId = billedModel ?? input.model
   const pricing = await getModelPricing({
     inferenceProvider: input.inferenceProvider,
-    modelId: input.model,
+    modelId: pricedModelId,
   }).catch(() => null)
   const estimate = estimateModelCost({ pricing, usage })
   const costSource = resolveCostSource({
@@ -62,7 +64,7 @@ export async function recordAgentTokenUsage(input: {
     generationId: input.actualCost?.generationId ?? input.generationId ?? null,
     upstreamProvider:
       input.actualCost?.upstreamProvider ?? input.upstreamProvider ?? null,
-    billedModel: input.actualCost?.billedModel ?? input.billedModel ?? null,
+    billedModel,
     inputTokens: usage.inputTokens,
     outputTokens: usage.outputTokens,
     reasoningTokens: usage.reasoningTokens,

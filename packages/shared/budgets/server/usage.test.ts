@@ -96,7 +96,7 @@ describe('recordAgentTokenUsage', () => {
       sourceType: 'chat',
       sourceId: 'conv_123',
       inferenceProvider: 'openrouter',
-      model: 'openai/gpt-5.4-mini',
+      model: 'openai/gpt-5',
       actualCostUnavailableReason: 'missing_documented_cost',
       billedModel: 'openai/gpt-5.4-mini',
       generationId: 'gen_or',
@@ -119,6 +119,10 @@ describe('recordAgentTokenUsage', () => {
     expect(mockDbValues.mock.calls[0]?.[0].costMetadata).toMatchObject({
       actual: null,
       actualUnavailableReason: 'missing_documented_cost',
+    })
+    expect(mockGetModelPricing).toHaveBeenCalledWith({
+      inferenceProvider: 'openrouter',
+      modelId: 'openai/gpt-5.4-mini',
     })
   })
 })
