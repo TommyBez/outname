@@ -6,7 +6,7 @@ const {
   mockCurrentWorkflowRunId,
   mockDidReachStepLimit,
   mockEmitActivity,
-  mockExtractTotalUsage,
+  mockBuildGenerationUsageObservations,
   mockGetWritable,
   mockInitRun,
   mockMarkBudgetSkippedRunCompletedStep,
@@ -21,11 +21,11 @@ const {
   mockFinalizeRun,
 } = vi.hoisted(() => ({
   mockBuildAgent: vi.fn(),
+  mockBuildGenerationUsageObservations: vi.fn(),
   mockCheckBudgetOrFinalize: vi.fn(),
   mockCurrentWorkflowRunId: vi.fn(),
   mockDidReachStepLimit: vi.fn(),
   mockEmitActivity: vi.fn(),
-  mockExtractTotalUsage: vi.fn(),
   mockGetWritable: vi.fn(),
   mockInitRun: vi.fn(),
   mockMarkBudgetSkippedRunCompletedStep: vi.fn(),
@@ -65,7 +65,7 @@ vi.mock('../step-limit', () => ({
 }))
 
 vi.mock('../steps/budget', () => ({
-  extractTotalUsage: mockExtractTotalUsage,
+  buildGenerationUsageObservations: mockBuildGenerationUsageObservations,
   recordTokenUsageStep: mockRecordTokenUsageStep,
 }))
 
@@ -122,7 +122,7 @@ describe('handleHeartbeat', () => {
     })
     mockResolveStepLimit.mockReturnValue('stop-when')
     mockDidReachStepLimit.mockReturnValue(false)
-    mockExtractTotalUsage.mockReturnValue({})
+    mockBuildGenerationUsageObservations.mockReturnValue([])
     mockBuildAgent.mockResolvedValue({
       agent: {
         stream: vi.fn().mockResolvedValue({ steps: [] }),

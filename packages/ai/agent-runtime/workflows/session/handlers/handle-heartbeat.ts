@@ -13,7 +13,10 @@ import {
   resolveStepLimit,
   resolveStepLimitCount,
 } from '../step-limit'
-import { extractTotalUsage, recordTokenUsageStep } from '../steps/budget'
+import {
+  buildGenerationUsageObservations,
+  recordTokenUsageStep,
+} from '../steps/budget'
 import {
   markBudgetSkippedRunCompletedStep,
   markRunCompletedStep,
@@ -121,7 +124,7 @@ export async function handleHeartbeat(input: {
         sourceId: runId,
         inferenceProvider: meta.inferenceProvider,
         model: meta.model,
-        usage: extractTotalUsage(result),
+        generations: buildGenerationUsageObservations(result),
       })
     }
 

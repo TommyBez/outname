@@ -18,11 +18,13 @@ export interface ModelOption {
 }
 
 const AI_GATEWAY_MODELS_ENDPOINT = 'https://ai-gateway.vercel.sh/v1/models'
+const LLM_GATEWAY_MODELS_ENDPOINT = 'https://api.llmgateway.io/v1/models'
 const OPENROUTER_MODELS_ENDPOINT = 'https://openrouter.ai/api/v1/models'
 const MODEL_CATALOG_REVALIDATE_SECONDS = 3600
 const MODEL_CATALOG_REVALIDATE_MS = MODEL_CATALOG_REVALIDATE_SECONDS * 1000
 
 export const DEFAULT_MODEL_BY_PROVIDER: Record<InferenceProvider, string> = {
+  'llm-gateway': 'deepseek/deepseek-v4-flash',
   openrouter: 'deepseek/deepseek-v4-flash',
   'vercel-ai-gateway': 'deepseek/deepseek-v4-flash',
 }
@@ -30,6 +32,20 @@ export const DEFAULT_MODEL_BY_PROVIDER: Record<InferenceProvider, string> = {
 export const DEFAULT_MODEL_ID = DEFAULT_MODEL_BY_PROVIDER['vercel-ai-gateway']
 
 const FALLBACK_MODELS: Record<InferenceProvider, readonly ModelOption[]> = {
+  'llm-gateway': [
+    fallbackModel({
+      id: 'deepseek/deepseek-v4-flash',
+      inferenceProvider: 'llm-gateway',
+      name: 'DeepSeek V4 Flash',
+      ownedBy: 'deepseek',
+    }),
+    fallbackModel({
+      id: 'gpt-5.4-mini',
+      inferenceProvider: 'llm-gateway',
+      name: 'GPT-5.4 Mini',
+      ownedBy: 'openai',
+    }),
+  ],
   openrouter: [
     fallbackModel({
       id: 'deepseek/deepseek-v4-flash',
@@ -38,9 +54,9 @@ const FALLBACK_MODELS: Record<InferenceProvider, readonly ModelOption[]> = {
       ownedBy: 'deepseek',
     }),
     fallbackModel({
-      id: 'openai/gpt-4o',
+      id: 'openai/gpt-5.4-mini',
       inferenceProvider: 'openrouter',
-      name: 'OpenAI: GPT-4o',
+      name: 'GPT-5.4 Mini',
       ownedBy: 'openai',
     }),
   ],
@@ -52,9 +68,9 @@ const FALLBACK_MODELS: Record<InferenceProvider, readonly ModelOption[]> = {
       ownedBy: 'deepseek',
     }),
     fallbackModel({
-      id: 'openai/gpt-5-mini',
+      id: 'openai/gpt-5.4-mini',
       inferenceProvider: 'vercel-ai-gateway',
-      name: 'GPT-5 Mini',
+      name: 'GPT-5.4 Mini',
       ownedBy: 'openai',
     }),
   ],
@@ -75,6 +91,7 @@ interface OpenRouterRawModel {
   id?: string
   name?: string
   pricing?: RawOpenRouterPricing
+  providers?: RawLlmGatewayProvider[]
   supported_parameters?: string[]
 }
 
@@ -97,10 +114,18 @@ interface RawPricing {
 
 interface RawOpenRouterPricing {
   completion?: number | string
+  image?: number | string
   input_cache_read?: number | string
   input_cache_write?: number | string
   internal_reasoning?: number | string
   prompt?: number | string
+  request?: number | string
+  web_search?: number | string
+}
+
+interface RawLlmGatewayProvider {
+  providerId?: string
+  tools?: boolean
 }
 
 interface RawPricingTier {
@@ -126,6 +151,14 @@ interface ModelCatalogDefinition {
 }
 
 const MODEL_CATALOG_DEFINITIONS = {
+  'llm-gateway': {
+    endpoint: LLM_GATEWAY_MODELS_ENDPOINT,
+    fallbackModels: FALLBACK_MODELS['llm-gateway'],
+    isToolModel: isLlmGatewayToolModel,
+    provider: 'llm-gateway',
+    toOption: (model) =>
+      llmGatewayModelToOption(model as OpenRouterRawModel & { id: string }),
+  },
   openrouter: {
     endpoint: OPENROUTER_MODELS_ENDPOINT,
     fallbackModels: FALLBACK_MODELS.openrouter,
@@ -266,6 +299,22 @@ function isOpenRouterToolModel(
   )
 }
 
+function isLlmGatewayToolModel(
+  model: unknown
+): model is OpenRouterRawModel & { id: string } {
+  if (!model || typeof model !== 'object') {
+    return false
+  }
+  const value = model as OpenRouterRawModel
+  if (!value.id || typeof value.id !== 'string') {
+    return false
+  }
+  return Boolean(
+    Array.isArray(value.providers) &&
+      value.providers.some((provider) => provider.tools === true)
+  )
+}
+
 function aiGatewayModelToOption(
   model: AiGatewayRawModel & { id: string }
 ): ModelOption {
@@ -277,6 +326,20 @@ function aiGatewayModelToOption(
     ownedBy: nonEmptyString(model.owned_by) ?? ownerFromModelId(model.id),
     pricing: rawPricingToModelPricing(model.pricing ?? {}),
     supportedParameters: ['tools'],
+  }
+}
+
+function llmGatewayModelToOption(
+  model: OpenRouterRawModel & { id: string }
+): ModelOption {
+  return {
+    contextWindow: positiveInteger(model.context_length),
+    id: model.id,
+    inferenceProvider: 'llm-gateway',
+    name: nonEmptyString(model.name) ?? model.id,
+    ownedBy: ownerFromModelId(model.id),
+    pricing: openRouterPricingToModelPricing(model.pricing ?? {}),
+    supportedParameters: model.supported_parameters ?? [],
   }
 }
 

@@ -5,8 +5,9 @@ import {
   type ModelPricing,
   type PricingTier,
 } from '@outname/shared/model-pricing'
-import type { LanguageModelUsage } from 'ai'
+import type { LanguageModelResponseMetadata, LanguageModelUsage } from 'ai'
 import Decimal from 'decimal.js'
+import type { InferenceProvider } from './inference-providers'
 
 export interface NormalizedUsage {
   cacheReadTokens: number
@@ -39,11 +40,35 @@ export interface EstimatedModelCost {
   usage: NormalizedUsage
 }
 
+export interface ActualModelCost {
+  billedModel?: string | null
+  costMetadata: Record<string, unknown>
+  costUsd: string
+  generationId?: string
+  source: 'generation_lookup' | 'response_usage'
+  upstreamProvider?: string | null
+}
+
+export interface GenerationUsageObservation {
+  generationId: string
+  modelId: string
+  rawUsage: Record<string, unknown> | null
+  responseMetadata: {
+    id: string
+    modelId: string
+  }
+  usage: LanguageModelUsage
+}
+
 export interface UsageBearingStep {
-  usage?: LanguageModelUsage
+  providerMetadata?: unknown
+  response: Pick<LanguageModelResponseMetadata, 'id' | 'modelId'>
+  usage: LanguageModelUsage
 }
 
 export interface UsageBearingResult {
+  providerMetadata?: unknown
+  response?: Pick<LanguageModelResponseMetadata, 'id' | 'modelId'>
   steps?: readonly UsageBearingStep[]
   totalUsage?: LanguageModelUsage
   usage?: LanguageModelUsage
@@ -111,6 +136,35 @@ export function extractTotalUsage(
     reasoningTokens,
     totalTokens: totalTokens || inputTokens + outputTokens,
   } as LanguageModelUsage
+}
+
+export function buildGenerationUsageObservations(
+  result: UsageBearingResult | undefined
+): GenerationUsageObservation[] {
+  if (!result) {
+    return []
+  }
+
+  const steps = result.steps ?? []
+  if (steps.length > 0) {
+    return steps.map((step) =>
+      generationUsageObservation({
+        response: step.response,
+        usage: step.usage,
+      })
+    )
+  }
+
+  if (!(result.response && result.usage)) {
+    return []
+  }
+
+  return [
+    generationUsageObservation({
+      response: result.response,
+      usage: result.usage,
+    }),
+  ]
 }
 
 export function normalizeUsage(
@@ -203,6 +257,53 @@ export function estimateModelCost(input: {
   }
 }
 
+export function extractActualModelCostFromObservation(input: {
+  observation: GenerationUsageObservation
+  inferenceProvider: InferenceProvider
+}): ActualModelCost | null {
+  if (!input.observation.rawUsage) {
+    return null
+  }
+  if (input.inferenceProvider === 'llm-gateway') {
+    return extractActualLlmGatewayCost(input.observation)
+  }
+  if (input.inferenceProvider === 'openrouter') {
+    return extractActualOpenRouterCost(input.observation)
+  }
+  return null
+}
+
+export function extractActualVercelGatewayCost(input: {
+  generation: Record<string, unknown>
+  generationId: string
+}): ActualModelCost | null {
+  const data = readRecordFromUnknown(input.generation.data)
+  if (!data) {
+    return null
+  }
+  const totalCost = decimalFromNumber(data.total_cost)
+  if (!totalCost) {
+    return null
+  }
+
+  return {
+    billedModel: stringOrNull(data.model),
+    costMetadata: {
+      vercelAiGatewayGeneration: {
+        generationTime: data.generation_time,
+        isByok: data.is_byok,
+        latency: data.latency,
+        streamed: data.streamed,
+        usage: data.usage,
+      },
+    },
+    costUsd: formatUsd(totalCost),
+    generationId: input.generationId,
+    source: 'generation_lookup',
+    upstreamProvider: stringOrNull(data.provider_name),
+  }
+}
+
 function priceTokens(input: {
   baseRate: string | null
   tiers: PricingTier[]
@@ -291,6 +392,96 @@ function pricingSnapshot(pricing: ModelPricing): Record<string, unknown> {
 
 function formatUsd(value: Decimal): string {
   return value.toFixed(12)
+}
+
+function generationUsageObservation(input: {
+  response: Pick<LanguageModelResponseMetadata, 'id' | 'modelId'>
+  usage: LanguageModelUsage
+}): GenerationUsageObservation {
+  return {
+    generationId: input.response.id,
+    modelId: input.response.modelId,
+    rawUsage: rawUsageFromLanguageModelUsage(input.usage),
+    responseMetadata: {
+      id: input.response.id,
+      modelId: input.response.modelId,
+    },
+    usage: input.usage,
+  }
+}
+
+function extractActualLlmGatewayCost(
+  observation: GenerationUsageObservation
+): ActualModelCost | null {
+  const usage = observation.rawUsage
+  const totalCost =
+    decimalFromNumber(usage?.cost_usd_total) ?? decimalFromNumber(usage?.cost)
+  if (!totalCost) {
+    return null
+  }
+
+  return {
+    billedModel: observation.modelId,
+    costUsd: formatUsd(totalCost),
+    costMetadata: {
+      llmGatewayUsage: usage,
+    },
+    generationId: observation.generationId,
+    source: 'response_usage',
+  }
+}
+
+function extractActualOpenRouterCost(
+  observation: GenerationUsageObservation
+): ActualModelCost | null {
+  const usage = observation.rawUsage
+  const totalCost = decimalFromNumber(usage?.cost)
+  if (!totalCost) {
+    return null
+  }
+
+  const costDetails = readRecordFromUnknown(usage?.cost_details)
+  return {
+    billedModel: observation.modelId,
+    costUsd: formatUsd(totalCost),
+    costMetadata: {
+      currencySource: 'openrouter_usd_credits',
+      openRouterUsage: {
+        costDetails: costDetails
+          ? {
+              upstreamInferenceCost: costDetails.upstream_inference_cost,
+            }
+          : null,
+        rawUsage: usage,
+      },
+    },
+    generationId: observation.generationId,
+    source: 'response_usage',
+  }
+}
+
+function rawUsageFromLanguageModelUsage(
+  usage: LanguageModelUsage
+): Record<string, unknown> | null {
+  const raw = (usage as Record<string, unknown>).raw
+  return readRecordFromUnknown(raw)
+}
+
+function readRecordFromUnknown(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object'
+    ? (value as Record<string, unknown>)
+    : null
+}
+
+function stringOrNull(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null
+}
+
+function decimalFromNumber(value: unknown): Decimal | null {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) && value >= 0 ? new Decimal(value) : null
+  }
+  return null
 }
 
 export interface UsageInput {

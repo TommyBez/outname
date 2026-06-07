@@ -9,6 +9,7 @@ import { user } from './auth'
 
 export const inferenceProviderValues = [
   'vercel-ai-gateway',
+  'llm-gateway',
   'openrouter',
 ] as const
 

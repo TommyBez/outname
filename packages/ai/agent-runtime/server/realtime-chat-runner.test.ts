@@ -48,8 +48,8 @@ vi.mock('@outname/ai/chat/workflows/steps/generate-conversation-title', () => ({
 }))
 
 vi.mock('../workflows/session/steps/budget', () => ({
-  extractTotalUsage: (event: { totalUsage?: unknown; usage?: unknown }) =>
-    event.totalUsage ?? event.usage,
+  buildGenerationUsageObservations: (event: { generations?: unknown[] }) =>
+    event.generations ?? [],
   preflightBudget: mocks.preflightBudget,
   recordTokenUsageStep: mocks.recordTokenUsageStep,
 }))
@@ -319,12 +319,8 @@ describe('realtime chat runner persistence policy', () => {
       ) => {
         await Promise.resolve()
         options.onFinish?.({
+          generations: [testGeneration()],
           steps: [],
-          totalUsage: {
-            inputTokens: 3,
-            outputTokens: 4,
-            totalTokens: 7,
-          },
         })
         return {
           agent: {
@@ -388,11 +384,7 @@ describe('realtime chat runner persistence policy', () => {
       rootAgentId: 'agent_123',
       sourceId: 'conv_123',
       sourceType: 'chat',
-      usage: {
-        inputTokens: 3,
-        outputTokens: 4,
-        totalTokens: 7,
-      },
+      generations: [testGeneration()],
       userId: 'user_123',
     })
   })
@@ -408,12 +400,8 @@ describe('realtime chat runner persistence policy', () => {
       ) => {
         await Promise.resolve()
         options.onFinish?.({
+          generations: [testGeneration()],
           steps: [],
-          totalUsage: {
-            inputTokens: 3,
-            outputTokens: 4,
-            totalTokens: 7,
-          },
         })
         return {
           agent: {
@@ -575,6 +563,23 @@ function runtimeSpec(): AgentRuntimeSpec {
     skillPlan: { sandboxName: null, skills: [] },
     toolPlan: { planned: [], reconnects: [], subAgents: [] },
     userId: 'user_123',
+  }
+}
+
+function testGeneration() {
+  return {
+    generationId: 'gen_123',
+    modelId: 'openai/gpt-5.1',
+    rawUsage: { cost: 0.000_01 },
+    responseMetadata: {
+      id: 'gen_123',
+      modelId: 'openai/gpt-5.1',
+    },
+    usage: {
+      inputTokens: 3,
+      outputTokens: 4,
+      totalTokens: 7,
+    },
   }
 }
 

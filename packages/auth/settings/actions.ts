@@ -122,7 +122,10 @@ export async function saveInferenceProviderKeyFormAction(
   }
 
   return {
-    message: 'Key verified and saved.',
+    message:
+      inferenceProvider === 'llm-gateway'
+        ? 'Key saved.'
+        : 'Key verified and saved.',
     status: 'success',
     submittedAt: Date.now(),
   }

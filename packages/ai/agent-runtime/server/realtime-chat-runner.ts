@@ -41,7 +41,7 @@ import {
   didReachStepLimit,
 } from '../workflows/session/step-limit'
 import {
-  extractTotalUsage,
+  buildGenerationUsageObservations,
   preflightBudget,
   recordTokenUsageStep,
 } from '../workflows/session/steps/budget'
@@ -534,7 +534,7 @@ function scheduleUsageRecording(input: {
         sourceId: input.conversationId,
         inferenceProvider: input.inferenceProvider,
         model: input.model,
-        usage: extractTotalUsage(input.event),
+        generations: buildGenerationUsageObservations(input.event),
       })
     } catch (err) {
       console.error('[realtime-chat] usage recording failed', {

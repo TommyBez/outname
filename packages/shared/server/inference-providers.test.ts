@@ -1,19 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
+  mockCreateLLMGateway,
   mockCreateGateway,
   mockCreateOpenRouter,
   mockDbSelect,
   mockDbSelectLimit,
   mockDecryptCredential,
+  mockFetch,
   mockGetUpstashRedis,
   mockRedisDel,
   mockRedisGet,
   mockRedisSet,
 } = vi.hoisted(() => {
+  const mockCreateLLMGateway = vi.fn()
   const mockCreateGateway = vi.fn()
   const mockCreateOpenRouter = vi.fn()
   const mockDecryptCredential = vi.fn()
+  const mockFetch = vi.fn()
   const mockGetUpstashRedis = vi.fn()
   const mockRedisDel = vi.fn()
   const mockRedisGet = vi.fn()
@@ -25,11 +29,13 @@ const {
   const mockDbSelect = vi.fn(() => ({ from: mockDbSelectFrom }))
 
   return {
+    mockCreateLLMGateway,
     mockCreateGateway,
     mockCreateOpenRouter,
     mockDbSelect,
     mockDbSelectLimit,
     mockDecryptCredential,
+    mockFetch,
     mockGetUpstashRedis,
     mockRedisDel,
     mockRedisGet,
@@ -38,6 +44,10 @@ const {
 })
 
 vi.mock('server-only', () => ({}))
+
+vi.mock('@llmgateway/ai-sdk-provider', () => ({
+  createLLMGateway: mockCreateLLMGateway,
+}))
 
 vi.mock('ai', () => ({
   createGateway: mockCreateGateway,
@@ -63,11 +73,13 @@ vi.mock('@outname/shared/server/upstash-redis', () => ({
 }))
 
 import { MissingInferenceCredentialError } from './inference-provider-errors'
+import { verifyInferenceCredential } from './inference-provider-verify'
 import { getUserLanguageModel } from './inference-providers'
 
 describe('inference-providers', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubGlobal('fetch', mockFetch)
     mockGetUpstashRedis.mockReturnValue({
       del: mockRedisDel,
       get: mockRedisGet,
@@ -91,6 +103,14 @@ describe('inference-providers', () => {
           modelId,
         })
     )
+    mockCreateLLMGateway.mockImplementation(
+      ({ apiKey }: { apiKey: string }) =>
+        (modelId: string) => ({
+          apiKey,
+          kind: 'llm-gateway',
+          modelId,
+        })
+    )
     mockCreateOpenRouter.mockImplementation(
       ({ apiKey }: { apiKey: string }) =>
         (modelId: string) => ({
@@ -98,6 +118,48 @@ describe('inference-providers', () => {
           kind: 'openrouter',
           modelId,
         })
+    )
+  })
+
+  it('skips network verification for LLM Gateway credentials', async () => {
+    await expect(
+      verifyInferenceCredential({
+        apiKey: 'llmgtwy_secret',
+        inferenceProvider: 'llm-gateway',
+      })
+    ).resolves.toMatchObject({
+      providerStatus: 'verification_skipped',
+      verification: {
+        reason: 'no_non_billable_verification_endpoint',
+      },
+    })
+
+    expect(mockFetch).not.toHaveBeenCalled()
+  })
+
+  it('creates an LLM Gateway language model from the saved user key', async () => {
+    await expect(
+      getUserLanguageModel({
+        inferenceProvider: 'llm-gateway',
+        modelId: 'gpt-5-mini',
+        userId: 'user_123',
+      })
+    ).resolves.toEqual({
+      apiKey: 'provider_secret',
+      kind: 'llm-gateway',
+      modelId: 'gpt-5-mini',
+    })
+
+    expect(mockCreateLLMGateway).toHaveBeenCalledWith({
+      apiKey: 'provider_secret',
+      compatibility: 'strict',
+    })
+    expect(mockRedisSet).toHaveBeenCalledWith(
+      'user:user_123:provider:llm-gateway:inference-credential',
+      {
+        encrypted: 'enc_from_db',
+        status: 'enabled',
+      }
     )
   })
 
