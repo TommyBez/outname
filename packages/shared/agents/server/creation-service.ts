@@ -1,14 +1,19 @@
 import 'server-only'
 import { createHash } from 'node:crypto'
 import { db } from '@outname/db'
-import { type Agent, agent } from '@outname/db/schema'
+import { type Agent, agent, user } from '@outname/db/schema'
 import {
   type AgentScheduleMode,
   normalizeAgentScheduleMode,
   normalizeScheduleTimesForMode,
 } from '@outname/shared/agent-schedule'
+import {
+  AGENT_CREATION_LIMIT,
+  AGENT_CREATION_LIMIT_MESSAGE,
+} from '@outname/shared/agents/creation-limits'
 import { writeBootstrapFiles } from '@outname/shared/agents/server/bootstrap-files'
 import { refreshAgentCapabilitySummary } from '@outname/shared/agents/server/capability-summary'
+import { roleBypassesAgentCreationLimit } from '@outname/shared/agents/server/creation-limit-roles'
 import type { StepLimitMode } from '@outname/shared/agents/server/creation-types'
 import {
   DEFAULT_MODEL_BY_PROVIDER,
@@ -18,10 +23,11 @@ import {
   hasEnabledInferenceProvider,
   type InferenceProvider,
 } from '@outname/shared/server/inference-providers'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 
 const HEARTBEAT_MIN = 5
 const HEARTBEAT_MAX = 1440
+export const NON_ADMIN_AGENT_LIMIT = AGENT_CREATION_LIMIT
 
 export interface CreateAgentInput {
   dreamingEnabled: boolean
@@ -46,6 +52,15 @@ export interface CreateAgentResult {
   agent: Agent
   created: boolean
   id: string
+}
+
+type AgentCreationStore = Pick<typeof db, 'insert' | 'select'>
+
+export class AgentCreationLimitExceededError extends Error {
+  constructor() {
+    super(AGENT_CREATION_LIMIT_MESSAGE)
+    this.name = 'AgentCreationLimitExceededError'
+  }
 }
 
 function nanoid(): string {
@@ -118,33 +133,45 @@ export async function createAgentForUser(
         idempotencyKey: input.idempotencyKey,
       })
     : nanoid()
+  const result = await db.transaction(async (tx) => {
+    await acquireAgentCreationLock(tx, input.userId)
 
-  const inserted = await db
-    .insert(agent)
-    .values({
-      id,
-      userId: input.userId,
-      name,
-      model,
-      enabled: true,
-      inferenceProvider: input.inferenceProvider,
-      heartbeatEnabled: input.heartbeatEnabled,
-      heartbeatScheduleMode,
-      heartbeatScheduleTimes,
-      heartbeatIntervalMinutes,
-      dreamingEnabled: input.dreamingEnabled,
-      stepLimitMode: input.stepLimitMode,
-      stepLimitCustom:
-        input.stepLimitMode === 'custom'
-          ? Math.max(1, Math.floor(input.stepLimitCustom ?? 30))
-          : null,
-    })
-    .onConflictDoNothing()
-    .returning()
+    const existingAgent = input.idempotencyKey
+      ? await readExistingAgentForCreateIfPresent(id, input.userId, tx)
+      : null
+    if (existingAgent) {
+      return { row: existingAgent, created: false }
+    }
 
-  const created = inserted.length > 0
-  const row =
-    inserted[0] ?? (await readExistingAgentForCreate(id, input.userId))
+    await assertAgentCreationAllowed(input.userId, tx)
+
+    const inserted = await tx
+      .insert(agent)
+      .values({
+        id,
+        userId: input.userId,
+        name,
+        model,
+        enabled: true,
+        inferenceProvider: input.inferenceProvider,
+        heartbeatEnabled: input.heartbeatEnabled,
+        heartbeatScheduleMode,
+        heartbeatScheduleTimes,
+        heartbeatIntervalMinutes,
+        dreamingEnabled: input.dreamingEnabled,
+        stepLimitMode: input.stepLimitMode,
+        stepLimitCustom:
+          input.stepLimitMode === 'custom'
+            ? Math.max(1, Math.floor(input.stepLimitCustom ?? 30))
+            : null,
+      })
+      .onConflictDoNothing()
+      .returning()
+
+    const row =
+      inserted[0] ?? (await readExistingAgentForCreate(id, input.userId, tx))
+    return { row, created: inserted.length > 0 }
+  })
 
   // Idempotent replays may hit an existing row; direct sandbox writes let retries self-heal.
   await writeInitialBootstrapFiles({
@@ -162,17 +189,74 @@ export async function createAgentForUser(
     },
   })
 
-  return { id, agent: row, created }
+  return { id, agent: result.row, created: result.created }
+}
+
+async function acquireAgentCreationLock(
+  store: AgentCreationStore,
+  userId: string
+): Promise<void> {
+  await store.select({
+    lock: sql`pg_advisory_xact_lock(hashtextextended(${`agent_creation:${userId}`}, 0))`,
+  })
+}
+
+async function assertAgentCreationAllowed(
+  userId: string,
+  store: AgentCreationStore
+): Promise<void> {
+  if (await userIsAdmin(userId, store)) {
+    return
+  }
+
+  const [row] = await store
+    .select({ total: sql<number>`count(*)::int` })
+    .from(agent)
+    .where(eq(agent.userId, userId))
+
+  if ((row?.total ?? 0) >= AGENT_CREATION_LIMIT) {
+    throw new AgentCreationLimitExceededError()
+  }
+}
+
+async function userIsAdmin(
+  userId: string,
+  store: AgentCreationStore
+): Promise<boolean> {
+  const [row] = await store
+    .select({ role: user.role })
+    .from(user)
+    .where(eq(user.id, userId))
+    .limit(1)
+  return roleBypassesAgentCreationLimit(row?.role)
 }
 
 async function readExistingAgentForCreate(
   id: string,
-  userId: string
+  userId: string,
+  store: AgentCreationStore
 ): Promise<Agent> {
-  const [row] = await db.select().from(agent).where(eq(agent.id, id)).limit(1)
+  const row = await readExistingAgentForCreateIfPresent(id, userId, store)
 
   if (!row) {
     throw new Error('Could not create agent.')
+  }
+  return row
+}
+
+async function readExistingAgentForCreateIfPresent(
+  id: string,
+  userId: string,
+  store: AgentCreationStore
+): Promise<Agent | null> {
+  const [row] = await store
+    .select()
+    .from(agent)
+    .where(eq(agent.id, id))
+    .limit(1)
+
+  if (!row) {
+    return null
   }
   if (row.userId !== userId) {
     throw new Error('Agent creation key collision.')
