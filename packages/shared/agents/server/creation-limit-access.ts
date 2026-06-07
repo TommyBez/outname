@@ -15,7 +15,11 @@ export async function canCreateAgentForUser(input: {
     .where(eq(user.id, input.userId))
     .limit(1)
 
-  if (roleBypassesAgentCreationLimit(row?.role)) {
+  if (!row) {
+    return false
+  }
+
+  if (roleBypassesAgentCreationLimit(row.role)) {
     return true
   }
   return input.agentCount < AGENT_CREATION_LIMIT
