@@ -14,6 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@outname/ui/components/ui/alert-dialog'
+import { Button } from '@outname/ui/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -143,26 +144,30 @@ export function ConversationRow({
             ref={setTitleInputRef}
             value={draftTitle}
           />
-          <button
+          <Button
             aria-label="Save title"
-            className="border border-transparent p-1 text-muted-foreground transition-colors hover:border-sidebar-border hover:bg-sidebar-accent hover:text-foreground disabled:opacity-50"
+            className="h-auto w-auto border border-transparent p-1 text-muted-foreground transition-colors hover:border-sidebar-border hover:bg-sidebar-accent hover:text-foreground disabled:opacity-50"
             disabled={isRenaming}
+            size="icon-xs"
             type="submit"
+            variant="ghost"
           >
             <Check className="size-3.5" />
-          </button>
-          <button
+          </Button>
+          <Button
             aria-label="Cancel rename"
-            className="border border-transparent p-1 text-muted-foreground transition-colors hover:border-sidebar-border hover:bg-sidebar-accent hover:text-foreground disabled:opacity-50"
+            className="h-auto w-auto border border-transparent p-1 text-muted-foreground transition-colors hover:border-sidebar-border hover:bg-sidebar-accent hover:text-foreground disabled:opacity-50"
             disabled={isRenaming}
             onClick={() => {
               setIsEditing(false)
               setDraftTitle(conversation.title ?? '')
             }}
+            size="icon-xs"
             type="button"
+            variant="ghost"
           >
             <X className="size-3.5" />
-          </button>
+          </Button>
         </form>
       </SidebarMenuItem>
     )

@@ -1,3 +1,4 @@
+import { Button } from '@outname/ui/components/ui/button'
 import { Label } from '@outname/ui/components/ui/label'
 import {
   Select,
@@ -155,7 +156,7 @@ function BootstrapFilePicker({
         {BOOTSTRAP_FILE_OPTIONS.map((option) => {
           const isActive = activeBootstrapFile === option.value
           return (
-            <button
+            <Button
               aria-pressed={isActive}
               className={cn(
                 'flex min-h-16 flex-col items-start justify-between gap-2 border-2 px-4 py-3 text-left transition-colors',
@@ -165,7 +166,9 @@ function BootstrapFilePicker({
               )}
               key={option.value}
               onClick={() => setActiveBootstrapFile(option.value)}
+              size="xs"
               type="button"
+              variant="outline"
             >
               <span className="font-bold text-xs uppercase tracking-[0.14em]">
                 {option.label}
@@ -173,7 +176,7 @@ function BootstrapFilePicker({
               <span className="font-mono text-[11px] tracking-normal">
                 {option.fileName}
               </span>
-            </button>
+            </Button>
           )
         })}
       </div>

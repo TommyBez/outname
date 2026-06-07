@@ -16,6 +16,7 @@ import {
   formatTimeInTimeZone,
 } from '@outname/shared/format-timezone'
 import { Badge } from '@outname/ui/components/ui/badge'
+import { Button } from '@outname/ui/components/ui/button'
 import { cn } from '@outname/ui/lib/utils'
 import {
   Activity,
@@ -128,15 +129,17 @@ function AgentEventsWorkspaceContent({
             <ul className="divide-y-2 divide-foreground">
               {ledgerEvents.map((event) => (
                 <li key={event.id}>
-                  <button
+                  <Button
                     aria-pressed={selectedEvent?.id === event.id}
                     className={cn(
-                      'grid w-full gap-3 p-4 text-left transition-colors hover:bg-accent',
+                      'grid h-auto w-full items-stretch justify-normal gap-3 border-0 p-4 text-left font-normal normal-case tracking-normal transition-colors hover:bg-accent',
                       selectedEvent?.id === event.id &&
                         'bg-foreground text-background hover:bg-foreground hover:text-background'
                     )}
                     onClick={() => selectEvent(event.id)}
+                    size="xs"
                     type="button"
+                    variant="ghost"
                   >
                     <span className="flex min-w-0 items-center justify-between gap-3">
                       <span className="inline-flex min-w-0 items-center gap-2">
@@ -165,7 +168,7 @@ function AgentEventsWorkspaceContent({
                         timeZone
                       )}
                     </span>
-                  </button>
+                  </Button>
                 </li>
               ))}
             </ul>
@@ -256,13 +259,15 @@ function EventTranscriptHeader({
         </div>
       )}
       {blockedByEventId && (
-        <button
+        <Button
           className="mt-4 border-2 border-foreground px-3 py-2 font-bold text-xs uppercase tracking-[0.14em] transition-colors hover:bg-accent"
           onClick={() => onSelectEvent(blockedByEventId)}
+          size="xs"
           type="button"
+          variant="outline"
         >
           Open active event
-        </button>
+        </Button>
       )}
     </div>
   )

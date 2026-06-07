@@ -1,6 +1,7 @@
 'use client'
 
 import { upsertSlackBindingAction } from '@outname/shared/channels/slack/server/actions'
+import { Button } from '@outname/ui/components/ui/button'
 import { X } from 'lucide-react'
 import type { FormEvent } from 'react'
 import { useState, useTransition } from 'react'
@@ -57,14 +58,16 @@ export function AddBindingForm({
         <p className="font-bold text-xs uppercase tracking-[0.16em]">
           New Slack binding
         </p>
-        <button
+        <Button
           aria-label="Cancel"
           className="inline-flex size-7 items-center justify-center border-2 border-foreground hover:bg-foreground hover:text-background"
           onClick={onCancel}
+          size="icon-xs"
           type="button"
+          variant="outline"
         >
           <X aria-hidden className="size-3.5" />
-        </button>
+        </Button>
       </div>
 
       <WorkspaceSelect
@@ -84,20 +87,23 @@ export function AddBindingForm({
       />
 
       <div className="flex items-center gap-2">
-        <button
+        <Button
           className="inline-flex h-10 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
           disabled={pending}
+          size="sm"
           type="submit"
         >
           {pending ? 'Saving…' : 'Save binding'}
-        </button>
-        <button
+        </Button>
+        <Button
           className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
           onClick={onCancel}
+          size="sm"
           type="button"
+          variant="outline"
         >
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   )

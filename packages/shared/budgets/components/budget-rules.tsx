@@ -6,6 +6,7 @@ import {
   setBudgetRuleEnabledAction,
   upsertBudgetRuleAction,
 } from '@outname/shared/budgets/server/actions'
+import { Button } from '@outname/ui/components/ui/button'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
@@ -182,22 +183,26 @@ function BudgetRow({
         </div>
         {rule && (
           <div className="flex items-center gap-2">
-            <button
+            <Button
               className="h-9 border-2 border-foreground px-3 font-bold text-[11px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background disabled:opacity-50"
               disabled={pending}
               onClick={onToggle}
+              size="xs"
               type="button"
+              variant="outline"
             >
               {rule.enabled ? 'Disable' : 'Enable'}
-            </button>
-            <button
+            </Button>
+            <Button
               className="h-9 border-2 border-destructive px-3 font-bold text-[11px] text-destructive uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-destructive-foreground disabled:opacity-50"
               disabled={pending}
               onClick={onRemove}
+              size="xs"
               type="button"
+              variant="outline"
             >
               Remove
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -224,13 +229,15 @@ function BudgetRow({
           type="number"
           value={draftLimit}
         />
-        <button
+        <Button
           className="h-9 border-2 border-foreground px-3 font-bold text-[11px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background disabled:opacity-50"
           disabled={pending}
+          size="xs"
           type="submit"
+          variant="outline"
         >
           {rule ? 'Update' : 'Set limit'}
-        </button>
+        </Button>
       </form>
     </div>
   )

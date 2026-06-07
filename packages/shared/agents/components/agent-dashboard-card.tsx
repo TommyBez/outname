@@ -13,6 +13,7 @@ import { formatAgentSchedule } from '@outname/shared/agents/format'
 import { BudgetIndicator } from '@outname/shared/budgets/components/budget-indicator'
 import type { BudgetSummaryEntry } from '@outname/shared/budgets/server/types'
 import { formatMediumDateTimeInTimeZone } from '@outname/shared/format-timezone'
+import { Button } from '@outname/ui/components/ui/button'
 import {
   Collapsible,
   CollapsibleContent,
@@ -62,10 +63,12 @@ export function AgentDashboardCard({
         )}
       >
         <CollapsibleTrigger asChild>
-          <button
+          <Button
             aria-label={`${open ? 'Collapse' : 'Expand'} ${agent.name} activity`}
-            className="group grid w-full gap-6 px-0 py-8 text-left outline-none transition-colors focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background md:grid-cols-[minmax(0,7fr)_minmax(16rem,3fr)] md:px-4"
+            className="group grid h-auto w-full items-stretch justify-normal gap-6 border-0 bg-transparent px-0 py-8 text-left font-normal normal-case tracking-normal outline-none transition-colors hover:bg-transparent focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background md:grid-cols-[minmax(0,7fr)_minmax(16rem,3fr)] md:px-4"
+            size="xs"
             type="button"
+            variant="ghost"
           >
             <div className="min-w-0">
               <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em] group-hover:text-foreground">
@@ -98,7 +101,7 @@ export function AgentDashboardCard({
                 {open ? 'Collapse' : 'Expand'} →
               </span>
             </div>
-          </button>
+          </Button>
         </CollapsibleTrigger>
 
         <CollapsibleContent>

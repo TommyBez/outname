@@ -1,5 +1,6 @@
 'use client'
 
+import { Button } from '@outname/ui/components/ui/button'
 import { Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
@@ -68,18 +69,20 @@ export function SlackBindingsPanel({
               workspaces={workspaceOptions}
             />
           ) : (
-            <button
+            <Button
               className="inline-flex h-10 items-center gap-2 border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background disabled:opacity-50"
               disabled={!canBind}
               onClick={() => setShowForm(true)}
+              size="sm"
               title={
                 canBind ? undefined : 'Install the Slack app to add a binding.'
               }
               type="button"
+              variant="outline"
             >
               <Plus aria-hidden className="size-3.5" />
               Add Slack binding
-            </button>
+            </Button>
           )}
         </div>
       )}

@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@outname/ui/components/ui/button";
 import {
   Collapsible,
   CollapsibleContent,
@@ -176,9 +177,11 @@ export const FileTreeFolder = ({
             )}
           >
             <CollapsibleTrigger asChild>
-              <button
-                className="flex shrink-0 cursor-pointer items-center border-none bg-transparent p-0"
+              <Button
+                className="flex h-auto w-auto shrink-0 cursor-pointer items-center border-0 bg-transparent p-0 hover:bg-transparent"
+                size="xs"
                 type="button"
+                variant="ghost"
               >
                 <ChevronRightIcon
                   className={cn(
@@ -186,12 +189,14 @@ export const FileTreeFolder = ({
                     isExpanded && "rotate-90"
                   )}
                 />
-              </button>
+              </Button>
             </CollapsibleTrigger>
-            <button
-              className="flex min-w-0 flex-1 cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-left"
+            <Button
+              className="flex h-auto min-w-0 flex-1 shrink cursor-pointer items-center justify-start gap-1 border-0 bg-transparent p-0 text-left font-normal normal-case tracking-normal hover:bg-transparent"
               onClick={handleSelect}
+              size="xs"
               type="button"
+              variant="ghost"
             >
               <FileTreeIcon>
                 {isExpanded ? (
@@ -201,7 +206,7 @@ export const FileTreeFolder = ({
                 )}
               </FileTreeIcon>
               <FileTreeName>{name}</FileTreeName>
-            </button>
+            </Button>
           </div>
           <CollapsibleContent>
             <div className="ml-4 border-l pl-2">{children}</div>

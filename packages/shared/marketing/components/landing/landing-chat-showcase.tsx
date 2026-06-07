@@ -15,6 +15,7 @@ import {
   revealVariants,
   staggerVariants,
 } from '@outname/shared/marketing/components/landing/landing-motion'
+import { Button } from '@outname/ui/components/ui/button'
 import { cn } from '@outname/ui/lib/utils'
 import { BotIcon, ChevronRightIcon, CircleIcon } from 'lucide-react'
 import {
@@ -641,15 +642,17 @@ export function LandingChatShowcase({
                   <ul className="-mx-2 flex gap-1.5 overflow-x-auto px-2 lg:mx-0 lg:grid lg:gap-1.5 lg:overflow-visible lg:px-0">
                     {showcaseScenarios.map((scenario) => (
                       <li className="shrink-0 lg:shrink" key={scenario.id}>
-                        <button
+                        <Button
                           className={cn(
-                            'ease grid h-full w-44 gap-1 border-2 border-foreground px-3 py-2 text-left transition-colors duration-150 lg:w-full lg:px-3 lg:py-2.5',
+                            'ease grid h-full w-44 items-stretch justify-normal gap-1 border-2 border-foreground px-3 py-2 text-left font-normal normal-case tracking-normal transition-colors duration-150 lg:w-full lg:px-3 lg:py-2.5',
                             activeScenario.id === scenario.id
                               ? 'bg-background'
                               : 'bg-muted hover:bg-background'
                           )}
                           onClick={() => handleScenarioSelect(scenario)}
+                          size="xs"
                           type="button"
+                          variant="ghost"
                         >
                           <span className="flex items-baseline justify-between gap-2">
                             <span className="truncate font-black text-xs uppercase tracking-normal">
@@ -662,7 +665,7 @@ export function LandingChatShowcase({
                           <span className="line-clamp-2 hidden text-[11px] text-muted-foreground leading-snug lg:block">
                             {scenario.description}
                           </span>
-                        </button>
+                        </Button>
                       </li>
                     ))}
                   </ul>

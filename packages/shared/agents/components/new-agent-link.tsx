@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@outname/ui/components/ui/alert-dialog'
+import { Button } from '@outname/ui/components/ui/button'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
@@ -37,9 +38,9 @@ export function NewAgentLink({
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <button className={className} type="button">
+        <Button className={className} type="button" variant="outline">
           {children}
-        </button>
+        </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>

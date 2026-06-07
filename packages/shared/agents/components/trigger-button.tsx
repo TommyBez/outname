@@ -74,17 +74,19 @@ export function TriggerButton({
 
   if (variant === 'link') {
     return (
-      <button
+      <Button
         className={cn(
-          'text-muted-foreground text-sm transition-colors hover:text-foreground disabled:opacity-50',
+          'h-auto border-0 bg-transparent p-0 font-normal text-muted-foreground text-sm normal-case tracking-normal transition-colors hover:bg-transparent hover:text-foreground disabled:opacity-50',
           className
         )}
         disabled={isLoading || isPending}
         onClick={trigger}
+        size="xs"
         type="button"
+        variant="ghost"
       >
         {isLoading ? 'Starting…' : label}
-      </button>
+      </Button>
     )
   }
 
