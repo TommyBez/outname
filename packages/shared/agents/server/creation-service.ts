@@ -1,7 +1,7 @@
 import 'server-only'
 import { createHash } from 'node:crypto'
 import { db } from '@outname/db'
-import { type Agent, agent } from '@outname/db/schema'
+import { type Agent, agent, user } from '@outname/db/schema'
 import {
   type AgentScheduleMode,
   normalizeAgentScheduleMode,
@@ -18,10 +18,11 @@ import {
   hasEnabledInferenceProvider,
   type InferenceProvider,
 } from '@outname/shared/server/inference-providers'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 
 const HEARTBEAT_MIN = 5
 const HEARTBEAT_MAX = 1440
+export const NON_ADMIN_AGENT_LIMIT = 3
 
 export interface CreateAgentInput {
   dreamingEnabled: boolean
@@ -46,6 +47,13 @@ export interface CreateAgentResult {
   agent: Agent
   created: boolean
   id: string
+}
+
+export class AgentCreationLimitExceededError extends Error {
+  constructor() {
+    super(`Non-admin users can create at most ${NON_ADMIN_AGENT_LIMIT} agents.`)
+    this.name = 'AgentCreationLimitExceededError'
+  }
 }
 
 function nanoid(): string {
@@ -118,33 +126,44 @@ export async function createAgentForUser(
         idempotencyKey: input.idempotencyKey,
       })
     : nanoid()
+  const existingAgent = input.idempotencyKey
+    ? await readExistingAgentForCreateIfPresent(id, input.userId)
+    : null
 
-  const inserted = await db
-    .insert(agent)
-    .values({
-      id,
-      userId: input.userId,
-      name,
-      model,
-      enabled: true,
-      inferenceProvider: input.inferenceProvider,
-      heartbeatEnabled: input.heartbeatEnabled,
-      heartbeatScheduleMode,
-      heartbeatScheduleTimes,
-      heartbeatIntervalMinutes,
-      dreamingEnabled: input.dreamingEnabled,
-      stepLimitMode: input.stepLimitMode,
-      stepLimitCustom:
-        input.stepLimitMode === 'custom'
-          ? Math.max(1, Math.floor(input.stepLimitCustom ?? 30))
-          : null,
-    })
-    .onConflictDoNothing()
-    .returning()
+  if (!existingAgent) {
+    await assertAgentCreationAllowed(input.userId)
+  }
+
+  const inserted = existingAgent
+    ? []
+    : await db
+        .insert(agent)
+        .values({
+          id,
+          userId: input.userId,
+          name,
+          model,
+          enabled: true,
+          inferenceProvider: input.inferenceProvider,
+          heartbeatEnabled: input.heartbeatEnabled,
+          heartbeatScheduleMode,
+          heartbeatScheduleTimes,
+          heartbeatIntervalMinutes,
+          dreamingEnabled: input.dreamingEnabled,
+          stepLimitMode: input.stepLimitMode,
+          stepLimitCustom:
+            input.stepLimitMode === 'custom'
+              ? Math.max(1, Math.floor(input.stepLimitCustom ?? 30))
+              : null,
+        })
+        .onConflictDoNothing()
+        .returning()
 
   const created = inserted.length > 0
   const row =
-    inserted[0] ?? (await readExistingAgentForCreate(id, input.userId))
+    inserted[0] ??
+    existingAgent ??
+    (await readExistingAgentForCreate(id, input.userId))
 
   // Idempotent replays may hit an existing row; direct sandbox writes let retries self-heal.
   await writeInitialBootstrapFiles({
@@ -165,14 +184,59 @@ export async function createAgentForUser(
   return { id, agent: row, created }
 }
 
+async function assertAgentCreationAllowed(userId: string): Promise<void> {
+  if (await userIsAdmin(userId)) {
+    return
+  }
+
+  const [row] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(agent)
+    .where(eq(agent.userId, userId))
+
+  if ((row?.total ?? 0) >= NON_ADMIN_AGENT_LIMIT) {
+    throw new AgentCreationLimitExceededError()
+  }
+}
+
+async function userIsAdmin(userId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ role: user.role })
+    .from(user)
+    .where(eq(user.id, userId))
+    .limit(1)
+  return isAdminRole(row?.role)
+}
+
+function isAdminRole(role: string | null | undefined): boolean {
+  return (
+    role
+      ?.split(',')
+      .map((value) => value.trim().toLowerCase())
+      .includes('admin') ?? false
+  )
+}
+
 async function readExistingAgentForCreate(
   id: string,
   userId: string
 ): Promise<Agent> {
-  const [row] = await db.select().from(agent).where(eq(agent.id, id)).limit(1)
+  const row = await readExistingAgentForCreateIfPresent(id, userId)
 
   if (!row) {
     throw new Error('Could not create agent.')
+  }
+  return row
+}
+
+async function readExistingAgentForCreateIfPresent(
+  id: string,
+  userId: string
+): Promise<Agent | null> {
+  const [row] = await db.select().from(agent).where(eq(agent.id, id)).limit(1)
+
+  if (!row) {
+    return null
   }
   if (row.userId !== userId) {
     throw new Error('Agent creation key collision.')
