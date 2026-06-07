@@ -12,12 +12,23 @@ export async function verifyInferenceCredential(input: {
   apiKey: string
   inferenceProvider: InferenceProvider
 }): Promise<Record<string, unknown>> {
+  const request = inferenceProviderVerificationRequest({
+    apiKey: input.apiKey,
+    provider: input.inferenceProvider,
+  })
+
+  if (!request) {
+    return {
+      providerStatus: 'verification_skipped',
+      verifiedAt: new Date().toISOString(),
+      verification: {
+        reason: 'no_non_billable_verification_endpoint',
+      },
+    }
+  }
+
   let response: Response
   try {
-    const request = inferenceProviderVerificationRequest({
-      apiKey: input.apiKey,
-      provider: input.inferenceProvider,
-    })
     response = await fetch(request.url, {
       ...request.init,
       cache: 'no-store',

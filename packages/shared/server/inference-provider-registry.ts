@@ -15,16 +15,6 @@ export const DEFAULT_INFERENCE_PROVIDER: InferenceProvider = 'vercel-ai-gateway'
 type LlmGatewayModelId = Parameters<ReturnType<typeof createLLMGateway>>[0]
 type ProviderLanguageModel = ReturnType<ReturnType<typeof createGateway>>
 
-// LLM Gateway's discovery endpoints are public, so key verification sends a
-// one-token authenticated ping through a small OpenAI-compatible model. Update
-// this if LLM Gateway deprecates or renames the route.
-const LLM_GATEWAY_VERIFICATION_MODEL = 'gpt-4o-mini'
-const LLM_GATEWAY_VERIFICATION_BODY = {
-  max_tokens: 1,
-  messages: [{ role: 'user', content: 'ping' }],
-  model: LLM_GATEWAY_VERIFICATION_MODEL,
-} as const
-
 const OPENROUTER_EXTRA_BODY = {
   provider: {
     allow_fallbacks: false,
@@ -41,7 +31,7 @@ interface ProviderDefinition {
     apiKey: string
     modelId: string
   }) => ProviderLanguageModel
-  createVerificationRequest: (apiKey: string) => ProviderVerificationRequest
+  createVerificationRequest?: (apiKey: string) => ProviderVerificationRequest
   keyPlaceholder: string
   label: string
   summarizeVerificationBody: (
@@ -68,17 +58,6 @@ const PROVIDER_DEFINITIONS = {
       })
       return llmGateway(modelId as LlmGatewayModelId)
     },
-    createVerificationRequest: (apiKey) => ({
-      url: 'https://api.llmgateway.io/v1/chat/completions',
-      init: {
-        body: JSON.stringify(LLM_GATEWAY_VERIFICATION_BODY),
-        headers: {
-          authorization: `Bearer ${apiKey}`,
-          'content-type': 'application/json',
-        },
-        method: 'POST',
-      },
-    }),
     keyPlaceholder: 'llmgtwy_...',
     label: 'LLM Gateway',
     summarizeVerificationBody: (body) => ({
@@ -172,10 +151,9 @@ export function inferenceProviderKeyPlaceholder(
 export function inferenceProviderVerificationRequest(input: {
   apiKey: string
   provider: InferenceProvider
-}): ProviderVerificationRequest {
-  return PROVIDER_DEFINITIONS[input.provider].createVerificationRequest(
-    input.apiKey
-  )
+}): ProviderVerificationRequest | null {
+  const definition = PROVIDER_DEFINITIONS[input.provider] as ProviderDefinition
+  return definition.createVerificationRequest?.(input.apiKey) ?? null
 }
 
 export function inferenceProviderGenerationLookupRequest(input: {

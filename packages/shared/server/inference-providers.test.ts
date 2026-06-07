@@ -121,51 +121,20 @@ describe('inference-providers', () => {
     )
   })
 
-  it('verifies LLM Gateway credentials with a minimal authenticated completion', async () => {
-    mockFetch.mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          id: 'chatcmpl_test',
-          model: 'gpt-4o-mini',
-          usage: { total_tokens: 2 },
-        }),
-        {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        }
-      )
-    )
-
+  it('skips network verification for LLM Gateway credentials', async () => {
     await expect(
       verifyInferenceCredential({
         apiKey: 'llmgtwy_secret',
         inferenceProvider: 'llm-gateway',
       })
     ).resolves.toMatchObject({
-      providerStatus: 200,
+      providerStatus: 'verification_skipped',
       verification: {
-        id: 'chatcmpl_test',
-        model: 'gpt-4o-mini',
-        usage: { total_tokens: 2 },
+        reason: 'no_non_billable_verification_endpoint',
       },
     })
 
-    expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.llmgateway.io/v1/chat/completions',
-      {
-        body: JSON.stringify({
-          max_tokens: 1,
-          messages: [{ role: 'user', content: 'ping' }],
-          model: 'gpt-4o-mini',
-        }),
-        cache: 'no-store',
-        headers: {
-          authorization: 'Bearer llmgtwy_secret',
-          'content-type': 'application/json',
-        },
-        method: 'POST',
-      }
-    )
+    expect(mockFetch).not.toHaveBeenCalled()
   })
 
   it('creates an LLM Gateway language model from the saved user key', async () => {
