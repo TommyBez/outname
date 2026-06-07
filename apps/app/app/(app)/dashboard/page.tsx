@@ -9,6 +9,8 @@ import {
   AgentDashboardCard,
   type DashboardAgent,
 } from '@outname/shared/agents/components/agent-dashboard-card'
+import { NewAgentLink } from '@outname/shared/agents/components/new-agent-link'
+import { canCreateAgentForUser } from '@outname/shared/agents/server/creation-limit-access'
 import { BudgetIndicator } from '@outname/shared/budgets/components/budget-indicator'
 import { loadBudgetSummary } from '@outname/shared/budgets/server/summary'
 import type { BudgetSummaryEntry } from '@outname/shared/budgets/server/types'
@@ -22,6 +24,12 @@ import {
 import { TodayDate } from '@outname/ui/components/today-date'
 import Link from 'next/link'
 import { Suspense } from 'react'
+
+const NEW_AGENT_BUTTON_CLASS_NAME =
+  'inline-flex h-14 shrink-0 items-center justify-center border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground'
+
+const QUICK_ACTION_CLASS_NAME =
+  'inline-flex h-10 items-center justify-center border-2 border-foreground px-3 font-bold text-[10px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background'
 
 export const metadata = createPrivatePageMetadata(
   'Dashboard',
@@ -38,7 +46,14 @@ export default function DashboardPage() {
 
 async function DashboardPageBody() {
   const session = await requireSession()
-  const display = await getUserTimeDisplay(session.user.id)
+  const [display, agents] = await Promise.all([
+    getUserTimeDisplay(session.user.id),
+    getCachedAgentsForUser(session.user.id),
+  ])
+  const canCreateAgent = await canCreateAgentForUser({
+    agentCount: agents.length,
+    userId: session.user.id,
+  })
   const todayLabel = display.longDate(new Date())
 
   return (
@@ -58,18 +73,20 @@ async function DashboardPageBody() {
               Live cockpit for event queues, budgets, and agents that need
               attention.
             </p>
-            <Link
-              className="inline-flex h-14 shrink-0 items-center justify-center border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground"
-              href="/agents/new"
+            <NewAgentLink
+              canCreate={canCreateAgent}
+              className={NEW_AGENT_BUTTON_CLASS_NAME}
             >
               + New agent
-            </Link>
+            </NewAgentLink>
           </div>
         </div>
       </header>
 
       <Suspense fallback={<RunResultSkeleton />}>
         <DashboardCockpit
+          agents={agents}
+          canCreateAgent={canCreateAgent}
           timeZone={display.timeZone}
           userId={session.user.id}
         />
@@ -78,17 +95,16 @@ async function DashboardPageBody() {
   )
 }
 async function DashboardCockpit({
+  agents,
+  canCreateAgent,
   timeZone,
   userId,
 }: {
+  agents: Agent[]
+  canCreateAgent: boolean
   timeZone: string
   userId: string
 }) {
-  const [agents, generalBudget] = await Promise.all([
-    getCachedAgentsForUser(userId),
-    loadBudgetSummary({ userId, scope: { type: 'general' } }),
-  ])
-
   if (agents.length === 0) {
     return (
       <div className="swiss-dots border-2 border-foreground bg-muted p-8 md:p-12">
@@ -98,12 +114,12 @@ async function DashboardCockpit({
         <p className="mt-4 max-w-md text-muted-foreground text-sm leading-relaxed">
           Create your first agent to start automating recurring work.
         </p>
-        <Link
-          className="mt-8 inline-flex h-14 items-center justify-center border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground"
-          href="/agents/new"
+        <NewAgentLink
+          canCreate={canCreateAgent}
+          className={`mt-8 ${NEW_AGENT_BUTTON_CLASS_NAME}`}
         >
           Create agent
-        </Link>
+        </NewAgentLink>
       </div>
     )
   }
@@ -112,7 +128,11 @@ async function DashboardCockpit({
   const pausedCount = agents.length - enabledCount
   const attentionAgents = agents.filter((agent) => !agent.enabled)
   const monitorAgents = agents.filter((agent) => agent.enabled)
-  const [agentBudgets, agentEvents] = await Promise.all([
+  const [generalBudget, agentBudgets, agentEvents] = await Promise.all([
+    loadBudgetSummary({
+      userId,
+      scope: { type: 'general' },
+    }),
     Promise.all(
       monitorAgents.map(async (a) => ({
         agentId: a.id,
@@ -200,7 +220,12 @@ async function DashboardCockpit({
             Quick actions
           </p>
           <div className="mt-4 grid gap-2">
-            <QuickAction href="/agents/new" label="New agent" />
+            <NewAgentLink
+              canCreate={canCreateAgent}
+              className={QUICK_ACTION_CLASS_NAME}
+            >
+              New agent
+            </NewAgentLink>
             <QuickAction href="/agents" label="Agent registry" />
             <QuickAction href="/channels" label="Channels" />
             <QuickAction href="/connections" label="Connections" />
@@ -305,10 +330,7 @@ function DashboardMetric({ label, value }: { label: string; value: number }) {
 
 function QuickAction({ href, label }: { href: string; label: string }) {
   return (
-    <Link
-      className="inline-flex h-10 items-center justify-center border-2 border-foreground px-3 font-bold text-[10px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
-      href={href}
-    >
+    <Link className={QUICK_ACTION_CLASS_NAME} href={href}>
       {label}
     </Link>
   )

@@ -7,8 +7,13 @@ import {
   normalizeAgentScheduleMode,
   normalizeScheduleTimesForMode,
 } from '@outname/shared/agent-schedule'
+import {
+  AGENT_CREATION_LIMIT,
+  AGENT_CREATION_LIMIT_MESSAGE,
+} from '@outname/shared/agents/creation-limits'
 import { writeBootstrapFiles } from '@outname/shared/agents/server/bootstrap-files'
 import { refreshAgentCapabilitySummary } from '@outname/shared/agents/server/capability-summary'
+import { roleBypassesAgentCreationLimit } from '@outname/shared/agents/server/creation-limit-roles'
 import type { StepLimitMode } from '@outname/shared/agents/server/creation-types'
 import {
   DEFAULT_MODEL_BY_PROVIDER,
@@ -22,7 +27,7 @@ import { eq, sql } from 'drizzle-orm'
 
 const HEARTBEAT_MIN = 5
 const HEARTBEAT_MAX = 1440
-export const NON_ADMIN_AGENT_LIMIT = 3
+export const NON_ADMIN_AGENT_LIMIT = AGENT_CREATION_LIMIT
 
 export interface CreateAgentInput {
   dreamingEnabled: boolean
@@ -53,7 +58,7 @@ type AgentCreationStore = Pick<typeof db, 'insert' | 'select'>
 
 export class AgentCreationLimitExceededError extends Error {
   constructor() {
-    super(`You can create at most ${NON_ADMIN_AGENT_LIMIT} agents.`)
+    super(AGENT_CREATION_LIMIT_MESSAGE)
     this.name = 'AgentCreationLimitExceededError'
   }
 }
@@ -209,7 +214,7 @@ async function assertAgentCreationAllowed(
     .from(agent)
     .where(eq(agent.userId, userId))
 
-  if ((row?.total ?? 0) >= NON_ADMIN_AGENT_LIMIT) {
+  if ((row?.total ?? 0) >= AGENT_CREATION_LIMIT) {
     throw new AgentCreationLimitExceededError()
   }
 }
@@ -223,16 +228,7 @@ async function userIsAdmin(
     .from(user)
     .where(eq(user.id, userId))
     .limit(1)
-  return isAdminRole(row?.role)
-}
-
-function isAdminRole(role: string | null | undefined): boolean {
-  return (
-    role
-      ?.split(',')
-      .map((value) => value.trim().toLowerCase())
-      .includes('admin') ?? false
-  )
+  return roleBypassesAgentCreationLimit(row?.role)
 }
 
 async function readExistingAgentForCreate(
