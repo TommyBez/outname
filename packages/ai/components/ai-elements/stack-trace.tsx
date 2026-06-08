@@ -444,19 +444,21 @@ const FilePathButton = memo(
     }, [frame, onFilePathClick]);
 
     return (
-      <button
+      <Button
         className={cn(
-          "underline decoration-dotted hover:text-primary",
+          "inline h-auto border-0 bg-transparent p-0 font-normal normal-case tracking-normal underline decoration-dotted hover:bg-transparent hover:text-primary",
           onFilePathClick && "cursor-pointer"
         )}
         disabled={!onFilePathClick}
         onClick={handleClick}
+        size="xs"
         type="button"
+        variant="ghost"
       >
         {frame.filePath}
         {frame.lineNumber !== null && `:${frame.lineNumber}`}
         {frame.columnNumber !== null && `:${frame.columnNumber}`}
-      </button>
+      </Button>
     );
   }
 );

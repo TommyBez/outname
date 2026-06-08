@@ -1,6 +1,7 @@
 'use client'
 
 import { deleteSlackBindingAction } from '@outname/shared/channels/slack/server/actions'
+import { Button } from '@outname/ui/components/ui/button'
 import { Hash, Trash2, User as UserIcon } from 'lucide-react'
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
@@ -103,15 +104,17 @@ function BindingRow({
           </p>
         </div>
       </div>
-      <button
+      <Button
         aria-label="Remove binding"
         className="inline-flex size-9 items-center justify-center border-2 border-foreground transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
         disabled={disabled}
         onClick={onRemove}
+        size="icon-xs"
         type="button"
+        variant="outline"
       >
         <Trash2 aria-hidden className="size-3.5" />
-      </button>
+      </Button>
     </li>
   )
 }

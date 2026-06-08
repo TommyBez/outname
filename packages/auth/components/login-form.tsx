@@ -126,15 +126,17 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
                   'Enter the 6-digit code from your email to continue.'}
               </p>
             </div>
-            <button
-              className="font-bold text-[11px] text-foreground uppercase tracking-[0.14em] underline underline-offset-4"
+            <Button
+              className="h-auto px-0 py-0 text-[11px] text-foreground tracking-[0.14em] underline hover:text-foreground"
               onClick={() => {
                 dispatch({ type: 'back_to_request' })
               }}
+              size="xs"
               type="button"
+              variant="link"
             >
               Change email
-            </button>
+            </Button>
           </div>
 
           <div className="pt-1">

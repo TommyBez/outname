@@ -7,6 +7,7 @@ import {
 } from '@outname/shared/connections/actions'
 import { connectionOAuthStartPath } from '@outname/shared/connections/oauth-paths'
 import type { ScopeDescriptor } from '@outname/shared/connections/types'
+import { Button } from '@outname/ui/components/ui/button'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
@@ -230,13 +231,15 @@ function ConnectionControls({
     <div className="flex shrink-0 flex-col items-stretch gap-2 md:items-end">
       <div className="flex items-center gap-2">
         {connector.authKind === 'api_key' ? (
-          <button
+          <Button
             className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
             onClick={() => setOpen((v) => !v)}
+            size="sm"
             type="button"
+            variant="outline"
           >
             {connection ? 'Replace key' : 'Connect'}
-          </button>
+          </Button>
         ) : (
           <a
             className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
@@ -248,14 +251,16 @@ function ConnectionControls({
           </a>
         )}
         {connection && (
-          <button
+          <Button
             className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
             disabled={pending}
             onClick={handleDisconnect}
+            size="sm"
             type="button"
+            variant="outline"
           >
             {pending ? '...' : 'Disconnect'}
-          </button>
+          </Button>
         )}
       </div>
       {connection && connector.authKind === 'oauth2' && (
@@ -289,13 +294,14 @@ function ConnectionControls({
               />
             </label>
           ))}
-          <button
+          <Button
             className="inline-flex h-10 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
             disabled={pending}
+            size="sm"
             type="submit"
           >
             {pending ? 'Saving...' : 'Save'}
-          </button>
+          </Button>
         </form>
       )}
     </div>

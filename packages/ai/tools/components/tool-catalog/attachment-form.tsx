@@ -1,5 +1,6 @@
 'use client'
 
+import { Button } from '@outname/ui/components/ui/button'
 import { useRouter } from 'next/navigation'
 import type { FormEventHandler } from 'react'
 import { useMemo, useState, useTransition } from 'react'
@@ -146,14 +147,16 @@ export function AttachmentForm({
                   {group.displayName} credential override
                 </p>
                 {group.hasOverride && (
-                  <button
+                  <Button
                     className="inline-flex h-8 items-center justify-center border-2 border-foreground px-3 font-bold text-[10px] uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
                     disabled={pending}
                     onClick={() => handleClearOverride(group.connectorId)}
+                    size="xs"
                     type="button"
+                    variant="outline"
                   >
                     Clear override
-                  </button>
+                  </Button>
                 )}
               </div>
               {group.fields.map((field) => {
@@ -178,13 +181,14 @@ export function AttachmentForm({
               })}
             </div>
           ))}
-          <button
+          <Button
             className="inline-flex h-10 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
             disabled={pending}
+            size="sm"
             type="submit"
           >
             {submitButtonLabel(pending, isAttached)}
-          </button>
+          </Button>
         </form>
       )}
     </div>

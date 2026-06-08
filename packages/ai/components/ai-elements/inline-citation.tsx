@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge } from "@outname/ui/components/ui/badge";
+import { Button } from "@outname/ui/components/ui/button";
 import type { CarouselApi } from "@outname/ui/components/ui/carousel";
 import {
   Carousel,
@@ -208,15 +209,20 @@ export const InlineCitationCarouselPrev = ({
   }, [api]);
 
   return (
-    <button
+    <Button
       aria-label="Previous"
-      className={cn("shrink-0", className)}
+      className={cn(
+        "h-auto w-auto shrink-0 border-0 bg-transparent p-0 hover:bg-transparent",
+        className
+      )}
       onClick={handleClick}
+      size="icon-xs"
       type="button"
+      variant="ghost"
       {...props}
     >
       <ArrowLeftIcon className="size-4 text-muted-foreground" />
-    </button>
+    </Button>
   );
 };
 
@@ -235,15 +241,20 @@ export const InlineCitationCarouselNext = ({
   }, [api]);
 
   return (
-    <button
+    <Button
       aria-label="Next"
-      className={cn("shrink-0", className)}
+      className={cn(
+        "h-auto w-auto shrink-0 border-0 bg-transparent p-0 hover:bg-transparent",
+        className
+      )}
       onClick={handleClick}
+      size="icon-xs"
       type="button"
+      variant="ghost"
       {...props}
     >
       <ArrowRightIcon className="size-4 text-muted-foreground" />
-    </button>
+    </Button>
   );
 };
 
