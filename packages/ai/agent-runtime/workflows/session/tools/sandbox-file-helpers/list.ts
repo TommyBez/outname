@@ -1,6 +1,7 @@
 import type { Sandbox } from '@vercel/sandbox'
 import {
   FILE_TOOL_SANDBOX_ROOT,
+  isRuntimeOwnedPath,
   isSafeRelativePath,
   isTrackedArchitecturePath,
   matchesPrefix,
@@ -57,6 +58,7 @@ async function listAllLiveFilePaths(
     .filter(Boolean)
     .map((absPath) => relativeToSandboxRoot(absPath))
     .filter((relPath) => isSafeRelativePath(relPath))
+    .filter((relPath) => !isRuntimeOwnedPath(relPath))
     .filter((relPath) => matchesPrefix(relPath, prefix.relPath))
     .sort()
 }

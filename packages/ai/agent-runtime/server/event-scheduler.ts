@@ -1,5 +1,6 @@
 import 'server-only'
 import {
+  dreamingConcurrencyKey,
   scheduledConcurrencyKey,
   scheduledDailyKey,
 } from '@outname/ai/agent-runtime/server/agent-event-keys'
@@ -95,7 +96,7 @@ async function enqueueDueScheduledEvents(
     if (dreamingDue) {
       await enqueueAgentEvent({
         agent: a,
-        concurrencyKey: dreamingDue.key,
+        concurrencyKey: dreamingConcurrencyKey(a.id),
         idempotencyKey: dreamingDue.key,
         payload: {
           localDate: dreamingDue.localDate,

@@ -157,7 +157,7 @@ async function ResolvedAgentMemoryDreams({ params }: { params: Params }) {
     <>
       <div className="mb-12 grid gap-8 md:grid-cols-[minmax(0,1fr)_auto]">
         <MemorySectionHeader
-          description="Daily self-review output captured in the agent's dreaming log."
+          description="Runtime memory consolidation captured in the cumulative Dream Diary."
           eyebrow="Memory · Dreaming"
           title="Dreaming stream"
         />

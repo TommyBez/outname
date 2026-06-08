@@ -3,11 +3,7 @@ import type { BuildAgentTool } from '@outname/ai/tools/sub-agents/agent-tool'
 import { currentWorkflowRunId } from '@outname/shared/server/workflow-run-id'
 import { getWritable } from '@outname/workflow/runtime'
 import type { StepResult, ToolSet, UIMessage, UIMessageChunk } from 'ai'
-import {
-  buildAgent,
-  buildDreamingKickoff,
-  buildHeartbeatKickoff,
-} from '../agent-factory'
+import { buildAgent, buildHeartbeatKickoff } from '../agent-factory'
 import {
   didReachStepLimit,
   resolveStepLimit,
@@ -99,15 +95,7 @@ export async function handleHeartbeat(input: {
       mode: meta.stepLimitMode,
       custom: meta.stepLimitCustom,
     } as const
-    const kickoff =
-      mode === 'dreaming'
-        ? buildDreamingKickoff({
-            localDate: dreamingLocalDate,
-            manual: input.manual ?? false,
-            nowIso,
-            previousIso,
-          })
-        : buildHeartbeatKickoff({ nowIso, previousIso })
+    const kickoff = buildHeartbeatKickoff({ nowIso, previousIso })
 
     const result = await durableAgent.stream({
       collectUIMessages: true,

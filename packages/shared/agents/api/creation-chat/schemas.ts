@@ -148,7 +148,7 @@ export const createAgentInputSchema = z.object({
       enabled: z
         .boolean()
         .describe(
-          'Whether dreaming is enabled. When on, the agent dreams once per local day, the first cron tick that has not run it yet.'
+          'Whether dreaming is enabled. When on, the runtime consolidates memory once per local day, on the first cron tick that has not run it yet.'
         ),
     })
     .default({ enabled: true }),

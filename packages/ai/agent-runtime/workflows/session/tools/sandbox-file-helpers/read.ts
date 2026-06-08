@@ -1,5 +1,9 @@
 import type { Sandbox } from '@vercel/sandbox'
-import { type NormalizedSandboxPath, normalizeSandboxPath } from './paths'
+import {
+  assertAgentVisibleSandboxPath,
+  type NormalizedSandboxPath,
+  normalizeSandboxPath,
+} from './paths'
 
 const MAX_READ_FILE_BYTES = 256 * 1024
 
@@ -8,6 +12,7 @@ export function readLiveFile(
   rawPath: string
 ): Promise<string | null> {
   const safe = normalizeSandboxPath(rawPath)
+  assertAgentVisibleSandboxPath(safe)
   return readLiveFileByPath(sandbox, safe)
 }
 

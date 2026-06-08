@@ -156,37 +156,3 @@ export function buildHeartbeatKickoff(args: {
     "today's log, then stop.",
   ].join('\n')
 }
-
-export function buildDreamingKickoff(args: {
-  localDate: string
-  manual: boolean
-  nowIso: string
-  previousIso: string | null
-}): string {
-  const trigger = args.manual
-    ? 'The user explicitly requested this dreaming pass.'
-    : 'This is your scheduled dreaming pass.'
-  const previous = args.previousIso
-    ? `Your last completed dream was at ${args.previousIso}.`
-    : 'This is your first completed dreaming window.'
-
-  return [
-    `It is now ${args.nowIso}. Local date: ${args.localDate}.`,
-    trigger,
-    previous,
-    '',
-    'Run a focused DREAMS / dreaming pass:',
-    '',
-    '1. Use listFiles/grepFiles to inspect recent logs under logs/.',
-    '   Prefer today and recent days, but do not read huge files blindly.',
-    '2. Read DREAMS.md, GOALS.md, and TASKS.md if they exist.',
-    '3. Read DREAMS.md, then write back a dated entry. Cite specific evidence using',
-    '   sandbox paths and line numbers returned by grepFiles, e.g.',
-    '   `logs/2026-04-30.md:12`.',
-    '4. Edit GOALS.md and TASKS.md only when the evidence supports a',
-    '   concrete change. Avoid speculative churn.',
-    "5. Read today's log if it exists, then write it back with one concise dreaming bullet.",
-    '',
-    'Stop after the dreaming pass. Do not start an open-ended work session.',
-  ].join('\n')
-}

@@ -3,6 +3,7 @@ import type { AgentEvent, AgentEventStatus } from '@outname/db/schema'
 export type WorkflowAgentEvent = Pick<
   AgentEvent,
   | 'agentId'
+  | 'attempt'
   | 'concurrencyKey'
   | 'id'
   | 'payload'
@@ -27,6 +28,7 @@ export async function loadAgentEventStep(input: {
   }
   return {
     agentId: event.agentId,
+    attempt: event.attempt,
     concurrencyKey: event.concurrencyKey,
     id: event.id,
     payload: event.payload,

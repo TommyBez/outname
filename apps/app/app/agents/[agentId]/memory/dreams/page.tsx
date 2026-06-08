@@ -5,7 +5,7 @@ type Params = Promise<{ agentId: string }>
 
 export const metadata = createPrivatePageMetadata(
   'Agent dreaming',
-  'Inspect private OUTNA.ME agent dreaming output and DREAMS.md memory.'
+  'Inspect private OUTNA.ME Dream Diary output and DREAMS.md memory.'
 )
 
 export default function AgentMemoryDreamsPage({ params }: { params: Params }) {
