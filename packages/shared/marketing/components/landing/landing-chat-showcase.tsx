@@ -662,7 +662,7 @@ export function LandingChatShowcase({
                               {scenario.relativeTime}
                             </span>
                           </span>
-                          <span className="line-clamp-2 hidden text-[11px] text-muted-foreground leading-snug lg:block">
+                          <span className="line-clamp-2 hidden whitespace-normal text-[11px] text-muted-foreground leading-snug lg:block">
                             {scenario.description}
                           </span>
                         </Button>
