@@ -24,6 +24,7 @@ const SERVER_EXTERNAL_PACKAGES = [
   'bash-tool',
   'just-bash',
   'pg',
+  'sql.js',
 ] as const
 
 export interface CreateOutnameNextConfigInput {
