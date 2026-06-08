@@ -305,6 +305,40 @@ export async function findNextQueuedForConcurrencyKey(
   return row ?? null
 }
 
+export async function findActiveOrQueuedDreamingEventForAgent(
+  agentId: string
+): Promise<AgentEvent | null> {
+  const [active] = await db
+    .select()
+    .from(agentEvents)
+    .where(
+      and(
+        eq(agentEvents.agentId, agentId),
+        eq(agentEvents.type, 'dreaming'),
+        inArray(agentEvents.status, ACTIVE_EVENT_STATUSES)
+      )
+    )
+    .orderBy(asc(agentEvents.queuedAt))
+    .limit(1)
+  if (active) {
+    return active
+  }
+
+  const [queued] = await db
+    .select()
+    .from(agentEvents)
+    .where(
+      and(
+        eq(agentEvents.agentId, agentId),
+        eq(agentEvents.type, 'dreaming'),
+        eq(agentEvents.status, 'queued')
+      )
+    )
+    .orderBy(asc(agentEvents.queuedAt))
+    .limit(1)
+  return queued ?? null
+}
+
 export function payloadAs<T>(event: AgentEvent): T {
   return event.payload as T
 }

@@ -9,6 +9,7 @@ import {
   type WorkflowAgentEvent,
 } from '@outname/ai/agent-runtime/workflows/events/steps/event-store'
 import { startNextQueuedEventForWorkflow } from '@outname/ai/agent-runtime/workflows/events/steps/start-next-queued-event'
+import { handleDreaming } from '@outname/ai/agent-runtime/workflows/session/handlers/handle-dreaming'
 import { handleHeartbeat } from '@outname/ai/agent-runtime/workflows/session/handlers/handle-heartbeat'
 import { handleInvocation } from '@outname/ai/agent-runtime/workflows/session/handlers/handle-invocation'
 import { buildWorkflowAgentTool } from '@outname/ai/tools/sub-agents/workflow-agent-tool'
@@ -69,14 +70,12 @@ async function dispatchAgentEvent(event: WorkflowAgentEvent): Promise<void> {
     }
     case 'dreaming': {
       const payload = payloadAs<AgentEventPayloads['dreaming']>(event)
-      await handleHeartbeat({
+      await handleDreaming({
         agentId: event.agentId,
-        buildSubAgentTool: buildWorkflowSubAgentTool,
+        attempt: event.attempt,
         eventId: event.id,
         localDate: payload.localDate,
         manual: payload.manual ?? false,
-        mode: 'dreaming',
-        replyToken: replyNamespaceForEvent(event.id),
         scheduledAt: payload.scheduledAt,
         userId: event.userId,
       })

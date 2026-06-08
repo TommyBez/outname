@@ -5,6 +5,7 @@ const {
   mockCleanupEventResources,
   mockGetWorkflowMetadata,
   mockHandleHeartbeat,
+  mockHandleDreaming,
   mockHandleInvocation,
   mockLoadAgentEventStep,
   mockMarkAgentEventHeartbeatStep,
@@ -17,6 +18,7 @@ const {
   mockCleanupEventResources: vi.fn(),
   mockGetWorkflowMetadata: vi.fn(),
   mockHandleHeartbeat: vi.fn(),
+  mockHandleDreaming: vi.fn(),
   mockHandleInvocation: vi.fn(),
   mockLoadAgentEventStep: vi.fn(),
   mockMarkAgentEventHeartbeatStep: vi.fn(),
@@ -50,6 +52,10 @@ vi.mock('../session/handlers/handle-heartbeat', () => ({
   handleHeartbeat: mockHandleHeartbeat,
 }))
 
+vi.mock('../session/handlers/handle-dreaming', () => ({
+  handleDreaming: mockHandleDreaming,
+}))
+
 vi.mock('../session/handlers/handle-invocation', () => ({
   handleInvocation: mockHandleInvocation,
 }))
@@ -77,6 +83,7 @@ import {
 function createEvent(overrides: Record<string, unknown> = {}) {
   return {
     agentId: 'agent_123',
+    attempt: 1,
     concurrencyKey: 'key_123',
     id: 'evt_123',
     payload: {},
@@ -183,17 +190,16 @@ describe('agentEventWorkflow', () => {
 
     await agentEventWorkflow({ eventId: event.id })
 
-    expect(mockHandleHeartbeat).toHaveBeenCalledWith({
+    expect(mockHandleDreaming).toHaveBeenCalledWith({
       agentId: 'agent_123',
-      buildSubAgentTool: expect.any(Function),
+      attempt: 1,
       eventId: 'evt_123',
       localDate: '2026-05-14',
       manual: false,
-      mode: 'dreaming',
-      replyToken: 'reply:evt_123',
       scheduledAt: '2026-05-14T20:30:00.000Z',
       userId: 'user_123',
     })
+    expect(mockHandleHeartbeat).not.toHaveBeenCalled()
   })
 
   it('dispatches invocation events and normalizes missing parent references', async () => {

@@ -219,7 +219,7 @@ function resolveInstructions(
     '',
     '## Dreaming',
     input.dreaming.enabled
-      ? 'Review memory and recent work once per day, on the first cron tick of the day that has not run dreaming yet.'
+      ? 'Allow the runtime to consolidate recent evidence into durable memory and the Dream Diary once per day, on the first cron tick that has not run dreaming yet.'
       : 'Do not run scheduled dreaming unless the user enables it later.',
     '',
     '## Tool Use',

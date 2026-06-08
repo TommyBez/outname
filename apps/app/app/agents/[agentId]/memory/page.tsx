@@ -9,7 +9,7 @@ type Params = Promise<{ agentId: string }>
 
 export const metadata = createPrivatePageMetadata(
   'Agent memory',
-  'Inspect private OUTNA.ME agent files, timelines, and dreaming output.'
+  'Inspect private OUTNA.ME agent files, timelines, and Dream Diary output.'
 )
 
 export default function AgentMemoryPage({ params }: { params: Params }) {
@@ -35,7 +35,8 @@ async function ResolvedAgentMemoryPage({ params }: { params: Params }) {
           Agent memory
         </h1>
         <p className="mt-5 max-w-2xl border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
-          Inspect sandbox files, daily logs, and dreaming output for this agent.
+          Inspect sandbox files, daily logs, and Dream Diary output for this
+          agent.
         </p>
       </header>
 
@@ -51,7 +52,7 @@ async function ResolvedAgentMemoryPage({ params }: { params: Params }) {
           title="Timeline"
         />
         <MemoryCard
-          description="DREAMS.md and the latest dreaming output captured for this agent."
+          description="DREAMS.md and runtime memory consolidation output for this agent."
           href={`/agents/${agent.id}/memory/dreams`}
           title="Dreaming"
         />

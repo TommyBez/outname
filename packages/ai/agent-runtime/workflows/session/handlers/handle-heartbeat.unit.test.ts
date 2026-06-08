@@ -54,7 +54,6 @@ vi.mock('@outname/ai/agent-runtime/server/run-events', () => ({
 
 vi.mock('../agent-factory', () => ({
   buildAgent: mockBuildAgent,
-  buildDreamingKickoff: vi.fn(() => 'dreaming kickoff'),
   buildHeartbeatKickoff: vi.fn(() => 'heartbeat kickoff'),
 }))
 

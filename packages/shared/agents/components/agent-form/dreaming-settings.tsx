@@ -18,9 +18,8 @@ export function DreamingSettings({
       </Label>
       <div className="flex items-center justify-between gap-4">
         <p className="text-muted-foreground text-xs">
-          When on, the agent reviews its logs, updates DREAMS.md, and proposes
-          updates to goals or tasks once per day, the first cron tick of the day
-          that hasn't run it yet.
+          When on, the runtime consolidates recent evidence into DreamingStore,
+          MEMORY.md, and the cumulative Dream Diary once per local day.
         </p>
         <Switch
           checked={dreamingEnabled}

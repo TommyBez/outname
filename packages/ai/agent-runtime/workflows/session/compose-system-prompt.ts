@@ -151,10 +151,10 @@ function renderEventSections(
         [
           '## Dreaming behavior',
           '',
-          'Follow the dreaming kickoff message for this turn. Dreaming passes',
-          'are deeper but still bounded reviews. Use logs as evidence, cite',
-          'memory paths/line numbers when updating DREAMS.md, and only change',
-          'GOALS.md or TASKS.md when the evidence supports it.',
+          'Dreaming is governed by the runtime memory pipeline. Do not run',
+          'file-tool rituals, ordinary work, goal editing, or task editing for',
+          'this event. The runtime deterministically reads evidence, updates',
+          'DreamingStore, and writes MEMORY.md or DREAMS.md when warranted.',
         ].join('\n'),
       ]
     case 'invocation':

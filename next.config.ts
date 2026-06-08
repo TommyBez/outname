@@ -4,7 +4,13 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
-  serverExternalPackages: ['better-auth', 'bash-tool', 'just-bash', 'pg'],
+  serverExternalPackages: [
+    'better-auth',
+    'bash-tool',
+    'just-bash',
+    'pg',
+    'sql.js',
+  ],
   pageExtensions: ['js', 'jsx', 'md', 'mdx', 'ts', 'tsx'],
 }
 

@@ -1,5 +1,6 @@
 import type { Sandbox } from '@vercel/sandbox'
 import {
+  isRuntimeOwnedPath,
   isSafeRelativePath,
   normalizeSandboxPrefix,
   relativeToSandboxRoot,
@@ -26,6 +27,9 @@ export async function grepLiveFiles(
   args: GrepFilesArgs
 ): Promise<{ matches: GrepMatch[]; truncated: boolean }> {
   const prefix = normalizeSandboxPrefix(args.pathPrefix)
+  if (isRuntimeOwnedPath(prefix.relPath)) {
+    return { matches: [], truncated: false }
+  }
   const maxResults = Math.min(Math.max(args.maxResults, 1), 200)
   const grepArgs = [
     '-RInI',
@@ -63,6 +67,7 @@ export async function grepLiveFiles(
     .map(parseGrepLine)
     .filter((match): match is GrepMatch => match !== null)
     .filter((match) => isSafeRelativePath(match.path))
+    .filter((match) => !isRuntimeOwnedPath(match.path))
     .slice(0, maxResults)
 
   return {

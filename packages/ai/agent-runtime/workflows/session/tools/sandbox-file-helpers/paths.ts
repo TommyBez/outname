@@ -19,6 +19,8 @@ const CANONICAL_ARCHITECTURE_FILES = new Set([
   'DREAMS.md',
 ])
 
+const RUNTIME_OWNED_PREFIXES = ['memory/.dreams'] as const
+
 export interface NormalizedSandboxPath {
   absPath: string
   relPath: string
@@ -51,11 +53,28 @@ export function normalizeSandboxPrefix(
 }
 
 export function assertWritableSandboxPath(path: NormalizedSandboxPath): void {
+  assertAgentVisibleSandboxPath(path)
   if (isReadOnlyForAgent(path.relPath)) {
     throw new SandboxPathError(
       `${path.relPath} is user-owned and can only be changed through the agent settings UI.`
     )
   }
+}
+
+export function assertAgentVisibleSandboxPath(
+  path: NormalizedSandboxPath
+): void {
+  if (isRuntimeOwnedPath(path.relPath)) {
+    throw new SandboxPathError(
+      `${path.relPath} is managed by the platform runtime and is hidden from agent file tools.`
+    )
+  }
+}
+
+export function isRuntimeOwnedPath(relPath: string): boolean {
+  return RUNTIME_OWNED_PREFIXES.some(
+    (prefix) => relPath === prefix || relPath.startsWith(`${prefix}/`)
+  )
 }
 
 export function isTrackedArchitecturePath(relPath: string): boolean {

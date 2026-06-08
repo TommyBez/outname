@@ -1,5 +1,6 @@
 import { expect, test } from 'vitest'
 import {
+  dreamingConcurrencyKey,
   eventActivityNamespace,
   replyNamespaceForEvent,
   scheduledBucketKey,
@@ -46,6 +47,7 @@ test('scheduled event keys bucket heartbeat and dreaming independently', () => {
 })
 
 test('scheduled concurrency and stream namespaces are stable', () => {
+  expect(dreamingConcurrencyKey('agent_123')).toBe('dreaming:agent_123')
   expect(
     scheduledConcurrencyKey({
       agentId: 'agent_123',

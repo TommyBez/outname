@@ -25,7 +25,7 @@ const BOOTSTRAP_FILE_PATHS = [
 export type BootstrapFilePath = (typeof BOOTSTRAP_FILE_PATHS)[number]
 
 const SEED_MARKER_PATH = `${SYSTEM_SANDBOX_ROOT}/.agents-md-seeded`
-const SEED_MARKER_VALUE = 'v13-events'
+const SEED_MARKER_VALUE = 'v14-dreaming-runtime'
 
 export async function writeBootstrapFiles(input: {
   agentId: string
@@ -69,8 +69,7 @@ export async function seedBootstrapFilesIfNeeded(
   }
 
   await Promise.all([
-    writeDefaultFileIfMissing({
-      content: buildAgentsMdContent(),
+    writeAgentsMdTemplateIfNeeded({
       path: `${SYSTEM_SANDBOX_ROOT}/AGENTS.md`,
       sandbox,
     }),
@@ -85,6 +84,24 @@ export async function seedBootstrapFilesIfNeeded(
 
 export function customInstructionsFromAgentsMd(content: string): string {
   return extractAgentsMdCustomInstructions(content)
+}
+
+async function writeAgentsMdTemplateIfNeeded(input: {
+  path: string
+  sandbox: Awaited<ReturnType<typeof ensureSystemSandbox>>['sandbox']
+}): Promise<void> {
+  const existing = await input.sandbox
+    .readFileToBuffer({ path: input.path })
+    .catch(() => null)
+  const customInstructions = existing
+    ? extractAgentsMdCustomInstructions(existing.toString('utf8'))
+    : ''
+  await input.sandbox.writeFiles([
+    {
+      content: Buffer.from(buildAgentsMdContent({ customInstructions })),
+      path: input.path,
+    },
+  ])
 }
 
 function renderBootstrapFile(path: BootstrapFilePath, content: string): string {

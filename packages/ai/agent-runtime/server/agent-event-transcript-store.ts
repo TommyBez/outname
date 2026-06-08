@@ -1,9 +1,9 @@
 import 'server-only'
 import type { AgentChatMessage } from '@outname/ai/agent-runtime/server/chat-status'
 import { db } from '@outname/db'
-import { agentEventMessage } from '@outname/db/schema'
+import { agentEventMessage, agentEvents } from '@outname/db/schema'
 import type { UIMessage } from 'ai'
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, inArray } from 'drizzle-orm'
 
 export async function listAgentEventTranscriptMessages(
   eventId: string
@@ -81,6 +81,102 @@ export async function replaceAgentEventTranscriptMessagesBestEffort(input: {
       messageCount: input.messages.length,
     })
   }
+}
+
+export interface DreamingTranscriptMessage {
+  eventId: string
+  messageId: string
+  role: string
+  text: string
+}
+
+export interface DreamingTranscriptEvent {
+  completedAt: Date
+  eventId: string
+  messages: DreamingTranscriptMessage[]
+  type: string
+}
+
+export async function listRecentCompletedAgentEventTranscriptsForDreaming(input: {
+  agentId: string
+  completedAfter: Date
+  limit: number
+  maxMessagesPerEvent: number
+  userId: string
+}): Promise<DreamingTranscriptEvent[]> {
+  const eventRows = await db
+    .select({
+      completedAt: agentEvents.completedAt,
+      eventId: agentEvents.id,
+      type: agentEvents.type,
+    })
+    .from(agentEvents)
+    .where(
+      and(
+        eq(agentEvents.agentId, input.agentId),
+        eq(agentEvents.userId, input.userId),
+        eq(agentEvents.status, 'completed'),
+        inArray(agentEvents.type, ['heartbeat', 'invocation']),
+        gte(agentEvents.completedAt, input.completedAfter)
+      )
+    )
+    .orderBy(desc(agentEvents.completedAt))
+    .limit(input.limit)
+
+  const events: DreamingTranscriptEvent[] = []
+  for (const event of eventRows) {
+    if (!event.completedAt) {
+      continue
+    }
+    const messageRows = await db
+      .select({
+        eventId: agentEventMessage.eventId,
+        messageId: agentEventMessage.messageId,
+        parts: agentEventMessage.parts,
+        role: agentEventMessage.role,
+      })
+      .from(agentEventMessage)
+      .where(eq(agentEventMessage.eventId, event.eventId))
+      .orderBy(asc(agentEventMessage.messageOrder))
+      .limit(input.maxMessagesPerEvent)
+    events.push({
+      completedAt: event.completedAt,
+      eventId: event.eventId,
+      messages: messageRows.flatMap((message) => {
+        const text = extractTextFromParts(message.parts)
+        return text
+          ? [
+              {
+                eventId: message.eventId,
+                messageId: message.messageId,
+                role: message.role,
+                text,
+              },
+            ]
+          : []
+      }),
+      type: event.type,
+    })
+  }
+  return events
+}
+
+function extractTextFromParts(parts: unknown): string {
+  if (!Array.isArray(parts)) {
+    return ''
+  }
+  const chunks: string[] = []
+  for (const part of parts) {
+    if (
+      typeof part === 'object' &&
+      part !== null &&
+      Reflect.get(part, 'type') === 'text' &&
+      typeof Reflect.get(part, 'text') === 'string'
+    ) {
+      chunks.push(Reflect.get(part, 'text') as string)
+    }
+  }
+  return chunks.join('\n').trim()
 }
 function isAgentChatMessageRole(
   value: unknown

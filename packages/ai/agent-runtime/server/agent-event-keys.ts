@@ -6,6 +6,10 @@ export function eventActivityNamespace(eventWorkflowRunId: string): string {
   return `events:${eventWorkflowRunId}`
 }
 
+export function dreamingConcurrencyKey(agentId: string): string {
+  return `dreaming:${agentId}`
+}
+
 export function scheduledBucketKey(input: {
   agentId: string
   intervalMinutes: number

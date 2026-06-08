@@ -99,7 +99,7 @@ run freely without making the agent memory filesystem executable.
 Event types:
 
 - `heartbeat`
-- `dreaming`
+- `dreaming` — see [DREAMING.md](./DREAMING.md) for the v2 memory-consolidation pipeline
 - `invocation`
 
 Event statuses:
