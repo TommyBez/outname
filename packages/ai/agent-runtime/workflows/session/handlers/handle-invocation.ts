@@ -140,6 +140,15 @@ export async function handleInvocation(input: {
       collectUIMessages: true,
       preventClose: true,
       sendFinish: false,
+      onError: async ({ error }) => {
+        const message = error instanceof Error ? error.message : String(error)
+        console.error('handleInvocation: stream error', error)
+        await emitActivity(runId, 'Sub-agent: Stream error', { message }).catch(
+          () => {
+            // Best-effort breadcrumb; the surrounding catch finalizes the run.
+          }
+        )
+      },
     })
     await recordTokenUsageStep({
       userId: built.meta.userId,

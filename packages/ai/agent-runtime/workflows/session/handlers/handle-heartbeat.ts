@@ -114,6 +114,15 @@ export async function handleHeartbeat(input: {
       messages: [{ role: 'user', content: kickoff }],
       writable,
       stopWhen: resolveStepLimit(stepLimitInput),
+      onError: async ({ error }) => {
+        const message = error instanceof Error ? error.message : String(error)
+        console.error('handleHeartbeat: stream error', error)
+        await emitActivity(runId, activityMessage(mode, 'Stream error'), {
+          message,
+        }).catch(() => {
+          // Best-effort breadcrumb; the surrounding catch finalizes the run.
+        })
+      },
     })
     if (budgetCheck.userId) {
       await recordTokenUsageStep({
