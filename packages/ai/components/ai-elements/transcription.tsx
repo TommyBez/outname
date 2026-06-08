@@ -105,7 +105,7 @@ export const TranscriptionSegment = ({
   return (
     <Button
       className={cn(
-        "inline h-auto border-0 bg-transparent p-0 text-left font-normal normal-case tracking-normal hover:bg-transparent",
+        "inline h-auto whitespace-normal border-0 bg-transparent p-0 text-left font-normal normal-case tracking-normal hover:bg-transparent",
         isActive && "text-primary",
         isPast && "text-muted-foreground",
         !(isActive || isPast) && "text-muted-foreground/60",
