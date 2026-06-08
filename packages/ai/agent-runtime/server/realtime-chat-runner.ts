@@ -45,6 +45,7 @@ import {
   preflightBudget,
   recordTokenUsageStep,
 } from '../workflows/session/steps/budget'
+import { humanReadableAgentError } from './human-readable-error'
 import { buildRealtimeAgentRuntime } from './realtime-agent-runtime'
 
 export type RealtimePersistMode = 'ui-message-full' | 'text-only'
@@ -120,15 +121,32 @@ function createRealtimeUiMessageResponse(
         }
       })
     },
+    // Without this, the AI SDK surfaces a generic "An error occurred." to the UI.
+    onError: (error) =>
+      reportRealtimeStreamError(
+        { agentId: input.agentId, conversationId: input.conversationId },
+        error
+      ),
   })
   return createUIMessageStreamResponse({ stream })
 }
 
 export function tapFullStream(
   stream: AsyncIterable<TextStreamPart<Record<string, Tool>>>,
-  accumulator: { text: string }
+  accumulator: { text: string },
+  onError?: (error: unknown) => void
 ): AsyncIterable<TextStreamPart<Record<string, Tool>>> {
-  return tapFullStreamGenerator(stream, accumulator)
+  return tapFullStreamGenerator(stream, accumulator, onError)
+}
+
+// Logs a stream error and returns a user-facing message. Shared by the web UI
+// stream error handlers and the channel (text-only) path.
+function reportRealtimeStreamError(
+  context: Record<string, unknown>,
+  error: unknown
+): string {
+  console.error('[realtime-chat] agent stream error', { ...context, error })
+  return humanReadableAgentError(error)
 }
 
 async function runRealtimeChatTurnInsideContext(
@@ -246,6 +264,12 @@ async function streamUiMessageTurn(input: {
     // sub-agent outputs to the model. We only persist the new responseMessage.
     originalMessages: turn.messages as never,
     generateMessageId: () => `msg_${nanoid(12)}`,
+    // Replace the SDK default ("An error occurred.") with a readable message.
+    onError: (error) =>
+      reportRealtimeStreamError(
+        { agentId: turn.agentId, conversationId: turn.conversationId },
+        error
+      ),
     onFinish: async ({ responseMessage, isAborted, finishReason }) => {
       await handleUiMessageFinish({
         agentId: turn.agentId,
@@ -304,10 +328,22 @@ async function runTextOnlyTurn(input: {
     abortSignal: turn.abortSignal,
   })
   const accumulator = { text: '' }
+  const streamError: { value: unknown } = { value: null }
 
   try {
     await turn.delivery.postAgentStream(
-      tapFullStream(result.fullStream, accumulator)
+      tapFullStream(result.fullStream, accumulator, (error) => {
+        streamError.value = error
+        console.error('[realtime-chat] agent stream error', {
+          agentId: turn.agentId,
+          conversationId: turn.conversationId,
+          error,
+          externalScopeId: turn.externalScopeId,
+          externalThreadId: turn.externalThreadId,
+          runId: turn.runId,
+          source: turn.source,
+        })
+      })
     )
   } catch (err) {
     console.error('[realtime-chat] channel stream failed', {
@@ -320,6 +356,13 @@ async function runTextOnlyTurn(input: {
       source: turn.source,
     })
     throw err
+  }
+
+  // A non-fatal stream error was intercepted (and swallowed) by the tap above.
+  // Surface a human-readable notice to the channel; any text streamed before
+  // the error has already been delivered and is still persisted below.
+  if (streamError.value !== null) {
+    await turn.delivery.postText?.(humanReadableAgentError(streamError.value))
   }
 
   let assistantText = accumulator.text.trim()
@@ -565,11 +608,19 @@ const missingRealtimeSubAgentTool: BuildAgentTool = () => {
 
 async function* tapFullStreamGenerator(
   stream: AsyncIterable<TextStreamPart<Record<string, Tool>>>,
-  accumulator: { text: string }
+  accumulator: { text: string },
+  onError?: (error: unknown) => void
 ): AsyncGenerator<TextStreamPart<Record<string, Tool>>, void, unknown> {
   for await (const chunk of stream) {
     if (chunk.type === 'text-delta') {
       accumulator.text += chunk.text
+    } else if (chunk.type === 'error') {
+      // ToolLoopAgent.stream() has no onError option: non-fatal errors surface
+      // as `error` parts on the fullStream rather than thrown. Intercept them
+      // here and swallow the raw chunk so the channel never renders provider
+      // internals — the caller posts a human-readable notice instead.
+      onError?.(chunk.error)
+      continue
     }
     yield chunk
   }
