@@ -59,6 +59,101 @@ A user-defined operational guardrail for limiting agent spend; it is not a
 billing ledger or financial guarantee.
 _Avoid_: Billing, invoice, charge
 
+**Budget Gate**:
+The pre-run stop condition that prevents a Dreaming run from making any state or
+file changes when the agent is budget-blocked.
+_Avoid_: LLM-only budget check, partial deterministic run
+
+**Budget-Skipped Dreaming**:
+A Dreaming event that completes successfully with a `budget_skipped` outcome
+without running a sweep or marking the local day as completed.
+_Avoid_: Failed dream, cancelled dream, completed sweep
+
+**Failed Dreaming Sweep**:
+A Dreaming event whose required Light, REM, or Deep phase failed; it records the
+error and remains eligible for retry because the local day is not completed.
+_Avoid_: Budget skip, narrative failure, completed dream
+
+**Dreaming Retry Idempotence**:
+The rule that a failed Dreaming sweep retries as a new attempt over accumulated
+Dreaming Store evidence without globally rolling back prior idempotent state.
+_Avoid_: Global rollback, duplicate promotion, blind replay
+
+**Dreaming**:
+An offline agent memory governance run that consolidates recent evidence without
+delivering a user-facing work session.
+_Avoid_: Free-form agent session, heartbeat
+
+**OpenClaw-Inspired Design**:
+An Outname-owned Dreaming design that borrows architectural ideas from OpenClaw
+without adopting OpenClaw artifact compatibility, marker strings, or file
+contracts.
+_Avoid_: OpenClaw parity, OpenClaw-compatible implementation, copied behavior
+
+**Dreaming Phase Names**:
+The canonical Outname phase labels `Light`, `REM`, and `Deep`; they are generic
+sleep metaphors whose behavior is defined by Outname's Dreaming contract.
+_Avoid_: Upstream-compatible phase contract, renamed phases
+
+**Dreaming Store**:
+The runtime-owned scratch state for a Dreaming run, including recall candidates,
+phase signals, ingestion checkpoints, sweep manifests, and locks.
+_Avoid_: JSON files, SQLite API
+
+**Dreaming Debug Export**:
+An opt-in diagnostic file derived from Dreaming Store state; it is not required
+for normal runtime behavior or the user-facing Dreaming UI.
+_Avoid_: Primary manifest, required JSON export
+
+**Dreaming Run Lock**:
+The per-agent serialization guard that prevents scheduled and manual Dreaming
+runs from executing concurrently.
+_Avoid_: Idempotency key, manual bypass
+
+**Dream Now Idempotence**:
+The UI/runtime contract that a manual Dreaming trigger returns an existing
+active or queued Dreaming run instead of creating additional queued work.
+_Avoid_: Manual queue, duplicate dream
+
+**REM Phase**:
+A rule-governed Dreaming phase that reinforces staged memory candidates with
+pattern metadata before durable promotion.
+_Avoid_: REM LLM, semantic generation
+
+**Dream Diary**:
+A human-readable, non-canonical Dreaming output for review and observability.
+_Avoid_: Durable memory, source of truth
+
+**Cumulative Dream Diary**:
+The single `DREAMS.md` file that accumulates dated Dreaming reports and optional
+narrative entries.
+_Avoid_: Per-phase report files, per-day diary files
+
+**Tool-less Diary Agent**:
+The Dream Diary narrative generator that uses the agent abstraction without
+sandbox, file, or provider tools; runtime code owns all writes.
+_Avoid_: File-editing diary agent, narrative tool loop
+
+**Durable Promotion**:
+A Deep-authorized append to durable agent memory after scoring, diversity checks,
+and source rehydration.
+_Avoid_: Memory write, diary insight, REM decision
+
+**Outname Promotion Marker**:
+The application-owned HTML marker used to identify durable promotions in
+`MEMORY.md` and prevent duplicate appends.
+_Avoid_: Upstream-compatible marker, copied marker string
+
+**Event Transcript Evidence**:
+Completed agent event transcript content consumed transiently by Dreaming to
+stage memory candidates without duplicating transcripts into the sandbox.
+_Avoid_: Session evidence, sandbox session corpus, raw chat history
+
+**Bounded Evidence Ingestion**:
+The Dreaming rule that evidence sources are read through explicit caps before
+candidate extraction, so oversized inputs are truncated or deferred.
+_Avoid_: Full transcript copy, unbounded ingestion
+
 **Agent Skill**:
 A user-installed capability package that teaches an agent a specialized workflow
 and may include supporting files or executable scripts.
