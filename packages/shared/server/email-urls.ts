@@ -1,36 +1,24 @@
 import 'server-only'
 
-import { withRelatedProject } from '@vercel/related-projects'
+import { relatedProjects, withRelatedProject } from '@vercel/related-projects'
 import {
   getCurrentProjectOrigin,
   LOCAL_PROJECT_ORIGINS,
   PROJECT_NAMES,
 } from '../vercel-related-projects'
 
-// Email origins resolve at runtime, in order:
-// 1. VERCEL_RELATED_PROJECTS — cross-project links (e.g. api → app login).
-//    The list never includes the current project, so a miss usually means the
-//    email links back to the project that is sending it.
-// 2. NEXT_PUBLIC_APP_URL / NEXT_PUBLIC_WEB_URL — computed per app by
-//    createOutnameNextConfig. Covers the current-project case and, when a
-//    related-project link is missing on Vercel, keeps the failure on the
-//    build-time value instead of silently emitting the sender's own origin
-//    (e.g. api links pointing at the api host).
-// 3. Current deployment system env vars (VERCEL_PROJECT_PRODUCTION_URL /
-//    VERCEL_URL) for non-Next contexts, then the local dev default.
-function toConfiguredOrigin(value: string | undefined): string | null {
-  const trimmed = value?.trim()
-  if (!trimmed) {
-    return null
-  }
-  try {
-    return new URL(trimmed).origin
-  } catch {
-    return null
-  }
-}
-
+// Email origins resolve at runtime from Vercel system env vars only.
+// VERCEL_RELATED_PROJECTS covers cross-project links (e.g. api → app login)
+// but never lists the current project, so when the list is populated a miss
+// means the email links back to the project sending it and the origin comes
+// from the current deployment (VERCEL_PROJECT_PRODUCTION_URL / VERCEL_URL).
+// When there is no related-project data at all (local dev, or a deployment
+// with no relations configured), guessing another project's URL from this
+// deployment's env would emit the sender's own origin, so the local default
+// is returned instead.
 function resolveEmailOrigin(project: 'app' | 'web'): string {
+  const localOrigin = LOCAL_PROJECT_ORIGINS[project]
+
   const relatedOrigin = withRelatedProject({
     defaultHost: '',
     projectName: PROJECT_NAMES[project],
@@ -39,16 +27,11 @@ function resolveEmailOrigin(project: 'app' | 'web'): string {
     return relatedOrigin
   }
 
-  const configuredOrigin = toConfiguredOrigin(
-    project === 'app'
-      ? process.env.NEXT_PUBLIC_APP_URL
-      : process.env.NEXT_PUBLIC_WEB_URL
-  )
-  if (configuredOrigin) {
-    return configuredOrigin
+  if (relatedProjects({ noThrow: true }).length > 0) {
+    return getCurrentProjectOrigin(localOrigin)
   }
 
-  return getCurrentProjectOrigin(LOCAL_PROJECT_ORIGINS[project])
+  return localOrigin
 }
 
 /** App origin for transactional email links (login, settings). */
