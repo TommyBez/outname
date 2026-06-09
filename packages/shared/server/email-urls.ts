@@ -2,48 +2,35 @@ import 'server-only'
 
 import { withRelatedProject } from '@vercel/related-projects'
 import {
+  getCurrentProjectOrigin,
   LOCAL_PROJECT_ORIGINS,
   PROJECT_NAMES,
 } from '../vercel-related-projects'
 
-// VERCEL_RELATED_PROJECTS never includes the current project, so
-// withRelatedProject falls back to localhost when an email targets the app
-// that is sending it (e.g. waitlist invites sent from outname-app linking to
-// /login). NEXT_PUBLIC_APP_URL / NEXT_PUBLIC_WEB_URL are resolved per app by
-// createOutnameNextConfig, which handles the current-project case, so they
-// take precedence here.
-function toConfiguredOrigin(value: string | undefined): string | null {
-  const trimmed = value?.trim()
-  if (!trimmed) {
-    return null
-  }
-  try {
-    return new URL(trimmed).origin
-  } catch {
-    return null
-  }
+// VERCEL_RELATED_PROJECTS only lists *other* projects, never the current one,
+// so an empty related-project resolution normally means the email links back
+// to the project that is sending it (e.g. waitlist invites sent from
+// outname-app linking to /login). In that case the origin comes from the
+// current deployment's system env vars (VERCEL_PROJECT_PRODUCTION_URL /
+// VERCEL_URL), and outside Vercel from the local default.
+function resolveEmailOrigin(project: 'app' | 'web'): string {
+  const relatedOrigin = withRelatedProject({
+    defaultHost: '',
+    projectName: PROJECT_NAMES[project],
+  })
+  return (
+    relatedOrigin || getCurrentProjectOrigin(LOCAL_PROJECT_ORIGINS[project])
+  )
 }
 
 /** App origin for transactional email links (login, settings). */
 export function getEmailAppOrigin(): string {
-  return (
-    toConfiguredOrigin(process.env.NEXT_PUBLIC_APP_URL) ??
-    withRelatedProject({
-      defaultHost: LOCAL_PROJECT_ORIGINS.app,
-      projectName: PROJECT_NAMES.app,
-    })
-  )
+  return resolveEmailOrigin('app')
 }
 
 /** Marketing web origin for waitlist confirmation and hosted assets. */
 export function getEmailWebOrigin(): string {
-  return (
-    toConfiguredOrigin(process.env.NEXT_PUBLIC_WEB_URL) ??
-    withRelatedProject({
-      defaultHost: LOCAL_PROJECT_ORIGINS.web,
-      projectName: PROJECT_NAMES.web,
-    })
-  )
+  return resolveEmailOrigin('web')
 }
 
 export function buildEmailAppUrl(path: string): string {

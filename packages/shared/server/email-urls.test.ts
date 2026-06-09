@@ -12,6 +12,8 @@ import {
   getEmailWebOrigin,
 } from './email-urls'
 
+const relatedHosts: Record<string, string | undefined> = {}
+
 vi.mock('@vercel/related-projects', () => ({
   withRelatedProject: ({
     defaultHost,
@@ -19,28 +21,36 @@ vi.mock('@vercel/related-projects', () => ({
   }: {
     defaultHost: string
     projectName: string
-  }) => {
-    if (projectName === 'outname-app') {
-      return 'https://app.example.com'
-    }
-    if (projectName === 'outname') {
-      return 'https://web.example.com'
-    }
-    return defaultHost
-  },
+  }) => relatedHosts[projectName] ?? defaultHost,
 }))
 
-const originalAppUrl = process.env.NEXT_PUBLIC_APP_URL
-const originalWebUrl = process.env.NEXT_PUBLIC_WEB_URL
+const VERCEL_ENV_VARS = [
+  'VERCEL_ENV',
+  'VERCEL_PROJECT_PRODUCTION_URL',
+  'VERCEL_URL',
+] as const
+
+const originalEnv = Object.fromEntries(
+  VERCEL_ENV_VARS.map((name) => [name, process.env[name]])
+)
 
 beforeEach(() => {
-  delete process.env.NEXT_PUBLIC_APP_URL
-  delete process.env.NEXT_PUBLIC_WEB_URL
+  relatedHosts['outname-app'] = 'https://app.example.com'
+  relatedHosts.outname = 'https://web.example.com'
+  for (const name of VERCEL_ENV_VARS) {
+    delete process.env[name]
+  }
 })
 
 afterEach(() => {
-  process.env.NEXT_PUBLIC_APP_URL = originalAppUrl
-  process.env.NEXT_PUBLIC_WEB_URL = originalWebUrl
+  for (const name of VERCEL_ENV_VARS) {
+    const value = originalEnv[name]
+    if (value === undefined) {
+      delete process.env[name]
+    } else {
+      process.env[name] = value
+    }
+  }
   vi.clearAllMocks()
 })
 
@@ -65,23 +75,24 @@ test('normalizes paths without a leading slash', () => {
   expect(buildEmailWebUrl('waitlist')).toBe('https://web.example.com/waitlist')
 })
 
-test('prefers NEXT_PUBLIC_APP_URL over related-project resolution', () => {
-  process.env.NEXT_PUBLIC_APP_URL = 'https://app.outna.me/'
+test('resolves the current project via system env vars in production', () => {
+  relatedHosts['outname-app'] = undefined
+  process.env.VERCEL_ENV = 'production'
+  process.env.VERCEL_PROJECT_PRODUCTION_URL = 'app.outna.me'
   expect(getEmailAppOrigin()).toBe('https://app.outna.me')
   expect(getEmailAppLoginUrl()).toBe('https://app.outna.me/login')
 })
 
-test('prefers NEXT_PUBLIC_WEB_URL over related-project resolution', () => {
-  process.env.NEXT_PUBLIC_WEB_URL = 'https://outna.me'
-  expect(getEmailWebOrigin()).toBe('https://outna.me')
-  expect(getEmailWaitlistConfirmationUrl('abc123')).toBe(
-    'https://outna.me/waitlist/confirm?token=abc123'
-  )
+test('resolves the current project via VERCEL_URL in preview', () => {
+  relatedHosts.outname = undefined
+  process.env.VERCEL_ENV = 'preview'
+  process.env.VERCEL_URL = 'outname-abc123.vercel.app'
+  expect(getEmailWebOrigin()).toBe('https://outname-abc123.vercel.app')
 })
 
-test('ignores blank or invalid NEXT_PUBLIC_* URLs', () => {
-  process.env.NEXT_PUBLIC_APP_URL = '   '
-  process.env.NEXT_PUBLIC_WEB_URL = 'not-a-url'
-  expect(getEmailAppOrigin()).toBe('https://app.example.com')
-  expect(getEmailWebOrigin()).toBe('https://web.example.com')
+test('falls back to local origins outside Vercel', () => {
+  relatedHosts['outname-app'] = undefined
+  relatedHosts.outname = undefined
+  expect(getEmailAppOrigin()).toBe('http://localhost:3000')
+  expect(getEmailWebOrigin()).toBe('http://localhost:3002')
 })
