@@ -41,6 +41,7 @@ const originalEnv = Object.fromEntries(
 )
 
 beforeEach(() => {
+  relatedHosts['outname-api'] = 'https://api.example.com'
   relatedHosts['outname-app'] = 'https://app.example.com'
   relatedHosts.outname = 'https://web.example.com'
   for (const name of ENV_VARS) {
@@ -125,6 +126,7 @@ test('does not emit the sender origin when related projects are unconfigured', (
   // Deployment with no related projects and nothing inlined: the target's
   // URL is unknowable, so links must not silently point at the sender's
   // own host.
+  relatedHosts['outname-api'] = undefined
   relatedHosts['outname-app'] = undefined
   relatedHosts.outname = undefined
   process.env.VERCEL_ENV = 'production'
@@ -133,7 +135,19 @@ test('does not emit the sender origin when related projects are unconfigured', (
   expect(getEmailWebOrigin()).toBe('http://localhost:3002')
 })
 
+test('does not emit the sender origin on a partially configured list', () => {
+  // Non-Next api runtime whose related-projects list only contains the web
+  // project: the missing app entry is ambiguous (current project or missing
+  // relation), so the resolution must not trust the sender's own env vars.
+  relatedHosts['outname-api'] = undefined
+  relatedHosts['outname-app'] = undefined
+  process.env.VERCEL_ENV = 'production'
+  process.env.VERCEL_PROJECT_PRODUCTION_URL = 'api.outna.me'
+  expect(getEmailAppOrigin()).toBe('http://localhost:3000')
+})
+
 test('ignores blank or invalid NEXT_PUBLIC_* values', () => {
+  relatedHosts['outname-api'] = undefined
   relatedHosts['outname-app'] = undefined
   relatedHosts.outname = undefined
   process.env.NEXT_PUBLIC_APP_URL = '   '
@@ -143,6 +157,7 @@ test('ignores blank or invalid NEXT_PUBLIC_* values', () => {
 })
 
 test('falls back to local origins outside Vercel', () => {
+  relatedHosts['outname-api'] = undefined
   relatedHosts['outname-app'] = undefined
   relatedHosts.outname = undefined
   expect(getEmailAppOrigin()).toBe('http://localhost:3000')

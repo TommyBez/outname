@@ -19,9 +19,11 @@ import {
 //    sender's own origin (e.g. api links pointing at the api host).
 // 3. Current deployment system env vars (VERCEL_PROJECT_PRODUCTION_URL /
 //    VERCEL_URL) for non-Next contexts where nothing was inlined — but only
-//    when the related-projects list is populated, since with no list at all
-//    the target's URL is unknowable and the local default is the honest
-//    fallback.
+//    when every *other* project appears in the related-projects list. The
+//    list never includes the current project, so a complete complement means
+//    the miss can only be a self-link; a partial or empty list is ambiguous
+//    (it could equally be a missing relation on another sender) and falls
+//    back to the local default rather than guessing the sender's own origin.
 function toConfiguredOrigin(value: string | undefined): string | null {
   const trimmed = value?.trim()
   if (!trimmed) {
@@ -32,6 +34,15 @@ function toConfiguredOrigin(value: string | undefined): string | null {
   } catch {
     return null
   }
+}
+
+function isCurrentProject(project: 'app' | 'web'): boolean {
+  const relatedNames = new Set(
+    relatedProjects({ noThrow: true }).map((related) => related.project.name)
+  )
+  return Object.values(PROJECT_NAMES)
+    .filter((name) => name !== PROJECT_NAMES[project])
+    .every((name) => relatedNames.has(name))
 }
 
 function resolveEmailOrigin(project: 'app' | 'web'): string {
@@ -54,7 +65,7 @@ function resolveEmailOrigin(project: 'app' | 'web'): string {
     return configuredOrigin
   }
 
-  if (relatedProjects({ noThrow: true }).length > 0) {
+  if (isCurrentProject(project)) {
     return getCurrentProjectOrigin(localOrigin)
   }
 
