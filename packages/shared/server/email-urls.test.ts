@@ -29,6 +29,8 @@ vi.mock('@vercel/related-projects', () => ({
 }))
 
 const ENV_VARS = [
+  'NEXT_PUBLIC_APP_URL',
+  'NEXT_PUBLIC_WEB_URL',
   'VERCEL_ENV',
   'VERCEL_PROJECT_PRODUCTION_URL',
   'VERCEL_URL',
@@ -79,6 +81,29 @@ test('normalizes paths without a leading slash', () => {
   expect(buildEmailWebUrl('waitlist')).toBe('https://web.example.com/waitlist')
 })
 
+test('prefers related-project resolution over NEXT_PUBLIC_* values', () => {
+  process.env.NEXT_PUBLIC_APP_URL = 'https://stale.example.com'
+  expect(getEmailAppOrigin()).toBe('https://app.example.com')
+})
+
+test('resolves the current project via NEXT_PUBLIC_* on a related miss', () => {
+  relatedHosts['outname-app'] = undefined
+  process.env.NEXT_PUBLIC_APP_URL = 'https://app.outna.me/'
+  expect(getEmailAppOrigin()).toBe('https://app.outna.me')
+  expect(getEmailAppLoginUrl()).toBe('https://app.outna.me/login')
+})
+
+test('does not emit the sender origin when a cross-project link is missing', () => {
+  // Email sent from the api project without outname-app configured as a
+  // related project: the build-time value must win over the api's own
+  // system env vars, so links never point at the api host.
+  relatedHosts['outname-app'] = undefined
+  process.env.NEXT_PUBLIC_APP_URL = 'http://localhost:3000'
+  process.env.VERCEL_ENV = 'production'
+  process.env.VERCEL_PROJECT_PRODUCTION_URL = 'api.outna.me'
+  expect(getEmailAppOrigin()).toBe('http://localhost:3000')
+})
+
 test('resolves the current project via system env vars in production', () => {
   // The related-projects list never includes the current project: a miss
   // while the list is populated means the email targets the sender itself.
@@ -97,13 +122,22 @@ test('resolves the current project via VERCEL_URL in preview', () => {
 })
 
 test('does not emit the sender origin when related projects are unconfigured', () => {
-  // Email sent from a deployment (e.g. the api project) with no related
-  // projects configured: the target's URL is unknowable, so links must not
-  // silently point at the sender's own host.
+  // Deployment with no related projects and nothing inlined: the target's
+  // URL is unknowable, so links must not silently point at the sender's
+  // own host.
   relatedHosts['outname-app'] = undefined
   relatedHosts.outname = undefined
   process.env.VERCEL_ENV = 'production'
   process.env.VERCEL_PROJECT_PRODUCTION_URL = 'api.outna.me'
+  expect(getEmailAppOrigin()).toBe('http://localhost:3000')
+  expect(getEmailWebOrigin()).toBe('http://localhost:3002')
+})
+
+test('ignores blank or invalid NEXT_PUBLIC_* values', () => {
+  relatedHosts['outname-app'] = undefined
+  relatedHosts.outname = undefined
+  process.env.NEXT_PUBLIC_APP_URL = '   '
+  process.env.NEXT_PUBLIC_WEB_URL = 'not-a-url'
   expect(getEmailAppOrigin()).toBe('http://localhost:3000')
   expect(getEmailWebOrigin()).toBe('http://localhost:3002')
 })
