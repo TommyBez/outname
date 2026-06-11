@@ -129,7 +129,7 @@ async function DashboardCockpit({
 
   const enabledCount = agents.filter((agent) => agent.enabled).length
   const pausedCount = agents.length - enabledCount
-  const attentionAgents = agents.filter((agent) => !agent.enabled)
+  const pausedAgents = agents.filter((agent) => !agent.enabled)
   const monitorAgents = agents.filter((agent) => agent.enabled)
   const monitorAgentIds = monitorAgents.map((a) => a.id)
   const [generalBudget, agentBudgetMap, agentEventMap] = await Promise.all([
@@ -155,7 +155,7 @@ async function DashboardCockpit({
     }
   }
   const attentionAgentIds = new Set<string>()
-  for (const agent of attentionAgents) {
+  for (const agent of pausedAgents) {
     attentionAgentIds.add(agent.id)
   }
   for (const [agentId, events] of agentEventMap) {
@@ -224,7 +224,7 @@ async function DashboardCockpit({
         </div>
       </div>
 
-      <AttentionQueue agents={attentionAgents} />
+      <PausedAgentsQueue agents={pausedAgents} />
 
       <section className="mt-12">
         <div className="mb-5 flex flex-wrap items-baseline justify-between gap-4">
@@ -266,7 +266,7 @@ async function DashboardCockpit({
   )
 }
 
-function AttentionQueue({ agents }: { agents: Agent[] }) {
+function PausedAgentsQueue({ agents }: { agents: Agent[] }) {
   if (agents.length === 0) {
     return (
       <section className="border-foreground border-y-2 py-6">

@@ -60,17 +60,7 @@ export async function listAgentEventSummariesByAgent(input: {
   const agentIds = [...input.agentIds]
 
   const [liveEvents, recentEvents] = await Promise.all([
-    db
-      .select()
-      .from(agentEvents)
-      .where(
-        and(
-          inArray(agentEvents.agentId, agentIds),
-          inArray(agentEvents.status, ['queued', ...ACTIVE_EVENT_STATUSES])
-        )
-      )
-      .orderBy(asc(agentEvents.queuedAt))
-      .limit(500),
+    listLiveAgentEventsByAgent(agentIds),
     listRecentAgentEventsByAgent(agentIds, input.limit ?? 20),
   ])
 
@@ -79,7 +69,7 @@ export async function listAgentEventSummariesByAgent(input: {
     eventsByAgent.set(
       agentId,
       mergeEvents(
-        liveEvents.filter((event) => event.agentId === agentId),
+        liveEvents.get(agentId) ?? [],
         recentEvents.get(agentId) ?? []
       )
     )
@@ -98,27 +88,68 @@ export async function listAgentEventSummariesByAgent(input: {
   return summariesByAgent
 }
 
+// Mirrors the per-agent cap of listLiveAgentEvents in the batched path.
+const LIVE_EVENTS_PER_AGENT_LIMIT = 100
+
+async function listLiveAgentEventsByAgent(
+  agentIds: readonly string[]
+): Promise<Map<string, AgentEvent[]>> {
+  return await listRankedAgentEventsByAgent({
+    agentIds,
+    perAgentLimit: LIVE_EVENTS_PER_AGENT_LIMIT,
+    queuedAtOrder: 'asc',
+    statusFilter: inArray(agentEvents.status, [
+      'queued',
+      ...ACTIVE_EVENT_STATUSES,
+    ]),
+  })
+}
+
 async function listRecentAgentEventsByAgent(
   agentIds: readonly string[],
   limit: number
 ): Promise<Map<string, AgentEvent[]>> {
+  return await listRankedAgentEventsByAgent({
+    agentIds,
+    perAgentLimit: limit,
+    queuedAtOrder: 'desc',
+  })
+}
+
+/**
+ * Fetches up to `perAgentLimit` events per agent in a single query, using a
+ * row_number window partitioned by agent so no agent can starve the others.
+ */
+async function listRankedAgentEventsByAgent(input: {
+  agentIds: readonly string[]
+  perAgentLimit: number
+  queuedAtOrder: 'asc' | 'desc'
+  statusFilter?: ReturnType<typeof inArray>
+}): Promise<Map<string, AgentEvent[]>> {
+  const agentFilter = inArray(agentEvents.agentId, [...input.agentIds])
+  const orderSql =
+    input.queuedAtOrder === 'asc'
+      ? sql`${agentEvents.queuedAt} asc`
+      : sql`${agentEvents.queuedAt} desc`
   const ranked = db.$with('ranked_agent_events').as(
     db
       .select({
         ...getTableColumns(agentEvents),
         rowNumber:
-          sql<number>`row_number() over (partition by ${agentEvents.agentId} order by ${agentEvents.queuedAt} desc)`.as(
+          sql<number>`row_number() over (partition by ${agentEvents.agentId} order by ${orderSql})`.as(
             'row_number'
           ),
       })
       .from(agentEvents)
-      .where(inArray(agentEvents.agentId, [...agentIds]))
+      .where(
+        input.statusFilter ? and(agentFilter, input.statusFilter) : agentFilter
+      )
   )
   const rows = await db
     .with(ranked)
     .select()
     .from(ranked)
-    .where(lte(ranked.rowNumber, limit))
+    .where(lte(ranked.rowNumber, input.perAgentLimit))
     .orderBy(asc(ranked.rowNumber))
 
   const eventsByAgent = new Map<string, AgentEvent[]>()

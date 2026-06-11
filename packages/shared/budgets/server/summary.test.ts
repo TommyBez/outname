@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { mockDbSelect, queueResult } = vi.hoisted(() => {
+const { clearQueuedResults, mockDbSelect, queueResult } = vi.hoisted(() => {
   const results: unknown[][] = []
   const queueResult = (rows: unknown[]) => {
     results.push(rows)
+  }
+  const clearQueuedResults = () => {
+    results.length = 0
   }
   const nextResult = () => Promise.resolve(results.shift() ?? [])
 
@@ -27,7 +30,7 @@ const { mockDbSelect, queueResult } = vi.hoisted(() => {
     }),
   }))
 
-  return { mockDbSelect, queueResult }
+  return { clearQueuedResults, mockDbSelect, queueResult }
 })
 
 vi.mock('server-only', () => ({}))
@@ -42,6 +45,7 @@ import { loadAgentBudgetSummaries } from './summary'
 
 describe('loadAgentBudgetSummaries', () => {
   beforeEach(() => {
+    clearQueuedResults()
     mockDbSelect.mockClear()
   })
 
