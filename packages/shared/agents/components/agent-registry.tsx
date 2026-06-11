@@ -19,29 +19,50 @@ export interface RegistryAgent {
   name: string
 }
 
+type RegistryFilter = 'all' | 'active' | 'paused' | 'setup'
+
+const FILTERS: Array<{ label: string; value: RegistryFilter }> = [
+  { label: 'All', value: 'all' },
+  { label: 'Active', value: 'active' },
+  { label: 'Paused', value: 'paused' },
+  { label: 'Needs setup', value: 'setup' },
+]
+
 export function AgentRegistry({
   agents,
+  initialFilter,
   timeZone,
 }: {
   agents: RegistryAgent[]
+  initialFilter?: string
   timeZone: string
 }) {
   const [query, setQuery] = useState('')
+  const [filter, setFilter] = useState<RegistryFilter>(
+    normalizeRegistryFilter(initialFilter)
+  )
+  const agentCounts = useMemo(() => getAgentCounts(agents), [agents])
   const visibleAgents = useMemo(() => {
     const needle = query.trim().toLowerCase()
-    if (!needle) {
-      return agents
-    }
-    return agents.filter((agent) =>
-      [
+    return agents.filter((agent) => {
+      const matchesFilter = matchesRegistryFilter(agent, filter)
+      if (!(needle && matchesFilter)) {
+        return matchesFilter
+      }
+      return [
         agent.name,
         agent.model,
         agent.enabled ? 'active' : 'paused',
         agent.heartbeatEnabled ? 'heartbeat' : 'heartbeat off',
         agent.dreamingEnabled ? 'dreaming' : 'dreaming off',
       ].some((value) => value.toLowerCase().includes(needle))
-    )
-  }, [agents, query])
+    })
+  }, [agents, filter, query])
+
+  const clearFilters = () => {
+    setFilter('all')
+    setQuery('')
+  }
 
   return (
     <section aria-labelledby="agent-registry-heading">
@@ -57,13 +78,36 @@ export function AgentRegistry({
             Find an agent, inspect its operating mode, and jump straight to the
             workspace surface you need.
           </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {FILTERS.map((item) => (
+              <button
+                aria-pressed={filter === item.value}
+                className={cn(
+                  'inline-flex h-9 items-center border-2 border-foreground px-3 font-bold text-[10px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background',
+                  filter === item.value
+                    ? 'bg-foreground text-background'
+                    : 'bg-background text-foreground'
+                )}
+                key={item.value}
+                onClick={() => setFilter(item.value)}
+                type="button"
+              >
+                {item.label} {filterCountLabel(item.value, agentCounts)}
+              </button>
+            ))}
+          </div>
         </div>
-        <Input
-          aria-label="Search agents"
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search agents..."
-          value={query}
-        />
+        <div>
+          <Input
+            aria-label="Search agents"
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search agents..."
+            value={query}
+          />
+          <p className="mt-2 font-mono text-muted-foreground text-xs">
+            Showing {visibleAgents.length} of {agents.length}
+          </p>
+        </div>
       </div>
 
       {visibleAgents.length === 0 ? (
@@ -72,8 +116,16 @@ export function AgentRegistry({
             No matching agents.
           </p>
           <p className="mt-3 max-w-md text-muted-foreground text-sm">
-            Try searching by name, model, active state, heartbeat, or dreaming.
+            Try another name, model, operating state, or clear the current
+            search and status filter.
           </p>
+          <button
+            className="mt-5 inline-flex h-10 items-center justify-center border-2 border-foreground px-3 font-bold text-[10px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+            onClick={clearFilters}
+            type="button"
+          >
+            Clear filters
+          </button>
         </div>
       ) : (
         <ul className="border-foreground border-y-2">
@@ -110,6 +162,11 @@ function AgentRegistryRow({
           >
             {agent.enabled ? 'Active' : 'Paused'}
           </span>
+          {needsSetup(agent) ? (
+            <span className="border border-border px-1.5 py-0.5 text-muted-foreground">
+              Needs setup
+            </span>
+          ) : null}
         </p>
         <Link
           className="mt-2 block text-pretty font-black font-serif text-3xl uppercase leading-none tracking-tighter transition-colors hover:text-accent"
@@ -153,4 +210,60 @@ function RegistryAction({ href, label }: { href: string; label: string }) {
       {label}
     </Link>
   )
+}
+
+function normalizeRegistryFilter(filter: string | undefined): RegistryFilter {
+  if (filter === 'active' || filter === 'paused' || filter === 'setup') {
+    return filter
+  }
+  if (filter === 'attention') {
+    return 'paused'
+  }
+  return 'all'
+}
+
+function matchesRegistryFilter(
+  agent: RegistryAgent,
+  filter: RegistryFilter
+): boolean {
+  switch (filter) {
+    case 'active':
+      return agent.enabled
+    case 'paused':
+      return !agent.enabled
+    case 'setup':
+      return needsSetup(agent)
+    case 'all':
+      return true
+    default:
+      return true
+  }
+}
+
+function needsSetup(agent: RegistryAgent): boolean {
+  return !(agent.heartbeatEnabled && agent.dreamingEnabled)
+}
+
+function getAgentCounts(agents: RegistryAgent[]) {
+  let active = 0
+  let paused = 0
+  let setup = 0
+  for (const agent of agents) {
+    if (agent.enabled) {
+      active += 1
+    } else {
+      paused += 1
+    }
+    if (needsSetup(agent)) {
+      setup += 1
+    }
+  }
+  return { active, all: agents.length, paused, setup }
+}
+
+function filterCountLabel(
+  filter: RegistryFilter,
+  counts: ReturnType<typeof getAgentCounts>
+) {
+  return `(${counts[filter]})`
 }

@@ -30,24 +30,35 @@ export const metadata: Metadata = createPrivatePageMetadata(
   'Manage personal AI agents, schedules, tools, and memory.'
 )
 
-export default function AgentsListPage() {
+export default function AgentsListPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ filter?: string }>
+}) {
   return (
     <Suspense fallback={<AgentsListPageFallback />}>
-      <AgentsListPageBody />
+      <AgentsListPageBody searchParams={searchParams} />
     </Suspense>
   )
 }
 
-async function AgentsListPageBody() {
+async function AgentsListPageBody({
+  searchParams,
+}: {
+  searchParams: Promise<{ filter?: string }>
+}) {
   const session = await requireSession()
   const [agents, display] = await Promise.all([
     getCachedAgentsForUser(session.user.id),
     getUserTimeDisplay(session.user.id),
   ])
-  const canCreateAgent = await canCreateAgentForUser({
-    agentCount: agents.length,
-    userId: session.user.id,
-  })
+  const [{ filter }, canCreateAgent] = await Promise.all([
+    searchParams,
+    canCreateAgentForUser({
+      agentCount: agents.length,
+      userId: session.user.id,
+    }),
+  ])
 
   return (
     <>
@@ -91,6 +102,7 @@ async function AgentsListPageBody() {
       ) : (
         <AgentRegistry
           agents={agents.map(toRegistryAgent)}
+          initialFilter={filter}
           timeZone={display.timeZone}
         />
       )}

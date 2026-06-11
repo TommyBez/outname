@@ -28,9 +28,6 @@ import { Suspense } from 'react'
 const NEW_AGENT_BUTTON_CLASS_NAME =
   'inline-flex h-14 shrink-0 items-center justify-center border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground'
 
-const QUICK_ACTION_CLASS_NAME =
-  'inline-flex h-10 items-center justify-center border-2 border-foreground px-3 font-bold text-[10px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background'
-
 export const metadata = createPrivatePageMetadata(
   'Dashboard',
   'Monitor personal AI agents, event state, budgets, and attention in one private OUTNA.ME operator view.'
@@ -106,22 +103,7 @@ async function DashboardCockpit({
   userId: string
 }) {
   if (agents.length === 0) {
-    return (
-      <div className="swiss-dots border-2 border-foreground bg-muted p-8 md:p-12">
-        <p className="font-black font-serif text-3xl uppercase leading-none tracking-tighter">
-          No agents yet.
-        </p>
-        <p className="mt-4 max-w-md text-muted-foreground text-sm leading-relaxed">
-          Create your first agent to start automating recurring work.
-        </p>
-        <NewAgentLink
-          canCreate={canCreateAgent}
-          className={`mt-8 ${NEW_AGENT_BUTTON_CLASS_NAME}`}
-        >
-          Create agent
-        </NewAgentLink>
-      </div>
-    )
+    return <FirstRunChecklist canCreateAgent={canCreateAgent} />
   }
 
   const enabledCount = agents.filter((agent) => agent.enabled).length
@@ -176,11 +158,25 @@ async function DashboardCockpit({
       attentionAgentIds.add(entry.agentId)
     }
   }
+  const failedAgentIds = new Set<string>()
+  for (const entry of agentEvents) {
+    if (entry.events.some(isFailedDashboardEvent)) {
+      failedAgentIds.add(entry.agentId)
+    }
+  }
+  const budgetAttentionAgentIds = new Set<string>()
   for (const entry of agentBudgets) {
     if (entry.entries.some(isBudgetAttention)) {
+      budgetAttentionAgentIds.add(entry.agentId)
       attentionAgentIds.add(entry.agentId)
     }
   }
+  const nextActions = getDashboardNextActions({
+    budgetAttentionCount: budgetAttentionAgentIds.size,
+    canCreateAgent,
+    failedCount: failedAgentIds.size,
+    pausedCount,
+  })
 
   return (
     <section aria-labelledby="dashboard-cockpit-heading">
@@ -217,19 +213,12 @@ async function DashboardCockpit({
 
         <div className="border-foreground border-l-2 pl-4">
           <p className="font-bold text-[10px] uppercase tracking-[0.2em]">
-            Quick actions
+            Next best actions
           </p>
-          <div className="mt-4 grid gap-2">
-            <NewAgentLink
-              canCreate={canCreateAgent}
-              className={QUICK_ACTION_CLASS_NAME}
-            >
-              New agent
-            </NewAgentLink>
-            <QuickAction href="/agents" label="Agent registry" />
-            <QuickAction href="/channels" label="Channels" />
-            <QuickAction href="/connections" label="Connections" />
-            <QuickAction href="/settings" label="Settings" />
+          <div className="mt-4 grid gap-3">
+            {nextActions.map((action) => (
+              <DashboardNextAction action={action} key={action.title} />
+            ))}
           </div>
           <p className="mt-5 font-mono text-muted-foreground text-xs">
             {pausedCount} paused · {enabledCount} active
@@ -279,6 +268,170 @@ async function DashboardCockpit({
   )
 }
 
+interface DashboardAction {
+  description: string
+  href: string
+  label: string
+  title: string
+}
+
+function FirstRunChecklist({ canCreateAgent }: { canCreateAgent: boolean }) {
+  return (
+    <section
+      aria-labelledby="first-run-heading"
+      className="swiss-dots border-2 border-foreground bg-muted p-8 md:p-12"
+    >
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div>
+          <p className="swiss-label mb-4 text-accent">Start here</p>
+          <h2
+            className="font-black font-serif text-3xl uppercase leading-none tracking-tighter"
+            id="first-run-heading"
+          >
+            Launch your first useful agent.
+          </h2>
+          <p className="mt-4 max-w-xl text-muted-foreground text-sm leading-relaxed">
+            The fastest path to value is one agent, one schedule, one connected
+            tool, and one budget guardrail. Complete these in order and you can
+            leave the dashboard knowing what will happen next.
+          </p>
+          <NewAgentLink
+            canCreate={canCreateAgent}
+            className={`mt-8 ${NEW_AGENT_BUTTON_CLASS_NAME}`}
+          >
+            Create agent
+          </NewAgentLink>
+        </div>
+        <ol className="grid gap-3">
+          <SetupStep
+            description="Describe the recurring job, then let the builder create the agent workspace."
+            href="/agents/new"
+            label="Create"
+            step="01"
+          />
+          <SetupStep
+            description="Connect shared providers once, then attach the relevant tool from the agent workspace."
+            href="/connections"
+            label="Connect"
+            step="02"
+          />
+          <SetupStep
+            description="Set a global spend guardrail before runs begin accumulating cost."
+            href="/settings"
+            label="Guardrail"
+            step="03"
+          />
+        </ol>
+      </div>
+    </section>
+  )
+}
+
+function SetupStep({
+  description,
+  href,
+  label,
+  step,
+}: {
+  description: string
+  href: string
+  label: string
+  step: string
+}) {
+  return (
+    <li>
+      <Link
+        className="block border-2 border-foreground bg-background p-4 transition-colors hover:bg-accent"
+        href={href}
+      >
+        <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
+          {step}
+        </p>
+        <p className="mt-2 font-black font-serif text-xl uppercase leading-none tracking-tighter">
+          {label}
+        </p>
+        <p className="mt-2 text-muted-foreground text-xs leading-relaxed">
+          {description}
+        </p>
+      </Link>
+    </li>
+  )
+}
+
+function getDashboardNextActions({
+  budgetAttentionCount,
+  canCreateAgent,
+  failedCount,
+  pausedCount,
+}: {
+  budgetAttentionCount: number
+  canCreateAgent: boolean
+  failedCount: number
+  pausedCount: number
+}): DashboardAction[] {
+  const actions: DashboardAction[] = []
+  if (failedCount > 0) {
+    actions.push({
+      description: `${failedCount} agent${failedCount === 1 ? '' : 's'} had failed work. Review the ledger before triggering more runs.`,
+      href: '/agents?filter=attention',
+      label: 'Review failures',
+      title: 'Fix failed runs first',
+    })
+  }
+  if (budgetAttentionCount > 0) {
+    actions.push({
+      description: `${budgetAttentionCount} budget${budgetAttentionCount === 1 ? '' : 's'} are near their limit. Raise limits or pause expensive work.`,
+      href: '/settings',
+      label: 'Manage budgets',
+      title: 'Budget risk is rising',
+    })
+  }
+  if (pausedCount > 0) {
+    actions.push({
+      description: `${pausedCount} paused agent${pausedCount === 1 ? '' : 's'} are excluded from event handling. Re-enable only the ones you trust.`,
+      href: '/agents?filter=paused',
+      label: 'Inspect paused',
+      title: 'Paused work is waiting',
+    })
+  }
+  if (actions.length < 3 && canCreateAgent) {
+    actions.push({
+      description:
+        'Add another recurring workflow when the current cockpit is healthy.',
+      href: '/agents/new',
+      label: 'Create agent',
+      title: 'Automate the next job',
+    })
+  }
+  actions.push({
+    description:
+      'Audit channels, connections, provider keys, and timezone before expanding automations.',
+    href: '/settings',
+    label: 'Open settings',
+    title: 'Keep setup current',
+  })
+  return actions.slice(0, 3)
+}
+
+function DashboardNextAction({ action }: { action: DashboardAction }) {
+  return (
+    <Link
+      className="block border-2 border-foreground p-3 transition-colors hover:bg-accent"
+      href={action.href}
+    >
+      <p className="font-black font-serif text-lg uppercase leading-none tracking-tighter">
+        {action.title}
+      </p>
+      <p className="mt-2 text-muted-foreground text-xs leading-relaxed">
+        {action.description}
+      </p>
+      <p className="mt-3 font-bold text-[10px] uppercase tracking-[0.16em]">
+        {action.label} →
+      </p>
+    </Link>
+  )
+}
+
 function AttentionQueue({ agents }: { agents: Agent[] }) {
   if (agents.length === 0) {
     return (
@@ -325,14 +478,6 @@ function DashboardMetric({ label, value }: { label: string; value: number }) {
         {value}
       </p>
     </div>
-  )
-}
-
-function QuickAction({ href, label }: { href: string; label: string }) {
-  return (
-    <Link className={QUICK_ACTION_CLASS_NAME} href={href}>
-      {label}
-    </Link>
   )
 }
 

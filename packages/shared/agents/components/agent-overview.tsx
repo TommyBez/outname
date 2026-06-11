@@ -45,6 +45,16 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
 
   const connectedTools = tools.filter((tool) => tool.status === 'connected')
   const pendingTools = tools.filter((tool) => tool.status === 'pending')
+  const nextStep = getAgentNextStep({
+    agentId: agent.id,
+    budgetEntries,
+    connectedToolCount: connectedTools.length,
+    dreamsPresent: Boolean(dreams),
+    enabled: agent.enabled,
+    hasRecentFailure: recentEvents.some((event) => event.status === 'failed'),
+    heartbeatEnabled: agent.heartbeatEnabled,
+    logCount: logs.length,
+  })
 
   return (
     <>
@@ -52,7 +62,9 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
         <h2 className="sr-only" id="agent-overview-heading">
           Agent overview
         </h2>
-        <div className="grid gap-6 md:grid-cols-2">
+        <NextStepPanel step={nextStep} />
+
+        <div className="mt-8 grid gap-6 md:grid-cols-2">
           <OverviewPanel
             actionHref={`/agents/${agent.id}/configure#runtime`}
             actionLabel="Edit runtime"
@@ -220,6 +232,119 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
         )}
       </section>
     </>
+  )
+}
+
+interface AgentNextStep {
+  description: string
+  href: string
+  label: string
+  title: string
+}
+
+function getAgentNextStep({
+  agentId,
+  budgetEntries,
+  connectedToolCount,
+  dreamsPresent,
+  enabled,
+  hasRecentFailure,
+  heartbeatEnabled,
+  logCount,
+}: {
+  agentId: string
+  budgetEntries: Array<{ enabled: boolean; limitUsd: number; spentUsd: number }>
+  connectedToolCount: number
+  dreamsPresent: boolean
+  enabled: boolean
+  hasRecentFailure: boolean
+  heartbeatEnabled: boolean
+  logCount: number
+}): AgentNextStep {
+  if (hasRecentFailure) {
+    return {
+      description:
+        'Recent work failed. Open the event ledger first so the next run does not repeat the same issue.',
+      href: `/agents/${agentId}/events`,
+      label: 'Review events',
+      title: 'Fix the latest failure',
+    }
+  }
+  if (!enabled) {
+    return {
+      description:
+        'This agent is paused and will not pick up scheduled or channel work until you re-enable it.',
+      href: `/agents/${agentId}/configure#runtime`,
+      label: 'Edit runtime',
+      title: 'Decide whether to resume',
+    }
+  }
+  if (connectedToolCount === 0) {
+    return {
+      description:
+        'The agent can reason, but it has no connected tools yet. Attach the first tool before expecting external work.',
+      href: `/agents/${agentId}/tools`,
+      label: 'Attach tools',
+      title: 'Connect an execution path',
+    }
+  }
+  if (!heartbeatEnabled) {
+    return {
+      description:
+        'Heartbeat is off, so the agent will not run recurring checks. Add a schedule if this workflow should happen without prompting.',
+      href: `/agents/${agentId}/configure#heartbeat`,
+      label: 'Set heartbeat',
+      title: 'Schedule recurring work',
+    }
+  }
+  if (!budgetEntries.some((entry) => entry.enabled && entry.limitUsd > 0)) {
+    return {
+      description:
+        'No agent-specific budget is active. Add a guardrail before letting this workflow run unattended.',
+      href: `/agents/${agentId}/configure#budget`,
+      label: 'Add budget',
+      title: 'Protect spend before scaling',
+    }
+  }
+  if (!(dreamsPresent || logCount > 0)) {
+    return {
+      description:
+        'The memory surface is still empty. Trigger a first run or start a chat so there is context to inspect later.',
+      href: `/agents/${agentId}/chat`,
+      label: 'Start chat',
+      title: 'Create the first trace',
+    }
+  }
+  return {
+    description:
+      'Runtime, tools, schedule, budget, and memory are present. Use chat for directed work or trigger a run when you need fresh output.',
+    href: `/agents/${agentId}/chat`,
+    label: 'Open chat',
+    title: 'Agent is ready for work',
+  }
+}
+
+function NextStepPanel({ step }: { step: AgentNextStep }) {
+  return (
+    <section className="border-2 border-foreground bg-muted p-5">
+      <p className="swiss-label text-accent">Recommended next step</p>
+      <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+        <div>
+          <h3 className="font-black font-serif text-2xl uppercase leading-none tracking-tighter">
+            {step.title}
+          </h3>
+          <p className="mt-3 max-w-2xl text-muted-foreground text-sm leading-relaxed">
+            {step.description}
+          </p>
+        </div>
+        <Link
+          className="inline-flex h-11 items-center justify-center border-2 border-foreground bg-background px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+          href={step.href}
+        >
+          {step.label} →
+        </Link>
+      </div>
+    </section>
   )
 }
 
