@@ -462,25 +462,12 @@ async function stopWorkspaceSandboxByHandle(
     throw error
   }
 
-  let stopError: unknown
-  try {
-    await sandbox.stop()
-  } catch (error) {
-    if (!isStoppedSandboxError(error)) {
-      stopError = error
-    }
-  }
-
   try {
     await sandbox.delete()
   } catch (error) {
     if (!isStoppedSandboxError(error)) {
       throw error
     }
-  }
-
-  if (stopError) {
-    throw stopError
   }
 }
 

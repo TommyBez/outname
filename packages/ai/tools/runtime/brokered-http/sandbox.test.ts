@@ -2,10 +2,12 @@ import type { getConnector } from '@outname/shared/connections/registry'
 import { beforeEach, expect, test, vi } from 'vitest'
 
 const {
+  mockCurrentToolRuntimeRunId,
   mockReadConnectorCredential,
   mockSandboxCreate,
   mockWithVercelSandboxCredentials,
 } = vi.hoisted(() => ({
+  mockCurrentToolRuntimeRunId: vi.fn(),
   mockReadConnectorCredential: vi.fn(),
   mockSandboxCreate: vi.fn(),
   mockWithVercelSandboxCredentials: vi.fn((options) => ({
@@ -24,6 +26,10 @@ vi.mock('@vercel/sandbox', () => ({
   },
 }))
 
+vi.mock('@outname/ai/tools/runtime/run-id', () => ({
+  currentToolRuntimeRunId: mockCurrentToolRuntimeRunId,
+}))
+
 vi.mock('@outname/shared/server/vercel-sandbox-config', () => ({
   brokeredHttpSandboxTags: vi.fn(() => ({ run: 'run_test' })),
   withVercelSandboxCredentials: mockWithVercelSandboxCredentials,
@@ -36,9 +42,14 @@ vi.mock(
   })
 )
 
-import { createBrokerSandbox } from './sandbox'
+import {
+  createBrokerSandbox,
+  getOrCreateBrokerSandbox,
+  stopAllBrokeredHttpSandboxesForRun,
+} from './sandbox'
 
 beforeEach(() => {
+  mockCurrentToolRuntimeRunId.mockReturnValue('run_test')
   mockReadConnectorCredential.mockReset()
   mockSandboxCreate.mockReset()
   mockWithVercelSandboxCredentials.mockClear()
@@ -111,6 +122,89 @@ test('brokered HTTP header injection receives connector-shaped override credenti
       token: 'token_test',
     })
   )
+})
+
+test('broker sandbox cleanup deletes cached sandboxes and clears the cache', async () => {
+  const runId = 'run_cleanup_success'
+  const firstSandbox = { delete: vi.fn(async () => undefined) }
+  const secondSandbox = { delete: vi.fn(async () => undefined) }
+  const createSandbox = vi
+    .fn()
+    .mockResolvedValueOnce(firstSandbox)
+    .mockResolvedValueOnce(secondSandbox)
+  mockCurrentToolRuntimeRunId.mockReturnValue(runId)
+
+  const firstResult = await getOrCreateBrokerSandbox({
+    connectorId: 'x.bearer_token',
+    createSandbox,
+    runId,
+  })
+  const cachedResult = await getOrCreateBrokerSandbox({
+    connectorId: 'x.bearer_token',
+    createSandbox,
+    runId,
+  })
+
+  expect(firstResult).toBe(firstSandbox)
+  expect(cachedResult).toBe(firstSandbox)
+  expect(createSandbox).toHaveBeenCalledTimes(1)
+
+  await stopAllBrokeredHttpSandboxesForRun()
+
+  expect(firstSandbox.delete).toHaveBeenCalledTimes(1)
+
+  const nextResult = await getOrCreateBrokerSandbox({
+    connectorId: 'x.bearer_token',
+    createSandbox,
+    runId,
+  })
+
+  expect(nextResult).toBe(secondSandbox)
+  expect(createSandbox).toHaveBeenCalledTimes(2)
+})
+
+test('broker sandbox cleanup logs delete failures and still clears the cache', async () => {
+  const runId = 'run_cleanup_failure'
+  const deleteError = new Error('delete failed')
+  const firstSandbox = { delete: vi.fn().mockRejectedValue(deleteError) }
+  const secondSandbox = { delete: vi.fn(async () => undefined) }
+  const createSandbox = vi
+    .fn()
+    .mockResolvedValueOnce(firstSandbox)
+    .mockResolvedValueOnce(secondSandbox)
+  const consoleErrorSpy = vi
+    .spyOn(console, 'error')
+    .mockImplementation(() => undefined)
+  mockCurrentToolRuntimeRunId.mockReturnValue(runId)
+
+  try {
+    await getOrCreateBrokerSandbox({
+      connectorId: 'x.bearer_token',
+      createSandbox,
+      runId,
+    })
+
+    await expect(stopAllBrokeredHttpSandboxesForRun()).resolves.toBeUndefined()
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'stopAllBrokeredHttpSandboxesForRun: delete failed',
+      {
+        connectorId: 'x.bearer_token',
+        err: deleteError,
+      }
+    )
+
+    const nextResult = await getOrCreateBrokerSandbox({
+      connectorId: 'x.bearer_token',
+      createSandbox,
+      runId,
+    })
+
+    expect(nextResult).toBe(secondSandbox)
+    expect(createSandbox).toHaveBeenCalledTimes(2)
+  } finally {
+    consoleErrorSpy.mockRestore()
+  }
 })
 
 test('unauthenticated broker sandboxes skip credential lookup and injected headers', async () => {
