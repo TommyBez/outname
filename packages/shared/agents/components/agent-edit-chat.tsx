@@ -19,6 +19,7 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
 } from '@outname/ai/components/ai-elements/prompt-input'
+import { useUnsavedChangesGuard } from '@outname/ui/hooks/use-unsaved-changes-guard'
 import type { UIMessage } from 'ai'
 import {
   DefaultChatTransport,
@@ -51,6 +52,9 @@ export function AgentEditChat({ agentId, currentBudget }: AgentEditChatProps) {
     },
   })
   const isBusy = status === 'submitted' || status === 'streaming'
+  // The edit conversation lives only in memory; warn before a reload or tab
+  // close discards it mid-stream.
+  useUnsavedChangesGuard(isBusy)
 
   function handleSubmit(message: PromptInputMessage) {
     const text = (message.text ?? '').trim()

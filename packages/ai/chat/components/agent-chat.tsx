@@ -8,7 +8,10 @@ import {
 } from '@outname/ai/agent-runtime/server/chat-status'
 import { AgentChatTranscript } from '@outname/ai/chat/components/agent-chat-transcript'
 import { hasAssistantContentAfterLatestUser } from '@outname/ai/chat/components/agent-chat-transcript-helpers'
-import { refreshConversationList } from '@outname/ai/chat/components/agent-sidebar-workspace/conversations'
+import {
+  optimisticallyAddConversation,
+  refreshConversationList,
+} from '@outname/ai/chat/components/agent-sidebar-workspace/conversations'
 import { ChatErrorBanner } from '@outname/ai/chat/components/chat-error-banner'
 import { newChatConversationId } from '@outname/ai/chat/lib/new-chat-conversation-id'
 import {
@@ -102,8 +105,18 @@ export function AgentChat({
       return
     }
     setWorkflowStatus(null)
+    if (messages.length === 0) {
+      // Surface the conversation in the sidebar right away instead of waiting
+      // for the post-stream revalidation.
+      optimisticallyAddConversation(agentId, conversationId)
+    }
     sendMessage({ text })
     setInput('')
+  }
+
+  function handleStop() {
+    setWorkflowStatus(null)
+    stop()
   }
 
   function handleNewChat() {
@@ -141,7 +154,7 @@ export function AgentChat({
             </PromptInputTools>
             <PromptInputSubmit
               disabled={!isBusy && input.trim().length === 0}
-              onStop={stop}
+              onStop={handleStop}
               status={status}
             />
           </PromptInputFooter>

@@ -1,5 +1,6 @@
 import { requireSession } from '@outname/auth/server/auth-guard'
 import { ConnectionsList } from '@outname/shared/connections/components/connections-list'
+import { humanizeConnectionFlashReason } from '@outname/shared/connections/flash-reason'
 import { listConnectors } from '@outname/shared/connections/registry'
 import { getCachedUserConnections } from '@outname/shared/server/data'
 import { createPrivatePageMetadata } from '@outname/shared/server/site-metadata'
@@ -54,8 +55,13 @@ async function FlashNotice({
           Connection failed
         </p>
         <p className="mt-1 text-muted-foreground text-sm">
-          {sp.reason ?? 'unknown error'}
+          {humanizeConnectionFlashReason(sp.reason)}
         </p>
+        {sp.reason ? (
+          <p className="mt-1 font-mono text-muted-foreground text-xs">
+            Detail: {sp.reason}
+          </p>
+        ) : null}
       </div>
     )
   }

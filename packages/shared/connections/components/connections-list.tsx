@@ -8,6 +8,7 @@ import {
 import { connectionOAuthStartPath } from '@outname/shared/connections/oauth-paths'
 import type { ScopeDescriptor } from '@outname/shared/connections/types'
 import { Button } from '@outname/ui/components/ui/button'
+import { ConfirmActionDialog } from '@outname/ui/components/ui/confirm-action-dialog'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
@@ -215,16 +216,13 @@ function ConnectionControls({
     })
   }
 
-  function handleDisconnect() {
-    startTransition(async () => {
-      const res = await disconnectConnectionAction(connector.connectorId)
-      if (!res.ok) {
-        toast.error(res.error ?? 'Disconnect failed.')
-        return
-      }
-      toast.success('Disconnected.')
-      refresh()
-    })
+  async function handleDisconnect() {
+    const res = await disconnectConnectionAction(connector.connectorId)
+    if (!res.ok) {
+      throw new Error(res.error ?? 'Disconnect failed.')
+    }
+    toast.success('Disconnected.')
+    refresh()
   }
 
   return (
@@ -251,16 +249,29 @@ function ConnectionControls({
           </a>
         )}
         {connection && (
-          <Button
-            className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
-            disabled={pending}
-            onClick={handleDisconnect}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            {pending ? '...' : 'Disconnect'}
-          </Button>
+          <ConfirmActionDialog
+            confirmLabel="Disconnect"
+            description={
+              <>
+                Disconnecting <strong>{connector.displayName}</strong> removes
+                the stored credential. Agent tools that depend on it will stop
+                working until you reconnect.
+              </>
+            }
+            onConfirm={handleDisconnect}
+            title={`Disconnect ${connector.displayName}?`}
+            trigger={
+              <Button
+                className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
+                disabled={pending}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                Disconnect
+              </Button>
+            }
+          />
         )}
       </div>
       {connection && connector.authKind === 'oauth2' && (
@@ -283,7 +294,8 @@ function ConnectionControls({
               </span>
               <input
                 aria-label={field.label}
-                className="h-10 w-full border-2 border-foreground bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                className="h-10 w-full border-2 border-foreground bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
+                disabled={pending}
                 onChange={(e) =>
                   setValues((v) => ({ ...v, [field.name]: e.target.value }))
                 }

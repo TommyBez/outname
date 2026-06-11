@@ -90,17 +90,14 @@ export function AttachmentForm({
     handleAttach()
   }
 
-  function handleDetach() {
-    startTransition(async () => {
-      const result = await detachTool(agentId, entry.toolId)
-      if (!result.ok) {
-        toast.error(result.error ?? 'Detach failed.')
-        return
-      }
-      toast.success('Tool detached.')
-      setOpen(false)
-      refresh()
-    })
+  async function handleDetach() {
+    const result = await detachTool(agentId, entry.toolId)
+    if (!result.ok) {
+      throw new Error(result.error ?? 'Detach failed.')
+    }
+    toast.success('Tool detached.')
+    setOpen(false)
+    refresh()
   }
 
   return (

@@ -2,6 +2,7 @@ import {
   AppSidebar,
   AppSidebarFallback,
 } from '@outname/ui/components/layout/app-sidebar'
+import { CommandPaletteTrigger } from '@outname/ui/components/layout/command-palette'
 import { TimezoneBootstrapLoader } from '@outname/ui/components/layout/timezone-bootstrap-loader'
 import {
   SidebarInset,
@@ -53,6 +54,7 @@ export function AppShell({
             <span aria-hidden className="inline-block size-3 bg-accent" />
             <span>outna.me</span>
           </Link>
+          <CommandPaletteTrigger />
         </header>
         <main
           className={cn(mainClassName ?? DEFAULT_MAIN_CLASS)}

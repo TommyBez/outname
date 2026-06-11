@@ -1,5 +1,6 @@
 import { listRecentAgentEvents } from '@outname/ai/agent-runtime/server/agent-event-store'
 import { requireSession } from '@outname/auth/server/auth-guard'
+import { AgentEnabledToggle } from '@outname/shared/agents/components/agent-enabled-toggle'
 import { BudgetIndicator } from '@outname/shared/budgets/components/budget-indicator'
 import { loadBudgetSummary } from '@outname/shared/budgets/server/summary'
 import {
@@ -151,12 +152,19 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
               Current state
             </h2>
           </div>
-          <Link
-            className="font-bold text-muted-foreground text-xs uppercase tracking-[0.18em] hover:text-foreground"
-            href={`/agents/${agent.id}/chat`}
-          >
-            Open chat →
-          </Link>
+          <div className="flex items-center gap-4">
+            <AgentEnabledToggle
+              agentId={agent.id}
+              agentName={agent.name}
+              enabled={agent.enabled}
+            />
+            <Link
+              className="font-bold text-muted-foreground text-xs uppercase tracking-[0.18em] hover:text-foreground"
+              href={`/agents/${agent.id}/chat`}
+            >
+              Open chat →
+            </Link>
+          </div>
         </div>
         <div className="grid gap-4 md:grid-cols-3">
           <StateTile

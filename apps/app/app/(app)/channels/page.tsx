@@ -4,6 +4,7 @@ import {
 } from '@outname/auth/server/auth-guard'
 import { SlackInstallationsPanel } from '@outname/shared/channels/slack/components/slack-installations-panel'
 import { listSlackInstallationsForUser } from '@outname/shared/channels/slack/server/bindings-query'
+import { humanizeConnectionFlashReason } from '@outname/shared/connections/flash-reason'
 import { createPrivatePageMetadata } from '@outname/shared/server/site-metadata'
 import { ConnectionsSectionSkeleton } from '@outname/ui/components/skeletons'
 import type { Metadata } from 'next'
@@ -57,8 +58,13 @@ async function ChannelFlashNotice({
           Channel connection failed
         </p>
         <p className="mt-1 text-muted-foreground text-sm">
-          {sp.reason ?? 'unknown error'}
+          {humanizeConnectionFlashReason(sp.reason)}
         </p>
+        {sp.reason ? (
+          <p className="mt-1 font-mono text-muted-foreground text-xs">
+            Detail: {sp.reason}
+          </p>
+        ) : null}
       </div>
     )
   }

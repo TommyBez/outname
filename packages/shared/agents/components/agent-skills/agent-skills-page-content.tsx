@@ -7,6 +7,7 @@ import {
 } from '@outname/ui/components/ui/alert'
 import { Badge } from '@outname/ui/components/ui/badge'
 import { Button } from '@outname/ui/components/ui/button'
+import { ConfirmActionDialog } from '@outname/ui/components/ui/confirm-action-dialog'
 import { Input } from '@outname/ui/components/ui/input'
 import { Label } from '@outname/ui/components/ui/label'
 import { Skeleton } from '@outname/ui/components/ui/skeleton'
@@ -894,34 +895,37 @@ function UninstallSkillButton({
   onRemoved: (slug: string) => void
   skill: InstalledSkillView
 }) {
-  const [pending, startTransition] = useTransition()
   const { refresh } = useRouter()
 
-  function handleClick() {
-    startTransition(async () => {
-      const result = await uninstallSkill(agentId, skill.slug)
-      if (!result.ok) {
-        toast.error(result.message ?? 'Uninstall failed.')
-        return
-      }
-      onRemoved(skill.slug)
-      toast.success('Skill uninstalled.')
-      refresh()
-    })
+  async function handleConfirm() {
+    const result = await uninstallSkill(agentId, skill.slug)
+    if (!result.ok) {
+      throw new Error(result.message ?? 'Uninstall failed.')
+    }
+    onRemoved(skill.slug)
+    toast.success('Skill uninstalled.')
+    refresh()
   }
 
   return (
-    <Button
-      className="gap-2"
-      disabled={pending}
-      onClick={handleClick}
-      size="sm"
-      type="button"
-      variant="outline"
-    >
-      <Trash2 aria-hidden className="size-4" />
-      Uninstall
-    </Button>
+    <ConfirmActionDialog
+      confirmLabel="Uninstall skill"
+      description={
+        <>
+          This removes <strong>{skill.name}</strong> and its files from the
+          agent&apos;s Skill Sandbox. The agent will no longer be able to use
+          this workflow. This cannot be undone.
+        </>
+      }
+      onConfirm={handleConfirm}
+      title={`Uninstall ${skill.name}?`}
+      trigger={
+        <Button className="gap-2" size="sm" type="button" variant="outline">
+          <Trash2 aria-hidden className="size-4" />
+          Uninstall
+        </Button>
+      }
+    />
   )
 }
 

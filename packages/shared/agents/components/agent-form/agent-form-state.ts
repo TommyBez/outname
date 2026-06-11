@@ -66,6 +66,33 @@ export function createAgentFormState(input: {
   }
 }
 
+/**
+ * True when the operator changed anything that would be persisted on save.
+ * `activeBootstrapFile` is pure view state, so it is excluded.
+ */
+export function isAgentFormDirty(
+  state: AgentFormState,
+  initial: AgentFormState
+): boolean {
+  return (
+    state.name !== initial.name ||
+    state.identityCard !== initial.identityCard ||
+    state.identity !== initial.identity ||
+    state.instructions !== initial.instructions ||
+    state.userProfile !== initial.userProfile ||
+    state.inferenceProvider !== initial.inferenceProvider ||
+    state.model !== initial.model ||
+    state.heartbeatEnabled !== initial.heartbeatEnabled ||
+    state.heartbeatScheduleMode !== initial.heartbeatScheduleMode ||
+    state.heartbeatScheduleTimes.join(',') !==
+      initial.heartbeatScheduleTimes.join(',') ||
+    state.intervalMinutes !== initial.intervalMinutes ||
+    state.dreamingEnabled !== initial.dreamingEnabled ||
+    state.stepLimitMode !== initial.stepLimitMode ||
+    state.stepLimitCustom !== initial.stepLimitCustom
+  )
+}
+
 export function agentFormReducer(
   state: AgentFormState,
   action: AgentFormAction

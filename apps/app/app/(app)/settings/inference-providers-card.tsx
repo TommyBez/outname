@@ -8,6 +8,7 @@ import {
 } from '@outname/auth/settings/actions'
 import type { InferenceProvider } from '@outname/db/schema'
 import { Button } from '@outname/ui/components/ui/button'
+import { ConfirmActionDialog } from '@outname/ui/components/ui/confirm-action-dialog'
 import { useRouter } from 'next/navigation'
 import {
   type FormEvent,
@@ -56,6 +57,31 @@ export function InferenceProvidersCard({
       </div>
     </div>
   )
+}
+
+const RELATIVE_TIME_UNITS: Array<{
+  ms: number
+  unit: Intl.RelativeTimeFormatUnit
+}> = [
+  { ms: 1000 * 60 * 60 * 24 * 365, unit: 'year' },
+  { ms: 1000 * 60 * 60 * 24 * 30, unit: 'month' },
+  { ms: 1000 * 60 * 60 * 24, unit: 'day' },
+  { ms: 1000 * 60 * 60, unit: 'hour' },
+  { ms: 1000 * 60, unit: 'minute' },
+]
+
+function formatRelativeTime(isoDate: string): string {
+  const elapsedMs = Date.now() - new Date(isoDate).getTime()
+  if (!Number.isFinite(elapsedMs)) {
+    return isoDate
+  }
+  const formatter = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
+  for (const { ms, unit } of RELATIVE_TIME_UNITS) {
+    if (Math.abs(elapsedMs) >= ms) {
+      return formatter.format(-Math.round(elapsedMs / ms), unit)
+    }
+  }
+  return 'just now'
 }
 
 function InferenceProviderForm({ provider }: { provider: ProviderState }) {
@@ -156,36 +182,49 @@ function InferenceProviderForm({ provider }: { provider: ProviderState }) {
           {savePending ? 'Saving...' : 'Save key'}
         </Button>
         {provider.enabled ? (
-          <Button
-            disabled={pending}
-            onClick={() =>
-              startTransition(async () => {
-                const result = await removeInferenceProviderKeyAction(
-                  provider.inferenceProvider
-                )
-                if (!result.ok) {
-                  toast.error(result.error ?? 'Unable to remove key.')
-                  return
-                }
-                toast.success('Key removed.')
-                refresh()
-              })
+          <ConfirmActionDialog
+            confirmLabel="Remove key"
+            description={
+              <>
+                Removing the <strong>{provider.label}</strong> key stops every
+                agent that uses this inference provider from running until a new
+                key is saved.
+              </>
             }
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            Remove
-          </Button>
+            onConfirm={async () => {
+              const result = await removeInferenceProviderKeyAction(
+                provider.inferenceProvider
+              )
+              if (!result.ok) {
+                throw new Error(result.error ?? 'Unable to remove key.')
+              }
+              toast.success('Key removed.')
+              refresh()
+            }}
+            title={`Remove the ${provider.label} key?`}
+            trigger={
+              <Button
+                disabled={pending}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                Remove
+              </Button>
+            }
+          />
         ) : null}
       </div>
       {provider.verifiedAt ? (
         <p className="text-muted-foreground text-xs">
-          Last verified {new Date(provider.verifiedAt).toLocaleString()}
+          Last verified {formatRelativeTime(provider.verifiedAt)}
         </p>
       ) : null}
       {provider.lastError ? (
-        <p className="text-destructive text-xs">{provider.lastError}</p>
+        <p className="text-destructive text-xs">
+          Key validation failed: {provider.lastError}. Save a new key above to
+          fix this provider.
+        </p>
       ) : null}
     </form>
   )

@@ -35,6 +35,7 @@ export function TimezoneCard({ timezone }: { timezone: string }) {
   const value = selectedTimezone ?? timezone
   const options = useMemo(() => buildTimezoneOptions(timezone), [timezone])
   const offsetPreview = formatTimezoneOffsetPreview(value)
+  const hasUnsavedSelection = selectedTimezone !== null && value !== timezone
 
   function saveTimezone() {
     startTransition(async () => {
@@ -79,11 +80,12 @@ export function TimezoneCard({ timezone }: { timezone: string }) {
         {offsetPreview ? (
           <p className="font-mono text-muted-foreground text-xs">
             Current offset: {offsetPreview}
+            {hasUnsavedSelection ? ' · not saved yet' : ''}
           </p>
         ) : null}
         <div className="flex flex-wrap gap-2">
           <Button disabled={pending} size="sm" type="submit" variant="default">
-            Save timezone
+            {pending ? 'Saving…' : 'Save timezone'}
           </Button>
           <Button
             disabled={pending}

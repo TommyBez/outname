@@ -14,6 +14,32 @@ export function revalidateConversations(agentId: string) {
   return swrMutate(conversationsSwrKey(agentId))
 }
 
+/**
+ * Inserts a just-created conversation into the sidebar cache immediately so
+ * the user sees it without waiting for the server round trip; the real row
+ * (with its generated title) replaces it on the next revalidation.
+ */
+export function optimisticallyAddConversation(
+  agentId: string,
+  conversationId: string
+) {
+  return swrMutate(
+    conversationsSwrKey(agentId),
+    (current: ConversationSummary[] | undefined) => {
+      if (current?.some((row) => row.id === conversationId)) {
+        return current
+      }
+      const optimisticRow: ConversationSummary = {
+        id: conversationId,
+        title: null,
+        updatedAt: new Date().toISOString(),
+      }
+      return [optimisticRow, ...(current ?? [])]
+    },
+    { revalidate: false }
+  )
+}
+
 const TITLE_REFRESH_DELAYS_MS = [0, 800, 2500] as const
 
 export async function refreshConversationList(
