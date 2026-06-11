@@ -52,6 +52,7 @@ BETTER_AUTH_SECRET=
 BETTER_AUTH_URL=
 CONNECTION_ENCRYPTION_KEY=
 AI_GATEWAY_API_KEY=
+CRON_SECRET=
 ```
 
 ### Common optional integrations
@@ -60,7 +61,7 @@ AI_GATEWAY_API_KEY=
 - Redis coordination: `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
 - Waitlist email: `RESEND_API_KEY`, `WAITLIST_FROM_EMAIL`
 - Waitlist rate limit: `KV_REST_API_URL`, `KV_REST_API_TOKEN`
-- Cron hardening: `CRON_SECRET`
+- Optional scheduler toggle: `AGENT_SCHEDULER_CRON_ENABLED` (defaults to `true`)
 
 ## Local development
 
