@@ -6,7 +6,12 @@ export async function GET(req: NextRequest) {
   await connection()
 
   const expected = process.env.CRON_SECRET
-  if (expected && req.headers.get('authorization') !== `Bearer ${expected}`) {
+
+  if(!expected) {
+    return NextResponse.json({ error: 'cron secret not set' }, { status: 500 })
+  }
+
+  if (req.headers.get('authorization') !== `Bearer ${expected}`) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
