@@ -34,13 +34,16 @@ async function ConversationShell({ params }: { params: Params }) {
     notFound()
   }
 
-  // Re-check conversation ownership here so guessed URLs 404 instead of leaking transcripts.
-  const conversation = await getConversationForAgent(conversationId, agent.id)
+  // Re-check conversation ownership here so guessed URLs 404 instead of leaking
+  // transcripts. History loads in parallel but is only rendered after the
+  // ownership check passes.
+  const [conversation, initialMessages] = await Promise.all([
+    getConversationForAgent(conversationId, agent.id),
+    loadChatHistory(conversationId),
+  ])
   if (!conversation) {
     notFound()
   }
-
-  const initialMessages = await loadChatHistory(conversation.id)
 
   return (
     <AgentChat
