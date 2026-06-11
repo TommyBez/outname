@@ -7,13 +7,13 @@ import {
 import { getCachedAgentByIdForUser } from '@outname/shared/server/data'
 import type { UIMessage } from 'ai'
 
-type LoadConversationPageDataInput = {
+interface LoadConversationPageDataInput {
   agentId: string
   conversationId: string
   userId: string
 }
 
-type ConversationPageData = {
+interface ConversationPageData {
   agentId: string
   conversationId: string
   initialMessages: UIMessage[]
