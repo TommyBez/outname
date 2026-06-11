@@ -3,7 +3,7 @@ import { compactLedgerEvents } from '@outname/ai/agent-runtime/shared/compact-le
 import type { AgentEventSummary } from '@outname/ai/agent-runtime/shared/event-types'
 import { db } from '@outname/db'
 import { type AgentEvent, agentEvents } from '@outname/db/schema'
-import { and, asc, eq, inArray } from 'drizzle-orm'
+import { and, asc, eq, getTableColumns, inArray, lte, sql } from 'drizzle-orm'
 import { reconcileActiveAgentEvent } from './agent-event-reconciliation'
 import {
   ACTIVE_EVENT_STATUSES,
@@ -42,6 +42,92 @@ export async function listAgentEventSummaries(input: {
   return compactLedgerEvents(summaries, {
     terminalEventsPerType: input.terminalEventsPerType,
   })
+}
+
+/**
+ * Batched variant of {@link listAgentEventSummaries} for read-only views
+ * (no reconciliation): two queries for any number of agents instead of two
+ * per agent, plus one shared blocker lookup.
+ */
+export async function listAgentEventSummariesByAgent(input: {
+  agentIds: readonly string[]
+  limit?: number
+}): Promise<Map<string, AgentEventSummary[]>> {
+  const summariesByAgent = new Map<string, AgentEventSummary[]>()
+  if (input.agentIds.length === 0) {
+    return summariesByAgent
+  }
+  const agentIds = [...input.agentIds]
+
+  const [liveEvents, recentEvents] = await Promise.all([
+    db
+      .select()
+      .from(agentEvents)
+      .where(
+        and(
+          inArray(agentEvents.agentId, agentIds),
+          inArray(agentEvents.status, ['queued', ...ACTIVE_EVENT_STATUSES])
+        )
+      )
+      .orderBy(asc(agentEvents.queuedAt))
+      .limit(500),
+    listRecentAgentEventsByAgent(agentIds, input.limit ?? 20),
+  ])
+
+  const eventsByAgent = new Map<string, AgentEvent[]>()
+  for (const agentId of agentIds) {
+    eventsByAgent.set(
+      agentId,
+      mergeEvents(
+        liveEvents.filter((event) => event.agentId === agentId),
+        recentEvents.get(agentId) ?? []
+      )
+    )
+  }
+
+  const allEvents = [...eventsByAgent.values()].flat()
+  const blockers = await findQueuedEventBlockers(allEvents)
+  for (const [agentId, events] of eventsByAgent) {
+    summariesByAgent.set(
+      agentId,
+      events.map((event) =>
+        summarizeAgentEvent(event, blockers.get(event.id) ?? null)
+      )
+    )
+  }
+  return summariesByAgent
+}
+
+async function listRecentAgentEventsByAgent(
+  agentIds: readonly string[],
+  limit: number
+): Promise<Map<string, AgentEvent[]>> {
+  const ranked = db.$with('ranked_agent_events').as(
+    db
+      .select({
+        ...getTableColumns(agentEvents),
+        rowNumber:
+          sql<number>`row_number() over (partition by ${agentEvents.agentId} order by ${agentEvents.queuedAt} desc)`.as(
+            'row_number'
+          ),
+      })
+      .from(agentEvents)
+      .where(inArray(agentEvents.agentId, [...agentIds]))
+  )
+  const rows = await db
+    .with(ranked)
+    .select()
+    .from(ranked)
+    .where(lte(ranked.rowNumber, limit))
+    .orderBy(asc(ranked.rowNumber))
+
+  const eventsByAgent = new Map<string, AgentEvent[]>()
+  for (const { rowNumber: _rowNumber, ...event } of rows) {
+    const events = eventsByAgent.get(event.agentId) ?? []
+    events.push(event as AgentEvent)
+    eventsByAgent.set(event.agentId, events)
+  }
+  return eventsByAgent
 }
 
 async function reconcileActiveEvents(
