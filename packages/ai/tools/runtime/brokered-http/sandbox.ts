@@ -117,9 +117,9 @@ export async function stopAllBrokeredHttpSandboxesForRun(): Promise<void> {
     Array.from(perRun.values()).map(async ({ connectorId, sandboxPromise }) => {
       try {
         const sandbox = await sandboxPromise
-        await sandbox.stop()
+        await sandbox.delete()
       } catch (err) {
-        console.error('stopAllBrokeredHttpSandboxesForRun: stop failed', {
+        console.error('stopAllBrokeredHttpSandboxesForRun: delete failed', {
           connectorId,
           err,
         })

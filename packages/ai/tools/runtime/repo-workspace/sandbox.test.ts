@@ -257,7 +257,7 @@ describe('repo workspace sandbox', () => {
     expect(mockSandboxGetOrCreate).toHaveBeenCalledTimes(1)
   })
 
-  it('stops and deletes cached workspaces by rehydrating the named sandbox', async () => {
+  it('deletes cached workspaces by rehydrating the named sandbox', async () => {
     const cleanupSandbox = createSandbox()
     mockSandboxGet.mockResolvedValue(cleanupSandbox)
 
@@ -271,7 +271,7 @@ describe('repo workspace sandbox', () => {
         resume: false,
       })
     )
-    expect(cleanupSandbox.stop).toHaveBeenCalled()
+    expect(cleanupSandbox.stop).not.toHaveBeenCalled()
     expect(cleanupSandbox.delete).toHaveBeenCalled()
   })
 })

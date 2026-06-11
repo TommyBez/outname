@@ -92,8 +92,8 @@ export async function getOrStartToolSandbox(
   return sandbox
 }
 
-// Event workflow cleanup calls this so each event boots fresh tool sandboxes. Failed
-// stops are logged and swallowed so cleanup never poisons a successful turn.
+// Event workflow cleanup calls this so each event boots fresh tool sandboxes.
+// Failed deletes are logged and swallowed so cleanup never poisons a successful turn.
 export async function stopAllToolSandboxesForRun(): Promise<void> {
   let runId: string
   try {
@@ -112,10 +112,10 @@ export async function stopAllToolSandboxesForRun(): Promise<void> {
   await Promise.all(
     Array.from(perRun.values()).map(async ({ manifestId, sandbox }) => {
       try {
-        await sandbox.stop()
+        await sandbox.delete()
       } catch (err) {
         console.error(
-          'stopAllToolSandboxesForRun: stop failed',
+          'stopAllToolSandboxesForRun: delete failed',
           manifestId,
           err
         )
