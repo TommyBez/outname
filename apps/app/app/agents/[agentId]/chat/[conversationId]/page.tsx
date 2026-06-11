@@ -1,13 +1,9 @@
 import { AgentChat } from '@outname/ai/chat/components/agent-chat'
-import {
-  getConversationForAgent,
-  loadChatHistory,
-} from '@outname/ai/chat/server/chat'
 import { requireSession } from '@outname/auth/server/auth-guard'
-import { getCachedAgentByIdForUser } from '@outname/shared/server/data'
 import { createPrivatePageMetadata } from '@outname/shared/server/site-metadata'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
+import { loadConversationPageData } from './conversation-page-data'
 
 type Params = Promise<{ agentId: string; conversationId: string }>
 
@@ -29,27 +25,20 @@ async function ConversationShell({ params }: { params: Params }) {
     params,
     requireSession(),
   ])
-  const agent = await getCachedAgentByIdForUser(agentId, session.user.id)
-  if (!agent) {
-    notFound()
-  }
-
-  // Re-check conversation ownership here so guessed URLs 404 instead of leaking
-  // transcripts. History loads in parallel but is only rendered after the
-  // ownership check passes.
-  const [conversation, initialMessages] = await Promise.all([
-    getConversationForAgent(conversationId, agent.id),
-    loadChatHistory(conversationId),
-  ])
-  if (!conversation) {
+  const conversationPageData = await loadConversationPageData({
+    agentId,
+    conversationId,
+    userId: session.user.id,
+  })
+  if (!conversationPageData) {
     notFound()
   }
 
   return (
     <AgentChat
-      agentId={agent.id}
-      conversationId={conversation.id}
-      initialMessages={initialMessages}
+      agentId={conversationPageData.agentId}
+      conversationId={conversationPageData.conversationId}
+      initialMessages={conversationPageData.initialMessages}
     />
   )
 }
