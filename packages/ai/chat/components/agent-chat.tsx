@@ -11,6 +11,7 @@ import { hasAssistantContentAfterLatestUser } from '@outname/ai/chat/components/
 import {
   optimisticallyAddConversation,
   refreshConversationList,
+  revalidateConversations,
 } from '@outname/ai/chat/components/agent-sidebar-workspace/conversations'
 import { ChatErrorBanner } from '@outname/ai/chat/components/chat-error-banner'
 import { newChatConversationId } from '@outname/ai/chat/lib/new-chat-conversation-id'
@@ -62,6 +63,14 @@ export function AgentChat({
         if (isWorkflowStatusPart(part)) {
           setWorkflowStatus(part.data)
         }
+      },
+      onError: () => {
+        setWorkflowStatus(null)
+        // Re-sync the sidebar with the server: this rolls back the optimistic
+        // row when the request was rejected before the conversation was
+        // persisted (e.g. a paused agent fails with 412), and keeps it when
+        // the failure happened after persistence.
+        revalidateConversations(agentId)
       },
       onFinish: async () => {
         setWorkflowStatus(null)
