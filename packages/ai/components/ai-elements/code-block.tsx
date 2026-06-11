@@ -18,7 +18,6 @@ import type {
   HighlighterGeneric,
   ThemedToken,
 } from 'shiki'
-import { createHighlighter } from 'shiki'
 import { Button } from '@outname/ui/components/ui/button'
 import {
   Select,
@@ -129,7 +128,13 @@ const CodeBlockContext = createContext<CodeBlockContextType>({
   code: '',
 })
 
-// Highlighter cache (singleton per language)
+// Shared highlighter, loaded on demand so shiki stays out of the initial
+// bundle; languages are loaded into it lazily (one grammar per language
+// instead of one full highlighter per language).
+let sharedHighlighter: Promise<
+  HighlighterGeneric<BundledLanguage, BundledTheme>
+> | null = null
+
 const highlighterCache = new Map<
   string,
   Promise<HighlighterGeneric<BundledLanguage, BundledTheme>>
@@ -155,10 +160,21 @@ const getHighlighter = (
     return cached
   }
 
-  const highlighterPromise = createHighlighter({
-    langs: [language],
-    themes: ['github-light', 'github-dark'],
-  })
+  const highlighterPromise = (async () => {
+    sharedHighlighter ??= import('shiki').then(({ createHighlighter }) =>
+      createHighlighter({
+        langs: [],
+        themes: ['github-light', 'github-dark'],
+      })
+    )
+    const highlighter = await sharedHighlighter
+    try {
+      await highlighter.loadLanguage(language)
+    } catch {
+      // Unknown language: callers fall back to plain-text tokens.
+    }
+    return highlighter
+  })()
 
   highlighterCache.set(language, highlighterPromise)
   return highlighterPromise
