@@ -6,6 +6,7 @@ import {
   AgentWorkspaceFrame,
   AgentWorkspaceSkeleton,
 } from '@outname/shared/agents/components/agent-workspace'
+import { GlobalCommandPalette } from '@outname/shared/agents/components/global-command-palette'
 import { createPrivatePageMetadata } from '@outname/shared/server/site-metadata'
 import { AppShell } from '@outname/ui/components/layout/app-shell'
 import { Suspense } from 'react'
@@ -34,6 +35,9 @@ export default function AgentLayout({
     <AppShell sidebarExtras={sidebarExtras}>
       <Suspense fallback={<AgentWorkspaceSkeleton />}>
         <AgentWorkspaceFrame params={params}>{children}</AgentWorkspaceFrame>
+      </Suspense>
+      <Suspense fallback={null}>
+        <GlobalCommandPalette />
       </Suspense>
     </AppShell>
   )

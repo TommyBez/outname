@@ -8,7 +8,11 @@ import {
 } from '@outname/ai/agent-runtime/server/chat-status'
 import { AgentChatTranscript } from '@outname/ai/chat/components/agent-chat-transcript'
 import { hasAssistantContentAfterLatestUser } from '@outname/ai/chat/components/agent-chat-transcript-helpers'
-import { refreshConversationList } from '@outname/ai/chat/components/agent-sidebar-workspace/conversations'
+import {
+  optimisticallyAddConversation,
+  refreshConversationList,
+  revalidateConversations,
+} from '@outname/ai/chat/components/agent-sidebar-workspace/conversations'
 import { ChatErrorBanner } from '@outname/ai/chat/components/chat-error-banner'
 import { newChatConversationId } from '@outname/ai/chat/lib/new-chat-conversation-id'
 import {
@@ -60,6 +64,16 @@ export function AgentChat({
           setWorkflowStatus(part.data)
         }
       },
+      onError: () => {
+        setWorkflowStatus(null)
+        // Re-sync the sidebar with the server: this rolls back the optimistic
+        // row when the request was rejected before the conversation was
+        // persisted (e.g. a paused agent fails with 412), and keeps it when
+        // the failure happened after persistence.
+        revalidateConversations(agentId).catch(() => {
+          // Best-effort sync; the next focus revalidation will retry.
+        })
+      },
       onFinish: async () => {
         setWorkflowStatus(null)
         // Refresh the sidebar list; title generation can finish slightly after the
@@ -102,8 +116,18 @@ export function AgentChat({
       return
     }
     setWorkflowStatus(null)
+    if (messages.length === 0) {
+      // Surface the conversation in the sidebar right away instead of waiting
+      // for the post-stream revalidation.
+      optimisticallyAddConversation(agentId, conversationId)
+    }
     sendMessage({ text })
     setInput('')
+  }
+
+  function handleStop() {
+    setWorkflowStatus(null)
+    stop()
   }
 
   function handleNewChat() {
@@ -141,7 +165,7 @@ export function AgentChat({
             </PromptInputTools>
             <PromptInputSubmit
               disabled={!isBusy && input.trim().length === 0}
-              onStop={stop}
+              onStop={handleStop}
               status={status}
             />
           </PromptInputFooter>

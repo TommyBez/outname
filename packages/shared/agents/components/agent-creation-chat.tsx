@@ -9,6 +9,7 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
 } from '@outname/ai/components/ai-elements/prompt-input'
+import { useUnsavedChangesGuard } from '@outname/ui/hooks/use-unsaved-changes-guard'
 import { cn } from '@outname/ui/lib/utils'
 import {
   DefaultChatTransport,
@@ -48,6 +49,18 @@ export function AgentCreationChat({
     },
   })
   const isBusy = status === 'submitted' || status === 'streaming'
+  // The guided creation chat lives only in memory; warn before a reload or
+  // tab close throws the conversation away. Once the agent is created the
+  // transcript is no longer worth protecting.
+  const agentWasCreated = messages.some((message) =>
+    message.parts.some(
+      (part) =>
+        part.type === 'tool-create_requested_agent' &&
+        'state' in part &&
+        part.state === 'output-available'
+    )
+  )
+  useUnsavedChangesGuard(messages.length > 0 && !agentWasCreated)
 
   function handleSubmit(message: PromptInputMessage) {
     const text = (message.text ?? '').trim()

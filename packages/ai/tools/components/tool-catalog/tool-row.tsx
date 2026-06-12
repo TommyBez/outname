@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { AttachmentForm } from './attachment-form'
 import { ConnectorChip } from './connector-chip'
 import { PendingBuildStrip } from './pending-build-strip'
@@ -28,6 +29,9 @@ export function ToolRow({
       displayName: connection?.displayName ?? connectorId,
     }
   })
+  const missingConnectors = connectorStates.filter(
+    (connector) => connector.status !== 'active'
+  )
 
   return (
     <div className="flex flex-col gap-4">
@@ -77,6 +81,21 @@ export function ToolRow({
           </div>
         </div>
       </div>
+      {!attached && missingConnectors.length > 0 && (
+        <p className="border-2 border-foreground bg-muted px-3 py-2 text-muted-foreground text-xs">
+          This tool needs{' '}
+          {missingConnectors
+            .map((connector) => connector.displayName)
+            .join(', ')}{' '}
+          before it can run.{' '}
+          <Link
+            className="font-bold text-foreground underline underline-offset-2 hover:text-accent"
+            href="/connections"
+          >
+            Set it up in Connections →
+          </Link>
+        </p>
+      )}
       {isPending && attached?.pendingBuildId && (
         <PendingBuildStrip buildId={attached.pendingBuildId} />
       )}

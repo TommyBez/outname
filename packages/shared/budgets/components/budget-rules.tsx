@@ -7,8 +7,9 @@ import {
   upsertBudgetRuleAction,
 } from '@outname/shared/budgets/server/actions'
 import { Button } from '@outname/ui/components/ui/button'
+import { ConfirmActionDialog } from '@outname/ui/components/ui/confirm-action-dialog'
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 
 const PERIODS: readonly { id: BudgetPeriod; label: string }[] = [
@@ -102,17 +103,8 @@ function BudgetRow({
 }) {
   const { refresh } = useRouter()
   const [pending, startTransition] = useTransition()
-  const [draftLimit, setDraftLimit] = useState<string>(
-    rule ? rule.limitUsd.toString() : ''
-  )
 
-  function onSave(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const value = Number(draftLimit)
-    if (!Number.isFinite(value) || value <= 0) {
-      toast.error('Enter a positive USD limit')
-      return
-    }
+  function saveLimit(value: number) {
     startTransition(async () => {
       try {
         await upsertBudgetRuleAction({
@@ -142,15 +134,13 @@ function BudgetRow({
     })
   }
 
-  function onRemove() {
+  async function onRemove() {
     if (!rule) {
       return
     }
-    startTransition(async () => {
-      await deleteBudgetRuleAction(rule.id)
-      toast.success(`${period.label} budget removed`)
-      refresh()
-    })
+    await deleteBudgetRuleAction(rule.id)
+    toast.success(`${period.label} budget removed`)
+    refresh()
   }
 
   const overBudget = rule ? rule.spentUsd >= rule.limitUsd : false
@@ -193,16 +183,23 @@ function BudgetRow({
             >
               {rule.enabled ? 'Disable' : 'Enable'}
             </Button>
-            <Button
-              className="h-9 border-2 border-destructive px-3 font-bold text-[11px] text-destructive uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-destructive-foreground disabled:opacity-50"
-              disabled={pending}
-              onClick={onRemove}
-              size="xs"
-              type="button"
-              variant="outline"
-            >
-              Remove
-            </Button>
+            <ConfirmActionDialog
+              confirmLabel="Remove budget"
+              description={`The ${period.label.toLowerCase()} limit will be removed and spend will no longer be capped for this period. You can set a new limit at any time.`}
+              onConfirm={onRemove}
+              title={`Remove the ${period.label.toLowerCase()} budget?`}
+              trigger={
+                <Button
+                  className="h-9 border-2 border-destructive px-3 font-bold text-[11px] text-destructive uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-destructive-foreground disabled:opacity-50"
+                  disabled={pending}
+                  size="xs"
+                  type="button"
+                  variant="outline"
+                >
+                  Remove
+                </Button>
+              }
+            />
           </div>
         )}
       </div>
@@ -216,11 +213,70 @@ function BudgetRow({
           />
         </div>
       )}
-      <form className="flex items-center gap-2" onSubmit={onSave}>
+      <BudgetLimitForm
+        hasRule={Boolean(rule)}
+        initialLimit={rule ? rule.limitUsd.toString() : ''}
+        onSave={saveLimit}
+        pending={pending}
+        periodId={period.id}
+        periodLabel={period.label}
+      />
+    </div>
+  )
+}
+
+function BudgetLimitForm({
+  hasRule,
+  initialLimit,
+  onSave,
+  pending,
+  periodId,
+  periodLabel,
+}: {
+  hasRule: boolean
+  initialLimit: string
+  onSave: (value: number) => void
+  pending: boolean
+  periodId: BudgetPeriod
+  periodLabel: string
+}) {
+  const [draftLimit, setDraftLimit] = useState<string>(initialLimit)
+  // Re-sync when the saved rule changes (after a save + refresh, or a rule
+  // removal) so the input reflects the persisted limit instead of stale text.
+  useEffect(() => {
+    setDraftLimit(initialLimit)
+  }, [initialLimit])
+  const draftValue = Number(draftLimit)
+  const draftInvalid =
+    draftLimit.trim().length > 0 &&
+    (!Number.isFinite(draftValue) || draftValue <= 0)
+  const submitLabel = hasRule ? 'Update' : 'Set limit'
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const value = Number(draftLimit)
+    if (!Number.isFinite(value) || value <= 0) {
+      toast.error('Enter a positive USD limit')
+      return
+    }
+    onSave(value)
+  }
+
+  return (
+    <form className="flex flex-col gap-1" onSubmit={handleSubmit}>
+      <div className="flex items-center gap-2">
         <span className="font-mono text-muted-foreground text-xs">USD</span>
         <input
-          aria-label={`${period.label} limit in USD`}
-          className="h-9 w-32 border-2 border-foreground bg-background px-2 font-mono text-sm outline-none focus:border-accent"
+          aria-describedby={
+            draftInvalid ? `budget-error-${periodId}` : undefined
+          }
+          aria-invalid={draftInvalid || undefined}
+          aria-label={`${periodLabel} limit in USD`}
+          className={
+            draftInvalid
+              ? 'h-9 w-32 border-2 border-destructive bg-background px-2 font-mono text-sm outline-none focus:border-destructive'
+              : 'h-9 w-32 border-2 border-foreground bg-background px-2 font-mono text-sm outline-none focus:border-accent'
+          }
           inputMode="decimal"
           min="0"
           onChange={(e) => setDraftLimit(e.target.value)}
@@ -231,14 +287,22 @@ function BudgetRow({
         />
         <Button
           className="h-9 border-2 border-foreground px-3 font-bold text-[11px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background disabled:opacity-50"
-          disabled={pending}
+          disabled={pending || draftInvalid || draftLimit.trim().length === 0}
           size="xs"
           type="submit"
           variant="outline"
         >
-          {rule ? 'Update' : 'Set limit'}
+          {pending ? 'Saving…' : submitLabel}
         </Button>
-      </form>
-    </div>
+      </div>
+      {draftInvalid ? (
+        <p
+          className="font-mono text-destructive text-xs"
+          id={`budget-error-${periodId}`}
+        >
+          Enter a positive USD amount.
+        </p>
+      ) : null}
+    </form>
   )
 }

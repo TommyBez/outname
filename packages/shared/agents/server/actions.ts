@@ -68,6 +68,32 @@ export async function updateAgentAction(
   revalidatePath('/')
 }
 
+export async function setAgentEnabledAction(input: {
+  agentId: string
+  enabled: boolean
+}): Promise<void> {
+  const session = await requireSession()
+  const [existing] = await db
+    .select({ id: agent.id })
+    .from(agent)
+    .where(and(eq(agent.id, input.agentId), eq(agent.userId, session.user.id)))
+    .limit(1)
+  if (!existing) {
+    throw new Error('Agent not found')
+  }
+
+  await db
+    .update(agent)
+    .set({ enabled: input.enabled, updatedAt: new Date() })
+    .where(and(eq(agent.id, input.agentId), eq(agent.userId, session.user.id)))
+
+  updateTag(userAgentsTag(session.user.id))
+  updateTag(agentTag(input.agentId))
+  revalidatePath('/agents')
+  revalidatePath(`/agents/${input.agentId}`)
+  revalidatePath('/')
+}
+
 export async function deleteAgentAction(agentId: string): Promise<void> {
   const session = await requireSession()
   const [existing] = await db

@@ -2,8 +2,8 @@
 
 import { disconnectSlackInstallationAction } from '@outname/shared/channels/slack/server/actions'
 import { Button } from '@outname/ui/components/ui/button'
+import { ConfirmActionDialog } from '@outname/ui/components/ui/confirm-action-dialog'
 import { Plus } from 'lucide-react'
-import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import type { InstallationView } from './types'
 
@@ -16,21 +16,13 @@ export function InstallationsBlock({
   installations: InstallationView[]
   onChanged: () => void
 }) {
-  const [pending, startTransition] = useTransition()
-  const [pendingTeamId, setPendingTeamId] = useState<string | null>(null)
-
-  function disconnect(teamId: string) {
-    setPendingTeamId(teamId)
-    startTransition(async () => {
-      const result = await disconnectSlackInstallationAction({ teamId })
-      setPendingTeamId(null)
-      if (!result.ok) {
-        toast.error(result.error ?? 'Could not disconnect workspace.')
-        return
-      }
-      toast.success('Workspace disconnected.')
-      onChanged()
-    })
+  async function disconnect(teamId: string) {
+    const result = await disconnectSlackInstallationAction({ teamId })
+    if (!result.ok) {
+      throw new Error(result.error ?? 'Could not disconnect workspace.')
+    }
+    toast.success('Workspace disconnected.')
+    onChanged()
   }
 
   return (
@@ -40,7 +32,8 @@ export function InstallationsBlock({
       </p>
       {installations.length === 0 ? (
         <p className="text-muted-foreground text-sm">
-          No Slack workspaces installed yet for your account.
+          No Slack workspaces installed yet. Install the Slack app to route
+          channel and DM messages into your agents.
         </p>
       ) : (
         <ul className="flex flex-col divide-y-2 divide-foreground border-foreground border-y-2">
@@ -57,18 +50,30 @@ export function InstallationsBlock({
                   {install.teamId}
                 </p>
               </div>
-              <Button
-                className="inline-flex h-9 items-center justify-center border-2 border-foreground px-3 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
-                disabled={pending && pendingTeamId === install.teamId}
-                onClick={() => disconnect(install.teamId)}
-                size="xs"
-                type="button"
-                variant="outline"
-              >
-                {pending && pendingTeamId === install.teamId
-                  ? '…'
-                  : 'Disconnect'}
-              </Button>
+              <ConfirmActionDialog
+                confirmLabel="Disconnect workspace"
+                description={
+                  <>
+                    Disconnecting{' '}
+                    <strong>{install.workspaceName ?? install.teamId}</strong>{' '}
+                    stops all Slack bindings in this workspace from routing
+                    messages to your agents. You can reinstall the app later to
+                    reconnect.
+                  </>
+                }
+                onConfirm={() => disconnect(install.teamId)}
+                title="Disconnect this workspace?"
+                trigger={
+                  <Button
+                    className="inline-flex h-9 items-center justify-center border-2 border-foreground px-3 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
+                    size="xs"
+                    type="button"
+                    variant="outline"
+                  >
+                    Disconnect
+                  </Button>
+                }
+              />
             </li>
           ))}
         </ul>

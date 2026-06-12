@@ -27,6 +27,7 @@ import {
 import { TodayDate } from '@outname/ui/components/today-date'
 import Link from 'next/link'
 import { Suspense } from 'react'
+import { DashboardAutoRefresh } from './dashboard-auto-refresh'
 
 const NEW_AGENT_BUTTON_CLASS_NAME =
   'inline-flex h-14 shrink-0 items-center justify-center border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground'
@@ -174,10 +175,15 @@ async function DashboardCockpit({
       <h2 className="sr-only" id="dashboard-cockpit-heading">
         Operational cockpit
       </h2>
+      <DashboardAutoRefresh enabled={activeEventCount > 0} />
 
       <div className="mb-8 grid gap-4 border-foreground border-y-2 py-5 sm:grid-cols-3">
         <DashboardMetric label="Active" value={enabledCount} />
-        <DashboardMetric label="In flight" value={activeEventCount} />
+        <DashboardMetric
+          hint={activeEventCount > 0 ? 'Live · auto-refreshing' : undefined}
+          label="In flight"
+          value={activeEventCount}
+        />
         <DashboardMetric label="Attention" value={attentionAgentIds.size} />
       </div>
 
@@ -302,7 +308,15 @@ function PausedAgentsQueue({ agents }: { agents: Agent[] }) {
   )
 }
 
-function DashboardMetric({ label, value }: { label: string; value: number }) {
+function DashboardMetric({
+  hint,
+  label,
+  value,
+}: {
+  hint?: string
+  label: string
+  value: number
+}) {
   return (
     <div className="border-foreground border-l-2 pl-4">
       <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
@@ -311,6 +325,11 @@ function DashboardMetric({ label, value }: { label: string; value: number }) {
       <p className="mt-2 font-black font-serif text-4xl leading-none tracking-tighter">
         {value}
       </p>
+      {hint ? (
+        <p className="mt-1 font-mono text-[10px] text-muted-foreground">
+          {hint}
+        </p>
+      ) : null}
     </div>
   )
 }

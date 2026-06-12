@@ -2,7 +2,6 @@
 
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -12,6 +11,8 @@ import {
   AlertDialogTrigger,
 } from '@outname/ui/components/ui/alert-dialog'
 import { Button } from '@outname/ui/components/ui/button'
+import { Spinner } from '@outname/ui/components/ui/spinner'
+import { useFormStatus } from 'react-dom'
 
 interface AgentDeleteDialogProps {
   agentName: string
@@ -37,26 +38,37 @@ export function AgentDeleteDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Delete this agent?</AlertDialogTitle>
           <AlertDialogDescription>
-            You are about to permanently delete <strong>{agentName}</strong> and
-            all of its run history and results. This action cannot be undone.
+            You are about to permanently delete <strong>{agentName}</strong>,
+            including its settings, memory, run history, and sandbox. Pending
+            events will be cancelled. This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <form action={onDelete}>
-            <AlertDialogAction asChild>
-              <Button
-                className="inline-flex h-10 items-center justify-center bg-destructive px-4 font-semibold text-destructive-foreground text-sm normal-case tracking-normal hover:opacity-90"
-                size="sm"
-                type="submit"
-                variant="destructive"
-              >
-                Confirm delete
-              </Button>
-            </AlertDialogAction>
-          </form>
-        </AlertDialogFooter>
+        <form action={onDelete}>
+          <DeleteDialogFooter />
+        </form>
       </AlertDialogContent>
     </AlertDialog>
+  )
+}
+
+function DeleteDialogFooter() {
+  const { pending } = useFormStatus()
+
+  return (
+    <AlertDialogFooter>
+      <AlertDialogCancel disabled={pending} type="button">
+        Cancel
+      </AlertDialogCancel>
+      <Button
+        className="inline-flex h-10 items-center justify-center gap-2 bg-destructive px-4 font-semibold text-destructive-foreground text-sm normal-case tracking-normal hover:opacity-90"
+        disabled={pending}
+        size="sm"
+        type="submit"
+        variant="destructive"
+      >
+        {pending ? <Spinner /> : null}
+        {pending ? 'Deleting…' : 'Confirm delete'}
+      </Button>
+    </AlertDialogFooter>
   )
 }

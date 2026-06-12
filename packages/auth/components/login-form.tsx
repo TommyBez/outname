@@ -15,17 +15,32 @@ import {
 import { Label } from '@outname/ui/components/ui/label'
 import { Spinner } from '@outname/ui/components/ui/spinner'
 import { useRouter } from 'next/navigation'
-import { useReducer } from 'react'
+import { useEffect, useReducer, useRef } from 'react'
 import { toast } from 'sonner'
 
 const OTP_LENGTH = 6
 const OTP_SLOT_IDS = ['otp-0', 'otp-1', 'otp-2', 'otp-3', 'otp-4', 'otp-5']
+const EMAIL_STORAGE_KEY = 'outname:login-email'
 
 export function LoginForm({ redirectTo }: { redirectTo: string }) {
   const { push, refresh } = useRouter()
   const [state, dispatch] = useReducer(loginFormReducer, initialLoginFormState)
+  const isVerifyingOtpRef = useRef(false)
   const { email, otp, isRequestingOtp, isVerifyingOtp, step, statusMessage } =
     state
+
+  // Restore the email after an interrupted attempt (refresh, closed tab) so
+  // the user does not have to retype it.
+  useEffect(() => {
+    try {
+      const storedEmail = window.localStorage.getItem(EMAIL_STORAGE_KEY)
+      if (storedEmail) {
+        dispatch({ type: 'set_email', value: storedEmail })
+      }
+    } catch {
+      // Storage unavailable (private mode); skip restore.
+    }
+  }, [])
 
   async function sendOtpRequest() {
     dispatch({ type: 'set_requesting_otp', value: true })
@@ -75,21 +90,43 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
     await sendOtpRequest()
   }
 
-  async function verifyOtp(e: React.FormEvent) {
-    e.preventDefault()
+  async function verifyOtpValue(otpValue: string) {
+    // Synchronous latch: the reducer flag updates asynchronously, so the OTP
+    // auto-submit and a form submit landing in the same tick could both pass
+    // an isVerifyingOtp check and verify twice.
+    if (isVerifyingOtpRef.current) {
+      return
+    }
+    isVerifyingOtpRef.current = true
     dispatch({ type: 'set_verifying_otp', value: true })
 
-    const { error } = await signIn.emailOtp({ email, otp })
-    dispatch({ type: 'set_verifying_otp', value: false })
+    let error: { message?: string } | null = null
+    try {
+      const result = await signIn.emailOtp({ email, otp: otpValue })
+      error = result.error
+    } finally {
+      isVerifyingOtpRef.current = false
+      dispatch({ type: 'set_verifying_otp', value: false })
+    }
 
     if (error) {
       toast.error(error.message || 'Invalid sign-in code')
       return
     }
 
+    try {
+      window.localStorage.removeItem(EMAIL_STORAGE_KEY)
+    } catch {
+      // Storage unavailable; nothing to clean up.
+    }
     toast.success('Signed in')
     push(redirectTo)
     refresh()
+  }
+
+  async function verifyOtp(e: React.FormEvent) {
+    e.preventDefault()
+    await verifyOtpValue(otp)
   }
 
   return (
@@ -107,6 +144,11 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
           id="login-email"
           onChange={(e) => {
             dispatch({ type: 'set_email', value: e.target.value })
+            try {
+              window.localStorage.setItem(EMAIL_STORAGE_KEY, e.target.value)
+            } catch {
+              // Storage unavailable; the form still works without persistence.
+            }
           }}
           required
           type="email"
@@ -147,6 +189,10 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
               maxLength={OTP_LENGTH}
               onChange={(value) => {
                 dispatch({ type: 'set_otp', value })
+                if (value.length === OTP_LENGTH) {
+                  // Auto-submit once the final digit lands; no extra click.
+                  verifyOtpValue(value)
+                }
               }}
               pattern="[0-9]*"
               value={otp}

@@ -4,7 +4,9 @@ import type { AgentScheduleMode } from '@outname/shared/agent-schedule'
 import { formatAgentScheduleInline } from '@outname/shared/agents/format'
 import { Input } from '@outname/ui/components/ui/input'
 import { cn } from '@outname/ui/lib/utils'
+import { X } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
 
 export interface RegistryAgent {
@@ -26,6 +28,7 @@ export function AgentRegistry({
   agents: RegistryAgent[]
   timeZone: string
 }) {
+  const router = useRouter()
   const [query, setQuery] = useState('')
   const visibleAgents = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -58,22 +61,61 @@ export function AgentRegistry({
             workspace surface you need.
           </p>
         </div>
-        <Input
-          aria-label="Search agents"
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search agents..."
-          value={query}
-        />
+        <div>
+          <div className="relative">
+            <Input
+              aria-label="Search agents. Press Enter to open the first match."
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && visibleAgents[0]) {
+                  event.preventDefault()
+                  router.push(`/agents/${visibleAgents[0].id}`)
+                }
+                if (event.key === 'Escape') {
+                  setQuery('')
+                }
+              }}
+              placeholder="Search agents..."
+              value={query}
+            />
+            {query ? (
+              <button
+                aria-label="Clear search"
+                className="absolute top-1/2 right-2 inline-flex size-7 -translate-y-1/2 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+                onClick={() => setQuery('')}
+                type="button"
+              >
+                <X aria-hidden className="size-4" />
+              </button>
+            ) : null}
+          </div>
+          <p
+            aria-live="polite"
+            className="mt-2 font-mono text-muted-foreground text-xs"
+          >
+            {query
+              ? `${visibleAgents.length} of ${agents.length} agents · Enter opens first match`
+              : `${agents.length} agents`}
+          </p>
+        </div>
       </div>
 
       {visibleAgents.length === 0 ? (
         <div className="border-2 border-foreground bg-muted p-8">
           <p className="font-black font-serif text-2xl uppercase leading-none tracking-tighter">
-            No matching agents.
+            No agents match “{query}”.
           </p>
           <p className="mt-3 max-w-md text-muted-foreground text-sm">
-            Try searching by name, model, active state, heartbeat, or dreaming.
+            Try searching by name, model, active state, heartbeat, or dreaming —
+            or clear the search to see all {agents.length} agents.
           </p>
+          <button
+            className="mt-6 inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-[10px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+            onClick={() => setQuery('')}
+            type="button"
+          >
+            Clear search
+          </button>
         </div>
       ) : (
         <ul className="border-foreground border-y-2">

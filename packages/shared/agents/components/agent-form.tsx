@@ -7,15 +7,32 @@ import {
   updateAgentAction,
 } from '@outname/shared/agents/server/actions'
 import type { ModelOption } from '@outname/shared/server/inference-models'
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@outname/ui/components/ui/alert-dialog'
 import { Button } from '@outname/ui/components/ui/button'
 import { Input } from '@outname/ui/components/ui/input'
 import { Label } from '@outname/ui/components/ui/label'
+import { useUnsavedChangesGuard } from '@outname/ui/hooks/use-unsaved-changes-guard'
 import { useRouter } from 'next/navigation'
-import { type FormEvent, useReducer, useTransition } from 'react'
+import {
+  type FormEvent,
+  useMemo,
+  useReducer,
+  useState,
+  useTransition,
+} from 'react'
 import { toast } from 'sonner'
 import {
   agentFormReducer,
   createAgentFormState,
+  isAgentFormDirty,
 } from './agent-form/agent-form-state'
 import { BootstrapFiles } from './agent-form/bootstrap-files'
 import { ConfigureSection } from './agent-form/configure-section'
@@ -57,6 +74,22 @@ export function AgentForm({
   )
   const isEdit = Boolean(initial?.id)
   const submitLabel = isEdit ? 'Save changes' : 'Create agent'
+  const initialFormState = useMemo(
+    () =>
+      createAgentFormState({ defaultInferenceProvider, defaultModel, initial }),
+    [defaultInferenceProvider, defaultModel, initial]
+  )
+  const isDirty = isAgentFormDirty(state, initialFormState)
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
+  useUnsavedChangesGuard(isDirty && !pending)
+
+  function handleCancel() {
+    if (isDirty) {
+      setShowDiscardConfirm(true)
+      return
+    }
+    back()
+  }
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -209,9 +242,17 @@ export function AgentForm({
       </ConfigureSection>
 
       <div className="flex items-center justify-end gap-3">
+        {isDirty && !pending ? (
+          <p
+            aria-live="polite"
+            className="font-mono text-muted-foreground text-xs"
+          >
+            Unsaved changes
+          </p>
+        ) : null}
         <Button
           disabled={pending}
-          onClick={() => back()}
+          onClick={handleCancel}
           type="button"
           variant="ghost"
         >
@@ -221,6 +262,35 @@ export function AgentForm({
           {pending ? 'Saving...' : submitLabel}
         </Button>
       </div>
+
+      <AlertDialog
+        onOpenChange={setShowDiscardConfirm}
+        open={showDiscardConfirm}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have edits that have not been saved. Leaving now will throw
+              them away.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel type="button">Keep editing</AlertDialogCancel>
+            <Button
+              onClick={() => {
+                setShowDiscardConfirm(false)
+                back()
+              }}
+              size="sm"
+              type="button"
+              variant="destructive"
+            >
+              Discard changes
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   )
 }

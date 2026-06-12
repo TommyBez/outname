@@ -1,5 +1,6 @@
 import { RunResultView } from '@outname/ai/agent-runtime/components/run-result-view'
 import { requireSession } from '@outname/auth/server/auth-guard'
+import { AgentMemoryFilesList } from '@outname/shared/agents/components/agent-memory-files-list'
 import { TriggerButton } from '@outname/shared/agents/components/trigger-button'
 import {
   getCachedAgentByIdForUser,
@@ -73,23 +74,13 @@ async function ResolvedAgentMemoryFiles({ params }: { params: Params }) {
           on its first run.
         </p>
       ) : (
-        <ul className="flex flex-col gap-10">
-          {rows.map((row) => (
-            <li className="flex flex-col gap-3" key={row.path}>
-              <header className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-foreground border-b-2 pb-2">
-                <h2 className="font-bold font-mono text-sm uppercase tracking-[0.12em]">
-                  {row.path}
-                </h2>
-                <span className="font-mono text-muted-foreground text-xs">
-                  Updated {display.relative(row.updatedAt)}
-                </span>
-              </header>
-              <pre className="max-h-[480px] overflow-auto whitespace-pre-wrap border-2 border-border bg-muted p-4 font-mono text-xs leading-relaxed">
-                {row.content}
-              </pre>
-            </li>
-          ))}
-        </ul>
+        <AgentMemoryFilesList
+          files={rows.map((row) => ({
+            content: row.content,
+            path: row.path,
+            updatedLabel: display.relative(row.updatedAt),
+          }))}
+        />
       )}
     </>
   )
