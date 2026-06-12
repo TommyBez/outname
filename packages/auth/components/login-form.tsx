@@ -15,7 +15,7 @@ import {
 import { Label } from '@outname/ui/components/ui/label'
 import { Spinner } from '@outname/ui/components/ui/spinner'
 import { useRouter } from 'next/navigation'
-import { useEffect, useReducer } from 'react'
+import { useEffect, useReducer, useRef } from 'react'
 import { toast } from 'sonner'
 
 const OTP_LENGTH = 6
@@ -25,6 +25,7 @@ const EMAIL_STORAGE_KEY = 'outname:login-email'
 export function LoginForm({ redirectTo }: { redirectTo: string }) {
   const { push, refresh } = useRouter()
   const [state, dispatch] = useReducer(loginFormReducer, initialLoginFormState)
+  const isVerifyingOtpRef = useRef(false)
   const { email, otp, isRequestingOtp, isVerifyingOtp, step, statusMessage } =
     state
 
@@ -90,13 +91,23 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
   }
 
   async function verifyOtpValue(otpValue: string) {
-    if (isVerifyingOtp) {
+    // Synchronous latch: the reducer flag updates asynchronously, so the OTP
+    // auto-submit and a form submit landing in the same tick could both pass
+    // an isVerifyingOtp check and verify twice.
+    if (isVerifyingOtpRef.current) {
       return
     }
+    isVerifyingOtpRef.current = true
     dispatch({ type: 'set_verifying_otp', value: true })
 
-    const { error } = await signIn.emailOtp({ email, otp: otpValue })
-    dispatch({ type: 'set_verifying_otp', value: false })
+    let error: { message?: string } | null = null
+    try {
+      const result = await signIn.emailOtp({ email, otp: otpValue })
+      error = result.error
+    } finally {
+      isVerifyingOtpRef.current = false
+      dispatch({ type: 'set_verifying_otp', value: false })
+    }
 
     if (error) {
       toast.error(error.message || 'Invalid sign-in code')

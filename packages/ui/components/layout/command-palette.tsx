@@ -157,7 +157,7 @@ export function CommandPaletteTrigger() {
 
   return (
     <button
-      aria-keyshortcuts="Meta+K"
+      aria-keyshortcuts={isMac ? 'Meta+K' : 'Control+K'}
       className="ml-auto inline-flex h-9 items-center gap-2 border-2 border-foreground px-3 font-bold text-[10px] text-muted-foreground uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
       onClick={() => {
         window.dispatchEvent(new Event(OPEN_COMMAND_PALETTE_EVENT))

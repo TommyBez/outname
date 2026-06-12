@@ -85,7 +85,7 @@ export async function setAgentEnabledAction(input: {
   await db
     .update(agent)
     .set({ enabled: input.enabled, updatedAt: new Date() })
-    .where(eq(agent.id, input.agentId))
+    .where(and(eq(agent.id, input.agentId), eq(agent.userId, session.user.id)))
 
   updateTag(userAgentsTag(session.user.id))
   updateTag(agentTag(input.agentId))

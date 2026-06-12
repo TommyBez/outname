@@ -22,7 +22,7 @@ export function revalidateConversations(agentId: string) {
 export function optimisticallyAddConversation(
   agentId: string,
   conversationId: string
-) {
+): Promise<ConversationSummary[] | undefined> {
   return swrMutate(
     conversationsSwrKey(agentId),
     (current: ConversationSummary[] | undefined) => {

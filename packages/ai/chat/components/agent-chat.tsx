@@ -70,7 +70,9 @@ export function AgentChat({
         // row when the request was rejected before the conversation was
         // persisted (e.g. a paused agent fails with 412), and keeps it when
         // the failure happened after persistence.
-        revalidateConversations(agentId)
+        revalidateConversations(agentId).catch(() => {
+          // Best-effort sync; the next focus revalidation will retry.
+        })
       },
       onFinish: async () => {
         setWorkflowStatus(null)

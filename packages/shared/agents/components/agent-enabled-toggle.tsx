@@ -47,9 +47,11 @@ export function AgentEnabledToggle({
     <Play aria-hidden className="size-3.5" />
   )
 
+  // No aria-pressed: the accessible name already flips between "Pause agent"
+  // and "Resume agent", and combining a changing label with aria-pressed
+  // gives contradictory announcements.
   return (
     <button
-      aria-pressed={!enabled}
       className="inline-flex h-10 items-center justify-center gap-2 border-2 border-foreground px-4 font-bold text-[10px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background disabled:cursor-not-allowed disabled:opacity-60"
       disabled={pending}
       onClick={handleToggle}

@@ -9,7 +9,7 @@ import {
 import { Button } from '@outname/ui/components/ui/button'
 import { ConfirmActionDialog } from '@outname/ui/components/ui/confirm-action-dialog'
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 
 const PERIODS: readonly { id: BudgetPeriod; label: string }[] = [
@@ -241,6 +241,11 @@ function BudgetLimitForm({
   periodLabel: string
 }) {
   const [draftLimit, setDraftLimit] = useState<string>(initialLimit)
+  // Re-sync when the saved rule changes (after a save + refresh, or a rule
+  // removal) so the input reflects the persisted limit instead of stale text.
+  useEffect(() => {
+    setDraftLimit(initialLimit)
+  }, [initialLimit])
   const draftValue = Number(draftLimit)
   const draftInvalid =
     draftLimit.trim().length > 0 &&

@@ -15,6 +15,9 @@ export function useUnsavedChangesGuard(hasUnsavedChanges: boolean) {
     }
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault()
+      // Legacy fallback: some runtimes only show the dialog when returnValue
+      // is set to a non-empty string.
+      event.returnValue = 'unsaved changes'
     }
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
