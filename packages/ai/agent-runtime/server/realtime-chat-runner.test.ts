@@ -90,6 +90,38 @@ describe('tapFullStream', () => {
     expect(accumulator.text).toBe('hello')
   })
 
+  it('intercepts error chunks via onError and swallows them from the output', async () => {
+    const failure = new Error('provider exploded')
+    const chunks = [
+      { type: 'text-delta', text: 'partial' },
+      { type: 'error', error: failure },
+      { type: 'text-delta', text: ' more' },
+    ] as TextStreamPart<Record<string, Tool>>[]
+    const source = (async function* () {
+      for (const chunk of chunks) {
+        await Promise.resolve()
+        yield chunk
+      }
+    })()
+    const accumulator = { text: '' }
+    const seen: unknown[] = []
+
+    const { tapFullStream } = await import('./realtime-chat-runner')
+    const output: TextStreamPart<Record<string, Tool>>[] = []
+    for await (const chunk of tapFullStream(source, accumulator, (error) => {
+      seen.push(error)
+    })) {
+      output.push(chunk)
+    }
+
+    expect(seen).toEqual([failure])
+    expect(output.map((chunk) => chunk.type)).toEqual([
+      'text-delta',
+      'text-delta',
+    ])
+    expect(accumulator.text).toBe('partial more')
+  })
+
   it('propagates upstream stream errors after preserving accumulated text', async () => {
     const accumulator = { text: '' }
     const source = (async function* () {
@@ -389,6 +421,73 @@ describe('realtime chat runner persistence policy', () => {
     })
   })
 
+  it('posts a human-readable notice and hides raw error chunks on the channel', async () => {
+    mocks.preflightBudget.mockResolvedValue(null)
+    mocks.buildAgentRuntimeSpec.mockResolvedValue(runtimeSpec())
+    mocks.buildRealtimeAgentRuntime.mockImplementation(
+      async (
+        _spec: AgentRuntimeSpec,
+        options: { onFinish?: (event: unknown) => void }
+      ) => {
+        await Promise.resolve()
+        options.onFinish?.({ generations: [testGeneration()], steps: [] })
+        return {
+          agent: {
+            stream: async () => ({
+              fullStream: streamFromChunks([
+                { text: 'partial', type: 'text-delta' },
+                { type: 'error', error: new Error('provider exploded') },
+              ]),
+            }),
+          },
+          meta: {
+            model: 'openai/gpt-5.1',
+            name: 'Agent',
+            stepLimitCustom: null,
+            stepLimitMode: 'medium',
+            userId: 'user_123',
+          },
+          tools: {},
+        }
+      }
+    )
+    const forwarded: Array<{ type: string }> = []
+    const delivery = buildDelivery({
+      postAgentStream: async (stream) => {
+        for await (const chunk of stream) {
+          forwarded.push(chunk as { type: string })
+        }
+      },
+    })
+    const errorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    const { runRealtimeChatTurn } = await import('./realtime-chat-runner')
+    await runRealtimeChatTurn({
+      abortSignal: new AbortController().signal,
+      agentId: 'agent_123',
+      assistantMessageId: 'msg_assistant',
+      conversationId: 'conv_123',
+      delivery,
+      messages: [] satisfies ModelMessage[],
+      persistMode: 'text-only',
+      runId: 'rt_123',
+      source: 'slack',
+      titleMessages: [userMessage('msg_user', 'hello')],
+      userId: 'user_123',
+    })
+
+    // Raw provider error never reaches the channel stream.
+    expect(forwarded.map((chunk) => chunk.type)).toEqual(['text-delta'])
+    // A readable notice is posted instead.
+    expect(delivery.postText).toHaveBeenCalledWith(
+      'Something went wrong while the agent was responding. Please try again in a moment.'
+    )
+    expect(errorSpy).toHaveBeenCalled()
+    errorSpy.mockRestore()
+  })
+
   it('contains usage recording failures inside the scheduled task', async () => {
     mocks.preflightBudget.mockResolvedValue(null)
     mocks.buildAgentRuntimeSpec.mockResolvedValue(runtimeSpec())
@@ -584,7 +683,9 @@ function testGeneration() {
 }
 
 async function* streamFromChunks(
-  chunks: Array<{ text: string; type: 'text-delta' }>
+  chunks: Array<
+    { text: string; type: 'text-delta' } | { type: 'error'; error: unknown }
+  >
 ): AsyncGenerator<TextStreamPart<Record<string, Tool>>, void, unknown> {
   for (const chunk of chunks) {
     await Promise.resolve()
