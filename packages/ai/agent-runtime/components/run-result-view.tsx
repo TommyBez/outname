@@ -1,13 +1,8 @@
 'use client'
 
+import { streamdownPlugins } from '@outname/ai/components/ai-elements/streamdown-plugins'
 import { cn } from '@outname/ui/lib/utils'
-import { cjk } from '@streamdown/cjk'
-import { code } from '@streamdown/code'
-import { math } from '@streamdown/math'
-import { mermaid } from '@streamdown/mermaid'
 import { Streamdown } from 'streamdown'
-
-const plugins = { cjk, code, math, mermaid }
 
 export function RunResultView({ content }: { content: string | null }) {
   if (!content || content.trim().length === 0) {
@@ -29,7 +24,7 @@ export function RunResultView({ content }: { content: string | null }) {
         'prose-code:font-mono'
       )}
     >
-      <Streamdown plugins={plugins}>{content}</Streamdown>
+      <Streamdown plugins={streamdownPlugins}>{content}</Streamdown>
     </article>
   )
 }

@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
 
   const expected = process.env.CRON_SECRET
 
-  if(!expected) {
+  if (!expected) {
     return NextResponse.json({ error: 'cron secret not set' }, { status: 500 })
   }
 

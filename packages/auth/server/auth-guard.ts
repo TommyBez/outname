@@ -5,19 +5,22 @@ import {
 import { auth } from '@outname/auth/server/auth'
 import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
+import { cache } from 'react'
+
+/**
+ * Deduplicated per request: layouts, pages, and nested server components can
+ * all await the session without repeating the lookup.
+ */
+export const getSession = cache(async () =>
+  auth.api.getSession({ headers: await headers() })
+)
 
 export async function requireSession() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  })
+  const session = await getSession()
   if (!session) {
     redirect('/login')
   }
   return session
-}
-
-export async function getSession() {
-  return auth.api.getSession({ headers: await headers() })
 }
 
 export async function hasWaitlistManageAccess(

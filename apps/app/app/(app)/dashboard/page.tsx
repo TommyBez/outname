@@ -1,4 +1,4 @@
-import { listAgentEventSummaries } from '@outname/ai/agent-runtime/server/agent-event-summaries'
+import { listAgentEventSummariesByAgent } from '@outname/ai/agent-runtime/server/agent-event-summaries'
 import {
   type AgentEventSummary,
   isTerminalAgentEventStatus,
@@ -12,7 +12,10 @@ import {
 import { NewAgentLink } from '@outname/shared/agents/components/new-agent-link'
 import { canCreateAgentForUser } from '@outname/shared/agents/server/creation-limit-access'
 import { BudgetIndicator } from '@outname/shared/budgets/components/budget-indicator'
-import { loadBudgetSummary } from '@outname/shared/budgets/server/summary'
+import {
+  loadAgentBudgetSummaries,
+  loadBudgetSummary,
+} from '@outname/shared/budgets/server/summary'
 import type { BudgetSummaryEntry } from '@outname/shared/budgets/server/types'
 import { getCachedAgentsForUser } from '@outname/shared/server/data'
 import { createPrivatePageMetadata } from '@outname/shared/server/site-metadata'
@@ -126,59 +129,43 @@ async function DashboardCockpit({
 
   const enabledCount = agents.filter((agent) => agent.enabled).length
   const pausedCount = agents.length - enabledCount
-  const attentionAgents = agents.filter((agent) => !agent.enabled)
+  const pausedAgents = agents.filter((agent) => !agent.enabled)
   const monitorAgents = agents.filter((agent) => agent.enabled)
-  const [generalBudget, agentBudgets, agentEvents] = await Promise.all([
+  const monitorAgentIds = monitorAgents.map((a) => a.id)
+  const [generalBudget, agentBudgetMap, agentEventMap] = await Promise.all([
     loadBudgetSummary({
       userId,
       scope: { type: 'general' },
     }),
-    Promise.all(
-      monitorAgents.map(async (a) => ({
-        agentId: a.id,
-        entries: await loadBudgetSummary({
-          userId,
-          scope: { type: 'agent', agentId: a.id },
-        }),
-      }))
-    ),
-    Promise.all(
-      monitorAgents.map(async (a) => ({
-        agentId: a.id,
-        events: await listAgentEventSummaries({
-          agentId: a.id,
-          limit: 25,
-          reconcileActive: false,
-        }),
-      }))
-    ),
+    loadAgentBudgetSummaries({
+      userId,
+      agentIds: monitorAgentIds,
+    }),
+    listAgentEventSummariesByAgent({
+      agentIds: monitorAgentIds,
+      limit: 25,
+    }),
   ])
-  const agentBudgetMap = new Map<string, BudgetSummaryEntry[]>(
-    agentBudgets.map((b) => [b.agentId, b.entries])
-  )
-  const agentEventMap = new Map(
-    agentEvents.map((entry) => [entry.agentId, entry.events])
-  )
   let activeEventCount = 0
-  for (const entry of agentEvents) {
-    for (const event of entry.events) {
+  for (const events of agentEventMap.values()) {
+    for (const event of events) {
       if (isActiveDashboardEvent(event)) {
         activeEventCount += 1
       }
     }
   }
   const attentionAgentIds = new Set<string>()
-  for (const agent of attentionAgents) {
+  for (const agent of pausedAgents) {
     attentionAgentIds.add(agent.id)
   }
-  for (const entry of agentEvents) {
-    if (entry.events.some(isFailedDashboardEvent)) {
-      attentionAgentIds.add(entry.agentId)
+  for (const [agentId, events] of agentEventMap) {
+    if (events.some(isFailedDashboardEvent)) {
+      attentionAgentIds.add(agentId)
     }
   }
-  for (const entry of agentBudgets) {
-    if (entry.entries.some(isBudgetAttention)) {
-      attentionAgentIds.add(entry.agentId)
+  for (const [agentId, entries] of agentBudgetMap) {
+    if (entries.some(isBudgetAttention)) {
+      attentionAgentIds.add(agentId)
     }
   }
 
@@ -237,7 +224,7 @@ async function DashboardCockpit({
         </div>
       </div>
 
-      <AttentionQueue agents={attentionAgents} />
+      <PausedAgentsQueue agents={pausedAgents} />
 
       <section className="mt-12">
         <div className="mb-5 flex flex-wrap items-baseline justify-between gap-4">
@@ -279,7 +266,7 @@ async function DashboardCockpit({
   )
 }
 
-function AttentionQueue({ agents }: { agents: Agent[] }) {
+function PausedAgentsQueue({ agents }: { agents: Agent[] }) {
   if (agents.length === 0) {
     return (
       <section className="border-foreground border-y-2 py-6">

@@ -3,7 +3,7 @@ import { compactLedgerEvents } from '@outname/ai/agent-runtime/shared/compact-le
 import type { AgentEventSummary } from '@outname/ai/agent-runtime/shared/event-types'
 import { db } from '@outname/db'
 import { type AgentEvent, agentEvents } from '@outname/db/schema'
-import { and, asc, eq, inArray } from 'drizzle-orm'
+import { and, asc, eq, getTableColumns, inArray, lte, sql } from 'drizzle-orm'
 import { reconcileActiveAgentEvent } from './agent-event-reconciliation'
 import {
   ACTIVE_EVENT_STATUSES,
@@ -42,6 +42,123 @@ export async function listAgentEventSummaries(input: {
   return compactLedgerEvents(summaries, {
     terminalEventsPerType: input.terminalEventsPerType,
   })
+}
+
+/**
+ * Batched variant of {@link listAgentEventSummaries} for read-only views
+ * (no reconciliation): two queries for any number of agents instead of two
+ * per agent, plus one shared blocker lookup.
+ */
+export async function listAgentEventSummariesByAgent(input: {
+  agentIds: readonly string[]
+  limit?: number
+}): Promise<Map<string, AgentEventSummary[]>> {
+  const summariesByAgent = new Map<string, AgentEventSummary[]>()
+  if (input.agentIds.length === 0) {
+    return summariesByAgent
+  }
+  const agentIds = [...input.agentIds]
+
+  const [liveEvents, recentEvents] = await Promise.all([
+    listLiveAgentEventsByAgent(agentIds),
+    listRecentAgentEventsByAgent(agentIds, input.limit ?? 20),
+  ])
+
+  const eventsByAgent = new Map<string, AgentEvent[]>()
+  for (const agentId of agentIds) {
+    eventsByAgent.set(
+      agentId,
+      mergeEvents(
+        liveEvents.get(agentId) ?? [],
+        recentEvents.get(agentId) ?? []
+      )
+    )
+  }
+
+  const allEvents = [...eventsByAgent.values()].flat()
+  const blockers = await findQueuedEventBlockers(allEvents)
+  for (const [agentId, events] of eventsByAgent) {
+    summariesByAgent.set(
+      agentId,
+      events.map((event) =>
+        summarizeAgentEvent(event, blockers.get(event.id) ?? null)
+      )
+    )
+  }
+  return summariesByAgent
+}
+
+// Mirrors the per-agent cap of listLiveAgentEvents in the batched path.
+const LIVE_EVENTS_PER_AGENT_LIMIT = 100
+
+async function listLiveAgentEventsByAgent(
+  agentIds: readonly string[]
+): Promise<Map<string, AgentEvent[]>> {
+  return await listRankedAgentEventsByAgent({
+    agentIds,
+    perAgentLimit: LIVE_EVENTS_PER_AGENT_LIMIT,
+    queuedAtOrder: 'asc',
+    statusFilter: inArray(agentEvents.status, [
+      'queued',
+      ...ACTIVE_EVENT_STATUSES,
+    ]),
+  })
+}
+
+async function listRecentAgentEventsByAgent(
+  agentIds: readonly string[],
+  limit: number
+): Promise<Map<string, AgentEvent[]>> {
+  return await listRankedAgentEventsByAgent({
+    agentIds,
+    perAgentLimit: limit,
+    queuedAtOrder: 'desc',
+  })
+}
+
+/**
+ * Fetches up to `perAgentLimit` events per agent in a single query, using a
+ * row_number window partitioned by agent so no agent can starve the others.
+ */
+async function listRankedAgentEventsByAgent(input: {
+  agentIds: readonly string[]
+  perAgentLimit: number
+  queuedAtOrder: 'asc' | 'desc'
+  statusFilter?: ReturnType<typeof inArray>
+}): Promise<Map<string, AgentEvent[]>> {
+  const agentFilter = inArray(agentEvents.agentId, [...input.agentIds])
+  const orderSql =
+    input.queuedAtOrder === 'asc'
+      ? sql`${agentEvents.queuedAt} asc`
+      : sql`${agentEvents.queuedAt} desc`
+  const ranked = db.$with('ranked_agent_events').as(
+    db
+      .select({
+        ...getTableColumns(agentEvents),
+        rowNumber:
+          sql<number>`row_number() over (partition by ${agentEvents.agentId} order by ${orderSql})`.as(
+            'row_number'
+          ),
+      })
+      .from(agentEvents)
+      .where(
+        input.statusFilter ? and(agentFilter, input.statusFilter) : agentFilter
+      )
+  )
+  const rows = await db
+    .with(ranked)
+    .select()
+    .from(ranked)
+    .where(lte(ranked.rowNumber, input.perAgentLimit))
+    .orderBy(asc(ranked.rowNumber))
+
+  const eventsByAgent = new Map<string, AgentEvent[]>()
+  for (const { rowNumber: _rowNumber, ...event } of rows) {
+    const events = eventsByAgent.get(event.agentId) ?? []
+    events.push(event as AgentEvent)
+    eventsByAgent.set(event.agentId, events)
+  }
+  return eventsByAgent
 }
 
 async function reconcileActiveEvents(
