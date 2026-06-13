@@ -4,6 +4,10 @@ import {
   parseProductHuntBatchSize,
 } from '@outname/shared/launch/product-hunt'
 import { runProductHuntLaunchAutomation } from '@outname/shared/launch/product-hunt-automation'
+import {
+  areProductHuntLaunchSideEffectsDisabled,
+  createProductHuntPreviewSideEffectSkip,
+} from '@outname/shared/launch/product-hunt-preview-safety'
 import { runProductHuntSocialAutomation } from '@outname/shared/launch/product-hunt-social-automation'
 import { resolveProductHuntLaunchUrl } from '@outname/shared/launch/product-hunt-url-discovery'
 import { connection, type NextRequest, NextResponse } from 'next/server'
@@ -15,6 +19,10 @@ function getNullableEnv(name: string): string | null {
 
 export async function GET(req: NextRequest) {
   await connection()
+
+  if (areProductHuntLaunchSideEffectsDisabled()) {
+    return NextResponse.json(createProductHuntPreviewSideEffectSkip())
+  }
 
   const expected = process.env.CRON_SECRET
 

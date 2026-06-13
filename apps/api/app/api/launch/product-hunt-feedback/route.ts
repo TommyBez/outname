@@ -1,6 +1,7 @@
 import { db } from '@outname/db'
 import { launchFeedback } from '@outname/db/schema'
 import { PRODUCT_HUNT_LAUNCH } from '@outname/shared/launch/product-hunt'
+import { areProductHuntLaunchSideEffectsDisabled } from '@outname/shared/launch/product-hunt-preview-safety'
 import { denyIfBot } from '@outname/shared/server/botid-guard'
 import { sendProductHuntFeedbackAdminNotification } from '@outname/shared/waitlist/server/email'
 import { Ratelimit } from '@upstash/ratelimit'
@@ -93,13 +94,16 @@ async function checkRateLimit(request: NextRequest): Promise<boolean> {
 
 export async function POST(request: NextRequest) {
   await connection()
+  const sideEffectsDisabled = areProductHuntLaunchSideEffectsDisabled()
 
-  const botDenied = await denyIfBot(request)
-  if (botDenied) {
-    return botDenied
+  if (!sideEffectsDisabled) {
+    const botDenied = await denyIfBot(request)
+    if (botDenied) {
+      return botDenied
+    }
   }
 
-  if (!(await checkRateLimit(request))) {
+  if (!(sideEffectsDisabled || (await checkRateLimit(request)))) {
     return NextResponse.json({ error: 'rate limit exceeded' }, { status: 429 })
   }
 
@@ -116,6 +120,10 @@ export async function POST(request: NextRequest) {
   }
 
   if ((parsed.data.company ?? '').trim().length > 0) {
+    return genericSuccessResponse()
+  }
+
+  if (sideEffectsDisabled) {
     return genericSuccessResponse()
   }
 
