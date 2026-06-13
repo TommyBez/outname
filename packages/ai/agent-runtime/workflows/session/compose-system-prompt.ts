@@ -7,7 +7,7 @@ import {
   READ_ONLY_FOR_AGENT,
 } from '@outname/ai/agent-runtime/workflows/session/tools/persona-paths'
 import { listTrackedArchitectureFiles } from '@outname/ai/agent-runtime/workflows/session/tools/sandbox-file-helpers/list'
-import { readLiveMemory } from '@outname/ai/agent-runtime/workflows/session/tools/sandbox-file-helpers/read'
+import { readLiveFile } from '@outname/ai/agent-runtime/workflows/session/tools/sandbox-file-helpers/read'
 import type { Reconnect } from '@outname/ai/tools/catalog/types'
 import { reconnectPromptLine } from '@outname/ai/tools/runtime/reconnect-renderer'
 import { nonRetryableStepErrorFromUnknown } from '@outname/shared/server/workflow-step-errors'
@@ -68,10 +68,10 @@ export async function composeSystemPrompt(
   }
 
   const [agentsMd, identityMd, soulMd, userMd, livePaths] = await Promise.all([
-    readLiveMemory(systemSandbox, 'AGENTS.md'),
-    readLiveMemory(systemSandbox, 'IDENTITY.md'),
-    readLiveMemory(systemSandbox, 'SOUL.md'),
-    readLiveMemory(systemSandbox, 'USER.md'),
+    readLiveFile(systemSandbox, 'AGENTS.md'),
+    readLiveFile(systemSandbox, 'IDENTITY.md'),
+    readLiveFile(systemSandbox, 'SOUL.md'),
+    readLiveFile(systemSandbox, 'USER.md'),
     listTrackedArchitectureFiles(systemSandbox),
   ])
 

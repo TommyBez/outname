@@ -16,46 +16,56 @@ export function useAgentEventTranscript(input: {
   onWorkflowUnavailable?: () => void
 }): UseAgentEventTranscriptResult {
   const { agentId, event, onWorkflowUnavailable } = input
-  const currentEvent = useMemo(() => {
+  const eventAttempt = event?.attempt
+  const eventBlockedByEventId = event?.blockedByEventId
+  const eventCompletedAt = event?.completedAt
+  const eventId = event?.id
+  const eventLastError = event?.lastError
+  const eventPreview = event?.preview
+  const eventQueuedAt = event?.queuedAt
+  const eventSource = event?.source
+  const eventStartedAt = event?.startedAt
+  const eventStatus = event?.status
+  const eventType = event?.type
+  const eventWorkflowRunId = event?.workflowRunId
+  const currentEvent = useMemo<AgentEventSummary | null>(() => {
     if (
-      !(
-        event?.id &&
-        event.queuedAt &&
-        event.source &&
-        event.status &&
-        event.type &&
-        event.attempt !== null
-      )
+      eventAttempt === undefined ||
+      eventId === undefined ||
+      eventQueuedAt === undefined ||
+      eventSource === undefined ||
+      eventStatus === undefined ||
+      eventType === undefined
     ) {
       return null
     }
     return {
-      attempt: event.attempt,
-      blockedByEventId: event.blockedByEventId,
-      completedAt: event.completedAt,
-      id: event.id,
-      lastError: event.lastError,
-      preview: event.preview,
-      queuedAt: event.queuedAt,
-      source: event.source,
-      startedAt: event.startedAt,
-      status: event.status,
-      type: event.type,
-      workflowRunId: event.workflowRunId,
-    } satisfies AgentEventSummary
+      attempt: eventAttempt,
+      blockedByEventId: eventBlockedByEventId ?? null,
+      completedAt: eventCompletedAt ?? null,
+      id: eventId,
+      lastError: eventLastError ?? null,
+      preview: eventPreview ?? null,
+      queuedAt: eventQueuedAt,
+      source: eventSource,
+      startedAt: eventStartedAt ?? null,
+      status: eventStatus,
+      type: eventType,
+      workflowRunId: eventWorkflowRunId ?? null,
+    }
   }, [
-    event?.attempt,
-    event?.blockedByEventId,
-    event?.completedAt,
-    event?.id,
-    event?.lastError,
-    event?.preview,
-    event?.queuedAt,
-    event?.source,
-    event?.startedAt,
-    event?.status,
-    event?.type,
-    event?.workflowRunId,
+    eventAttempt,
+    eventBlockedByEventId,
+    eventCompletedAt,
+    eventId,
+    eventLastError,
+    eventPreview,
+    eventQueuedAt,
+    eventSource,
+    eventStartedAt,
+    eventStatus,
+    eventType,
+    eventWorkflowRunId,
   ])
 
   const shouldUseLiveStream = currentEvent

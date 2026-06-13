@@ -1,9 +1,12 @@
-import { eventActivityNamespace } from '@outname/ai/agent-runtime/server/agent-event-keys'
 import { reconcileActiveAgentEvent } from '@outname/ai/agent-runtime/server/agent-event-reconciliation'
 import { getAgentEvent } from '@outname/ai/agent-runtime/server/agent-event-store'
 import { outputNamespaceForAgentEvent } from '@outname/ai/agent-runtime/server/agent-event-transcript'
+import { readableAgentEventWorkflowRunId } from '@outname/ai/agent-runtime/server/agent-event-workflow-run-id'
 import type { AgentChatChunk } from '@outname/ai/agent-runtime/server/chat-status'
-import type { RunEvent } from '@outname/ai/agent-runtime/server/run-events'
+import {
+  type RunEvent,
+  runEventsNamespace,
+} from '@outname/ai/agent-runtime/server/run-events'
 import { WORKFLOW_STREAM_UNAVAILABLE_MESSAGE } from '@outname/ai/agent-runtime/shared/workflow-stream-messages'
 import { getSession } from '@outname/auth/server/auth-guard'
 import { getRun } from '@outname/workflow/api'
@@ -22,11 +25,12 @@ export async function GET(
   if (!event || event.agentId !== agentId || event.userId !== session.user.id) {
     return jsonError(404, 'not found')
   }
-  if (!event.workflowRunId || event.workflowRunId.startsWith('starting:')) {
+  const workflowRunId = readableAgentEventWorkflowRunId(event.workflowRunId)
+  if (!workflowRunId) {
     return jsonError(409, 'event has not started yet')
   }
 
-  const run = getRun(event.workflowRunId)
+  const run = getRun(workflowRunId)
   try {
     await run.status
   } catch (err) {
@@ -44,7 +48,7 @@ export async function GET(
   const startIndex = readStartIndex(request)
   const namespace =
     streamKind === 'activity'
-      ? eventActivityNamespace(event.workflowRunId)
+      ? runEventsNamespace(workflowRunId)
       : outputNamespaceForAgentEvent(event)
   const source = run.getReadable<AgentChatChunk | RunEvent>({
     namespace,

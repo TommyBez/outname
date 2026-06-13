@@ -271,6 +271,32 @@ describe('realtime chat runner persistence policy', () => {
     expect(mocks.buildAgentRuntimeSpec).not.toHaveBeenCalled()
   })
 
+  it('reports missing agents separately from ownership failures', async () => {
+    mocks.getAgentById.mockResolvedValue(null)
+    const delivery = buildDelivery()
+
+    const { runRealtimeChatTurn } = await import('./realtime-chat-runner')
+    await expect(
+      runRealtimeChatTurn({
+        abortSignal: new AbortController().signal,
+        agentId: 'agent_123',
+        assistantMessageId: 'msg_assistant',
+        conversationId: 'conv_123',
+        delivery,
+        messages: [],
+        persistMode: 'text-only',
+        runId: 'rt_123',
+        source: 'slack',
+        titleMessages: [userMessage('msg_user', 'hello')],
+        userId: 'user_123',
+      })
+    ).rejects.toThrow('runRealtimeChatTurn: agent agent_123 not found')
+
+    expect(mocks.preflightBudget).not.toHaveBeenCalled()
+    expect(mocks.startupSystemSandbox).not.toHaveBeenCalled()
+    expect(mocks.buildAgentRuntimeSpec).not.toHaveBeenCalled()
+  })
+
   it('starts the system sandbox before composing the runtime spec', async () => {
     mocks.preflightBudget.mockResolvedValue(null)
     mocks.buildRealtimeAgentRuntime.mockResolvedValue({

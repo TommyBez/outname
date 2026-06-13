@@ -39,13 +39,6 @@ async function readLiveFileByPath(
   }
 }
 
-export function readLiveMemory(
-  sandbox: Sandbox,
-  path: string
-): Promise<string | null> {
-  return readLiveFile(sandbox, path)
-}
-
 function isMissingFileError(error: unknown): boolean {
   if (!(typeof error === 'object' && error !== null)) {
     return false

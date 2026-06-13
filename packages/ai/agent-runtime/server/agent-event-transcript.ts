@@ -12,9 +12,11 @@ import {
   eventSummaryToWorkflowStatus,
   fallbackEventTranscriptMessages,
 } from '@outname/ai/agent-runtime/shared/event-transcript'
+import { upsertMessage } from '@outname/ai/agent-runtime/shared/message-utils'
 import type { AgentEvent } from '@outname/db/schema'
 import { getRun } from '@outname/workflow/api'
 import { readUIMessageStream } from 'ai'
+import { readableAgentEventWorkflowRunId } from './agent-event-workflow-run-id'
 
 export interface AgentEventTranscriptData {
   messages: AgentChatMessage[]
@@ -48,7 +50,10 @@ export async function loadPersistedAgentEventTranscript(
   const persistedMessages = await listAgentEventTranscriptMessages(event.id)
   if (
     persistedMessages.length === 0 &&
-    requiresPersistedTranscript(event.workflowRunId, event.status)
+    requiresPersistedTranscript(
+      readableAgentEventWorkflowRunId(event.workflowRunId),
+      event.status
+    )
   ) {
     throw new MissingPersistedEventTranscriptError(event.id)
   }
@@ -71,18 +76,13 @@ export async function readAgentEventTranscriptFromWorkflowRun(input: {
     namespace: outputNamespaceForAgentEvent(input.event),
     startIndex: 0,
   })
-  const messages: AgentChatMessage[] = []
+  let messages: AgentChatMessage[] = []
 
   for await (const message of readUIMessageStream<AgentChatMessage>({
     stream: source,
     terminateOnError: false,
   })) {
-    const index = messages.findIndex((item) => item.id === message.id)
-    if (index < 0) {
-      messages.push(message)
-      continue
-    }
-    messages[index] = message
+    messages = upsertMessage(messages, message)
   }
 
   return messages
@@ -94,7 +94,6 @@ function requiresPersistedTranscript(
 ): boolean {
   return (
     typeof workflowRunId === 'string' &&
-    !workflowRunId.startsWith('starting:') &&
     (status === 'completed' || status === 'failed' || status === 'cancelled')
   )
 }

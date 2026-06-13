@@ -1,17 +1,20 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   composeSystemPrompt: vi.fn(),
-  getAgentById: vi.fn(),
+  loadAgentStep: vi.fn(),
   resolveSkillPlan: vi.fn(),
   resolveToolPlan: vi.fn(),
 }))
 
 vi.mock('server-only', () => ({}))
 
-vi.mock('@outname/ai/agent-runtime/server/start-agent-run', () => ({
-  getAgentById: mocks.getAgentById,
-}))
+vi.mock(
+  '@outname/ai/agent-runtime/workflows/session/steps/db/load-agent',
+  () => ({
+    loadAgentStep: mocks.loadAgentStep,
+  })
+)
 
 vi.mock(
   '@outname/ai/agent-runtime/workflows/session/compose-system-prompt',
@@ -35,6 +38,10 @@ vi.mock(
 )
 
 describe('buildAgentRuntimeSpec', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('returns a JSON-serializable runtime spec outside workflow context', async () => {
     const toolPlan = {
       planned: [
@@ -70,7 +77,7 @@ describe('buildAgentRuntimeSpec', () => {
         },
       ],
     }
-    mocks.getAgentById.mockResolvedValue({
+    mocks.loadAgentStep.mockResolvedValue({
       inferenceProvider: 'vercel-ai-gateway',
       id: 'agent_123',
       model: 'openai/gpt-5.1',

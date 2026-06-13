@@ -1,9 +1,7 @@
 import { expect, test } from 'vitest'
 import {
-  eventActivityNamespace,
   replyNamespaceForEvent,
   scheduledBucketKey,
-  scheduledConcurrencyKey,
   scheduledDailyKey,
 } from './agent-event-keys'
 
@@ -45,9 +43,9 @@ test('scheduled event keys bucket heartbeat and dreaming independently', () => {
   )
 })
 
-test('scheduled concurrency and stream namespaces are stable', () => {
+test('scheduled bucket and reply namespaces are stable', () => {
   expect(
-    scheduledConcurrencyKey({
+    scheduledBucketKey({
       agentId: 'agent_123',
       intervalMinutes: 5,
       now: new Date('2026-05-14T09:07:12.000Z'),
@@ -55,7 +53,7 @@ test('scheduled concurrency and stream namespaces are stable', () => {
     })
   ).toBe('sched:agent_123:heartbeat:5929165')
   expect(
-    scheduledConcurrencyKey({
+    scheduledBucketKey({
       agentId: 'agent_123',
       intervalMinutes: 5,
       now: new Date('2026-05-14T09:07:12.000Z'),
@@ -63,7 +61,6 @@ test('scheduled concurrency and stream namespaces are stable', () => {
     })
   ).toBe('sched:agent_123:dreaming:5929165')
   expect(replyNamespaceForEvent('event_123')).toBe('reply:event_123')
-  expect(eventActivityNamespace('run_123')).toBe('events:run_123')
 })
 
 test('daily scheduled keys use local date and HHmm slot', () => {

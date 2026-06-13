@@ -6,7 +6,6 @@ export type WorkflowAgentEvent = Pick<
   | 'concurrencyKey'
   | 'id'
   | 'payload'
-  | 'publisherWorkflowRunId'
   | 'source'
   | 'status'
   | 'type'
@@ -25,17 +24,27 @@ export async function loadAgentEventStep(input: {
   if (!event) {
     return null
   }
+  const {
+    agentId,
+    concurrencyKey,
+    id,
+    payload,
+    source,
+    status,
+    type,
+    userId,
+    workflowRunId,
+  } = event
   return {
-    agentId: event.agentId,
-    concurrencyKey: event.concurrencyKey,
-    id: event.id,
-    payload: event.payload,
-    publisherWorkflowRunId: event.publisherWorkflowRunId,
-    source: event.source,
-    status: event.status,
-    type: event.type,
-    userId: event.userId,
-    workflowRunId: event.workflowRunId,
+    agentId,
+    concurrencyKey,
+    id,
+    payload,
+    source,
+    status,
+    type,
+    userId,
+    workflowRunId,
   }
 }
 
@@ -70,15 +79,4 @@ export async function markAgentEventTerminalStep(input: {
     '@outname/ai/agent-runtime/server/agent-event-store'
   )
   await markEventTerminal(input)
-}
-
-export async function setAgentEventPublisherWorkflowRunIdStep(input: {
-  eventId: string
-  publisherWorkflowRunId: string
-}): Promise<void> {
-  'use step'
-  const { setEventPublisherWorkflowRunId } = await import(
-    '@outname/ai/agent-runtime/server/agent-event-store'
-  )
-  await setEventPublisherWorkflowRunId(input)
 }

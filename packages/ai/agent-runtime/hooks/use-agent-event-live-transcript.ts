@@ -24,6 +24,7 @@ import {
   terminalErrorToWorkflowStatus,
 } from '@outname/ai/agent-runtime/shared/event-transcript'
 import type { AgentEventSummary } from '@outname/ai/agent-runtime/shared/event-types'
+import { upsertMessage } from '@outname/ai/agent-runtime/shared/message-utils'
 import {
   flushNdjsonBuffer,
   parseNdjsonChunk,
@@ -60,7 +61,6 @@ export function useAgentEventLiveTranscript(input: {
     }
 
     const controller = new AbortController()
-    let active = true
     let activityStreamIndex = 0
     let messageCount = 0
     let outputStreamIndex = 0
@@ -98,7 +98,7 @@ export function useAgentEventLiveTranscript(input: {
 
     const outputPromise = runStreamWithRetry({
       signal: controller.signal,
-      shouldContinue: () => active && !controller.signal.aborted,
+      shouldContinue: () => !controller.signal.aborted,
       onWorkflowUnavailable: () => onWorkflowUnavailableRef.current?.(),
       run: async () => {
         await consumeOutputStream({
@@ -126,7 +126,7 @@ export function useAgentEventLiveTranscript(input: {
     }).then(
       () => undefined,
       (reason: unknown) => {
-        if (active && !controller.signal.aborted) {
+        if (!controller.signal.aborted) {
           streamErrors.output = readTranscriptErrorMessage(reason)
         }
       }
@@ -134,7 +134,7 @@ export function useAgentEventLiveTranscript(input: {
 
     const activityPromise = runStreamWithRetry({
       signal: controller.signal,
-      shouldContinue: () => active && !controller.signal.aborted,
+      shouldContinue: () => !controller.signal.aborted,
       onWorkflowUnavailable: () => onWorkflowUnavailableRef.current?.(),
       run: async () => {
         await consumeActivityStream({
@@ -161,7 +161,7 @@ export function useAgentEventLiveTranscript(input: {
     }).then(
       () => undefined,
       (reason: unknown) => {
-        if (active && !controller.signal.aborted) {
+        if (!controller.signal.aborted) {
           streamErrors.activity = readTranscriptErrorMessage(reason)
         }
       }
@@ -169,7 +169,7 @@ export function useAgentEventLiveTranscript(input: {
 
     const settleStreams = async (): Promise<void> => {
       await Promise.all([outputPromise, activityPromise])
-      if (!(active && !controller.signal.aborted)) {
+      if (controller.signal.aborted) {
         return
       }
 
@@ -217,7 +217,7 @@ export function useAgentEventLiveTranscript(input: {
     }
 
     settleStreams().catch((reason: unknown) => {
-      if (!(active && !controller.signal.aborted)) {
+      if (controller.signal.aborted) {
         return
       }
       const message = readTranscriptErrorMessage(reason)
@@ -231,7 +231,6 @@ export function useAgentEventLiveTranscript(input: {
     })
 
     return () => {
-      active = false
       controller.abort()
     }
   }, [agentId, enabled, event])
@@ -439,19 +438,6 @@ function ndjsonReadable<T>(
       }
     },
   })
-}
-
-function upsertMessage(
-  messages: AgentChatMessage[],
-  message: AgentChatMessage
-): AgentChatMessage[] {
-  const index = messages.findIndex((item) => item.id === message.id)
-  if (index < 0) {
-    return [...messages, message]
-  }
-  const next = messages.slice()
-  next[index] = message
-  return next
 }
 
 function sleep(ms: number, signal: AbortSignal): Promise<void> {

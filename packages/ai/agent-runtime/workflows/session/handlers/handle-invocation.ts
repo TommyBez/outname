@@ -1,9 +1,9 @@
-import type { AgentChatMessage } from '@outname/ai/agent-runtime/server/chat-status'
 import {
   emitActivity,
   emitRun,
   emitStep,
 } from '@outname/ai/agent-runtime/server/run-events'
+import { createAssistantTextMessage } from '@outname/ai/agent-runtime/shared/message-utils'
 import type { BuildAgentTool } from '@outname/ai/tools/sub-agents/agent-tool'
 import { formatBudgetExceededMessage } from '@outname/shared/budgets/server/errors'
 import { currentWorkflowRunId } from '@outname/shared/server/workflow-run-id'
@@ -24,7 +24,6 @@ import { replaceAgentEventTranscriptMessagesBestEffortStep } from '../steps/db/e
 import { startupSystemSandboxStep } from '../steps/db/system-sandbox'
 import { persistAgentEventTranscriptStep } from '../steps/persist-event-transcript'
 import { finishSuccessfulInvocation } from './handle-invocation/finish-success'
-import { invocationMessageId } from './handle-invocation/run-helpers'
 import {
   finishUiMessageStream,
   writeUiMessageStreamError,
@@ -39,8 +38,6 @@ export async function handleInvocation(input: {
   parentRunId?: string | null
   parentToolId?: string | null
   parentToolCallId?: string | null
-  parentStream?: WritableStream<UIMessageChunk> | null
-  replyToken?: string | null
   callStack: string[]
   depth: number
   userId: string
@@ -53,17 +50,12 @@ export async function handleInvocation(input: {
     streamToken,
     parentRunId,
     parentToolId,
-    parentToolCallId,
-    parentStream,
-    replyToken,
     callStack,
     depth,
     userId,
   } = input
   const runId = currentWorkflowRunId()
   const streamNamespace = streamToken
-  const streamNamespaces = uniqueNamespaces(streamNamespace, replyToken ?? null)
-  let forwardPromise = Promise.resolve([] as AgentChatMessage[])
 
   try {
     await prepareInvocationRun({
@@ -95,7 +87,7 @@ export async function handleInvocation(input: {
         eventId,
         exceeded,
         runId,
-        streamNamespaces,
+        streamNamespace,
         userId,
       })
       return
@@ -119,20 +111,6 @@ export async function handleInvocation(input: {
     const modelMessages = await convertToModelMessages([userMessage])
 
     await emitStep(runId, 'read', 'start', 'Running sub-agent instruction')
-    if (parentStream && parentToolCallId) {
-      const { startForwardingChildTrace } = await import(
-        './handle-invocation/forward-child-trace'
-      )
-      forwardPromise = startForwardingChildTrace({
-        childAgentId: agentId,
-        childName: built.meta.name,
-        namespace: streamNamespace,
-        parentStream,
-        parentToolCallId,
-        runId,
-        toolName: parentToolId ?? 'sub_agent',
-      })
-    }
     const result = await built.agent.stream({
       messages: modelMessages,
       writable,
@@ -156,10 +134,8 @@ export async function handleInvocation(input: {
       runId,
       stepLimitInput,
       streamNamespace,
-      streamNamespaces,
     })
-    await finishInvocationStreams(streamNamespaces)
-    await forwardPromise
+    await finishInvocationStream(streamNamespace)
     await persistAgentEventTranscriptStep({
       event: {
         id: eventId,
@@ -180,35 +156,17 @@ export async function handleInvocation(input: {
   } catch (err) {
     await failInvocation({
       err,
-      forwardPromise,
       runId,
-      streamNamespaces,
+      streamNamespace,
     })
     throw err
   }
 }
 
-async function finishInvocationStreams(
-  namespaces: readonly string[]
-): Promise<void> {
-  await Promise.all(
-    namespaces.map((namespace) =>
-      finishUiMessageStream(namespace).catch((err) => {
-        console.error('handleInvocation: failed to close transcript', err)
-      })
-    )
-  )
-}
-
-function uniqueNamespaces(
-  primaryNamespace: string,
-  mirrorNamespace: string | null
-): string[] {
-  return [...new Set([primaryNamespace, mirrorNamespace].filter(isString))]
-}
-
-function isString(value: string | null): value is string {
-  return typeof value === 'string' && value.length > 0
+async function finishInvocationStream(namespace: string): Promise<void> {
+  await finishUiMessageStream(namespace).catch((err) => {
+    console.error('handleInvocation: failed to close transcript', err)
+  })
 }
 
 async function prepareInvocationRun(input: {
@@ -233,7 +191,7 @@ async function refuseBudgetExceeded(input: {
   eventId: string
   exceeded: Parameters<typeof formatBudgetExceededMessage>[0]
   runId: string
-  streamNamespaces: readonly string[]
+  streamNamespace: string
   userId: string
 }): Promise<void> {
   const message = formatBudgetExceededMessage(input.exceeded)
@@ -243,20 +201,12 @@ async function refuseBudgetExceeded(input: {
   })
   await emitStep(input.runId, 'read', 'error', message)
   await emitRun(input.runId, 'failed', message)
-  await Promise.all(
-    input.streamNamespaces.map((namespace) =>
-      writeUiMessageStreamError(namespace, message).catch(() => {
-        // Best-effort signal so the parent-side collector doesn't hang.
-      })
-    )
-  )
-  await Promise.all(
-    input.streamNamespaces.map((namespace) =>
-      finishUiMessageStream(namespace).catch(() => {
-        // Best-effort close.
-      })
-    )
-  )
+  await writeUiMessageStreamError(input.streamNamespace, message).catch(() => {
+    // Best-effort signal so the parent-side collector doesn't hang.
+  })
+  await finishUiMessageStream(input.streamNamespace).catch(() => {
+    // Best-effort close.
+  })
   await replaceAgentEventTranscriptMessagesBestEffortStep({
     eventId: input.eventId,
     messages: [
@@ -271,9 +221,8 @@ async function refuseBudgetExceeded(input: {
 
 async function failInvocation(input: {
   err: unknown
-  forwardPromise: Promise<AgentChatMessage[]>
   runId: string
-  streamNamespaces: readonly string[]
+  streamNamespace: string
 }): Promise<void> {
   const message =
     input.err instanceof Error ? input.err.message : String(input.err)
@@ -287,32 +236,14 @@ async function failInvocation(input: {
       innerErr
     )
   }
-  await Promise.all(
-    input.streamNamespaces.map((namespace) =>
-      writeUiMessageStreamError(namespace, message).catch(() => {
-        // Best-effort signal for the parent-side collector.
-      })
-    )
-  )
-  await Promise.all(
-    input.streamNamespaces.map((namespace) =>
-      finishUiMessageStream(namespace).catch(() => {
-        // Best-effort close so the parent-side sub-agent tool stream can settle.
-      })
-    )
-  )
-  await input.forwardPromise.catch(() => {
-    // Already logged by the forwarding task.
+  await writeUiMessageStreamError(input.streamNamespace, message).catch(() => {
+    // Best-effort signal for the parent-side collector.
+  })
+  await finishUiMessageStream(input.streamNamespace).catch(() => {
+    // Best-effort close so the parent-side sub-agent tool stream can settle.
   })
 }
 
-function createAssistantTextMessage(input: {
-  id: string
-  text: string
-}): UIMessage {
-  return {
-    id: input.id,
-    parts: [{ text: input.text, type: 'text' }],
-    role: 'assistant',
-  }
+function invocationMessageId(): string {
+  return `inv_msg_${Math.random().toString(36).slice(2, 10)}`
 }

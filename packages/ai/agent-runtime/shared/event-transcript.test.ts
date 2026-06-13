@@ -5,7 +5,6 @@ import {
   eventSummaryToWorkflowStatus,
   fallbackEventTranscriptMessages,
   readEventActivityMetadata,
-  runEventToAgentChatMessage,
   runEventToWorkflowStatus,
 } from './event-transcript'
 import { flushNdjsonBuffer, parseNdjsonChunk } from './ndjson'
@@ -34,19 +33,13 @@ test('ndjson parser can skip malformed lines', () => {
   expect(parsed.skippedLines).toBe(1)
 })
 
-test('run events map to compact transcript activity messages', () => {
+test('run events map to workflow status data', () => {
   const event: RunEvent = {
     message: 'Sub-agent invocation failed',
     status: 'failed',
     ts: 1_779_000_000_000,
     type: 'run',
   }
-
-  const message = runEventToAgentChatMessage(event, 0)
-  expect(message.role).toBe('assistant')
-  expect(message.parts[0]?.type).toBe('text')
-  expect(readEventActivityMetadata(message)?.tone).toBe('error')
-  expect(readEventActivityMetadata(message)?.transient).toBe(true)
 
   const status = runEventToWorkflowStatus(event)
   expect(status.message).toBe('Failed: Sub-agent invocation failed')

@@ -114,7 +114,6 @@ export const agentEvents = pgTable(
     scheduledFor: timestamp('scheduled_for', { withTimezone: true }),
     attempt: integer('attempt').notNull().default(0),
     workflowRunId: text('workflow_run_id'),
-    publisherWorkflowRunId: text('publisher_workflow_run_id'),
     queuedAt: timestamp('queued_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

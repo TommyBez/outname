@@ -11,11 +11,16 @@ vi.mock('workflow/api', () => ({
   start: mockStart,
 }))
 
+vi.mock('./agent-event-start', () => ({
+  enqueueAgentEventWithStarter: vi.fn(),
+  tryStartAgentEventWithStarter: vi.fn(),
+}))
+
 vi.mock('@outname/ai/agent-runtime/workflows/agent-events/workflow', () => ({
   agentEventWorkflow: mockAgentEventWorkflow,
 }))
 
-import { startAgentEventWorkflowRun } from '@outname/ai/agent-runtime/workflows/agent-events/starter'
+import { startAgentEventWorkflowRun } from './agent-events'
 
 describe('startAgentEventWorkflowRun', () => {
   it('starts agentEventWorkflow directly and returns the run id', async () => {

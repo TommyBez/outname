@@ -1,4 +1,7 @@
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
+
+vi.mock('server-only', () => ({}))
+
 import { createFileTools } from './file-tools'
 
 test('createFileTools exposes the full sandbox file toolset by default', () => {

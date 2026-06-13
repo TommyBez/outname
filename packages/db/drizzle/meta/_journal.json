@@ -155,6 +155,13 @@
       "when": 1780600000000,
       "tag": "0020_agent_skills",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1781308800000,
+      "tag": "0021_simplify_agent_events",
+      "breakpoints": true
     }
   ]
 }

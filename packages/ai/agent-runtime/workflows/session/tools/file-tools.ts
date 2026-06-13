@@ -3,19 +3,18 @@ import { z } from 'zod'
 import {
   grepFilesStep,
   listFilesStep,
-  readFileViaBashTool,
-  writeFileViaBashTool,
+  readFileStep,
+  writeFileStep,
 } from './file-tools/file-steps'
-import type { FileToolsContext as FileToolsContextType } from './file-tools/types'
 
 const MAX_LIST_RESULTS = 1000
 const MAX_GREP_RESULTS = 200
 
-export type { FileToolsContext } from './file-tools/types'
+export interface FileToolsContext {
+  agentId: string
+}
 
-export function createFileTools(
-  ctx: FileToolsContextType
-): Record<string, Tool> {
+export function createFileTools(ctx: FileToolsContext): Record<string, Tool> {
   return {
     readFile: tool({
       description:
@@ -23,8 +22,7 @@ export function createFileTools(
       inputSchema: z.object({
         path: z.string().describe('The path to the file to read'),
       }),
-      execute: async ({ path }, options) =>
-        readFileViaBashTool({ agentId: ctx.agentId, options, path }),
+      execute: async ({ path }) => readFileStep({ agentId: ctx.agentId, path }),
     }),
     writeFile: tool({
       description:
@@ -33,11 +31,10 @@ export function createFileTools(
         content: z.string().describe('The content to write to the file'),
         path: z.string().describe('The path where the file should be written'),
       }),
-      execute: async ({ content, path }, options) =>
-        await writeFileViaBashTool({
+      execute: async ({ content, path }) =>
+        await writeFileStep({
           agentId: ctx.agentId,
           content,
-          options,
           path,
         }),
     }),

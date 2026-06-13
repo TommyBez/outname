@@ -1,5 +1,5 @@
 import { replyNamespaceForEvent } from '@outname/ai/agent-runtime/server/agent-event-keys'
-import type { AgentEventPayloads } from '@outname/ai/agent-runtime/server/agent-event-store'
+import { payloadAs } from '@outname/ai/agent-runtime/shared/event-payload'
 import { cleanupEventResources } from '@outname/ai/agent-runtime/workflows/events/steps/cleanup-event'
 import {
   loadAgentEventStep,
@@ -8,7 +8,6 @@ import {
   markAgentEventTerminalStep,
   type WorkflowAgentEvent,
 } from '@outname/ai/agent-runtime/workflows/events/steps/event-store'
-import { startNextQueuedEventForWorkflow } from '@outname/ai/agent-runtime/workflows/events/steps/start-next-queued-event'
 import { handleHeartbeat } from '@outname/ai/agent-runtime/workflows/session/handlers/handle-heartbeat'
 import { handleInvocation } from '@outname/ai/agent-runtime/workflows/session/handlers/handle-invocation'
 import { buildWorkflowAgentTool } from '@outname/ai/tools/sub-agents/workflow-agent-tool'
@@ -54,10 +53,13 @@ async function dispatchAgentEvent(event: WorkflowAgentEvent): Promise<void> {
 
   switch (event.type) {
     case 'heartbeat': {
-      const payload = payloadAs<AgentEventPayloads['heartbeat']>(event)
+      const payload = payloadAs(
+        { payload: event.payload, type: event.type },
+        'heartbeat'
+      )
       await handleHeartbeat({
         agentId: event.agentId,
-        buildSubAgentTool: buildWorkflowSubAgentTool,
+        buildSubAgentTool: buildWorkflowAgentTool,
         eventId: event.id,
         manual: payload.manual ?? false,
         mode: 'normal',
@@ -68,10 +70,13 @@ async function dispatchAgentEvent(event: WorkflowAgentEvent): Promise<void> {
       return
     }
     case 'dreaming': {
-      const payload = payloadAs<AgentEventPayloads['dreaming']>(event)
+      const payload = payloadAs(
+        { payload: event.payload, type: event.type },
+        'dreaming'
+      )
       await handleHeartbeat({
         agentId: event.agentId,
-        buildSubAgentTool: buildWorkflowSubAgentTool,
+        buildSubAgentTool: buildWorkflowAgentTool,
         eventId: event.id,
         localDate: payload.localDate,
         manual: payload.manual ?? false,
@@ -83,10 +88,13 @@ async function dispatchAgentEvent(event: WorkflowAgentEvent): Promise<void> {
       return
     }
     case 'invocation': {
-      const payload = payloadAs<AgentEventPayloads['invocation']>(event)
+      const payload = payloadAs(
+        { payload: event.payload, type: event.type },
+        'invocation'
+      )
       await handleInvocation({
         agentId: event.agentId,
-        buildSubAgentTool: buildWorkflowSubAgentTool,
+        buildSubAgentTool: buildWorkflowAgentTool,
         callStack: payload.callStack,
         depth: payload.depth,
         eventId: event.id,
@@ -94,8 +102,6 @@ async function dispatchAgentEvent(event: WorkflowAgentEvent): Promise<void> {
         parentRunId: payload.parentRunId ?? null,
         parentToolCallId: payload.parentToolCallId ?? null,
         parentToolId: payload.parentToolId ?? null,
-        parentStream: null,
-        replyToken: replyNamespaceForEvent(event.id),
         streamToken: payload.streamToken,
         userId: event.userId,
       })
@@ -107,12 +113,6 @@ async function dispatchAgentEvent(event: WorkflowAgentEvent): Promise<void> {
     }
   }
 }
-
-function payloadAs<T>(event: WorkflowAgentEvent): T {
-  return event.payload as T
-}
-
-const buildWorkflowSubAgentTool = buildWorkflowAgentTool
 
 async function startCurrentAgentEventWorkflowRun(
   eventId: string
@@ -128,8 +128,11 @@ export async function startNextQueuedEvent(input: {
   if (!input.concurrencyKey) {
     return
   }
-  await startNextQueuedEventForWorkflow({
-    concurrencyKey: input.concurrencyKey,
-    startWorkflowRun: startCurrentAgentEventWorkflowRun,
-  })
+  const { startNextQueuedForConcurrencyKeyWithStarter } = await import(
+    '@outname/ai/agent-runtime/server/agent-event-start'
+  )
+  await startNextQueuedForConcurrencyKeyWithStarter(
+    input.concurrencyKey,
+    startCurrentAgentEventWorkflowRun
+  )
 }

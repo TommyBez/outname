@@ -7,7 +7,6 @@ import {
   agentEvents,
 } from '@outname/db/schema'
 import { nanoid } from 'nanoid'
-import { replyNamespaceForEvent } from './agent-event-keys'
 import {
   claimQueuedEvent,
   findNextQueuedForConcurrencyKey,
@@ -16,6 +15,7 @@ import {
   resetStartingEvent,
   setEventWorkflowRunId,
 } from './agent-event-store'
+import { readableAgentEventWorkflowRunId } from './agent-event-workflow-run-id'
 
 const EVENT_CLAIM_TTL_MS = 5 * 60_000
 
@@ -33,7 +33,6 @@ export interface EnqueueAgentEventInput {
 export interface EnqueueAgentEventResult {
   event: typeof agentEvents.$inferSelect
   eventId: string
-  replyNamespace: string
   workflowRunId: string | null
 }
 
@@ -75,7 +74,6 @@ export async function enqueueAgentEventWithStarter(
   return {
     event,
     eventId: event.id,
-    replyNamespace: replyNamespaceForEvent(event.id),
     workflowRunId,
   }
 }
@@ -89,7 +87,7 @@ export async function tryStartAgentEventWithStarter(
     return null
   }
   if (event.status !== 'queued') {
-    return realWorkflowRunId(event.workflowRunId)
+    return readableAgentEventWorkflowRunId(event.workflowRunId)
   }
   if (event.scheduledFor && event.scheduledFor.getTime() > Date.now()) {
     return null
@@ -97,7 +95,6 @@ export async function tryStartAgentEventWithStarter(
 
   const claimed = await claimQueuedEvent(
     event,
-    `starting:${event.id}`,
     new Date(Date.now() + EVENT_CLAIM_TTL_MS)
   )
 
@@ -129,11 +126,4 @@ export async function startNextQueuedForConcurrencyKeyWithStarter(
   return next
     ? await tryStartAgentEventWithStarter(next.id, startWorkflowRun)
     : null
-}
-
-function realWorkflowRunId(workflowRunId: string | null): string | null {
-  if (!workflowRunId || workflowRunId.startsWith('starting:')) {
-    return null
-  }
-  return workflowRunId
 }

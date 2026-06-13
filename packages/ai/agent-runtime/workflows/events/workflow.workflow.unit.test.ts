@@ -11,7 +11,7 @@ const {
   mockMarkAgentEventRunningStep,
   mockMarkAgentEventTerminalStep,
   mockStart,
-  mockStartNextQueuedEventForWorkflow,
+  mockStartNextQueuedForConcurrencyKeyWithStarter,
 } = vi.hoisted(() => ({
   mockBuildWorkflowAgentTool: vi.fn((_handle: unknown) => ({ built: true })),
   mockCleanupEventResources: vi.fn(),
@@ -23,7 +23,7 @@ const {
   mockMarkAgentEventRunningStep: vi.fn(),
   mockMarkAgentEventTerminalStep: vi.fn(),
   mockStart: vi.fn(),
-  mockStartNextQueuedEventForWorkflow: vi.fn(),
+  mockStartNextQueuedForConcurrencyKeyWithStarter: vi.fn(),
 }))
 
 vi.mock('@outname/workflow/runtime', async () => {
@@ -65,8 +65,9 @@ vi.mock('./steps/event-store', () => ({
   markAgentEventTerminalStep: mockMarkAgentEventTerminalStep,
 }))
 
-vi.mock('./steps/start-next-queued-event', () => ({
-  startNextQueuedEventForWorkflow: mockStartNextQueuedEventForWorkflow,
+vi.mock('@outname/ai/agent-runtime/server/agent-event-start', () => ({
+  startNextQueuedForConcurrencyKeyWithStarter:
+    mockStartNextQueuedForConcurrencyKeyWithStarter,
 }))
 
 import {
@@ -80,7 +81,6 @@ function createEvent(overrides: Record<string, unknown> = {}) {
     concurrencyKey: 'key_123',
     id: 'evt_123',
     payload: {},
-    publisherWorkflowRunId: null,
     source: 'manual',
     status: 'starting',
     type: 'heartbeat',
@@ -121,7 +121,9 @@ describe('agentEventWorkflow', () => {
 
     expect(mockMarkAgentEventRunningStep).not.toHaveBeenCalled()
     expect(mockCleanupEventResources).not.toHaveBeenCalled()
-    expect(mockStartNextQueuedEventForWorkflow).not.toHaveBeenCalled()
+    expect(
+      mockStartNextQueuedForConcurrencyKeyWithStarter
+    ).not.toHaveBeenCalled()
   })
 
   it('dispatches heartbeat events', async () => {
@@ -163,10 +165,9 @@ describe('agentEventWorkflow', () => {
     expect(mockCleanupEventResources).toHaveBeenCalledWith({
       agentId: 'agent_123',
     })
-    expect(mockStartNextQueuedEventForWorkflow).toHaveBeenCalledWith({
-      concurrencyKey: 'key_123',
-      startWorkflowRun: expect.any(Function),
-    })
+    expect(
+      mockStartNextQueuedForConcurrencyKeyWithStarter
+    ).toHaveBeenCalledWith('key_123', expect.any(Function))
   })
 
   it('dispatches dreaming events in dreaming mode', async () => {
@@ -219,10 +220,8 @@ describe('agentEventWorkflow', () => {
       eventId: 'evt_123',
       input: 'hello',
       parentRunId: null,
-      parentStream: null,
       parentToolCallId: null,
       parentToolId: null,
-      replyToken: 'reply:evt_123',
       streamToken: 'stream_123',
       userId: 'user_123',
     })
@@ -280,10 +279,9 @@ describe('agentEventWorkflow', () => {
     expect(mockCleanupEventResources).toHaveBeenCalledWith({
       agentId: 'agent_123',
     })
-    expect(mockStartNextQueuedEventForWorkflow).toHaveBeenCalledWith({
-      concurrencyKey: 'key_123',
-      startWorkflowRun: expect.any(Function),
-    })
+    expect(
+      mockStartNextQueuedForConcurrencyKeyWithStarter
+    ).toHaveBeenCalledWith('key_123', expect.any(Function))
   })
 })
 
@@ -295,27 +293,27 @@ describe('startNextQueuedEvent', () => {
   it('skips queue-start logic when there is no concurrency key', async () => {
     await startNextQueuedEvent({ concurrencyKey: null })
 
-    expect(mockStartNextQueuedEventForWorkflow).not.toHaveBeenCalled()
+    expect(
+      mockStartNextQueuedForConcurrencyKeyWithStarter
+    ).not.toHaveBeenCalled()
   })
 
   it('starts the next queued event for the same concurrency key', async () => {
     mockStart.mockResolvedValue({ runId: 'wrun_next' })
-    mockStartNextQueuedEventForWorkflow.mockImplementationOnce(
-      async (input: {
+    mockStartNextQueuedForConcurrencyKeyWithStarter.mockImplementationOnce(
+      async (
+        _concurrencyKey: string,
         startWorkflowRun: (eventId: string) => Promise<string>
-      }) => {
-        await expect(input.startWorkflowRun('evt_next')).resolves.toBe(
-          'wrun_next'
-        )
+      ) => {
+        await expect(startWorkflowRun('evt_next')).resolves.toBe('wrun_next')
       }
     )
 
     await startNextQueuedEvent({ concurrencyKey: 'key_123' })
 
-    expect(mockStartNextQueuedEventForWorkflow).toHaveBeenCalledWith({
-      concurrencyKey: 'key_123',
-      startWorkflowRun: expect.any(Function),
-    })
+    expect(
+      mockStartNextQueuedForConcurrencyKeyWithStarter
+    ).toHaveBeenCalledWith('key_123', expect.any(Function))
     expect(mockStart).toHaveBeenCalledWith(agentEventWorkflow, [
       { eventId: 'evt_next' },
     ])

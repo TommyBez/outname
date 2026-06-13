@@ -108,7 +108,11 @@ describe('handleHeartbeat', () => {
     vi.clearAllMocks()
     mockCurrentWorkflowRunId.mockReturnValue('wrun_123')
     mockCheckBudgetOrFinalize.mockResolvedValue({
-      kind: 'ok',
+      agentRow: {
+        id: 'agent_123',
+        userId: 'user_123',
+      },
+      kind: 'continue',
       userId: 'user_123',
     })
     mockReadPreviousHeartbeatCompletionStep.mockResolvedValue(null)

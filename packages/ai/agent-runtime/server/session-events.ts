@@ -1,14 +1,7 @@
 import 'server-only'
-import {
-  type EnqueueAgentEventResult,
-  enqueueAgentEvent,
-} from '@outname/ai/agent-runtime/server/agent-events'
+import { enqueueAgentEvent } from '@outname/ai/agent-runtime/server/agent-events'
 import type { Agent } from '@outname/db/schema'
 import { nanoid } from 'nanoid'
-
-function workflowRunIdOrNull(result: EnqueueAgentEventResult): string | null {
-  return result.workflowRunId
-}
 
 export async function pokeHeartbeat(opts: {
   agent: Agent
@@ -26,7 +19,7 @@ export async function pokeHeartbeat(opts: {
   })
   return {
     eventId: result.eventId,
-    sessionRunId: workflowRunIdOrNull(result),
+    sessionRunId: result.workflowRunId,
   }
 }
 
@@ -48,6 +41,6 @@ export async function pokeDreaming(opts: {
   })
   return {
     eventId: result.eventId,
-    sessionRunId: workflowRunIdOrNull(result),
+    sessionRunId: result.workflowRunId,
   }
 }

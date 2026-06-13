@@ -6,6 +6,7 @@ import {
 } from '@outname/ai/agent-runtime/server/runtime-spec'
 import { getAgentById } from '@outname/ai/agent-runtime/server/start-agent-run'
 import { startupSystemSandbox } from '@outname/ai/agent-runtime/server/system-sandbox-startup'
+import { createAssistantTextMessage } from '@outname/ai/agent-runtime/shared/message-utils'
 import {
   insertChatMessageIfNew,
   persistNewChatMessages,
@@ -167,10 +168,15 @@ async function prepareRealtimeChatTurn(
   | { status: 'ready'; spec: AgentRuntimeSpec }
   | { status: 'budget-exceeded'; notice: string }
 > {
-  await assertRealtimeAgentOwnership({
-    agentId: input.agentId,
-    userId: input.userId,
-  })
+  const agentRow = await getAgentById(input.agentId)
+  if (!agentRow) {
+    throw new Error(`runRealtimeChatTurn: agent ${input.agentId} not found`)
+  }
+  if (agentRow.userId !== input.userId) {
+    throw new Error(
+      `runRealtimeChatTurn: agent ${input.agentId} does not belong to user ${input.userId}`
+    )
+  }
   const exceeded = await preflightBudget({
     userId: input.userId,
     rootAgentId: input.agentId,
@@ -187,25 +193,7 @@ async function prepareRealtimeChatTurn(
     eventKind: 'chat',
     runId: input.runId,
   })
-  if (spec.userId !== input.userId) {
-    throw new Error(
-      `runRealtimeChatTurn: agent ${input.agentId} does not belong to user ${input.userId}`
-    )
-  }
   return { status: 'ready', spec }
-}
-
-async function assertRealtimeAgentOwnership(input: {
-  agentId: string
-  userId: string
-}): Promise<void> {
-  const row = await getAgentById(input.agentId)
-  if (row?.userId === input.userId) {
-    return
-  }
-  throw new Error(
-    `runRealtimeChatTurn: agent ${input.agentId} does not belong to user ${input.userId}`
-  )
 }
 
 async function streamUiMessageTurn(input: {
@@ -219,7 +207,7 @@ async function streamUiMessageTurn(input: {
     steps: OnFinishEvent<Record<string, Tool>>['steps'] | null
   } = { steps: null }
   const built = await buildRealtimeAgentRuntime(input.spec, {
-    buildSubAgentTool: turn.buildSubAgentTool ?? missingRealtimeSubAgentTool,
+    buildSubAgentTool: turn.buildSubAgentTool,
     conversationId: turn.conversationId,
     currentRunId: turn.runId,
     onFinish: (event) => {
@@ -283,7 +271,7 @@ async function runTextOnlyTurn(input: {
     event: OnFinishEvent<Record<string, Tool>> | null
   } = { event: null }
   const built = await buildRealtimeAgentRuntime(input.spec, {
-    buildSubAgentTool: turn.buildSubAgentTool ?? missingRealtimeSubAgentTool,
+    buildSubAgentTool: turn.buildSubAgentTool,
     conversationId: turn.conversationId,
     currentRunId: turn.runId,
     onFinish: (event) => {
@@ -544,23 +532,6 @@ function scheduleUsageRecording(input: {
       })
     }
   })
-}
-
-function createAssistantTextMessage(input: {
-  id: string
-  text: string
-}): UIMessage {
-  return {
-    id: input.id,
-    role: 'assistant',
-    parts: [{ type: 'text', text: input.text }],
-  }
-}
-
-const missingRealtimeSubAgentTool: BuildAgentTool = () => {
-  throw new Error(
-    'Realtime sub-agent workflow dispatcher is not configured for this runtime.'
-  )
 }
 
 async function* tapFullStreamGenerator(

@@ -14,26 +14,7 @@ export const TERMINAL_EVENT_STATUSES = [
   'cancelled',
 ] as const
 
-export interface AgentEventPayloads {
-  dreaming: {
-    localDate: string
-    manual?: boolean
-    scheduledAt: string
-  }
-  heartbeat: {
-    manual?: boolean
-    scheduledAt: string
-  }
-  invocation: {
-    callStack: string[]
-    depth: number
-    input: string
-    parentRunId?: string | null
-    parentToolCallId?: string | null
-    parentToolId?: string | null
-    streamToken: string
-  }
-}
+export type { AgentEventPayloads } from '../shared/event-payload'
 
 export async function getAgentEvent(
   eventId: string
@@ -76,7 +57,6 @@ export async function hasActiveConcurrencyEvent(input: {
 
 export async function claimQueuedEvent(
   event: AgentEvent,
-  workflowRunId: string,
   claimExpiresAt: Date
 ): Promise<AgentEvent | null> {
   if (event.concurrencyKey) {
@@ -106,7 +86,7 @@ export async function claimQueuedEvent(
         startedAt: new Date(),
         status: 'starting',
         updatedAt: new Date(),
-        workflowRunId,
+        workflowRunId: null,
       })
       .where(
         and(eq(agentEvents.id, event.id), eq(agentEvents.status, 'queued'))
@@ -150,19 +130,6 @@ export async function setEventWorkflowRunId(input: {
   await db
     .update(agentEvents)
     .set({ updatedAt: new Date(), workflowRunId: input.workflowRunId })
-    .where(eq(agentEvents.id, input.eventId))
-}
-
-export async function setEventPublisherWorkflowRunId(input: {
-  eventId: string
-  publisherWorkflowRunId: string
-}): Promise<void> {
-  await db
-    .update(agentEvents)
-    .set({
-      publisherWorkflowRunId: input.publisherWorkflowRunId,
-      updatedAt: new Date(),
-    })
     .where(eq(agentEvents.id, input.eventId))
 }
 
@@ -303,10 +270,6 @@ export async function findNextQueuedForConcurrencyKey(
     .orderBy(asc(agentEvents.queuedAt))
     .limit(1)
   return row ?? null
-}
-
-export function payloadAs<T>(event: AgentEvent): T {
-  return event.payload as T
 }
 
 function isPgUniqueViolation(error: unknown): boolean {

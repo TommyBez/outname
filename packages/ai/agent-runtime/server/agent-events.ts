@@ -1,5 +1,6 @@
 import 'server-only'
-import { startAgentEventWorkflowRun } from '@outname/ai/agent-runtime/workflows/agent-events/starter'
+import { agentEventWorkflow } from '@outname/ai/agent-runtime/workflows/agent-events/workflow'
+import { start } from '@outname/workflow/api'
 import type {
   EnqueueAgentEventInput,
   EnqueueAgentEventResult,
@@ -27,4 +28,11 @@ export async function tryStartAgentEvent(
     eventId,
     startAgentEventWorkflowRun
   )
+}
+
+export async function startAgentEventWorkflowRun(
+  eventId: string
+): Promise<string> {
+  const run = await start(agentEventWorkflow, [{ eventId }])
+  return run.runId
 }

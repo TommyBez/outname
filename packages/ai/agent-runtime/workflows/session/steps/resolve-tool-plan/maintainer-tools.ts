@@ -150,7 +150,7 @@ async function checkSandboxRequirement(
     )
     .limit(1)
 
-  if (snapshot && snapshot.manifestHash === desiredHash) {
+  if (snapshot) {
     return null
   }
 

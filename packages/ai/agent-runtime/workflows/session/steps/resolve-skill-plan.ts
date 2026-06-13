@@ -1,7 +1,4 @@
-import {
-  getSkillSandbox,
-  isMissingSkillSandboxError,
-} from '@outname/ai/agent-runtime/server/agent-skill-sandbox'
+import { getSkillSandbox } from '@outname/ai/agent-runtime/server/agent-skill-sandbox'
 import {
   discoverRuntimeSkills,
   type RuntimeSkill,
@@ -25,16 +22,10 @@ export async function resolveSkillPlan(args: {
   }
 
   try {
-    const sandbox = await getSkillSandbox(args.agentId)
+    const sandbox = await getSkillSandbox(args.agentId, sandboxName)
     const skills = await discoverRuntimeSkills({ sandbox })
     return { sandboxName, skills }
   } catch (error) {
-    if (isMissingSkillSandboxError(error, args.agentId)) {
-      console.warn(
-        `[agent-skills] skill sandbox missing for agent ${args.agentId}`
-      )
-      return { sandboxName: null, skills: [] }
-    }
     console.warn(
       `[agent-skills] could not resolve skill sandbox for agent ${args.agentId}`,
       error

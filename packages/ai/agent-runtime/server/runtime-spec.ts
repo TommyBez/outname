@@ -1,10 +1,10 @@
 import 'server-only'
-import { getAgentById } from '@outname/ai/agent-runtime/server/start-agent-run'
 import { composeSystemPrompt } from '@outname/ai/agent-runtime/workflows/session/compose-system-prompt'
 import {
   resolveStepLimit,
   type StepLimitMode,
 } from '@outname/ai/agent-runtime/workflows/session/step-limit'
+import { loadAgentStep } from '@outname/ai/agent-runtime/workflows/session/steps/db/load-agent'
 import { resolveSkillPlan } from '@outname/ai/agent-runtime/workflows/session/steps/resolve-skill-plan'
 import { resolveToolPlan } from '@outname/ai/agent-runtime/workflows/session/steps/resolve-tool-plan'
 
@@ -33,7 +33,7 @@ export async function buildAgentRuntimeSpec(
 ): Promise<AgentRuntimeSpec> {
   const callStack = input.callStack ?? []
   const depth = input.depth ?? 0
-  const row = await getAgentById(input.agentId)
+  const row = await loadAgentStep({ agentId: input.agentId })
   if (!row) {
     const suffix = input.runId ? ` (run ${input.runId})` : ''
     throw new Error(

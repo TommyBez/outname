@@ -1,4 +1,4 @@
-import { expect, test, vi } from 'vitest'
+import { beforeEach, expect, test, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
@@ -31,7 +31,6 @@ const baseEvent: AgentEvent = {
   idempotencyKey: 'key_1',
   lastError: null,
   payload: { scheduledAt: '2026-05-14T09:00:00.000Z' },
-  publisherWorkflowRunId: null,
   queuedAt: new Date('2026-05-14T09:00:00.000Z'),
   scheduledFor: null,
   source: 'scheduler',
@@ -42,6 +41,10 @@ const baseEvent: AgentEvent = {
   userId: 'user_1',
   workflowRunId: 'run_1',
 }
+
+beforeEach(() => {
+  vi.clearAllMocks()
+})
 
 test('missing workflow run marks event completed even when recent', async () => {
   vi.mocked(readWorkflowRunStatus).mockResolvedValue('not_found')
@@ -101,4 +104,17 @@ test('starting event with failed workflow is marked failed', async () => {
     status: 'failed',
   })
   expect(result.status).toBe('failed')
+})
+
+test('legacy starting sentinel is tolerated as a missing workflow run id', async () => {
+  const result = await reconcileActiveAgentEvent({
+    ...baseEvent,
+    status: 'starting',
+    workflowRunId: 'starting:evt_1',
+  })
+
+  expect(isWorkflowRunAlive).not.toHaveBeenCalled()
+  expect(readWorkflowRunStatus).not.toHaveBeenCalled()
+  expect(markEventTerminal).not.toHaveBeenCalled()
+  expect(result.status).toBe('starting')
 })

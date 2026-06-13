@@ -9,7 +9,7 @@ import {
   parseSkillMd,
 } from '@outname/ai/agent-runtime/skills/skill-md'
 import type { SkillPlan } from '@outname/ai/agent-runtime/workflows/session/steps/resolve-skill-plan'
-import { nonRetryableStepError } from '@outname/shared/server/workflow-step-errors'
+import { ensureParentDirectories } from '@outname/ai/agent-runtime/workflows/session/tools/sandbox-file-helpers/write'
 import type { Sandbox } from '@vercel/sandbox'
 import { type Tool, type ToolExecutionOptions, tool } from 'ai'
 import { z } from 'zod'
@@ -150,22 +150,16 @@ async function executeSkillBashStep(input: {
     agentId: input.agentId,
     skills: input.skills,
   })
-  const execute = bashTool.bash.execute as
-    | BashToolExecutor<{ command: string }>
-    | undefined
-  if (!execute) {
-    throw nonRetryableStepError('bash tool execute handler is unavailable')
-  }
-  return await execute({ command: input.command }, input.options)
+  return await bashTool.bash.execute({ command: input.command }, input.options)
 }
 
 async function createSkillBashToolForStep(input: {
   agentId: string
   skills: RuntimeSkill[]
 }): Promise<{
-  bash: Tool
+  bash: Tool & { execute: BashToolExecutor<{ command: string }> }
   tools: {
-    bash: Tool
+    bash: Tool & { execute: BashToolExecutor<{ command: string }> }
     readFile: Tool
     writeFile: Tool
   }
@@ -180,9 +174,9 @@ async function createSkillBashToolForStep(input: {
       promptOptions: { toolPrompt: string }
       sandbox: BashToolSandboxAdapter
     }): Promise<{
-      bash: Tool
+      bash: Tool & { execute: BashToolExecutor<{ command: string }> }
       tools: {
-        bash: Tool
+        bash: Tool & { execute: BashToolExecutor<{ command: string }> }
         readFile: Tool
         writeFile: Tool
       }
@@ -237,7 +231,8 @@ function createSkillSandboxAdapter(input: {
         path: normalizeSkillSandboxPath(file.path),
       }))
       await ensureParentDirectories({
-        files: prepared.map((file) => file.path),
+        paths: prepared.map((file) => file.path),
+        root: SKILL_SANDBOX_ROOT,
         sandbox: input.sandbox,
       })
       await input.sandbox.writeFiles(prepared)
@@ -287,28 +282,6 @@ async function isExecutable(
     args: ['-x', fullPath],
   })
   return result.exitCode === 0
-}
-
-async function ensureParentDirectories(input: {
-  files: string[]
-  sandbox: Sandbox
-}): Promise<void> {
-  const dirs = new Set(
-    input.files
-      .map((file) => pathDirname(file))
-      .filter((dir) => dir !== SKILL_SANDBOX_ROOT)
-  )
-
-  for (const dir of dirs) {
-    const result = await input.sandbox.runCommand({
-      args: ['-p', dir],
-      cmd: 'mkdir',
-    })
-    if (result.exitCode !== 0) {
-      const stderr = await result.stderr()
-      throw new Error(stderr.trim() || `writeFile: failed to create ${dir}`)
-    }
-  }
 }
 
 function generateSkillDescription(skills: RuntimeSkill[]): string {
@@ -393,10 +366,6 @@ function decodeUtf8(content: Buffer, path: string): string {
   } catch {
     throw new Error(`readFile: ${path} is not valid UTF-8 text.`)
   }
-}
-
-function pathDirname(absPath: string): string {
-  return absPath.slice(0, absPath.lastIndexOf('/')) || SKILL_SANDBOX_ROOT
 }
 
 function errorMessage(error: unknown): string {

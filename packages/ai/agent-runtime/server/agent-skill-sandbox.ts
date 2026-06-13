@@ -2,15 +2,12 @@ import {
   SKILL_PACKAGES_DIR,
   SKILL_WORKSPACE_DIR,
 } from '@outname/ai/agent-runtime/skills/paths'
-import { db } from '@outname/db'
-import { agent } from '@outname/db/schema'
 import {
   getVercelSandboxCredentials,
   skillSandboxTags,
-  withVercelSandboxCredentials,
 } from '@outname/shared/server/vercel-sandbox-config'
 import { type NetworkPolicy, Sandbox } from '@vercel/sandbox'
-import { eq } from 'drizzle-orm'
+import { createAgentSandboxAccessor } from './agent-sandbox-accessor'
 
 export interface CreateOptions {
   env?: Record<string, string>
@@ -34,46 +31,11 @@ const SKILL_SANDBOX_CREATE_OPTIONS: CreateOptions = {
   networkPolicy: 'allow-all',
 }
 
-function nameFor(agentId: string): string {
-  return `agent-${agentId}-skills`
-}
-
-function missingSkillSandboxMessage(agentId: string): string {
-  return `Agent ${agentId} has no skill sandbox yet — install an Agent Skill first.`
-}
-
 export function isMissingSkillSandboxError(
   error: unknown,
   agentId: string
 ): boolean {
-  return (
-    error instanceof Error &&
-    error.message === missingSkillSandboxMessage(agentId)
-  )
-}
-
-async function readSandboxId(agentId: string): Promise<string | null> {
-  const [row] = await db
-    .select({
-      skillsId: agent.sandboxSkillsId,
-    })
-    .from(agent)
-    .where(eq(agent.id, agentId))
-    .limit(1)
-  return row?.skillsId ?? null
-}
-
-async function writeSandboxId(
-  agentId: string,
-  sandboxId: string
-): Promise<void> {
-  await db
-    .update(agent)
-    .set({
-      sandboxSkillsId: sandboxId,
-      updatedAt: new Date(),
-    })
-    .where(eq(agent.id, agentId))
+  return skillSandboxAccessor.isMissingSandboxError(error, agentId)
 }
 
 export interface EnsureSkillSandboxResult {
@@ -84,8 +46,8 @@ export interface EnsureSkillSandboxResult {
 export async function ensureSkillSandbox(
   agentId: string
 ): Promise<EnsureSkillSandboxResult> {
-  const desiredName = nameFor(agentId)
-  const persistedName = await readSandboxId(agentId)
+  const desiredName = skillSandboxAccessor.nameFor(agentId)
+  const persistedName = await skillSandboxAccessor.readSandboxId(agentId)
   let created = false
   const options: SkillSandboxGetOrCreateOptions = {
     ...SKILL_SANDBOX_CREATE_OPTIONS,
@@ -100,34 +62,22 @@ export async function ensureSkillSandbox(
   const sandbox = await Sandbox.getOrCreate(options)
 
   if (!persistedName) {
-    await writeSandboxId(agentId, desiredName)
+    await skillSandboxAccessor.writeSandboxId(agentId, desiredName)
   }
 
   await ensureSkillSandboxDirectories(sandbox)
   return { sandbox, created }
 }
 
-export async function getSkillSandbox(agentId: string): Promise<Sandbox> {
-  const name = await readSandboxId(agentId)
-  if (!name) {
-    throw new Error(missingSkillSandboxMessage(agentId))
-  }
-  return Sandbox.get(withVercelSandboxCredentials({ name, resume: true }))
+export async function getSkillSandbox(
+  agentId: string,
+  sandboxName?: string
+): Promise<Sandbox> {
+  return await skillSandboxAccessor.getSandbox(agentId, sandboxName)
 }
 
 export async function destroySkillSandbox(agentId: string): Promise<void> {
-  const name = await readSandboxId(agentId)
-  if (!name) {
-    return
-  }
-  try {
-    const sandbox = await Sandbox.get(
-      withVercelSandboxCredentials({ name, resume: false })
-    )
-    await sandbox.delete()
-  } catch {
-    /* already gone or unreachable */
-  }
+  await skillSandboxAccessor.destroySandbox(agentId)
 }
 
 async function ensureSkillSandboxDirectories(sandbox: Sandbox): Promise<void> {
@@ -156,3 +106,10 @@ async function ensureDirectory(sandbox: Sandbox, path: string): Promise<void> {
     )
   }
 }
+
+const skillSandboxAccessor = createAgentSandboxAccessor({
+  field: 'sandboxSkillsId',
+  missingMessage: (agentId) =>
+    `Agent ${agentId} has no skill sandbox yet — install an Agent Skill first.`,
+  suffix: 'skills',
+})

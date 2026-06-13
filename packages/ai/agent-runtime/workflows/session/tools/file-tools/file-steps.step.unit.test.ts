@@ -1,24 +1,8 @@
-import type { ToolExecutionOptions } from 'ai'
 import { describe, expect, it, vi } from 'vitest'
 
-const {
-  MockSystemSandboxFileNotFoundError,
-  mockCreateSystemBashTool,
-  mockGetSystemSandbox,
-} = vi.hoisted(() => {
-  class MockSystemSandboxFileNotFoundError extends Error {
-    constructor(message: string) {
-      super(message)
-      this.name = 'SystemSandboxFileNotFoundError'
-    }
-  }
-
-  return {
-    MockSystemSandboxFileNotFoundError,
-    mockCreateSystemBashTool: vi.fn(),
-    mockGetSystemSandbox: vi.fn(),
-  }
-})
+const { mockGetSystemSandbox } = vi.hoisted(() => ({
+  mockGetSystemSandbox: vi.fn(),
+}))
 
 vi.mock('@outname/workflow/runtime', async () => {
   const { createWorkflowRuntimeMock } = await import(
@@ -33,51 +17,30 @@ vi.mock('@outname/ai/agent-runtime/server/agent-sandbox', () => ({
   isMissingSystemSandboxError: vi.fn(() => false),
 }))
 
-vi.mock('./system-bash-tool', () => ({
-  createSystemBashTool: mockCreateSystemBashTool,
-  isSystemSandboxFileNotFoundError: (error: unknown) =>
-    error instanceof MockSystemSandboxFileNotFoundError,
-}))
+import { readFileStep, writeFileStep } from './file-steps'
 
-import { readFileViaBashTool } from './file-steps'
-
-describe('readFileViaBashTool', () => {
-  it('returns file contents from the underlying bash-tool adapter', async () => {
-    const execute = vi.fn().mockResolvedValue({ content: 'hello' })
-    mockCreateSystemBashTool.mockResolvedValue({
-      tools: { readFile: { execute } },
+describe('file steps', () => {
+  it('returns file contents from the system sandbox', async () => {
+    mockGetSystemSandbox.mockResolvedValue({
+      readFileToBuffer: vi.fn().mockResolvedValue(Buffer.from('hello')),
     })
 
     await expect(
-      readFileViaBashTool({
+      readFileStep({
         agentId: 'agent_123',
-        options: {} as ToolExecutionOptions,
         path: 'notes.md',
       })
     ).resolves.toEqual({ content: 'hello' })
-
-    expect(execute).toHaveBeenCalledWith(
-      { path: 'notes.md' },
-      {} as ToolExecutionOptions
-    )
   })
 
   it('returns a deterministic missing-file result instead of throwing', async () => {
-    const execute = vi
-      .fn()
-      .mockRejectedValue(
-        new MockSystemSandboxFileNotFoundError(
-          'readFile: file not found: notes.md'
-        )
-      )
-    mockCreateSystemBashTool.mockResolvedValue({
-      tools: { readFile: { execute } },
+    mockGetSystemSandbox.mockResolvedValue({
+      readFileToBuffer: vi.fn().mockResolvedValue(null),
     })
 
     await expect(
-      readFileViaBashTool({
+      readFileStep({
         agentId: 'agent_123',
-        options: {} as ToolExecutionOptions,
         path: 'notes.md',
       })
     ).resolves.toEqual({
@@ -89,17 +52,47 @@ describe('readFileViaBashTool', () => {
 
   it('rethrows non-missing-file read failures', async () => {
     const error = new Error('permission denied')
-    const execute = vi.fn().mockRejectedValue(error)
-    mockCreateSystemBashTool.mockResolvedValue({
-      tools: { readFile: { execute } },
+    mockGetSystemSandbox.mockResolvedValue({
+      readFileToBuffer: vi.fn().mockRejectedValue(error),
     })
 
     await expect(
-      readFileViaBashTool({
+      readFileStep({
         agentId: 'agent_123',
-        options: {} as ToolExecutionOptions,
         path: 'notes.md',
       })
     ).rejects.toBe(error)
+  })
+
+  it('writes file contents and creates parent directories', async () => {
+    const writeFiles = vi.fn().mockResolvedValue(undefined)
+    const runCommand = vi.fn().mockResolvedValue({
+      exitCode: 0,
+      stderr: vi.fn().mockResolvedValue(''),
+    })
+    mockGetSystemSandbox.mockResolvedValue({
+      runCommand,
+      writeFiles,
+    })
+
+    await expect(
+      writeFileStep({
+        agentId: 'agent_123',
+        content: 'hello',
+        path: 'logs/2026/06/today.md',
+      })
+    ).resolves.toEqual({ success: true })
+
+    expect(runCommand).toHaveBeenCalledTimes(1)
+    expect(runCommand).toHaveBeenCalledWith({
+      args: ['-p', '/vercel/sandbox/logs/2026/06'],
+      cmd: 'mkdir',
+    })
+    expect(writeFiles).toHaveBeenCalledWith([
+      {
+        content: Buffer.from('hello', 'utf8'),
+        path: '/vercel/sandbox/logs/2026/06/today.md',
+      },
+    ])
   })
 })

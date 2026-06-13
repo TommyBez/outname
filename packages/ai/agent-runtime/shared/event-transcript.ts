@@ -18,18 +18,6 @@ export interface AgentEventTranscriptPayload {
   workflowStatus: WorkflowStatusData | null
 }
 
-export function runEventToAgentChatMessage(
-  event: RunEvent,
-  index: number
-): AgentChatMessage {
-  return activityMessage({
-    id: `activity:${event.ts}:${event.type}:${index}`,
-    message: formatRunEvent(event),
-    timestamp: new Date(event.ts).toISOString(),
-    tone: eventTone(event),
-  })
-}
-
 export function runEventToWorkflowStatus(event: RunEvent): WorkflowStatusData {
   return {
     message: formatRunEvent(event),
@@ -180,16 +168,6 @@ function formatEventSummary(event: AgentEventSummary): string {
     return 'Event was cancelled.'
   }
   return 'Event completed.'
-}
-
-function eventTone(event: RunEvent): EventActivityMetadata['tone'] {
-  if (event.type === 'run' && event.status === 'failed') {
-    return 'error'
-  }
-  if (event.type === 'step' && event.status === 'error') {
-    return 'error'
-  }
-  return 'default'
 }
 
 function capitalize(value: string): string {
