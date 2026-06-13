@@ -8,6 +8,7 @@ const {
   mockConnection,
   mockGetProductHuntLaunchUrlHandoffCandidates,
   mockResolveProductHuntLaunchUrl,
+  mockRunProductHuntLaunchAdminDigest,
   mockRunProductHuntLaunchAutomation,
   mockRunProductHuntSocialAutomation,
   mockSendProductHuntLaunchIssueAdminNotification,
@@ -16,6 +17,7 @@ const {
   mockConnection: vi.fn(),
   mockGetProductHuntLaunchUrlHandoffCandidates: vi.fn(),
   mockResolveProductHuntLaunchUrl: vi.fn(),
+  mockRunProductHuntLaunchAdminDigest: vi.fn(),
   mockRunProductHuntLaunchAutomation: vi.fn(),
   mockRunProductHuntSocialAutomation: vi.fn(),
   mockSendProductHuntLaunchIssueAdminNotification: vi.fn(),
@@ -35,6 +37,10 @@ vi.mock('next/server', async (importOriginal) => {
 
 vi.mock('@outname/ai/agent-runtime/server/redis-lock', () => ({
   withRedisLock: mockWithRedisLock,
+}))
+
+vi.mock('@outname/shared/launch/product-hunt-admin-digest', () => ({
+  runProductHuntLaunchAdminDigest: mockRunProductHuntLaunchAdminDigest,
 }))
 
 vi.mock('@outname/shared/launch/product-hunt-automation', () => ({
@@ -115,6 +121,11 @@ describe('Product Hunt launch cron route', () => {
       events: [],
       ok: true,
     })
+    mockRunProductHuntLaunchAdminDigest.mockResolvedValue({
+      ok: true,
+      reason: 'outside_digest_window',
+      skipped: true,
+    })
     mockRunProductHuntSocialAutomation.mockResolvedValue({
       ok: true,
       posts: [],
@@ -163,6 +174,7 @@ describe('Product Hunt launch cron route', () => {
     expect(mockWithRedisLock).not.toHaveBeenCalled()
     expect(mockGetProductHuntLaunchUrlHandoffCandidates).not.toHaveBeenCalled()
     expect(mockResolveProductHuntLaunchUrl).not.toHaveBeenCalled()
+    expect(mockRunProductHuntLaunchAdminDigest).not.toHaveBeenCalled()
     expect(mockRunProductHuntLaunchAutomation).not.toHaveBeenCalled()
     expect(mockRunProductHuntSocialAutomation).not.toHaveBeenCalled()
     expect(
@@ -194,6 +206,7 @@ describe('Product Hunt launch cron route', () => {
     expect(mockWithRedisLock).not.toHaveBeenCalled()
     expect(mockGetProductHuntLaunchUrlHandoffCandidates).not.toHaveBeenCalled()
     expect(mockResolveProductHuntLaunchUrl).not.toHaveBeenCalled()
+    expect(mockRunProductHuntLaunchAdminDigest).not.toHaveBeenCalled()
     expect(mockRunProductHuntLaunchAutomation).not.toHaveBeenCalled()
     expect(mockRunProductHuntSocialAutomation).not.toHaveBeenCalled()
   })
@@ -210,6 +223,7 @@ describe('Product Hunt launch cron route', () => {
     expect(mockWithRedisLock).not.toHaveBeenCalled()
     expect(mockGetProductHuntLaunchUrlHandoffCandidates).not.toHaveBeenCalled()
     expect(mockResolveProductHuntLaunchUrl).not.toHaveBeenCalled()
+    expect(mockRunProductHuntLaunchAdminDigest).not.toHaveBeenCalled()
     expect(mockRunProductHuntLaunchAutomation).not.toHaveBeenCalled()
     expect(mockRunProductHuntSocialAutomation).not.toHaveBeenCalled()
   })
@@ -246,6 +260,20 @@ describe('Product Hunt launch cron route', () => {
     expect(mockRunProductHuntLaunchAutomation).toHaveBeenCalledWith({
       batchSize: 50,
       productHuntUrl: null,
+    })
+    expect(mockRunProductHuntLaunchAdminDigest).toHaveBeenCalledWith({
+      email: {
+        events: [],
+        ok: true,
+      },
+      issues: [],
+      now: expect.any(Date),
+      productHuntUrl: null,
+      productHuntUrlSource: 'none',
+      social: {
+        ok: true,
+        skipped: 'product hunt social automation disabled',
+      },
     })
     expect(mockResolveProductHuntLaunchUrl).toHaveBeenCalledWith({
       candidateUrls: undefined,
@@ -386,6 +414,51 @@ describe('Product Hunt launch cron route', () => {
           key: 'product_hunt_url_handoff',
           message:
             'Product Hunt URL handoff lookup failed before URL discovery completed.',
+          severity: 'warning',
+        },
+      ],
+      runAtIso: expect.any(String),
+    })
+  })
+
+  it('keeps launch delivery running when the admin digest fails', async () => {
+    process.env.CRON_SECRET = 'expected-secret'
+    process.env.VERCEL = '1'
+    process.env.VERCEL_ENV = 'production'
+    mockRunProductHuntLaunchAdminDigest.mockRejectedValue(
+      new Error('digest down')
+    )
+
+    const response = await GET(createCronRequest('Bearer expected-secret'))
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body).toMatchObject({
+      adminDigest: {
+        error: 'digest down',
+        ok: false,
+      },
+      issues: [
+        {
+          details: ['digest down'],
+          key: 'product_hunt_admin_digest',
+          message: 'Product Hunt admin digest failed before completing.',
+          severity: 'warning',
+        },
+      ],
+      ok: true,
+    })
+    expect(mockRunProductHuntLaunchAutomation).toHaveBeenCalledTimes(1)
+    expect(mockRunProductHuntSocialAutomation).toHaveBeenCalledTimes(1)
+    expect(
+      mockSendProductHuntLaunchIssueAdminNotification
+    ).toHaveBeenCalledWith({
+      dedupeKey: expect.stringMatching(PRODUCT_HUNT_ISSUE_DEDUPE_KEY_PATTERN),
+      issues: [
+        {
+          details: ['digest down'],
+          key: 'product_hunt_admin_digest',
+          message: 'Product Hunt admin digest failed before completing.',
           severity: 'warning',
         },
       ],

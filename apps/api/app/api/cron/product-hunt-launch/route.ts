@@ -6,6 +6,10 @@ import {
   parseProductHuntBatchSize,
 } from '@outname/shared/launch/product-hunt'
 import {
+  type ProductHuntLaunchAdminDigestResult,
+  runProductHuntLaunchAdminDigest,
+} from '@outname/shared/launch/product-hunt-admin-digest'
+import {
   type ProductHuntLaunchAutomationResult,
   runProductHuntLaunchAutomation,
 } from '@outname/shared/launch/product-hunt-automation'
@@ -181,6 +185,23 @@ function collectUrlHandoffIssues(
   ]
 }
 
+function collectAdminDigestIssues(
+  digest: ProductHuntLaunchSectionFailure | null
+): ProductHuntLaunchIssue[] {
+  if (!digest) {
+    return []
+  }
+
+  return [
+    {
+      details: [digest.error],
+      key: 'product_hunt_admin_digest',
+      message: 'Product Hunt admin digest failed before completing.',
+      severity: 'warning',
+    },
+  ]
+}
+
 interface ProductHuntSectionSkipped {
   ok: true
   skipped: string
@@ -325,14 +346,33 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      const issues = collectLaunchIssues({
+      let issues = collectLaunchIssues({
         email,
         social,
         urlHandoffError: productHuntUrlHandoffError,
       })
+      let adminDigest:
+        | ProductHuntLaunchAdminDigestResult
+        | ProductHuntLaunchSectionFailure
+
+      try {
+        adminDigest = await runProductHuntLaunchAdminDigest({
+          email,
+          issues,
+          now,
+          productHuntUrl,
+          productHuntUrlSource: productHuntUrlResolution.source,
+          social,
+        })
+      } catch (error) {
+        console.error('[product-hunt-launch] admin digest failed', error)
+        adminDigest = createSectionFailure(error)
+        issues = [...issues, ...collectAdminDigestIssues(adminDigest)]
+      }
       await notifyLaunchIssues({ issues, now })
 
       return {
+        adminDigest,
         email,
         issues,
         ok: true,

@@ -2,6 +2,10 @@ import 'server-only'
 
 import { ApplicationInviteEmail } from '@outname/email/application-invite-email'
 import { ProductHuntFeedbackAdminEmail } from '@outname/email/product-hunt-feedback-admin-email'
+import {
+  ProductHuntLaunchDigestAdminEmail,
+  type ProductHuntLaunchDigestSection,
+} from '@outname/email/product-hunt-launch-digest-admin-email'
 import { ProductHuntLaunchEmail } from '@outname/email/product-hunt-launch-email'
 import {
   ProductHuntLaunchIssueAdminEmail,
@@ -35,6 +39,7 @@ function createWaitlistEmailIdempotencyKey(
   eventType:
     | 'application-invite'
     | 'product-hunt-feedback-admin'
+    | 'product-hunt-launch-digest'
     | 'product-hunt-launch-issue'
     | 'product-hunt-launch'
     | 'waitlist-admin-signup'
@@ -277,6 +282,42 @@ export async function sendProductHuntLaunchIssueAdminNotification(input: {
       launchPageUrl: buildEmailWebUrl('/product-hunt'),
       logoUrl: getEmailLogoUrl(),
       runAtIso: input.runAtIso,
+    }),
+  })
+}
+
+export async function sendProductHuntLaunchDigestAdminNotification(input: {
+  digestKey: string
+  digestLabel: string
+  launchPageUrl: string
+  productHuntUrl?: string | null
+  runAtIso: string
+  sections: ProductHuntLaunchDigestSection[]
+}) {
+  if (areProductHuntLaunchExternalSideEffectsDisabled()) {
+    return
+  }
+
+  const adminEmail = getWaitlistAdminEmail()
+  if (!adminEmail) {
+    return
+  }
+
+  return await sendResendEmail({
+    idempotencyKey: createWaitlistEmailIdempotencyKey(
+      'product-hunt-launch-digest',
+      input.digestKey
+    ),
+    to: adminEmail,
+    subject: `Product Hunt launch digest: ${input.digestLabel}`,
+    react: createElement(ProductHuntLaunchDigestAdminEmail, {
+      digestKey: input.digestKey,
+      digestLabel: input.digestLabel,
+      launchPageUrl: input.launchPageUrl,
+      logoUrl: getEmailLogoUrl(),
+      productHuntUrl: input.productHuntUrl,
+      runAtIso: input.runAtIso,
+      sections: input.sections,
     }),
   })
 }

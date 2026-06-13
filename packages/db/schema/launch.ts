@@ -38,6 +38,35 @@ export type LaunchSocialPostDelivery =
 export type NewLaunchSocialPostDelivery =
   typeof launchSocialPostDelivery.$inferInsert
 
+export const launchAdminDigestDelivery = pgTable(
+  'launch_admin_digest_deliveries',
+  {
+    id: text('id').primaryKey(),
+    launchKey: text('launch_key').notNull(),
+    digestKey: text('digest_key').notNull(),
+    resendMessageId: text('resend_message_id'),
+    sentAt: timestamp('sent_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('launch_admin_digest_delivery_unique_idx').on(
+      t.launchKey,
+      t.digestKey
+    ),
+    index('launch_admin_digest_delivery_launch_idx').on(
+      t.launchKey,
+      t.sentAt.desc()
+    ),
+  ]
+)
+
+export type LaunchAdminDigestDelivery =
+  typeof launchAdminDigestDelivery.$inferSelect
+export type NewLaunchAdminDigestDelivery =
+  typeof launchAdminDigestDelivery.$inferInsert
+
 export const launchFeedback = pgTable(
   'launch_feedback',
   {

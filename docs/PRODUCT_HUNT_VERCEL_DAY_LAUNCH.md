@@ -26,7 +26,8 @@ Campaign: `vercel-day-2026`
 - Fallback social posts are scheduled only when their fallback window is near and the Product Hunt URL is still missing; they send people to the launch landing page with explicit fallback copy.
 - Email unsubscribe links are signed and handled by `/api/waitlist/unsubscribe`.
 - Email and social automation degrade independently. A failed email recipient increments that event's `failed` count without blocking the rest of the batch, and a section-level email or Typefully failure is returned in the cron JSON without preventing the other channel from running.
-- In production, alertable cron issues such as section failures, email recipient failures, Typefully setup failures, Typefully request failures, missing Typefully connections, or expired social post windows send an idempotent admin notification. Preview deployments suppress this notification together with the other external launch side effects.
+- In production, alertable cron issues such as section failures, email recipient failures, Typefully setup failures, Typefully request failures, missing Typefully connections, expired social post windows, URL handoff failures, or admin digest failures send an idempotent admin notification. Preview deployments suppress this notification together with the other external launch side effects.
+- In production, the cron sends idempotent admin digest checkpoints for pre-launch readiness, launch-day start, launch-day evening, and post-launch recap. Each digest summarizes Product Hunt-attributed waitlist signups, feedback, launch email delivery records, Typefully delivery records, current issues, and Product Hunt URL resolution. Preview deployments skip the digest before DB lookup or Resend.
 
 ## Required Product Hunt Setup
 
@@ -90,6 +91,7 @@ The launch automation uses two idempotency tables:
 
 - `waitlist_launch_email_deliveries`
 - `launch_social_post_deliveries`
+- `launch_admin_digest_deliveries`
 - `launch_feedback`
 
 The migrations are:
@@ -97,6 +99,7 @@ The migrations are:
 - `packages/db/drizzle/0021_waitlist_launch_email_deliveries.sql`
 - `packages/db/drizzle/0022_launch_social_post_deliveries.sql`
 - `packages/db/drizzle/0023_launch_feedback.sql`
+- `packages/db/drizzle/0024_launch_admin_digest_deliveries.sql`
 
 ## Assets
 
