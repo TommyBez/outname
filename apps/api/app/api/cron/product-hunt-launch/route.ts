@@ -5,8 +5,8 @@ import {
 } from '@outname/shared/launch/product-hunt'
 import { runProductHuntLaunchAutomation } from '@outname/shared/launch/product-hunt-automation'
 import {
-  areProductHuntLaunchSideEffectsDisabled,
-  createProductHuntPreviewSideEffectSkip,
+  areProductHuntLaunchExternalSideEffectsDisabled,
+  createProductHuntPreviewExternalSideEffectSkip,
 } from '@outname/shared/launch/product-hunt-preview-safety'
 import { runProductHuntSocialAutomation } from '@outname/shared/launch/product-hunt-social-automation'
 import { resolveProductHuntLaunchUrl } from '@outname/shared/launch/product-hunt-url-discovery'
@@ -20,8 +20,8 @@ function getNullableEnv(name: string): string | null {
 export async function GET(req: NextRequest) {
   await connection()
 
-  if (areProductHuntLaunchSideEffectsDisabled()) {
-    return NextResponse.json(createProductHuntPreviewSideEffectSkip())
+  if (areProductHuntLaunchExternalSideEffectsDisabled()) {
+    return NextResponse.json(createProductHuntPreviewExternalSideEffectSkip())
   }
 
   const expected = process.env.CRON_SECRET

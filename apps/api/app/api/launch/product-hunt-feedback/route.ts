@@ -1,7 +1,7 @@
 import { db } from '@outname/db'
 import { launchFeedback } from '@outname/db/schema'
 import { PRODUCT_HUNT_LAUNCH } from '@outname/shared/launch/product-hunt'
-import { areProductHuntLaunchSideEffectsDisabled } from '@outname/shared/launch/product-hunt-preview-safety'
+import { areProductHuntLaunchExternalSideEffectsDisabled } from '@outname/shared/launch/product-hunt-preview-safety'
 import { denyIfBot } from '@outname/shared/server/botid-guard'
 import { sendProductHuntFeedbackAdminNotification } from '@outname/shared/waitlist/server/email'
 import { Ratelimit } from '@upstash/ratelimit'
@@ -94,16 +94,17 @@ async function checkRateLimit(request: NextRequest): Promise<boolean> {
 
 export async function POST(request: NextRequest) {
   await connection()
-  const sideEffectsDisabled = areProductHuntLaunchSideEffectsDisabled()
+  const externalSideEffectsDisabled =
+    areProductHuntLaunchExternalSideEffectsDisabled()
 
-  if (!sideEffectsDisabled) {
+  if (!externalSideEffectsDisabled) {
     const botDenied = await denyIfBot(request)
     if (botDenied) {
       return botDenied
     }
   }
 
-  if (!(sideEffectsDisabled || (await checkRateLimit(request)))) {
+  if (!(externalSideEffectsDisabled || (await checkRateLimit(request)))) {
     return NextResponse.json({ error: 'rate limit exceeded' }, { status: 429 })
   }
 
@@ -120,10 +121,6 @@ export async function POST(request: NextRequest) {
   }
 
   if ((parsed.data.company ?? '').trim().length > 0) {
-    return genericSuccessResponse()
-  }
-
-  if (sideEffectsDisabled) {
     return genericSuccessResponse()
   }
 
@@ -149,24 +146,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'internal error' }, { status: 500 })
   }
 
-  after(async () => {
-    try {
-      await sendProductHuntFeedbackAdminNotification({
-        email: parsed.data.email,
-        feedbackId,
-        feedbackType: parsed.data.feedbackType,
-        message: parsed.data.message,
-        referrer: parsed.data.referrer,
-        source: parsed.data.source,
-        utmCampaign: parsed.data.utmCampaign,
-        utmContent: parsed.data.utmContent,
-        utmMedium: parsed.data.utmMedium,
-        utmSource: parsed.data.utmSource,
-      })
-    } catch (error) {
-      console.error('[product-hunt-feedback] admin notification failed', error)
-    }
-  })
+  if (!externalSideEffectsDisabled) {
+    after(async () => {
+      try {
+        await sendProductHuntFeedbackAdminNotification({
+          email: parsed.data.email,
+          feedbackId,
+          feedbackType: parsed.data.feedbackType,
+          message: parsed.data.message,
+          referrer: parsed.data.referrer,
+          source: parsed.data.source,
+          utmCampaign: parsed.data.utmCampaign,
+          utmContent: parsed.data.utmContent,
+          utmMedium: parsed.data.utmMedium,
+          utmSource: parsed.data.utmSource,
+        })
+      } catch (error) {
+        console.error(
+          '[product-hunt-feedback] admin notification failed',
+          error
+        )
+      }
+    })
+  }
 
   return genericSuccessResponse()
 }

@@ -15,9 +15,7 @@ function run(command, args) {
   }
 }
 
-const shouldSkipMigrations =
-  process.env.SKIP_DB_MIGRATE === '1' ||
-  (process.env.VERCEL === '1' && process.env.VERCEL_ENV === 'preview')
+const shouldSkipMigrations = process.env.SKIP_DB_MIGRATE === '1'
 
 if (shouldSkipMigrations) {
   console.log('Skipping database migrations for this API build.')
