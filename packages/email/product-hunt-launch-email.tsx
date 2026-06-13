@@ -25,14 +25,14 @@ const emailCopy: Record<
 > = {
   'vercel-day-reminder': {
     body: [
-      `${EMAIL_BRAND_NAME} is scheduled for Product Hunt on ${PRODUCT_HUNT_LAUNCH.launchDateLabel}, tagged for ${PRODUCT_HUNT_LAUNCH.productHuntTag}.`,
+      `${EMAIL_BRAND_NAME} is planned for Product Hunt on ${PRODUCT_HUNT_LAUNCH.launchDateLabel}, tagged for ${PRODUCT_HUNT_LAUNCH.productHuntTag}.`,
       'The angle is simple: hosted personal AI agents that keep working, built on Vercel Sandbox, Workflow, AI SDK, and Chat SDK.',
       'If you want to help, the useful thing is honest feedback once the page is live. No upvote asks, no pressure.',
     ],
     ctaLabel: 'Open launch landing page',
-    lead: `Launch is scheduled for ${PRODUCT_HUNT_LAUNCH.pacificLaunchTimeLabel} (${PRODUCT_HUNT_LAUNCH.localLaunchTimeLabel}).`,
+    lead: `The launch window opens at ${PRODUCT_HUNT_LAUNCH.pacificLaunchTimeLabel} (${PRODUCT_HUNT_LAUNCH.localLaunchTimeLabel}).`,
     preview: `${EMAIL_BRAND_NAME} launches for Vercel Day on Product Hunt this Tuesday.`,
-    title: 'Vercel Day launch is scheduled',
+    title: 'Vercel Day launch is planned',
   },
   'vercel-day-live': {
     body: [
