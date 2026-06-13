@@ -29,8 +29,8 @@ export async function sendResendReactEmail(input: {
   replyTo: string
   subject: string
   to: string
-}) {
-  const { error } = await getResendClient().emails.send(
+}): Promise<string | null> {
+  const { data, error } = await getResendClient().emails.send(
     {
       from: input.from,
       replyTo: input.replyTo,
@@ -49,4 +49,6 @@ export async function sendResendReactEmail(input: {
       `Resend email send failed [${error.name}]${statusCodeSuffix}: ${error.message}`
     )
   }
+
+  return data?.id ?? null
 }

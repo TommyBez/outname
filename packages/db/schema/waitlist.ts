@@ -71,3 +71,36 @@ export const waitlistEntry = pgTable(
 
 export type WaitlistEntry = typeof waitlistEntry.$inferSelect
 export type NewWaitlistEntry = typeof waitlistEntry.$inferInsert
+
+export const waitlistLaunchEmailDelivery = pgTable(
+  'waitlist_launch_email_deliveries',
+  {
+    id: text('id').primaryKey(),
+    waitlistEntryId: text('waitlist_entry_id')
+      .notNull()
+      .references(() => waitlistEntry.id, {
+        onDelete: 'cascade',
+      }),
+    eventKey: text('event_key').notNull(),
+    resendMessageId: text('resend_message_id'),
+    sentAt: timestamp('sent_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('waitlist_launch_email_delivery_unique_idx').on(
+      t.waitlistEntryId,
+      t.eventKey
+    ),
+    index('waitlist_launch_email_delivery_event_idx').on(
+      t.eventKey,
+      t.sentAt.desc()
+    ),
+  ]
+)
+
+export type WaitlistLaunchEmailDelivery =
+  typeof waitlistLaunchEmailDelivery.$inferSelect
+export type NewWaitlistLaunchEmailDelivery =
+  typeof waitlistLaunchEmailDelivery.$inferInsert

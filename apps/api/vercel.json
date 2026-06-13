@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/liveness",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/product-hunt-launch",
+      "schedule": "*/15 * * * *"
     }
   ],
   "relatedProjects": [
