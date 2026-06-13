@@ -3,18 +3,36 @@ import {
   normalizeProductHuntLaunchUrl,
   parseProductHuntBatchSize,
 } from '@outname/shared/launch/product-hunt'
-import { runProductHuntLaunchAutomation } from '@outname/shared/launch/product-hunt-automation'
+import {
+  type ProductHuntLaunchAutomationResult,
+  runProductHuntLaunchAutomation,
+} from '@outname/shared/launch/product-hunt-automation'
 import {
   areProductHuntLaunchExternalSideEffectsDisabled,
   createProductHuntPreviewExternalSideEffectSkip,
 } from '@outname/shared/launch/product-hunt-preview-safety'
-import { runProductHuntSocialAutomation } from '@outname/shared/launch/product-hunt-social-automation'
+import {
+  type ProductHuntSocialAutomationResult,
+  runProductHuntSocialAutomation,
+} from '@outname/shared/launch/product-hunt-social-automation'
 import { resolveProductHuntLaunchUrl } from '@outname/shared/launch/product-hunt-url-discovery'
 import { connection, type NextRequest, NextResponse } from 'next/server'
 
 function getNullableEnv(name: string): string | null {
   const value = process.env[name]?.trim()
   return value ? value : null
+}
+
+interface ProductHuntLaunchSectionFailure {
+  error: string
+  ok: false
+}
+
+function createSectionFailure(error: unknown): ProductHuntLaunchSectionFailure {
+  return {
+    error: error instanceof Error ? error.message : 'Unknown error',
+    ok: false,
+  }
 }
 
 export async function GET(req: NextRequest) {
@@ -56,25 +74,42 @@ export async function GET(req: NextRequest) {
       })
       const productHuntUrl = productHuntUrlResolution.url
 
-      const email = await runProductHuntLaunchAutomation({
-        batchSize: parseProductHuntBatchSize(
-          process.env.PRODUCT_HUNT_LAUNCH_EMAIL_BATCH_SIZE
-        ),
-        productHuntUrl,
-      })
-      const social =
-        process.env.PRODUCT_HUNT_SOCIAL_AUTOMATION_ENABLED === 'false'
-          ? {
-              ok: true as const,
-              skipped: 'product hunt social automation disabled',
-            }
-          : await runProductHuntSocialAutomation({
-              productHuntUrl,
-              socialSetId: getNullableEnv(
-                'PRODUCT_HUNT_TYPEFULLY_SOCIAL_SET_ID'
-              ),
-              typefullyUserId: getNullableEnv('PRODUCT_HUNT_TYPEFULLY_USER_ID'),
-            })
+      let email:
+        | ProductHuntLaunchAutomationResult
+        | ProductHuntLaunchSectionFailure
+      try {
+        email = await runProductHuntLaunchAutomation({
+          batchSize: parseProductHuntBatchSize(
+            process.env.PRODUCT_HUNT_LAUNCH_EMAIL_BATCH_SIZE
+          ),
+          productHuntUrl,
+        })
+      } catch (error) {
+        console.error('[product-hunt-launch] email automation failed', error)
+        email = createSectionFailure(error)
+      }
+
+      let social:
+        | ProductHuntLaunchSectionFailure
+        | ProductHuntSocialAutomationResult
+        | { ok: true; skipped: string }
+      if (process.env.PRODUCT_HUNT_SOCIAL_AUTOMATION_ENABLED === 'false') {
+        social = {
+          ok: true as const,
+          skipped: 'product hunt social automation disabled',
+        }
+      } else {
+        try {
+          social = await runProductHuntSocialAutomation({
+            productHuntUrl,
+            socialSetId: getNullableEnv('PRODUCT_HUNT_TYPEFULLY_SOCIAL_SET_ID'),
+            typefullyUserId: getNullableEnv('PRODUCT_HUNT_TYPEFULLY_USER_ID'),
+          })
+        } catch (error) {
+          console.error('[product-hunt-launch] social automation failed', error)
+          social = createSectionFailure(error)
+        }
+      }
 
       return {
         email,

@@ -17,6 +17,7 @@ const LAUNCH_RECIPIENT_STATUSES = ['confirmed', 'invited', 'converted'] as const
 export interface ProductHuntLaunchAutomationResult {
   events: {
     eventKey: ProductHuntEmailEventKey
+    failed: number
     reason?: string
     sent: number
     skipped: boolean
@@ -88,27 +89,38 @@ async function sendEventBatch(input: {
   )
 
   for (const recipient of recipients) {
-    const messageId = await sendProductHuntLaunchEmail({
-      email: recipient.email,
-      eventKey: input.eventKey,
-      launchLandingUrl,
-      productHuntUrl: input.productHuntUrl,
-    })
-
-    await db
-      .insert(waitlistLaunchEmailDelivery)
-      .values({
-        id: createDeliveryId(),
+    try {
+      const messageId = await sendProductHuntLaunchEmail({
+        email: recipient.email,
         eventKey: input.eventKey,
-        resendMessageId: messageId,
-        waitlistEntryId: recipient.entryId,
+        launchLandingUrl,
+        productHuntUrl: input.productHuntUrl,
       })
-      .onConflictDoNothing()
 
-    sent += 1
+      await db
+        .insert(waitlistLaunchEmailDelivery)
+        .values({
+          id: createDeliveryId(),
+          eventKey: input.eventKey,
+          resendMessageId: messageId,
+          waitlistEntryId: recipient.entryId,
+        })
+        .onConflictDoNothing()
+
+      sent += 1
+    } catch (error) {
+      console.error('[product-hunt-launch-email] recipient failed', {
+        entryId: recipient.entryId,
+        error,
+        eventKey: input.eventKey,
+      })
+    }
   }
 
-  return sent
+  return {
+    failed: recipients.length - sent,
+    sent,
+  }
 }
 
 export async function runProductHuntLaunchAutomation(input: {
@@ -123,6 +135,7 @@ export async function runProductHuntLaunchAutomation(input: {
     if (!isEventActive(event, now)) {
       events.push({
         eventKey: event.key,
+        failed: 0,
         reason: 'outside_event_window',
         sent: 0,
         skipped: true,
@@ -133,6 +146,7 @@ export async function runProductHuntLaunchAutomation(input: {
     if (event.requiresProductHuntUrl && !input.productHuntUrl) {
       events.push({
         eventKey: event.key,
+        failed: 0,
         reason: 'product_hunt_url_missing',
         sent: 0,
         skipped: true,
@@ -147,6 +161,7 @@ export async function runProductHuntLaunchAutomation(input: {
     ) {
       events.push({
         eventKey: event.key,
+        failed: 0,
         reason: 'product_hunt_url_present',
         sent: 0,
         skipped: true,
@@ -154,7 +169,7 @@ export async function runProductHuntLaunchAutomation(input: {
       continue
     }
 
-    const sent = await sendEventBatch({
+    const batch = await sendEventBatch({
       batchSize: input.batchSize,
       eventKey: event.key,
       productHuntUrl: input.productHuntUrl,
@@ -166,7 +181,8 @@ export async function runProductHuntLaunchAutomation(input: {
 
     events.push({
       eventKey: event.key,
-      sent,
+      failed: batch.failed,
+      sent: batch.sent,
       skipped: false,
     })
   }
