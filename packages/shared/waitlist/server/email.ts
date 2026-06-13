@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { ApplicationInviteEmail } from '@outname/email/application-invite-email'
+import { ProductHuntFeedbackAdminEmail } from '@outname/email/product-hunt-feedback-admin-email'
 import { ProductHuntLaunchEmail } from '@outname/email/product-hunt-launch-email'
 import { WaitlistAdminSignupEmail } from '@outname/email/waitlist-admin-signup-email'
 import { WaitlistConfirmationEmail } from '@outname/email/waitlist-confirmation-email'
@@ -28,6 +29,7 @@ import { createElement, type ReactElement } from 'react'
 function createWaitlistEmailIdempotencyKey(
   eventType:
     | 'application-invite'
+    | 'product-hunt-feedback-admin'
     | 'product-hunt-launch'
     | 'waitlist-admin-signup'
     | 'waitlist-confirmation'
@@ -45,6 +47,27 @@ function getWaitlistOptionLabel<T extends { label: string; value: string }>(
     return null
   }
   return options.find((option) => option.value === value)?.label ?? value
+}
+
+type ProductHuntFeedbackType =
+  | 'first-agent'
+  | 'other'
+  | 'positioning'
+  | 'trust'
+  | 'vercel-stack'
+
+const PRODUCT_HUNT_FEEDBACK_TYPE_LABELS = {
+  'first-agent': 'First agent',
+  other: 'Other',
+  positioning: 'Positioning',
+  trust: 'Trust',
+  'vercel-stack': 'Vercel stack',
+} as const satisfies Record<ProductHuntFeedbackType, string>
+
+function getProductHuntFeedbackTypeLabel(
+  feedbackType: ProductHuntFeedbackType
+): string {
+  return PRODUCT_HUNT_FEEDBACK_TYPE_LABELS[feedbackType]
 }
 
 function getWaitlistFromEmail(): string {
@@ -169,6 +192,53 @@ export async function sendWaitlistAdminSignupNotification(
       source: input.source,
       useCase: input.useCase,
       utmCampaign: input.utmCampaign,
+      utmMedium: input.utmMedium,
+      utmSource: input.utmSource,
+    }),
+  })
+}
+
+export interface ProductHuntFeedbackAdminNotificationInput {
+  email?: string | null
+  feedbackId: string
+  feedbackType: ProductHuntFeedbackType
+  message: string
+  referrer?: string | null
+  source?: string | null
+  utmCampaign?: string | null
+  utmContent?: string | null
+  utmMedium?: string | null
+  utmSource?: string | null
+}
+
+export async function sendProductHuntFeedbackAdminNotification(
+  input: ProductHuntFeedbackAdminNotificationInput
+) {
+  const adminEmail = getWaitlistAdminEmail()
+  if (!adminEmail) {
+    return
+  }
+
+  const feedbackTypeLabel = getProductHuntFeedbackTypeLabel(input.feedbackType)
+
+  await sendResendEmail({
+    idempotencyKey: createWaitlistEmailIdempotencyKey(
+      'product-hunt-feedback-admin',
+      input.feedbackId
+    ),
+    to: adminEmail,
+    subject: `Product Hunt feedback: ${feedbackTypeLabel}`,
+    react: createElement(ProductHuntFeedbackAdminEmail, {
+      email: input.email,
+      feedbackId: input.feedbackId,
+      feedbackTypeLabel,
+      launchPageUrl: buildEmailWebUrl('/product-hunt#launch-feedback'),
+      logoUrl: getEmailLogoUrl(),
+      message: input.message,
+      referrer: input.referrer,
+      source: input.source,
+      utmCampaign: input.utmCampaign,
+      utmContent: input.utmContent,
       utmMedium: input.utmMedium,
       utmSource: input.utmSource,
     }),

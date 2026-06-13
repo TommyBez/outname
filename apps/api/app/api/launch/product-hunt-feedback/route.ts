@@ -2,10 +2,11 @@ import { db } from '@outname/db'
 import { launchFeedback } from '@outname/db/schema'
 import { PRODUCT_HUNT_LAUNCH } from '@outname/shared/launch/product-hunt'
 import { denyIfBot } from '@outname/shared/server/botid-guard'
+import { sendProductHuntFeedbackAdminNotification } from '@outname/shared/waitlist/server/email'
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 import { nanoid } from 'nanoid'
-import { connection, type NextRequest, NextResponse } from 'next/server'
+import { after, connection, type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
 const FEEDBACK_RATE_LIMIT_MAX_REQUESTS = 6
@@ -118,11 +119,13 @@ export async function POST(request: NextRequest) {
     return genericSuccessResponse()
   }
 
+  const feedbackId = createFeedbackId()
+
   try {
     await db.insert(launchFeedback).values({
       email: parsed.data.email,
       feedbackType: parsed.data.feedbackType,
-      id: createFeedbackId(),
+      id: feedbackId,
       launchKey: PRODUCT_HUNT_LAUNCH.campaign,
       message: parsed.data.message,
       referrer: parsed.data.referrer,
@@ -133,9 +136,29 @@ export async function POST(request: NextRequest) {
       utmMedium: parsed.data.utmMedium,
       utmSource: parsed.data.utmSource,
     })
-    return genericSuccessResponse()
   } catch (error) {
     console.error('[product-hunt-feedback] submit failed', error)
     return NextResponse.json({ error: 'internal error' }, { status: 500 })
   }
+
+  after(async () => {
+    try {
+      await sendProductHuntFeedbackAdminNotification({
+        email: parsed.data.email,
+        feedbackId,
+        feedbackType: parsed.data.feedbackType,
+        message: parsed.data.message,
+        referrer: parsed.data.referrer,
+        source: parsed.data.source,
+        utmCampaign: parsed.data.utmCampaign,
+        utmContent: parsed.data.utmContent,
+        utmMedium: parsed.data.utmMedium,
+        utmSource: parsed.data.utmSource,
+      })
+    } catch (error) {
+      console.error('[product-hunt-feedback] admin notification failed', error)
+    }
+  })
+
+  return genericSuccessResponse()
 }
