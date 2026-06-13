@@ -17,12 +17,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.9,
     },
     {
-      url: `${siteConfig.url}/product-hunt`,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.95,
-    },
-    {
       url: `${siteConfig.url}/terms`,
       lastModified: new Date(),
       changeFrequency: 'yearly',

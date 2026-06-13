@@ -6,7 +6,7 @@ import { privacyEmail } from '@outname/shared/marketing/data/contact'
 import { siteConfig } from '@outname/shared/server/site-metadata'
 import type { Metadata } from 'next'
 
-const lastUpdated = 'June 13, 2026'
+const lastUpdated = 'May 27, 2026'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy',
@@ -58,11 +58,6 @@ export default function PrivacyPage() {
               metadata like source and UTM parameters.
             </li>
             <li>
-              <strong className="text-foreground">Feedback data</strong>, if you
-              send launch or product feedback, we store the message, feedback
-              category, optional email address, and related source metadata.
-            </li>
-            <li>
               <strong className="text-foreground">Product usage data</strong>,
               agent configuration, conversations, memory files, scheduled runs,
               tool activity, and related operational logs needed to run your
@@ -93,7 +88,6 @@ export default function PrivacyPage() {
               Run agents, schedules, tools, and integrations you configure
             </li>
             <li>Send transactional email (sign-in codes, waitlist messages)</li>
-            <li>Review launch and product feedback you choose to submit</li>
             <li>Improve reliability, prevent abuse, and debug issues</li>
             <li>Comply with legal obligations</li>
           </LegalList>

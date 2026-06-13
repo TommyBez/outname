@@ -155,27 +155,6 @@
       "when": 1780600000000,
       "tag": "0020_agent_skills",
       "breakpoints": true
-    },
-    {
-      "idx": 21,
-      "version": "7",
-      "when": 1781308800000,
-      "tag": "0021_waitlist_launch_email_deliveries",
-      "breakpoints": true
-    },
-    {
-      "idx": 22,
-      "version": "7",
-      "when": 1781308860000,
-      "tag": "0022_launch_social_post_deliveries",
-      "breakpoints": true
-    },
-    {
-      "idx": 23,
-      "version": "7",
-      "when": 1781360400000,
-      "tag": "0023_launch_feedback",
-      "breakpoints": true
     }
   ]
 }
