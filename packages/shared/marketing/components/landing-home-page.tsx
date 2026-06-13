@@ -7,6 +7,7 @@ import { LandingFooter } from '@outname/shared/marketing/components/landing/land
 import { LandingHeartbeatCloser } from '@outname/shared/marketing/components/landing/landing-heartbeat-closer'
 import { LandingHeroDemo } from '@outname/shared/marketing/components/landing/landing-hero-demo'
 import { LandingNav } from '@outname/shared/marketing/components/landing/landing-nav'
+import { ProductHuntFeedbackSection } from '@outname/shared/marketing/components/landing/product-hunt-feedback-section'
 import {
   ProductHuntLaunchPanel,
   ProductHuntVercelStackSection,
@@ -49,6 +50,7 @@ export function LandingHomePage({
         forceVisible={surface === 'product-hunt'}
         launchState={launchState}
       />
+      {surface === 'product-hunt' ? <ProductHuntFeedbackSection /> : null}
       <LandingChatShowcase shouldReduceMotion={reduceMotionFlag} />
       <LandingComposableWorkbench shouldReduceMotion={reduceMotionFlag} />
       <LandingHeartbeatCloser

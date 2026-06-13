@@ -176,6 +176,13 @@
       "when": 1781308920000,
       "tag": "0023_launch_social_post_deliveries",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1781360400000,
+      "tag": "0023_launch_feedback",
+      "breakpoints": true
     }
   ]
 }
