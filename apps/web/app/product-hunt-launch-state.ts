@@ -2,7 +2,6 @@ import 'server-only'
 
 import {
   createProductHuntLaunchState,
-  PRODUCT_HUNT_LAUNCH,
   type ProductHuntLaunchState,
 } from '@outname/shared/launch/product-hunt'
 import { resolveProductHuntLaunchUrl } from '@outname/shared/launch/product-hunt-url-discovery'
@@ -25,7 +24,7 @@ export function createStaticProductHuntLaunchState(): ProductHuntLaunchState {
   const urls = getProductHuntUrlFromEnv()
 
   return createProductHuntLaunchState({
-    now: new Date(PRODUCT_HUNT_LAUNCH.launchStartIso),
+    now: new Date(0),
     productHuntUrl: urls.publicUrl ?? urls.explicitUrl,
   })
 }
