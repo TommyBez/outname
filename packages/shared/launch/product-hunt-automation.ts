@@ -42,7 +42,13 @@ function createDeliveryId(): string {
 async function listRecipientsWithoutDelivery(input: {
   batchSize: number
   eventKey: ProductHuntEmailEventKey
+  suppressIfDeliveredEventKeys?: readonly ProductHuntEmailEventKey[]
 }) {
+  const deliveryEventKeys = [
+    input.eventKey,
+    ...(input.suppressIfDeliveredEventKeys ?? []),
+  ]
+
   return await db
     .select({
       email: waitlistEntry.email,
@@ -53,7 +59,7 @@ async function listRecipientsWithoutDelivery(input: {
       waitlistLaunchEmailDelivery,
       and(
         eq(waitlistLaunchEmailDelivery.waitlistEntryId, waitlistEntry.id),
-        eq(waitlistLaunchEmailDelivery.eventKey, input.eventKey)
+        inArray(waitlistLaunchEmailDelivery.eventKey, deliveryEventKeys)
       )
     )
     .where(
@@ -69,10 +75,12 @@ async function sendEventBatch(input: {
   batchSize: number
   eventKey: ProductHuntEmailEventKey
   productHuntUrl: string | null
+  suppressIfDeliveredEventKeys?: readonly ProductHuntEmailEventKey[]
 }) {
   const recipients = await listRecipientsWithoutDelivery({
     batchSize: input.batchSize,
     eventKey: input.eventKey,
+    suppressIfDeliveredEventKeys: input.suppressIfDeliveredEventKeys,
   })
   let sent = 0
   const launchLandingUrl = buildEmailWebUrl(
@@ -132,10 +140,28 @@ export async function runProductHuntLaunchAutomation(input: {
       continue
     }
 
+    if (
+      'skipWhenProductHuntUrlPresent' in event &&
+      event.skipWhenProductHuntUrlPresent &&
+      input.productHuntUrl
+    ) {
+      events.push({
+        eventKey: event.key,
+        reason: 'product_hunt_url_present',
+        sent: 0,
+        skipped: true,
+      })
+      continue
+    }
+
     const sent = await sendEventBatch({
       batchSize: input.batchSize,
       eventKey: event.key,
       productHuntUrl: input.productHuntUrl,
+      suppressIfDeliveredEventKeys:
+        'suppressIfDeliveredEventKeys' in event
+          ? event.suppressIfDeliveredEventKeys
+          : undefined,
     })
 
     events.push({

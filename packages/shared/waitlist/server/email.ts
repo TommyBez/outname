@@ -188,8 +188,12 @@ function getProductHuntLaunchEmailSubject(
   switch (eventKey) {
     case 'vercel-day-live':
       return 'OUTNA.ME is live on Product Hunt'
+    case 'vercel-day-live-fallback':
+      return 'OUTNA.ME Vercel Day launch page is live'
     case 'vercel-day-recap':
       return 'OUTNA.ME Product Hunt launch follow-up'
+    case 'vercel-day-recap-fallback':
+      return 'OUTNA.ME Vercel Day launch follow-up'
     case 'vercel-day-reminder':
       return 'OUTNA.ME launches on Product Hunt this Tuesday'
     default:

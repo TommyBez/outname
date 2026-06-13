@@ -69,6 +69,12 @@ export interface ProductHuntSocialAutomationResult {
   }[]
 }
 
+type ProductHuntSocialSkipReason =
+  | 'post_window_expired'
+  | 'product_hunt_url_missing'
+  | 'product_hunt_url_present'
+  | 'schedule_window_not_open'
+
 function createSocialDeliveryId(): string {
   return `lspd_${nanoid(12)}`
 }
@@ -118,6 +124,40 @@ function createPublishAtValue(post: ProductHuntSocialPost, now: Date): string {
 
 function isPostExpired(post: ProductHuntSocialPost, now: Date): boolean {
   return now.getTime() > Date.parse(post.notAfterIso)
+}
+
+function isPostReadyToSchedule(
+  post: ProductHuntSocialPost,
+  now: Date
+): boolean {
+  if (!post.scheduleNotBeforeIso) {
+    return true
+  }
+  return now.getTime() >= Date.parse(post.scheduleNotBeforeIso)
+}
+
+export function getProductHuntSocialSkipReason(input: {
+  now: Date
+  post: ProductHuntSocialPost
+  productHuntUrl: string | null
+}): ProductHuntSocialSkipReason | null {
+  if (isPostExpired(input.post, input.now)) {
+    return 'post_window_expired'
+  }
+
+  if (!isPostReadyToSchedule(input.post, input.now)) {
+    return 'schedule_window_not_open'
+  }
+
+  if (input.post.skipWhenProductHuntUrlPresent && input.productHuntUrl) {
+    return 'product_hunt_url_present'
+  }
+
+  if (input.post.requiresProductHuntUrl && !input.productHuntUrl) {
+    return 'product_hunt_url_missing'
+  }
+
+  return null
 }
 
 async function findTypefullyConnection(userId?: string | null) {
@@ -362,18 +402,15 @@ async function runSocialPost(input: {
     }
   }
 
-  if (isPostExpired(input.post, input.now)) {
+  const skipReason = getProductHuntSocialSkipReason({
+    now: input.now,
+    post: input.post,
+    productHuntUrl: input.productHuntUrl,
+  })
+  if (skipReason) {
     return {
       postId: input.post.id,
-      reason: 'post_window_expired',
-      skipped: true,
-    }
-  }
-
-  if (input.post.requiresProductHuntUrl && !input.productHuntUrl) {
-    return {
-      postId: input.post.id,
-      reason: 'product_hunt_url_missing',
+      reason: skipReason,
       skipped: true,
     }
   }

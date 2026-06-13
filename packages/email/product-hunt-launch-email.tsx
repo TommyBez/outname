@@ -45,6 +45,17 @@ const emailCopy: Record<
     preview: `${EMAIL_BRAND_NAME} is live on Product Hunt for Vercel Day.`,
     title: 'We are live on Product Hunt',
   },
+  'vercel-day-live-fallback': {
+    body: [
+      `${EMAIL_BRAND_NAME}'s Vercel Day launch page is live.`,
+      'The Product Hunt URL was not available when this automation ran, so this fallback points to the launch page instead of sending a placeholder link.',
+      'The useful ask is still feedback: what is clear, what is confusing, and what first autonomous agent would you actually trust?',
+    ],
+    ctaLabel: 'Open launch page',
+    lead: 'The Vercel Day launch page is live and collecting feedback.',
+    preview: `${EMAIL_BRAND_NAME}'s Vercel Day launch page is live.`,
+    title: 'Vercel Day launch page is live',
+  },
   'vercel-day-recap': {
     body: [
       `Thanks for following the ${EMAIL_BRAND_NAME} Product Hunt launch.`,
@@ -55,6 +66,17 @@ const emailCopy: Record<
     lead: 'Launch day is over; the feedback loop is still open.',
     preview: `A short ${EMAIL_BRAND_NAME} Product Hunt launch follow-up.`,
     title: 'Product Hunt follow-up',
+  },
+  'vercel-day-recap-fallback': {
+    body: [
+      `Thanks for following the ${EMAIL_BRAND_NAME} Vercel Day launch.`,
+      'The Product Hunt URL was not available to the launch automation, so this follow-up keeps the feedback loop on the launch page.',
+      'The most useful feedback is practical: what should run without asking, what should wait for approval, and what first agent is narrow enough to trust?',
+    ],
+    ctaLabel: 'Open launch page',
+    lead: 'The feedback loop is still open.',
+    preview: `A short ${EMAIL_BRAND_NAME} Vercel Day launch follow-up.`,
+    title: 'Vercel Day launch follow-up',
   },
 }
 

@@ -9,6 +9,8 @@ export interface ProductHuntSocialPost {
   platform: ProductHuntSocialPlatform
   publishAtIso: string
   requiresProductHuntUrl: boolean
+  scheduleNotBeforeIso?: string
+  skipWhenProductHuntUrlPresent?: boolean
   text: string
 }
 
@@ -127,6 +129,42 @@ I would appreciate specific feedback or questions on the Product Hunt page:
 {{PRODUCT_HUNT_URL}}`,
   },
   {
+    assetPath: `${PUBLIC_ASSET_ROOT}/02-vercel-stack.png`,
+    id: '2026-06-16-live-fallback-x',
+    notAfterIso: '2026-06-16T20:00:00.000Z',
+    platform: 'x',
+    publishAtIso: '2026-06-16T08:30:00.000Z',
+    requiresProductHuntUrl: false,
+    scheduleNotBeforeIso: '2026-06-16T08:15:00.000Z',
+    skipWhenProductHuntUrlPresent: true,
+    text: `OUTNA.ME's Vercel Day launch page is live.
+
+The Product Hunt URL was not available when the automation ran, so I am keeping the feedback loop here instead of posting a placeholder.
+
+Would value blunt feedback on the positioning and first-use agents:
+https://outna.me/product-hunt?utm_source=x&utm_medium=social&utm_campaign=${PRODUCT_HUNT_LAUNCH.campaign}&utm_content=2026-06-16-live-fallback`,
+  },
+  {
+    assetPath: `${PUBLIC_ASSET_ROOT}/02-vercel-stack.png`,
+    id: '2026-06-16-live-fallback-linkedin',
+    notAfterIso: '2026-06-16T20:00:00.000Z',
+    platform: 'linkedin',
+    publishAtIso: '2026-06-16T08:40:00.000Z',
+    requiresProductHuntUrl: false,
+    scheduleNotBeforeIso: '2026-06-16T08:15:00.000Z',
+    skipWhenProductHuntUrlPresent: true,
+    text: `OUTNA.ME's Vercel Day launch page is live.
+
+The Product Hunt URL was not available when the automation ran, so this fallback keeps the launch moving without pretending there is a Product Hunt link to click.
+
+The product argument is still the same: hosted personal AI agents with memory, schedules, tools, sub-agents, channels, and sandboxed execution.
+
+Built with Vercel Sandbox, Workflow, AI SDK, and Chat SDK.
+
+I would value practical feedback on the positioning and what first agent you would trust:
+https://outna.me/product-hunt?utm_source=linkedin&utm_medium=social&utm_campaign=${PRODUCT_HUNT_LAUNCH.campaign}&utm_content=2026-06-16-live-fallback`,
+  },
+  {
     assetPath: `${PUBLIC_ASSET_ROOT}/03-agent-runtime.png`,
     id: '2026-06-16-midday-feedback-x',
     notAfterIso: '2026-06-16T21:00:00.000Z',
@@ -179,6 +217,50 @@ That is the right shape of feedback for an early product.
 
 Launch thread:
 {{PRODUCT_HUNT_URL}}`,
+  },
+  {
+    assetPath: `${PUBLIC_ASSET_ROOT}/03-agent-runtime.png`,
+    id: '2026-06-17-recap-fallback-x',
+    notAfterIso: '2026-06-18T07:00:00.000Z',
+    platform: 'x',
+    publishAtIso: '2026-06-17T10:00:00.000Z',
+    requiresProductHuntUrl: false,
+    scheduleNotBeforeIso: '2026-06-17T09:45:00.000Z',
+    skipWhenProductHuntUrlPresent: true,
+    text: `Short OUTNA.ME Vercel Day follow-up:
+
+The Product Hunt URL was not available to automation, so I am keeping the recap on the launch page.
+
+The useful questions are still practical:
+
+1. What should run without asking?
+2. What should wait for approval?
+3. What first agent is narrow enough to trust?
+
+https://outna.me/product-hunt?utm_source=x&utm_medium=social&utm_campaign=${PRODUCT_HUNT_LAUNCH.campaign}&utm_content=2026-06-17-recap-fallback`,
+  },
+  {
+    assetPath: `${PUBLIC_ASSET_ROOT}/03-agent-runtime.png`,
+    id: '2026-06-17-recap-fallback-linkedin',
+    notAfterIso: '2026-06-18T07:00:00.000Z',
+    platform: 'linkedin',
+    publishAtIso: '2026-06-17T10:10:00.000Z',
+    requiresProductHuntUrl: false,
+    scheduleNotBeforeIso: '2026-06-17T09:45:00.000Z',
+    skipWhenProductHuntUrlPresent: true,
+    text: `A short OUTNA.ME Vercel Day launch follow-up.
+
+The Product Hunt URL was not available to the automation, so this fallback keeps the feedback loop on the launch page rather than sending people to a missing link.
+
+The most useful feedback is practical:
+
+- what should run without asking?
+- what should wait for approval?
+- what memory should be explicit?
+- what first agent is narrow enough to trust?
+
+Launch page:
+https://outna.me/product-hunt?utm_source=linkedin&utm_medium=social&utm_campaign=${PRODUCT_HUNT_LAUNCH.campaign}&utm_content=2026-06-17-recap-fallback`,
   },
 ] as const satisfies readonly ProductHuntSocialPost[]
 

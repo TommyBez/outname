@@ -81,12 +81,30 @@ export const productHuntEmailEvents = [
     notAfterIso: '2026-06-16T20:00:00.000Z',
     notBeforeIso: '2026-06-16T07:05:00.000Z',
     requiresProductHuntUrl: true,
+    suppressIfDeliveredEventKeys: ['vercel-day-live-fallback'],
+  },
+  {
+    key: 'vercel-day-live-fallback',
+    notAfterIso: '2026-06-16T20:00:00.000Z',
+    notBeforeIso: '2026-06-16T08:15:00.000Z',
+    requiresProductHuntUrl: false,
+    skipWhenProductHuntUrlPresent: true,
+    suppressIfDeliveredEventKeys: ['vercel-day-live'],
   },
   {
     key: 'vercel-day-recap',
     notAfterIso: '2026-06-17T18:00:00.000Z',
     notBeforeIso: '2026-06-17T08:30:00.000Z',
     requiresProductHuntUrl: true,
+    suppressIfDeliveredEventKeys: ['vercel-day-recap-fallback'],
+  },
+  {
+    key: 'vercel-day-recap-fallback',
+    notAfterIso: '2026-06-17T18:00:00.000Z',
+    notBeforeIso: '2026-06-17T10:00:00.000Z',
+    requiresProductHuntUrl: false,
+    skipWhenProductHuntUrlPresent: true,
+    suppressIfDeliveredEventKeys: ['vercel-day-recap'],
   },
 ] as const
 
