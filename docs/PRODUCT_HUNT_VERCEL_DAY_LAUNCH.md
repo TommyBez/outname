@@ -20,7 +20,7 @@ Campaign: `vercel-day-2026`
 - Typefully social drafts are created/scheduled idempotently from the active `typefully.api_key` connection.
 - Product Hunt social posts that need the live Product Hunt URL are skipped until `PRODUCT_HUNT_LAUNCH_URL` is set.
 - Vercel Preview runs can use their preview database and migrations, but `/api/cron/product-hunt-launch` returns before any Resend or Typefully side effect when `VERCEL_ENV=preview`.
-- During and after the launch window, the cron and public landing pages also probe default Product Hunt post URL candidates (`/posts/outna-me`, `/posts/outname`) and optional `PRODUCT_HUNT_LAUNCH_URL_CANDIDATES` values. If a public post page is reachable and contains OUTNA.ME markers, the system uses that URL for live Product Hunt emails, social posts, and launch CTAs without requiring a manual env update.
+- During and after the launch window, the cron and public landing pages also probe default Product Hunt post URL candidates (`/posts/outna-me`, `/posts/outna-me-2`, `/posts/outname`, `/posts/outname-2`, `/posts/outna-me-vercel-day`, `/posts/outname-vercel-day`) and optional `PRODUCT_HUNT_LAUNCH_URL_CANDIDATES` values. If a public post page is reachable and contains OUTNA.ME identity plus launch-context markers, the system uses that URL for live Product Hunt emails, social posts, and launch CTAs without requiring a manual env update. Candidate probes run in parallel and cache briefly so the landing page is not blocked by sequential Product Hunt fetches.
 - Fallback social posts are scheduled only when their fallback window is near and the Product Hunt URL is still missing; they send people to the launch landing page with explicit fallback copy.
 - Email unsubscribe links are signed and handled by `/api/waitlist/unsubscribe`.
 - Email and social automation degrade independently. A failed email recipient increments that event's `failed` count without blocking the rest of the batch, and a section-level email or Typefully failure is returned in the cron JSON without preventing the other channel from running.
@@ -69,7 +69,7 @@ PRODUCT_HUNT_LAUNCH_AUTOMATION_ENABLED=true
 PRODUCT_HUNT_LAUNCH_EMAIL_BATCH_SIZE=50
 PRODUCT_HUNT_SOCIAL_AUTOMATION_ENABLED=true
 PRODUCT_HUNT_SOCIAL_ATTACH_MEDIA=true
-PRODUCT_HUNT_LAUNCH_URL_CANDIDATES=https://www.producthunt.com/posts/outna-me,https://www.producthunt.com/posts/outname
+PRODUCT_HUNT_LAUNCH_URL_CANDIDATES=https://www.producthunt.com/posts/outna-me,https://www.producthunt.com/posts/outna-me-2,https://www.producthunt.com/posts/outname,https://www.producthunt.com/posts/outname-2,https://www.producthunt.com/posts/outna-me-vercel-day,https://www.producthunt.com/posts/outname-vercel-day
 ```
 
 Optional:

@@ -64,7 +64,9 @@ describe('Product Hunt launch URL discovery', () => {
 
   it('returns the first candidate whose public page contains the product marker', async () => {
     const fetcher = vi.fn(async () =>
-      htmlResponse('<html><title>OUTNA.ME on Product Hunt</title></html>')
+      htmlResponse(
+        '<html><title>OUTNA.ME on Product Hunt</title><p>Hosted AI agents that keep working.</p></html>'
+      )
     )
 
     await expect(
@@ -80,6 +82,11 @@ describe('Product Hunt launch URL discovery', () => {
           status: 200,
           url: 'https://www.producthunt.com/posts/outna-me',
         },
+        ...PRODUCT_HUNT_DEFAULT_LAUNCH_URL_CANDIDATES.slice(1).map((url) => ({
+          ok: true,
+          status: 200,
+          url,
+        })),
       ],
       source: 'candidate',
       url: 'https://www.producthunt.com/posts/outna-me',
@@ -90,7 +97,12 @@ describe('Product Hunt launch URL discovery', () => {
     const fetcher = vi
       .fn()
       .mockResolvedValueOnce(htmlResponse('<html>Different product</html>'))
-      .mockResolvedValueOnce(htmlResponse('<html>Hosted AI agents</html>'))
+      .mockResolvedValueOnce(
+        htmlResponse('<html>OUTNA.ME hosted AI agents</html>')
+      )
+      .mockImplementation(async () =>
+        htmlResponse('<html>Different product</html>')
+      )
 
     const result = await resolveProductHuntLaunchUrl({
       candidateUrls:
@@ -112,6 +124,14 @@ describe('Product Hunt launch URL discovery', () => {
           status: 200,
           url: 'https://www.producthunt.com/posts/outna-me',
         },
+        ...PRODUCT_HUNT_DEFAULT_LAUNCH_URL_CANDIDATES.filter(
+          (url) => url !== 'https://www.producthunt.com/posts/outna-me'
+        ).map((url) => ({
+          ok: false,
+          reason: 'product_marker_missing',
+          status: 200,
+          url,
+        })),
       ],
       source: 'candidate',
       url: 'https://www.producthunt.com/posts/outna-me',
@@ -128,22 +148,33 @@ describe('Product Hunt launch URL discovery', () => {
     })
 
     expect(result).toEqual({
-      candidates: [
-        {
-          ok: false,
-          reason: 'http_error',
-          status: 404,
-          url: 'https://www.producthunt.com/posts/outna-me',
-        },
-        {
-          ok: false,
-          reason: 'http_error',
-          status: 404,
-          url: 'https://www.producthunt.com/posts/outname',
-        },
-      ],
+      candidates: PRODUCT_HUNT_DEFAULT_LAUNCH_URL_CANDIDATES.map((url) => ({
+        ok: false,
+        reason: 'http_error',
+        status: 404,
+        url,
+      })),
       source: 'none',
       url: null,
     })
+  })
+
+  it('rejects pages that only contain a generic product or context marker', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(htmlResponse('<html>OUTNA.ME only</html>'))
+      .mockImplementation(async () =>
+        htmlResponse('<html>Hosted AI agents only</html>')
+      )
+
+    const result = await resolveProductHuntLaunchUrl({
+      candidateUrls: 'https://www.producthunt.com/posts/outna-me',
+      fetcher,
+      now: LIVE_WINDOW,
+    })
+
+    expect(result.source).toBe('none')
+    expect(result.url).toBeNull()
+    expect(result.candidates.every((candidate) => !candidate.ok)).toBe(true)
   })
 })

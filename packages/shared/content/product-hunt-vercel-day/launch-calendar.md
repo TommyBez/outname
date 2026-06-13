@@ -30,7 +30,7 @@ PRODUCT_HUNT_LAUNCH_AUTOMATION_ENABLED=true
 PRODUCT_HUNT_LAUNCH_EMAIL_BATCH_SIZE=50
 PRODUCT_HUNT_SOCIAL_AUTOMATION_ENABLED=true
 PRODUCT_HUNT_SOCIAL_ATTACH_MEDIA=true
-PRODUCT_HUNT_LAUNCH_URL_CANDIDATES=https://www.producthunt.com/posts/outna-me,https://www.producthunt.com/posts/outname
+PRODUCT_HUNT_LAUNCH_URL_CANDIDATES=https://www.producthunt.com/posts/outna-me,https://www.producthunt.com/posts/outna-me-2,https://www.producthunt.com/posts/outname,https://www.producthunt.com/posts/outname-2,https://www.producthunt.com/posts/outna-me-vercel-day,https://www.producthunt.com/posts/outname-vercel-day
 ```
 
 If `PRODUCT_HUNT_LAUNCH_URL` is missing, the Product Hunt-specific live and recap messages intentionally skip. Fallback email and social events then point to the launch landing page with explicit copy that no Product Hunt URL was available to automation.
