@@ -8,6 +8,7 @@ Campaign: `vercel-day-2026`
 ## What Is Automated
 
 - `/product-hunt` renders a launch-specific landing page with Vercel Day positioning.
+- `/product-hunt#launch-feedback` captures fallback launch feedback when Product Hunt comments are unavailable.
 - The homepage shows a Product Hunt/Vercel Day launch panel until the post-launch window ends.
 - `/api/cron/product-hunt-launch` runs every 15 minutes on Vercel.
 - Waitlist emails are sent idempotently by event window:
@@ -80,11 +81,13 @@ The launch automation uses two idempotency tables:
 
 - `waitlist_launch_email_deliveries`
 - `launch_social_post_deliveries`
+- `launch_feedback`
 
 The migrations are:
 
 - `packages/db/drizzle/0021_waitlist_launch_email_deliveries.sql`
 - `packages/db/drizzle/0022_launch_social_post_deliveries.sql`
+- `packages/db/drizzle/0023_launch_feedback.sql`
 
 ## Assets
 
