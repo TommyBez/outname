@@ -4,6 +4,7 @@ import { db } from '@outname/db'
 import { waitlistEntry, waitlistLaunchEmailDelivery } from '@outname/db/schema'
 import {
   buildProductHuntLandingPath,
+  getProductHuntEmailEventSkipReason,
   type ProductHuntEmailEventKey,
   productHuntEmailEvents,
 } from '@outname/shared/launch/product-hunt'
@@ -24,17 +25,6 @@ export interface ProductHuntLaunchAutomationResult {
     skipped: boolean
   }[]
   ok: true
-}
-
-function isEventActive(
-  event: (typeof productHuntEmailEvents)[number],
-  now: Date
-) {
-  const time = now.getTime()
-  return (
-    time >= Date.parse(event.notBeforeIso) &&
-    time <= Date.parse(event.notAfterIso)
-  )
 }
 
 function createDeliveryId(): string {
@@ -154,37 +144,16 @@ export async function runProductHuntLaunchAutomation(input: {
   const events: ProductHuntLaunchAutomationResult['events'] = []
 
   for (const event of productHuntEmailEvents) {
-    if (!isEventActive(event, now)) {
+    const skipReason = getProductHuntEmailEventSkipReason({
+      event,
+      now,
+      productHuntUrl: input.productHuntUrl,
+    })
+    if (skipReason) {
       events.push({
         eventKey: event.key,
         failed: 0,
-        reason: 'outside_event_window',
-        sent: 0,
-        skipped: true,
-      })
-      continue
-    }
-
-    if (event.requiresProductHuntUrl && !input.productHuntUrl) {
-      events.push({
-        eventKey: event.key,
-        failed: 0,
-        reason: 'product_hunt_url_missing',
-        sent: 0,
-        skipped: true,
-      })
-      continue
-    }
-
-    if (
-      'skipWhenProductHuntUrlPresent' in event &&
-      event.skipWhenProductHuntUrlPresent &&
-      input.productHuntUrl
-    ) {
-      events.push({
-        eventKey: event.key,
-        failed: 0,
-        reason: 'product_hunt_url_present',
+        reason: skipReason,
         sent: 0,
         skipped: true,
       })

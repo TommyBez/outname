@@ -111,6 +111,13 @@ export const productHuntEmailEvents = [
 export type ProductHuntEmailEventKey =
   (typeof productHuntEmailEvents)[number]['key']
 
+export type ProductHuntEmailEvent = (typeof productHuntEmailEvents)[number]
+
+export type ProductHuntEmailEventSkipReason =
+  | 'outside_event_window'
+  | 'product_hunt_url_missing'
+  | 'product_hunt_url_present'
+
 const PRODUCT_HUNT_DEFAULT_BATCH_SIZE = 50
 const PRODUCT_HUNT_MAX_BATCH_SIZE = 200
 
@@ -165,6 +172,35 @@ export function createProductHuntLaunchState(input?: {
     launchUrl: normalizeProductHuntLaunchUrl(input?.productHuntUrl),
     phase: getProductHuntLaunchPhase(input?.now),
   }
+}
+
+export function getProductHuntEmailEventSkipReason(input: {
+  event: ProductHuntEmailEvent
+  now: Date
+  productHuntUrl: string | null
+}): ProductHuntEmailEventSkipReason | null {
+  const time = input.now.getTime()
+
+  if (
+    time < Date.parse(input.event.notBeforeIso) ||
+    time > Date.parse(input.event.notAfterIso)
+  ) {
+    return 'outside_event_window'
+  }
+
+  if (input.event.requiresProductHuntUrl && !input.productHuntUrl) {
+    return 'product_hunt_url_missing'
+  }
+
+  if (
+    'skipWhenProductHuntUrlPresent' in input.event &&
+    input.event.skipWhenProductHuntUrlPresent &&
+    input.productHuntUrl
+  ) {
+    return 'product_hunt_url_present'
+  }
+
+  return null
 }
 
 export function isProductHuntLaunchVisible(
