@@ -609,6 +609,21 @@ export async function adminUpdateWaitlistStatus(
   return updated
 }
 
+export async function unsubscribeWaitlistEntryByEmail(email: string) {
+  const normalizedEmail = normalizeWaitlistEmail(email)
+  const now = new Date()
+  const [updated] = await db
+    .update(waitlistEntry)
+    .set({
+      status: 'unsubscribed',
+      updatedAt: now,
+    })
+    .where(eq(waitlistEntry.email, normalizedEmail))
+    .returning({ id: waitlistEntry.id })
+
+  return Boolean(updated)
+}
+
 export function listWaitlistEntries(filters: WaitlistFilters = {}) {
   const conditions: SQL[] = []
   const search = normalizeOptionalText(filters.search)

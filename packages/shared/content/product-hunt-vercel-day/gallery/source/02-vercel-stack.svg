@@ -1,0 +1,23 @@
+<svg width="1270" height="760" viewBox="0 0 1270 760" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1270" height="760" fill="#000000"/>
+  <rect x="48" y="52" width="1174" height="656" fill="#000000" stroke="#ffffff" stroke-width="6"/>
+  <text x="88" y="132" fill="#ff3000" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="900" letter-spacing="6">OUTNA.ME / VERCEL-NATIVE AGENT RUNTIME</text>
+  <text x="88" y="250" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="86" font-weight="900" letter-spacing="-2">Built on Vercel-native</text>
+  <text x="88" y="338" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="86" font-weight="900" letter-spacing="-2">agent primitives.</text>
+  <g font-family="Arial, Helvetica, sans-serif" font-weight="900">
+    <rect x="90" y="438" width="252" height="96" fill="#ffffff"/>
+    <text x="120" y="497" fill="#000000" font-size="30" letter-spacing="3">AI SDK</text>
+    <text x="120" y="524" fill="#4a4a4a" font-size="16" letter-spacing="2">MODELS / TOOLS</text>
+    <rect x="372" y="438" width="252" height="96" fill="#ff3000"/>
+    <text x="402" y="497" fill="#000000" font-size="30" letter-spacing="3">WORKFLOW</text>
+    <text x="402" y="524" fill="#000000" font-size="16" letter-spacing="2">DURABLE RUNS</text>
+    <rect x="654" y="438" width="252" height="96" fill="#ffffff"/>
+    <text x="684" y="497" fill="#000000" font-size="30" letter-spacing="3">SANDBOX</text>
+    <text x="684" y="524" fill="#4a4a4a" font-size="16" letter-spacing="2">ISOLATED STATE</text>
+    <rect x="936" y="438" width="252" height="96" fill="#ffffff"/>
+    <text x="966" y="497" fill="#000000" font-size="30" letter-spacing="3">CHAT SDK</text>
+    <text x="966" y="524" fill="#4a4a4a" font-size="16" letter-spacing="2">SURFACES</text>
+  </g>
+  <rect x="88" y="604" width="554" height="44" fill="#ff3000"/>
+  <text x="112" y="633" fill="#000000" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="900" letter-spacing="3">PRODUCT HUNT / VERCEL DAY / JUNE 16</text>
+</svg>

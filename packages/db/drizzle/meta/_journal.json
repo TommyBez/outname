@@ -162,6 +162,20 @@
       "when": 1781308800000,
       "tag": "0021_simplify_agent_events",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1781308860000,
+      "tag": "0022_waitlist_launch_email_deliveries",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1781308920000,
+      "tag": "0023_launch_social_post_deliveries",
+      "breakpoints": true
     }
   ]
 }

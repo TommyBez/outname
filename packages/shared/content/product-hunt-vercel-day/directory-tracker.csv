@@ -1,0 +1,11 @@
+Directory,Tier,URL,Category,DR,Dofollow,Submission Date,Status,Live URL,Backlink Verified,Positioning Variant Used,Tags Used,Account Email,Notes
+Product Hunt,1,https://producthunt.com/posts/new,Launch,91,Yes,2026-06-16,Draft,,,Startup,"Vercel Day;AI Agents;Productivity",,Anchor launch. Schedule for 12:01 AM Pacific and tag Vercel Day.
+Hacker News (Show HN),1,https://news.ycombinator.com/submit,Launch,91,No,2026-06-18,Draft,,,Dev,"AI agents;Vercel;open source",,Only post if leading with technical architecture.
+BetaList,1,https://betalist.com/submit,Launch,64,Yes,2026-06-17,Draft,,,Startup,"AI agents;productivity;automation",,Good for waitlist continuation after PH.
+Fazier,1,https://fazier.com/submit,Launch,30,Yes,2026-06-17,Draft,,,Startup,"AI agents;productivity;Vercel",,Lower-competition launch platform.
+DevHunt,1,https://devhunt.org/submit,Launch,35,Yes,2026-06-18,Draft,,,Dev,"Next.js;Vercel;AI SDK;Workflow;Sandbox",,Use Vercel-native technical positioning.
+Uneed,1,https://uneed.best/submit-a-tool,Launch,40,Yes,2026-06-19,Draft,,,Startup,"AI agents;automation;personal productivity",,Submit after landing and PH assets are live.
+There's An AI For That,3,https://theresanaiforthat.com/submit,AI,76,Yes,2026-06-19,Draft,,,AI,"AI agents;personal assistant;automation",,AI-directory description variant.
+Futurepedia,3,https://www.futurepedia.io/submit-tool,AI,70,Yes,2026-06-20,Draft,,,AI,"AI agents;productivity;automation",,Use AI-first architecture copy.
+Toolify.ai,3,https://www.toolify.ai/submit,AI,71,Yes,2026-06-20,Draft,,,AI,"AI agent;workflow automation;memory",,Use AI-first architecture copy.
+Stackshare,2,https://stackshare.io/new-product,SaaS,60,Yes,2026-06-22,Draft,,,Dev,"Vercel;Next.js;AI SDK;Workflow;Sandbox",,Good stack credibility backlink.
