@@ -130,10 +130,10 @@ The launch automation uses three idempotency tables plus one feedback table:
 
 The migrations are:
 
-- `packages/db/drizzle/0021_waitlist_launch_email_deliveries.sql`
-- `packages/db/drizzle/0022_launch_social_post_deliveries.sql`
-- `packages/db/drizzle/0023_launch_feedback.sql`
-- `packages/db/drizzle/0024_launch_admin_digest_deliveries.sql`
+- `packages/db/drizzle/0022_waitlist_launch_email_deliveries.sql`
+- `packages/db/drizzle/0023_launch_social_post_deliveries.sql`
+- `packages/db/drizzle/0024_launch_feedback.sql`
+- `packages/db/drizzle/0025_launch_admin_digest_deliveries.sql`
 
 ## Assets
 
