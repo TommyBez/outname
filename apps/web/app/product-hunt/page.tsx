@@ -1,7 +1,3 @@
-import {
-  createProductHuntLaunchState,
-  PRODUCT_HUNT_LAUNCH,
-} from '@outname/shared/launch/product-hunt'
 import { buildProductHuntJsonLd } from '@outname/shared/launch/product-hunt-seo'
 import {
   LandingHomePage,
@@ -13,6 +9,10 @@ import { JsonLd } from '@outname/ui/components/seo/json-ld'
 import type { Metadata } from 'next'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
+import {
+  createDynamicProductHuntLaunchState,
+  createStaticProductHuntLaunchState,
+} from '../product-hunt-launch-state'
 
 const surface: LandingSurface = 'product-hunt'
 
@@ -39,29 +39,12 @@ export const metadata: Metadata = {
   },
 }
 
-function getProductHuntUrlFromEnv(): string | null {
-  return (
-    process.env.NEXT_PUBLIC_PRODUCT_HUNT_LAUNCH_URL ??
-    process.env.PRODUCT_HUNT_LAUNCH_URL ??
-    null
-  )
-}
-
-function createStaticProductHuntLaunchState() {
-  return createProductHuntLaunchState({
-    now: new Date(PRODUCT_HUNT_LAUNCH.launchStartIso),
-    productHuntUrl: getProductHuntUrlFromEnv(),
-  })
-}
-
 async function DynamicProductHuntLanding() {
   await connection()
 
   return (
     <LandingHomePage
-      launchState={createProductHuntLaunchState({
-        productHuntUrl: getProductHuntUrlFromEnv(),
-      })}
+      launchState={await createDynamicProductHuntLaunchState()}
       surface={surface}
       waitlistEnabled={isWaitlistPublicEnabled()}
     />
