@@ -11,6 +11,7 @@ import {
   areProductHuntLaunchExternalSideEffectsDisabled,
   createProductHuntPreviewExternalSideEffectSkip,
 } from '@outname/shared/launch/product-hunt-preview-safety'
+import { getProductHuntLaunchReadiness } from '@outname/shared/launch/product-hunt-readiness'
 import {
   type ProductHuntSocialAutomationResult,
   runProductHuntSocialAutomation,
@@ -37,15 +38,22 @@ function createSectionFailure(error: unknown): ProductHuntLaunchSectionFailure {
 
 export async function GET(req: NextRequest) {
   await connection()
+  const readiness = getProductHuntLaunchReadiness()
 
   if (areProductHuntLaunchExternalSideEffectsDisabled()) {
-    return NextResponse.json(createProductHuntPreviewExternalSideEffectSkip())
+    return NextResponse.json({
+      ...createProductHuntPreviewExternalSideEffectSkip(),
+      readiness,
+    })
   }
 
   const expected = process.env.CRON_SECRET
 
   if (!expected) {
-    return NextResponse.json({ error: 'cron secret not set' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'cron secret not set', readiness },
+      { status: 500 }
+    )
   }
 
   if (req.headers.get('authorization') !== `Bearer ${expected}`) {
@@ -55,6 +63,7 @@ export async function GET(req: NextRequest) {
   if (process.env.PRODUCT_HUNT_LAUNCH_AUTOMATION_ENABLED === 'false') {
     return NextResponse.json({
       ok: true,
+      readiness,
       skipped: 'product hunt launch automation disabled',
     })
   }
@@ -115,6 +124,7 @@ export async function GET(req: NextRequest) {
         email,
         ok: true,
         productHuntUrl: productHuntUrlResolution,
+        readiness,
         social,
       }
     }
@@ -123,6 +133,7 @@ export async function GET(req: NextRequest) {
   if (!result) {
     return NextResponse.json({
       ok: true,
+      readiness,
       skipped: 'product hunt launch automation already running',
     })
   }

@@ -52,10 +52,14 @@ const ENV_KEYS = [
   'PRODUCT_HUNT_LAUNCH_URL',
   'PRODUCT_HUNT_LAUNCH_URL_CANDIDATES',
   'PRODUCT_HUNT_SOCIAL_AUTOMATION_ENABLED',
+  'PRODUCT_HUNT_SOCIAL_ATTACH_MEDIA',
   'PRODUCT_HUNT_TYPEFULLY_SOCIAL_SET_ID',
   'PRODUCT_HUNT_TYPEFULLY_USER_ID',
+  'RESEND_API_KEY',
   'VERCEL',
   'VERCEL_ENV',
+  'WAITLIST_FROM_EMAIL',
+  'WAITLIST_REPLY_TO',
 ] as const
 
 const originalEnv = Object.fromEntries(
@@ -97,6 +101,9 @@ describe('Product Hunt launch cron route', () => {
       ok: true,
       posts: [],
     })
+    process.env.RESEND_API_KEY = 're_test'
+    process.env.WAITLIST_FROM_EMAIL = 'OUTNA.ME <waitlist@example.com>'
+    process.env.WAITLIST_REPLY_TO = 'reply@example.com'
     mockWithRedisLock.mockImplementation(
       async (
         _key: string,
@@ -118,11 +125,22 @@ describe('Product Hunt launch cron route', () => {
     const response = await GET(createCronRequest())
 
     expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toEqual({
+    const body = await response.json()
+    expect(body).toMatchObject({
       ok: true,
+      readiness: {
+        ok: true,
+      },
       skipped:
         'product hunt launch external side effects disabled in Vercel preview',
     })
+    expect(body.readiness.checks).toContainEqual(
+      expect.objectContaining({
+        key: 'typefully_delivery',
+        message: 'Preview skips Typefully connection lookup and API calls.',
+        status: 'ready',
+      })
+    )
     expect(mockWithRedisLock).not.toHaveBeenCalled()
     expect(mockResolveProductHuntLaunchUrl).not.toHaveBeenCalled()
     expect(mockRunProductHuntLaunchAutomation).not.toHaveBeenCalled()
@@ -137,9 +155,19 @@ describe('Product Hunt launch cron route', () => {
     const response = await GET(createCronRequest())
 
     expect(response.status).toBe(500)
-    await expect(response.json()).resolves.toEqual({
+    const body = await response.json()
+    expect(body).toMatchObject({
       error: 'cron secret not set',
+      readiness: {
+        ok: false,
+      },
     })
+    expect(body.readiness.checks).toContainEqual(
+      expect.objectContaining({
+        key: 'cron_secret',
+        status: 'blocked',
+      })
+    )
     expect(mockWithRedisLock).not.toHaveBeenCalled()
     expect(mockResolveProductHuntLaunchUrl).not.toHaveBeenCalled()
     expect(mockRunProductHuntLaunchAutomation).not.toHaveBeenCalled()
@@ -170,7 +198,8 @@ describe('Product Hunt launch cron route', () => {
     const response = await GET(createCronRequest('Bearer expected-secret'))
 
     expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toEqual({
+    const body = await response.json()
+    expect(body).toMatchObject({
       email: {
         events: [],
         ok: true,
@@ -180,6 +209,9 @@ describe('Product Hunt launch cron route', () => {
         candidates: [],
         source: 'none',
         url: null,
+      },
+      readiness: {
+        ok: true,
       },
       social: {
         ok: true,
@@ -216,7 +248,8 @@ describe('Product Hunt launch cron route', () => {
     const response = await GET(createCronRequest('Bearer expected-secret'))
 
     expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toEqual({
+    const body = await response.json()
+    expect(body).toMatchObject({
       email: {
         error: 'email down',
         ok: false,
@@ -226,6 +259,9 @@ describe('Product Hunt launch cron route', () => {
         candidates: [],
         source: 'none',
         url: null,
+      },
+      readiness: {
+        ok: true,
       },
       social: {
         ok: true,
@@ -265,7 +301,8 @@ describe('Product Hunt launch cron route', () => {
     const response = await GET(createCronRequest('Bearer expected-secret'))
 
     expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toEqual({
+    const body = await response.json()
+    expect(body).toMatchObject({
       email: {
         events: [
           {
@@ -280,6 +317,9 @@ describe('Product Hunt launch cron route', () => {
         candidates: [],
         source: 'none',
         url: null,
+      },
+      readiness: {
+        ok: true,
       },
       social: {
         error: 'typefully down',

@@ -1,5 +1,9 @@
-export function areProductHuntLaunchExternalSideEffectsDisabled(): boolean {
-  return process.env.VERCEL === '1' && process.env.VERCEL_ENV === 'preview'
+type EnvLike = Record<string, string | undefined>
+
+export function areProductHuntLaunchExternalSideEffectsDisabled(
+  env: EnvLike = process.env
+): boolean {
+  return env.VERCEL === '1' && env.VERCEL_ENV === 'preview'
 }
 
 export function createProductHuntPreviewExternalSideEffectSkip() {
