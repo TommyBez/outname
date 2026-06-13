@@ -13,9 +13,12 @@ Campaign: `vercel-day-2026`
 - Waitlist emails are sent idempotently by event window:
   - `vercel-day-reminder`: June 15, 08:30-20:00 UTC.
   - `vercel-day-live`: June 16, 07:05-20:00 UTC, only if the Product Hunt URL is set.
+  - `vercel-day-live-fallback`: June 16, 08:15-20:00 UTC, only if the Product Hunt URL is still missing. Mutually exclusive with `vercel-day-live` per recipient.
   - `vercel-day-recap`: June 17, 08:30-18:00 UTC, only if the Product Hunt URL is set.
+  - `vercel-day-recap-fallback`: June 17, 10:00-18:00 UTC, only if the Product Hunt URL is still missing. Mutually exclusive with `vercel-day-recap` per recipient.
 - Typefully social drafts are created/scheduled idempotently from the active `typefully.api_key` connection.
 - Product Hunt social posts that need the live Product Hunt URL are skipped until `PRODUCT_HUNT_LAUNCH_URL` is set.
+- Fallback social posts are scheduled only when their fallback window is near and the Product Hunt URL is still missing; they send people to the launch landing page with explicit fallback copy.
 - Email unsubscribe links are signed and handled by `/api/waitlist/unsubscribe`.
 
 ## Required Product Hunt Setup
@@ -48,7 +51,7 @@ PRODUCT_HUNT_LAUNCH_URL=https://www.producthunt.com/posts/<slug>
 NEXT_PUBLIC_PRODUCT_HUNT_LAUNCH_URL=https://www.producthunt.com/posts/<slug>
 ```
 
-Without this URL, the cron intentionally skips live/recap email and social posts instead of publishing placeholder links.
+Without this URL, the cron intentionally skips Product Hunt-specific live/recap messages instead of publishing placeholder links. Fallback email and social messages point to the launch landing page and explicitly state that the Product Hunt URL was not available to automation.
 
 ## Vercel Env
 
