@@ -169,7 +169,10 @@ async function prepareRealtimeChatTurn(
   | { status: 'budget-exceeded'; notice: string }
 > {
   const agentRow = await getAgentById(input.agentId)
-  if (agentRow?.userId !== input.userId) {
+  if (!agentRow) {
+    throw new Error(`runRealtimeChatTurn: agent ${input.agentId} not found`)
+  }
+  if (agentRow.userId !== input.userId) {
     throw new Error(
       `runRealtimeChatTurn: agent ${input.agentId} does not belong to user ${input.userId}`
     )

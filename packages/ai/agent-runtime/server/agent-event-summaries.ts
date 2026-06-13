@@ -4,7 +4,6 @@ import type { AgentEventSummary } from '@outname/ai/agent-runtime/shared/event-t
 import { db } from '@outname/db'
 import { type AgentEvent, agentEvents } from '@outname/db/schema'
 import { and, asc, eq, getTableColumns, inArray, lte, sql } from 'drizzle-orm'
-import { payloadAs } from '../shared/event-payload'
 import { reconcileActiveAgentEvent } from './agent-event-reconciliation'
 import {
   ACTIVE_EVENT_STATUSES,
@@ -274,15 +273,20 @@ function previewAgentEvent(event: AgentEvent): string | null {
     case 'heartbeat':
       return previewScheduledEvent('Heartbeat', event)
     case 'invocation':
-      return truncate(
-        payloadAs({ payload: event.payload, type: event.type }, 'invocation')
-          .input
-      )
+      return truncate(invocationPayloadInput(event.payload))
     default: {
       const exhaustive: never = event.type
       return exhaustive
     }
   }
+}
+
+function invocationPayloadInput(payload: unknown): string | null {
+  if (!(typeof payload === 'object' && payload !== null)) {
+    return null
+  }
+  const input = Reflect.get(payload, 'input')
+  return typeof input === 'string' ? input : null
 }
 
 function previewScheduledEvent(label: string, event: AgentEvent): string {

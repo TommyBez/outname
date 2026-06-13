@@ -38,7 +38,11 @@ export async function ensureParentDirectories(input: {
 }
 
 function pathDirname(absPath: string, root: string): string {
-  return absPath.slice(0, absPath.lastIndexOf('/')) || root
+  if (absPath === root) {
+    return root
+  }
+  const slashIndex = absPath.lastIndexOf('/')
+  return slashIndex > 0 ? absPath.slice(0, slashIndex) : root
 }
 
 function errorMessage(error: unknown): string {

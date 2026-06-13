@@ -52,9 +52,7 @@ export async function writePreliminarySubAgentOutput(input: {
   target: SubAgentProgressTarget
   toolCallId: string
 }): Promise<void> {
-  const streamNamespace = progressStreamNamespace(input.target)
-  const progressWriter = progressUiWriter(input.target)
-  if (!(streamNamespace || progressWriter)) {
+  if (input.target.kind === 'none') {
     return
   }
 
@@ -66,17 +64,13 @@ export async function writePreliminarySubAgentOutput(input: {
       toolCallId: input.toolCallId,
     } as const
 
-    if (progressWriter) {
-      progressWriter.write(chunk)
-      return
-    }
-
-    if (!streamNamespace) {
+    if (input.target.kind === 'realtime-ui-writer') {
+      input.target.writer.write(chunk)
       return
     }
 
     const writable = getWritable<UIMessageChunk>({
-      namespace: streamNamespace,
+      namespace: input.target.streamNamespace,
     })
     const writer = writable.getWriter()
     try {
