@@ -26,7 +26,7 @@ export const PRODUCT_HUNT_SOCIAL_POSTS = [
   {
     assetPath: `${PUBLIC_ASSET_ROOT}/02-vercel-stack.png`,
     id: '2026-06-13-vercel-day-prelaunch-x',
-    notAfterIso: '2026-06-14T07:00:00.000Z',
+    notAfterIso: '2026-06-15T07:00:00.000Z',
     platform: 'x',
     publishAtIso: '2026-06-13T16:00:00.000Z',
     requiresProductHuntUrl: false,
@@ -45,7 +45,7 @@ https://outna.me/product-hunt?utm_source=x&utm_medium=social&utm_campaign=${PROD
   {
     assetPath: `${PUBLIC_ASSET_ROOT}/02-vercel-stack.png`,
     id: '2026-06-13-vercel-day-prelaunch-linkedin',
-    notAfterIso: '2026-06-14T07:00:00.000Z',
+    notAfterIso: '2026-06-15T07:00:00.000Z',
     platform: 'linkedin',
     publishAtIso: '2026-06-13T16:10:00.000Z',
     requiresProductHuntUrl: false,

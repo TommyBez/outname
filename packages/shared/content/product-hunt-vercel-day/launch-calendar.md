@@ -34,3 +34,5 @@ PRODUCT_HUNT_LAUNCH_URL_CANDIDATES=https://www.producthunt.com/posts/outna-me,ht
 ```
 
 If `PRODUCT_HUNT_LAUNCH_URL` is missing, the Product Hunt-specific live and recap messages intentionally skip. Fallback email and social events then point to the launch landing page with explicit copy that no Product Hunt URL was available to automation.
+
+The June 13 pre-launch social posts can still backfill until Monday Jun 15, 09:00 CEST if the PR is merged after the planned Saturday slot. After that cutoff, automation skips them so the Monday reminder remains the next social touchpoint.

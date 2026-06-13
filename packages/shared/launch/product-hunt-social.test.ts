@@ -60,6 +60,26 @@ describe('Product Hunt social posts', () => {
     ).toBeNull()
   })
 
+  it('keeps prelaunch posts available for a delayed Sunday merge but expires them before the Monday reminder', () => {
+    const post = getSocialPost('2026-06-13-vercel-day-prelaunch-x')
+
+    expect(
+      getProductHuntSocialSkipReason({
+        now: new Date('2026-06-14T12:00:00.000Z'),
+        post,
+        productHuntUrl: null,
+      })
+    ).toBeNull()
+
+    expect(
+      getProductHuntSocialSkipReason({
+        now: new Date('2026-06-15T07:01:00.000Z'),
+        post,
+        productHuntUrl: null,
+      })
+    ).toBe('post_window_expired')
+  })
+
   it('suppresses fallback posts when the Product Hunt URL is available', () => {
     const post = getSocialPost('2026-06-16-live-fallback-linkedin')
 

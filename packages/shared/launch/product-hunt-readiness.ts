@@ -87,7 +87,7 @@ function createEnvironmentCheck(
     return {
       key: 'preview_external_side_effects',
       message:
-        'Vercel preview cron exits before Redis, URL discovery, Resend, and Typefully.',
+        'Vercel preview cron exits before Redis, URL discovery, Resend, Typefully, admin notifications, and admin digest delivery.',
       status: 'ready',
     }
   }

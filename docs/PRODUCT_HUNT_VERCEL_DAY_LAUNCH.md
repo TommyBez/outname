@@ -19,10 +19,11 @@ Campaign: `vercel-day-2026`
   - `vercel-day-recap-fallback`: June 17, 10:00-18:00 UTC, only if the Product Hunt URL is still missing. Mutually exclusive with `vercel-day-recap` per recipient.
 - Typefully social drafts are created/scheduled idempotently from the active `typefully.api_key` connection.
 - Product Hunt social posts that need the live Product Hunt URL are skipped until `PRODUCT_HUNT_LAUNCH_URL` is set.
-- Vercel Preview runs can use their preview database and migrations, but `/api/cron/product-hunt-launch` returns before any Resend or Typefully side effect when `VERCEL_ENV=preview`. The email and Typefully automation functions also have their own preview guards, so a future non-cron caller still skips before DB lookup, `fetch`, or delivery work in preview.
-- The cron response includes a non-secret `readiness` snapshot. In preview this can be used to validate configuration shape while still exiting before Redis, Product Hunt discovery, Resend, and Typefully.
+- Vercel Preview runs can use their preview database and migrations, but `/api/cron/product-hunt-launch` returns before any Resend, Typefully, admin notification, or admin digest side effect when `VERCEL_ENV=preview`. The email, Typefully, and admin digest automation functions also have their own preview guards, so a future non-cron caller still skips before DB lookup, `fetch`, Resend, or delivery work in preview.
+- The cron response includes a non-secret `readiness` snapshot. In preview this can be used to validate configuration shape while still exiting before Redis, Product Hunt discovery, Resend, Typefully, admin notifications, and admin digest delivery.
 - During and after the launch window, the cron and public landing pages also probe default Product Hunt post URL candidates (`/posts/outna-me`, `/posts/outna-me-2`, `/posts/outname`, `/posts/outname-2`, `/posts/outna-me-vercel-day`, `/posts/outname-vercel-day`) and optional `PRODUCT_HUNT_LAUNCH_URL_CANDIDATES` values. If a public post page is reachable and contains OUTNA.ME identity plus launch-context markers, the system uses that URL for live Product Hunt emails, social posts, and launch CTAs without requiring a manual env update. Candidate probes run in parallel and cache briefly so the landing page is not blocked by sequential Product Hunt fetches.
 - The cron also reads recent `launch_feedback.referrer` and Product Hunt waitlist `referrer` values as URL handoff candidates. These DB-derived URLs are still probed for OUTNA.ME/Product Hunt markers before use, so a client-supplied referrer cannot become the live URL without public page verification.
+- The June 13 pre-launch social posts are allowed to backfill until June 15, 07:00 UTC if the PR is merged after the planned Saturday slot. After that cutoff, the Monday reminder becomes the next public social touchpoint.
 - Fallback social posts are scheduled only when their fallback window is near and the Product Hunt URL is still missing; they send people to the launch landing page with explicit fallback copy.
 - Email unsubscribe links are signed and handled by `/api/waitlist/unsubscribe`.
 - Email and social automation degrade independently. A failed email recipient increments that event's `failed` count without blocking the rest of the batch, and a section-level email or Typefully failure is returned in the cron JSON without preventing the other channel from running.
@@ -87,7 +88,7 @@ If the optional Typefully values are omitted, the cron uses the first active `ty
 
 ## Database
 
-The launch automation uses two idempotency tables:
+The launch automation uses three idempotency tables plus one feedback table:
 
 - `waitlist_launch_email_deliveries`
 - `launch_social_post_deliveries`
