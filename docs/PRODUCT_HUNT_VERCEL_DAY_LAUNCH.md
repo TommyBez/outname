@@ -22,6 +22,7 @@ Campaign: `vercel-day-2026`
 - Vercel Preview runs can use their preview database and migrations, but `/api/cron/product-hunt-launch` returns before any Resend or Typefully side effect when `VERCEL_ENV=preview`. The email and Typefully automation functions also have their own preview guards, so a future non-cron caller still skips before DB lookup, `fetch`, or delivery work in preview.
 - The cron response includes a non-secret `readiness` snapshot. In preview this can be used to validate configuration shape while still exiting before Redis, Product Hunt discovery, Resend, and Typefully.
 - During and after the launch window, the cron and public landing pages also probe default Product Hunt post URL candidates (`/posts/outna-me`, `/posts/outna-me-2`, `/posts/outname`, `/posts/outname-2`, `/posts/outna-me-vercel-day`, `/posts/outname-vercel-day`) and optional `PRODUCT_HUNT_LAUNCH_URL_CANDIDATES` values. If a public post page is reachable and contains OUTNA.ME identity plus launch-context markers, the system uses that URL for live Product Hunt emails, social posts, and launch CTAs without requiring a manual env update. Candidate probes run in parallel and cache briefly so the landing page is not blocked by sequential Product Hunt fetches.
+- The cron also reads recent `launch_feedback.referrer` and Product Hunt waitlist `referrer` values as URL handoff candidates. These DB-derived URLs are still probed for OUTNA.ME/Product Hunt markers before use, so a client-supplied referrer cannot become the live URL without public page verification.
 - Fallback social posts are scheduled only when their fallback window is near and the Product Hunt URL is still missing; they send people to the launch landing page with explicit fallback copy.
 - Email unsubscribe links are signed and handled by `/api/waitlist/unsubscribe`.
 - Email and social automation degrade independently. A failed email recipient increments that event's `failed` count without blocking the rest of the batch, and a section-level email or Typefully failure is returned in the cron JSON without preventing the other channel from running.
@@ -59,7 +60,7 @@ PRODUCT_HUNT_LAUNCH_URL=https://www.producthunt.com/posts/<slug>
 NEXT_PUBLIC_PRODUCT_HUNT_LAUNCH_URL=https://www.producthunt.com/posts/<slug>
 ```
 
-Without this URL, the cron intentionally skips Product Hunt-specific live/recap messages instead of publishing placeholder links. Fallback email and social messages point to the launch landing page and explicitly state that the Product Hunt URL was not available to automation.
+Without this URL, the cron intentionally skips Product Hunt-specific live/recap messages instead of publishing placeholder links. Fallback email and social messages point to the launch landing page and explicitly state that the Product Hunt URL was not available to automation. If visitors arrive from Product Hunt first, their feedback and waitlist referrers can hand the final post URL back to cron automatically after the launch window opens.
 
 ## Vercel Env
 

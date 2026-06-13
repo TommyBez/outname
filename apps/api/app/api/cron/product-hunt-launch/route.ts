@@ -19,6 +19,7 @@ import {
   runProductHuntSocialAutomation,
 } from '@outname/shared/launch/product-hunt-social-automation'
 import { resolveProductHuntLaunchUrl } from '@outname/shared/launch/product-hunt-url-discovery'
+import { getProductHuntLaunchUrlHandoffCandidates } from '@outname/shared/launch/product-hunt-url-handoff'
 import { sendProductHuntLaunchIssueAdminNotification } from '@outname/shared/waitlist/server/email'
 import { connection, type NextRequest, NextResponse } from 'next/server'
 
@@ -162,6 +163,24 @@ function collectSocialIssues(
   ]
 }
 
+function collectUrlHandoffIssues(
+  error: string | null
+): ProductHuntLaunchIssue[] {
+  if (!error) {
+    return []
+  }
+
+  return [
+    {
+      details: [error],
+      key: 'product_hunt_url_handoff',
+      message:
+        'Product Hunt URL handoff lookup failed before URL discovery completed.',
+      severity: 'warning',
+    },
+  ]
+}
+
 interface ProductHuntSectionSkipped {
   ok: true
   skipped: string
@@ -173,8 +192,10 @@ function collectLaunchIssues(input: {
     | ProductHuntSectionSkipped
     | ProductHuntSocialAutomationResult
     | ProductHuntLaunchSectionFailure
+  urlHandoffError: string | null
 }): ProductHuntLaunchIssue[] {
   return [
+    ...collectUrlHandoffIssues(input.urlHandoffError),
     ...collectEmailIssues(input.email),
     ...collectSocialIssues(input.social),
   ]
@@ -236,14 +257,34 @@ export async function GET(req: NextRequest) {
     14 * 60,
     async () => {
       const now = new Date()
+      const explicitProductHuntUrl = normalizeProductHuntLaunchUrl(
+        process.env.PRODUCT_HUNT_LAUNCH_URL
+      )
+      const publicProductHuntUrl = normalizeProductHuntLaunchUrl(
+        process.env.NEXT_PUBLIC_PRODUCT_HUNT_LAUNCH_URL
+      )
+      let productHuntUrlHandoffError: string | null = null
+      let productHuntUrlHandoffCandidates: string[] = []
+
+      if (!(explicitProductHuntUrl || publicProductHuntUrl)) {
+        try {
+          productHuntUrlHandoffCandidates =
+            await getProductHuntLaunchUrlHandoffCandidates()
+        } catch (error) {
+          productHuntUrlHandoffError =
+            error instanceof Error ? error.message : 'Unknown error'
+          console.error(
+            '[product-hunt-launch] Product Hunt URL handoff lookup failed',
+            error
+          )
+        }
+      }
+
       const productHuntUrlResolution = await resolveProductHuntLaunchUrl({
         candidateUrls: process.env.PRODUCT_HUNT_LAUNCH_URL_CANDIDATES,
-        explicitUrl: normalizeProductHuntLaunchUrl(
-          process.env.PRODUCT_HUNT_LAUNCH_URL
-        ),
-        publicUrl: normalizeProductHuntLaunchUrl(
-          process.env.NEXT_PUBLIC_PRODUCT_HUNT_LAUNCH_URL
-        ),
+        explicitUrl: explicitProductHuntUrl,
+        handoffUrls: productHuntUrlHandoffCandidates,
+        publicUrl: publicProductHuntUrl,
       })
       const productHuntUrl = productHuntUrlResolution.url
 
@@ -284,7 +325,11 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      const issues = collectLaunchIssues({ email, social })
+      const issues = collectLaunchIssues({
+        email,
+        social,
+        urlHandoffError: productHuntUrlHandoffError,
+      })
       await notifyLaunchIssues({ issues, now })
 
       return {

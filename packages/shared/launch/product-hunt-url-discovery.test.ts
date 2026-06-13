@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  extractProductHuntPostUrls,
+  normalizeProductHuntPostUrl,
   PRODUCT_HUNT_DEFAULT_LAUNCH_URL_CANDIDATES,
   parseProductHuntLaunchUrlCandidates,
   resolveProductHuntLaunchUrl,
@@ -16,6 +18,22 @@ function htmlResponse(body: string, status = 200): Response {
 }
 
 describe('Product Hunt launch URL discovery', () => {
+  it('normalizes Product Hunt post URLs from referrer text', () => {
+    expect(
+      extractProductHuntPostUrls(`
+        first: https://producthunt.com/posts/custom-outname?ref=badge).
+        duplicate: https://www.producthunt.com/posts/custom-outname
+        ignored: https://www.producthunt.com/posts/new
+        also ignored: https://www.producthunt.com/posts/new/launch
+      `)
+    ).toEqual(['https://www.producthunt.com/posts/custom-outname'])
+    expect(
+      normalizeProductHuntPostUrl(
+        'https://www.producthunt.com/posts/custom-outname/comments?ref=badge'
+      )
+    ).toBe('https://www.producthunt.com/posts/custom-outname')
+  })
+
   it('uses the configured Product Hunt post URL before probing candidates', async () => {
     const fetcher = vi.fn()
 
@@ -31,6 +49,38 @@ describe('Product Hunt launch URL discovery', () => {
       url: 'https://www.producthunt.com/posts/outna-me',
     })
     expect(fetcher).not.toHaveBeenCalled()
+  })
+
+  it('uses verified referrer handoff candidates before configured slug candidates', async () => {
+    const fetcher = vi.fn(async () =>
+      htmlResponse(
+        '<html><title>OUTNA.ME on Product Hunt</title><p>Vercel Day hosted AI agents.</p></html>'
+      )
+    )
+
+    await expect(
+      resolveProductHuntLaunchUrl({
+        candidateUrls: 'https://www.producthunt.com/posts/outna-me',
+        fetcher,
+        handoffUrls: ['https://www.producthunt.com/posts/custom-outname'],
+        now: LIVE_WINDOW,
+      })
+    ).resolves.toEqual({
+      candidates: [
+        {
+          ok: true,
+          status: 200,
+          url: 'https://www.producthunt.com/posts/custom-outname',
+        },
+      ],
+      source: 'handoff',
+      url: 'https://www.producthunt.com/posts/custom-outname',
+    })
+    expect(fetcher).toHaveBeenCalledTimes(1)
+    expect(fetcher).toHaveBeenCalledWith(
+      'https://www.producthunt.com/posts/custom-outname',
+      expect.any(Object)
+    )
   })
 
   it('parses configured candidates before the default slug candidates', () => {

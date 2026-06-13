@@ -4,6 +4,8 @@ import {
 } from './product-hunt'
 
 const PRODUCT_HUNT_HOST = 'www.producthunt.com'
+const PRODUCT_HUNT_HOST_APEX = 'producthunt.com'
+const PRODUCT_HUNT_POST_PATH_PREFIX = '/posts/'
 const PRODUCT_HUNT_DISCOVERY_TIMEOUT_MS = 3500
 const PRODUCT_HUNT_DISCOVERY_BODY_LIMIT = 128 * 1024
 const PRODUCT_HUNT_DISCOVERY_CACHE_TTL_MS = 2 * 60 * 1000
@@ -16,6 +18,9 @@ const PRODUCT_HUNT_CONTEXT_MARKERS = [
 ]
 const PRODUCT_HUNT_IDENTITY_MARKERS = ['outna.me', 'outna me', 'outname']
 const PRODUCT_HUNT_CANDIDATE_SEPARATOR = /[\s,]+/
+const PRODUCT_HUNT_POST_URL_PATTERN =
+  /https:\/\/(?:www\.)?producthunt\.com\/posts\/[^\s"'<>\\\]]+/gi
+const TRAILING_URL_PUNCTUATION = /[),.;:!?]+$/
 
 export const PRODUCT_HUNT_DEFAULT_LAUNCH_URL_CANDIDATES = [
   'https://www.producthunt.com/posts/outna-me',
@@ -31,7 +36,11 @@ type ProductHuntFetch = (
   init?: RequestInit
 ) => Promise<Response>
 
-export type ProductHuntLaunchUrlSource = 'candidate' | 'env' | 'none'
+export type ProductHuntLaunchUrlSource =
+  | 'candidate'
+  | 'env'
+  | 'handoff'
+  | 'none'
 
 export interface ProductHuntLaunchUrlProbe {
   ok: boolean
@@ -54,40 +63,95 @@ interface CachedProductHuntLaunchUrlResolution {
 
 let cachedResolution: CachedProductHuntLaunchUrlResolution | null = null
 
+function normalizeProductHuntHostname(hostname: string): string | null {
+  const normalized = hostname.toLowerCase()
+  if (
+    normalized === PRODUCT_HUNT_HOST ||
+    normalized === PRODUCT_HUNT_HOST_APEX
+  ) {
+    return PRODUCT_HUNT_HOST
+  }
+  return null
+}
+
+function cleanProductHuntUrlText(value: string): string {
+  return value.trim().replace(TRAILING_URL_PUNCTUATION, '')
+}
+
 function isProductHuntPostUrl(value: string): boolean {
   try {
     const url = new URL(value)
+    const slug = url.pathname.startsWith(PRODUCT_HUNT_POST_PATH_PREFIX)
+      ? url.pathname.slice(PRODUCT_HUNT_POST_PATH_PREFIX.length).split('/')[0]
+      : ''
     return (
       url.protocol === 'https:' &&
-      url.hostname === PRODUCT_HUNT_HOST &&
-      url.pathname.startsWith('/posts/') &&
-      url.pathname !== '/posts/new'
+      Boolean(normalizeProductHuntHostname(url.hostname)) &&
+      url.pathname.startsWith(PRODUCT_HUNT_POST_PATH_PREFIX) &&
+      slug.length > 0 &&
+      slug !== 'new'
     )
   } catch {
     return false
   }
 }
 
-function normalizeProductHuntPostUrl(value?: string | null): string | null {
-  const normalized = normalizeProductHuntLaunchUrl(value)
+export function normalizeProductHuntPostUrl(
+  value?: string | null
+): string | null {
+  const cleaned = value ? cleanProductHuntUrlText(value) : value
+  const normalized = normalizeProductHuntLaunchUrl(cleaned)
   if (!(normalized && isProductHuntPostUrl(normalized))) {
     return null
   }
-  return normalized
+  const url = new URL(normalized)
+  const hostname = normalizeProductHuntHostname(url.hostname)
+  const slug = url.pathname
+    .slice(PRODUCT_HUNT_POST_PATH_PREFIX.length)
+    .split('/')[0]
+
+  if (!(hostname && slug)) {
+    return null
+  }
+
+  return `https://${hostname}${PRODUCT_HUNT_POST_PATH_PREFIX}${slug}`
+}
+
+function uniqueProductHuntPostUrls(values: Iterable<string | null>): string[] {
+  const urls: string[] = []
+  const seen = new Set<string>()
+
+  for (const value of values) {
+    const normalized = normalizeProductHuntPostUrl(value)
+    if (normalized && !seen.has(normalized)) {
+      seen.add(normalized)
+      urls.push(normalized)
+    }
+  }
+
+  return urls
+}
+
+export function extractProductHuntPostUrls(value?: string | null): string[] {
+  if (!value) {
+    return []
+  }
+
+  return uniqueProductHuntPostUrls(
+    Array.from(value.matchAll(PRODUCT_HUNT_POST_URL_PATTERN), (match) =>
+      cleanProductHuntUrlText(match[0])
+    )
+  )
 }
 
 export function parseProductHuntLaunchUrlCandidates(
   value?: string | null
 ): string[] {
-  const configuredCandidates =
-    value
-      ?.split(PRODUCT_HUNT_CANDIDATE_SEPARATOR)
-      .map((candidate) => normalizeProductHuntPostUrl(candidate))
-      .filter((candidate): candidate is string => Boolean(candidate)) ?? []
-
   return [
     ...new Set([
-      ...configuredCandidates,
+      ...uniqueProductHuntPostUrls(
+        value?.split(PRODUCT_HUNT_CANDIDATE_SEPARATOR) ?? []
+      ),
       ...PRODUCT_HUNT_DEFAULT_LAUNCH_URL_CANDIDATES,
     ]),
   ]
@@ -181,35 +245,37 @@ async function probeProductHuntLaunchUrl(input: {
 }
 
 async function probeProductHuntLaunchUrlCandidates(input: {
-  candidateUrls?: string | null
+  source: Exclude<ProductHuntLaunchUrlSource, 'env' | 'none'>
   fetcher: ProductHuntFetch
   timeoutMs: number
+  urls: readonly string[]
 }): Promise<ProductHuntLaunchUrlResolution> {
   const candidates = await Promise.all(
-    parseProductHuntLaunchUrlCandidates(input.candidateUrls).map(
-      async (candidate) =>
-        await probeProductHuntLaunchUrl({
-          fetcher: input.fetcher,
-          timeoutMs: input.timeoutMs,
-          url: candidate,
-        })
+    input.urls.map((candidate) =>
+      probeProductHuntLaunchUrl({
+        fetcher: input.fetcher,
+        timeoutMs: input.timeoutMs,
+        url: candidate,
+      })
     )
   )
   const match = candidates.find((candidate) => candidate.ok)
 
   return {
     candidates,
-    source: match ? 'candidate' : 'none',
+    source: match ? input.source : 'none',
     url: match?.url ?? null,
   }
 }
 
 function createCacheKey(input: {
   candidateUrls?: string | null
+  handoffUrls: readonly string[]
   timeoutMs: number
 }): string {
   return JSON.stringify({
     candidateUrls: parseProductHuntLaunchUrlCandidates(input.candidateUrls),
+    handoffUrls: input.handoffUrls,
     timeoutMs: input.timeoutMs,
   })
 }
@@ -218,6 +284,7 @@ export async function resolveProductHuntLaunchUrl(input: {
   candidateUrls?: string | null
   explicitUrl?: string | null
   fetcher?: ProductHuntFetch
+  handoffUrls?: readonly string[]
   now?: Date
   publicUrl?: string | null
   timeoutMs?: number
@@ -237,17 +304,44 @@ export async function resolveProductHuntLaunchUrl(input: {
 
   const fetcher = input.fetcher ?? fetch
   const timeoutMs = input.timeoutMs ?? PRODUCT_HUNT_DISCOVERY_TIMEOUT_MS
+  const handoffUrls = uniqueProductHuntPostUrls(input.handoffUrls ?? [])
+  const handoffUrlSet = new Set(handoffUrls)
+  const candidateUrls = parseProductHuntLaunchUrlCandidates(
+    input.candidateUrls
+  ).filter((candidate) => !handoffUrlSet.has(candidate))
 
   if (input.fetcher || input.now) {
-    return await probeProductHuntLaunchUrlCandidates({
-      candidateUrls: input.candidateUrls,
+    const handoffResolution = await probeProductHuntLaunchUrlCandidates({
       fetcher,
+      source: 'handoff',
       timeoutMs,
+      urls: handoffUrls,
     })
+
+    if (handoffResolution.url) {
+      return handoffResolution
+    }
+
+    const candidateResolution = await probeProductHuntLaunchUrlCandidates({
+      fetcher,
+      source: 'candidate',
+      timeoutMs,
+      urls: candidateUrls,
+    })
+
+    return {
+      candidates: [
+        ...handoffResolution.candidates,
+        ...candidateResolution.candidates,
+      ],
+      source: candidateResolution.source,
+      url: candidateResolution.url,
+    }
   }
 
   const cacheKey = createCacheKey({
     candidateUrls: input.candidateUrls,
+    handoffUrls,
     timeoutMs,
   })
   const nowMs = Date.now()
@@ -260,11 +354,31 @@ export async function resolveProductHuntLaunchUrl(input: {
     return cachedResolution.resolution
   }
 
-  const resolution = await probeProductHuntLaunchUrlCandidates({
-    candidateUrls: input.candidateUrls,
+  const handoffResolution = await probeProductHuntLaunchUrlCandidates({
     fetcher,
+    source: 'handoff',
     timeoutMs,
+    urls: handoffUrls,
   })
+  const candidateResolution = handoffResolution.url
+    ? null
+    : await probeProductHuntLaunchUrlCandidates({
+        fetcher,
+        source: 'candidate',
+        timeoutMs,
+        urls: candidateUrls,
+      })
+  const resolution = handoffResolution.url
+    ? handoffResolution
+    : {
+        candidates: [
+          ...handoffResolution.candidates,
+          ...(candidateResolution?.candidates ?? []),
+        ],
+        source: candidateResolution?.source ?? 'none',
+        url: candidateResolution?.url ?? null,
+      }
+
   cachedResolution = {
     expiresAt: nowMs + PRODUCT_HUNT_DISCOVERY_CACHE_TTL_MS,
     key: cacheKey,

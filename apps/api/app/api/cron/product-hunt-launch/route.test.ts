@@ -6,6 +6,7 @@ const PRODUCT_HUNT_ISSUE_DEDUPE_KEY_PATTERN =
 
 const {
   mockConnection,
+  mockGetProductHuntLaunchUrlHandoffCandidates,
   mockResolveProductHuntLaunchUrl,
   mockRunProductHuntLaunchAutomation,
   mockRunProductHuntSocialAutomation,
@@ -13,6 +14,7 @@ const {
   mockWithRedisLock,
 } = vi.hoisted(() => ({
   mockConnection: vi.fn(),
+  mockGetProductHuntLaunchUrlHandoffCandidates: vi.fn(),
   mockResolveProductHuntLaunchUrl: vi.fn(),
   mockRunProductHuntLaunchAutomation: vi.fn(),
   mockRunProductHuntSocialAutomation: vi.fn(),
@@ -45,6 +47,11 @@ vi.mock('@outname/shared/launch/product-hunt-social-automation', () => ({
 
 vi.mock('@outname/shared/launch/product-hunt-url-discovery', () => ({
   resolveProductHuntLaunchUrl: mockResolveProductHuntLaunchUrl,
+}))
+
+vi.mock('@outname/shared/launch/product-hunt-url-handoff', () => ({
+  getProductHuntLaunchUrlHandoffCandidates:
+    mockGetProductHuntLaunchUrlHandoffCandidates,
 }))
 
 vi.mock('@outname/shared/waitlist/server/email', () => ({
@@ -98,6 +105,7 @@ describe('Product Hunt launch cron route', () => {
     vi.clearAllMocks()
     restoreEnv()
     mockConnection.mockResolvedValue(undefined)
+    mockGetProductHuntLaunchUrlHandoffCandidates.mockResolvedValue([])
     mockResolveProductHuntLaunchUrl.mockResolvedValue({
       candidates: [],
       source: 'none',
@@ -153,6 +161,7 @@ describe('Product Hunt launch cron route', () => {
       })
     )
     expect(mockWithRedisLock).not.toHaveBeenCalled()
+    expect(mockGetProductHuntLaunchUrlHandoffCandidates).not.toHaveBeenCalled()
     expect(mockResolveProductHuntLaunchUrl).not.toHaveBeenCalled()
     expect(mockRunProductHuntLaunchAutomation).not.toHaveBeenCalled()
     expect(mockRunProductHuntSocialAutomation).not.toHaveBeenCalled()
@@ -183,6 +192,7 @@ describe('Product Hunt launch cron route', () => {
       })
     )
     expect(mockWithRedisLock).not.toHaveBeenCalled()
+    expect(mockGetProductHuntLaunchUrlHandoffCandidates).not.toHaveBeenCalled()
     expect(mockResolveProductHuntLaunchUrl).not.toHaveBeenCalled()
     expect(mockRunProductHuntLaunchAutomation).not.toHaveBeenCalled()
     expect(mockRunProductHuntSocialAutomation).not.toHaveBeenCalled()
@@ -198,6 +208,7 @@ describe('Product Hunt launch cron route', () => {
     expect(response.status).toBe(401)
     await expect(response.json()).resolves.toEqual({ error: 'unauthorized' })
     expect(mockWithRedisLock).not.toHaveBeenCalled()
+    expect(mockGetProductHuntLaunchUrlHandoffCandidates).not.toHaveBeenCalled()
     expect(mockResolveProductHuntLaunchUrl).not.toHaveBeenCalled()
     expect(mockRunProductHuntLaunchAutomation).not.toHaveBeenCalled()
     expect(mockRunProductHuntSocialAutomation).not.toHaveBeenCalled()
@@ -236,10 +247,150 @@ describe('Product Hunt launch cron route', () => {
       batchSize: 50,
       productHuntUrl: null,
     })
+    expect(mockResolveProductHuntLaunchUrl).toHaveBeenCalledWith({
+      candidateUrls: undefined,
+      explicitUrl: null,
+      handoffUrls: [],
+      publicUrl: null,
+    })
     expect(mockRunProductHuntSocialAutomation).not.toHaveBeenCalled()
     expect(
       mockSendProductHuntLaunchIssueAdminNotification
     ).not.toHaveBeenCalled()
+  })
+
+  it('uses Product Hunt referrer handoffs as verified URL candidates', async () => {
+    process.env.CRON_SECRET = 'expected-secret'
+    process.env.VERCEL = '1'
+    process.env.VERCEL_ENV = 'production'
+    mockGetProductHuntLaunchUrlHandoffCandidates.mockResolvedValue([
+      'https://www.producthunt.com/posts/custom-outname',
+    ])
+    mockResolveProductHuntLaunchUrl.mockResolvedValue({
+      candidates: [
+        {
+          ok: true,
+          status: 200,
+          url: 'https://www.producthunt.com/posts/custom-outname',
+        },
+      ],
+      source: 'handoff',
+      url: 'https://www.producthunt.com/posts/custom-outname',
+    })
+
+    const response = await GET(createCronRequest('Bearer expected-secret'))
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body).toMatchObject({
+      ok: true,
+      productHuntUrl: {
+        candidates: [
+          {
+            ok: true,
+            status: 200,
+            url: 'https://www.producthunt.com/posts/custom-outname',
+          },
+        ],
+        source: 'handoff',
+        url: 'https://www.producthunt.com/posts/custom-outname',
+      },
+    })
+    expect(mockResolveProductHuntLaunchUrl).toHaveBeenCalledWith({
+      candidateUrls: undefined,
+      explicitUrl: null,
+      handoffUrls: ['https://www.producthunt.com/posts/custom-outname'],
+      publicUrl: null,
+    })
+    expect(mockRunProductHuntLaunchAutomation).toHaveBeenCalledWith({
+      batchSize: 50,
+      productHuntUrl: 'https://www.producthunt.com/posts/custom-outname',
+    })
+    expect(mockRunProductHuntSocialAutomation).toHaveBeenCalledWith({
+      productHuntUrl: 'https://www.producthunt.com/posts/custom-outname',
+      socialSetId: null,
+      typefullyUserId: null,
+    })
+  })
+
+  it('does not read Product Hunt referrer handoffs when an explicit URL is configured', async () => {
+    process.env.CRON_SECRET = 'expected-secret'
+    process.env.PRODUCT_HUNT_LAUNCH_URL =
+      'https://www.producthunt.com/posts/outna-me'
+    process.env.VERCEL = '1'
+    process.env.VERCEL_ENV = 'production'
+    mockResolveProductHuntLaunchUrl.mockResolvedValue({
+      candidates: [],
+      source: 'env',
+      url: 'https://www.producthunt.com/posts/outna-me',
+    })
+
+    const response = await GET(createCronRequest('Bearer expected-secret'))
+
+    expect(response.status).toBe(200)
+    expect(mockGetProductHuntLaunchUrlHandoffCandidates).not.toHaveBeenCalled()
+    expect(mockResolveProductHuntLaunchUrl).toHaveBeenCalledWith({
+      candidateUrls: undefined,
+      explicitUrl: 'https://www.producthunt.com/posts/outna-me',
+      handoffUrls: [],
+      publicUrl: null,
+    })
+  })
+
+  it('continues launch automation and alerts when Product Hunt URL handoff lookup fails', async () => {
+    process.env.CRON_SECRET = 'expected-secret'
+    process.env.VERCEL = '1'
+    process.env.VERCEL_ENV = 'production'
+    mockGetProductHuntLaunchUrlHandoffCandidates.mockRejectedValue(
+      new Error('launch_feedback table missing')
+    )
+
+    const response = await GET(createCronRequest('Bearer expected-secret'))
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body).toMatchObject({
+      issues: [
+        {
+          details: ['launch_feedback table missing'],
+          key: 'product_hunt_url_handoff',
+          message:
+            'Product Hunt URL handoff lookup failed before URL discovery completed.',
+          severity: 'warning',
+        },
+      ],
+      ok: true,
+    })
+    expect(mockResolveProductHuntLaunchUrl).toHaveBeenCalledWith({
+      candidateUrls: undefined,
+      explicitUrl: null,
+      handoffUrls: [],
+      publicUrl: null,
+    })
+    expect(mockRunProductHuntLaunchAutomation).toHaveBeenCalledWith({
+      batchSize: 50,
+      productHuntUrl: null,
+    })
+    expect(mockRunProductHuntSocialAutomation).toHaveBeenCalledWith({
+      productHuntUrl: null,
+      socialSetId: null,
+      typefullyUserId: null,
+    })
+    expect(
+      mockSendProductHuntLaunchIssueAdminNotification
+    ).toHaveBeenCalledWith({
+      dedupeKey: expect.stringMatching(PRODUCT_HUNT_ISSUE_DEDUPE_KEY_PATTERN),
+      issues: [
+        {
+          details: ['launch_feedback table missing'],
+          key: 'product_hunt_url_handoff',
+          message:
+            'Product Hunt URL handoff lookup failed before URL discovery completed.',
+          severity: 'warning',
+        },
+      ],
+      runAtIso: expect.any(String),
+    })
   })
 
   it('keeps Typefully social automation isolated when email automation fails', async () => {
