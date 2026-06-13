@@ -133,14 +133,12 @@ function createPublishAtValue(post: ProductHuntSocialPost, now: Date): string {
   return post.publishAtIso
 }
 
-async function findTypefullyConnection(userId?: string | null) {
+async function findTypefullyConnection(userId: string) {
   const filters = [
     eq(userConnections.connectorId, TYPEFULLY_CONNECTOR_ID),
     eq(userConnections.status, 'active'),
+    eq(userConnections.userId, userId),
   ]
-  if (userId) {
-    filters.push(eq(userConnections.userId, userId))
-  }
 
   const [row] = await db
     .select({ userId: userConnections.userId })
@@ -193,11 +191,52 @@ async function resolveTypefullySocialSet(input: {
   const response = await typefullyJson<{ results?: TypefullySocialSet[] }>({
     apiKey: input.apiKey,
     path: '/v2/social-sets',
-    query: { limit: '1' },
+    query: { limit: '2' },
   })
 
-  const socialSet = response.results?.at(0)
-  return socialSet ? String(socialSet.id) : null
+  const socialSets = response.results ?? []
+  if (socialSets.length === 1) {
+    const [socialSet] = socialSets
+    return String(socialSet.id)
+  }
+  if (socialSets.length > 1) {
+    throw new Error(
+      'Multiple Typefully social sets are available. Configure PRODUCT_HUNT_TYPEFULLY_SOCIAL_SET_ID before running launch social automation.'
+    )
+  }
+  return null
+}
+
+function getConfiguredTypefullyApiKey(value?: string | null): string | null {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : null
+}
+
+async function resolveTypefullyApiKey(input: {
+  apiKey?: string | null
+  typefullyUserId?: string | null
+}): Promise<{ apiKey: string } | { reason: string }> {
+  const configuredApiKey = getConfiguredTypefullyApiKey(input.apiKey)
+  if (configuredApiKey) {
+    return { apiKey: configuredApiKey }
+  }
+
+  const userId = input.typefullyUserId?.trim()
+  if (!userId) {
+    return { reason: 'typefully_configuration_missing' }
+  }
+
+  const connection = await findTypefullyConnection(userId)
+  if (!connection) {
+    return { reason: 'typefully_connection_missing' }
+  }
+
+  const credentialResult = await readConnectorCredential({
+    connectorId: TYPEFULLY_CONNECTOR_ID,
+    userId: connection.userId,
+  })
+  const credential = credentialResult.credential as TypefullyCredential
+  return { apiKey: getTypefullyApiKey(credential) }
 }
 
 async function findExistingDraft(input: {
@@ -438,6 +477,7 @@ async function runSocialPost(input: {
 }
 
 export async function runProductHuntSocialAutomation(input: {
+  apiKey?: string | null
   now?: Date
   productHuntUrl: string | null
   socialSetId?: string | null
@@ -451,23 +491,21 @@ export async function runProductHuntSocialAutomation(input: {
 
   const now = input.now ?? new Date()
   const posts: ProductHuntSocialAutomationResult['posts'] = []
-  const connection = await findTypefullyConnection(input.typefullyUserId)
-
-  if (!connection) {
-    return createSkippedSocialAutomationResult({
-      reason: 'typefully_connection_missing',
-    })
-  }
 
   let apiKey: string
   let socialSetId: string | null
   try {
-    const credentialResult = await readConnectorCredential({
-      connectorId: TYPEFULLY_CONNECTOR_ID,
-      userId: connection.userId,
+    const apiKeyResolution = await resolveTypefullyApiKey({
+      apiKey: input.apiKey,
+      typefullyUserId: input.typefullyUserId,
     })
-    const credential = credentialResult.credential as TypefullyCredential
-    apiKey = getTypefullyApiKey(credential)
+    if ('reason' in apiKeyResolution) {
+      return createSkippedSocialAutomationResult({
+        reason: apiKeyResolution.reason,
+      })
+    }
+
+    apiKey = apiKeyResolution.apiKey
     socialSetId = await resolveTypefullySocialSet({
       apiKey,
       configuredSocialSetId: input.socialSetId,

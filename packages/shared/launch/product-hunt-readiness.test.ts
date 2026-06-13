@@ -78,6 +78,7 @@ describe('Product Hunt launch readiness', () => {
   it('warns when production admin notifications cannot be delivered', () => {
     const result = getProductHuntLaunchReadiness({
       CRON_SECRET: 'secret',
+      PRODUCT_HUNT_TYPEFULLY_API_KEY: 'tf_launch_key',
       RESEND_API_KEY: 're_test',
       VERCEL: '1',
       VERCEL_ENV: 'production',
@@ -98,6 +99,7 @@ describe('Product Hunt launch readiness', () => {
       CRON_SECRET: 'secret',
       PRODUCT_HUNT_LAUNCH_EMAIL_BATCH_SIZE: '500',
       PRODUCT_HUNT_LAUNCH_URL: 'https://example.com/not-product-hunt',
+      PRODUCT_HUNT_TYPEFULLY_API_KEY: 'tf_launch_key',
       RESEND_API_KEY: 're_test',
       VERCEL: '1',
       VERCEL_ENV: 'production',
@@ -121,8 +123,8 @@ describe('Product Hunt launch readiness', () => {
     const result = getProductHuntLaunchReadiness({
       CRON_SECRET: 'secret',
       PRODUCT_HUNT_LAUNCH_URL: 'https://www.producthunt.com/posts/outna-me',
+      PRODUCT_HUNT_TYPEFULLY_API_KEY: 'tf_launch_key',
       PRODUCT_HUNT_TYPEFULLY_SOCIAL_SET_ID: '123',
-      PRODUCT_HUNT_TYPEFULLY_USER_ID: 'user_123',
       RESEND_API_KEY: 're_test',
       VERCEL: '1',
       VERCEL_ENV: 'production',
@@ -140,6 +142,45 @@ describe('Product Hunt launch readiness', () => {
     })
     expect(getCheck(result, 'admin_notifications')).toMatchObject({
       status: 'ready',
+    })
+  })
+
+  it('blocks Typefully social automation when no explicit Typefully auth is configured', () => {
+    const result = getProductHuntLaunchReadiness({
+      CRON_SECRET: 'secret',
+      RESEND_API_KEY: 're_test',
+      VERCEL: '1',
+      VERCEL_ENV: 'production',
+      WAITLIST_ADMIN_EMAIL: 'admin@example.com',
+      WAITLIST_FROM_EMAIL: 'OUTNA.ME <waitlist@example.com>',
+      WAITLIST_REPLY_TO: 'reply@example.com',
+    })
+
+    expect(result.ok).toBe(false)
+    expect(getCheck(result, 'typefully_delivery')).toMatchObject({
+      message:
+        'Missing explicit Typefully configuration. Set PRODUCT_HUNT_TYPEFULLY_API_KEY, or set PRODUCT_HUNT_TYPEFULLY_USER_ID with PRODUCT_HUNT_TYPEFULLY_SOCIAL_SET_ID. The cron will not fall back to the first stored Typefully account.',
+      status: 'blocked',
+    })
+  })
+
+  it('warns when Typefully API key is configured without an explicit social set', () => {
+    const result = getProductHuntLaunchReadiness({
+      CRON_SECRET: 'secret',
+      PRODUCT_HUNT_TYPEFULLY_API_KEY: 'tf_launch_key',
+      RESEND_API_KEY: 're_test',
+      VERCEL: '1',
+      VERCEL_ENV: 'production',
+      WAITLIST_ADMIN_EMAIL: 'admin@example.com',
+      WAITLIST_FROM_EMAIL: 'OUTNA.ME <waitlist@example.com>',
+      WAITLIST_REPLY_TO: 'reply@example.com',
+    })
+
+    expect(result.ok).toBe(true)
+    expect(getCheck(result, 'typefully_delivery')).toMatchObject({
+      message:
+        'Typefully API key is configured. PRODUCT_HUNT_TYPEFULLY_SOCIAL_SET_ID is strongly recommended; without it, automation only proceeds if the API key exposes exactly one social set.',
+      status: 'warning',
     })
   })
 })

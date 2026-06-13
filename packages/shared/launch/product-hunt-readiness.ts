@@ -239,21 +239,51 @@ function createTypefullyDeliveryCheck(
   }
 
   if (
+    getEnvValue(env, 'PRODUCT_HUNT_TYPEFULLY_API_KEY') &&
+    getEnvValue(env, 'PRODUCT_HUNT_TYPEFULLY_SOCIAL_SET_ID')
+  ) {
+    return {
+      key: 'typefully_delivery',
+      message: 'Typefully API key and social set routing env are configured.',
+      status: 'ready',
+    }
+  }
+
+  if (getEnvValue(env, 'PRODUCT_HUNT_TYPEFULLY_API_KEY')) {
+    return {
+      key: 'typefully_delivery',
+      message:
+        'Typefully API key is configured. PRODUCT_HUNT_TYPEFULLY_SOCIAL_SET_ID is strongly recommended; without it, automation only proceeds if the API key exposes exactly one social set.',
+      status: 'warning',
+    }
+  }
+
+  if (
     getEnvValue(env, 'PRODUCT_HUNT_TYPEFULLY_USER_ID') &&
     getEnvValue(env, 'PRODUCT_HUNT_TYPEFULLY_SOCIAL_SET_ID')
   ) {
     return {
       key: 'typefully_delivery',
-      message: 'Typefully user and social set routing env are configured.',
+      message:
+        'Typefully stored connection user and social set routing env are configured.',
       status: 'ready',
+    }
+  }
+
+  if (getEnvValue(env, 'PRODUCT_HUNT_TYPEFULLY_USER_ID')) {
+    return {
+      key: 'typefully_delivery',
+      message:
+        'Typefully stored connection user is configured, but PRODUCT_HUNT_TYPEFULLY_SOCIAL_SET_ID is required to avoid publishing to the wrong social set.',
+      status: 'blocked',
     }
   }
 
   return {
     key: 'typefully_delivery',
     message:
-      'Typefully env routing is optional; cron will use the first active typefully.api_key connection and first accessible social set.',
-    status: 'warning',
+      'Missing explicit Typefully configuration. Set PRODUCT_HUNT_TYPEFULLY_API_KEY, or set PRODUCT_HUNT_TYPEFULLY_USER_ID with PRODUCT_HUNT_TYPEFULLY_SOCIAL_SET_ID. The cron will not fall back to the first stored Typefully account.',
+    status: 'blocked',
   }
 }
 

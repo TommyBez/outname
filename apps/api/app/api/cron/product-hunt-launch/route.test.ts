@@ -76,6 +76,7 @@ const ENV_KEYS = [
   'PRODUCT_HUNT_LAUNCH_URL_CANDIDATES',
   'PRODUCT_HUNT_SOCIAL_AUTOMATION_ENABLED',
   'PRODUCT_HUNT_SOCIAL_ATTACH_MEDIA',
+  'PRODUCT_HUNT_TYPEFULLY_API_KEY',
   'PRODUCT_HUNT_TYPEFULLY_SOCIAL_SET_ID',
   'PRODUCT_HUNT_TYPEFULLY_USER_ID',
   'RESEND_API_KEY',
@@ -335,6 +336,7 @@ describe('Product Hunt launch cron route', () => {
       productHuntUrl: 'https://www.producthunt.com/posts/custom-outname',
     })
     expect(mockRunProductHuntSocialAutomation).toHaveBeenCalledWith({
+      apiKey: null,
       productHuntUrl: 'https://www.producthunt.com/posts/custom-outname',
       socialSetId: null,
       typefullyUserId: null,
@@ -400,6 +402,7 @@ describe('Product Hunt launch cron route', () => {
       productHuntUrl: null,
     })
     expect(mockRunProductHuntSocialAutomation).toHaveBeenCalledWith({
+      apiKey: null,
       productHuntUrl: null,
       socialSetId: null,
       typefullyUserId: null,
@@ -468,8 +471,8 @@ describe('Product Hunt launch cron route', () => {
 
   it('keeps Typefully social automation isolated when email automation fails', async () => {
     process.env.CRON_SECRET = 'expected-secret'
+    process.env.PRODUCT_HUNT_TYPEFULLY_API_KEY = 'tf_launch_key'
     process.env.PRODUCT_HUNT_TYPEFULLY_SOCIAL_SET_ID = 'social-set-1'
-    process.env.PRODUCT_HUNT_TYPEFULLY_USER_ID = 'user-1'
     process.env.VERCEL = '1'
     process.env.VERCEL_ENV = 'production'
     mockRunProductHuntLaunchAutomation.mockRejectedValue(
@@ -516,14 +519,17 @@ describe('Product Hunt launch cron route', () => {
       },
     })
     expect(mockRunProductHuntSocialAutomation).toHaveBeenCalledWith({
+      apiKey: 'tf_launch_key',
       productHuntUrl: null,
       socialSetId: 'social-set-1',
-      typefullyUserId: 'user-1',
+      typefullyUserId: null,
     })
   })
 
   it('keeps email automation isolated when Typefully social automation fails', async () => {
     process.env.CRON_SECRET = 'expected-secret'
+    process.env.PRODUCT_HUNT_TYPEFULLY_API_KEY = 'tf_launch_key'
+    process.env.PRODUCT_HUNT_TYPEFULLY_SOCIAL_SET_ID = 'social-set-1'
     process.env.VERCEL = '1'
     process.env.VERCEL_ENV = 'production'
     mockRunProductHuntLaunchAutomation.mockResolvedValue({

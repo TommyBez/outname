@@ -45,6 +45,7 @@ interface ProductHuntLaunchIssue {
 }
 
 const ALERTABLE_SOCIAL_SKIP_REASONS = new Set([
+  'typefully_configuration_missing',
   'post_window_expired',
   'typefully_connection_missing',
   'typefully_request_failed',
@@ -336,6 +337,7 @@ export async function GET(req: NextRequest) {
       } else {
         try {
           social = await runProductHuntSocialAutomation({
+            apiKey: getNullableEnv('PRODUCT_HUNT_TYPEFULLY_API_KEY'),
             productHuntUrl,
             socialSetId: getNullableEnv('PRODUCT_HUNT_TYPEFULLY_SOCIAL_SET_ID'),
             typefullyUserId: getNullableEnv('PRODUCT_HUNT_TYPEFULLY_USER_ID'),

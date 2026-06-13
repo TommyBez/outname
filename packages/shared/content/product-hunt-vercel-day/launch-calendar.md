@@ -18,9 +18,9 @@ All times include both Rome time and Product Hunt launch-day context.
 | Wed Jun 17, 11:00 CEST | X + LinkedIn | Typefully cron plan `2026-06-17-recap-*` | Share learnings, not bragging, when the Product Hunt URL is set. |
 | Wed Jun 17, 12:00 CEST | X + LinkedIn | Typefully cron plan `2026-06-17-recap-fallback-*` | Share a truthful fallback recap if Product Hunt remains unavailable to automation. |
 
-## Required Environment
+## Launch Environment
 
-Set these in the API Vercel project before launch:
+Set these in the API Vercel project before launch when available. `PRODUCT_HUNT_TYPEFULLY_SOCIAL_SET_ID` is strongly recommended because it removes social-set ambiguity; without it, the Typefully API key is accepted only if it exposes exactly one social set.
 
 ```bash
 CRON_SECRET=<already used by cron>
@@ -30,9 +30,13 @@ PRODUCT_HUNT_LAUNCH_AUTOMATION_ENABLED=true
 PRODUCT_HUNT_LAUNCH_EMAIL_BATCH_SIZE=50
 PRODUCT_HUNT_SOCIAL_AUTOMATION_ENABLED=true
 PRODUCT_HUNT_SOCIAL_ATTACH_MEDIA=true
+PRODUCT_HUNT_TYPEFULLY_API_KEY=<Typefully API key for the launch account>
+PRODUCT_HUNT_TYPEFULLY_SOCIAL_SET_ID=<typefully social set id>
 PRODUCT_HUNT_LAUNCH_URL_CANDIDATES=https://www.producthunt.com/posts/outna-me,https://www.producthunt.com/posts/outna-me-2,https://www.producthunt.com/posts/outname,https://www.producthunt.com/posts/outname-2,https://www.producthunt.com/posts/outna-me-vercel-day,https://www.producthunt.com/posts/outname-vercel-day
 ```
 
 If `PRODUCT_HUNT_LAUNCH_URL` is missing, the Product Hunt-specific live and recap messages intentionally skip. Fallback email and social events then point to the launch landing page with explicit copy that no Product Hunt URL was available to automation.
 
 The June 13 pre-launch social posts can still backfill until Monday Jun 15, 09:00 CEST if the PR is merged after the planned Saturday slot. After that cutoff, automation skips them so the Monday reminder remains the next social touchpoint.
+
+Typefully must be configured explicitly. Do not rely on a stored account fallback; the launch cron skips and alerts if it cannot identify the intended Typefully API key/social set.
