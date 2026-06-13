@@ -62,7 +62,6 @@ const basePersistedEvent: AgentEvent = {
   payload: {
     streamToken: 'stream_123',
   },
-  publisherWorkflowRunId: null,
   queuedAt: new Date('2026-05-23T09:58:00.000Z'),
   scheduledFor: null,
   source: 'manual',

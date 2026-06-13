@@ -6,7 +6,6 @@ const {
   mockMarkEventRunning,
   mockMarkEventTerminal,
   mockRefreshAgentFileCache,
-  mockSetEventPublisherWorkflowRunId,
   mockStopAllBrokeredHttpSandboxesForRun,
   mockStopAllRepoWorkspacesForRun,
   mockStopAllToolSandboxesForRun,
@@ -16,7 +15,6 @@ const {
   mockMarkEventRunning: vi.fn(),
   mockMarkEventTerminal: vi.fn(),
   mockRefreshAgentFileCache: vi.fn(),
-  mockSetEventPublisherWorkflowRunId: vi.fn(),
   mockStopAllBrokeredHttpSandboxesForRun: vi.fn(),
   mockStopAllRepoWorkspacesForRun: vi.fn(),
   mockStopAllToolSandboxesForRun: vi.fn(),
@@ -29,7 +27,6 @@ vi.mock('@outname/ai/agent-runtime/server/agent-event-store', () => ({
   markEventHeartbeat: mockMarkEventHeartbeat,
   markEventRunning: mockMarkEventRunning,
   markEventTerminal: mockMarkEventTerminal,
-  setEventPublisherWorkflowRunId: mockSetEventPublisherWorkflowRunId,
 }))
 
 vi.mock('@outname/ai/agent-runtime/server/file-cache', () => ({
@@ -54,7 +51,6 @@ import {
   markAgentEventHeartbeatStep,
   markAgentEventRunningStep,
   markAgentEventTerminalStep,
-  setAgentEventPublisherWorkflowRunIdStep,
 } from './event-store'
 
 describe('event step wrappers', () => {
@@ -64,7 +60,6 @@ describe('event step wrappers', () => {
       concurrencyKey: 'key_123',
       id: 'evt_123',
       payload: { foo: 'bar' },
-      publisherWorkflowRunId: 'wrun_publisher',
       source: 'manual',
       status: 'running',
       type: 'heartbeat',
@@ -76,7 +71,6 @@ describe('event step wrappers', () => {
       concurrencyKey: 'key_123',
       id: 'evt_123',
       payload: { foo: 'bar' },
-      publisherWorkflowRunId: 'wrun_publisher',
       source: 'manual',
       status: 'running',
       type: 'heartbeat',
@@ -103,11 +97,6 @@ describe('event step wrappers', () => {
       lastError: 'boom',
       status: 'failed',
     })
-    await setAgentEventPublisherWorkflowRunIdStep({
-      eventId: 'evt_123',
-      publisherWorkflowRunId: 'wrun_publisher',
-    })
-
     expect(mockMarkEventRunning).toHaveBeenCalledWith({
       eventId: 'evt_123',
       workflowRunId: 'wrun_123',
@@ -117,10 +106,6 @@ describe('event step wrappers', () => {
       eventId: 'evt_123',
       lastError: 'boom',
       status: 'failed',
-    })
-    expect(mockSetEventPublisherWorkflowRunId).toHaveBeenCalledWith({
-      eventId: 'evt_123',
-      publisherWorkflowRunId: 'wrun_publisher',
     })
   })
 })

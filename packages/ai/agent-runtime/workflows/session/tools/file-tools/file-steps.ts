@@ -2,69 +2,56 @@ import {
   getSystemSandbox,
   isMissingSystemSandboxError,
 } from '@outname/ai/agent-runtime/server/agent-sandbox'
-import {
-  nonRetryableStepError,
-  nonRetryableStepErrorFromUnknown,
-} from '@outname/shared/server/workflow-step-errors'
-import type { ToolExecutionOptions } from 'ai'
+import { nonRetryableStepErrorFromUnknown } from '@outname/shared/server/workflow-step-errors'
 import { grepLiveFiles } from '../sandbox-file-helpers/grep'
 import { listLiveFiles } from '../sandbox-file-helpers/list'
 import {
-  createSystemBashTool,
-  isSystemSandboxFileNotFoundError,
-} from './system-bash-tool'
+  assertWritableSandboxPath,
+  FILE_TOOL_SANDBOX_ROOT,
+  normalizeSandboxPath,
+} from '../sandbox-file-helpers/paths'
+import { readLiveFile } from '../sandbox-file-helpers/read'
+import { ensureParentDirectories } from '../sandbox-file-helpers/write'
 
-type BashToolExecutor<TInput> = (
-  input: TInput,
-  options: ToolExecutionOptions
-) => Promise<unknown>
-
-export async function readFileViaBashTool(args: {
+export async function readFileStep(args: {
   agentId: string
-  options: ToolExecutionOptions
   path: string
 }): Promise<unknown> {
   'use step'
-  const bashTool = await createSystemBashToolForStep(args.agentId)
-  const execute = bashTool.tools.readFile.execute as
-    | BashToolExecutor<{ path: string }>
-    | undefined
-  if (!execute) {
-    throw nonRetryableStepError('readFile tool execute handler is unavailable')
-  }
-  try {
-    return await execute({ path: args.path }, args.options)
-  } catch (error) {
-    if (isSystemSandboxFileNotFoundError(error)) {
-      return {
-        content: null,
-        error: error.message,
-        exists: false,
-      }
+  const sandbox = await getSystemSandboxForStep(args.agentId)
+  const content = await readLiveFile(sandbox, args.path)
+  if (content === null) {
+    const safe = normalizeSandboxPath(args.path)
+    return {
+      content: null,
+      error: `readFile: file not found: ${safe.relPath}`,
+      exists: false,
     }
-    throw error
   }
+  return { content }
 }
 
-export async function writeFileViaBashTool(args: {
+export async function writeFileStep(args: {
   agentId: string
   content: string
-  options: ToolExecutionOptions
   path: string
 }): Promise<unknown> {
   'use step'
-  const bashTool = await createSystemBashToolForStep(args.agentId)
-  const execute = bashTool.tools.writeFile.execute as
-    | BashToolExecutor<{ content: string; path: string }>
-    | undefined
-  if (!execute) {
-    throw nonRetryableStepError('writeFile tool execute handler is unavailable')
-  }
-  const toolResult = await execute(
-    { content: args.content, path: args.path },
-    args.options
-  )
-  return toolResult
+  const sandbox = await getSystemSandboxForStep(args.agentId)
+  const safe = normalizeSandboxPath(args.path)
+  assertWritableSandboxPath(safe)
+  await ensureParentDirectories({
+    paths: [safe.absPath],
+    root: FILE_TOOL_SANDBOX_ROOT,
+    sandbox,
+  })
+  await sandbox.writeFiles([
+    {
+      content: Buffer.from(args.content, 'utf8'),
+      path: safe.absPath,
+    },
+  ])
+  return { success: true }
 }
 
 export async function listFilesStep(
@@ -92,22 +79,6 @@ export async function grepFilesStep(
   'use step'
   const sandbox = await getSystemSandboxForStep(agentId)
   return await grepLiveFiles(sandbox, input)
-}
-
-async function createSystemBashToolForStep(
-  agentId: string
-): Promise<Awaited<ReturnType<typeof createSystemBashTool>>> {
-  try {
-    return await createSystemBashTool({ agentId })
-  } catch (error) {
-    if (isMissingSystemSandboxError(error, agentId)) {
-      throw nonRetryableStepErrorFromUnknown(
-        error,
-        `system sandbox tools unavailable for agent "${agentId}"`
-      )
-    }
-    throw error
-  }
 }
 
 async function getSystemSandboxForStep(

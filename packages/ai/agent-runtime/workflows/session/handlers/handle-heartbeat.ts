@@ -1,8 +1,9 @@
 import { emitActivity } from '@outname/ai/agent-runtime/server/run-events'
+import { createAssistantTextMessage } from '@outname/ai/agent-runtime/shared/message-utils'
 import type { BuildAgentTool } from '@outname/ai/tools/sub-agents/agent-tool'
 import { currentWorkflowRunId } from '@outname/shared/server/workflow-run-id'
 import { getWritable } from '@outname/workflow/runtime'
-import type { StepResult, ToolSet, UIMessage, UIMessageChunk } from 'ai'
+import type { StepResult, ToolSet, UIMessageChunk } from 'ai'
 import {
   buildAgent,
   buildDreamingKickoff,
@@ -29,10 +30,8 @@ import { finalizeRun } from '../steps/finalize-run'
 import { initRun } from '../steps/init-run'
 import { persistAgentEventTranscriptStep } from '../steps/persist-event-transcript'
 import { checkBudgetOrFinalize } from './handle-heartbeat/budget'
-import {
-  activityMessage,
-  type HeartbeatMode,
-} from './handle-heartbeat/messages'
+
+type HeartbeatMode = 'normal' | 'dreaming'
 
 export async function handleHeartbeat(input: {
   agentId: string
@@ -41,7 +40,7 @@ export async function handleHeartbeat(input: {
   localDate?: string
   manual?: boolean
   mode?: HeartbeatMode
-  replyToken?: string
+  replyToken: string
   scheduledAt?: string
   userId: string
 }): Promise<void> {
@@ -50,7 +49,7 @@ export async function handleHeartbeat(input: {
   const nowIso = input.scheduledAt ?? new Date().toISOString()
   const dreamingLocalDate = input.localDate ?? nowIso.slice(0, 10)
   const runId = currentWorkflowRunId()
-  const outputNamespace = input.replyToken ?? runId
+  const outputNamespace = input.replyToken
   const writable = getWritable<UIMessageChunk>({ namespace: outputNamespace })
 
   try {
@@ -115,18 +114,16 @@ export async function handleHeartbeat(input: {
       writable,
       stopWhen: resolveStepLimit(stepLimitInput),
     })
-    if (budgetCheck.userId) {
-      await recordTokenUsageStep({
-        userId: budgetCheck.userId,
-        agentId,
-        rootAgentId: agentId,
-        sourceType: mode === 'dreaming' ? 'dreaming' : 'heartbeat',
-        sourceId: runId,
-        inferenceProvider: meta.inferenceProvider,
-        model: meta.model,
-        generations: buildGenerationUsageObservations(result),
-      })
-    }
+    await recordTokenUsageStep({
+      userId: budgetCheck.userId,
+      agentId,
+      rootAgentId: agentId,
+      sourceType: mode === 'dreaming' ? 'dreaming' : 'heartbeat',
+      sourceId: runId,
+      inferenceProvider: meta.inferenceProvider,
+      model: meta.model,
+      generations: buildGenerationUsageObservations(result),
+    })
 
     await finalizeHeartbeatRun({
       agentId,
@@ -150,17 +147,6 @@ export async function handleHeartbeat(input: {
     await emitActivity(runId, activityMessage(mode, 'Run failed'), { message })
     await finalizeRun(runId, 'failed', message)
     throw err
-  }
-}
-
-function createAssistantTextMessage(input: {
-  id: string
-  text: string
-}): UIMessage {
-  return {
-    id: input.id,
-    parts: [{ text: input.text, type: 'text' }],
-    role: 'assistant',
   }
 }
 
@@ -222,4 +208,8 @@ async function finalizeHeartbeatRun(input: {
       : undefined
   )
   await markRunCompletedStep(input)
+}
+
+function activityMessage(mode: HeartbeatMode, message: string): string {
+  return mode === 'dreaming' ? `Dreaming: ${message}` : message
 }

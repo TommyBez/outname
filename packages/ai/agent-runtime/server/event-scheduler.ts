@@ -1,15 +1,19 @@
 import 'server-only'
 import {
-  scheduledConcurrencyKey,
+  scheduledBucketKey,
   scheduledDailyKey,
 } from '@outname/ai/agent-runtime/server/agent-event-keys'
-import { reconcileActiveAgentEvent } from '@outname/ai/agent-runtime/server/agent-event-reconciliation'
+import {
+  reconcileActiveAgentEvent,
+  reconcileActiveAgentEventWithOutcome,
+} from '@outname/ai/agent-runtime/server/agent-event-reconciliation'
 import {
   listExpiredStartingEvents,
   listQueuedEvents,
   listRunningEvents,
   resetStartingEvent,
 } from '@outname/ai/agent-runtime/server/agent-event-store'
+import { readableAgentEventWorkflowRunId } from '@outname/ai/agent-runtime/server/agent-event-workflow-run-id'
 import {
   enqueueAgentEvent,
   tryStartAgentEvent,
@@ -120,8 +124,11 @@ async function recoverExpiredStartingEvents(
     if (reconciled.status !== 'starting') {
       continue
     }
-    const alive = reconciled.workflowRunId
-      ? await isWorkflowRunAlive(reconciled.workflowRunId)
+    const workflowRunId = readableAgentEventWorkflowRunId(
+      reconciled.workflowRunId
+    )
+    const alive = workflowRunId
+      ? await isWorkflowRunAlive(workflowRunId)
       : false
     if (alive) {
       continue
@@ -140,25 +147,23 @@ async function recoverRunningEvents(
 ): Promise<void> {
   const events = await listRunningEvents()
   for (const event of events) {
-    const beforeStatus = event.status
-    const beforeError = event.lastError
-    const reconciled = await reconcileActiveAgentEvent(event, now)
-    if (
-      reconciled.status === beforeStatus &&
-      reconciled.lastError === beforeError
-    ) {
-      counters.runningHealthy += 1
-      continue
-    }
-    if (reconciled.status === 'completed') {
-      counters.completedRecovered += 1
-      continue
-    }
-    if (reconciled.status === 'failed') {
-      if (reconciled.lastError === 'running event heartbeat is stale') {
+    const result = await reconcileActiveAgentEventWithOutcome(event, now)
+    switch (result.outcome) {
+      case 'completed':
+        counters.completedRecovered += 1
+        break
+      case 'failed-stale':
         counters.runningStaleFailed += 1
-      } else {
+        break
+      case 'failed-workflow':
         counters.failedRecovered += 1
+        break
+      case 'unchanged':
+        counters.runningHealthy += 1
+        break
+      default: {
+        const exhaustive: never = result.outcome
+        throw new Error(`Unsupported reconciliation outcome: ${exhaustive}`)
       }
     }
   }
@@ -222,7 +227,7 @@ function resolveHeartbeatDue(input: {
     return null
   }
   return {
-    key: scheduledConcurrencyKey({
+    key: scheduledBucketKey({
       agentId: a.id,
       intervalMinutes: a.heartbeatIntervalMinutes,
       now: input.now,

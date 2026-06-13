@@ -1,7 +1,6 @@
 'use client'
 
 import type { AgentEventSummary } from '@outname/ai/agent-runtime/shared/event-types'
-import { useMemo } from 'react'
 import {
   shouldStreamLiveTranscript,
   type UseAgentEventTranscriptResult,
@@ -16,47 +15,7 @@ export function useAgentEventTranscript(input: {
   onWorkflowUnavailable?: () => void
 }): UseAgentEventTranscriptResult {
   const { agentId, event, onWorkflowUnavailable } = input
-  const currentEvent = useMemo(() => {
-    if (
-      !(
-        event?.id &&
-        event.queuedAt &&
-        event.source &&
-        event.status &&
-        event.type &&
-        event.attempt !== null
-      )
-    ) {
-      return null
-    }
-    return {
-      attempt: event.attempt,
-      blockedByEventId: event.blockedByEventId,
-      completedAt: event.completedAt,
-      id: event.id,
-      lastError: event.lastError,
-      preview: event.preview,
-      queuedAt: event.queuedAt,
-      source: event.source,
-      startedAt: event.startedAt,
-      status: event.status,
-      type: event.type,
-      workflowRunId: event.workflowRunId,
-    } satisfies AgentEventSummary
-  }, [
-    event?.attempt,
-    event?.blockedByEventId,
-    event?.completedAt,
-    event?.id,
-    event?.lastError,
-    event?.preview,
-    event?.queuedAt,
-    event?.source,
-    event?.startedAt,
-    event?.status,
-    event?.type,
-    event?.workflowRunId,
-  ])
+  const currentEvent = event
 
   const shouldUseLiveStream = currentEvent
     ? shouldStreamLiveTranscript(currentEvent)

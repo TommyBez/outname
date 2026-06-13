@@ -1,12 +1,10 @@
 import { destroySkillSandbox } from '@outname/ai/agent-runtime/server/agent-skill-sandbox'
-import { db } from '@outname/db'
-import { agent } from '@outname/db/schema'
 import {
   systemSandboxTags,
   withVercelSandboxCredentials,
 } from '@outname/shared/server/vercel-sandbox-config'
 import { type NetworkPolicy, Sandbox } from '@vercel/sandbox'
-import { eq } from 'drizzle-orm'
+import { createAgentSandboxAccessor } from './agent-sandbox-accessor'
 
 // Keep this surface narrower than the full SDK union so callers only see the
 // create-by-runtime options that matter for system sandboxes.
@@ -33,46 +31,11 @@ const SYSTEM_SANDBOX_CREATE_OPTIONS: CreateOptions = {
   networkPolicy: 'deny-all',
 }
 
-function nameFor(agentId: string): string {
-  return `agent-${agentId}-system`
-}
-
-function missingSystemSandboxMessage(agentId: string): string {
-  return `Agent ${agentId} has no system sandbox yet — startupSystemSandbox must run first.`
-}
-
 export function isMissingSystemSandboxError(
   error: unknown,
   agentId: string
 ): boolean {
-  return (
-    error instanceof Error &&
-    error.message === missingSystemSandboxMessage(agentId)
-  )
-}
-
-async function readSandboxId(agentId: string): Promise<string | null> {
-  const [row] = await db
-    .select({
-      systemId: agent.sandboxSystemId,
-    })
-    .from(agent)
-    .where(eq(agent.id, agentId))
-    .limit(1)
-  return row?.systemId ?? null
-}
-
-async function writeSandboxId(
-  agentId: string,
-  sandboxId: string
-): Promise<void> {
-  await db
-    .update(agent)
-    .set({
-      sandboxSystemId: sandboxId,
-      updatedAt: new Date(),
-    })
-    .where(eq(agent.id, agentId))
+  return systemSandboxAccessor.isMissingSandboxError(error, agentId)
 }
 
 export interface EnsureResult {
@@ -85,8 +48,8 @@ export async function ensureSystemSandbox(
 ): Promise<EnsureResult> {
   // The SDK resumes persistent sandboxes by name, so `sandbox_system_id`
   // stores that stable name rather than an opaque SDK id.
-  const persistedName = await readSandboxId(agentId)
-  const desiredName = nameFor(agentId)
+  const persistedName = await systemSandboxAccessor.readSandboxId(agentId)
+  const desiredName = systemSandboxAccessor.nameFor(agentId)
   let sandbox: Sandbox | null = null
 
   if (persistedName) {
@@ -110,7 +73,7 @@ export async function ensureSystemSandbox(
     )
     created = true
     if (persistedName !== desiredName) {
-      await writeSandboxId(agentId, desiredName)
+      await systemSandboxAccessor.writeSandboxId(agentId, desiredName)
     }
   }
 
@@ -137,36 +100,19 @@ export async function writeMarker(
 // Resume by name. Callers must cross this SDK boundary from inside a `"use
 // step"` body.
 export async function getSystemSandbox(agentId: string): Promise<Sandbox> {
-  const name = await readSandboxId(agentId)
-  if (!name) {
-    throw new Error(missingSystemSandboxMessage(agentId))
-  }
-  return Sandbox.get(withVercelSandboxCredentials({ name, resume: true }))
-}
-
-// Best-effort stop so the next operation resumes a fresh SDK session.
-export async function releaseSandbox(sandbox: Sandbox): Promise<void> {
-  try {
-    await sandbox.stop()
-  } catch {
-    /* ignore */
-  }
+  return await systemSandboxAccessor.getSandbox(agentId)
 }
 
 // Best-effort delete before removing the agent row so we do not leak a
 // persistent sandbox.
 export async function destroyAgentSandboxes(agentId: string): Promise<void> {
   await destroySkillSandbox(agentId)
-  const name = await readSandboxId(agentId)
-  if (!name) {
-    return
-  }
-  try {
-    const sb = await Sandbox.get(
-      withVercelSandboxCredentials({ name, resume: false })
-    )
-    await sb.delete()
-  } catch {
-    /* already gone or unreachable */
-  }
+  await systemSandboxAccessor.destroySandbox(agentId)
 }
+
+const systemSandboxAccessor = createAgentSandboxAccessor({
+  field: 'sandboxSystemId',
+  missingMessage: (agentId) =>
+    `Agent ${agentId} has no system sandbox yet — startupSystemSandbox must run first.`,
+  suffix: 'system',
+})

@@ -18,6 +18,10 @@ vi.mock('@outname/ai/agent-runtime/server/agent-event-store', () => ({
   getAgentEvent: mockGetAgentEvent,
 }))
 
+vi.mock('@outname/ai/agent-runtime/server/agent-event-transcript', () => ({
+  outputNamespaceForAgentEvent: vi.fn(() => 'stream_123'),
+}))
+
 vi.mock('@outname/auth/server/auth-guard', () => ({
   getSession: mockGetSession,
 }))
@@ -71,5 +75,33 @@ describe('events stream route', () => {
       namespace: 'stream_123',
       startIndex: 7,
     })
+  })
+
+  it('treats legacy starting sentinel workflow run ids as not started', async () => {
+    mockGetAgentEvent.mockResolvedValue({
+      agentId: 'agent_123',
+      id: 'evt_123',
+      payload: {},
+      type: 'heartbeat',
+      userId: 'user_123',
+      workflowRunId: 'starting:evt_123',
+    })
+
+    const request = new Request(
+      'http://localhost:3000/api/agents/agent_123/events/evt_123/stream'
+    )
+
+    const response = await GET(request, {
+      params: Promise.resolve({
+        agentId: 'agent_123',
+        eventId: 'evt_123',
+      }),
+    })
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toEqual({
+      error: 'event has not started yet',
+    })
+    expect(mockGetRun).not.toHaveBeenCalled()
   })
 })

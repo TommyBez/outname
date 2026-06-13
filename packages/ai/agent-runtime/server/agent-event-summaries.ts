@@ -4,13 +4,13 @@ import type { AgentEventSummary } from '@outname/ai/agent-runtime/shared/event-t
 import { db } from '@outname/db'
 import { type AgentEvent, agentEvents } from '@outname/db/schema'
 import { and, asc, eq, getTableColumns, inArray, lte, sql } from 'drizzle-orm'
+import { payloadAs } from '../shared/event-payload'
 import { reconcileActiveAgentEvent } from './agent-event-reconciliation'
 import {
   ACTIVE_EVENT_STATUSES,
-  type AgentEventPayloads,
   listRecentAgentEvents,
-  payloadAs,
 } from './agent-event-store'
+import { readableAgentEventWorkflowRunId } from './agent-event-workflow-run-id'
 
 const PREVIEW_LIMIT = 160
 
@@ -190,7 +190,7 @@ export function summarizeAgentEvent(
     startedAt: dateToIso(event.startedAt),
     status: event.status,
     type: event.type,
-    workflowRunId: readableWorkflowRunId(event.workflowRunId),
+    workflowRunId: readableAgentEventWorkflowRunId(event.workflowRunId),
   }
 }
 
@@ -274,7 +274,10 @@ function previewAgentEvent(event: AgentEvent): string | null {
     case 'heartbeat':
       return previewScheduledEvent('Heartbeat', event)
     case 'invocation':
-      return truncate(payloadAs<AgentEventPayloads['invocation']>(event).input)
+      return truncate(
+        payloadAs({ payload: event.payload, type: event.type }, 'invocation')
+          .input
+      )
     default: {
       const exhaustive: never = event.type
       return exhaustive
@@ -283,15 +286,7 @@ function previewAgentEvent(event: AgentEvent): string | null {
 }
 
 function previewScheduledEvent(label: string, event: AgentEvent): string {
-  const source = event.source === 'manual' ? 'manual' : event.source
-  return `${label} ${source}`
-}
-
-function readableWorkflowRunId(workflowRunId: string | null): string | null {
-  if (!(workflowRunId && !workflowRunId.startsWith('starting:'))) {
-    return null
-  }
-  return workflowRunId
+  return `${label} ${event.source}`
 }
 
 function truncate(value: string | null | undefined): string | null {

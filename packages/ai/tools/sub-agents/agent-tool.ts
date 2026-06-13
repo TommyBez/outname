@@ -4,14 +4,12 @@ import {
   type SubAgentToolOutput,
   subAgentModelText,
 } from '@outname/ai/agent-runtime/server/sub-agent-tool-output'
-import { getWritable } from '@outname/workflow/runtime'
-import { type Tool, tool, type UIMessageChunk } from 'ai'
+import { type Tool, tool } from 'ai'
 import { z } from 'zod'
 import { collectSubAgentMessages } from './invocation-stream'
 import {
-  progressStreamNamespace,
-  progressUiWriter,
   type SubAgentProgressTarget,
+  writePreliminarySubAgentOutput,
 } from './progress-target'
 
 export interface AgentToolHandle {
@@ -156,44 +154,11 @@ async function emitPreliminarySubAgentOutput(input: {
   toolCallId: string
 }): Promise<void> {
   'use step'
-  const streamNamespace = progressStreamNamespace(input.progressTarget)
-  const progressWriter = progressUiWriter(input.progressTarget)
-  if (!(streamNamespace || progressWriter)) {
-    return
-  }
-
-  try {
-    if (progressWriter) {
-      progressWriter.write({
-        type: 'tool-output-available',
-        output: input.output,
-        preliminary: true,
-        toolCallId: input.toolCallId,
-      })
-      return
-    }
-
-    if (!streamNamespace) {
-      return
-    }
-
-    const writable = getWritable<UIMessageChunk>({
-      namespace: streamNamespace,
-    })
-    const writer = writable.getWriter()
-    try {
-      await writer.write({
-        type: 'tool-output-available',
-        output: input.output,
-        preliminary: true,
-        toolCallId: input.toolCallId,
-      })
-    } finally {
-      writer.releaseLock()
-    }
-  } catch {
-    // Live tool updates are UX hints and must not fail the call itself.
-  }
+  await writePreliminarySubAgentOutput({
+    output: input.output,
+    target: input.progressTarget,
+    toolCallId: input.toolCallId,
+  })
 }
 
 function subAgentOutput(input: {

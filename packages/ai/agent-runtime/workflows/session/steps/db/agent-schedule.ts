@@ -1,7 +1,8 @@
 import { db } from '@outname/db'
 import { agent as agentTable } from '@outname/db/schema'
 import { eq } from 'drizzle-orm'
-import type { HeartbeatMode } from '../../handlers/handle-heartbeat/messages'
+
+type HeartbeatMode = 'normal' | 'dreaming'
 
 export async function readPreviousHeartbeatCompletionStep(
   agentId: string

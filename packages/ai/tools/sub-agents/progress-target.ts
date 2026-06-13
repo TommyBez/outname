@@ -1,4 +1,5 @@
-import type { UIMessage, UIMessageStreamWriter } from 'ai'
+import { getWritable } from '@outname/workflow/runtime'
+import type { UIMessage, UIMessageChunk, UIMessageStreamWriter } from 'ai'
 
 export type SubAgentProgressTarget =
   | { kind: 'workflow-parent-stream'; streamNamespace: string }
@@ -37,4 +38,53 @@ export function progressUiWriter(
   target: SubAgentProgressTarget | null | undefined
 ): UIMessageStreamWriter<UIMessage> | null {
   return target?.kind === 'realtime-ui-writer' ? target.writer : null
+}
+
+/**
+ * Must only be called from an existing workflow step or realtime execution
+ * context. This helper is intentionally not marked with "use step": the
+ * realtime UI writer variant is not serializable across a WDK step boundary,
+ * while the workflow stream variant relies on getWritable() already running
+ * inside a step context.
+ */
+export async function writePreliminarySubAgentOutput(input: {
+  output: unknown
+  target: SubAgentProgressTarget
+  toolCallId: string
+}): Promise<void> {
+  const streamNamespace = progressStreamNamespace(input.target)
+  const progressWriter = progressUiWriter(input.target)
+  if (!(streamNamespace || progressWriter)) {
+    return
+  }
+
+  try {
+    const chunk = {
+      type: 'tool-output-available',
+      output: input.output,
+      preliminary: true,
+      toolCallId: input.toolCallId,
+    } as const
+
+    if (progressWriter) {
+      progressWriter.write(chunk)
+      return
+    }
+
+    if (!streamNamespace) {
+      return
+    }
+
+    const writable = getWritable<UIMessageChunk>({
+      namespace: streamNamespace,
+    })
+    const writer = writable.getWriter()
+    try {
+      await writer.write(chunk)
+    } finally {
+      writer.releaseLock()
+    }
+  } catch {
+    // Live tool updates are UX hints and must not fail the call itself.
+  }
 }

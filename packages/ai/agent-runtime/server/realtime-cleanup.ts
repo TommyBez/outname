@@ -21,7 +21,7 @@ export async function cleanupRealtimeRun(input: {
       'refreshAgentFileCache',
       () => refreshAgentFileCache(input.agentId),
       {
-        ignore: isMissingSystemSandboxError,
+        ignore: isSandboxGoneError,
         onIgnored: (err) => {
           console.warn(
             '[realtime-cleanup] refreshAgentFileCache skipped; system sandbox is missing',
@@ -55,7 +55,7 @@ async function bestEffort(
   }
 }
 
-function isMissingSystemSandboxError(err: unknown): boolean {
+function isSandboxGoneError(err: unknown): boolean {
   return (
     Boolean(readErrorString(err, 'sandboxName')) &&
     (readErrorNumber(err, 'response.status') === 404 ||
