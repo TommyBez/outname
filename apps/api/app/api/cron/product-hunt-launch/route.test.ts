@@ -1,17 +1,22 @@
 import type { NextRequest } from 'next/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const PRODUCT_HUNT_ISSUE_DEDUPE_KEY_PATTERN =
+  /^vercel-day-2026\/\d{4}-\d{2}-\d{2}T\d{2}\/[a-f0-9]{12}$/
+
 const {
   mockConnection,
   mockResolveProductHuntLaunchUrl,
   mockRunProductHuntLaunchAutomation,
   mockRunProductHuntSocialAutomation,
+  mockSendProductHuntLaunchIssueAdminNotification,
   mockWithRedisLock,
 } = vi.hoisted(() => ({
   mockConnection: vi.fn(),
   mockResolveProductHuntLaunchUrl: vi.fn(),
   mockRunProductHuntLaunchAutomation: vi.fn(),
   mockRunProductHuntSocialAutomation: vi.fn(),
+  mockSendProductHuntLaunchIssueAdminNotification: vi.fn(),
   mockWithRedisLock: vi.fn(),
 }))
 
@@ -40,6 +45,11 @@ vi.mock('@outname/shared/launch/product-hunt-social-automation', () => ({
 
 vi.mock('@outname/shared/launch/product-hunt-url-discovery', () => ({
   resolveProductHuntLaunchUrl: mockResolveProductHuntLaunchUrl,
+}))
+
+vi.mock('@outname/shared/waitlist/server/email', () => ({
+  sendProductHuntLaunchIssueAdminNotification:
+    mockSendProductHuntLaunchIssueAdminNotification,
 }))
 
 import { GET } from './route'
@@ -101,6 +111,7 @@ describe('Product Hunt launch cron route', () => {
       ok: true,
       posts: [],
     })
+    mockSendProductHuntLaunchIssueAdminNotification.mockResolvedValue(undefined)
     process.env.RESEND_API_KEY = 're_test'
     process.env.WAITLIST_FROM_EMAIL = 'OUTNA.ME <waitlist@example.com>'
     process.env.WAITLIST_REPLY_TO = 'reply@example.com'
@@ -145,6 +156,9 @@ describe('Product Hunt launch cron route', () => {
     expect(mockResolveProductHuntLaunchUrl).not.toHaveBeenCalled()
     expect(mockRunProductHuntLaunchAutomation).not.toHaveBeenCalled()
     expect(mockRunProductHuntSocialAutomation).not.toHaveBeenCalled()
+    expect(
+      mockSendProductHuntLaunchIssueAdminNotification
+    ).not.toHaveBeenCalled()
   })
 
   it('requires a cron secret outside preview deployments', async () => {
@@ -223,6 +237,9 @@ describe('Product Hunt launch cron route', () => {
       productHuntUrl: null,
     })
     expect(mockRunProductHuntSocialAutomation).not.toHaveBeenCalled()
+    expect(
+      mockSendProductHuntLaunchIssueAdminNotification
+    ).not.toHaveBeenCalled()
   })
 
   it('keeps Typefully social automation isolated when email automation fails', async () => {
@@ -297,6 +314,9 @@ describe('Product Hunt launch cron route', () => {
     mockRunProductHuntSocialAutomation.mockRejectedValue(
       new Error('typefully down')
     )
+    mockSendProductHuntLaunchIssueAdminNotification.mockRejectedValue(
+      new Error('notification down')
+    )
 
     const response = await GET(createCronRequest('Bearer expected-secret'))
 
@@ -312,6 +332,14 @@ describe('Product Hunt launch cron route', () => {
         ],
         ok: true,
       },
+      issues: [
+        {
+          details: ['typefully down'],
+          key: 'product_hunt_social_section',
+          message: 'Product Hunt social automation failed before completing.',
+          severity: 'failure',
+        },
+      ],
       ok: true,
       productHuntUrl: {
         candidates: [],
@@ -327,5 +355,19 @@ describe('Product Hunt launch cron route', () => {
       },
     })
     expect(mockRunProductHuntLaunchAutomation).toHaveBeenCalledTimes(1)
+    expect(
+      mockSendProductHuntLaunchIssueAdminNotification
+    ).toHaveBeenCalledWith({
+      dedupeKey: expect.stringMatching(PRODUCT_HUNT_ISSUE_DEDUPE_KEY_PATTERN),
+      issues: [
+        {
+          details: ['typefully down'],
+          key: 'product_hunt_social_section',
+          message: 'Product Hunt social automation failed before completing.',
+          severity: 'failure',
+        },
+      ],
+      runAtIso: expect.any(String),
+    })
   })
 })

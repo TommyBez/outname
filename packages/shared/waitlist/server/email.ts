@@ -3,10 +3,15 @@ import 'server-only'
 import { ApplicationInviteEmail } from '@outname/email/application-invite-email'
 import { ProductHuntFeedbackAdminEmail } from '@outname/email/product-hunt-feedback-admin-email'
 import { ProductHuntLaunchEmail } from '@outname/email/product-hunt-launch-email'
+import {
+  ProductHuntLaunchIssueAdminEmail,
+  type ProductHuntLaunchIssueAdminEmailIssue,
+} from '@outname/email/product-hunt-launch-issue-admin-email'
 import { WaitlistAdminSignupEmail } from '@outname/email/waitlist-admin-signup-email'
 import { WaitlistConfirmationEmail } from '@outname/email/waitlist-confirmation-email'
 import { WaitlistInviteEmail } from '@outname/email/waitlist-invite-email'
 import type { ProductHuntEmailEventKey } from '@outname/shared/launch/product-hunt'
+import { areProductHuntLaunchExternalSideEffectsDisabled } from '@outname/shared/launch/product-hunt-preview-safety'
 import { getEmailLogoUrl } from '@outname/shared/server/email-logo-url'
 import {
   buildEmailWebUrl,
@@ -30,6 +35,7 @@ function createWaitlistEmailIdempotencyKey(
   eventType:
     | 'application-invite'
     | 'product-hunt-feedback-admin'
+    | 'product-hunt-launch-issue'
     | 'product-hunt-launch'
     | 'waitlist-admin-signup'
     | 'waitlist-confirmation'
@@ -241,6 +247,36 @@ export async function sendProductHuntFeedbackAdminNotification(
       utmContent: input.utmContent,
       utmMedium: input.utmMedium,
       utmSource: input.utmSource,
+    }),
+  })
+}
+
+export async function sendProductHuntLaunchIssueAdminNotification(input: {
+  dedupeKey: string
+  issues: ProductHuntLaunchIssueAdminEmailIssue[]
+  runAtIso: string
+}) {
+  if (areProductHuntLaunchExternalSideEffectsDisabled()) {
+    return
+  }
+
+  const adminEmail = getWaitlistAdminEmail()
+  if (!(adminEmail && input.issues.length > 0)) {
+    return
+  }
+
+  await sendResendEmail({
+    idempotencyKey: createWaitlistEmailIdempotencyKey(
+      'product-hunt-launch-issue',
+      input.dedupeKey
+    ),
+    to: adminEmail,
+    subject: `Product Hunt launch issue: ${input.issues.length} check(s) need attention`,
+    react: createElement(ProductHuntLaunchIssueAdminEmail, {
+      issues: input.issues,
+      launchPageUrl: buildEmailWebUrl('/product-hunt'),
+      logoUrl: getEmailLogoUrl(),
+      runAtIso: input.runAtIso,
     }),
   })
 }

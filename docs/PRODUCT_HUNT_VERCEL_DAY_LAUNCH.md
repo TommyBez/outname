@@ -25,6 +25,7 @@ Campaign: `vercel-day-2026`
 - Fallback social posts are scheduled only when their fallback window is near and the Product Hunt URL is still missing; they send people to the launch landing page with explicit fallback copy.
 - Email unsubscribe links are signed and handled by `/api/waitlist/unsubscribe`.
 - Email and social automation degrade independently. A failed email recipient increments that event's `failed` count without blocking the rest of the batch, and a section-level email or Typefully failure is returned in the cron JSON without preventing the other channel from running.
+- In production, alertable cron issues such as section failures, email recipient failures, Typefully setup failures, Typefully request failures, missing Typefully connections, or expired social post windows send an idempotent admin notification. Preview deployments suppress this notification together with the other external launch side effects.
 
 ## Required Product Hunt Setup
 

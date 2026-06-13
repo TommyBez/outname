@@ -1,6 +1,8 @@
+import { createHash } from 'node:crypto'
 import { withRedisLock } from '@outname/ai/agent-runtime/server/redis-lock'
 import {
   normalizeProductHuntLaunchUrl,
+  PRODUCT_HUNT_LAUNCH,
   parseProductHuntBatchSize,
 } from '@outname/shared/launch/product-hunt'
 import {
@@ -17,6 +19,7 @@ import {
   runProductHuntSocialAutomation,
 } from '@outname/shared/launch/product-hunt-social-automation'
 import { resolveProductHuntLaunchUrl } from '@outname/shared/launch/product-hunt-url-discovery'
+import { sendProductHuntLaunchIssueAdminNotification } from '@outname/shared/waitlist/server/email'
 import { connection, type NextRequest, NextResponse } from 'next/server'
 
 function getNullableEnv(name: string): string | null {
@@ -29,10 +32,170 @@ interface ProductHuntLaunchSectionFailure {
   ok: false
 }
 
+interface ProductHuntLaunchIssue {
+  details?: string[]
+  key: string
+  message: string
+  severity: 'failure' | 'warning'
+}
+
+const ALERTABLE_SOCIAL_SKIP_REASONS = new Set([
+  'post_window_expired',
+  'typefully_connection_missing',
+  'typefully_request_failed',
+  'typefully_setup_failed',
+  'typefully_social_set_missing',
+])
+
 function createSectionFailure(error: unknown): ProductHuntLaunchSectionFailure {
   return {
     error: error instanceof Error ? error.message : 'Unknown error',
     ok: false,
+  }
+}
+
+function createIssueDedupeKey(input: {
+  issues: ProductHuntLaunchIssue[]
+  now: Date
+}): string {
+  const issueSignature = input.issues.map((issue) => ({
+    details: issue.details,
+    key: issue.key,
+    message: issue.message,
+    severity: issue.severity,
+  }))
+  const signatureHash = createHash('sha256')
+    .update(JSON.stringify(issueSignature))
+    .digest('hex')
+    .slice(0, 12)
+  const hourBucket = input.now.toISOString().slice(0, 13)
+
+  return `${PRODUCT_HUNT_LAUNCH.campaign}/${hourBucket}/${signatureHash}`
+}
+
+function collectEmailIssues(
+  email: ProductHuntLaunchAutomationResult | ProductHuntLaunchSectionFailure
+): ProductHuntLaunchIssue[] {
+  if (!email.ok) {
+    return [
+      {
+        details: [email.error],
+        key: 'product_hunt_email_section',
+        message: 'Product Hunt email automation failed before completing.',
+        severity: 'failure',
+      },
+    ]
+  }
+
+  const failedEvents = email.events
+    .filter((event) => event.failed > 0)
+    .map(
+      (event) => `${event.eventKey} failed for ${event.failed} recipient(s).`
+    )
+
+  if (failedEvents.length === 0) {
+    return []
+  }
+
+  return [
+    {
+      details: failedEvents,
+      key: 'product_hunt_email_delivery',
+      message: 'Product Hunt email automation reported recipient failures.',
+      severity: 'warning',
+    },
+  ]
+}
+
+function collectSocialIssues(
+  social:
+    | ProductHuntSectionSkipped
+    | ProductHuntSocialAutomationResult
+    | ProductHuntLaunchSectionFailure
+): ProductHuntLaunchIssue[] {
+  if (!social.ok) {
+    return [
+      {
+        details: [social.error],
+        key: 'product_hunt_social_section',
+        message: 'Product Hunt social automation failed before completing.',
+        severity: 'failure',
+      },
+    ]
+  }
+
+  if ('skipped' in social) {
+    return []
+  }
+
+  const alertablePosts = social.posts
+    .filter(
+      (post) =>
+        post.skipped &&
+        post.reason &&
+        ALERTABLE_SOCIAL_SKIP_REASONS.has(post.reason)
+    )
+    .map((post) =>
+      post.error
+        ? `${post.reason}: ${post.postId} (${post.error})`
+        : `${post.reason}: ${post.postId}`
+    )
+
+  if (alertablePosts.length === 0) {
+    return []
+  }
+
+  const severity = alertablePosts.every((detail) =>
+    detail.startsWith('post_window_expired:')
+  )
+    ? 'warning'
+    : 'failure'
+
+  return [
+    {
+      details: alertablePosts,
+      key: 'product_hunt_social_posts',
+      message:
+        'Product Hunt social automation skipped posts for alertable reasons.',
+      severity,
+    },
+  ]
+}
+
+interface ProductHuntSectionSkipped {
+  ok: true
+  skipped: string
+}
+
+function collectLaunchIssues(input: {
+  email: ProductHuntLaunchAutomationResult | ProductHuntLaunchSectionFailure
+  social:
+    | ProductHuntSectionSkipped
+    | ProductHuntSocialAutomationResult
+    | ProductHuntLaunchSectionFailure
+}): ProductHuntLaunchIssue[] {
+  return [
+    ...collectEmailIssues(input.email),
+    ...collectSocialIssues(input.social),
+  ]
+}
+
+async function notifyLaunchIssues(input: {
+  issues: ProductHuntLaunchIssue[]
+  now: Date
+}) {
+  if (input.issues.length === 0) {
+    return
+  }
+
+  try {
+    await sendProductHuntLaunchIssueAdminNotification({
+      dedupeKey: createIssueDedupeKey(input),
+      issues: input.issues,
+      runAtIso: input.now.toISOString(),
+    })
+  } catch (error) {
+    console.error('[product-hunt-launch] issue notification failed', error)
   }
 }
 
@@ -72,6 +235,7 @@ export async function GET(req: NextRequest) {
     'product-hunt-launch:cron',
     14 * 60,
     async () => {
+      const now = new Date()
       const productHuntUrlResolution = await resolveProductHuntLaunchUrl({
         candidateUrls: process.env.PRODUCT_HUNT_LAUNCH_URL_CANDIDATES,
         explicitUrl: normalizeProductHuntLaunchUrl(
@@ -101,7 +265,7 @@ export async function GET(req: NextRequest) {
       let social:
         | ProductHuntLaunchSectionFailure
         | ProductHuntSocialAutomationResult
-        | { ok: true; skipped: string }
+        | ProductHuntSectionSkipped
       if (process.env.PRODUCT_HUNT_SOCIAL_AUTOMATION_ENABLED === 'false') {
         social = {
           ok: true as const,
@@ -120,8 +284,12 @@ export async function GET(req: NextRequest) {
         }
       }
 
+      const issues = collectLaunchIssues({ email, social })
+      await notifyLaunchIssues({ issues, now })
+
       return {
         email,
+        issues,
         ok: true,
         productHuntUrl: productHuntUrlResolution,
         readiness,
