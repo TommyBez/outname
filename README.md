@@ -69,7 +69,7 @@ VERCEL_WEB_PROJECT_ID=
 - Slack: `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, `SLACK_SIGNING_SECRET`
 - Redis (Upstash via Vercel KV): `KV_REST_API_URL`, `KV_REST_API_TOKEN`
 - Auth email: `RESEND_API_KEY`, `AUTH_FROM_EMAIL`, `AUTH_REPLY_TO`
-- Waitlist email: `WAITLIST_FROM_EMAIL`, `WAITLIST_REPLY_TO`, `WAITLIST_ADMIN_EMAIL`
+- Waitlist email: `WAITLIST_FROM_EMAIL`, `WAITLIST_REPLY_TO`; admin notifications go to users with `role='admin'`
 - Cron hardening: `CRON_SECRET`
 
 ## Local development

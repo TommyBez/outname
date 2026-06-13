@@ -89,8 +89,9 @@ Every waitlist launch email includes a signed unsubscribe link handled by `/api/
 
 Admin email automation is separate from waitlist delivery:
 
-- Issue notifications go to `WAITLIST_ADMIN_EMAIL` when the cron detects alertable problems, such as email recipient failures, URL handoff failures, Typefully setup/request failures, or admin digest failures.
-- Admin digests go to `WAITLIST_ADMIN_EMAIL` at pre-launch readiness, launch-day start, launch-day evening, and post-launch recap checkpoints. Each digest summarizes current cron results, Product Hunt-attributed waitlist signups, feedback submissions, recorded launch email deliveries, Typefully delivery records, current issues, and Product Hunt URL resolution.
+- Issue notifications go to every user whose `user.role` is `admin` when the cron detects alertable problems, such as email recipient failures, URL handoff failures, Typefully setup/request failures, or admin digest failures.
+- Admin digests go to every user whose `user.role` is `admin` at pre-launch readiness, launch-day start, launch-day evening, and post-launch recap checkpoints. Each digest summarizes current cron results, Product Hunt-attributed waitlist signups, feedback submissions, recorded launch email deliveries, Typefully delivery records, current issues, and Product Hunt URL resolution.
+- Each admin recipient receives an individual email with a recipient-specific idempotency key; one failing admin recipient does not prevent the other admin recipients from being attempted.
 
 Preview deployments skip all Resend side effects before delivery work starts. This includes waitlist emails, issue notifications, feedback notifications, and admin digests.
 

@@ -25,7 +25,7 @@ import {
 } from '@outname/shared/server/email-urls'
 import { sendResendReactEmail } from '@outname/shared/server/resend'
 import { siteConfig } from '@outname/shared/server/site-metadata'
-import { getWaitlistAdminEmail } from '@outname/shared/waitlist/server/admin-email-config'
+import { listWaitlistAdminEmails } from '@outname/shared/waitlist/server/admin-email-config'
 import {
   WAITLIST_PRIMARY_INTEREST_OPTIONS,
   WAITLIST_PROFILE_TYPE_OPTIONS,
@@ -110,6 +110,60 @@ async function sendResendEmail(input: {
   })
 }
 
+function createAdminRecipientIdempotencyKey(input: {
+  baseIdempotencyKey: string
+  email: string
+}): string {
+  return `${input.baseIdempotencyKey}:${encodeURIComponent(input.email.toLowerCase())}`
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+async function sendAdminResendEmail(input: {
+  idempotencyKey: string
+  react: ReactElement
+  subject: string
+}): Promise<string | null | undefined> {
+  const adminEmails = await listWaitlistAdminEmails()
+  if (adminEmails.length === 0) {
+    return
+  }
+
+  const results = await Promise.allSettled(
+    adminEmails.map((adminEmail) =>
+      sendResendEmail({
+        ...input,
+        idempotencyKey: createAdminRecipientIdempotencyKey({
+          baseIdempotencyKey: input.idempotencyKey,
+          email: adminEmail,
+        }),
+        to: adminEmail,
+      })
+    )
+  )
+
+  let firstMessageId: string | null | undefined
+  const failures: string[] = []
+  for (const [index, result] of results.entries()) {
+    const adminEmail = adminEmails[index] ?? 'unknown admin recipient'
+    if (result.status === 'fulfilled') {
+      firstMessageId ??= result.value
+      continue
+    }
+    failures.push(`${adminEmail}: ${getErrorMessage(result.reason)}`)
+  }
+
+  if (failures.length > 0) {
+    throw new Error(
+      `Admin email send failed for ${failures.length}/${adminEmails.length} recipient(s): ${failures.join('; ')}`
+    )
+  }
+
+  return firstMessageId ?? null
+}
+
 export async function sendWaitlistConfirmationEmail(input: {
   email: string
   token: string
@@ -175,17 +229,11 @@ export interface WaitlistAdminSignupNotificationInput {
 export async function sendWaitlistAdminSignupNotification(
   input: WaitlistAdminSignupNotificationInput
 ) {
-  const adminEmail = getWaitlistAdminEmail()
-  if (!adminEmail) {
-    return
-  }
-
-  await sendResendEmail({
+  await sendAdminResendEmail({
     idempotencyKey: createWaitlistEmailIdempotencyKey(
       'waitlist-admin-signup',
       input.entryId
     ),
-    to: adminEmail,
     subject: `New waitlist signup: ${input.email}`,
     react: createElement(WaitlistAdminSignupEmail, {
       adminUrl: getEmailWaitlistAdminUrl(),
@@ -225,19 +273,13 @@ export interface ProductHuntFeedbackAdminNotificationInput {
 export async function sendProductHuntFeedbackAdminNotification(
   input: ProductHuntFeedbackAdminNotificationInput
 ) {
-  const adminEmail = getWaitlistAdminEmail()
-  if (!adminEmail) {
-    return
-  }
-
   const feedbackTypeLabel = getProductHuntFeedbackTypeLabel(input.feedbackType)
 
-  await sendResendEmail({
+  await sendAdminResendEmail({
     idempotencyKey: createWaitlistEmailIdempotencyKey(
       'product-hunt-feedback-admin',
       input.feedbackId
     ),
-    to: adminEmail,
     subject: `Product Hunt feedback: ${feedbackTypeLabel}`,
     react: createElement(ProductHuntFeedbackAdminEmail, {
       email: input.email,
@@ -265,17 +307,15 @@ export async function sendProductHuntLaunchIssueAdminNotification(input: {
     return
   }
 
-  const adminEmail = getWaitlistAdminEmail()
-  if (!(adminEmail && input.issues.length > 0)) {
+  if (input.issues.length === 0) {
     return
   }
 
-  await sendResendEmail({
+  await sendAdminResendEmail({
     idempotencyKey: createWaitlistEmailIdempotencyKey(
       'product-hunt-launch-issue',
       input.dedupeKey
     ),
-    to: adminEmail,
     subject: `Product Hunt launch issue: ${input.issues.length} check(s) need attention`,
     react: createElement(ProductHuntLaunchIssueAdminEmail, {
       issues: input.issues,
@@ -298,17 +338,11 @@ export async function sendProductHuntLaunchDigestAdminNotification(input: {
     return
   }
 
-  const adminEmail = getWaitlistAdminEmail()
-  if (!adminEmail) {
-    return
-  }
-
-  return await sendResendEmail({
+  return await sendAdminResendEmail({
     idempotencyKey: createWaitlistEmailIdempotencyKey(
       'product-hunt-launch-digest',
       input.digestKey
     ),
-    to: adminEmail,
     subject: `Product Hunt launch digest: ${input.digestLabel}`,
     react: createElement(ProductHuntLaunchDigestAdminEmail, {
       digestKey: input.digestKey,

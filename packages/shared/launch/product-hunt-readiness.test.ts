@@ -64,7 +64,6 @@ describe('Product Hunt launch readiness', () => {
       RESEND_API_KEY: 're_test',
       VERCEL: '1',
       VERCEL_ENV: 'production',
-      WAITLIST_ADMIN_EMAIL: 'admin@example.com',
       WAITLIST_FROM_EMAIL: 'OUTNA.ME <waitlist@example.com>',
       WAITLIST_REPLY_TO: 'reply@example.com',
     })
@@ -75,7 +74,7 @@ describe('Product Hunt launch readiness', () => {
     })
   })
 
-  it('warns when production admin notifications cannot be delivered', () => {
+  it('routes production admin notifications to admin users', () => {
     const result = getProductHuntLaunchReadiness({
       CRON_SECRET: 'secret',
       PRODUCT_HUNT_TYPEFULLY_API_KEY: 'tf_launch_key',
@@ -89,8 +88,8 @@ describe('Product Hunt launch readiness', () => {
     expect(result.ok).toBe(true)
     expect(getCheck(result, 'admin_notifications')).toMatchObject({
       message:
-        'WAITLIST_ADMIN_EMAIL is not set; launch issue and feedback admin notifications will only be logged.',
-      status: 'warning',
+        'Launch issue, feedback, and digest admin notifications are sent to all users with role admin.',
+      status: 'ready',
     })
   })
 
@@ -103,7 +102,6 @@ describe('Product Hunt launch readiness', () => {
       RESEND_API_KEY: 're_test',
       VERCEL: '1',
       VERCEL_ENV: 'production',
-      WAITLIST_ADMIN_EMAIL: 'admin@example.com',
       WAITLIST_FROM_EMAIL: 'OUTNA.ME <waitlist@example.com>',
       WAITLIST_REPLY_TO: 'reply@example.com',
     })
@@ -128,7 +126,6 @@ describe('Product Hunt launch readiness', () => {
       RESEND_API_KEY: 're_test',
       VERCEL: '1',
       VERCEL_ENV: 'production',
-      WAITLIST_ADMIN_EMAIL: 'admin@example.com',
       WAITLIST_FROM_EMAIL: 'OUTNA.ME <waitlist@example.com>',
       WAITLIST_REPLY_TO: 'reply@example.com',
     })
@@ -151,7 +148,6 @@ describe('Product Hunt launch readiness', () => {
       RESEND_API_KEY: 're_test',
       VERCEL: '1',
       VERCEL_ENV: 'production',
-      WAITLIST_ADMIN_EMAIL: 'admin@example.com',
       WAITLIST_FROM_EMAIL: 'OUTNA.ME <waitlist@example.com>',
       WAITLIST_REPLY_TO: 'reply@example.com',
     })
@@ -171,7 +167,6 @@ describe('Product Hunt launch readiness', () => {
       RESEND_API_KEY: 're_test',
       VERCEL: '1',
       VERCEL_ENV: 'production',
-      WAITLIST_ADMIN_EMAIL: 'admin@example.com',
       WAITLIST_FROM_EMAIL: 'OUTNA.ME <waitlist@example.com>',
       WAITLIST_REPLY_TO: 'reply@example.com',
     })
