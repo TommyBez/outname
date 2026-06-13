@@ -7,6 +7,7 @@ import {
   type ProductHuntEmailEventKey,
   productHuntEmailEvents,
 } from '@outname/shared/launch/product-hunt'
+import { areProductHuntLaunchExternalSideEffectsDisabled } from '@outname/shared/launch/product-hunt-preview-safety'
 import { buildEmailWebUrl } from '@outname/shared/server/email-urls'
 import { sendProductHuntLaunchEmail } from '@outname/shared/waitlist/server/email'
 import { and, eq, inArray, isNull } from 'drizzle-orm'
@@ -38,6 +39,21 @@ function isEventActive(
 
 function createDeliveryId(): string {
   return `wled_${nanoid(12)}`
+}
+
+function createSkippedLaunchAutomationResult(input: {
+  reason: string
+}): ProductHuntLaunchAutomationResult {
+  return {
+    events: productHuntEmailEvents.map((event) => ({
+      eventKey: event.key,
+      failed: 0,
+      reason: input.reason,
+      sent: 0,
+      skipped: true,
+    })),
+    ok: true,
+  }
 }
 
 async function listRecipientsWithoutDelivery(input: {
@@ -128,6 +144,12 @@ export async function runProductHuntLaunchAutomation(input: {
   now?: Date
   productHuntUrl: string | null
 }): Promise<ProductHuntLaunchAutomationResult> {
+  if (areProductHuntLaunchExternalSideEffectsDisabled()) {
+    return createSkippedLaunchAutomationResult({
+      reason: 'preview_external_side_effects_disabled',
+    })
+  }
+
   const now = input.now ?? new Date()
   const events: ProductHuntLaunchAutomationResult['events'] = []
 
