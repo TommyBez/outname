@@ -5,6 +5,7 @@ import { db } from '@outname/db'
 import { launchSocialPostDelivery, userConnections } from '@outname/db/schema'
 import { readConnectorCredential } from '@outname/shared/connections/runtime/credential'
 import { PRODUCT_HUNT_LAUNCH } from '@outname/shared/launch/product-hunt'
+import { areProductHuntLaunchExternalSideEffectsDisabled } from '@outname/shared/launch/product-hunt-preview-safety'
 import {
   getProductHuntSocialSkipReason as getSocialSkipReason,
   PRODUCT_HUNT_SOCIAL_POSTS,
@@ -72,6 +73,21 @@ export interface ProductHuntSocialAutomationResult {
 
 function createSocialDeliveryId(): string {
   return `lspd_${nanoid(12)}`
+}
+
+function createSkippedSocialAutomationResult(input: {
+  error?: string
+  reason: string
+}): ProductHuntSocialAutomationResult {
+  return {
+    ok: true,
+    posts: PRODUCT_HUNT_SOCIAL_POSTS.map((post) => ({
+      ...(input.error ? { error: input.error } : {}),
+      postId: post.id,
+      reason: input.reason,
+      skipped: true,
+    })),
+  }
 }
 
 function getTypefullyApiKey(credential: unknown): string {
@@ -427,19 +443,20 @@ export async function runProductHuntSocialAutomation(input: {
   socialSetId?: string | null
   typefullyUserId?: string | null
 }): Promise<ProductHuntSocialAutomationResult> {
+  if (areProductHuntLaunchExternalSideEffectsDisabled()) {
+    return createSkippedSocialAutomationResult({
+      reason: 'preview_external_side_effects_disabled',
+    })
+  }
+
   const now = input.now ?? new Date()
   const posts: ProductHuntSocialAutomationResult['posts'] = []
   const connection = await findTypefullyConnection(input.typefullyUserId)
 
   if (!connection) {
-    return {
-      ok: true,
-      posts: PRODUCT_HUNT_SOCIAL_POSTS.map((post) => ({
-        postId: post.id,
-        reason: 'typefully_connection_missing',
-        skipped: true,
-      })),
-    }
+    return createSkippedSocialAutomationResult({
+      reason: 'typefully_connection_missing',
+    })
   }
 
   let apiKey: string
@@ -456,26 +473,16 @@ export async function runProductHuntSocialAutomation(input: {
       configuredSocialSetId: input.socialSetId,
     })
   } catch (error) {
-    return {
-      ok: true,
-      posts: PRODUCT_HUNT_SOCIAL_POSTS.map((post) => ({
-        error: error instanceof Error ? error.message : 'Unknown error',
-        postId: post.id,
-        reason: 'typefully_setup_failed',
-        skipped: true,
-      })),
-    }
+    return createSkippedSocialAutomationResult({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      reason: 'typefully_setup_failed',
+    })
   }
 
   if (!socialSetId) {
-    return {
-      ok: true,
-      posts: PRODUCT_HUNT_SOCIAL_POSTS.map((post) => ({
-        postId: post.id,
-        reason: 'typefully_social_set_missing',
-        skipped: true,
-      })),
-    }
+    return createSkippedSocialAutomationResult({
+      reason: 'typefully_social_set_missing',
+    })
   }
 
   for (const post of PRODUCT_HUNT_SOCIAL_POSTS) {
