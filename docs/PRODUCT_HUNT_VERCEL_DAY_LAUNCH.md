@@ -19,6 +19,7 @@ Campaign: `vercel-day-2026`
   - `vercel-day-recap-fallback`: June 17, 10:00-18:00 UTC, only if the Product Hunt URL is still missing. Mutually exclusive with `vercel-day-recap` per recipient.
 - Typefully social drafts are created/scheduled idempotently from the active `typefully.api_key` connection.
 - Product Hunt social posts that need the live Product Hunt URL are skipped until `PRODUCT_HUNT_LAUNCH_URL` is set.
+- During and after the launch window, the cron also probes default Product Hunt post URL candidates (`/posts/outna-me`, `/posts/outname`) and optional `PRODUCT_HUNT_LAUNCH_URL_CANDIDATES` values. If a public post page is reachable and contains OUTNA.ME markers, the cron uses that URL for live Product Hunt emails and social posts without requiring a manual env update.
 - Fallback social posts are scheduled only when their fallback window is near and the Product Hunt URL is still missing; they send people to the launch landing page with explicit fallback copy.
 - Email unsubscribe links are signed and handled by `/api/waitlist/unsubscribe`.
 
@@ -66,6 +67,7 @@ PRODUCT_HUNT_LAUNCH_AUTOMATION_ENABLED=true
 PRODUCT_HUNT_LAUNCH_EMAIL_BATCH_SIZE=50
 PRODUCT_HUNT_SOCIAL_AUTOMATION_ENABLED=true
 PRODUCT_HUNT_SOCIAL_ATTACH_MEDIA=true
+PRODUCT_HUNT_LAUNCH_URL_CANDIDATES=https://www.producthunt.com/posts/outna-me,https://www.producthunt.com/posts/outname
 ```
 
 Optional:

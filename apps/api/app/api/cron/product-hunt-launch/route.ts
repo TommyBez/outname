@@ -5,14 +5,8 @@ import {
 } from '@outname/shared/launch/product-hunt'
 import { runProductHuntLaunchAutomation } from '@outname/shared/launch/product-hunt-automation'
 import { runProductHuntSocialAutomation } from '@outname/shared/launch/product-hunt-social-automation'
+import { resolveProductHuntLaunchUrl } from '@outname/shared/launch/product-hunt-url-discovery'
 import { connection, type NextRequest, NextResponse } from 'next/server'
-
-function getProductHuntLaunchUrlFromEnv(): string | null {
-  return normalizeProductHuntLaunchUrl(
-    process.env.PRODUCT_HUNT_LAUNCH_URL ??
-      process.env.NEXT_PUBLIC_PRODUCT_HUNT_LAUNCH_URL
-  )
-}
 
 function getNullableEnv(name: string): string | null {
   const value = process.env[name]?.trim()
@@ -39,11 +33,21 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  const productHuntUrl = getProductHuntLaunchUrlFromEnv()
   const result = await withRedisLock(
     'product-hunt-launch:cron',
     14 * 60,
     async () => {
+      const productHuntUrlResolution = await resolveProductHuntLaunchUrl({
+        candidateUrls: process.env.PRODUCT_HUNT_LAUNCH_URL_CANDIDATES,
+        explicitUrl: normalizeProductHuntLaunchUrl(
+          process.env.PRODUCT_HUNT_LAUNCH_URL
+        ),
+        publicUrl: normalizeProductHuntLaunchUrl(
+          process.env.NEXT_PUBLIC_PRODUCT_HUNT_LAUNCH_URL
+        ),
+      })
+      const productHuntUrl = productHuntUrlResolution.url
+
       const email = await runProductHuntLaunchAutomation({
         batchSize: parseProductHuntBatchSize(
           process.env.PRODUCT_HUNT_LAUNCH_EMAIL_BATCH_SIZE
@@ -64,7 +68,12 @@ export async function GET(req: NextRequest) {
               typefullyUserId: getNullableEnv('PRODUCT_HUNT_TYPEFULLY_USER_ID'),
             })
 
-      return { email, ok: true, social }
+      return {
+        email,
+        ok: true,
+        productHuntUrl: productHuntUrlResolution,
+        social,
+      }
     }
   )
 
