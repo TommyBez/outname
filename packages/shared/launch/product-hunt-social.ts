@@ -14,6 +14,12 @@ export interface ProductHuntSocialPost {
   text: string
 }
 
+type ProductHuntSocialSkipReason =
+  | 'post_window_expired'
+  | 'product_hunt_url_missing'
+  | 'product_hunt_url_present'
+  | 'schedule_window_not_open'
+
 const PUBLIC_ASSET_ROOT = '/product-hunt-vercel-day'
 
 export const PRODUCT_HUNT_SOCIAL_POSTS = [
@@ -272,4 +278,42 @@ export function renderProductHuntSocialText(input: {
     '{{PRODUCT_HUNT_URL}}',
     input.productHuntUrl ?? ''
   )
+}
+
+function isPostExpired(post: ProductHuntSocialPost, now: Date): boolean {
+  return now.getTime() > Date.parse(post.notAfterIso)
+}
+
+function isPostReadyToSchedule(
+  post: ProductHuntSocialPost,
+  now: Date
+): boolean {
+  if (!post.scheduleNotBeforeIso) {
+    return true
+  }
+  return now.getTime() >= Date.parse(post.scheduleNotBeforeIso)
+}
+
+export function getProductHuntSocialSkipReason(input: {
+  now: Date
+  post: ProductHuntSocialPost
+  productHuntUrl: string | null
+}): ProductHuntSocialSkipReason | null {
+  if (isPostExpired(input.post, input.now)) {
+    return 'post_window_expired'
+  }
+
+  if (!isPostReadyToSchedule(input.post, input.now)) {
+    return 'schedule_window_not_open'
+  }
+
+  if (input.post.skipWhenProductHuntUrlPresent && input.productHuntUrl) {
+    return 'product_hunt_url_present'
+  }
+
+  if (input.post.requiresProductHuntUrl && !input.productHuntUrl) {
+    return 'product_hunt_url_missing'
+  }
+
+  return null
 }

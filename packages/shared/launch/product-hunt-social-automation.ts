@@ -6,6 +6,7 @@ import { launchSocialPostDelivery, userConnections } from '@outname/db/schema'
 import { readConnectorCredential } from '@outname/shared/connections/runtime/credential'
 import { PRODUCT_HUNT_LAUNCH } from '@outname/shared/launch/product-hunt'
 import {
+  getProductHuntSocialSkipReason as getSocialSkipReason,
   PRODUCT_HUNT_SOCIAL_POSTS,
   type ProductHuntSocialPlatform,
   type ProductHuntSocialPost,
@@ -69,12 +70,6 @@ export interface ProductHuntSocialAutomationResult {
   }[]
 }
 
-type ProductHuntSocialSkipReason =
-  | 'post_window_expired'
-  | 'product_hunt_url_missing'
-  | 'product_hunt_url_present'
-  | 'schedule_window_not_open'
-
 function createSocialDeliveryId(): string {
   return `lspd_${nanoid(12)}`
 }
@@ -120,44 +115,6 @@ function createPublishAtValue(post: ProductHuntSocialPost, now: Date): string {
     return 'now'
   }
   return post.publishAtIso
-}
-
-function isPostExpired(post: ProductHuntSocialPost, now: Date): boolean {
-  return now.getTime() > Date.parse(post.notAfterIso)
-}
-
-function isPostReadyToSchedule(
-  post: ProductHuntSocialPost,
-  now: Date
-): boolean {
-  if (!post.scheduleNotBeforeIso) {
-    return true
-  }
-  return now.getTime() >= Date.parse(post.scheduleNotBeforeIso)
-}
-
-export function getProductHuntSocialSkipReason(input: {
-  now: Date
-  post: ProductHuntSocialPost
-  productHuntUrl: string | null
-}): ProductHuntSocialSkipReason | null {
-  if (isPostExpired(input.post, input.now)) {
-    return 'post_window_expired'
-  }
-
-  if (!isPostReadyToSchedule(input.post, input.now)) {
-    return 'schedule_window_not_open'
-  }
-
-  if (input.post.skipWhenProductHuntUrlPresent && input.productHuntUrl) {
-    return 'product_hunt_url_present'
-  }
-
-  if (input.post.requiresProductHuntUrl && !input.productHuntUrl) {
-    return 'product_hunt_url_missing'
-  }
-
-  return null
 }
 
 async function findTypefullyConnection(userId?: string | null) {
@@ -402,7 +359,7 @@ async function runSocialPost(input: {
     }
   }
 
-  const skipReason = getProductHuntSocialSkipReason({
+  const skipReason = getSocialSkipReason({
     now: input.now,
     post: input.post,
     productHuntUrl: input.productHuntUrl,
