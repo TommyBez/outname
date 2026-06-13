@@ -30,6 +30,10 @@ describe('Product Hunt launch readiness', () => {
       message: 'Preview skips Resend and waitlist email delivery.',
       status: 'ready',
     })
+    expect(getCheck(result, 'admin_notifications')).toMatchObject({
+      message: 'Preview skips Product Hunt admin issue notifications.',
+      status: 'ready',
+    })
     expect(getCheck(result, 'typefully_delivery')).toMatchObject({
       message: 'Preview skips Typefully connection lookup and API calls.',
       status: 'ready',
@@ -60,12 +64,31 @@ describe('Product Hunt launch readiness', () => {
       RESEND_API_KEY: 're_test',
       VERCEL: '1',
       VERCEL_ENV: 'production',
+      WAITLIST_ADMIN_EMAIL: 'admin@example.com',
       WAITLIST_FROM_EMAIL: 'OUTNA.ME <waitlist@example.com>',
       WAITLIST_REPLY_TO: 'reply@example.com',
     })
 
     expect(result.ok).toBe(true)
     expect(getCheck(result, 'typefully_delivery')).toMatchObject({
+      status: 'warning',
+    })
+  })
+
+  it('warns when production admin notifications cannot be delivered', () => {
+    const result = getProductHuntLaunchReadiness({
+      CRON_SECRET: 'secret',
+      RESEND_API_KEY: 're_test',
+      VERCEL: '1',
+      VERCEL_ENV: 'production',
+      WAITLIST_FROM_EMAIL: 'OUTNA.ME <waitlist@example.com>',
+      WAITLIST_REPLY_TO: 'reply@example.com',
+    })
+
+    expect(result.ok).toBe(true)
+    expect(getCheck(result, 'admin_notifications')).toMatchObject({
+      message:
+        'WAITLIST_ADMIN_EMAIL is not set; launch issue and feedback admin notifications will only be logged.',
       status: 'warning',
     })
   })
@@ -78,6 +101,7 @@ describe('Product Hunt launch readiness', () => {
       RESEND_API_KEY: 're_test',
       VERCEL: '1',
       VERCEL_ENV: 'production',
+      WAITLIST_ADMIN_EMAIL: 'admin@example.com',
       WAITLIST_FROM_EMAIL: 'OUTNA.ME <waitlist@example.com>',
       WAITLIST_REPLY_TO: 'reply@example.com',
     })
@@ -102,6 +126,7 @@ describe('Product Hunt launch readiness', () => {
       RESEND_API_KEY: 're_test',
       VERCEL: '1',
       VERCEL_ENV: 'production',
+      WAITLIST_ADMIN_EMAIL: 'admin@example.com',
       WAITLIST_FROM_EMAIL: 'OUTNA.ME <waitlist@example.com>',
       WAITLIST_REPLY_TO: 'reply@example.com',
     })
@@ -111,6 +136,9 @@ describe('Product Hunt launch readiness', () => {
       status: 'ready',
     })
     expect(getCheck(result, 'typefully_delivery')).toMatchObject({
+      status: 'ready',
+    })
+    expect(getCheck(result, 'admin_notifications')).toMatchObject({
       status: 'ready',
     })
   })

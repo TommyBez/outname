@@ -189,6 +189,34 @@ function createEmailDeliveryCheck(
   }
 }
 
+function createAdminNotificationsCheck(
+  env: EnvLike,
+  previewSideEffectsDisabled: boolean
+): ProductHuntLaunchReadinessCheck {
+  if (previewSideEffectsDisabled) {
+    return {
+      key: 'admin_notifications',
+      message: 'Preview skips Product Hunt admin issue notifications.',
+      status: 'ready',
+    }
+  }
+
+  if (!getEnvValue(env, 'WAITLIST_ADMIN_EMAIL')) {
+    return {
+      key: 'admin_notifications',
+      message:
+        'WAITLIST_ADMIN_EMAIL is not set; launch issue and feedback admin notifications will only be logged.',
+      status: 'warning',
+    }
+  }
+
+  return {
+    key: 'admin_notifications',
+    message: 'Launch issue and feedback admin notifications are configured.',
+    status: 'ready',
+  }
+}
+
 function createTypefullyDeliveryCheck(
   env: EnvLike,
   previewSideEffectsDisabled: boolean
@@ -349,6 +377,7 @@ export function getProductHuntLaunchReadiness(
     createCronSecretCheck(env, previewSideEffectsDisabled),
     createLaunchAutomationCheck(env, previewSideEffectsDisabled),
     createEmailDeliveryCheck(env, previewSideEffectsDisabled),
+    createAdminNotificationsCheck(env, previewSideEffectsDisabled),
     createTypefullyDeliveryCheck(env, previewSideEffectsDisabled),
     createProductHuntUrlCheck(env),
     createCandidateUrlCheck(env),
