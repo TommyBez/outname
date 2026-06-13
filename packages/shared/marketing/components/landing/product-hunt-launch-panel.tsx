@@ -30,7 +30,7 @@ function getLaunchPanelCopy(state: ProductHuntLaunchState) {
   return {
     eyebrow: 'Product Hunt / Vercel Day',
     title: 'Launching Tuesday for Vercel Day.',
-    body: `Scheduled for ${PRODUCT_HUNT_LAUNCH.launchDateLabel} at ${PRODUCT_HUNT_LAUNCH.pacificLaunchTimeLabel} (${PRODUCT_HUNT_LAUNCH.localLaunchTimeLabel}). Built with Sandbox, Workflow, AI SDK, and Chat SDK.`,
+    body: `Planned for ${PRODUCT_HUNT_LAUNCH.launchDateLabel} at ${PRODUCT_HUNT_LAUNCH.pacificLaunchTimeLabel} (${PRODUCT_HUNT_LAUNCH.localLaunchTimeLabel}). Built with Sandbox, Workflow, AI SDK, and Chat SDK.`,
   }
 }
 

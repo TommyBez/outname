@@ -26,6 +26,8 @@ Campaign: `vercel-day-2026`
 
 Product Hunt does not expose a safe public API for scheduling a launch post. The listing still has to be created through a logged-in Product Hunt account.
 
+Current external constraint, June 13, 2026: automated browser attempts with the local Chrome profiles `Default`, `Profile 3 (Tommaso)`, and `Profile 1` all stopped on Product Hunt's Cloudflare human-verification screen before the launch form. Do not automate clicks against that verification. If a human can complete the Product Hunt UI, use the listing content and gallery assets below, then set the final Product Hunt URL in Vercel.
+
 Use:
 
 - Product name: `OUTNA.ME`
