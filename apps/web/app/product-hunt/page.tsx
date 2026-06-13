@@ -1,3 +1,4 @@
+import { productHuntSocialImage } from '@outname/shared/launch/product-hunt'
 import { buildProductHuntJsonLd } from '@outname/shared/launch/product-hunt-seo'
 import {
   LandingHomePage,
@@ -30,12 +31,19 @@ export const metadata: Metadata = {
     url: '/product-hunt',
     siteName: siteConfig.name,
     type: 'website',
+    images: [productHuntSocialImage],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'OUTNA.ME for Vercel Day',
     description:
       'Hosted personal AI agents built with Vercel Sandbox, Workflow, AI SDK, and Chat SDK.',
+    images: [
+      {
+        alt: productHuntSocialImage.alt,
+        url: productHuntSocialImage.url,
+      },
+    ],
   },
 }
 

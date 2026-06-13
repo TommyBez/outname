@@ -46,6 +46,13 @@ export const productHuntStackHighlights = [
   },
 ] as const
 
+export const productHuntSocialImage = {
+  alt: 'OUTNA.ME Product Hunt Vercel Day preview showing hosted AI agents with Vercel Sandbox, Workflow, AI SDK, and Chat SDK.',
+  height: 760,
+  url: '/product-hunt-vercel-day/01-outname-hero.png',
+  width: 1270,
+} as const
+
 export const productHuntFaq = [
   {
     question: 'What is OUTNA.ME?',
