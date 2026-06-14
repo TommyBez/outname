@@ -4,6 +4,7 @@ import readline from 'node:readline/promises'
 import { Sandbox, Snapshot } from '@vercel/sandbox'
 import {
   getVercelSandboxCredentials,
+  PERSISTENT_SANDBOX_RETENTION_OPTIONS,
   type VercelSandboxCredentials,
   withVercelSandboxCredentials,
 } from '../server/vercel-sandbox-config'
@@ -25,12 +26,27 @@ interface ProjectRef {
   name: string
 }
 
+interface SandboxSnapshotPlan {
+  candidates: SnapshotCandidate[]
+  createdSnapshotBytes: number
+  createdSnapshotCount: number
+  currentSnapshotId: string | undefined
+  needsRetentionUpdate: boolean
+  sandbox: ListedSandbox
+}
+
 interface ScriptOptions {
   execute: boolean
   help: boolean
   maxListed: number
   olderThanDays: number | null
+  sandboxName: string | null
   yes: boolean
+}
+
+interface SnapshotCandidate {
+  sandboxName: string
+  snapshot: ListedSnapshot
 }
 
 type ListedSandbox = Awaited<
@@ -41,27 +57,31 @@ type ListedSnapshot = Awaited<
 >['snapshots'][number]
 
 function printUsage(): void {
-  console.log(`Clean up old Vercel Sandbox snapshots for the current project.
+  console.log(`Clean up non-current Vercel Sandbox snapshots for persistent sandboxes.
 
 Usage:
-  pnpm vercel:snapshots:cleanup --older-than-days 14 [options]
-  pnpm exec tsx packages/shared/scripts/cleanup-vercel-snapshots.ts --older-than-days 14 [options]
+  pnpm vercel:snapshots:cleanup [options]
+  pnpm exec tsx packages/shared/scripts/cleanup-vercel-snapshots.ts [options]
 
 Options:
-  --older-than-days <days>  Required. Only consider snapshots created before
-                            this age threshold.
+  --sandbox-name <name>     Only inspect one persistent sandbox by name.
+  --older-than-days <days>  Optional. Only delete non-current snapshots created
+                            before this age threshold. By default, every
+                            non-current created snapshot is a candidate.
   --max-listed <count>      Number of candidate snapshots to print in the
                             dry-run summary. Default: ${DEFAULT_MAX_LISTED_CANDIDATES}.
-  --execute                 Actually delete candidate snapshots. Without this
-                            flag the script only prints a dry-run plan.
+  --execute                 Apply retention updates and delete candidate
+                            snapshots. Without this flag the script only
+                            prints a dry-run plan.
   --yes                     Skip the interactive confirmation prompt.
   --help                    Show this help text.
 
 Safety:
-  - Only snapshots with status "created" are candidates.
-  - Current snapshots for listed sandboxes are protected.
-  - Ancestors of protected snapshots are protected through parentId.
-  - Snapshots used more recently than the age threshold are protected.
+  - Only persistent sandboxes are inspected.
+  - Snapshots are listed with Snapshot.list({ name: sandbox.name }).
+  - The sandbox currentSnapshotId is always protected.
+  - Only snapshots with status "created" are delete candidates.
+  - Existing persistent sandboxes are updated to keepLastSnapshots count=1.
 
 Environment:
   SANDBOX_TEAM_ID           Vercel team id for Sandbox API calls.
@@ -79,6 +99,7 @@ function parseArgs(argv: string[]): ScriptOptions {
     help: false,
     maxListed: DEFAULT_MAX_LISTED_CANDIDATES,
     olderThanDays: null,
+    sandboxName: null,
     yes: false,
   }
 
@@ -104,6 +125,13 @@ function parseArgs(argv: string[]): ScriptOptions {
         break
       case '--older-than-days':
         options.olderThanDays = readPositiveIntegerArgument({
+          argument: arg,
+          value: argv[index + 1],
+        })
+        index += 2
+        break
+      case '--sandbox-name':
+        options.sandboxName = readStringArgument({
           argument: arg,
           value: argv[index + 1],
         })
@@ -135,6 +163,17 @@ function readPositiveIntegerArgument(input: {
   }
 
   return parsedValue
+}
+
+function readStringArgument(input: {
+  argument: string
+  value: string | undefined
+}): string {
+  if (!input.value?.trim()) {
+    throw new Error(`Missing value for ${input.argument}.`)
+  }
+
+  return input.value.trim()
 }
 
 function resolveSandboxProject(
@@ -175,7 +214,10 @@ async function listSandboxes(project: ProjectRef): Promise<ListedSandbox[]> {
   return sandboxes
 }
 
-async function listSnapshots(project: ProjectRef): Promise<ListedSnapshot[]> {
+async function listSnapshotsForSandbox(input: {
+  project: ProjectRef
+  sandboxName: string
+}): Promise<ListedSnapshot[]> {
   const snapshots: ListedSnapshot[] = []
   let cursor = ''
   const seenCursors = new Set<string>()
@@ -184,7 +226,7 @@ async function listSnapshots(project: ProjectRef): Promise<ListedSnapshot[]> {
     if (cursor) {
       if (seenCursors.has(cursor)) {
         throw new Error(
-          `Repeated pagination cursor while listing snapshots for project ${project.id}.`
+          `Repeated pagination cursor while listing snapshots for sandbox ${input.sandboxName} in project ${input.project.id}.`
         )
       }
       seenCursors.add(cursor)
@@ -194,6 +236,7 @@ async function listSnapshots(project: ProjectRef): Promise<ListedSnapshot[]> {
       withVercelSandboxCredentials({
         cursor: cursor || undefined,
         limit: VERCEL_PAGE_LIMIT,
+        name: input.sandboxName,
       })
     )
 
@@ -204,98 +247,108 @@ async function listSnapshots(project: ProjectRef): Promise<ListedSnapshot[]> {
   return snapshots
 }
 
-function collectProtectedSnapshotIds(input: {
+function selectPersistentSandboxes(input: {
+  sandboxName: string | null
   sandboxes: readonly ListedSandbox[]
-  snapshots: readonly ListedSnapshot[]
-}): Set<string> {
-  const snapshotsById = new Map(
-    input.snapshots.map((snapshot) => [snapshot.id, snapshot])
+}): ListedSandbox[] {
+  const persistentSandboxes = input.sandboxes.filter(
+    (sandbox) => sandbox.persistent
   )
-  const protectedIds = new Set<string>()
-  const protectedSessionIds = new Set<string>()
-
-  for (const sandbox of input.sandboxes) {
-    if (shouldProtectSandboxSnapshot(sandbox)) {
-      protectSnapshotWithAncestors({
-        protectedIds,
-        snapshotId: sandbox.currentSnapshotId,
-        snapshotsById,
-      })
-      if (sandbox.currentSessionId) {
-        protectedSessionIds.add(sandbox.currentSessionId)
-      }
-    }
+  if (!input.sandboxName) {
+    return persistentSandboxes
   }
 
-  for (const snapshot of input.snapshots) {
-    if (protectedSessionIds.has(snapshot.sourceSessionId)) {
-      protectSnapshotWithAncestors({
-        protectedIds,
-        snapshotId: snapshot.id,
-        snapshotsById,
-      })
-    }
-  }
-
-  return protectedIds
-}
-
-function shouldProtectSandboxSnapshot(sandbox: ListedSandbox): boolean {
-  return (
-    sandbox.persistent ||
-    sandbox.status === 'pending' ||
-    sandbox.status === 'running' ||
-    sandbox.status === 'snapshotting' ||
-    sandbox.status === 'stopping'
+  return persistentSandboxes.filter(
+    (sandbox) => sandbox.name === input.sandboxName
   )
 }
 
-function protectSnapshotWithAncestors(input: {
-  protectedIds: Set<string>
-  snapshotId: string | undefined
-  snapshotsById: ReadonlyMap<string, ListedSnapshot>
-}): void {
-  let snapshotId = input.snapshotId
-  while (snapshotId) {
-    if (input.protectedIds.has(snapshotId)) {
-      return
-    }
-    input.protectedIds.add(snapshotId)
-    snapshotId = input.snapshotsById.get(snapshotId)?.parentId
+async function buildSnapshotPlan(input: {
+  cutoffTimestamp: number | null
+  project: ProjectRef
+  sandbox: ListedSandbox
+}): Promise<SandboxSnapshotPlan> {
+  const snapshots = await listSnapshotsForSandbox({
+    project: input.project,
+    sandboxName: input.sandbox.name,
+  })
+  const createdSnapshots = snapshots.filter(
+    (snapshot) => snapshot.status === 'created'
+  )
+  const candidates = selectCleanupCandidates({
+    cutoffTimestamp: input.cutoffTimestamp,
+    currentSnapshotId: input.sandbox.currentSnapshotId,
+    sandboxName: input.sandbox.name,
+    snapshots: createdSnapshots,
+  })
+
+  return {
+    candidates,
+    createdSnapshotBytes: sumSnapshotBytes(createdSnapshots),
+    createdSnapshotCount: createdSnapshots.length,
+    currentSnapshotId: input.sandbox.currentSnapshotId,
+    needsRetentionUpdate: needsPersistentRetentionUpdate(input.sandbox),
+    sandbox: input.sandbox,
   }
 }
 
 function selectCleanupCandidates(input: {
-  cutoffTimestamp: number
-  protectedIds: ReadonlySet<string>
+  cutoffTimestamp: number | null
+  currentSnapshotId: string | undefined
+  sandboxName: string
   snapshots: readonly ListedSnapshot[]
-}): ListedSnapshot[] {
-  const candidates: ListedSnapshot[] = []
+}): SnapshotCandidate[] {
+  const candidates: SnapshotCandidate[] = []
 
   for (const snapshot of input.snapshots) {
-    if (snapshot.status !== 'created') {
-      continue
-    }
-    if (input.protectedIds.has(snapshot.id)) {
-      continue
-    }
-    if (snapshot.createdAt >= input.cutoffTimestamp) {
+    if (snapshot.id === input.currentSnapshotId) {
       continue
     }
     if (
-      snapshot.lastUsedAt !== undefined &&
-      snapshot.lastUsedAt >= input.cutoffTimestamp
+      input.cutoffTimestamp !== null &&
+      snapshot.createdAt >= input.cutoffTimestamp
     ) {
       continue
     }
 
-    candidates.push(snapshot)
+    candidates.push({
+      sandboxName: input.sandboxName,
+      snapshot,
+    })
   }
 
   return candidates.sort(
-    (leftSnapshot, rightSnapshot) =>
-      rightSnapshot.sizeBytes - leftSnapshot.sizeBytes
+    (leftCandidate, rightCandidate) =>
+      rightCandidate.snapshot.sizeBytes - leftCandidate.snapshot.sizeBytes
   )
+}
+
+function needsPersistentRetentionUpdate(sandbox: ListedSandbox): boolean {
+  const keepLastSnapshots = sandbox.keepLastSnapshots
+  return (
+    sandbox.snapshotExpiration !==
+      PERSISTENT_SANDBOX_RETENTION_OPTIONS.snapshotExpiration ||
+    keepLastSnapshots?.count !==
+      PERSISTENT_SANDBOX_RETENTION_OPTIONS.keepLastSnapshots.count ||
+    keepLastSnapshots.deleteEvicted !==
+      PERSISTENT_SANDBOX_RETENTION_OPTIONS.keepLastSnapshots.deleteEvicted ||
+    keepLastSnapshots.expiration !==
+      PERSISTENT_SANDBOX_RETENTION_OPTIONS.keepLastSnapshots.expiration
+  )
+}
+
+function flattenCandidates(
+  plans: readonly SandboxSnapshotPlan[]
+): SnapshotCandidate[] {
+  return plans.flatMap((plan) => plan.candidates)
+}
+
+function sumCandidateBytes(candidates: readonly SnapshotCandidate[]): number {
+  let total = 0
+  for (const candidate of candidates) {
+    total += candidate.snapshot.sizeBytes
+  }
+  return total
 }
 
 function sumSnapshotBytes(snapshots: readonly ListedSnapshot[]): number {
@@ -323,36 +376,64 @@ function formatMonthlyUsd(bytes: number): string {
 }
 
 function printPlan(input: {
-  candidates: readonly ListedSnapshot[]
-  createdSnapshots: readonly ListedSnapshot[]
+  candidates: readonly SnapshotCandidate[]
   maxListed: number
+  plans: readonly SandboxSnapshotPlan[]
   project: ProjectRef
-  protectedIds: ReadonlySet<string>
-  snapshots: readonly ListedSnapshot[]
 }): void {
-  const candidateBytes = sumSnapshotBytes(input.candidates)
-  const createdBytes = sumSnapshotBytes(input.createdSnapshots)
+  const createdSnapshotBytes = input.plans.reduce(
+    (total, plan) => total + plan.createdSnapshotBytes,
+    0
+  )
+  const createdSnapshotCount = input.plans.reduce(
+    (total, plan) => total + plan.createdSnapshotCount,
+    0
+  )
+  const candidateBytes = sumCandidateBytes(input.candidates)
+  const retentionUpdateCount = input.plans.filter(
+    (plan) => plan.needsRetentionUpdate
+  ).length
 
   console.log(
-    `Found ${input.snapshots.length} snapshot(s) in ${input.project.name} (${input.project.id}).`
+    `Found ${input.plans.length} persistent sandbox(es) in ${input.project.name} (${input.project.id}).`
   )
   console.log(
-    `Created snapshots: ${input.createdSnapshots.length} (${formatGb(createdBytes)} GB, about $${formatMonthlyUsd(createdBytes)}/month at $${SANDBOX_STORAGE_USD_PER_GB_MONTH}/GB-month).`
+    `Created snapshots on inspected persistent sandboxes: ${createdSnapshotCount} (${formatGb(createdSnapshotBytes)} GB, about $${formatMonthlyUsd(createdSnapshotBytes)}/month at $${SANDBOX_STORAGE_USD_PER_GB_MONTH}/GB-month).`
   )
-  console.log(`Protected snapshots: ${input.protectedIds.size}.`)
+  console.log(`Retention updates needed: ${retentionUpdateCount}.`)
   console.log(
-    `Cleanup candidates: ${input.candidates.length} (${formatGb(candidateBytes)} GB, about $${formatMonthlyUsd(candidateBytes)}/month).`
+    `Delete candidates: ${input.candidates.length} (${formatGb(candidateBytes)} GB, about $${formatMonthlyUsd(candidateBytes)}/month).`
   )
+
+  if (input.plans.length > 0) {
+    console.log('\nPersistent sandboxes')
+  }
+  for (const plan of input.plans) {
+    const planBytes = sumCandidateBytes(plan.candidates)
+    console.log(
+      [
+        `  - ${plan.sandbox.name}`,
+        `status=${plan.sandbox.status}`,
+        `current=${plan.currentSnapshotId ?? '-'}`,
+        `created=${plan.createdSnapshotCount}`,
+        `delete=${plan.candidates.length}`,
+        `deleteGb=${formatGb(planBytes)}`,
+        `retention=${plan.needsRetentionUpdate ? 'update' : 'ok'}`,
+      ].join(' | ')
+    )
+  }
 
   if (input.candidates.length === 0) {
     return
   }
 
-  console.log('\nLargest cleanup candidates')
-  for (const snapshot of input.candidates.slice(0, input.maxListed)) {
+  console.log('\nLargest delete candidates')
+  for (const candidate of input.candidates.slice(0, input.maxListed)) {
+    const { snapshot } = candidate
     console.log(
       [
         `  - ${snapshot.id}`,
+        `sandbox=${candidate.sandboxName}`,
         `${formatGb(snapshot.sizeBytes)} GB`,
         `created=${formatDate(snapshot.createdAt)}`,
         `lastUsed=${formatDate(snapshot.lastUsedAt)}`,
@@ -389,10 +470,12 @@ async function confirmExecution(count: number): Promise<boolean> {
 
 async function ensureExecutionAllowed(
   options: ScriptOptions,
-  candidates: readonly ListedSnapshot[]
+  candidates: readonly SnapshotCandidate[]
 ): Promise<boolean> {
   if (!options.execute) {
-    console.log('\nDry run only. Re-run with --execute to delete candidates.')
+    console.log(
+      '\nDry run only. Re-run with --execute to update retention and delete candidates.'
+    )
     return false
   }
 
@@ -427,28 +510,54 @@ function printFailures(failures: readonly CleanupFailure[]): void {
   }
 }
 
-async function deleteSnapshot(snapshot: ListedSnapshot): Promise<void> {
+async function updateSandboxRetention(sandbox: ListedSandbox): Promise<void> {
+  const handle = await Sandbox.get(
+    withVercelSandboxCredentials({
+      name: sandbox.name,
+      resume: false,
+    })
+  )
+  await handle.update(PERSISTENT_SANDBOX_RETENTION_OPTIONS)
+}
+
+async function deleteSnapshot(candidate: SnapshotCandidate): Promise<void> {
   const handle = await Snapshot.get(
-    withVercelSandboxCredentials({ snapshotId: snapshot.id })
+    withVercelSandboxCredentials({ snapshotId: candidate.snapshot.id })
   )
   await handle.delete()
 }
 
 async function applyCleanup(
-  snapshots: readonly ListedSnapshot[]
+  plans: readonly SandboxSnapshotPlan[],
+  candidates: readonly SnapshotCandidate[]
 ): Promise<CleanupFailure[]> {
   const failures: CleanupFailure[] = []
 
-  for (const snapshot of snapshots) {
+  for (const plan of plans) {
+    if (!plan.needsRetentionUpdate) {
+      continue
+    }
     try {
-      await deleteSnapshot(snapshot)
+      await updateSandboxRetention(plan.sandbox)
+      console.log(`[retention updated] ${plan.sandbox.name}`)
+    } catch (error) {
+      failures.push({
+        error,
+        target: `${plan.sandbox.name}: retention update`,
+      })
+    }
+  }
+
+  for (const candidate of candidates) {
+    try {
+      await deleteSnapshot(candidate)
       console.log(
-        `[deleted] ${snapshot.id} (${formatGb(snapshot.sizeBytes)} GB)`
+        `[deleted] ${candidate.snapshot.id} (${candidate.sandboxName}, ${formatGb(candidate.snapshot.sizeBytes)} GB)`
       )
     } catch (error) {
       failures.push({
         error,
-        target: snapshot.id,
+        target: `${candidate.sandboxName}: ${candidate.snapshot.id}`,
       })
     }
   }
@@ -465,42 +574,58 @@ async function main(): Promise<void> {
     return
   }
 
-  if (options.olderThanDays === null) {
-    throw new Error('Missing required option: --older-than-days <days>.')
-  }
-
   const project = resolveSandboxProject(getVercelSandboxCredentials())
-  const cutoffTimestamp = Date.now() - options.olderThanDays * 24 * 60 * 60_000
+  const cutoffTimestamp =
+    options.olderThanDays === null
+      ? null
+      : Date.now() - options.olderThanDays * 24 * 60 * 60_000
 
   console.log(
-    `Scanning Vercel Sandbox snapshots older than ${options.olderThanDays} day(s) for ${project.name} (${project.id}).`
+    `Scanning persistent Vercel Sandbox snapshots for ${project.name} (${project.id}).`
   )
 
-  const [sandboxes, snapshots] = await Promise.all([
-    listSandboxes(project),
-    listSnapshots(project),
-  ])
-  const protectedIds = collectProtectedSnapshotIds({ sandboxes, snapshots })
-  const createdSnapshots = snapshots.filter(
-    (snapshot) => snapshot.status === 'created'
-  )
-  const candidates = selectCleanupCandidates({
-    cutoffTimestamp,
-    protectedIds,
-    snapshots,
+  const sandboxes = await listSandboxes(project)
+  const persistentSandboxes = selectPersistentSandboxes({
+    sandboxName: options.sandboxName,
+    sandboxes,
   })
+  if (options.sandboxName && persistentSandboxes.length === 0) {
+    throw new Error(
+      `No persistent sandbox found with name ${options.sandboxName}.`
+    )
+  }
+
+  const plans: SandboxSnapshotPlan[] = []
+  for (const sandbox of persistentSandboxes) {
+    plans.push(
+      await buildSnapshotPlan({
+        cutoffTimestamp,
+        project,
+        sandbox,
+      })
+    )
+  }
+  const candidates = flattenCandidates(plans).sort(
+    (leftCandidate, rightCandidate) =>
+      rightCandidate.snapshot.sizeBytes - leftCandidate.snapshot.sizeBytes
+  )
 
   printPlan({
     candidates,
-    createdSnapshots,
     maxListed: options.maxListed,
+    plans,
     project,
-    protectedIds,
-    snapshots,
   })
 
   if (candidates.length === 0) {
-    console.log('\nNothing to do.')
+    console.log('\nNo snapshot delete candidates found.')
+  }
+
+  const retentionUpdateCount = plans.filter(
+    (plan) => plan.needsRetentionUpdate
+  ).length
+  if (candidates.length === 0 && retentionUpdateCount === 0) {
+    console.log('Nothing to do.')
     return
   }
 
@@ -509,14 +634,16 @@ async function main(): Promise<void> {
     return
   }
 
-  const failures = await applyCleanup(candidates)
+  const failures = await applyCleanup(plans, candidates)
   if (failures.length > 0) {
     printFailures(failures)
     process.exitCode = 1
     return
   }
 
-  console.log(`\nCleanup complete for ${candidates.length} snapshot(s).`)
+  console.log(
+    `\nCleanup complete for ${candidates.length} snapshot(s) and ${retentionUpdateCount} retention update(s).`
+  )
 }
 
 main().catch((error: unknown) => {
