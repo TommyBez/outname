@@ -1,6 +1,6 @@
 # Product Marketing Context
 
-*Last updated: 2026-06-02*
+*Last updated: 2026-06-14*
 
 > Positioning: **SaaS-first**. Open source is real and worth saying — but as trust, inspectability, and optional ownership — not as the primary pitch or CTA.
 
@@ -13,7 +13,23 @@
 
 **Product type:** Hosted SaaS product, backed by an open-source codebase.
 
-**Business model:** SaaS-first. Early-access waitlist today. Open source supports trust and technical adoption; it is not the primary conversion path.
+**Business model:** SaaS-first. Current launch motion is a free, invite-only beta rather than a public free plan. Inference is bring-your-own-key (BYOK): users connect their own provider credentials instead of OUTNA.ME bundling LLM usage into the beta. Open source supports trust and technical adoption; it is not the primary conversion path.
+
+## Pricing & Packaging
+**Current model:** Free invite-only beta with a current creation limit of 3 agents per user.
+
+**Beta rationale:** Keep access curated while validating recurring agent workflows, onboarding, reliability, and willingness to pay before publishing paid tiers. Free beta should be framed as early access, not as a permanent freemium promise.
+
+**LLM cost model:** BYOK. Users bring their own inference provider key, so model usage stays under their control and is not bundled into the current OUTNA.ME price. Supported provider paths include Vercel AI Gateway, LLM Gateway, and OpenRouter.
+
+**Current beta limits:** Users can create up to 3 agents during the beta. This keeps the product useful for real workflows while limiting operational complexity during invite-only validation.
+
+**Pricing implication:** Future paid pricing should charge for the hosted agent runtime and product layer: active agents, scheduled runs/heartbeats, sandboxed execution, memory, tools, channels, collaboration, and support. It should not initially position OUTNA.ME as a reseller of model tokens.
+
+**Likely future packaging hypothesis:**
+- **Builder:** Individual users with a small number of personal agents and scheduled runs. The current beta limit of 3 agents is a useful baseline for this entry tier.
+- **Pro:** Founder-operators and power users who need more agents, higher run limits, richer memory, and more tools/channels.
+- **Team / Business:** Shared workspaces, policy controls, auditability, higher limits, priority support, and business-grade onboarding.
 
 ## Target Audience
 **Target companies:** The current audience is more role-based than company-based. Best current fit: solo builders, C-level operators, and developers, especially in small teams or early-stage environments.
@@ -74,6 +90,7 @@
 - Memory designed for future runs, not just transcript storage.
 - Tools, sub-agents, and channel integrations in one system.
 - Sandboxed execution with persistent agent state.
+- BYOK inference with multiple gateway options: Vercel AI Gateway, LLM Gateway, and OpenRouter.
 - Open-source codebase (MIT) for inspectability and optional self-deployment — credibility without making self-host the default path.
 
 **How we do it differently:** OUTNA.ME treats each agent as a small operational unit with a clear role, memory reference, schedule, tools, and channels. The product is designed to reduce the setup burden of autonomous agents and deliver a hosted, productized environment — not a pile of components users must wire and maintain themselves. Open source sits underneath as proof you can inspect and own the stack if you want to; the hosted product is what most people should start with.
@@ -91,6 +108,8 @@
 | "I do not want one big autonomous agent touching everything." | That is exactly the design principle: small configurable agents with clear scopes, tools, and channels rather than one giant assistant. |
 | "Why would I use the hosted product if it's open source?" | Open source is for inspectability, contribution, and optional self-deploy. The hosted product is for people who want agents running now — schedules, sandboxes, workflows, and integrations managed for them. |
 | "Is this just a wrapper around open-source tooling?" | No. OUTNA.ME is a productized agent runtime: hosted execution, persistent sandboxes, scheduled workflows, memory, channels, and tools in one coherent system. The repo proves what you're buying into. |
+| "Why do I need to bring my own model key?" | BYOK gives users direct control over provider choice, model spend, and portability. OUTNA.ME focuses on the hosted agent runtime rather than hiding inference costs inside a bundled token margin. |
+| "Is free beta the same as a free plan?" | No. Free beta is an invite-only validation phase. Future paid plans should price the hosted runtime, execution, memory, tools, and collaboration layers once packaging is validated. |
 
 **Anti-persona:** People looking for a polished consumer chatbot, one-off prompt help, or a free self-host project with no interest in a hosted product or recurring operational work.
 
@@ -118,10 +137,11 @@
 - "Small agents that can run on a schedule, use tools, work through channels, call sub-agents, remember useful context, and come back to recurring work."
 - "Memory that improves future runs."
 - "You can inspect the code if you want — but I just use the hosted product."
+- "I can use my own model gateway instead of getting locked into whatever the app bundles."
 
-**Words to use:** hosted, personal AI agents, recurring work, continuity, configurable agents, scheduled runs, future runs, memory, tools, sub-agents, channels, early access, autonomous, open source (as proof/trust, not headline).
+**Words to use:** hosted, personal AI agents, recurring work, continuity, configurable agents, scheduled runs, future runs, memory, tools, sub-agents, channels, early access, invite-only beta, BYOK, bring your own key, provider choice, Vercel AI Gateway, LLM Gateway, OpenRouter, autonomous, open source (as proof/trust, not headline).
 
-**Words to avoid:** generic assistant, one giant agent, AI magic, memory as a buzzword, chatbot replacement, free forever, DIY-only, self-host first.
+**Words to avoid:** generic assistant, one giant agent, AI magic, memory as a buzzword, chatbot replacement, free forever, freemium promise, bundled-token black box, DIY-only, self-host first.
 
 **Glossary:**
 | Term | Meaning |
@@ -132,6 +152,8 @@
 | Channel plugin | A runtime surface like Slack, Telegram, Discord, email, or webhook |
 | Scheduled run | An agent execution triggered by time or recurring cadence |
 | Sandboxed execution | Isolated runtime state for agent work and persistent files |
+| BYOK | Bring-your-own-key inference: users connect their own provider credentials |
+| Inference provider | The gateway or model access layer used for agent runs, such as Vercel AI Gateway, LLM Gateway, or OpenRouter |
 | Open source (MIT) | The codebase is public and forkable; the default product experience remains hosted SaaS |
 
 ## Brand Voice
@@ -162,17 +184,19 @@
 | Configurable autonomy | Agents are small operational units with model, identity, schedule, and memory |
 | Composability | Tools, sub-agents, channels, MCP, and skills are core product building blocks |
 | Learning over time | Memory is framed as improving future runs |
+| Provider choice | Users can connect Vercel AI Gateway, LLM Gateway, or OpenRouter instead of being locked to one model path |
 | Trust without black box | Open-source codebase backs the hosted product; inspect, fork, or self-deploy if needed |
 
 ## Goals
 **Business goal:** Build early demand and validate OUTNA.ME as the faster, SaaS-first way to get autonomous agents running for recurring communication, marketing, scheduling, and outreach work.
 
-**Conversion action:** Join the waitlist / request early access to the hosted product. GitHub star/fork is secondary discovery, not the primary CTA.
+**Conversion action:** Join the waitlist / request an invite to the free beta of the hosted product. GitHub star/fork is secondary discovery, not the primary CTA.
 
 **Current metrics:** Waitlist exists and signups are tracked in-product, but no public benchmark numbers are documented in the repo. Needs confirmation.
 
 ## Messaging hierarchy (SaaS-first)
 1. **Lead:** Agents that keep working — hosted, with memory, schedules, and tools.
 2. **Support:** Faster than stitching together self-managed agent stacks.
-3. **Proof:** Open source (MIT) — inspect the stack, fork if you want, no black box.
-4. **CTA:** Join the waitlist / get early access to the hosted product.
+3. **Control:** Bring your own model gateway — Vercel AI Gateway, LLM Gateway, or OpenRouter.
+4. **Proof:** Open source (MIT) — inspect the stack, fork if you want, no black box.
+5. **CTA:** Join the waitlist / request an invite to the free beta.
