@@ -4,6 +4,7 @@ import {
 } from '@outname/ai/agent-runtime/skills/paths'
 import {
   getVercelSandboxCredentials,
+  PERSISTENT_SANDBOX_RETENTION_OPTIONS,
   skillSandboxTags,
 } from '@outname/shared/server/vercel-sandbox-config'
 import { type NetworkPolicy, Sandbox } from '@vercel/sandbox'
@@ -11,7 +12,13 @@ import { createAgentSandboxAccessor } from './agent-sandbox-accessor'
 
 export interface CreateOptions {
   env?: Record<string, string>
+  keepLastSnapshots?: {
+    count: number
+    deleteEvicted?: boolean
+    expiration?: number
+  }
   networkPolicy?: NetworkPolicy
+  persistent?: boolean
   ports?: number[]
   resources?: { vcpus: number }
   runtime?: string
@@ -25,6 +32,8 @@ type SkillSandboxGetOrCreateOptions = NonNullable<
 >
 
 const SKILL_SANDBOX_CREATE_OPTIONS: CreateOptions = {
+  ...PERSISTENT_SANDBOX_RETENTION_OPTIONS,
+  persistent: true,
   runtime: 'node22',
   timeout: 60 * 60 * 1000,
   resources: { vcpus: 1 },

@@ -2,6 +2,7 @@ import type { Sandbox } from '@vercel/sandbox'
 
 const APP_TAG = 'outname'
 const DEFAULT_ENV_TAG = 'development'
+const PERSISTENT_SANDBOX_SNAPSHOT_EXPIRATION_MS = 0
 const SANDBOX_CREDENTIAL_KEYS = [
   'SANDBOX_TEAM_ID',
   'SANDBOX_PROJECT_ID',
@@ -22,6 +23,14 @@ export type VercelSandboxCredentials = Pick<
   SandboxCreateOptionsWithCredentials,
   'projectId' | 'teamId' | 'token'
 >
+export const PERSISTENT_SANDBOX_RETENTION_OPTIONS = {
+  keepLastSnapshots: {
+    count: 1,
+    deleteEvicted: true,
+    expiration: PERSISTENT_SANDBOX_SNAPSHOT_EXPIRATION_MS,
+  },
+  snapshotExpiration: PERSISTENT_SANDBOX_SNAPSHOT_EXPIRATION_MS,
+} as const
 type VercelSandboxAuthenticatedOptions<TOptions extends object> = TOptions &
   SandboxCreateOptionsWithCredentials
 

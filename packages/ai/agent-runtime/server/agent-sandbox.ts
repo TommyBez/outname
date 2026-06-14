@@ -1,5 +1,6 @@
 import { destroySkillSandbox } from '@outname/ai/agent-runtime/server/agent-skill-sandbox'
 import {
+  PERSISTENT_SANDBOX_RETENTION_OPTIONS,
   systemSandboxTags,
   withVercelSandboxCredentials,
 } from '@outname/shared/server/vercel-sandbox-config'
@@ -10,7 +11,13 @@ import { createAgentSandboxAccessor } from './agent-sandbox-accessor'
 // create-by-runtime options that matter for system sandboxes.
 export interface CreateOptions {
   env?: Record<string, string>
+  keepLastSnapshots?: {
+    count: number
+    deleteEvicted?: boolean
+    expiration?: number
+  }
   networkPolicy?: NetworkPolicy
+  persistent?: boolean
   ports?: number[]
   resources?: { vcpus: number }
   runtime?: string
@@ -24,6 +31,8 @@ export interface CreateOptions {
 export const SYSTEM_SANDBOX_ROOT = '/vercel/sandbox'
 
 const SYSTEM_SANDBOX_CREATE_OPTIONS: CreateOptions = {
+  ...PERSISTENT_SANDBOX_RETENTION_OPTIONS,
+  persistent: true,
   runtime: 'node22',
   // File ops are small and bounded.
   timeout: 60_000,
