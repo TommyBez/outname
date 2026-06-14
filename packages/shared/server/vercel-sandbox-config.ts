@@ -27,7 +27,6 @@ export const PERSISTENT_SANDBOX_RETENTION_OPTIONS = {
   keepLastSnapshots: {
     count: 1,
     deleteEvicted: true,
-    expiration: PERSISTENT_SANDBOX_SNAPSHOT_EXPIRATION_MS,
   },
   snapshotExpiration: PERSISTENT_SANDBOX_SNAPSHOT_EXPIRATION_MS,
 } as const

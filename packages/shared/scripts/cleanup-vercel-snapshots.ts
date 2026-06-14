@@ -332,8 +332,7 @@ function needsPersistentRetentionUpdate(sandbox: ListedSandbox): boolean {
       PERSISTENT_SANDBOX_RETENTION_OPTIONS.keepLastSnapshots.count ||
     keepLastSnapshots.deleteEvicted !==
       PERSISTENT_SANDBOX_RETENTION_OPTIONS.keepLastSnapshots.deleteEvicted ||
-    keepLastSnapshots.expiration !==
-      PERSISTENT_SANDBOX_RETENTION_OPTIONS.keepLastSnapshots.expiration
+    keepLastSnapshots.expiration !== undefined
   )
 }
 
