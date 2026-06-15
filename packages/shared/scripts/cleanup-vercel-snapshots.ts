@@ -554,6 +554,7 @@ async function applyCleanup(
         `[deleted] ${candidate.snapshot.id} (${candidate.sandboxName}, ${formatGb(candidate.snapshot.sizeBytes)} GB)`
       )
     } catch (error) {
+      console.log(`[failed to delete] ${candidate.snapshot.id} (${candidate.sandboxName}, ${formatGb(candidate.snapshot.sizeBytes)} GB): ${error}`)
       failures.push({
         error,
         target: `${candidate.sandboxName}: ${candidate.snapshot.id}`,
