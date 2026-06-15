@@ -31,16 +31,33 @@ export async function cleanupEventResources(input: {
   ])
 
   await Promise.all([
-    stopAllToolSandboxesForRun(),
-    stopAllBrokeredHttpSandboxesForRun(),
-    stopAllRepoWorkspacesForRun(),
-    cleanupTaggedEphemeralSandboxesForRun(input.runId).catch((err) => {
-      console.error('[events] tagged sandbox cleanup failed', err)
-    }),
-    refreshAgentFileCache(input.agentId).catch((err) => {
-      console.error('[events] refreshAgentFileCache failed', err)
-    }),
+    bestEffortCleanup('stopAllToolSandboxesForRun', stopAllToolSandboxesForRun),
+    bestEffortCleanup(
+      'stopAllBrokeredHttpSandboxesForRun',
+      stopAllBrokeredHttpSandboxesForRun
+    ),
+    bestEffortCleanup(
+      'stopAllRepoWorkspacesForRun',
+      stopAllRepoWorkspacesForRun
+    ),
+    bestEffortCleanup('tagged sandbox cleanup', () =>
+      cleanupTaggedEphemeralSandboxesForRun(input.runId)
+    ),
+    bestEffortCleanup('refreshAgentFileCache', () =>
+      refreshAgentFileCache(input.agentId)
+    ),
   ])
+}
+
+async function bestEffortCleanup(
+  label: string,
+  cleanup: () => Promise<unknown>
+): Promise<void> {
+  try {
+    await cleanup()
+  } catch (err) {
+    console.error(`[events] ${label} failed`, err)
+  }
 }
 
 async function cleanupTaggedEphemeralSandboxesForRun(

@@ -138,6 +138,9 @@ describe('cleanupEventResources', () => {
       pagination: { next: undefined },
       sandboxes: [],
     })
+    mockStopAllBrokeredHttpSandboxesForRun.mockResolvedValue(undefined)
+    mockStopAllRepoWorkspacesForRun.mockResolvedValue(undefined)
+    mockStopAllToolSandboxesForRun.mockResolvedValue(undefined)
     mockWithVercelSandboxCredentials.mockImplementation(
       (options: unknown) => options
     )
@@ -209,6 +212,41 @@ describe('cleanupEventResources', () => {
     expect(mockSandboxDelete).toHaveBeenCalledTimes(2)
   })
 
+  it('logs sandbox stop failures without rejecting the step', async () => {
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    const toolError = new Error('tool cleanup failed')
+    const brokerError = new Error('broker cleanup failed')
+    const workspaceError = new Error('workspace cleanup failed')
+
+    mockStopAllToolSandboxesForRun.mockRejectedValue(toolError)
+    mockStopAllBrokeredHttpSandboxesForRun.mockRejectedValue(brokerError)
+    mockStopAllRepoWorkspacesForRun.mockRejectedValue(workspaceError)
+    mockRefreshAgentFileCache.mockResolvedValue(undefined)
+
+    try {
+      await expect(
+        cleanupEventResources({ agentId: 'agent_123', runId: 'wrun_123' })
+      ).resolves.toBeUndefined()
+
+      expect(consoleError).toHaveBeenCalledWith(
+        '[events] stopAllToolSandboxesForRun failed',
+        toolError
+      )
+      expect(consoleError).toHaveBeenCalledWith(
+        '[events] stopAllBrokeredHttpSandboxesForRun failed',
+        brokerError
+      )
+      expect(consoleError).toHaveBeenCalledWith(
+        '[events] stopAllRepoWorkspacesForRun failed',
+        workspaceError
+      )
+    } finally {
+      consoleError.mockRestore()
+    }
+  })
+
   it('logs file-cache refresh failures without rejecting the step', async () => {
     const consoleError = vi
       .spyOn(console, 'error')
@@ -217,13 +255,17 @@ describe('cleanupEventResources', () => {
 
     mockRefreshAgentFileCache.mockRejectedValue(refreshError)
 
-    await expect(
-      cleanupEventResources({ agentId: 'agent_123', runId: 'wrun_123' })
-    ).resolves.toBeUndefined()
+    try {
+      await expect(
+        cleanupEventResources({ agentId: 'agent_123', runId: 'wrun_123' })
+      ).resolves.toBeUndefined()
 
-    expect(consoleError).toHaveBeenCalledWith(
-      '[events] refreshAgentFileCache failed',
-      refreshError
-    )
+      expect(consoleError).toHaveBeenCalledWith(
+        '[events] refreshAgentFileCache failed',
+        refreshError
+      )
+    } finally {
+      consoleError.mockRestore()
+    }
   })
 })
