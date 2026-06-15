@@ -3,6 +3,7 @@ import { withVercelSandboxCredentials } from '@outname/shared/server/vercel-sand
 import { Sandbox } from '@vercel/sandbox'
 
 const VERCEL_SANDBOX_PAGE_LIMIT = 50
+const VERCEL_SANDBOX_REQUEST_TIMEOUT_MS = 5000
 const TAGGED_EPHEMERAL_SANDBOX_KINDS = new Set([
   'brokered-http',
   'repo-workspace',
@@ -84,6 +85,7 @@ async function listProjectSandboxes(): Promise<ListedSandbox[]> {
       withVercelSandboxCredentials({
         cursor: cursor || undefined,
         limit: VERCEL_SANDBOX_PAGE_LIMIT,
+        signal: AbortSignal.timeout(VERCEL_SANDBOX_REQUEST_TIMEOUT_MS),
       })
     )
     sandboxes.push(...response.sandboxes)
@@ -111,6 +113,7 @@ async function deleteListedSandbox(sandbox: ListedSandbox): Promise<void> {
     withVercelSandboxCredentials({
       name: sandbox.name,
       resume: false,
+      signal: AbortSignal.timeout(VERCEL_SANDBOX_REQUEST_TIMEOUT_MS),
     })
   )
   await handle.delete()
