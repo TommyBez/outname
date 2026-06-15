@@ -16,7 +16,6 @@ import { createAgentSandboxAccessor } from './agent-sandbox-accessor'
 // the runtime-oriented subset of get-or-create options.
 const SKILL_SANDBOX_CREATE_OPTIONS: VercelSandboxGetOrCreateRuntimeOptions = {
   ...PERSISTENT_SANDBOX_RETENTION_OPTIONS,
-  persistent: true,
   runtime: 'node22',
   timeout: 60 * 60 * 1000,
   resources: { vcpus: 1 },
