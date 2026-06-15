@@ -14,7 +14,7 @@
 [![Turborepo](https://img.shields.io/badge/Turborepo-000000?style=flat-square&logo=turborepo&logoColor=EF4444)](https://turbo.build)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-ff3000?style=flat-square&labelColor=000000)](CONTRIBUTING.md)
 
-**[Website](https://outna.me)** · **[Quick start](#-quick-start)** · **[How it works](#-how-it-works)** · **[Architecture](docs/ARCHITECTURE.md)** · **[Contributing](CONTRIBUTING.md)** · **[X / Twitter](https://x.com/TommyBez85)**
+**[Website](https://outna.me)** · **[Quick start](#-quick-start)** · **[How it works](#-how-it-works)** · **[Architecture](docs/ARCHITECTURE.md)** · **[Contributing](CONTRIBUTING.md)** · **[X / Twitter](https://x.com/OutnameBot)**
 
 </div>
 
