@@ -4,27 +4,18 @@ import {
 } from '@outname/ai/agent-runtime/skills/paths'
 import {
   getVercelSandboxCredentials,
+  PERSISTENT_SANDBOX_RETENTION_OPTIONS,
   skillSandboxTags,
+  type VercelSandboxGetOrCreateOptions,
+  type VercelSandboxGetOrCreateRuntimeOptions,
 } from '@outname/shared/server/vercel-sandbox-config'
-import { type NetworkPolicy, Sandbox } from '@vercel/sandbox'
+import { Sandbox } from '@vercel/sandbox'
 import { createAgentSandboxAccessor } from './agent-sandbox-accessor'
 
-export interface CreateOptions {
-  env?: Record<string, string>
-  networkPolicy?: NetworkPolicy
-  ports?: number[]
-  resources?: { vcpus: number }
-  runtime?: string
-  snapshotExpiration?: number
-  tags?: Record<string, string>
-  timeout?: number
-}
-
-type SkillSandboxGetOrCreateOptions = NonNullable<
-  Parameters<typeof Sandbox.getOrCreate>[0]
->
-
-const SKILL_SANDBOX_CREATE_OPTIONS: CreateOptions = {
+// Keep this object narrower than the full SDK union: skill sandboxes only use
+// the runtime-oriented subset of get-or-create options.
+const SKILL_SANDBOX_CREATE_OPTIONS: VercelSandboxGetOrCreateRuntimeOptions = {
+  ...PERSISTENT_SANDBOX_RETENTION_OPTIONS,
   runtime: 'node22',
   timeout: 60 * 60 * 1000,
   resources: { vcpus: 1 },
@@ -49,7 +40,7 @@ export async function ensureSkillSandbox(
   const desiredName = skillSandboxAccessor.nameFor(agentId)
   const persistedName = await skillSandboxAccessor.readSandboxId(agentId)
   let created = false
-  const options: SkillSandboxGetOrCreateOptions = {
+  const options: VercelSandboxGetOrCreateOptions = {
     ...SKILL_SANDBOX_CREATE_OPTIONS,
     ...getVercelSandboxCredentials(),
     name: persistedName ?? desiredName,

@@ -164,6 +164,7 @@ describe('agentEventWorkflow', () => {
     })
     expect(mockCleanupEventResources).toHaveBeenCalledWith({
       agentId: 'agent_123',
+      runId: 'wrun_runtime',
     })
     expect(
       mockStartNextQueuedForConcurrencyKeyWithStarter
@@ -278,6 +279,7 @@ describe('agentEventWorkflow', () => {
     })
     expect(mockCleanupEventResources).toHaveBeenCalledWith({
       agentId: 'agent_123',
+      runId: 'wrun_runtime',
     })
     expect(
       mockStartNextQueuedForConcurrencyKeyWithStarter
