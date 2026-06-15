@@ -33,7 +33,7 @@ attachments, Slack routing, public web, email preview, and video tooling.
 
 ## Deploy on Vercel
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FTommyBez%2Fpersonal-assistant-agent)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FTommyBez%2Foutname)
 
 1. Fork this repository and create a new Vercel project from the fork.
 2. Set the project runtime to Node.js 24 or newer.

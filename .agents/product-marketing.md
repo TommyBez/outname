@@ -288,7 +288,7 @@
 - Support page states the product is open source; GitHub is linked in site footer
 - Repo includes a `maintainer-tool-implementation` skill for adding new maintainer tools according to the codebase's connector/tool architecture
 - Community PRs can expand the hosted maintainer-tool layer after review and merge; do not imply automatic acceptance or immediate hosted availability
-- Repo URL is currently inconsistent across local metadata (`personal-assistant-agent`) and marketing footer (`outname`); verify canonical URL before public copy.
+- Canonical repository URL: `https://github.com/TommyBez/outname`.
 
 **Testimonials:**
 > No customer testimonials documented yet. Needs confirmation.
