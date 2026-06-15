@@ -6,8 +6,8 @@ Thanks for your interest in improving `outname`.
 
 1. Read `README.md` for the product overview and setup steps.
 2. Read `.env.example` and create `.env.local` for local development.
-3. Read `docs/ARCHITECTURE.md` if your change touches runtime behavior,
-   integrations, or data flow.
+3. Read `docs/index.md`; for runtime changes, start with the agent events,
+   realtime turns, scheduler, tools, and channel feature docs.
 
 ## Local setup
 
@@ -47,8 +47,8 @@ request:
 pnpm verify
 ```
 
-`pnpm verify` runs the workflow boundary check plus `build`, `typecheck`,
-`lint`, and `react-doctor` across the monorepo.
+`pnpm verify` runs the docs check plus `build`, `typecheck`, `lint`, and
+`react-doctor` across the monorepo.
 
 If you changed TypeScript runtime code, also run:
 
