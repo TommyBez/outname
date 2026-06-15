@@ -1,4 +1,3 @@
-import { currentToolRuntimeRunId } from '@outname/ai/tools/runtime/run-id'
 import { withVercelSandboxCredentials } from '@outname/shared/server/vercel-sandbox-config'
 import { Sandbox } from '@vercel/sandbox'
 
@@ -16,7 +15,7 @@ type ListedSandbox = Awaited<
 
 export async function cleanupEventResources(input: {
   agentId: string
-  runId?: string
+  runId: string
 }): Promise<void> {
   'use step'
   const [
@@ -45,9 +44,8 @@ export async function cleanupEventResources(input: {
 }
 
 async function cleanupTaggedEphemeralSandboxesForRun(
-  explicitRunId?: string
+  runId: string
 ): Promise<void> {
-  const runId = explicitRunId ?? currentToolRuntimeRunId()
   const sandboxes = await listProjectSandboxes()
   const targets = sandboxes.filter((sandbox) =>
     shouldDeleteTaggedEphemeralSandbox({ runId, sandbox })

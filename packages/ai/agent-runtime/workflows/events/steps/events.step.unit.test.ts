@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
-  mockCurrentToolRuntimeRunId,
   mockGetAgentEvent,
   mockMarkEventHeartbeat,
   mockMarkEventRunning,
@@ -15,7 +14,6 @@ const {
   mockStopAllToolSandboxesForRun,
   mockWithVercelSandboxCredentials,
 } = vi.hoisted(() => ({
-  mockCurrentToolRuntimeRunId: vi.fn(),
   mockGetAgentEvent: vi.fn(),
   mockMarkEventHeartbeat: vi.fn(),
   mockMarkEventRunning: vi.fn(),
@@ -53,10 +51,6 @@ vi.mock('@outname/ai/tools/runtime/repo-workspace/sandbox', () => ({
 
 vi.mock('@outname/ai/tools/sandbox-runtime/runtime', () => ({
   stopAllToolSandboxesForRun: mockStopAllToolSandboxesForRun,
-}))
-
-vi.mock('@outname/ai/tools/runtime/run-id', () => ({
-  currentToolRuntimeRunId: mockCurrentToolRuntimeRunId,
 }))
 
 vi.mock('@outname/shared/server/vercel-sandbox-config', () => ({
@@ -144,7 +138,6 @@ describe('cleanupEventResources', () => {
       pagination: { next: undefined },
       sandboxes: [],
     })
-    mockCurrentToolRuntimeRunId.mockReturnValue('wrun_fallback')
     mockWithVercelSandboxCredentials.mockImplementation(
       (options: unknown) => options
     )
@@ -214,32 +207,6 @@ describe('cleanupEventResources', () => {
       })
     )
     expect(mockSandboxDelete).toHaveBeenCalledTimes(2)
-  })
-
-  it('falls back to the current tool runtime run id when runId is omitted', async () => {
-    mockRefreshAgentFileCache.mockResolvedValue(undefined)
-    mockSandboxList.mockResolvedValue({
-      pagination: { next: undefined },
-      sandboxes: [
-        {
-          name: 'brokered-http-fallback',
-          persistent: false,
-          tags: { kind: 'brokered-http', runId: 'wrun_fallback' },
-        },
-      ],
-    })
-
-    await cleanupEventResources({ agentId: 'agent_123' })
-
-    expect(mockCurrentToolRuntimeRunId).toHaveBeenCalledTimes(1)
-    expect(mockSandboxGet).toHaveBeenCalledWith(
-      expect.objectContaining({
-        name: 'brokered-http-fallback',
-        resume: false,
-        signal: expect.any(AbortSignal),
-      })
-    )
-    expect(mockSandboxDelete).toHaveBeenCalledTimes(1)
   })
 
   it('logs file-cache refresh failures without rejecting the step', async () => {
