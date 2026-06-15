@@ -1,53 +1,237 @@
-# outname
+<div align="center">
 
-Open-source codebase for outname, a Turborepo monorepo for running personal AI
-agents with persistent memory, scheduled work, sandboxed execution, tool
-attachments, Slack routing, public web, email preview, and video tooling.
+<img src=".github/assets/outname-banner.svg" alt="OUTNA.ME — Personal AI agents that keep working" width="100%" />
 
-## What the application does
+<br/>
 
-- creates authenticated personal agents with configurable models and tools;
-- stores chat, scheduling, and agent state in Neon Postgres;
-- executes agent work as event-driven Vercel Workflow runs;
-- keeps agent files in persistent Vercel Sandboxes;
-- supports browser chat, Slack ingress, waitlist capture, and scheduled loops.
+**Personal AI agents that remember, learn, and keep working — even when you're not there.**
 
-## Stack
+[![License: MIT](https://img.shields.io/badge/License-MIT-ff3000?style=flat-square&labelColor=000000)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/TommyBez/outname?style=flat-square&labelColor=000000&color=ff3000)](https://github.com/TommyBez/outname/stargazers)
+[![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs&logoColor=white)](https://nextjs.org)
+[![React 19](https://img.shields.io/badge/React-19-000000?style=flat-square&logo=react&logoColor=61DAFB)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-000000?style=flat-square&logo=typescript&logoColor=3178C6)](https://www.typescriptlang.org)
+[![Turborepo](https://img.shields.io/badge/Turborepo-000000?style=flat-square&logo=turborepo&logoColor=EF4444)](https://turbo.build)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-ff3000?style=flat-square&labelColor=000000)](CONTRIBUTING.md)
 
-- Turborepo + Next.js 16 + React 19
-- Better Auth for authentication and access control
-- Neon Postgres + Drizzle ORM for persistent data
-- Vercel Workflow + Vercel Sandbox for agent execution
-- Upstash Redis for cache and coordination
-- Vercel Chat SDK for channel integrations
-- Resend for waitlist emails
+**[Website](https://outna.me)** · **[Quick start](#-quick-start)** · **[How it works](#-how-it-works)** · **[Architecture](docs/ARCHITECTURE.md)** · **[Contributing](CONTRIBUTING.md)** · **[X / Twitter](https://x.com/OutnameBot)**
 
-## Repository guide
+</div>
 
-- `docs/ARCHITECTURE.md` - current system architecture and runtime boundaries
-- `CONTRIBUTING.md` - contributor workflow and quality checks
-- `SECURITY.md` - vulnerability disclosure process
-- `CODE_OF_CONDUCT.md` - community expectations
-- `LICENSE` - MIT license
-- `.env.example` - local and deployment environment template
+---
 
-## Deploy on Vercel
+## What is outname?
+
+A chatbot answers when you ask. An **outname** agent keeps working when you don't.
+
+**outname** (OUTNA.ME) is an open-source runtime for **personal AI agents** that
+own a slice of your work over time. Each agent has its own readable memory, runs
+on a schedule, calls real tools, talks across channels, and can hand work off to
+other agents. Every run sharpens the next.
+
+> _They remember. They learn. They call other agents. It runs while you sleep. It learns while it runs._
+
+It's a production-grade [Turborepo](https://turbo.build) monorepo built on
+Next.js, Vercel Workflow, Vercel Sandbox, Neon Postgres, and a model-agnostic
+inference layer — so you can self-host the whole thing.
+
+## Table of contents
+
+- [Why outname](#why-outname)
+- [Features](#features)
+- [How it works](#-how-it-works)
+- [Architecture](#-architecture)
+- [Tech stack](#-tech-stack)
+- [Project structure](#-project-structure)
+- [Quick start](#-quick-start)
+- [Deploy on Vercel](#-deploy-on-vercel)
+- [Configuration](#-configuration)
+- [Common commands](#-common-commands)
+- [Documentation](#-documentation)
+- [Contributing](#-contributing)
+- [License](#-license)
+
+## Why outname
+
+Most agents are stateless: they start cold, do one thing, and forget. Useful for
+a question, useless for ongoing work that needs continuity.
+
+outname is built around the opposite idea — **agents that accumulate context and
+act on their own initiative**:
+
+| Stateless chatbot                              | An outname agent                                                  |
+| ---------------------------------------------- | ----------------------------------------------------------------- |
+| ❌ Starts from zero every conversation          | ✅ Keeps readable memory it appends to over time                   |
+| ❌ Only runs when you prompt it                 | ✅ Wakes on a schedule and works unprompted                        |
+| ❌ One model, one vendor                        | ✅ Model-agnostic — bring your own provider and keys               |
+| ❌ Lives in one chat window                     | ✅ Same agent across in-app chat and Slack                         |
+| ❌ Does everything itself, opaquely             | ✅ Delegates to sub-agents, each a traced run                      |
+| ❌ Unbounded, unscoped tool access              | ✅ Typed tools, per-agent scope, and spend budgets                 |
+
+## Features
+
+- 🧠 **Persistent memory** — Each agent keeps human-readable markdown
+  (`MEMORY.md`, `TASKS.md`, `DREAMS.md`, `GOALS.md`) in its own sandbox. It
+  appends its own notes; you can read or edit them anytime.
+- ❤️ **Heartbeat** — Scheduled, unprompted runs. The agent wakes on a cron or
+  interval, inspects its memory and channels, and acts — no human in the loop.
+- 💤 **Dreaming** — Dedicated reflection passes that improve long-running memory:
+  the agent reviews its own notes, anticipates patterns, and self-evaluates.
+- 🪆 **Sub-agents** — Agents delegate to other agents. Each call is its own
+  traced run; the parent can wait for the result or fire-and-forget.
+- 🧰 **Tools** — Typed, rate-limited, and scoped per agent. An agent only ever
+  calls what you bind to it.
+- 📡 **Channels** — One agent, every surface. In-app chat and Slack today, built
+  on the Vercel Chat SDK so new surfaces can be added.
+- 🧩 **Agent Skills** — Installable capability packages that run in a dedicated,
+  persistent Skill Sandbox, isolated from the agent's memory filesystem.
+- 💸 **Budgets** — Per-agent spend guardrails with estimated and actual cost
+  tracking, so autonomous work can't run away.
+- 📦 **Sandboxed execution** — Every agent owns a persistent Vercel Sandbox as
+  its canonical filesystem; durable work runs as event-driven Vercel Workflows.
+- 🔌 **Model-agnostic** — Bring your own keys for **Vercel AI Gateway**, **LLM
+  Gateway**, or **OpenRouter**, and choose the provider and model per agent.
+
+## 🫀 How it works
+
+You create an agent in the web app, give it memory and a schedule, attach the
+tools and channels it should use — then let it run. It works on its own and
+reports back in its **Timeline**.
+
+Here's one agent's autonomous day — schedules firing, channels lighting up,
+sub-agents returning, memory growing:
+
+| Time  | Event     | What happened                              |
+| ----- | --------- | ------------------------------------------ |
+| 06:00 | Schedule  | Daily triage run queued                    |
+| 06:00 | Slack     | 14 threads scanned · 2 flagged             |
+| 06:01 | Memory    | Noted: skip auto-summary on Sundays        |
+| 09:14 | Heartbeat | Calendar conflict spotted · draft prepared |
+| 09:14 | Calendar  | Proposed Tue 15:00 → Wed 10:00             |
+| 11:02 | Sub-agent | Delegated to research-synthesizer (4.2s)   |
+| 11:02 | Memory    | Noted: user prefers "Tomas" in replies     |
+| 14:00 | Schedule  | Weekly digest run queued                   |
+| 14:01 | Email     | 5 threads summarized · digest drafted      |
+| 18:00 | Email     | Weekly digest sent · 0 follow-ups          |
+
+**21 unprompted runs · +8 memory entries · 0 questions asked.** You open the app
+in the morning and read what it did while you slept.
+
+Under the hood, work splits into two paths:
+
+- **Realtime turns** (in-app chat, Slack) run directly in the Next.js Node
+  runtime via the AI SDK `ToolLoopAgent`, backed by the app-owned chat
+  transcript.
+- **Autonomous turns** (heartbeat, dreaming, sub-agent invocation) are durable:
+  they create `agent_events` rows and run as event-driven **Vercel Workflows**,
+  with each agent's files living in its own **Vercel Sandbox**.
+
+## 🏗 Architecture
+
+A single Next.js control plane orchestrates everything; durable agent work runs
+on Vercel Workflow against per-agent Vercel Sandboxes.
+
+```mermaid
+flowchart LR
+  You([You]) --> CP
+  Slack([Slack]) --> CP
+  Sched([Schedules / Cron]) --> CP
+  CP[Next.js control plane] --> Auth[Better Auth]
+  CP --> DB[(Neon Postgres)]
+  CP --> Redis[(Upstash Redis)]
+  CP --> WF[Vercel Workflow]
+  WF --> SB[(Vercel Sandbox)]
+  WF --> LLM[Inference providers]
+  WF --> Tools[Tools and Skills]
+```
+
+See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for runtime boundaries, the
+event model, and the full request/event flow.
+
+## 🧱 Tech stack
+
+| Layer            | Technology                                                       |
+| ---------------- | --------------------------------------------------------------- |
+| App & UI         | Next.js 16 (App Router), React 19, Tailwind CSS, Radix / shadcn |
+| Language         | TypeScript                                                       |
+| Monorepo         | Turborepo + pnpm                                                 |
+| Auth             | Better Auth (email one-time codes)                              |
+| Data             | Neon Postgres + Drizzle ORM                                      |
+| Cache & coord.   | Upstash Redis                                                    |
+| Agent runtime    | AI SDK (`ToolLoopAgent`) + Vercel Workflow                       |
+| Agent filesystem | Vercel Sandbox                                                   |
+| Inference        | Vercel AI Gateway · LLM Gateway · OpenRouter                     |
+| Channels         | Vercel Chat SDK (Slack)                                          |
+| Email            | Resend + React Email                                             |
+| Video            | Remotion                                                         |
+| Quality          | Biome / Ultracite, Vitest                                       |
+
+## 📂 Project structure
+
+```text
+outname/
+├─ apps/
+│  ├─ app/      # Control plane: agents, chat, configuration   (:3000)
+│  ├─ api/      # API surface + cron / scheduler ingress       (:3001)
+│  ├─ web/      # Public marketing site + blog                 (:3002)
+│  ├─ email/    # React Email preview (local-only)             (:3004)
+│  └─ video/    # Remotion Studio (local-only)                 (:3005)
+├─ packages/
+│  ├─ ai/       # Agent runtime, chat, AI elements
+│  ├─ auth/     # Better Auth configuration
+│  ├─ db/       # Drizzle schema + Neon client
+│  ├─ email/    # Email templates
+│  ├─ shared/   # Shared domain, marketing, and server utilities
+│  ├─ ui/       # Design system (Radix + shadcn)
+│  └─ workflow/ # Workflow helpers
+└─ docs/        # Architecture + ADRs
+```
+
+## 🚀 Quick start
+
+### Prerequisites
+
+- **Node.js 24+** and **pnpm 10+**
+- Access to the shared Neon database and application secrets (the database is
+  remote — no local Postgres required)
+
+### Setup
+
+```bash
+git clone https://github.com/TommyBez/outname.git
+cd outname
+pnpm install
+cp .env.example .env.local   # then fill in the values
+pnpm dev:app                 # http://localhost:3000
+```
+
+Other workspaces: `pnpm dev:web` (`:3002`), `pnpm dev:api` (`:3001`),
+`pnpm dev:email` (`:3004`), and `pnpm dev:video` (`:3005`).
+
+> **Signing in:** Public sign-up is disabled. Accounts are provisioned from the
+> waitlist and sign in with one-time codes sent by email. In development, use a
+> provisioned address (e.g. `TEST_USER_EMAIL`) and request an OTP from the login
+> page. See [AGENTS.md](AGENTS.md) for the full dev sign-in flow.
+
+## ▲ Deploy on Vercel
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FTommyBez%2Foutname)
 
 1. Fork this repository and create a new Vercel project from the fork.
-2. Set the project runtime to Node.js 24 or newer.
+2. Set the project runtime to **Node.js 24** or newer.
 3. Add the environment variables from `.env.example`.
 4. Set `BETTER_AUTH_URL` to the production application URL.
-5. Create Vercel projects for the deployable apps: `apps/web`, `apps/app`,
-   and `apps/api`. `apps/email` and `apps/video` are local-only.
+5. Create Vercel projects for the deployable apps: `apps/web`, `apps/app`, and
+   `apps/api`. `apps/email` and `apps/video` are local-only.
 6. Configure `VERCEL_API_PROJECT_ID`, `VERCEL_APP_PROJECT_ID`, and
-   `VERCEL_WEB_PROJECT_ID` in the relevant Vercel projects so related-project
-   wiring can be resolved from project IDs.
+   `VERCEL_WEB_PROJECT_ID` so related-project wiring can be resolved from
+   project IDs.
 7. For the API project, keep the `/api/cron/liveness` cron and run migrations
    before deployment.
 
-### Minimum environment variables for a working deploy
+## ⚙️ Configuration
+
+### Minimum environment variables
 
 ```bash
 DATABASE_URL=
@@ -66,80 +250,66 @@ VERCEL_WEB_PROJECT_ID=
 
 ### Common optional integrations
 
-- Slack: `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, `SLACK_SIGNING_SECRET`
-- Redis (Upstash via Vercel KV): `KV_REST_API_URL`, `KV_REST_API_TOKEN`
-- Auth email: `RESEND_API_KEY`, `AUTH_FROM_EMAIL`, `AUTH_REPLY_TO`
-- Waitlist email: `WAITLIST_FROM_EMAIL`, `WAITLIST_REPLY_TO`, `WAITLIST_ADMIN_EMAIL`
-- Cron hardening: `CRON_SECRET`
+| Integration            | Variables                                                          |
+| ---------------------- | ----------------------------------------------------------------- |
+| Slack                  | `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, `SLACK_SIGNING_SECRET`   |
+| Redis (Upstash / KV)   | `KV_REST_API_URL`, `KV_REST_API_TOKEN`                            |
+| Waitlist email         | `WAITLIST_FROM_EMAIL`, `WAITLIST_REPLY_TO`, `WAITLIST_ADMIN_EMAIL` |
+| Cron hardening         | `CRON_SECRET`                                                      |
 
-## Local development
+Cross-project public URLs are derived in each app's `next.config.ts` from Vercel
+related-project metadata; outside Vercel they fall back to localhost origins.
 
-### Prerequisites
-
-- Node.js 24 or newer
-- pnpm
-- Access to the shared database and application secrets
-
-### Setup
+## 🛠 Common commands
 
 ```bash
-pnpm install
-cp .env.example .env.local
+pnpm dev          # Run the default dev pipeline
+pnpm dev:app      # Control plane          (:3000)
+pnpm dev:api      # API                    (:3001)
+pnpm dev:web      # Public site            (:3002)
+pnpm dev:email    # React Email preview    (:3004)
+pnpm dev:video    # Remotion Studio        (:3005)
+
+pnpm build        # Build all workspaces
+pnpm lint         # Lint (Ultracite / Biome)
+pnpm typecheck    # Type-check
+pnpm verify       # Lint + typecheck + tests
+pnpm fix          # Auto-fix lint/format issues
+
+pnpm db:generate  # Generate Drizzle migrations
+pnpm db:migrate   # Apply migrations
+pnpm db:studio    # Open Drizzle Studio
 ```
 
-Fill in `.env.local`, then start the app workspace you need:
+## 📚 Documentation
 
-```bash
-pnpm dev:app
-```
+| Document                                                       | What's inside                              |
+| ------------------------------------------------------------- | ------------------------------------------ |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                  | System architecture and runtime boundaries |
+| [docs/adr/](docs/adr)                                         | Architecture Decision Records              |
+| [docs/SLACK_INTEGRATION.md](docs/SLACK_INTEGRATION.md)        | Slack setup and integration                |
+| [AGENTS.md](AGENTS.md)                                        | Code standards and local dev notes         |
+| [CONTRIBUTING.md](CONTRIBUTING.md)                            | Contributor workflow and quality checks    |
+| [SECURITY.md](SECURITY.md)                                    | Vulnerability disclosure process           |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)                      | Community expectations                      |
 
-Open `http://localhost:3000`. Public web runs on `pnpm dev:web`
-(`http://localhost:3002`), API on `pnpm dev:api` (`http://localhost:3001`),
-React Email preview on `pnpm dev:email` (`http://localhost:3004`), and Remotion
-Studio on `pnpm dev:video` (`http://localhost:3005`).
+## 🤝 Contributing
 
-### Local development notes
+Contributions are welcome! Please read **[CONTRIBUTING.md](CONTRIBUTING.md)**
+before opening a pull request. For substantive changes, update user-facing
+documentation alongside the code so the repository stays self-serve. Run
+`pnpm verify` before pushing.
 
-- This is a Turborepo monorepo with deployable apps in `apps/*` and shared
-  packages in `packages/*`.
-- Cross-project public URLs are derived in each app's `next.config.ts` from
-  Vercel related-project metadata. Outside Vercel they fall back to localhost
-  origins (`app` `:3000`, `api` `:3001`, `web` `:3002`).
-- The only required local service is the relevant Next.js dev server; email and
-  video workspaces are local-only tools.
-- The database is remote; no local Postgres setup is required.
-- Sign-up stays disabled; accounts are provisioned from the waitlist and sign-in
-  happens with one-time codes sent by email.
-- Use `TEST_USER_EMAIL` for a provisioned dev account when available, then
-  request an OTP from the login page.
-- Local development is enough for day-to-day product work; use Vercel when you
-  want to exercise cron-driven flows or hosted integrations end-to-end.
+Found a security issue? Please follow the process in
+**[SECURITY.md](SECURITY.md)** rather than opening a public issue.
 
-## Common commands
+## 📄 License
 
-```bash
-pnpm dev
-pnpm dev:app
-pnpm dev:api
-pnpm dev:web
-pnpm dev:email
-pnpm dev:video
-pnpm build
-pnpm build:vercel
-pnpm start
-pnpm lint
-pnpm typecheck
-pnpm react-doctor
-pnpm verify
-pnpm fix
-pnpm db:generate
-pnpm db:migrate
-pnpm db:push
-pnpm db:studio
-```
+Released under the **[MIT License](LICENSE)**.
 
-## Contributing
+<div align="center">
+<br/>
 
-Please read `CONTRIBUTING.md` before opening a pull request. For substantive
-changes, update user-facing documentation together with the code so the
-open-source repository stays self-serve.
+**[outna.me](https://outna.me)** — Agents that keep working.
+
+</div>
