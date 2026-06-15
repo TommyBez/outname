@@ -10,6 +10,27 @@ const SANDBOX_CREDENTIAL_KEYS = [
 ] as const
 
 type SandboxCreateOptions = NonNullable<Parameters<typeof Sandbox.create>[0]>
+type SandboxCreateByRuntimeOptions = Exclude<
+  SandboxCreateOptions,
+  { source: { snapshotId: string; type: 'snapshot' } }
+>
+export type VercelSandboxGetOrCreateOptions = NonNullable<
+  Parameters<typeof Sandbox.getOrCreate>[0]
+>
+type SandboxOptionKey =
+  | 'env'
+  | 'keepLastSnapshots'
+  | 'networkPolicy'
+  | 'ports'
+  | 'resources'
+  | 'runtime'
+  | 'snapshotExpiration'
+  | 'tags'
+  | 'timeout'
+type PickSandboxOptions<
+  TOptions extends object,
+  TExtraKey extends keyof TOptions = never,
+> = Pick<TOptions, Extract<SandboxOptionKey | TExtraKey, keyof TOptions>>
 type SandboxCreateOptionsWithCredentials = Extract<
   SandboxCreateOptions,
   {
@@ -22,6 +43,12 @@ type SandboxCredentialKey = (typeof SANDBOX_CREDENTIAL_KEYS)[number]
 export type VercelSandboxCredentials = Pick<
   SandboxCreateOptionsWithCredentials,
   'projectId' | 'teamId' | 'token'
+>
+export type VercelSandboxCreateRuntimeOptions =
+  PickSandboxOptions<SandboxCreateByRuntimeOptions>
+export type VercelSandboxGetOrCreateRuntimeOptions = PickSandboxOptions<
+  VercelSandboxGetOrCreateOptions,
+  'persistent'
 >
 export const PERSISTENT_SANDBOX_RETENTION_OPTIONS = {
   keepLastSnapshots: {

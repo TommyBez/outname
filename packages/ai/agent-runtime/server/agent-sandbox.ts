@@ -2,37 +2,19 @@ import { destroySkillSandbox } from '@outname/ai/agent-runtime/server/agent-skil
 import {
   PERSISTENT_SANDBOX_RETENTION_OPTIONS,
   systemSandboxTags,
+  type VercelSandboxCreateRuntimeOptions,
   withVercelSandboxCredentials,
 } from '@outname/shared/server/vercel-sandbox-config'
 import { Sandbox } from '@vercel/sandbox'
 import { createAgentSandboxAccessor } from './agent-sandbox-accessor'
 
-type SandboxCreateParams = NonNullable<Parameters<typeof Sandbox.create>[0]>
-type RuntimeSandboxCreateParams = Exclude<
-  SandboxCreateParams,
-  { source: { snapshotId: string; type: 'snapshot' } }
->
-
-// Keep this surface narrower than the full SDK union so callers only see the
-// create-by-runtime options that matter for system sandboxes.
-export type CreateOptions = Pick<
-  RuntimeSandboxCreateParams,
-  | 'env'
-  | 'keepLastSnapshots'
-  | 'networkPolicy'
-  | 'ports'
-  | 'resources'
-  | 'runtime'
-  | 'snapshotExpiration'
-  | 'tags'
-  | 'timeout'
->
-
 // Persistent root for bootstrap files, memory files, logs, and any other
 // agent-authored documents.
 export const SYSTEM_SANDBOX_ROOT = '/vercel/sandbox'
 
-const SYSTEM_SANDBOX_CREATE_OPTIONS: CreateOptions = {
+// Keep this object narrower than the full SDK union: system sandboxes only use
+// create-by-runtime options.
+const SYSTEM_SANDBOX_CREATE_OPTIONS: VercelSandboxCreateRuntimeOptions = {
   ...PERSISTENT_SANDBOX_RETENTION_OPTIONS,
   runtime: 'node22',
   // File ops are small and bounded.
