@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
   mockGetAgentEvent,
@@ -6,18 +6,26 @@ const {
   mockMarkEventRunning,
   mockMarkEventTerminal,
   mockRefreshAgentFileCache,
+  mockSandboxDelete,
+  mockSandboxGet,
+  mockSandboxList,
   mockStopAllBrokeredHttpSandboxesForRun,
   mockStopAllRepoWorkspacesForRun,
   mockStopAllToolSandboxesForRun,
+  mockWithVercelSandboxCredentials,
 } = vi.hoisted(() => ({
   mockGetAgentEvent: vi.fn(),
   mockMarkEventHeartbeat: vi.fn(),
   mockMarkEventRunning: vi.fn(),
   mockMarkEventTerminal: vi.fn(),
   mockRefreshAgentFileCache: vi.fn(),
+  mockSandboxDelete: vi.fn(),
+  mockSandboxGet: vi.fn(),
+  mockSandboxList: vi.fn(),
   mockStopAllBrokeredHttpSandboxesForRun: vi.fn(),
   mockStopAllRepoWorkspacesForRun: vi.fn(),
   mockStopAllToolSandboxesForRun: vi.fn(),
+  mockWithVercelSandboxCredentials: vi.fn((options: unknown) => options),
 }))
 
 vi.mock('server-only', () => ({}))
@@ -43,6 +51,17 @@ vi.mock('@outname/ai/tools/runtime/repo-workspace/sandbox', () => ({
 
 vi.mock('@outname/ai/tools/sandbox-runtime/runtime', () => ({
   stopAllToolSandboxesForRun: mockStopAllToolSandboxesForRun,
+}))
+
+vi.mock('@outname/shared/server/vercel-sandbox-config', () => ({
+  withVercelSandboxCredentials: mockWithVercelSandboxCredentials,
+}))
+
+vi.mock('@vercel/sandbox', () => ({
+  Sandbox: {
+    get: mockSandboxGet,
+    list: mockSandboxList,
+  },
 }))
 
 import { cleanupEventResources } from './cleanup-event'
@@ -111,15 +130,121 @@ describe('event step wrappers', () => {
 })
 
 describe('cleanupEventResources', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockSandboxDelete.mockResolvedValue(undefined)
+    mockSandboxGet.mockResolvedValue({ delete: mockSandboxDelete })
+    mockSandboxList.mockResolvedValue({
+      pagination: { next: undefined },
+      sandboxes: [],
+    })
+    mockStopAllBrokeredHttpSandboxesForRun.mockResolvedValue(undefined)
+    mockStopAllRepoWorkspacesForRun.mockResolvedValue(undefined)
+    mockStopAllToolSandboxesForRun.mockResolvedValue(undefined)
+    mockWithVercelSandboxCredentials.mockImplementation(
+      (options: unknown) => options
+    )
+  })
+
   it('cleans up runtime resources and refreshes the file cache', async () => {
     mockRefreshAgentFileCache.mockResolvedValue(undefined)
 
-    await cleanupEventResources({ agentId: 'agent_123' })
+    await cleanupEventResources({ agentId: 'agent_123', runId: 'wrun_123' })
 
     expect(mockStopAllToolSandboxesForRun).toHaveBeenCalledTimes(1)
     expect(mockStopAllBrokeredHttpSandboxesForRun).toHaveBeenCalledTimes(1)
     expect(mockStopAllRepoWorkspacesForRun).toHaveBeenCalledTimes(1)
+    expect(mockSandboxList).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cursor: undefined,
+        limit: 50,
+        signal: expect.any(AbortSignal),
+      })
+    )
     expect(mockRefreshAgentFileCache).toHaveBeenCalledWith('agent_123')
+  })
+
+  it('deletes non-persistent sandboxes tagged with the workflow run id', async () => {
+    mockRefreshAgentFileCache.mockResolvedValue(undefined)
+    mockSandboxList.mockResolvedValue({
+      pagination: { next: undefined },
+      sandboxes: [
+        {
+          name: 'brokered-http-1',
+          persistent: false,
+          tags: { kind: 'brokered-http', runId: 'wrun_123' },
+        },
+        {
+          name: 'repo-workspace-1',
+          persistent: false,
+          tags: { kind: 'repo-workspace', runId: 'wrun_123' },
+        },
+        {
+          name: 'persistent-agent',
+          persistent: true,
+          tags: { kind: 'agent-system', runId: 'wrun_123' },
+        },
+        {
+          name: 'other-run',
+          persistent: false,
+          tags: { kind: 'brokered-http', runId: 'wrun_other' },
+        },
+      ],
+    })
+
+    await cleanupEventResources({ agentId: 'agent_123', runId: 'wrun_123' })
+
+    expect(mockSandboxGet).toHaveBeenCalledTimes(2)
+    expect(mockSandboxGet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'brokered-http-1',
+        resume: false,
+        signal: expect.any(AbortSignal),
+      })
+    )
+    expect(mockSandboxGet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'repo-workspace-1',
+        resume: false,
+        signal: expect.any(AbortSignal),
+      })
+    )
+    expect(mockSandboxDelete).toHaveBeenCalledTimes(2)
+  })
+
+  it('logs sandbox stop failures without rejecting the step', async () => {
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    const toolError = new Error('tool cleanup failed')
+    const brokerError = new Error('broker cleanup failed')
+    const workspaceError = new Error('workspace cleanup failed')
+
+    mockStopAllToolSandboxesForRun.mockRejectedValue(toolError)
+    mockStopAllBrokeredHttpSandboxesForRun.mockRejectedValue(brokerError)
+    mockStopAllRepoWorkspacesForRun.mockRejectedValue(workspaceError)
+    mockRefreshAgentFileCache.mockResolvedValue(undefined)
+
+    try {
+      await expect(
+        cleanupEventResources({ agentId: 'agent_123', runId: 'wrun_123' })
+      ).resolves.toBeUndefined()
+
+      expect(consoleError).toHaveBeenCalledWith(
+        '[events] stopAllToolSandboxesForRun failed',
+        toolError
+      )
+      expect(consoleError).toHaveBeenCalledWith(
+        '[events] stopAllBrokeredHttpSandboxesForRun failed',
+        brokerError
+      )
+      expect(consoleError).toHaveBeenCalledWith(
+        '[events] stopAllRepoWorkspacesForRun failed',
+        workspaceError
+      )
+    } finally {
+      consoleError.mockRestore()
+    }
   })
 
   it('logs file-cache refresh failures without rejecting the step', async () => {
@@ -130,13 +255,17 @@ describe('cleanupEventResources', () => {
 
     mockRefreshAgentFileCache.mockRejectedValue(refreshError)
 
-    await expect(
-      cleanupEventResources({ agentId: 'agent_123' })
-    ).resolves.toBeUndefined()
+    try {
+      await expect(
+        cleanupEventResources({ agentId: 'agent_123', runId: 'wrun_123' })
+      ).resolves.toBeUndefined()
 
-    expect(consoleError).toHaveBeenCalledWith(
-      '[events] refreshAgentFileCache failed',
-      refreshError
-    )
+      expect(consoleError).toHaveBeenCalledWith(
+        '[events] refreshAgentFileCache failed',
+        refreshError
+      )
+    } finally {
+      consoleError.mockRestore()
+    }
   })
 })

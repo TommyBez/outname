@@ -19,13 +19,13 @@ export async function agentEventWorkflow(input: {
 }): Promise<void> {
   'use workflow'
   let event: WorkflowAgentEvent | null = null
+  const workflowRunId = currentWorkflowRunId()
   try {
     event = await loadAgentEventStep({ eventId: input.eventId })
     if (!(event && ['starting', 'running'].includes(event.status))) {
       return
     }
 
-    const workflowRunId = currentWorkflowRunId()
     await markAgentEventRunningStep({ eventId: event.id, workflowRunId })
     await dispatchAgentEvent(event)
     await markAgentEventTerminalStep({
@@ -42,7 +42,10 @@ export async function agentEventWorkflow(input: {
     throw err
   } finally {
     if (event) {
-      await cleanupEventResources({ agentId: event.agentId })
+      await cleanupEventResources({
+        agentId: event.agentId,
+        runId: workflowRunId,
+      })
       await startNextQueuedEvent({ concurrencyKey: event.concurrencyKey })
     }
   }

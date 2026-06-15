@@ -169,6 +169,7 @@
     "start": "turbo run start --filter=@outname/app",
     "vercel:sandboxes:audit": "pnpm exec tsx packages/shared/scripts/audit-vercel-sandboxes.ts",
     "vercel:sandboxes:destroy-all": "pnpm exec tsx packages/shared/scripts/destroy-vercel-sandboxes.ts",
+    "vercel:snapshots:cleanup": "pnpm exec tsx packages/shared/scripts/cleanup-vercel-snapshots.ts",
     "video:studio": "pnpm dev:video",
     "video:render:launch": "pnpm --filter @outname/video-app render:launch",
     "video:still:launch": "pnpm --filter @outname/video-app still:launch",
