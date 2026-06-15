@@ -91,9 +91,6 @@ act on their own initiative**:
   its canonical filesystem; durable work runs as event-driven Vercel Workflows.
 - 🔌 **Model-agnostic** — Bring your own keys for **Vercel AI Gateway**, **LLM
   Gateway**, or **OpenRouter**, and choose the provider and model per agent.
-- 🔐 **Credentials kept safe** — Passwordless email sign-in, with inference
-  keys encrypted at rest and stored separately from tool connections, so an
-  autonomous agent can use your keys without ever exposing them.
 
 ## 🫀 How it works
 
