@@ -1,11 +1,18 @@
 'use client'
 
-import { LandingComposableWorkbench } from '@outname/shared/marketing/components/landing/composable-workbench/landing-composable-workbench'
-import { LandingChatShowcase } from '@outname/shared/marketing/components/landing/landing-chat-showcase'
-import { LandingFooter } from '@outname/shared/marketing/components/landing/landing-footer'
-import { LandingHeartbeatCloser } from '@outname/shared/marketing/components/landing/landing-heartbeat-closer'
-import { LandingHeroDemo } from '@outname/shared/marketing/components/landing/landing-hero-demo'
-import { LandingNav } from '@outname/shared/marketing/components/landing/landing-nav'
+import { Compose } from '@outname/shared/marketing/components/landing/compose'
+import { Configure } from '@outname/shared/marketing/components/landing/configure'
+import { Continuity } from '@outname/shared/marketing/components/landing/continuity'
+import { Control } from '@outname/shared/marketing/components/landing/control'
+import { Faq } from '@outname/shared/marketing/components/landing/faq'
+import { FinalCta } from '@outname/shared/marketing/components/landing/final-cta'
+import { Hero } from '@outname/shared/marketing/components/landing/hero'
+import { HowItWorks } from '@outname/shared/marketing/components/landing/how-it-works'
+import { Memory } from '@outname/shared/marketing/components/landing/memory'
+import { OpenSource } from '@outname/shared/marketing/components/landing/open-source'
+import { Reframe } from '@outname/shared/marketing/components/landing/reframe'
+import { SiteFooter } from '@outname/shared/marketing/components/landing/site-footer'
+import { SiteHeader } from '@outname/shared/marketing/components/landing/site-header'
 import { useReducedMotion } from 'motion/react'
 
 export function LandingHomePage({
@@ -13,8 +20,7 @@ export function LandingHomePage({
 }: {
   waitlistEnabled: boolean
 }) {
-  const shouldReduceMotion = useReducedMotion()
-  const reduceMotionFlag = Boolean(shouldReduceMotion)
+  const shouldReduceMotion = Boolean(useReducedMotion())
 
   return (
     <main className="relative isolate overflow-x-clip bg-background text-foreground">
@@ -22,19 +28,22 @@ export function LandingHomePage({
         aria-hidden
         className="swiss-grid-pattern pointer-events-none absolute inset-0 -z-10 opacity-80"
       />
-      <LandingNav waitlistEnabled={waitlistEnabled} />
-
-      <LandingHeroDemo
-        shouldReduceMotion={reduceMotionFlag}
+      <SiteHeader waitlistEnabled={waitlistEnabled} />
+      <Hero
+        shouldReduceMotion={shouldReduceMotion}
         waitlistEnabled={waitlistEnabled}
       />
-      <LandingChatShowcase shouldReduceMotion={reduceMotionFlag} />
-      <LandingComposableWorkbench shouldReduceMotion={reduceMotionFlag} />
-      <LandingHeartbeatCloser
-        shouldReduceMotion={reduceMotionFlag}
-        waitlistEnabled={waitlistEnabled}
-      />
-      <LandingFooter />
+      <Reframe />
+      <HowItWorks />
+      <Configure />
+      <Continuity />
+      <Memory />
+      <Compose />
+      <Control />
+      <OpenSource />
+      <Faq />
+      <FinalCta waitlistEnabled={waitlistEnabled} />
+      <SiteFooter waitlistEnabled={waitlistEnabled} />
     </main>
   )
 }

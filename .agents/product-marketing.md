@@ -28,7 +28,13 @@
 
 **Beta rationale:** Keep access curated while validating recurring agent workflows, onboarding, reliability, provider-key setup, and willingness to pay before publishing paid tiers. Do not describe this as a permanent free plan or freemium promise.
 
-**Inference cost model:** User-provided inference credentials. Supported inference provider paths are Vercel AI Gateway, LLM Gateway, and OpenRouter. Users must save an enabled provider key before creating/running agents on that provider. Model usage is tracked internally through token usage and cost estimates/actuals where available.
+**Inference cost model:** User-provided inference credentials. Supported gateway paths are Vercel AI Gateway, LLM Gateway, and OpenRouter. Users must save an enabled gateway key before creating/running agents on it. Model usage is tracked internally through token usage and cost estimates/actuals where available.
+
+**Gateway vs provider vs model (keep these distinct in copy):** Three layers, often muddled.
+- **Gateway** — the access layer a user saves an API key for: Vercel AI Gateway, OpenRouter, LLM Gateway. This is what "use your own inference provider key" actually points at.
+- **Model provider** — the maker the gateway proxies: Anthropic, OpenAI, Google, DeepSeek, Moonshot, Meta, etc.
+- **Model** — the specific model an agent runs on: Opus, Sonnet, GPT-5, Gemini, DeepSeek R1, Kimi K2, etc.
+The selling point: save a key for **one or more gateways** and pick from **every model those gateways serve**, across providers — one key, the whole catalog. Do not imply OUTNA.ME hosts or resells the models; the gateway exposes the catalog, the user's key pays for usage.
 
 **Current enforced limits and guardrails:**
 - non-admin users can create up to 3 agents
@@ -238,7 +244,9 @@
 | Skill sandbox | Separate persistent Vercel Sandbox for installed skills and skill script execution |
 | Tool sandbox | Transient or snapshot-backed sandbox used by specific tools/runtime providers |
 | BYOK | Internal shorthand for user-provided inference credentials; public copy should prefer "use your own inference provider key" |
-| Inference provider | The gateway or model access layer used for agent runs, such as Vercel AI Gateway, LLM Gateway, or OpenRouter |
+| Gateway | The access layer a user saves an API key for; proxies many providers and models. Supported: Vercel AI Gateway, OpenRouter, LLM Gateway. One gateway key unlocks that gateway's whole catalog |
+| Model provider | The maker of a model the gateway proxies — e.g. Anthropic, OpenAI, Google, DeepSeek, Moonshot, Meta |
+| Model | The specific model an agent runs on — e.g. Opus, Sonnet, GPT-5, Gemini, DeepSeek R1, Kimi K2 |
 | Hosted agent runtime | The OUTNA.ME-managed execution layer that runs agents, schedules, tools, sandboxes, memory, browser chat, and Slack routing when enabled |
 | Execution capacity | The practical usage envelope of a plan: run frequency, duration, concurrency, sandbox/tool usage, and retention |
 | Budget | User-defined operational guardrail for model spend; not billing, invoice, or a financial guarantee |
