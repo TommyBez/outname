@@ -4,27 +4,29 @@ import {
   systemSandboxTags,
   withVercelSandboxCredentials,
 } from '@outname/shared/server/vercel-sandbox-config'
-import { type NetworkPolicy, Sandbox } from '@vercel/sandbox'
+import { Sandbox } from '@vercel/sandbox'
 import { createAgentSandboxAccessor } from './agent-sandbox-accessor'
+
+type SandboxCreateParams = NonNullable<Parameters<typeof Sandbox.create>[0]>
+type RuntimeSandboxCreateParams = Exclude<
+  SandboxCreateParams,
+  { source: { snapshotId: string; type: 'snapshot' } }
+>
 
 // Keep this surface narrower than the full SDK union so callers only see the
 // create-by-runtime options that matter for system sandboxes.
-export interface CreateOptions {
-  env?: Record<string, string>
-  keepLastSnapshots?: {
-    count: number
-    deleteEvicted?: boolean
-    expiration?: number
-  }
-  networkPolicy?: NetworkPolicy
-  persistent?: boolean
-  ports?: number[]
-  resources?: { vcpus: number }
-  runtime?: string
-  snapshotExpiration?: number
-  tags?: Record<string, string>
-  timeout?: number
-}
+export type CreateOptions = Pick<
+  RuntimeSandboxCreateParams,
+  | 'env'
+  | 'keepLastSnapshots'
+  | 'networkPolicy'
+  | 'ports'
+  | 'resources'
+  | 'runtime'
+  | 'snapshotExpiration'
+  | 'tags'
+  | 'timeout'
+>
 
 // Persistent root for bootstrap files, memory files, logs, and any other
 // agent-authored documents.
@@ -32,7 +34,6 @@ export const SYSTEM_SANDBOX_ROOT = '/vercel/sandbox'
 
 const SYSTEM_SANDBOX_CREATE_OPTIONS: CreateOptions = {
   ...PERSISTENT_SANDBOX_RETENTION_OPTIONS,
-  persistent: true,
   runtime: 'node22',
   // File ops are small and bounded.
   timeout: 60_000,
