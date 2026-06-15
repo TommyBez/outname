@@ -94,28 +94,28 @@ act on their own initiative**:
 
 ## 🫀 How it works
 
-Point an agent at a job, give it memory and a heartbeat, and let it run. Here's
-one agent's autonomous day — schedules firing, channels lighting up, sub-agents
-returning, memory growing:
+You create an agent in the web app, give it memory and a schedule, attach the
+tools and channels it should use — then let it run. It works on its own and
+reports back in its **Timeline**.
 
-```text
-$ outname watch inbox-sentinel · 2026-05-11
+Here's one agent's autonomous day — schedules firing, channels lighting up,
+sub-agents returning, memory growing:
 
-06:00  cron.fire       daily.triage queued
-06:00  slack.read      14 threads scanned · 2 flagged
-06:01  memory.write    + skip auto-summary on Sundays
-09:14  heartbeat       calendar conflict spotted · draft sent
-09:14  cal.draft       tue 15:00 → wed 10:00 proposed
-11:02  subagent.call   research-synthesizer · 4.2s
-11:02  memory.write    + user prefers "Tomas" in replies
-14:00  cron.fire       weekly.digest queued
-14:01  gmail.draft     5 threads summarized · digest ready
-18:00  gmail.send      weekly digest sent · 0 follow-ups
+| Time  | Event     | What happened                              |
+| ----- | --------- | ------------------------------------------ |
+| 06:00 | Schedule  | Daily triage run queued                    |
+| 06:00 | Slack     | 14 threads scanned · 2 flagged             |
+| 06:01 | Memory    | Noted: skip auto-summary on Sundays        |
+| 09:14 | Heartbeat | Calendar conflict spotted · draft prepared |
+| 09:14 | Calendar  | Proposed Tue 15:00 → Wed 10:00             |
+| 11:02 | Sub-agent | Delegated to research-synthesizer (4.2s)   |
+| 11:02 | Memory    | Noted: user prefers "Tomas" in replies     |
+| 14:00 | Schedule  | Weekly digest run queued                   |
+| 14:01 | Email     | 5 threads summarized · digest drafted      |
+| 18:00 | Email     | Weekly digest sent · 0 follow-ups          |
 
-— 21 unprompted runs · +8 memory entries · 0 questions asked
-```
-
-You read the log in the morning. The agent got sharper while you slept.
+**21 unprompted runs · +8 memory entries · 0 questions asked.** You open the app
+in the morning and read what it did while you slept.
 
 Under the hood, work splits into two paths:
 
