@@ -5,13 +5,13 @@
   "packageManager": "pnpm@10.33.0",
   "description": "Open-source Next.js app for personal AI agents with memory, schedules, tools, and sandboxed execution.",
   "license": "MIT",
-  "homepage": "https://github.com/TommyBez/personal-assistant-agent#readme",
+  "homepage": "https://github.com/TommyBez/outname#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/TommyBez/personal-assistant-agent.git"
+    "url": "https://github.com/TommyBez/outname.git"
   },
   "bugs": {
-    "url": "https://github.com/TommyBez/personal-assistant-agent/issues"
+    "url": "https://github.com/TommyBez/outname/issues"
   },
   "engines": {
     "node": ">=24",
