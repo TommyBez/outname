@@ -8,6 +8,29 @@ export interface BlogPost {
 
 export const posts: BlogPost[] = [
   {
+    slug: 'salesforce-fin-acquisition-3point6-billion-agentforce-architecture',
+    title:
+      "Salesforce Just Spent $3.6 Billion on Fin. Here's What It's Really Buying.",
+    date: '2026-06-16',
+    excerpt:
+      "Salesforce announced it will acquire Fin — the AI customer service company formerly known as Intercom — for $3.6 billion. Four days after I wrote about Agentforce hitting $800M in ARR. The numbers have grown: $1.2B ARR, 205% YoY. But when your enterprise agent platform needs a $3.6B acquisition to serve SMBs, you're not expanding — you're admitting the architecture was wrong. Fin resolves 76% of support queries without a human. Agentforce requires implementation projects. One is agent-native. The other is CRM-native. The $3.6B is the difference.",
+    tags: [
+      'AI',
+      'agents',
+      'Salesforce',
+      'Agentforce',
+      'Fin',
+      'Intercom',
+      'acquisition',
+      'architecture',
+      'CRM',
+      'M&A',
+      'enterprise',
+      'open source',
+      'Outname',
+    ],
+  },
+  {
     slug: 'anthropic-zero-trust-agent-security-outname',
     title:
       "Anthropic Just Published the Blueprint for Agent Security. Outname Already Ships It.",
