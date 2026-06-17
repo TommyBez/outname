@@ -12,7 +12,7 @@ Here's the thing: MCP genuinely is a universal integration layer. It's the right
 
 But the agents you build on Oracle's canvas stay on Oracle's canvas. They run inside Oracle AI Database 26ai — leveraging database-native security, database access controls, and database-resident data. The architecture is explicitly "database-native." The blog highlights this as a feature: "Database-Native Architecture Simplifies Security — Leverage existing database access controls and eliminate data movement."
 
-Eliminate data movement. Let that phrase sit for a moment. The sales pitch for database-native agents is that you don't need to move your data. The consequence is that your agents can never leave.
+Eliminate data movement. Let that phrase sit for a moment. The sales pitch for database-native agents is that you don't need to move your data. The consequence is that your agents become deeply coupled to Oracle's database runtime. Oracle does offer Open Agent Spec export to runtimes like LangGraph and CrewAI — but the spec is brand-new, the runtime ecosystem around it is thin, and real-world migration stories don't exist yet. The practical lock-in isn't absolute — it's just deep enough to make leaving expensive.
 
 ## Every Database Company Now Thinks Agents Belong in the Database
 
@@ -52,7 +52,7 @@ Oracle's Private Agent Factory is technically impressive. MCP as universal integ
 
 But the architectural assumption is wrong. Agents are not database features. They are not CRM features. They are not cloud-native, GPU-native, or enterprise-platform-native. They are agents — autonomous, portable, infrastructure-agnostic by design.
 
-Oracle built an excellent agent factory. It just happens to be inside a database. And if you build your agents there, that's where they'll stay — running on Oracle's infrastructure, governed by Oracle's access controls, dependent on Oracle's architecture for their entire operating life.
+Oracle built an excellent agent factory. It just happens to be inside a database. And if you build your agents there, you're betting on Oracle's architecture for their entire operating life — running on Oracle's infrastructure, governed by Oracle's access controls, dependent on database-native primitives that don't transfer cleanly even with OAS export.
 
 The alternative isn't harder to build. It's just harder to sell — because portable agents don't generate database license revenue.
 
