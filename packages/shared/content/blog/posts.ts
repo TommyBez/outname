@@ -13,7 +13,7 @@ export const posts: BlogPost[] = [
       "The EU Just Made Agent Architecture a Legal Requirement. Outname Shipped It by Default.",
     date: '2026-06-18',
     excerpt:
-      "In 45 days, the EU AI Act's high-risk provisions become fully enforceable. Article 12 mandates automatic audit trails. Article 13 requires transparency. Penalties reach €35M or 7% of global turnover. Most agent platforms were built before anyone was thinking about regulatory compliance — they're scrambling. Outname's architecture wasn't designed for the regulation. It was designed for the same thing the regulation requires: agents you can inspect.",
+      "In 45 days, the EU AI Act's high-risk provisions become fully enforceable. Article 12 mandates automatic audit trails. Article 13 requires transparency. Penalties reach up to €15M or 3% of global turnover. Most agent platforms were built before anyone was thinking about regulatory compliance — they're scrambling. Outname's architecture wasn't designed for the regulation. It was designed for the same thing the regulation requires: agents you can inspect.",
     tags: [
       'AI',
       'agents',

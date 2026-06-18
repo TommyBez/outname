@@ -1,24 +1,8 @@
----
-title: "The EU Just Made Agent Architecture a Legal Requirement. Outname Shipped It by Default."
-date: "2026-06-18"
-excerpt: "In 45 days, the EU AI Act's high-risk provisions become fully enforceable. Article 12 mandates automatic audit trails. Article 13 requires transparency. Penalties reach €35M or 7% of global turnover. Most agent platforms were built before anyone was thinking about regulatory compliance — they're scrambling. Outname's architecture wasn't designed for the regulation. It was designed for the same thing the regulation requires: agents you can inspect."
-tags:
-  - AI
-  - agents
-  - EU AI Act
-  - regulation
-  - compliance
-  - audit trails
-  - sandbox
-  - identity
-  - architecture
-  - open source
-  - Outname
----
-
-On August 2, 2026 — 45 days from now — the high-risk provisions of the EU AI Act become fully enforceable.
+On August 2, 2026 — 45 days from now — the high-risk provisions of the EU AI Act become fully enforceable under current law.
 
 If you build or deploy autonomous AI agents, this changes your architecture. Not your compliance documents. Your architecture.
+
+> **Disclosure:** The EU's AI Omnibus proposal (provisionally agreed by the Council and Parliament in May 2026) would push high-risk obligations to December 2027 for standalone Annex III systems and August 2028 for product-embedded systems. The Omnibus has not yet been formally enacted. The dates and enforcement timeline in this post reflect the law as it stands today.
 
 ## What the law actually requires
 
@@ -28,7 +12,7 @@ Article 13 requires transparency — deployers must be able to "interpret the sy
 
 Article 14 mandates human oversight mechanisms. Not "a human approved it once at setup." Ongoing, meaningful oversight.
 
-The penalties for getting this wrong: up to €35 million or 7% of global annual turnover — whichever is higher. And like GDPR, the Act has extraterritorial reach. If your agent's outputs are used in the EU, you're in scope.
+The penalties for getting this wrong: up to €15 million or 3% of global annual turnover — whichever is higher. And like GDPR, the Act has extraterritorial reach. If your agent's outputs are used in the EU, you're in scope.
 
 The IETF is already working on a standard: [draft-sharif-agent-audit-trail](https://datatracker.ietf.org/doc/draft-sharif-agent-audit-trail/) proposes a JSON-based logging format with fields for agent identity, session context, tool invocations, and decision rationale. It maps almost comically well onto what Outname already produces: heartbeat logs, event ledgers, per-run traceability.
 
@@ -38,7 +22,7 @@ Here's the uncomfortable truth: most AI agent platforms were architected before 
 
 They were built for velocity. Ship features. Close deals. Add agents. The architecture reflects it: opaque execution environments, transient state, logs that exist only for debugging, identity that means "API key" rather than "accountable entity."
 
-When August 2 hits, those platforms face a structural problem. You can't bolt audit trails onto a system that was never designed to produce them. You can write a compliance policy. You can't retroactively make the logs exist.
+When the high-risk provisions take effect, those platforms face a structural problem. You can't bolt audit trails onto a system that was never designed to produce them. You can write a compliance policy. You can't retroactively make the logs exist.
 
 This isn't a policy problem. It's an architecture problem.
 
@@ -68,13 +52,13 @@ The regulation just made that intuition legally enforceable.
 
 The architecture that the EU AI Act demands — persistent identity, sandboxed execution, structured logging, readable memory — isn't a compliance checklist item. It's what a well-architected agent platform looks like anyway. Outname shipped it by default because it's the right way to build agents. The fact that it maps onto the law is a side effect of good architecture.
 
-## What happens on August 2
+## What happens when the law catches up
 
 The platforms that will struggle are the ones that treated agents as features: CRM-native agents, database-native agents, chat-window agents bolted onto existing SaaS products. Their execution environments weren't designed for transparency. Their identity models are thin. Their logging exists for the platform operator, not the deployer.
 
 The platforms that will be fine are the ones that treated agents as first-class entities with their own identity, memory, and execution history from day one.
 
-That's not a compliance strategy. It's an architecture bet. And in 45 days, it becomes a legal requirement.
+That's not a compliance strategy. It's an architecture bet. And whether the deadline is August 2026 or December 2027 — the requirement isn't going away. It's becoming a legal requirement.
 
 ---
 
