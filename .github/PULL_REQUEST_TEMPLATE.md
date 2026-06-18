@@ -5,7 +5,8 @@
 
 ## Validation
 
-- [ ] `pnpm check`
+- [ ] `pnpm verify`
+- [ ] `pnpm docs:index` was run if docs changed
 - [ ] Relevant tests or manual verification
 
 ## Release notes

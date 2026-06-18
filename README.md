@@ -14,7 +14,7 @@
 [![Turborepo](https://img.shields.io/badge/Turborepo-000000?style=flat-square&logo=turborepo&logoColor=EF4444)](https://turbo.build)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-ff3000?style=flat-square&labelColor=000000)](CONTRIBUTING.md)
 
-**[Website](https://outna.me)** · **[Quick start](#-quick-start)** · **[How it works](#-how-it-works)** · **[Architecture](docs/ARCHITECTURE.md)** · **[Contributing](CONTRIBUTING.md)** · **[X / Twitter](https://x.com/OutnameBot)**
+**[Website](https://outna.me)** · **[Quick start](#-quick-start)** · **[How it works](#-how-it-works)** · **[Docs](docs/index.md)** · **[Contributing](CONTRIBUTING.md)** · **[X / Twitter](https://x.com/OutnameBot)**
 
 </div>
 
@@ -145,8 +145,8 @@ flowchart LR
   WF --> Tools[Tools and Skills]
 ```
 
-See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for runtime boundaries, the
-event model, and the full request/event flow.
+See **[docs/index.md](docs/index.md)** for generated, feature-focused docs,
+including runtime boundaries, event flow, tools, channels, and data ownership.
 
 ## 🧱 Tech stack
 
@@ -184,7 +184,7 @@ outname/
 │  ├─ shared/   # Shared domain, marketing, and server utilities
 │  ├─ ui/       # Design system (Radix + shadcn)
 │  └─ workflow/ # Workflow helpers
-└─ docs/        # Architecture + ADRs
+└─ docs/        # Generated feature index, feature notes, and ADRs
 ```
 
 ## 🚀 Quick start
@@ -273,8 +273,10 @@ pnpm dev:video    # Remotion Studio        (:3005)
 pnpm build        # Build all workspaces
 pnpm lint         # Lint (Ultracite / Biome)
 pnpm typecheck    # Type-check
-pnpm verify       # Lint + typecheck + tests
+pnpm verify       # Docs check + build + typecheck + lint + react-doctor
 pnpm fix          # Auto-fix lint/format issues
+pnpm docs:index   # Regenerate docs indexes
+pnpm docs:check   # Validate docs indexes and non-index markdown line limit
 
 pnpm db:generate  # Generate Drizzle migrations
 pnpm db:migrate   # Apply migrations
@@ -283,15 +285,16 @@ pnpm db:studio    # Open Drizzle Studio
 
 ## 📚 Documentation
 
-| Document                                                       | What's inside                              |
-| ------------------------------------------------------------- | ------------------------------------------ |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                  | System architecture and runtime boundaries |
-| [docs/adr/](docs/adr)                                         | Architecture Decision Records              |
-| [docs/SLACK_INTEGRATION.md](docs/SLACK_INTEGRATION.md)        | Slack setup and integration                |
-| [AGENTS.md](AGENTS.md)                                        | Code standards and local dev notes         |
-| [CONTRIBUTING.md](CONTRIBUTING.md)                            | Contributor workflow and quality checks    |
-| [SECURITY.md](SECURITY.md)                                    | Vulnerability disclosure process           |
-| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)                      | Community expectations                      |
+Start at **[docs/index.md](docs/index.md)**. Feature docs live in
+`docs/<feature>/`, stay under 30 lines per non-index markdown file, and are
+linked through generated indexes.
+
+Other project guidance:
+
+- **[AGENTS.md](AGENTS.md)**: non-inferable rules for coding agents.
+- **[CONTRIBUTING.md](CONTRIBUTING.md)**: contributor workflow.
+- **[SECURITY.md](SECURITY.md)**: vulnerability disclosure.
+- **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)**: community expectations.
 
 ## 🤝 Contributing
 
