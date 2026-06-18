@@ -8,6 +8,26 @@ export interface BlogPost {
 
 export const posts: BlogPost[] = [
   {
+    slug: 'vercel-eve-agent-framework-outname-product',
+    title:
+      "Vercel Just Made Building Agents Trivial. Outname Already Made It a Product.",
+    date: '2026-06-17',
+    excerpt:
+      "Vercel introduced Eve on June 17 — an open-source framework that turns agent building into a directory of files. npx eve@latest init scaffolds an agent in under a minute with instructions, tools, skills, sub-agents, channels, scheduling, evals, and sandboxed execution. The technical overlap with Outname is structural — same primitives, same architecture. But Eve is a framework for developers who write TypeScript. Outname is a hosted product for people who don't want to write code at all. Vercel just validated the architecture Outname bet on. The difference is who it's built for.",
+    tags: [
+      'AI',
+      'agents',
+      'Vercel',
+      'Eve',
+      'Next.js',
+      'framework',
+      'architecture',
+      'SaaS',
+      'open source',
+      'Outname',
+    ],
+  },
+  {
     slug: 'apple-wwdc-2026-ai-agents-gatekeeping',
     title:
       "Apple Just Built the Biggest AI Agent Platform in History. It Comes With a Gate Fee.",
