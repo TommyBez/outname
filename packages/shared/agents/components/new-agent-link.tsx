@@ -14,31 +14,40 @@ import {
 } from '@outname/ui/components/ui/alert-dialog'
 import { Button } from '@outname/ui/components/ui/button'
 import Link from 'next/link'
-import type { ReactNode } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 
 interface NewAgentLinkProps {
   canCreate: boolean
   children: ReactNode
-  className: string
+  className?: string
+  size?: ComponentProps<typeof Button>['size']
+  variant?: ComponentProps<typeof Button>['variant']
 }
 
 export function NewAgentLink({
   canCreate,
   children,
   className,
+  size = 'lg',
+  variant = 'default',
 }: NewAgentLinkProps) {
   if (canCreate) {
     return (
-      <Link className={className} href="/agents/new">
-        {children}
-      </Link>
+      <Button asChild className={className} size={size} variant={variant}>
+        <Link href="/agents/new">{children}</Link>
+      </Button>
     )
   }
 
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button className={className} type="button" variant="outline">
+        <Button
+          className={className}
+          size={size}
+          type="button"
+          variant={variant}
+        >
           {children}
         </Button>
       </AlertDialogTrigger>

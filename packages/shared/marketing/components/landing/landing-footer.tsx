@@ -8,17 +8,17 @@ import Link from 'next/link'
 
 export function LandingFooter() {
   return (
-    <footer className="border-foreground border-t-2 px-4 sm:px-6 md:px-10 lg:px-12">
+    <footer className="border-border border-t px-4 sm:px-6 md:px-10 lg:px-12">
       <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-4 py-8 sm:flex-row">
         <Link
-          className="ease font-black text-sm uppercase tracking-normal transition-colors duration-150 hover:text-accent"
+          className="ease font-semibold text-sm tracking-normal transition-colors duration-150 hover:text-brand"
           href="/"
         >
           OUTNA.ME
         </Link>
         <nav
           aria-label="Social"
-          className="inline-flex items-stretch border-2 border-foreground"
+          className="inline-flex items-stretch border border-border"
         >
           <LandingSocialLink
             href={githubRepositoryUrl}
@@ -27,7 +27,6 @@ export function LandingFooter() {
             label="GitHub repository"
           />
           <LandingSocialLink
-            className="border-foreground border-l-2"
             href={xProfileUrl}
             Icon={SiX}
             iconSize={17}

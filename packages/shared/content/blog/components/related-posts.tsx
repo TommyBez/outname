@@ -13,19 +13,19 @@ export function RelatedPosts({ posts }: RelatedPostsProps) {
   return (
     <section aria-labelledby="related-posts-heading" className="mt-16">
       <h2
-        className="mb-6 font-black font-serif text-xl uppercase tracking-tighter"
+        className="mb-6 font-semibold text-xl tracking-tight"
         id="related-posts-heading"
       >
         Related posts
       </h2>
-      <ul className="divide-y-2 divide-foreground border-foreground border-y-2">
+      <ul className="divide-y divide-border border-border border-y">
         {posts.map((relatedPost) => (
           <li key={relatedPost.slug}>
             <Link
               className="group block py-6 transition-colors hover:bg-accent/5"
               href={`/blog/${relatedPost.slug}`}
             >
-              <h3 className="font-black font-serif text-lg uppercase leading-none tracking-tighter transition-colors group-hover:text-accent">
+              <h3 className="font-semibold text-lg leading-none tracking-tighter transition-colors group-hover:text-brand">
                 {relatedPost.title}
               </h3>
               <p className="mt-2 max-w-2xl text-muted-foreground text-sm leading-relaxed">

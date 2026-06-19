@@ -52,7 +52,7 @@ function AlertDialogContent({
       <AlertDialogOverlay />
       <AlertDialogPrimitive.Content
         className={cn(
-          'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-5 border-4 border-border bg-background p-6 duration-150 data-[state=closed]:animate-out data-[state=open]:animate-in sm:max-w-lg',
+          'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border bg-background p-6 shadow-lg duration-200 data-[state=closed]:animate-out data-[state=open]:animate-in sm:max-w-lg',
           className
         )}
         data-slot="alert-dialog-content"
@@ -98,7 +98,7 @@ function AlertDialogTitle({
   return (
     <AlertDialogPrimitive.Title
       className={cn(
-        'font-black text-2xl uppercase leading-none tracking-tighter',
+        'font-semibold text-lg',
         className
       )}
       data-slot="alert-dialog-title"
@@ -113,7 +113,7 @@ function AlertDialogDescription({
 }: React.ComponentProps<typeof AlertDialogPrimitive.Description>) {
   return (
     <AlertDialogPrimitive.Description
-      className={cn('text-muted-foreground text-sm leading-relaxed', className)}
+      className={cn('text-muted-foreground text-sm', className)}
       data-slot="alert-dialog-description"
       {...props}
     />

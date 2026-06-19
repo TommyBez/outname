@@ -21,7 +21,7 @@ export function AgentShellCard({
   return (
     <div
       className={cn(
-        'relative z-10 w-full border-2 border-foreground bg-background shadow-foreground/25',
+        'relative z-10 w-full border border-border bg-background shadow-foreground/25',
         compact
           ? 'max-w-[18rem] p-1.5 shadow-[6px_6px_0_0] sm:max-w-76'
           : 'max-w-md p-2 shadow-[8px_8px_0_0]'
@@ -29,23 +29,23 @@ export function AgentShellCard({
     >
       <div
         className={cn(
-          'border border-foreground/15 bg-background',
+          'border border-border/15 bg-background',
           compact ? 'p-4' : 'p-5'
         )}
       >
         <div
           className={cn(
-            'flex items-start justify-between gap-3 border-foreground border-b-2',
+            'flex items-start justify-between gap-3 border-border border-b',
             compact ? 'pb-3' : 'pb-4'
           )}
         >
           <div>
-            <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-normal">
+            <p className="font-mono text-[10px] text-muted-foreground tracking-normal">
               Agent
             </p>
             <p
               className={cn(
-                'mt-2 font-black uppercase leading-none tracking-normal',
+                'mt-2 font-semibold leading-none tracking-normal',
                 compact ? 'text-lg' : 'text-2xl'
               )}
             >
@@ -54,8 +54,7 @@ export function AgentShellCard({
           </div>
           <Badge
             className={cn(
-              compact &&
-                'h-auto px-2 py-1 font-mono text-[9px] uppercase tracking-normal'
+              compact && 'h-auto px-2 py-1 font-mono text-[9px] tracking-normal'
             )}
             variant="outline"
           >
@@ -72,7 +71,7 @@ export function AgentShellCard({
             return (
               <div
                 className={cn(
-                  'grid items-center border-2 border-foreground transition-colors duration-150',
+                  'grid items-center border border-border transition-colors duration-150',
                   compact
                     ? 'grid-cols-[1.25rem_minmax(0,1fr)_auto] gap-2 px-2.5 py-2'
                     : 'grid-cols-[1.75rem_minmax(0,1fr)_auto] gap-3 px-3 py-3',
@@ -83,7 +82,7 @@ export function AgentShellCard({
                 <Icon className={compact ? 'size-3.5' : 'size-4'} />
                 <p
                   className={cn(
-                    'font-black uppercase tracking-normal',
+                    'font-semibold tracking-normal',
                     compact ? 'text-[11px] leading-tight' : 'text-sm'
                   )}
                 >
@@ -105,7 +104,7 @@ export function AgentShellCard({
 
         <p
           className={cn(
-            'border-foreground border-t-2 font-mono text-muted-foreground uppercase tracking-normal',
+            'border-border border-t font-mono text-muted-foreground tracking-normal',
             compact ? 'mt-3 pt-2 text-[9px]' : 'mt-4 pt-3 text-[10px]'
           )}
         >

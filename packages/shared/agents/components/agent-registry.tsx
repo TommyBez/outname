@@ -2,6 +2,7 @@
 
 import type { AgentScheduleMode } from '@outname/shared/agent-schedule'
 import { formatAgentScheduleInline } from '@outname/shared/agents/format'
+import { Button } from '@outname/ui/components/ui/button'
 import { Input } from '@outname/ui/components/ui/input'
 import { cn } from '@outname/ui/lib/utils'
 import { X } from 'lucide-react'
@@ -48,10 +49,10 @@ export function AgentRegistry({
 
   return (
     <section aria-labelledby="agent-registry-heading">
-      <div className="mb-6 grid gap-4 border-foreground border-y-2 py-5 md:grid-cols-[minmax(0,1fr)_18rem] md:items-center">
+      <div className="mb-6 grid gap-4 border-border border-b py-5 md:grid-cols-[minmax(0,1fr)_18rem] md:items-center">
         <div>
           <h2
-            className="font-black font-serif text-3xl uppercase leading-none tracking-tighter"
+            className="font-semibold text-xl tracking-tight"
             id="agent-registry-heading"
           >
             Registry
@@ -79,14 +80,16 @@ export function AgentRegistry({
               value={query}
             />
             {query ? (
-              <button
+              <Button
                 aria-label="Clear search"
-                className="absolute top-1/2 right-2 inline-flex size-7 -translate-y-1/2 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+                className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground"
                 onClick={() => setQuery('')}
+                size="icon-sm"
                 type="button"
+                variant="ghost"
               >
                 <X aria-hidden className="size-4" />
-              </button>
+              </Button>
             ) : null}
           </div>
           <p
@@ -101,24 +104,26 @@ export function AgentRegistry({
       </div>
 
       {visibleAgents.length === 0 ? (
-        <div className="border-2 border-foreground bg-muted p-8">
-          <p className="font-black font-serif text-2xl uppercase leading-none tracking-tighter">
+        <div className="border border-border bg-muted p-8">
+          <p className="font-semibold text-2xl leading-none tracking-tighter">
             No agents match “{query}”.
           </p>
           <p className="mt-3 max-w-md text-muted-foreground text-sm">
             Try searching by name, model, active state, heartbeat, or dreaming —
             or clear the search to see all {agents.length} agents.
           </p>
-          <button
-            className="mt-6 inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-[10px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+          <Button
+            className="mt-6"
             onClick={() => setQuery('')}
+            size="sm"
             type="button"
+            variant="outline"
           >
             Clear search
-          </button>
+          </Button>
         </div>
       ) : (
-        <ul className="border-foreground border-y-2">
+        <ul className="border-border border-b">
           {visibleAgents.map((agent) => (
             <li key={agent.id}>
               <AgentRegistryRow agent={agent} timeZone={timeZone} />
@@ -138,15 +143,15 @@ function AgentRegistryRow({
   timeZone: string
 }) {
   return (
-    <article className="grid gap-5 border-foreground border-b-2 py-6 last:border-b-0 md:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] md:items-center md:px-4">
+    <article className="grid gap-5 border-border border-b py-6 last:border-b-0 md:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] md:items-center md:px-4">
       <div className="min-w-0">
-        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-bold text-[10px] text-muted-foreground">
           <span>{agent.model}</span>
           <span
             className={cn(
               'border px-1.5 py-0.5',
               agent.enabled
-                ? 'border-foreground text-foreground'
+                ? 'border-border text-foreground'
                 : 'border-border text-muted-foreground'
             )}
           >
@@ -154,7 +159,7 @@ function AgentRegistryRow({
           </span>
         </p>
         <Link
-          className="mt-2 block text-pretty font-black font-serif text-3xl uppercase leading-none tracking-tighter transition-colors hover:text-accent"
+          className="mt-2 block text-pretty font-semibold text-xl tracking-tight transition-colors hover:text-brand"
           href={`/agents/${agent.id}`}
         >
           {agent.name}
@@ -188,11 +193,8 @@ function AgentRegistryRow({
 
 function RegistryAction({ href, label }: { href: string; label: string }) {
   return (
-    <Link
-      className="inline-flex h-10 items-center justify-center border-2 border-foreground px-3 font-bold text-[10px] uppercase tracking-[0.14em] transition-colors hover:bg-foreground hover:text-background"
-      href={href}
-    >
-      {label}
-    </Link>
+    <Button asChild size="sm" variant="outline">
+      <Link href={href}>{label}</Link>
+    </Button>
   )
 }

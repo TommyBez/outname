@@ -117,31 +117,25 @@ async function WaitlistSettingsContent({
 
   return (
     <>
-      <header className="mb-12 border-foreground border-t-4 pt-6 md:mb-16">
-        <p className="swiss-label mb-4 text-accent">10. Settings / Waitlist</p>
+      <header className="mb-12 pt-6 md:mb-16">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
-              Waitlist
-            </h1>
+            <h1 className="font-semibold text-3xl tracking-tight">Waitlist</h1>
             <p className="mt-4 max-w-2xl text-muted-foreground text-sm leading-relaxed">
               Invite someone directly, review pending signups, provision
               accounts when access is ready, and resend confirmation or access
               emails.
             </p>
           </div>
-          <Link
-            className="inline-flex min-h-11 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
-            href="/settings"
-          >
-            Back to settings
-          </Link>
+          <Button asChild variant="outline">
+            <Link href="/settings">Back to settings</Link>
+          </Button>
         </div>
       </header>
 
-      <section className="border-foreground border-y-2 py-8">
+      <section className="border-border border-b py-8">
         <div className="mb-8">
-          <p className="swiss-label mb-4 text-accent">Invite user</p>
+          <p className="swiss-label mb-4 text-muted-foreground">Invite user</p>
           <p className="mb-4 max-w-2xl text-muted-foreground text-sm leading-relaxed">
             Send a product introduction and sign-in link to any email address.
             The account is provisioned immediately; no waitlist confirmation is
@@ -152,12 +146,12 @@ async function WaitlistSettingsContent({
 
         <form className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_repeat(5,minmax(0,1fr))_auto]">
           <label className="flex flex-col gap-2">
-            <span className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
+            <span className="font-bold text-muted-foreground text-xs tracking-wider">
               Search email
             </span>
             <input
               aria-label="Search waitlist email"
-              className="h-11 border-2 border-foreground bg-background px-3 text-sm"
+              className="h-11 border border-border bg-background px-3 text-sm"
               defaultValue={params.search ?? ''}
               name="search"
               placeholder="user@example.com"
@@ -270,10 +264,7 @@ async function WaitlistSettingsContent({
 
 function WaitlistSettingsFallback() {
   return (
-    <output
-      aria-busy="true"
-      className="border-foreground border-t-4 pt-6 text-muted-foreground text-sm"
-    >
+    <output aria-busy="true" className="pt-6 text-muted-foreground text-sm">
       Loading waitlist manager…
     </output>
   )
@@ -292,11 +283,11 @@ function FilterSelect({
 }) {
   return (
     <label className="flex flex-col gap-2">
-      <span className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
+      <span className="font-bold text-muted-foreground text-xs tracking-wider">
         {label}
       </span>
       <select
-        className="h-11 border-2 border-foreground bg-background px-3 text-sm"
+        className="h-11 border border-border bg-background px-3 text-sm"
         defaultValue={defaultValue}
         name={name}
       >

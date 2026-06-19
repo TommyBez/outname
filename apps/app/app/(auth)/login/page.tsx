@@ -2,6 +2,7 @@ import { LoginForm } from '@outname/auth/components/login-form'
 import { auth } from '@outname/auth/server/auth'
 import { createPrivatePageMetadata } from '@outname/shared/server/site-metadata'
 import { isWaitlistPublicEnabled } from '@outname/shared/waitlist/server/public-config'
+import { Button } from '@outname/ui/components/ui/button'
 import { Skeleton } from '@outname/ui/components/ui/skeleton'
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
@@ -22,14 +23,13 @@ export default function LoginPage({
   const waitlistEnabled = isWaitlistPublicEnabled()
 
   return (
-    <main className="swiss-grid-pattern grid min-h-svh place-items-center bg-background px-6">
-      <div className="w-full max-w-md border-4 border-foreground bg-background p-8">
-        <div className="mb-10 border-foreground border-t-4 pt-5">
-          <p className="swiss-label text-accent">00. agents</p>
-          <h1 className="mt-4 font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter">
+    <main className="grid min-h-svh place-items-center bg-background px-6">
+      <div className="w-full max-w-md border border-border bg-background p-8">
+        <div className="mb-10 border-border border-t pt-5">
+          <h1 className="mt-4 font-semibold text-4xl tracking-tight">
             Sign in
           </h1>
-          <p className="mt-4 border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
+          <p className="mt-4 text-muted-foreground text-sm leading-relaxed">
             Request a one-time code by email to access your scheduled agents and
             live dashboard.
           </p>
@@ -38,16 +38,13 @@ export default function LoginPage({
           <LoginGate searchParams={searchParams} />
         </Suspense>
         {waitlistEnabled ? (
-          <div className="mt-8 border-foreground border-t-2 pt-5">
-            <p className="font-mono text-[11px] text-muted-foreground uppercase tracking-normal">
+          <div className="mt-8 border-border border-t pt-5">
+            <p className="font-mono text-[11px] text-muted-foreground tracking-normal">
               Need access first?
             </p>
-            <Link
-              className="mt-3 inline-flex min-h-11 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
-              href="/waitlist?source=login-page"
-            >
-              Join the waitlist
-            </Link>
+            <Button asChild className="mt-3" variant="outline">
+              <Link href="/waitlist?source=login-page">Join the waitlist</Link>
+            </Button>
           </div>
         ) : null}
       </div>
@@ -77,9 +74,9 @@ function LoginFormSkeleton() {
     >
       <div className="flex flex-col gap-2">
         <Skeleton className="h-4 w-12" />
-        <Skeleton className="h-10 w-full border-2 border-border" />
+        <Skeleton className="h-10 w-full border border-border" />
       </div>
-      <Skeleton className="mt-2 h-10 w-full border-2 border-border" />
+      <Skeleton className="mt-2 h-10 w-full border border-border" />
     </output>
   )
 }

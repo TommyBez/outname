@@ -29,16 +29,14 @@ export function FinalConfigurationCard({
   const subAgents = config.tools?.subAgents ?? []
 
   return (
-    <section className="w-full border-2 border-foreground bg-background">
-      <div className="border-foreground border-b-2 bg-accent px-4 py-3">
-        <p className="font-bold text-xs uppercase tracking-[0.18em]">
-          Review before creation
-        </p>
+    <section className="w-full border border-border bg-background">
+      <div className="border-border border-b bg-brand px-4 py-3 text-brand-foreground">
+        <p className="font-bold text-xs">Review before creation</p>
       </div>
       <div className="grid gap-5 p-4 md:grid-cols-[minmax(0,1fr)_16rem]">
         <div className="min-w-0 space-y-5">
           <div>
-            <p className="font-black font-serif text-3xl uppercase leading-none tracking-tighter">
+            <p className="font-semibold text-xl tracking-tight">
               {config.name}
             </p>
             <p className="mt-2 text-muted-foreground text-sm">{config.role}</p>
@@ -74,7 +72,7 @@ export function FinalConfigurationCard({
           />
         </div>
 
-        <aside className="border-foreground border-t-2 pt-4 md:border-t-0 md:border-l-2 md:pt-0 md:pl-4">
+        <aside className="border-border border-t pt-4 md:border-t-0 md:border-l md:pt-0 md:pl-4">
           <ToolList maintainerTools={maintainerTools} subAgents={subAgents} />
         </aside>
       </div>
@@ -97,7 +95,7 @@ function ToolList({
 }) {
   return (
     <div>
-      <p className="font-bold text-xs uppercase tracking-[0.16em]">Tools</p>
+      <p className="font-bold text-xs">Tools</p>
       {maintainerTools.length === 0 && subAgents.length === 0 ? (
         <p className="mt-2 text-muted-foreground text-sm">No optional tools</p>
       ) : (
@@ -126,8 +124,8 @@ function ToolList({
 
 function ReviewBlock({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border-foreground border-t-2 pt-3">
-      <p className="font-bold text-xs uppercase tracking-[0.16em]">{label}</p>
+    <div className="border-border border-t pt-3">
+      <p className="font-bold text-xs">{label}</p>
       <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">
         {value || 'None'}
       </p>

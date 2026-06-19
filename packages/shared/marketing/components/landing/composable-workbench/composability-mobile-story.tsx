@@ -33,28 +33,26 @@ export function ComposabilityMobileStory() {
     <div className="mx-auto mt-10 max-w-7xl px-0 lg:px-4">
       <div className="grid gap-4">
         <div className="sticky top-4 z-20" ref={stickyRef}>
-          <div className="border-2 border-foreground bg-background/95 p-3 shadow-[0_14px_32px_rgb(0_0_0/0.08)] supports-backdrop-filter:bg-background/85 supports-backdrop-filter:backdrop-blur">
+          <div className="border border-border bg-background/95 p-3 shadow-[0_14px_32px_rgb(0_0_0/0.08)] supports-backdrop-filter:bg-background/85 supports-backdrop-filter:backdrop-blur">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="swiss-label text-accent">{activeStage.eyebrow}</p>
-                <p className="mt-1 font-mono text-[10px] text-muted-foreground uppercase tracking-normal">
+                <p className="swiss-label text-muted-foreground">
+                  {activeStage.eyebrow}
+                </p>
+                <p className="mt-1 font-mono text-[10px] text-muted-foreground tracking-normal">
                   Scroll to compose
                 </p>
               </div>
               <Badge
-                className="h-auto border-2 px-2 py-1 font-mono text-[10px] uppercase tracking-normal"
+                className="h-auto border px-2 py-1 font-mono text-[10px] tracking-normal"
                 variant="outline"
               >
                 {attached} / {totalParts} attached
               </Badge>
             </div>
 
-            <div className="mt-4 overflow-hidden border-2 border-foreground bg-muted p-3">
+            <div className="mt-4 overflow-hidden border border-border bg-muted p-3">
               <div className="relative h-68 sm:h-76" ref={visualRef}>
-                <div
-                  aria-hidden
-                  className="swiss-diagonal pointer-events-none absolute inset-0 opacity-30"
-                />
                 <div className="absolute inset-0">
                   <MobileStageFlight activeIndex={activeIndex} size={size} />
                 </div>
@@ -64,7 +62,7 @@ export function ComposabilityMobileStory() {
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-4 gap-1 font-mono text-[10px] uppercase tracking-normal">
+            <div className="mt-4 grid grid-cols-4 gap-1 font-mono text-[10px] tracking-normal">
               {composabilityStages.map((stage, index) => {
                 const isActive = index === activeIndex
                 const isAttached = index < activeIndex
@@ -72,7 +70,7 @@ export function ComposabilityMobileStory() {
                 return (
                   <div
                     className={cn(
-                      'border-2 border-foreground p-2',
+                      'border border-border p-2',
                       mobileMarkerTone(isActive, isAttached)
                     )}
                     key={stage.id}
@@ -80,7 +78,7 @@ export function ComposabilityMobileStory() {
                     <span className="block font-bold">
                       {String(index + 1).padStart(2, '0')}
                     </span>
-                    <span className="mt-1 block truncate font-black text-[11px]">
+                    <span className="mt-1 block truncate font-semibold text-[11px]">
                       {stage.label}
                     </span>
                   </div>
@@ -88,17 +86,17 @@ export function ComposabilityMobileStory() {
               })}
             </div>
 
-            <div className="mt-3 h-2 overflow-hidden border-2 border-foreground bg-muted">
+            <div className="mt-3 h-2 overflow-hidden border border-border bg-muted">
               <motion.span
                 animate={{ scaleX: (activeIndex + 1) / stageCount }}
                 aria-hidden
-                className="block h-full origin-left bg-accent"
+                className="block h-full origin-left bg-brand"
                 initial={false}
                 transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
               />
             </div>
 
-            <h3 className="mt-4 font-black text-3xl uppercase leading-[0.9] tracking-normal sm:text-4xl">
+            <h3 className="mt-4 font-semibold text-2xl leading-tight tracking-tight sm:text-3xl">
               {activeStage.label}
             </h3>
             <p className="mt-3 max-w-xl text-muted-foreground text-sm leading-relaxed">

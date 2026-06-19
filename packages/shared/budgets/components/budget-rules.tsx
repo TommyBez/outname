@@ -77,7 +77,7 @@ export function BudgetRules({ rules, scope }: Props) {
           ? 'General budgets cap total AI spend across every agent. Sub-agent invocations roll into the parent agent that the operator started.'
           : `Per-agent budgets cap AI spend on ${scope.agentName}. Sub-agents invoked from this agent count against this budget too. External-service tools are not counted.`}
       </p>
-      <ul className="flex flex-col divide-y-2 divide-foreground border-foreground border-y-2">
+      <ul className="flex flex-col divide-y divide-border border-border border-b">
         {PERIODS.map((p) => (
           <li className="py-5" key={p.id}>
             <BudgetRow
@@ -150,9 +150,7 @@ function BudgetRow({
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <p className="font-bold text-xs uppercase tracking-[0.18em]">
-            {period.label}
-          </p>
+          <p className="font-bold text-xs">{period.label}</p>
           {rule ? (
             <p
               className={
@@ -174,7 +172,6 @@ function BudgetRow({
         {rule && (
           <div className="flex items-center gap-2">
             <Button
-              className="h-9 border-2 border-foreground px-3 font-bold text-[11px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background disabled:opacity-50"
               disabled={pending}
               onClick={onToggle}
               size="xs"
@@ -190,7 +187,7 @@ function BudgetRow({
               title={`Remove the ${period.label.toLowerCase()} budget?`}
               trigger={
                 <Button
-                  className="h-9 border-2 border-destructive px-3 font-bold text-[11px] text-destructive uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-destructive-foreground disabled:opacity-50"
+                  className="h-9 border border-destructive px-3 font-bold text-[11px] text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground disabled:opacity-50"
                   disabled={pending}
                   size="xs"
                   type="button"
@@ -274,8 +271,8 @@ function BudgetLimitForm({
           aria-label={`${periodLabel} limit in USD`}
           className={
             draftInvalid
-              ? 'h-9 w-32 border-2 border-destructive bg-background px-2 font-mono text-sm outline-none focus:border-destructive'
-              : 'h-9 w-32 border-2 border-foreground bg-background px-2 font-mono text-sm outline-none focus:border-accent'
+              ? 'h-9 w-32 border border-destructive bg-background px-2 font-mono text-sm outline-none focus:border-destructive'
+              : 'h-9 w-32 border border-border bg-background px-2 font-mono text-sm outline-none focus:border-brand'
           }
           inputMode="decimal"
           min="0"
@@ -286,7 +283,6 @@ function BudgetLimitForm({
           value={draftLimit}
         />
         <Button
-          className="h-9 border-2 border-foreground px-3 font-bold text-[11px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background disabled:opacity-50"
           disabled={pending || draftInvalid || draftLimit.trim().length === 0}
           size="xs"
           type="submit"

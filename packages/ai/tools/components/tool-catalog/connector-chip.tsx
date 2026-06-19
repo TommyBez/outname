@@ -7,7 +7,7 @@ export function ConnectorChip({ connector }: { connector: ConnectorState }) {
   const label = connectorBadgeLabel(connector.displayName, connector.status)
   return (
     <Link
-      className={`inline-flex h-7 items-center border-2 px-3 font-bold text-[10px] uppercase tracking-[0.16em] ${cls}`}
+      className={`inline-flex h-7 items-center border px-3 font-bold text-[10px] ${cls}`}
       href="/connections"
     >
       {label}

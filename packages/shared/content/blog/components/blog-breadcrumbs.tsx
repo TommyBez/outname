@@ -12,7 +12,7 @@ interface BlogBreadcrumbsProps {
 export function BlogBreadcrumbs({ items }: BlogBreadcrumbsProps) {
   return (
     <nav aria-label="Breadcrumb" className="mb-6">
-      <ol className="flex flex-wrap items-center gap-2 font-mono text-[10px] text-muted-foreground uppercase">
+      <ol className="flex flex-wrap items-center gap-2 font-mono text-[10px] text-muted-foreground">
         {items.map((item, index) => {
           const isLast = index === items.length - 1
 
@@ -20,7 +20,7 @@ export function BlogBreadcrumbs({ items }: BlogBreadcrumbsProps) {
             <li className="inline-flex items-center gap-2" key={item.label}>
               {item.href && !isLast ? (
                 <Link
-                  className="transition-colors hover:text-accent"
+                  className="transition-colors hover:text-brand"
                   href={item.href}
                 >
                   {item.label}

@@ -51,16 +51,13 @@ export function AddBindingForm({
 
   return (
     <form
-      className="flex flex-col gap-4 border-2 border-foreground bg-muted p-4"
+      className="flex flex-col gap-4 border border-border bg-muted p-4"
       onSubmit={handleSubmit}
     >
       <div className="flex items-center justify-between">
-        <p className="font-bold text-xs uppercase tracking-[0.16em]">
-          New Slack binding
-        </p>
+        <p className="font-bold text-xs">New Slack binding</p>
         <Button
           aria-label="Cancel"
-          className="inline-flex size-7 items-center justify-center border-2 border-foreground hover:bg-foreground hover:text-background"
           onClick={onCancel}
           size="icon-xs"
           type="button"
@@ -87,21 +84,10 @@ export function AddBindingForm({
       />
 
       <div className="flex items-center gap-2">
-        <Button
-          className="inline-flex h-10 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
-          disabled={pending}
-          size="sm"
-          type="submit"
-        >
+        <Button disabled={pending} size="sm" type="submit">
           {pending ? 'Saving…' : 'Save binding'}
         </Button>
-        <Button
-          className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
-          onClick={onCancel}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
+        <Button onClick={onCancel} size="sm" type="button" variant="outline">
           Cancel
         </Button>
       </div>
@@ -120,11 +106,9 @@ function WorkspaceSelect({
 }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="font-bold text-[10px] uppercase tracking-[0.2em]">
-        Workspace
-      </span>
+      <span className="font-bold text-[10px]">Workspace</span>
       <select
-        className="h-10 w-full border-2 border-foreground bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+        className="h-10 w-full border border-border bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"
         onChange={(event) => onChange(event.target.value)}
         value={teamId}
       >
@@ -147,11 +131,9 @@ function KindSelect({
 }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="font-bold text-[10px] uppercase tracking-[0.2em]">
-        Routing kind
-      </span>
+      <span className="font-bold text-[10px]">Routing kind</span>
       <select
-        className="h-10 w-full border-2 border-foreground bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+        className="h-10 w-full border border-border bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"
         onChange={(event) => onChange(event.target.value as NewBindingKind)}
         value={kind}
       >
@@ -177,12 +159,10 @@ function ExternalKeyField({
 }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="font-bold text-[10px] uppercase tracking-[0.2em]">
-        {label}
-      </span>
+      <span className="font-bold text-[10px]">{label}</span>
       <input
         aria-label={label}
-        className="h-10 w-full border-2 border-foreground bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+        className="h-10 w-full border border-border bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         required

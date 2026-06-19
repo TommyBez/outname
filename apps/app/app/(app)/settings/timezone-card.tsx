@@ -64,7 +64,7 @@ export function TimezoneCard({ timezone }: { timezone: string }) {
         <Select onValueChange={setSelectedTimezone} value={value}>
           <SelectTrigger
             aria-label="Account timezone"
-            className="h-10 border-2 border-foreground"
+            className="h-10 border border-border"
             id="account-timezone"
           >
             <SelectValue placeholder="Select timezone" />

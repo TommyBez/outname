@@ -43,7 +43,7 @@ export async function AgentWorkspaceFrame({
 
 export function AgentWorkspaceSkeleton() {
   return (
-    <div className="border-foreground border-t-4 pt-6">
+    <div className="pt-6">
       <div className="h-3 w-32 animate-pulse bg-muted" />
       <div className="mt-4 h-12 w-80 animate-pulse bg-muted" />
       <div className="mt-6 h-12 w-full animate-pulse bg-muted" />

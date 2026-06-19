@@ -19,10 +19,10 @@ export function AppErrorScreen({
   onReset,
 }: AppErrorScreenProps) {
   return (
-    <main className="swiss-grid-pattern grid min-h-svh place-items-center bg-background px-6">
-      <div className="max-w-md border-4 border-foreground bg-background p-8">
-        <p className="swiss-label text-accent">{eyebrow}</p>
-        <h1 className="mt-4 text-balance font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter">
+    <main className="grid min-h-svh place-items-center bg-background px-6">
+      <div className="max-w-md border border-border bg-background p-8">
+        <p className="swiss-label text-muted-foreground">{eyebrow}</p>
+        <h1 className="mt-4 text-balance font-semibold text-4xl tracking-tight">
           {title}
         </h1>
         <p className="mt-4 text-pretty text-muted-foreground text-sm">

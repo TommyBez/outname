@@ -12,9 +12,8 @@ export const metadata = createPrivatePageMetadata(
 export default function NewAgentPage() {
   return (
     <>
-      <header className="mb-8 border-foreground border-t-4 pt-6">
-        <p className="swiss-label mb-4 text-accent">03. New agent</p>
-        <h1 className="max-w-4xl font-black font-serif text-4xl uppercase leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl xl:text-7xl">
+      <header className="mb-8 pt-6">
+        <h1 className="max-w-4xl font-semibold text-3xl tracking-tight">
           Create a new agent
         </h1>
         <p className="mt-4 max-w-2xl text-muted-foreground text-sm leading-relaxed">
@@ -23,10 +22,10 @@ export default function NewAgentPage() {
         </p>
       </header>
 
-      <section className="border-foreground border-t-2 pt-6">
+      <section className="pt-6">
         <Suspense
           fallback={
-            <div className="h-[min(720px,calc(100svh-14rem))] min-h-[24rem] border-2 border-foreground bg-muted" />
+            <div className="h-[min(720px,calc(100svh-14rem))] min-h-[24rem] border border-border bg-muted" />
           }
         >
           <NewAgentChat />

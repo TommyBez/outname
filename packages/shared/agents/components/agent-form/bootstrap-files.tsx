@@ -27,7 +27,7 @@ interface BootstrapFilesProps {
 
 export function BootstrapFiles(props: BootstrapFilesProps) {
   return (
-    <div className="grid gap-3 border-foreground border-b-2 pb-8 md:grid-cols-[12rem_minmax(0,1fr)]">
+    <div className="grid gap-3 border-border border-b pb-8 md:grid-cols-[12rem_minmax(0,1fr)]">
       <div>
         <Label>Bootstrap files</Label>
       </div>
@@ -122,10 +122,7 @@ function BootstrapFilePicker({
   return (
     <>
       <div className="mb-3 flex flex-col gap-2 md:hidden">
-        <Label
-          className="font-bold text-xs uppercase tracking-[0.14em]"
-          htmlFor="bootstrap-file-view"
-        >
+        <Label className="font-bold text-xs" htmlFor="bootstrap-file-view">
           File view
         </Label>
         <Select
@@ -159,9 +156,9 @@ function BootstrapFilePicker({
             <Button
               aria-pressed={isActive}
               className={cn(
-                'flex min-h-16 flex-col items-start justify-between gap-2 border-2 px-4 py-3 text-left transition-colors',
+                'flex min-h-16 flex-col items-start justify-between gap-2 border px-4 py-3 text-left transition-colors',
                 isActive
-                  ? 'border-foreground bg-muted text-foreground'
+                  ? 'border-border bg-muted text-foreground'
                   : 'border-border bg-background text-muted-foreground hover:bg-muted'
               )}
               key={option.value}
@@ -170,9 +167,7 @@ function BootstrapFilePicker({
               type="button"
               variant="outline"
             >
-              <span className="font-bold text-xs uppercase tracking-[0.14em]">
-                {option.label}
-              </span>
+              <span className="font-bold text-xs">{option.label}</span>
               <span className="font-mono text-[11px] tracking-normal">
                 {option.fileName}
               </span>

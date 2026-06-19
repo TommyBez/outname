@@ -30,11 +30,9 @@ async function ResolvedAgentMemoryPage({ params }: { params: Params }) {
   return (
     <>
       <header className="mb-12">
-        <p className="swiss-label mb-4 text-accent">Memory</p>
-        <h1 className="font-black font-serif text-4xl uppercase leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl xl:text-7xl">
-          Agent memory
-        </h1>
-        <p className="mt-5 max-w-2xl border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
+        <p className="swiss-label mb-4 text-muted-foreground">Memory</p>
+        <h1 className="font-semibold text-3xl tracking-tight">Agent memory</h1>
+        <p className="mt-5 max-w-2xl text-muted-foreground text-sm leading-relaxed">
           Inspect sandbox files, daily logs, and dreaming output for this agent.
         </p>
       </header>
@@ -71,10 +69,10 @@ function MemoryCard({
 }) {
   return (
     <Link
-      className="group flex min-h-40 flex-col justify-between border-2 border-foreground p-5 transition-colors hover:bg-accent"
+      className="group flex min-h-40 flex-col justify-between border border-border p-5 transition-colors hover:bg-accent"
       href={href}
     >
-      <p className="font-black font-serif text-2xl uppercase leading-none tracking-tighter">
+      <p className="font-semibold text-2xl leading-none tracking-tighter">
         {title}
       </p>
       <p className="mt-6 text-muted-foreground text-sm leading-relaxed group-hover:text-foreground">

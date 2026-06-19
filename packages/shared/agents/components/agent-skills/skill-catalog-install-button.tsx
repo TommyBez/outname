@@ -71,15 +71,15 @@ export function SkillCatalogInstallButton({
   return (
     <div className="grid gap-3">
       {installed && (
-        <div className="flex items-center gap-2 border-2 border-foreground bg-muted p-3 text-sm">
-          <CheckCircle2 aria-hidden className="size-4 shrink-0 text-accent" />
+        <div className="flex items-center gap-2 border border-border bg-muted p-3 text-sm">
+          <CheckCircle2 aria-hidden className="size-4 shrink-0 text-brand" />
           <span className="font-bold">{installed.name}</span>
           <span className="text-muted-foreground">is installed.</span>
         </div>
       )}
 
       {conflict && (
-        <Alert className="border-2 border-destructive">
+        <Alert className="border border-destructive">
           <AlertTriangle className="size-4" />
           <AlertTitle>Name conflict</AlertTitle>
           <AlertDescription>

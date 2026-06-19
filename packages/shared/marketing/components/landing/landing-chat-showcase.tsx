@@ -561,12 +561,14 @@ export function LandingChatShowcase({
           whileInView="visible"
         >
           <motion.div
-            className="grid gap-5 border-foreground border-t-4 pt-5 md:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)] md:items-end"
+            className="grid gap-5 border-border border-t pt-5 md:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)] md:items-end"
             variants={revealVariants}
           >
             <div>
-              <p className="swiss-label text-accent">Live agent · /chat/:id</p>
-              <h2 className="mt-4 text-balance font-black text-5xl uppercase leading-[0.88] tracking-normal md:text-7xl">
+              <p className="swiss-label text-muted-foreground">
+                Live agent · /chat/:id
+              </p>
+              <h2 className="mt-4 text-balance font-semibold text-3xl leading-tight tracking-tight md:text-4xl">
                 Same agent. Every surface.
               </h2>
             </div>
@@ -576,30 +578,30 @@ export function LandingChatShowcase({
           </motion.div>
 
           <motion.div
-            className="mt-8 border-2 border-foreground bg-background p-2"
+            className="mt-8 border border-border bg-background p-2"
             variants={revealVariants}
           >
-            <div className="grid min-h-[32rem] border border-foreground/15 bg-background lg:min-h-[44rem] lg:grid-cols-[18rem_minmax(0,1fr)]">
-              <aside className="min-w-0 border-foreground border-b-2 bg-muted lg:flex lg:flex-col lg:border-r-2 lg:border-b-0">
-                <div className="flex items-center justify-between gap-3 border-foreground border-b-2 p-3 lg:block lg:p-5">
+            <div className="grid min-h-[32rem] border border-border/15 bg-background lg:min-h-[44rem] lg:grid-cols-[18rem_minmax(0,1fr)]">
+              <aside className="min-w-0 border-border border-b bg-muted lg:flex lg:flex-col lg:border-r lg:border-b-0">
+                <div className="flex items-center justify-between gap-3 border-border border-b p-3 lg:block lg:p-5">
                   <div className="flex min-w-0 items-center gap-3 lg:block">
-                    <span className="grid size-9 shrink-0 place-items-center border-2 border-foreground bg-accent lg:hidden">
+                    <span className="grid size-9 shrink-0 place-items-center border border-border bg-brand text-brand-foreground lg:hidden">
                       <BotIcon className="size-4" />
                     </span>
                     <div className="min-w-0">
-                      <p className="hidden font-bold text-[10px] text-muted-foreground uppercase tracking-normal lg:block">
+                      <p className="hidden font-bold text-[10px] text-muted-foreground tracking-normal lg:block">
                         Workspace
                       </p>
                       <div className="lg:mt-3 lg:flex lg:items-start lg:justify-between lg:gap-3">
                         <div className="min-w-0">
-                          <p className="font-black text-sm uppercase leading-none tracking-normal lg:text-lg">
+                          <p className="font-semibold text-sm leading-none tracking-normal lg:text-lg">
                             {agentMeta.name}
                           </p>
-                          <p className="mt-1 font-mono text-[10px] text-muted-foreground uppercase tracking-normal lg:mt-2">
+                          <p className="mt-1 font-mono text-[10px] text-muted-foreground tracking-normal lg:mt-2">
                             {agentMeta.attached}
                           </p>
                         </div>
-                        <span className="hidden size-9 shrink-0 place-items-center border-2 border-foreground bg-accent lg:grid">
+                        <span className="hidden size-9 shrink-0 place-items-center border border-border bg-brand text-brand-foreground lg:grid">
                           <BotIcon className="size-4" />
                         </span>
                       </div>
@@ -607,8 +609,8 @@ export function LandingChatShowcase({
                   </div>
                 </div>
 
-                <nav className="hidden border-foreground border-b-2 p-3 lg:block">
-                  <ul className="grid gap-0.5 font-mono text-[11px] uppercase tracking-normal">
+                <nav className="hidden border-border border-b p-3 lg:block">
+                  <ul className="grid gap-0.5 font-mono text-[11px] tracking-normal">
                     {[
                       { active: true, label: 'Chat' },
                       { active: false, label: 'Configure' },
@@ -635,8 +637,8 @@ export function LandingChatShowcase({
                   </ul>
                 </nav>
 
-                <div className="min-w-0 border-foreground border-b-2 p-2 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:border-b-0 lg:p-3">
-                  <p className="hidden px-2 pt-1 pb-2 font-bold text-[10px] text-muted-foreground uppercase tracking-normal lg:block">
+                <div className="min-w-0 border-border border-b p-2 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:border-b-0 lg:p-3">
+                  <p className="hidden px-2 pt-1 pb-2 font-bold text-[10px] text-muted-foreground tracking-normal lg:block">
                     Conversations
                   </p>
                   <ul className="-mx-2 flex gap-1.5 overflow-x-auto px-2 lg:mx-0 lg:grid lg:gap-1.5 lg:overflow-visible lg:px-0">
@@ -644,7 +646,7 @@ export function LandingChatShowcase({
                       <li className="shrink-0 lg:shrink" key={scenario.id}>
                         <Button
                           className={cn(
-                            'ease grid h-full w-44 items-stretch justify-normal gap-1 border-2 border-foreground px-3 py-2 text-left font-normal normal-case tracking-normal transition-colors duration-150 lg:w-full lg:px-3 lg:py-2.5',
+                            'ease grid h-full w-44 items-stretch justify-normal gap-1 border border-border px-3 py-2 text-left font-normal normal-case tracking-normal transition-colors duration-150 lg:w-full lg:px-3 lg:py-2.5',
                             activeScenario.id === scenario.id
                               ? 'bg-background'
                               : 'bg-muted hover:bg-background'
@@ -655,10 +657,10 @@ export function LandingChatShowcase({
                           variant="ghost"
                         >
                           <span className="flex items-baseline justify-between gap-2">
-                            <span className="truncate font-black text-xs uppercase tracking-normal">
+                            <span className="truncate font-semibold text-xs tracking-normal">
                               {scenario.title}
                             </span>
-                            <span className="shrink-0 font-mono text-[9px] text-muted-foreground uppercase tracking-normal">
+                            <span className="shrink-0 font-mono text-[9px] text-muted-foreground tracking-normal">
                               {scenario.relativeTime}
                             </span>
                           </span>
@@ -673,19 +675,19 @@ export function LandingChatShowcase({
               </aside>
 
               <div className="flex min-w-0 flex-col">
-                <header className="flex flex-wrap items-center justify-between gap-3 border-foreground border-b-2 bg-background px-5 py-3">
+                <header className="flex flex-wrap items-center justify-between gap-3 border-border border-b bg-background px-5 py-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <span
                       aria-hidden
-                      className="grid size-9 place-items-center border-2 border-foreground bg-foreground text-background"
+                      className="grid size-9 place-items-center border border-border bg-foreground text-background"
                     >
                       <BotIcon className="size-4" />
                     </span>
                     <div className="min-w-0">
-                      <p className="font-black text-sm uppercase leading-none tracking-normal">
+                      <p className="font-semibold text-sm leading-none tracking-normal">
                         {agentMeta.name}
                       </p>
-                      <p className="mt-1.5 font-mono text-[10px] text-muted-foreground uppercase tracking-normal">
+                      <p className="mt-1.5 font-mono text-[10px] text-muted-foreground tracking-normal">
                         {activeScenario.model}
                       </p>
                     </div>
@@ -693,7 +695,7 @@ export function LandingChatShowcase({
                   <div className="flex items-center gap-2">
                     <span
                       className={cn(
-                        'inline-flex items-center gap-2 border-2 border-foreground px-2 py-1 font-mono text-[10px] uppercase tracking-normal',
+                        'inline-flex items-center gap-2 border border-border px-2 py-1 font-mono text-[10px] tracking-normal',
                         isPlaying
                           ? 'bg-foreground text-background'
                           : 'bg-background'
@@ -722,7 +724,7 @@ export function LandingChatShowcase({
                   />
                 </div>
 
-                <div className="border-foreground border-t-2 bg-muted px-5 py-4">
+                <div className="border-border border-t bg-muted px-5 py-4">
                   <PromptInput
                     onSubmit={() => {
                       /* static demo */

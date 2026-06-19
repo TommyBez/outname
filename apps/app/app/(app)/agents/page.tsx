@@ -13,11 +13,9 @@ import { AgentCardSkeleton } from '@outname/ui/components/skeletons'
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 
-const NEW_AGENT_BUTTON_CLASS_NAME =
-  'inline-flex h-14 shrink-0 items-center justify-center self-start border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground md:self-auto'
+const NEW_AGENT_BUTTON_CLASS_NAME = 'self-start md:self-auto'
 
-const CREATE_AGENT_BUTTON_CLASS_NAME =
-  'mt-8 inline-flex h-14 items-center justify-center border-2 border-foreground bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground'
+const CREATE_AGENT_BUTTON_CLASS_NAME = 'mt-8'
 
 const AGENTS_FALLBACK_KEYS = [
   'agents-fallback-1',
@@ -51,15 +49,14 @@ async function AgentsListPageBody() {
 
   return (
     <>
-      <header className="mb-12 border-foreground border-t-4 pt-6">
+      <header className="mb-12 pt-6">
         <div className="grid gap-8 md:grid-cols-[minmax(0,7fr)_minmax(14rem,3fr)] md:items-end">
           <div>
-            <p className="swiss-label mb-4 text-accent">02. Agents</p>
-            <h1 className="font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
+            <h1 className="font-semibold text-3xl tracking-tight">
               Your agents
             </h1>
           </div>
-          <p className="max-w-xs border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
+          <p className="max-w-xs text-muted-foreground text-sm leading-relaxed">
             The registry for every agent, with direct routes into chat,
             configuration, tools, and memory.
           </p>
@@ -73,10 +70,8 @@ async function AgentsListPageBody() {
       </header>
 
       {agents.length === 0 ? (
-        <div className="swiss-dots border-2 border-foreground bg-muted p-8 md:p-12">
-          <p className="font-black font-serif text-3xl uppercase leading-none tracking-tighter">
-            No agents yet.
-          </p>
+        <div className="border border-border bg-muted p-8 md:p-12">
+          <p className="font-semibold text-xl tracking-tight">No agents yet.</p>
           <p className="mt-4 max-w-lg text-muted-foreground text-sm leading-relaxed">
             Add an agent to automate recurring work. Each agent runs on its own
             schedule and keeps its memory in a persistent sandbox.
@@ -115,26 +110,25 @@ function toRegistryAgent(agent: Agent): RegistryAgent {
 function AgentsListPageFallback() {
   return (
     <>
-      <header className="mb-12 border-foreground border-t-4 pt-6">
+      <header className="mb-12 pt-6">
         <div className="grid gap-8 md:grid-cols-[minmax(0,7fr)_minmax(14rem,3fr)] md:items-end">
           <div>
-            <p className="swiss-label mb-4 text-accent">02. Agents</p>
-            <h1 className="font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
+            <h1 className="font-semibold text-3xl tracking-tight">
               Your agents
             </h1>
           </div>
-          <p className="max-w-xs border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
+          <p className="max-w-xs text-muted-foreground text-sm leading-relaxed">
             The registry for every agent, with direct routes into chat,
             configuration, tools, and memory.
           </p>
           <div
             aria-hidden="true"
-            className="h-14 w-36 animate-pulse bg-muted"
+            className="h-10 w-36 animate-pulse bg-muted"
           />
         </div>
       </header>
 
-      <ul className="border-foreground border-y-2">
+      <ul className="border-border border-b">
         {AGENTS_FALLBACK_KEYS.map((key) => (
           <li key={key}>
             <AgentCardSkeleton />

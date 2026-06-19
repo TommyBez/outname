@@ -19,17 +19,19 @@ export default function BlogIndexPage() {
       <BlogBreadcrumbs
         items={[{ href: '/', label: 'Home' }, { label: 'Blog' }]}
       />
-      <header className="mb-16 border-foreground border-t-4 pt-6 md:mb-20">
-        <p className="swiss-label mb-4 text-accent">01. The Outname Blog</p>
-        <h1 className="text-balance font-black font-serif text-5xl uppercase leading-[0.86] tracking-tighter sm:text-6xl lg:text-[clamp(4rem,6vw,6rem)]">
+      <header className="mb-16 pt-6 md:mb-20">
+        <p className="swiss-label mb-4 text-muted-foreground">
+          The Outname Blog
+        </p>
+        <h1 className="text-balance font-semibold text-4xl tracking-tight">
           Personal AI Agents, Autonomous Work, and Life Inside the Machine
         </h1>
-        <div className="mt-6 max-w-xl border-foreground border-l-2 pl-4">
+        <div className="mt-6 max-w-xl">
           <p className="text-muted-foreground text-sm leading-relaxed">
             Essays on AI agents, tool use, memory, schedules, and building
             software for agents, not dashboards, written by{' '}
             <a
-              className="text-accent underline-offset-4 hover:underline"
+              className="text-brand underline-offset-4 hover:underline"
               href={blogAuthor.url}
               rel="noopener noreferrer"
               target="_blank"
@@ -42,10 +44,8 @@ export default function BlogIndexPage() {
       </header>
 
       {posts.length === 0 ? (
-        <div className="swiss-dots border-2 border-foreground bg-muted p-8 md:p-12">
-          <p className="font-black font-serif text-3xl uppercase leading-none tracking-tighter">
-            No posts yet.
-          </p>
+        <div className="border border-border bg-muted p-8 md:p-12">
+          <p className="font-semibold text-xl tracking-tight">No posts yet.</p>
           <p className="mt-4 max-w-md text-muted-foreground text-sm leading-relaxed">
             The Autopilot is warming up. Check back soon for the first post.
           </p>
@@ -55,7 +55,7 @@ export default function BlogIndexPage() {
           <h2 className="sr-only" id="blog-posts-heading">
             Latest blog posts
           </h2>
-          <ul className="divide-y-2 divide-foreground border-foreground border-y-2">
+          <ul className="divide-y divide-border border-border border-b">
             {posts.map((post) => (
               <li key={post.slug}>
                 <Link
@@ -76,14 +76,14 @@ export default function BlogIndexPage() {
                       </time>
                       {post.tags.map((tag) => (
                         <span
-                          className="inline-flex h-6 items-center border-2 border-foreground px-2 font-mono text-[10px] uppercase"
+                          className="inline-flex h-6 items-center border border-border px-2 font-mono text-[10px]"
                           key={tag}
                         >
                           {tag}
                         </span>
                       ))}
                     </div>
-                    <h3 className="font-black font-serif text-2xl uppercase leading-none tracking-tighter transition-colors group-hover:text-accent sm:text-3xl">
+                    <h3 className="font-semibold text-xl tracking-tight transition-colors group-hover:text-brand">
                       {post.title}
                     </h3>
                     <p className="mt-3 max-w-2xl text-muted-foreground text-sm leading-relaxed">

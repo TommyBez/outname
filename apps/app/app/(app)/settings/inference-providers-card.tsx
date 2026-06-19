@@ -123,7 +123,7 @@ function InferenceProviderForm({ provider }: { provider: ProviderState }) {
   return (
     <form
       action={saveKeyAction}
-      className="flex flex-col gap-3 border-2 border-foreground p-4"
+      className="flex flex-col gap-3 border border-border p-4"
       onSubmit={handleSubmit}
     >
       <input
@@ -133,7 +133,7 @@ function InferenceProviderForm({ provider }: { provider: ProviderState }) {
       />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="font-black font-serif text-xl uppercase leading-tight tracking-[-0.04em]">
+          <p className="font-semibold text-xl leading-tight tracking-[-0.04em]">
             {provider.label}
           </p>
           <p className="mt-1 text-muted-foreground text-xs">
@@ -169,7 +169,7 @@ function InferenceProviderForm({ provider }: { provider: ProviderState }) {
       </div>
       <input
         aria-label={`${provider.label} API key`}
-        className="h-10 border-2 border-foreground bg-background px-3 font-mono text-sm"
+        className="h-10 border border-border bg-background px-3 font-mono text-sm"
         name="apiKey"
         onChange={(event) => setApiKey(event.target.value)}
         placeholder={provider.keyPlaceholder}

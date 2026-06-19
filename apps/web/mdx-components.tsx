@@ -6,7 +6,7 @@ function MdxLink({ href, children, ...props }: ComponentPropsWithoutRef<'a'>) {
   if (href?.startsWith('/')) {
     return (
       <Link
-        className="text-accent underline-offset-4 hover:underline"
+        className="text-brand underline-offset-4 hover:underline"
         href={href}
         {...props}
       >
@@ -19,7 +19,7 @@ function MdxLink({ href, children, ...props }: ComponentPropsWithoutRef<'a'>) {
     return (
       <a
         {...props}
-        className="text-accent underline-offset-4 hover:underline"
+        className="text-brand underline-offset-4 hover:underline"
         href={href}
         rel="noreferrer"
         target="_blank"
@@ -32,7 +32,7 @@ function MdxLink({ href, children, ...props }: ComponentPropsWithoutRef<'a'>) {
   return (
     <a
       {...props}
-      className="text-accent underline-offset-4 hover:underline"
+      className="text-brand underline-offset-4 hover:underline"
       href={href}
     >
       {children}
@@ -42,14 +42,10 @@ function MdxLink({ href, children, ...props }: ComponentPropsWithoutRef<'a'>) {
 
 const components = {
   h1: ({ children }) => (
-    <h2 className="mt-12 font-black font-serif text-2xl uppercase leading-none tracking-tighter sm:text-3xl">
-      {children}
-    </h2>
+    <h2 className="mt-12 font-semibold text-xl tracking-tight">{children}</h2>
   ),
   h2: ({ children }) => (
-    <h2 className="mt-12 font-black font-serif text-2xl uppercase leading-none tracking-tighter sm:text-3xl">
-      {children}
-    </h2>
+    <h2 className="mt-12 font-semibold text-xl tracking-tight">{children}</h2>
   ),
   p: ({ children }) => (
     <p className="text-foreground/85 leading-relaxed">{children}</p>
@@ -69,7 +65,7 @@ const components = {
     <strong className="font-bold text-foreground">{children}</strong>
   ),
   em: ({ children }) => <em className="italic">{children}</em>,
-  hr: () => <hr className="my-10 border-foreground border-t-2" />,
+  hr: () => <hr className="my-10 border-border border-t" />,
   a: MdxLink,
 } satisfies MDXComponents
 

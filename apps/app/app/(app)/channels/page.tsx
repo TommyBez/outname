@@ -22,12 +22,9 @@ export default function ChannelsPage({
 }) {
   return (
     <>
-      <header className="mb-12 border-foreground border-t-4 pt-6 md:mb-16">
-        <p className="swiss-label mb-4 text-accent">08. Channels</p>
-        <h1 className="font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
-          Channels
-        </h1>
-        <p className="mt-5 max-w-2xl border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
+      <header className="mb-12 pt-6 md:mb-16">
+        <h1 className="font-semibold text-3xl tracking-tight">Channels</h1>
+        <p className="mt-5 max-w-2xl text-muted-foreground text-sm leading-relaxed">
           External chat surfaces that can send work into agents. Install a
           channel provider here, then bind specific workspaces, channels, or DMs
           from an agent workspace.
@@ -53,8 +50,8 @@ async function ChannelFlashNotice({
   const sp = await searchParams
   if (sp.connection === 'error') {
     return (
-      <div className="mb-10 border-destructive border-l-2 bg-muted py-3 pl-4">
-        <p className="font-bold text-destructive text-xs uppercase tracking-[0.2em]">
+      <div className="mb-10 border-destructive border-l bg-muted py-3 pl-4">
+        <p className="font-bold text-destructive text-xs">
           Channel connection failed
         </p>
         <p className="mt-1 text-muted-foreground text-sm">
@@ -70,8 +67,8 @@ async function ChannelFlashNotice({
   }
   if (sp.connection === 'connected') {
     return (
-      <div className="mb-10 border-foreground border-l-2 bg-muted py-3 pl-4">
-        <p className="font-black font-serif text-lg uppercase tracking-[-0.04em]">
+      <div className="mb-10 border-border border-l bg-muted py-3 pl-4">
+        <p className="font-semibold text-lg tracking-[-0.04em]">
           Channel connected.
         </p>
       </div>
@@ -93,20 +90,20 @@ async function ChannelsSection() {
   return (
     <section
       aria-labelledby="slack-channel-heading"
-      className="border-foreground border-y-2 py-8"
+      className="border-border border-b py-8"
       id="slack"
     >
       <div className="mb-8 grid gap-4 md:grid-cols-[minmax(0,1fr)_16rem] md:items-start">
         <div>
           <div className="flex flex-wrap items-center gap-3">
             <h2
-              className="font-black font-serif text-3xl uppercase leading-none tracking-tighter"
+              className="font-semibold text-xl tracking-tight"
               id="slack-channel-heading"
             >
               Slack
             </h2>
             {!isSlackAvailable && (
-              <span className="inline-flex h-7 items-center border-2 border-foreground bg-muted px-3 font-bold text-[10px] uppercase tracking-[0.16em]">
+              <span className="inline-flex h-7 items-center border border-border bg-muted px-3 font-bold text-[10px]">
                 Coming soon
               </span>
             )}

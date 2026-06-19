@@ -51,7 +51,7 @@ export function AgentSidebarWorkspace({
           aria-hidden
           className={cn(
             'inline-block size-1.5 shrink-0 rounded-full',
-            enabled ? 'bg-accent' : 'bg-muted-foreground'
+            enabled ? 'bg-brand' : 'bg-muted-foreground'
           )}
         />
         <span className="truncate">{agentName}</span>
@@ -117,7 +117,7 @@ function ChatHistoryGroup({
         </SidebarMenuItem>
 
         {conversations.length === 0 ? (
-          <li className="px-2 py-3 text-center font-mono text-[10px] text-muted-foreground/70 uppercase tracking-[0.15em]">
+          <li className="px-2 py-3 text-center font-mono text-[10px] text-muted-foreground/70">
             No conversations yet
           </li>
         ) : (

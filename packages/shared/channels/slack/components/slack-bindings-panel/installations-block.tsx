@@ -27,16 +27,14 @@ export function InstallationsBlock({
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="font-bold text-xs uppercase tracking-[0.16em]">
-        Installed workspaces
-      </p>
+      <p className="font-bold text-xs">Installed workspaces</p>
       {installations.length === 0 ? (
         <p className="text-muted-foreground text-sm">
           No Slack workspaces installed yet. Install the Slack app to route
           channel and DM messages into your agents.
         </p>
       ) : (
-        <ul className="flex flex-col divide-y-2 divide-foreground border-foreground border-y-2">
+        <ul className="flex flex-col divide-y divide-border border-border border-b">
           {installations.map((install) => (
             <li
               className="flex items-center justify-between gap-3 py-3"
@@ -65,7 +63,7 @@ export function InstallationsBlock({
                 title="Disconnect this workspace?"
                 trigger={
                   <Button
-                    className="inline-flex h-9 items-center justify-center border-2 border-foreground px-3 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
+                    className="inline-flex h-9 items-center justify-center border border-border px-3 font-bold text-xs transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
                     size="xs"
                     type="button"
                     variant="outline"
@@ -79,7 +77,7 @@ export function InstallationsBlock({
         </ul>
       )}
       <a
-        className="inline-flex h-10 w-fit items-center gap-2 border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground"
+        className="inline-flex h-10 w-fit items-center gap-2 border border-border bg-foreground px-4 font-bold text-background text-xs transition-colors hover:bg-background hover:text-foreground"
         href={installHref}
       >
         <Plus aria-hidden className="size-3.5" />

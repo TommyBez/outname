@@ -20,10 +20,7 @@ export function ConfigField({
 
   return (
     <div className="flex flex-col gap-1">
-      <label
-        className="font-bold text-[10px] uppercase tracking-[0.2em]"
-        htmlFor={inputId}
-      >
+      <label className="font-bold text-[10px]" htmlFor={inputId}>
         {field.label}
         {field.required && <span className="ml-1 text-destructive">*</span>}
       </label>
@@ -43,7 +40,7 @@ export function ConfigField({
       ) : (
         <input
           aria-label={field.label}
-          className="h-10 w-full border-2 border-foreground bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+          className="h-10 w-full border border-border bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"
           id={inputId}
           onChange={(event) => onChange(event.target.value)}
           placeholder={field.placeholder}

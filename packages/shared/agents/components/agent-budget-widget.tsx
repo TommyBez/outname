@@ -84,12 +84,10 @@ export function AgentBudgetWidget({
   }
 
   return (
-    <section className="w-full border-2 border-foreground bg-background">
-      <div className="flex items-center gap-2 border-foreground border-b-2 bg-accent px-4 py-3">
+    <section className="w-full border border-border bg-background">
+      <div className="flex items-center gap-2 border-border border-b bg-brand px-4 py-3 text-brand-foreground">
         <WalletIcon className="size-4" />
-        <p className="font-bold text-xs uppercase tracking-[0.18em]">
-          {title ?? 'Set agent budget'}
-        </p>
+        <p className="font-bold text-xs">{title ?? 'Set agent budget'}</p>
       </div>
       <div className="space-y-4 p-4">
         {rationale ? (
@@ -124,7 +122,7 @@ export function AgentBudgetWidget({
           />
         </div>
         {submitted ? (
-          <p className="font-bold text-[11px] text-muted-foreground uppercase tracking-[0.16em]">
+          <p className="font-bold text-[11px] text-muted-foreground">
             Submitted ✓
           </p>
         ) : (
@@ -159,12 +157,12 @@ function BudgetField({
 }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
+      <span className="font-bold text-[10px] text-muted-foreground">
         {label} (USD)
       </span>
       <input
         aria-label={`${label} budget in USD`}
-        className="h-10 border-2 border-foreground bg-background px-2 font-mono text-sm outline-none focus:border-accent disabled:opacity-60"
+        className="h-10 border border-border bg-background px-2 font-mono text-sm outline-none focus:border-brand disabled:opacity-60"
         disabled={disabled}
         inputMode="decimal"
         min="0"

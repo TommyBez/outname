@@ -55,7 +55,7 @@ export function submitButtonLabel(
 
 export function connectorBadgeClass(status: ConnectionStatus | null): string {
   if (status === 'active') {
-    return 'border-foreground bg-foreground text-background'
+    return 'border-border bg-foreground text-background'
   }
   if (status === null) {
     return 'border-muted-foreground text-muted-foreground'

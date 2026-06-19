@@ -58,7 +58,7 @@ export function AgentDashboardCard({
     <Collapsible onOpenChange={setOpen} open={open}>
       <article
         className={cn(
-          'border-foreground border-b-2 bg-background transition-colors last:border-b-0',
+          'border-border border-b bg-background transition-colors last:border-b-0',
           open ? 'bg-muted/70' : 'hover:bg-accent'
         )}
       >
@@ -71,7 +71,7 @@ export function AgentDashboardCard({
             variant="ghost"
           >
             <div className="min-w-0">
-              <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em] group-hover:text-foreground">
+              <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-bold text-[10px] text-muted-foreground group-hover:text-foreground">
                 <span>{agent.model}</span>
                 <span>{status}</span>
                 {!agent.enabled && (
@@ -80,7 +80,7 @@ export function AgentDashboardCard({
                   </span>
                 )}
               </p>
-              <h2 className="mt-2 text-pretty font-black font-serif text-4xl uppercase leading-[0.95] tracking-tighter md:text-5xl">
+              <h2 className="mt-2 text-pretty font-semibold text-3xl tracking-tight">
                 {agent.name}
               </h2>
               {entries.length > 0 && (
@@ -90,7 +90,7 @@ export function AgentDashboardCard({
               )}
             </div>
 
-            <div className="flex items-end justify-between gap-6 border-foreground border-t-2 pt-5 md:border-t-0 md:border-l-2 md:pl-6">
+            <div className="flex items-end justify-between gap-6 border-border border-t pt-5 md:border-t-0 md:border-l md:pl-6">
               <p className="line-clamp-2 min-w-0 text-muted-foreground text-sm leading-relaxed group-hover:text-foreground">
                 {preview}
               </p>
@@ -146,17 +146,15 @@ function AgentActivityPanel({
   )
 
   return (
-    <div className="grid gap-6 border-foreground border-t-2 px-0 py-6 md:grid-cols-[minmax(0,1fr)_18rem] md:px-4">
+    <div className="grid gap-6 border-border border-t px-0 py-6 md:grid-cols-[minmax(0,1fr)_18rem] md:px-4">
       <section
         aria-label={`${agent.name} event monitor`}
         className="min-h-0 min-w-0"
       >
         <div className="mb-4 flex items-center justify-between gap-4">
-          <p className="font-bold text-[10px] uppercase tracking-[0.2em]">
-            Event state
-          </p>
+          <p className="font-bold text-[10px]">Event state</p>
           <Link
-            className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.18em] hover:text-foreground"
+            className="font-bold text-[10px] text-muted-foreground hover:text-foreground"
             href={`/agents/${agent.id}/events`}
           >
             Open events →
@@ -167,32 +165,22 @@ function AgentActivityPanel({
         <AttentionList items={attentionItems} />
       </section>
 
-      <aside className="border-foreground border-t-2 pt-5 md:border-t-0 md:border-l-2 md:pl-6">
-        <p className="font-bold text-[10px] uppercase tracking-[0.2em]">
-          Agent controls
-        </p>
+      <aside className="border-border border-t pt-5 md:border-t-0 md:border-l md:pl-6">
+        <p className="font-bold text-[10px]">Agent controls</p>
         <dl className="mt-5 grid gap-4 text-sm">
           {schedule.map((item) => (
             <div key={item.label}>
-              <dt className="text-muted-foreground text-xs uppercase tracking-[0.16em]">
-                {item.label}
-              </dt>
+              <dt className="text-muted-foreground text-xs">{item.label}</dt>
               <dd className="mt-1 font-medium">{item.value}</dd>
             </div>
           ))}
         </dl>
-        <Link
-          className="mt-6 inline-flex h-11 w-full items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground"
-          href={`/agents/${agent.id}/events`}
-        >
-          Open events
-        </Link>
-        <Link
-          className="mt-2 inline-flex h-11 w-full items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-accent"
-          href={`/agents/${agent.id}/chat`}
-        >
-          Open chat
-        </Link>
+        <Button asChild className="mt-6 w-full">
+          <Link href={`/agents/${agent.id}/events`}>Open events</Link>
+        </Button>
+        <Button asChild className="mt-2 w-full" variant="outline">
+          <Link href={`/agents/${agent.id}/chat`}>Open chat</Link>
+        </Button>
         <div className="mt-2 flex flex-wrap gap-2">
           <TriggerButton
             agentId={agent.id}
@@ -233,8 +221,8 @@ function EventStateList({
 }) {
   if (events.length === 0) {
     return (
-      <section className="border-foreground border-y-2 bg-background px-4 py-5">
-        <p className="font-bold text-xs uppercase tracking-[0.16em]">Idle</p>
+      <section className="border-border border-b bg-background px-4 py-5">
+        <p className="font-bold text-xs">Idle</p>
         <p className="mt-2 text-muted-foreground text-sm">
           No active or queued events.
         </p>
@@ -243,17 +231,15 @@ function EventStateList({
   }
 
   return (
-    <section className="border-foreground border-y-2 bg-background">
-      <ul className="divide-y-2 divide-foreground">
+    <section className="border-border border-b bg-background">
+      <ul className="divide-y divide-border">
         {events.map((event) => (
           <li key={event.id}>
             <Link
               className="grid gap-2 p-4 transition-colors hover:bg-accent sm:grid-cols-[8rem_1fr_auto]"
               href={eventHref(agentId, event.id)}
             >
-              <span className="font-bold text-xs uppercase tracking-[0.16em]">
-                {event.status}
-              </span>
+              <span className="font-bold text-xs">{event.status}</span>
               <span className="min-w-0 text-sm">
                 {formatEventLabel(event)}
                 {event.blockedByEventId ? (
@@ -283,19 +269,17 @@ function LatestWorkList({
 }) {
   return (
     <section className="mt-5">
-      <p className="mb-3 font-bold text-[10px] uppercase tracking-[0.2em]">
-        Latest work
-      </p>
-      <div className="border-foreground border-y-2 bg-background">
+      <p className="mb-3 font-bold text-[10px]">Latest work</p>
+      <div className="border-border border-b bg-background">
         {WORK_EVENT_TYPES.map((type) => {
           const event = events.get(type)
           return event ? (
             <Link
-              className="grid gap-2 border-foreground border-b-2 px-4 py-3 transition-colors last:border-b-0 hover:bg-accent sm:grid-cols-[8rem_1fr_auto]"
+              className="grid gap-2 border-border border-b px-4 py-3 transition-colors last:border-b-0 hover:bg-accent sm:grid-cols-[8rem_1fr_auto]"
               href={eventHref(agentId, event.id)}
               key={type}
             >
-              <span className="font-bold text-xs uppercase tracking-[0.16em]">
+              <span className="font-bold text-xs">
                 {formatAgentEventTypeLabel(type)}
               </span>
               <span className="text-sm">{event.status}</span>
@@ -305,10 +289,10 @@ function LatestWorkList({
             </Link>
           ) : (
             <div
-              className="grid gap-2 border-foreground border-b-2 px-4 py-3 last:border-b-0 sm:grid-cols-[8rem_1fr_auto]"
+              className="grid gap-2 border-border border-b px-4 py-3 last:border-b-0 sm:grid-cols-[8rem_1fr_auto]"
               key={type}
             >
-              <span className="font-bold text-xs uppercase tracking-[0.16em]">
+              <span className="font-bold text-xs">
                 {formatAgentEventTypeLabel(type)}
               </span>
               <span className="text-muted-foreground text-sm">
@@ -326,19 +310,17 @@ function LatestWorkList({
 function AttentionList({ items }: { items: AttentionItem[] }) {
   return (
     <section className="mt-5">
-      <p className="mb-3 font-bold text-[10px] uppercase tracking-[0.2em]">
-        Attention
-      </p>
+      <p className="mb-3 font-bold text-[10px]">Attention</p>
       {items.length === 0 ? (
-        <div className="border-foreground border-y-2 bg-background p-4">
+        <div className="border-border border-b bg-background p-4">
           <p className="font-medium text-sm">No recent failures.</p>
           <p className="mt-1 text-muted-foreground text-sm">Budget ok.</p>
         </div>
       ) : (
-        <ul className="border-foreground border-y-2 bg-background">
+        <ul className="border-border border-b bg-background">
           {items.map((item) => (
             <li
-              className="border-foreground border-b-2 last:border-b-0"
+              className="border-border border-b last:border-b-0"
               key={item.label}
             >
               <AttentionItemRow item={item} />
@@ -359,9 +341,7 @@ function AttentionItemRow({ item }: { item: AttentionItem }) {
   )
   const content = (
     <>
-      <p className="font-bold text-xs uppercase tracking-[0.16em]">
-        {item.label}
-      </p>
+      <p className="font-bold text-xs">{item.label}</p>
       <p className="mt-1 text-sm">{item.detail}</p>
     </>
   )

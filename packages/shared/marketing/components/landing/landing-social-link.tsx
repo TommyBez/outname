@@ -1,4 +1,4 @@
-import { cn } from '@outname/ui/lib/utils'
+import { Button } from '@outname/ui/components/ui/button'
 import Link from 'next/link'
 import type { ComponentType } from 'react'
 
@@ -24,17 +24,16 @@ export function LandingSocialLink({
   iconSize?: number
 }) {
   return (
-    <Link
+    <Button
       aria-label={label}
-      className={cn(
-        'ease inline-flex size-11 shrink-0 items-center justify-center transition-colors duration-150 hover:bg-foreground hover:text-background',
-        className
-      )}
-      href={href}
-      rel="noopener noreferrer"
-      target="_blank"
+      asChild
+      className={className}
+      size="icon-lg"
+      variant="ghost"
     >
-      <Icon color="currentColor" size={iconSize} title="" />
-    </Link>
+      <Link href={href} rel="noopener noreferrer" target="_blank">
+        <Icon color="currentColor" size={iconSize} title="" />
+      </Link>
+    </Button>
   )
 }

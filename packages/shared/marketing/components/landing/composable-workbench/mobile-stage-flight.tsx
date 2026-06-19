@@ -63,9 +63,9 @@ export function MobileStageFlight({
             >
               <span
                 className={cn(
-                  'block -translate-x-1/2 -translate-y-1/2 border-2 border-foreground px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-normal shadow-[3px_3px_0_0] shadow-foreground/15',
+                  'block -translate-x-1/2 -translate-y-1/2 border border-border px-2.5 py-1.5 font-mono text-[10px] tracking-normal shadow-[3px_3px_0_0] shadow-foreground/15',
                   stageColor === 'accent'
-                    ? 'bg-accent text-foreground'
+                    ? 'bg-brand text-brand-foreground'
                     : 'bg-background text-foreground'
                 )}
               >

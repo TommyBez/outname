@@ -51,9 +51,9 @@ export function WaitlistEmailLayout({
         <Head />
         <Body className="bg-canvas px-[12px] py-[24px] font-sans text-ink">
           <Preview>{preview}</Preview>
-          <Container className="mx-auto my-0 border-2 border-ink border-solid bg-card">
+          <Container className="mx-auto my-0 border border-ink border-solid bg-card">
             <Section className="px-[32px] py-[28px]">
-              <Text className="m-0 font-black text-[11px] text-signal uppercase tracking-[2.4px]">
+              <Text className="m-0 font-semibold text-[11px] text-signal tracking-[2.4px]">
                 {eyebrow}
               </Text>
               <Section className="mt-[18px]">
@@ -67,15 +67,15 @@ export function WaitlistEmailLayout({
                   />
                 </Link>
               </Section>
-              <Heading className="m-0 mt-[18px] font-black text-[38px] text-ink uppercase leading-[36px] tracking-[-1.6px]">
+              <Heading className="m-0 mt-[18px] font-semibold text-[38px] text-ink leading-[36px] tracking-[-1.6px]">
                 {title}
               </Heading>
-              <Text className="m-0 mt-[18px] border-ink border-l-2 border-solid border-none pl-[12px] text-[14px] text-subtle leading-[22px]">
+              <Text className="m-0 mt-[18px] border-ink border-l border-solid pl-[12px] text-[14px] text-subtle leading-[22px]">
                 {lead}
               </Text>
             </Section>
 
-            <Hr className="mx-0 my-0 w-full border-ink border-t-2 border-solid border-none" />
+            <Hr className="mx-0 my-0 w-full border-ink border-t border-solid" />
 
             <Section className="px-[32px] py-[28px]">
               {children}
@@ -84,7 +84,7 @@ export function WaitlistEmailLayout({
                 <>
                   <Section className="mt-[28px]">
                     <Button
-                      className="box-border inline-block border-2 border-ink border-solid bg-ink px-[20px] py-[14px] font-black text-[12px] text-card uppercase tracking-[1.8px] no-underline"
+                      className="box-border inline-block border border-ink border-solid bg-ink px-[20px] py-[14px] font-semibold text-[12px] text-card tracking-[1.8px] no-underline"
                       href={ctaHref}
                     >
                       {ctaLabel}
@@ -101,12 +101,12 @@ export function WaitlistEmailLayout({
               ) : null}
             </Section>
 
-            <Hr className="mx-0 my-0 w-full border-ink border-t-2 border-solid border-none" />
+            <Hr className="mx-0 my-0 w-full border-ink border-t border-solid" />
 
             <Section className="px-[32px] py-[20px]">
               {footer ?? (
                 <>
-                  <Text className="m-0 font-black text-[11px] text-subtle uppercase tracking-[2px]">
+                  <Text className="m-0 font-semibold text-[11px] text-subtle tracking-[2px]">
                     {footerEyebrow ?? `${EMAIL_BRAND_NAME} / waitlist`}
                   </Text>
                   {footerText ? (

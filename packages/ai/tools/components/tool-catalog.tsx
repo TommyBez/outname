@@ -68,13 +68,13 @@ function ToolCatalogSection({
 }) {
   return (
     <section>
-      <h2 className="swiss-label mb-4 text-accent">{title}</h2>
+      <h2 className="swiss-label mb-4 text-muted-foreground">{title}</h2>
       {entries.length === 0 ? (
-        <p className="border-foreground border-y-2 py-6 text-muted-foreground text-sm">
+        <p className="border-border border-b py-6 text-muted-foreground text-sm">
           {emptyText}
         </p>
       ) : (
-        <ul className="flex flex-col divide-y-2 divide-foreground border-foreground border-y-2">
+        <ul className="flex flex-col divide-y divide-border border-border border-b">
           {entries.map((entry) => (
             <li className="py-6" key={entry.toolId}>
               <ToolRow

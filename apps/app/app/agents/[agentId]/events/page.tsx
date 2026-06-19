@@ -52,8 +52,8 @@ export default async function AgentEventsPage({ params }: { params: Params }) {
 function EventsSkeleton() {
   return (
     <div className="grid gap-6 xl:grid-cols-[24rem_minmax(0,1fr)]">
-      <Skeleton className="h-[min(42rem,calc(100svh-12rem))] min-h-80 border-2 border-foreground xl:h-168" />
-      <Skeleton className="h-[min(42rem,calc(100svh-10rem))] min-h-96 border-2 border-foreground xl:h-168" />
+      <Skeleton className="h-[min(42rem,calc(100svh-12rem))] min-h-80 border border-border xl:h-168" />
+      <Skeleton className="h-[min(42rem,calc(100svh-10rem))] min-h-96 border border-border xl:h-168" />
     </div>
   )
 }

@@ -67,7 +67,7 @@ export function BudgetIndicator({
     }
     return (
       <Link
-        className="inline-flex items-center gap-2 font-bold text-[10px] text-muted-foreground uppercase tracking-[0.18em] hover:text-foreground"
+        className="inline-flex items-center gap-2 font-bold text-[10px] text-muted-foreground hover:text-foreground"
         href={emptyHref}
       >
         {emptyLabel ?? 'Set up budgets →'}
@@ -107,9 +107,7 @@ function BudgetMeter({
   if (variant === 'agent') {
     return (
       <div className="flex min-w-[7rem] flex-col gap-1">
-        <p className="font-bold text-[9px] text-muted-foreground uppercase tracking-[0.18em]">
-          {label}
-        </p>
+        <p className="font-bold text-[9px] text-muted-foreground">{label}</p>
         <p
           className={
             overBudget && !disabled
@@ -131,16 +129,16 @@ function BudgetMeter({
   }
 
   return (
-    <div className="border-foreground border-l-2 pl-4">
-      <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
+    <div className="border-border border-l pl-4">
+      <p className="font-bold text-[10px] text-muted-foreground">
         {label}
         {disabled ? ' · off' : ''}
       </p>
       <p
         className={
           overBudget && !disabled
-            ? 'mt-2 font-black font-serif text-2xl text-destructive leading-none tracking-tighter'
-            : 'mt-2 font-black font-serif text-2xl leading-none tracking-tighter'
+            ? 'mt-2 font-semibold text-2xl text-destructive leading-none tracking-tighter'
+            : 'mt-2 font-semibold text-2xl leading-none tracking-tighter'
         }
       >
         {formatUsd(entry.spentUsd)}

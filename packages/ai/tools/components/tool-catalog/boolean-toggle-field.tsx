@@ -8,10 +8,10 @@ import { cn } from '@outname/ui/lib/utils'
 import type { BooleanFieldRole } from './config-field-utils'
 
 const TOGGLE_GROUP_CLASS =
-  'rounded-none border-2 border-foreground data-[variant=outline]:shadow-none'
+  'rounded-none border border-border data-[variant=outline]:shadow-none'
 
 const TOGGLE_ITEM_CLASS =
-  'rounded-none font-bold text-[10px] uppercase tracking-[0.16em] data-[state=on]:bg-foreground data-[state=on]:text-background'
+  'rounded-none font-bold text-[10px] data-[state=on]:bg-foreground data-[state=on]:text-background'
 
 export function BooleanToggleField({
   ariaLabel,

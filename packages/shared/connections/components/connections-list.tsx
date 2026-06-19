@@ -110,8 +110,8 @@ function ConnectorSection({
 
   return (
     <section className="flex flex-col gap-4">
-      <h2 className="font-bold text-xs uppercase tracking-[0.18em]">{title}</h2>
-      <ul className="flex flex-col divide-y-2 divide-foreground border-foreground border-y-2">
+      <h2 className="font-bold text-xs">{title}</h2>
+      <ul className="flex flex-col divide-y divide-border border-border border-b">
         {rows.map(({ connection, connector }) => (
           <li className="py-6" key={connector.connectorId}>
             <ConnectorRow connection={connection} connector={connector} />
@@ -135,7 +135,7 @@ function ConnectorRow({
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="min-w-0">
-          <p className="font-black font-serif text-xl uppercase tracking-[-0.04em]">
+          <p className="font-semibold text-xl tracking-[-0.04em]">
             {connector.displayName}
           </p>
           <p className="mt-1 text-muted-foreground text-sm">
@@ -144,7 +144,7 @@ function ConnectorRow({
           {connection ? (
             <p className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs">
               <StatusDot status={connection.status} />
-              <span className="font-bold uppercase tracking-[0.16em]">
+              <span className="font-bold">
                 {STATUS_COPY[connection.status]}
               </span>
               {identity && (
@@ -154,7 +154,7 @@ function ConnectorRow({
               )}
             </p>
           ) : (
-            <p className="mt-3 font-bold text-muted-foreground text-xs uppercase tracking-[0.16em]">
+            <p className="mt-3 font-bold text-muted-foreground text-xs">
               Not connected
             </p>
           )}
@@ -230,7 +230,6 @@ function ConnectionControls({
       <div className="flex items-center gap-2">
         {connector.authKind === 'api_key' ? (
           <Button
-            className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
             onClick={() => setOpen((v) => !v)}
             size="sm"
             type="button"
@@ -239,14 +238,13 @@ function ConnectionControls({
             {connection ? 'Replace key' : 'Connect'}
           </Button>
         ) : (
-          <a
-            className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
-            href={connectionOAuthStartPath(connector.connectorId)}
-          >
-            {connection
-              ? `Reconnect ${connector.displayName}`
-              : `Connect ${connector.displayName}`}
-          </a>
+          <Button asChild size="sm" variant="outline">
+            <a href={connectionOAuthStartPath(connector.connectorId)}>
+              {connection
+                ? `Reconnect ${connector.displayName}`
+                : `Connect ${connector.displayName}`}
+            </a>
+          </Button>
         )}
         {connection && (
           <ConfirmActionDialog
@@ -262,7 +260,7 @@ function ConnectionControls({
             title={`Disconnect ${connector.displayName}?`}
             trigger={
               <Button
-                className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
+                className="inline-flex h-10 items-center justify-center border border-border px-4 font-bold text-xs transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
                 disabled={pending}
                 size="sm"
                 type="button"
@@ -284,17 +282,15 @@ function ConnectionControls({
       )}
       {open && connector.authKind === 'api_key' && (
         <form
-          className="flex w-full max-w-sm flex-col gap-3 border-2 border-foreground bg-muted p-4"
+          className="flex w-full max-w-sm flex-col gap-3 border border-border bg-muted p-4"
           onSubmit={handleSubmit}
         >
           {(connector.apiKeyFields ?? []).map((field) => (
             <label className="flex flex-col gap-1" key={field.name}>
-              <span className="font-bold text-[10px] uppercase tracking-[0.2em]">
-                {field.label}
-              </span>
+              <span className="font-bold text-[10px]">{field.label}</span>
               <input
                 aria-label={field.label}
-                className="h-10 w-full border-2 border-foreground bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
+                className="h-10 w-full border border-border bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
                 disabled={pending}
                 onChange={(e) =>
                   setValues((v) => ({ ...v, [field.name]: e.target.value }))
@@ -307,7 +303,7 @@ function ConnectionControls({
             </label>
           ))}
           <Button
-            className="inline-flex h-10 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
+            className="inline-flex h-10 items-center justify-center border border-border bg-foreground px-4 font-bold text-background text-xs transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
             disabled={pending}
             size="sm"
             type="submit"
@@ -343,17 +339,15 @@ function ScopesSummary({
   if (missing.length > 0) {
     return (
       <div
-        className="max-w-sm border-2 border-destructive bg-destructive/5 p-3 text-xs"
+        className="max-w-sm border border-destructive bg-destructive/5 p-3 text-xs"
         role="alert"
       >
-        <p className="font-bold text-destructive uppercase tracking-[0.16em]">
-          Missing OAuth scopes
-        </p>
+        <p className="font-bold text-destructive">Missing OAuth scopes</p>
         <p className="mt-1 text-muted-foreground">
           Missing: {missing.map((item) => item.label).join(', ')}
         </p>
         <a
-          className="mt-3 inline-flex h-8 items-center border-2 border-destructive px-3 font-bold text-[10px] text-destructive uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background"
+          className="mt-3 inline-flex h-8 items-center border border-destructive px-3 font-bold text-[10px] text-destructive transition-colors hover:bg-destructive hover:text-background"
           href={reconnectHref}
         >
           Reconnect {displayName}

@@ -129,7 +129,7 @@ export function AgentForm({
         id="profile"
         title="Profile"
       >
-        <div className="grid gap-3 border-foreground border-b-2 pb-8 md:grid-cols-[12rem_minmax(0,1fr)]">
+        <div className="grid gap-3 border-border border-b pb-8 md:grid-cols-[12rem_minmax(0,1fr)]">
           <Label htmlFor="agent-name">Name</Label>
           <div className="flex flex-col gap-2">
             <Input

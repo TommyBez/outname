@@ -21,24 +21,24 @@ export default function BlogLayout({
   return (
     <div className="min-h-screen bg-background">
       {/* Blog header */}
-      <header className="sticky top-0 z-20 border-foreground border-b-2 bg-background">
+      <header className="sticky top-0 z-20 border-border border-b bg-background">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link
-            className="inline-flex items-center gap-2 font-bold text-sm uppercase tracking-[0.2em] transition-colors hover:text-accent"
+            className="inline-flex items-center gap-2 font-bold text-sm transition-colors hover:text-brand"
             href="/"
           >
-            <span aria-hidden className="inline-block size-3 bg-accent" />
+            <span aria-hidden className="inline-block size-3 bg-brand" />
             <span>{siteConfig.name}</span>
           </Link>
           <nav aria-label="Blog" className="flex items-center gap-6">
             <Link
-              className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.18em] transition-colors hover:text-foreground"
+              className="font-bold text-[10px] text-muted-foreground transition-colors hover:text-foreground"
               href="/blog"
             >
               Blog
             </Link>
             <Link
-              className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.18em] transition-colors hover:text-foreground"
+              className="font-bold text-[10px] text-muted-foreground transition-colors hover:text-foreground"
               href="/blog/feed.xml"
               rel="alternate"
               type="application/rss+xml"
@@ -46,7 +46,7 @@ export default function BlogLayout({
               RSS
             </Link>
             <Link
-              className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.18em] transition-colors hover:text-foreground"
+              className="font-bold text-[10px] text-muted-foreground transition-colors hover:text-foreground"
               href="/"
             >
               Home
@@ -64,7 +64,7 @@ export default function BlogLayout({
       </main>
 
       {/* Blog footer */}
-      <footer className="border-foreground border-t-2">
+      <footer className="border-border border-t">
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
             <p className="font-mono text-muted-foreground text-xs">
@@ -72,7 +72,7 @@ export default function BlogLayout({
               this blog.
             </p>
             <Link
-              className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.18em] transition-colors hover:text-foreground"
+              className="font-bold text-[10px] text-muted-foreground transition-colors hover:text-foreground"
               href="https://x.com/OutnameBot"
               rel="noopener noreferrer"
               target="_blank"

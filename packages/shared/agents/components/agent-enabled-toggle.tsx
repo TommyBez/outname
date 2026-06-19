@@ -1,6 +1,7 @@
 'use client'
 
 import { setAgentEnabledAction } from '@outname/shared/agents/server/actions'
+import { Button } from '@outname/ui/components/ui/button'
 import { Spinner } from '@outname/ui/components/ui/spinner'
 import { Pause, Play } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -51,14 +52,15 @@ export function AgentEnabledToggle({
   // and "Resume agent", and combining a changing label with aria-pressed
   // gives contradictory announcements.
   return (
-    <button
-      className="inline-flex h-10 items-center justify-center gap-2 border-2 border-foreground px-4 font-bold text-[10px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background disabled:cursor-not-allowed disabled:opacity-60"
+    <Button
       disabled={pending}
       onClick={handleToggle}
+      size="sm"
       type="button"
+      variant="outline"
     >
       {pending ? <Spinner className="size-3.5" /> : stateIcon}
       {enabled ? 'Pause agent' : 'Resume agent'}
-    </button>
+    </Button>
   )
 }

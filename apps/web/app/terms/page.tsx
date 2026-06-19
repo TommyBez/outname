@@ -20,12 +20,12 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   return (
     <MarketingLegalLayout>
-      <header className="mb-12 border-foreground border-t-4 pt-6 md:mb-16">
-        <p className="swiss-label mb-4 text-accent">Legal</p>
-        <h1 className="font-black font-serif text-5xl uppercase leading-[0.86] tracking-tighter sm:text-6xl">
+      <header className="mb-12 pt-6 md:mb-16">
+        <p className="swiss-label mb-4 text-muted-foreground">Legal</p>
+        <h1 className="font-semibold text-3xl tracking-tight">
           Terms of Service
         </h1>
-        <p className="mt-6 max-w-xl border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
+        <p className="mt-6 max-w-xl text-muted-foreground text-sm leading-relaxed">
           These terms govern access to and use of {siteConfig.name}. By using
           the service, you agree to them. Last updated {lastUpdated}.
         </p>

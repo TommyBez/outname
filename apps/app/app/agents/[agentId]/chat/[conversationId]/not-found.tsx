@@ -1,8 +1,8 @@
 export default function ConversationNotFound() {
   return (
     <div className="flex h-full min-h-[40vh] flex-col items-start justify-center gap-3">
-      <p className="swiss-label text-accent">Not found</p>
-      <h2 className="font-black font-serif text-3xl uppercase leading-none tracking-tighter">
+      <p className="swiss-label text-muted-foreground">Not found</p>
+      <h2 className="font-semibold text-xl tracking-tight">
         This conversation doesn&apos;t exist.
       </h2>
       <p className="text-muted-foreground text-sm">

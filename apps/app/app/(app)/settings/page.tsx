@@ -18,6 +18,7 @@ import {
 import { createPrivatePageMetadata } from '@outname/shared/server/site-metadata'
 import { getUserTimezone } from '@outname/shared/server/user-timezone'
 import { AccountSkeleton } from '@outname/ui/components/skeletons'
+import { Button } from '@outname/ui/components/ui/button'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Suspense } from 'react'
@@ -32,14 +33,13 @@ export const metadata: Metadata = createPrivatePageMetadata(
 export default function SettingsPage() {
   return (
     <>
-      <header className="mb-12 border-foreground border-t-4 pt-6 md:mb-16">
-        <p className="swiss-label mb-4 text-accent">10. Settings</p>
-        <h1 className="font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
+      <header className="mb-12 pt-6 md:mb-16">
+        <h1 className="font-semibold text-3xl tracking-tight">
           Your assistant
         </h1>
       </header>
 
-      <div className="border-foreground border-y-2">
+      <div className="border-border border-b">
         <Section title="Budget">
           <Suspense fallback={<div className="h-32" />}>
             <BudgetSection />
@@ -123,7 +123,7 @@ async function AgentsSummarySection() {
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
       <div>
-        <p className="font-black font-serif text-xl uppercase tracking-[-0.04em]">
+        <p className="font-semibold text-xl tracking-[-0.04em]">
           {agents.length} agent{agents.length === 1 ? '' : 's'} · {enabled}{' '}
           enabled
         </p>
@@ -131,12 +131,13 @@ async function AgentsSummarySection() {
           Per-agent configuration lives on each agent&apos;s page.
         </p>
       </div>
-      <Link
-        className="inline-flex h-11 shrink-0 items-center justify-center self-start border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background sm:self-auto"
-        href="/agents"
+      <Button
+        asChild
+        className="shrink-0 self-start sm:self-auto"
+        variant="outline"
       >
-        Manage agents →
-      </Link>
+        <Link href="/agents">Manage agents →</Link>
+      </Button>
     </div>
   )
 }
@@ -145,7 +146,7 @@ async function AccountSection() {
   const session = await getSession()
   return (
     <Row label="Signed in as">
-      <p className="font-black font-serif text-xl uppercase leading-tight tracking-[-0.04em]">
+      <p className="font-semibold text-xl leading-tight tracking-[-0.04em]">
         {session?.user.email ?? '—'}
       </p>
     </Row>
@@ -175,7 +176,7 @@ function WaitlistSection() {
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
       <div>
-        <p className="font-black font-serif text-xl uppercase tracking-[-0.04em]">
+        <p className="font-semibold text-xl tracking-[-0.04em]">
           Invite users and manage the waitlist
         </p>
         <p className="mt-0.5 text-muted-foreground text-xs">
@@ -183,12 +184,13 @@ function WaitlistSection() {
           or access messages.
         </p>
       </div>
-      <Link
-        className="inline-flex h-11 shrink-0 items-center justify-center self-start border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background sm:self-auto"
-        href="/settings/waitlist"
+      <Button
+        asChild
+        className="shrink-0 self-start sm:self-auto"
+        variant="outline"
       >
-        Open waitlist →
-      </Link>
+        <Link href="/settings/waitlist">Open waitlist →</Link>
+      </Button>
     </div>
   )
 }
@@ -201,8 +203,8 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <section className="grid grid-cols-1 gap-6 border-foreground border-b-2 py-10 last:border-b-0 lg:grid-cols-[160px_1fr] lg:gap-10">
-      <h2 className="swiss-label text-accent">{title}</h2>
+    <section className="grid grid-cols-1 gap-6 border-border border-b py-10 last:border-b-0 lg:grid-cols-[160px_1fr] lg:gap-10">
+      <h2 className="swiss-label text-muted-foreground">{title}</h2>
       <div className="min-w-0">{children}</div>
     </section>
   )
@@ -217,7 +219,7 @@ function Row({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <p className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
+      <p className="font-bold text-muted-foreground text-xs tracking-wider">
         {label}
       </p>
       <div>{children}</div>

@@ -41,16 +41,14 @@ export function BindingsBlock({
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="font-bold text-xs uppercase tracking-[0.16em]">
-        Routing bindings
-      </p>
+      <p className="font-bold text-xs">Routing bindings</p>
       {bindings.length === 0 ? (
         <p className="text-muted-foreground text-sm">
           No Slack messages route to this agent yet. Add a binding below to
           route a channel or DM.
         </p>
       ) : (
-        <ul className="flex flex-col divide-y-2 divide-foreground border-foreground border-y-2">
+        <ul className="flex flex-col divide-y divide-border border-border border-b">
           {bindings.map((binding) => (
             <BindingRow
               binding={binding}
@@ -97,7 +95,7 @@ function BindingRow({
               workspaceName: binding.workspaceName,
             })}
             {!binding.installed && (
-              <span className="ml-2 inline-flex items-center gap-1 font-bold text-destructive uppercase tracking-[0.12em]">
+              <span className="ml-2 inline-flex items-center gap-1 font-bold text-destructive">
                 Workspace not installed
               </span>
             )}
@@ -106,7 +104,7 @@ function BindingRow({
       </div>
       <Button
         aria-label="Remove binding"
-        className="inline-flex size-9 items-center justify-center border-2 border-foreground transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
+        className="inline-flex size-9 items-center justify-center border border-border transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
         disabled={disabled}
         onClick={onRemove}
         size="icon-xs"

@@ -26,6 +26,7 @@ import {
   getCachedUserConnections,
 } from '@outname/shared/server/data'
 import { describeConfigSchema } from '@outname/shared/server/zod-config-fields'
+import { Button } from '@outname/ui/components/ui/button'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
@@ -228,34 +229,26 @@ async function Resolved({ params }: { params: Params }) {
 
   return (
     <>
-      <header className="mb-12 border-foreground border-t-4 pt-6">
+      <header className="mb-12 pt-6">
         <div className="grid gap-8 md:grid-cols-[minmax(0,7fr)_minmax(16rem,3fr)]">
           <div className="flex flex-col gap-4">
-            <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
+            <p className="font-bold text-[10px] text-muted-foreground">
               {agent.name}
             </p>
-            <h1 className="font-black font-serif text-4xl uppercase leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl xl:text-7xl">
-              Tools
-            </h1>
+            <h1 className="font-semibold text-3xl tracking-tight">Tools</h1>
             <p className="text-muted-foreground text-sm">
               Maintainer tools the agent may call. Attach the ones you want this
               agent to use; configure their per-attachment settings; connect any
               required provider once on the connections page.
             </p>
           </div>
-          <div className="flex flex-wrap items-start gap-3 border-foreground border-l-2 pl-4 md:justify-end">
-            <Link
-              className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
-              href={`/agents/${agentId}`}
-            >
-              ← Overview
-            </Link>
-            <Link
-              className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
-              href="/connections"
-            >
-              Connections →
-            </Link>
+          <div className="flex flex-wrap items-start gap-3 border-border border-l pl-4 md:justify-end">
+            <Button asChild variant="outline">
+              <Link href={`/agents/${agentId}`}>← Overview</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/connections">Connections →</Link>
+            </Button>
           </div>
         </div>
       </header>
@@ -267,14 +260,12 @@ async function Resolved({ params }: { params: Params }) {
         connections={connections}
       />
 
-      <section className="mt-16 border-foreground border-t-4 pt-6">
+      <section className="mt-16 pt-6">
         <div className="mb-6 flex flex-col gap-2">
-          <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
+          <p className="font-bold text-[10px] text-muted-foreground">
             Delegation
           </p>
-          <h2 className="font-black font-serif text-3xl uppercase leading-[0.9] tracking-tighter md:text-5xl">
-            Sub-agents
-          </h2>
+          <h2 className="font-semibold text-xl tracking-tight">Sub-agents</h2>
           <p className="text-muted-foreground text-sm">
             Attach another one of your agents as a callable. This parent will
             see it as a readable <code className="font-mono">agent_*</code>{' '}
@@ -293,7 +284,7 @@ async function Resolved({ params }: { params: Params }) {
 
 function PageSkeleton() {
   return (
-    <header className="mb-12 border-foreground border-t-4 pt-6">
+    <header className="mb-12 pt-6">
       <div className="h-3 w-24 animate-pulse rounded-sm bg-muted" />
       <div className="mt-4 h-12 w-64 animate-pulse rounded-sm bg-muted" />
     </header>

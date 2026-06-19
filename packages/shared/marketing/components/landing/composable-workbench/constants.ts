@@ -90,14 +90,14 @@ export function mobileMarkerTone(isActive: boolean, isAttached: boolean) {
     return 'bg-foreground text-background'
   }
   if (isAttached) {
-    return 'bg-accent/35'
+    return 'bg-brand/35'
   }
   return 'bg-background'
 }
 
 export function mobileStageSurfaceTone(active: boolean, attached: boolean) {
   if (active) {
-    return 'bg-accent/25'
+    return 'bg-brand/25'
   }
   if (attached) {
     return 'bg-muted'

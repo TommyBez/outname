@@ -100,8 +100,8 @@ export function WaitlistSignupForm({
 
   if (state.submittedMessage) {
     return (
-      <div className="border-2 border-foreground bg-accent p-6">
-        <p className="swiss-label text-foreground">Request received</p>
+      <div className="border border-border bg-brand p-6 text-brand-foreground">
+        <p className="swiss-label">Request received</p>
         <p className="mt-3 text-sm leading-relaxed">{state.submittedMessage}</p>
       </div>
     )
@@ -146,7 +146,7 @@ export function WaitlistSignupForm({
           What are you here for?
         </Label>
         <select
-          className="h-11 border-2 border-foreground bg-background px-3 text-sm"
+          className="h-11 border border-border bg-background px-3 text-sm"
           id="waitlist-primary-interest"
           onChange={(event) =>
             dispatch({
@@ -170,7 +170,7 @@ export function WaitlistSignupForm({
           Which describes you best?
         </Label>
         <select
-          className="h-11 border-2 border-foreground bg-background px-3 text-sm"
+          className="h-11 border border-border bg-background px-3 text-sm"
           id="waitlist-profile"
           onChange={(event) =>
             dispatch({

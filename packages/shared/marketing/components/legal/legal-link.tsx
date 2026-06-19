@@ -12,7 +12,7 @@ export function LegalLink({
 }) {
   return (
     <a
-      className={cn('font-bold text-accent underline-offset-4 hover:underline')}
+      className={cn('font-bold text-brand underline-offset-4 hover:underline')}
       href={href}
       {...(external ? { rel: 'noopener noreferrer', target: '_blank' } : {})}
     >
