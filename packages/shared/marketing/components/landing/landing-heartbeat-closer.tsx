@@ -145,7 +145,7 @@ function HeartbeatRow({ entry }: { entry: HeartbeatEvent }) {
     <li
       className={cn(
         'grid items-center gap-3 border border-border p-3 font-mono text-xs sm:grid-cols-[4rem_minmax(0,8rem)_minmax(0,1fr)_auto] sm:gap-4',
-        isMemory && 'bg-brand',
+        isMemory && 'bg-brand text-brand-foreground',
         isHighlight && 'bg-foreground text-background',
         !(isMemory || isHighlight) && 'bg-background'
       )}

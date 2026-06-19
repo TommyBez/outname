@@ -30,7 +30,7 @@ export function FinalConfigurationCard({
 
   return (
     <section className="w-full border border-border bg-background">
-      <div className="border-border border-b bg-brand px-4 py-3">
+      <div className="border-border border-b bg-brand px-4 py-3 text-brand-foreground">
         <p className="font-bold text-xs">Review before creation</p>
       </div>
       <div className="grid gap-5 p-4 md:grid-cols-[minmax(0,1fr)_16rem]">

@@ -585,7 +585,7 @@ export function LandingChatShowcase({
               <aside className="min-w-0 border-border border-b bg-muted lg:flex lg:flex-col lg:border-r lg:border-b-0">
                 <div className="flex items-center justify-between gap-3 border-border border-b p-3 lg:block lg:p-5">
                   <div className="flex min-w-0 items-center gap-3 lg:block">
-                    <span className="grid size-9 shrink-0 place-items-center border border-border bg-brand lg:hidden">
+                    <span className="grid size-9 shrink-0 place-items-center border border-border bg-brand text-brand-foreground lg:hidden">
                       <BotIcon className="size-4" />
                     </span>
                     <div className="min-w-0">
@@ -601,7 +601,7 @@ export function LandingChatShowcase({
                             {agentMeta.attached}
                           </p>
                         </div>
-                        <span className="hidden size-9 shrink-0 place-items-center border border-border bg-brand lg:grid">
+                        <span className="hidden size-9 shrink-0 place-items-center border border-border bg-brand text-brand-foreground lg:grid">
                           <BotIcon className="size-4" />
                         </span>
                       </div>

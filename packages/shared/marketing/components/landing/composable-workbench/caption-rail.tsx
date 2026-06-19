@@ -24,7 +24,7 @@ export function CaptionRail({
         <p className="swiss-label text-muted-foreground">
           {activeStage.eyebrow}
         </p>
-        <span className="grid size-12 place-items-center border border-border bg-brand">
+        <span className="grid size-12 place-items-center border border-border bg-brand text-brand-foreground">
           <Icon className="size-5" />
         </span>
       </div>

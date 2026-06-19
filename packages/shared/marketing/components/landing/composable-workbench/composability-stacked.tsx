@@ -23,7 +23,7 @@ export function ComposabilityStacked() {
                     {stage.label}
                   </h3>
                 </div>
-                <span className="grid size-12 place-items-center border border-border bg-brand">
+                <span className="grid size-12 place-items-center border border-border bg-brand text-brand-foreground">
                   <Icon className="size-5" />
                 </span>
               </div>

@@ -85,7 +85,7 @@ export function AgentBudgetWidget({
 
   return (
     <section className="w-full border border-border bg-background">
-      <div className="flex items-center gap-2 border-border border-b bg-brand px-4 py-3">
+      <div className="flex items-center gap-2 border-border border-b bg-brand px-4 py-3 text-brand-foreground">
         <WalletIcon className="size-4" />
         <p className="font-bold text-xs">{title ?? 'Set agent budget'}</p>
       </div>

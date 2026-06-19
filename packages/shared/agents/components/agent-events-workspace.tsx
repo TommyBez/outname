@@ -155,14 +155,7 @@ function AgentEventsWorkspaceContent({
                         {event.preview}
                       </span>
                     )}
-                    <span
-                      className={cn(
-                        'font-mono text-[11px]',
-                        selectedEvent?.id === event.id
-                          ? 'text-background/70'
-                          : 'text-muted-foreground'
-                      )}
-                    >
+                    <span className="font-mono text-[11px] text-muted-foreground">
                       {formatCompactDateTimeInTimeZone(
                         event.queuedAt,
                         timeZone
@@ -275,8 +268,10 @@ function EventStatusBadge({ status }: { status: AgentEventStatus }) {
   return (
     <Badge
       className={cn(
-        status === 'failed' && 'border-destructive bg-destructive text-white',
-        status === 'completed' && 'border-border bg-foreground text-white',
+        status === 'failed' &&
+          'border-destructive bg-destructive text-destructive-foreground',
+        status === 'completed' &&
+          'border-foreground bg-foreground text-background',
         status === 'running' && 'bg-primary text-primary-foreground'
       )}
       variant={

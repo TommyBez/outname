@@ -86,7 +86,7 @@ export function MobileStageCard({
             </h3>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <span className="grid size-11 place-items-center border border-border bg-brand">
+            <span className="grid size-11 place-items-center border border-border bg-brand text-brand-foreground">
               <Icon className="size-5" />
             </span>
             <span className="font-mono text-[10px] text-muted-foreground tracking-normal">
