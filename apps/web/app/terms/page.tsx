@@ -21,7 +21,7 @@ export default function TermsPage() {
   return (
     <MarketingLegalLayout>
       <header className="mb-12 pt-6 md:mb-16">
-        <p className="swiss-label mb-4 text-brand">Legal</p>
+        <p className="swiss-label mb-4 text-muted-foreground">Legal</p>
         <h1 className="font-semibold text-3xl tracking-tight">
           Terms of Service
         </h1>

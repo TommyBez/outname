@@ -21,7 +21,7 @@ export function AppErrorScreen({
   return (
     <main className="grid min-h-svh place-items-center bg-background px-6">
       <div className="max-w-md border border-border bg-background p-8">
-        <p className="swiss-label text-brand">{eyebrow}</p>
+        <p className="swiss-label text-muted-foreground">{eyebrow}</p>
         <h1 className="mt-4 text-balance font-semibold text-4xl tracking-tight">
           {title}
         </h1>

@@ -35,8 +35,10 @@ export function LandingComposableWorkbench({
             variants={revealVariants}
           >
             <div>
-              <p className="swiss-label text-brand">Anatomy of an agent</p>
-              <h2 className="mt-4 text-balance font-semibold text-5xl leading-[0.88] tracking-normal md:text-7xl">
+              <p className="swiss-label text-muted-foreground">
+                Anatomy of an agent
+              </p>
+              <h2 className="mt-4 text-balance font-semibold text-3xl leading-tight tracking-tight md:text-4xl">
                 An agent is what you attach to it.
               </h2>
             </div>

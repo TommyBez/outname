@@ -95,7 +95,9 @@ async function AgentConfigure({ params }: { params: Params }) {
   return (
     <>
       <section className="border-border border-t py-10">
-        <h2 className="swiss-label mb-6 text-brand">Configuration</h2>
+        <h2 className="swiss-label mb-6 text-muted-foreground">
+          Configuration
+        </h2>
         <AgentForm
           defaultInferenceProvider={DEFAULT_INFERENCE_PROVIDER}
           defaultModel={DEFAULT_MODEL_ID}
@@ -129,7 +131,7 @@ async function AgentConfigure({ params }: { params: Params }) {
       </section>
 
       <section className="border-border border-t py-10" id="integrations">
-        <h2 className="swiss-label mb-6 text-brand">Integrations</h2>
+        <h2 className="swiss-label mb-6 text-muted-foreground">Integrations</h2>
         <p className="mb-6 max-w-2xl text-muted-foreground text-sm">
           Route incoming Slack messages to this agent. Install the app once per
           workspace, then bind a channel, DM, or workspace fallback.
@@ -140,7 +142,7 @@ async function AgentConfigure({ params }: { params: Params }) {
       </section>
 
       <section className="border-border border-t py-10" id="budget">
-        <h2 className="swiss-label mb-6 text-brand">Budget</h2>
+        <h2 className="swiss-label mb-6 text-muted-foreground">Budget</h2>
         <Suspense fallback={<div className="h-32" />}>
           <AgentBudgetSection
             agentId={agentRow.id}
@@ -151,7 +153,9 @@ async function AgentConfigure({ params }: { params: Params }) {
       </section>
 
       <section className="border-border border-t py-10" id="assisted-editing">
-        <h2 className="swiss-label mb-6 text-brand">Assisted editing</h2>
+        <h2 className="swiss-label mb-6 text-muted-foreground">
+          Assisted editing
+        </h2>
         <p className="mb-4 max-w-2xl text-muted-foreground text-sm">
           Describe configuration changes in chat, review the proposed update,
           then approve it. Manual controls remain the canonical settings above.

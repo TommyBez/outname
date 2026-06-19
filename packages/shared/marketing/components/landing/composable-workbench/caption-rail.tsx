@@ -21,13 +21,15 @@ export function CaptionRail({
   return (
     <aside className="border border-border bg-background p-6">
       <div className="flex items-center justify-between gap-3">
-        <p className="swiss-label text-brand">{activeStage.eyebrow}</p>
+        <p className="swiss-label text-muted-foreground">
+          {activeStage.eyebrow}
+        </p>
         <span className="grid size-12 place-items-center border border-border bg-brand">
           <Icon className="size-5" />
         </span>
       </div>
 
-      <h3 className="mt-6 font-semibold text-5xl leading-[0.88] tracking-normal md:text-7xl">
+      <h3 className="mt-6 font-semibold text-3xl leading-tight tracking-tight md:text-4xl">
         {activeStage.label}
       </h3>
 

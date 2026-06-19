@@ -68,7 +68,7 @@ function ToolCatalogSection({
 }) {
   return (
     <section>
-      <h2 className="swiss-label mb-4 text-brand">{title}</h2>
+      <h2 className="swiss-label mb-4 text-muted-foreground">{title}</h2>
       {entries.length === 0 ? (
         <p className="border-border border-b py-6 text-muted-foreground text-sm">
           {emptyText}

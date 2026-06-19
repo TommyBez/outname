@@ -71,7 +71,7 @@ function SubAgentSection({
 }) {
   return (
     <section>
-      <h3 className="swiss-label mb-4 text-brand">{title}</h3>
+      <h3 className="swiss-label mb-4 text-muted-foreground">{title}</h3>
       {candidates.length === 0 ? (
         <p className="border-border border-b py-6 text-muted-foreground text-sm">
           {emptyText}

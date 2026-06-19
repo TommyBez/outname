@@ -4,7 +4,7 @@ import Link from 'next/link'
 export default function AgentNotFound() {
   return (
     <div className="border border-border bg-background p-8">
-      <p className="swiss-label text-brand">404</p>
+      <p className="swiss-label text-muted-foreground">404</p>
       <h1 className="mt-4 text-balance font-semibold text-4xl tracking-tight">
         Agent not found
       </h1>

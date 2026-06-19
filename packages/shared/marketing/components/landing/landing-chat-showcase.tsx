@@ -565,8 +565,10 @@ export function LandingChatShowcase({
             variants={revealVariants}
           >
             <div>
-              <p className="swiss-label text-brand">Live agent · /chat/:id</p>
-              <h2 className="mt-4 text-balance font-semibold text-5xl leading-[0.88] tracking-normal md:text-7xl">
+              <p className="swiss-label text-muted-foreground">
+                Live agent · /chat/:id
+              </p>
+              <h2 className="mt-4 text-balance font-semibold text-3xl leading-tight tracking-tight md:text-4xl">
                 Same agent. Every surface.
               </h2>
             </div>

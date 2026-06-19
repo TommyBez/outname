@@ -135,7 +135,7 @@ async function WaitlistSettingsContent({
 
       <section className="border-border border-b py-8">
         <div className="mb-8">
-          <p className="swiss-label mb-4 text-brand">Invite user</p>
+          <p className="swiss-label mb-4 text-muted-foreground">Invite user</p>
           <p className="mb-4 max-w-2xl text-muted-foreground text-sm leading-relaxed">
             Send a product introduction and sign-in link to any email address.
             The account is provisioned immediately; no waitlist confirmation is

@@ -80,8 +80,8 @@ export function MobileStageCard({
       >
         <div className="flex items-start justify-between gap-3 border-border border-b pb-4">
           <div>
-            <p className="swiss-label text-brand">{stage.eyebrow}</p>
-            <h3 className="mt-3 font-semibold text-3xl leading-none tracking-normal">
+            <p className="swiss-label text-muted-foreground">{stage.eyebrow}</p>
+            <h3 className="mt-3 font-semibold text-2xl leading-tight tracking-tight">
               {stage.label}
             </h3>
           </div>

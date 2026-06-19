@@ -118,7 +118,7 @@ function SkillCatalogDetailContent({
 
       <header className="grid gap-5 pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
         <div className="min-w-0">
-          <p className="swiss-label mb-4 text-brand">
+          <p className="swiss-label mb-4 text-muted-foreground">
             skills / {detail.source}
           </p>
           <h1 className="break-words font-semibold text-3xl tracking-tight">

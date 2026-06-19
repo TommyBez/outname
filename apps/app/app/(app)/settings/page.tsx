@@ -204,7 +204,7 @@ function Section({
 }) {
   return (
     <section className="grid grid-cols-1 gap-6 border-border border-b py-10 last:border-b-0 lg:grid-cols-[160px_1fr] lg:gap-10">
-      <h2 className="swiss-label text-brand">{title}</h2>
+      <h2 className="swiss-label text-muted-foreground">{title}</h2>
       <div className="min-w-0">{children}</div>
     </section>
   )

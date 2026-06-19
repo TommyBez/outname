@@ -60,7 +60,7 @@ async function DashboardPageBody() {
       <header className="mb-12 pt-6 md:mb-16">
         <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(14rem,18rem)] xl:items-end">
           <div className="min-w-0">
-            <p className="swiss-label mb-4 text-brand">
+            <p className="swiss-label mb-4 text-muted-foreground">
               <TodayDate label={todayLabel} />
             </p>
             <h1 className="text-balance font-semibold text-3xl tracking-tight">
@@ -220,7 +220,7 @@ async function DashboardCockpit({
       <section className="mt-12">
         <div className="mb-5 flex flex-wrap items-baseline justify-between gap-4">
           <div>
-            <p className="swiss-label text-brand">Run monitor</p>
+            <p className="swiss-label text-muted-foreground">Run monitor</p>
             <h2 className="mt-3 font-semibold text-xl tracking-tight">
               Event-ready agents
             </h2>
@@ -261,7 +261,7 @@ function PausedAgentsQueue({ agents }: { agents: Agent[] }) {
   if (agents.length === 0) {
     return (
       <section className="border-border border-b py-6">
-        <p className="swiss-label text-brand">Paused agents</p>
+        <p className="swiss-label text-muted-foreground">Paused agents</p>
         <p className="mt-3 text-muted-foreground text-sm">
           No paused agents right now.
         </p>
@@ -271,7 +271,7 @@ function PausedAgentsQueue({ agents }: { agents: Agent[] }) {
 
   return (
     <section className="border-border border-b py-6">
-      <p className="swiss-label text-brand">Paused agents</p>
+      <p className="swiss-label text-muted-foreground">Paused agents</p>
       <ul className="mt-5 grid gap-3 md:grid-cols-2">
         {agents.map((agent) => (
           <li key={agent.id}>

@@ -163,7 +163,7 @@ async function ResolvedAgentMemoryDreams({ params }: { params: Params }) {
       </div>
 
       <section>
-        <h2 className="swiss-label mb-6 text-brand">DREAMS.md</h2>
+        <h2 className="swiss-label mb-6 text-muted-foreground">DREAMS.md</h2>
         <RunResultView content={dreams?.content ?? null} />
       </section>
     </>
@@ -181,7 +181,7 @@ function MemorySectionHeader({
 }) {
   return (
     <header className="mb-12">
-      <p className="swiss-label mb-4 text-brand">{eyebrow}</p>
+      <p className="swiss-label mb-4 text-muted-foreground">{eyebrow}</p>
       <h1 className="font-semibold text-3xl tracking-tight">{title}</h1>
       <p className="mt-5 max-w-2xl text-muted-foreground text-sm leading-relaxed">
         {description}

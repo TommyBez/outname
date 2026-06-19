@@ -49,10 +49,10 @@ export function LandingHeartbeatCloser({
             variants={revealVariants}
           >
             <div>
-              <p className="swiss-label text-brand">
+              <p className="swiss-label text-muted-foreground">
                 One day · INBOX SENTINEL · 2026-05-11
               </p>
-              <h2 className="mt-4 text-balance font-semibold text-5xl leading-[0.88] tracking-normal md:text-7xl">
+              <h2 className="mt-4 text-balance font-semibold text-3xl leading-tight tracking-tight md:text-4xl">
                 It runs while you sleep. It learns while it runs.
               </h2>
             </div>
@@ -75,7 +75,7 @@ export function LandingHeartbeatCloser({
                 <p className="font-bold text-[10px] text-background/60 tracking-normal">
                   {stat.label}
                 </p>
-                <p className="mt-3 font-semibold text-6xl leading-none tracking-normal">
+                <p className="mt-3 font-semibold text-4xl leading-none tracking-tight">
                   {stat.value}
                 </p>
               </div>
@@ -102,7 +102,7 @@ export function LandingHeartbeatCloser({
             className="mt-12 grid gap-6 border-border border-t pt-8 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] md:items-end"
             variants={revealVariants}
           >
-            <h3 className="home-display text-balance font-semibold text-6xl leading-[0.84] tracking-normal md:text-8xl">
+            <h3 className="home-display text-balance font-semibold text-4xl leading-[1.05] tracking-tight md:text-5xl">
               Get early access.
             </h3>
             <div className="flex min-w-0 flex-col gap-3 md:items-end">

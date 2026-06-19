@@ -23,7 +23,7 @@ export function LandingHeroDemo({
   return (
     <section className="relative px-4 pt-24 pb-24 sm:px-6 sm:pt-28 md:px-10 md:pb-32 lg:px-12 lg:pt-32 lg:pb-40">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-10 border-border border-t pt-5 lg:min-h-[calc(100vh-9rem)] lg:justify-between">
-        <p className="swiss-label text-brand">
+        <p className="swiss-label text-muted-foreground">
           OUTNA.ME /
           <TextLoop
             className="ml-2 inline-flex"
@@ -38,7 +38,7 @@ export function LandingHeroDemo({
         </p>
 
         <div className="min-w-0">
-          <h1 className="home-display text-balance font-semibold text-6xl leading-[0.84] tracking-normal sm:text-7xl md:text-[6rem] lg:text-[8rem] xl:text-[10rem] 2xl:text-[12rem]">
+          <h1 className="home-display text-balance font-semibold text-5xl leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
             Agents that keep working.
           </h1>
         </div>

@@ -147,7 +147,7 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
       <section className="mt-12 border-border border-t pt-8">
         <div className="mb-6 flex flex-wrap items-baseline justify-between gap-4">
           <div>
-            <p className="swiss-label text-brand">Activity</p>
+            <p className="swiss-label text-muted-foreground">Activity</p>
             <h2 className="mt-3 font-semibold text-xl tracking-tight">
               Current state
             </h2>
@@ -185,7 +185,7 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
       <section className="mt-12 border-border border-t pt-8">
         <div className="mb-6 flex flex-wrap items-baseline justify-between gap-4">
           <div>
-            <p className="swiss-label text-brand">Events</p>
+            <p className="swiss-label text-muted-foreground">Events</p>
             <h2 className="mt-3 font-semibold text-xl tracking-tight">
               Recent event ledger
             </h2>

@@ -36,7 +36,9 @@ export function ComposabilityMobileStory() {
           <div className="border border-border bg-background/95 p-3 shadow-[0_14px_32px_rgb(0_0_0/0.08)] supports-backdrop-filter:bg-background/85 supports-backdrop-filter:backdrop-blur">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="swiss-label text-brand">{activeStage.eyebrow}</p>
+                <p className="swiss-label text-muted-foreground">
+                  {activeStage.eyebrow}
+                </p>
                 <p className="mt-1 font-mono text-[10px] text-muted-foreground tracking-normal">
                   Scroll to compose
                 </p>
@@ -94,7 +96,7 @@ export function ComposabilityMobileStory() {
               />
             </div>
 
-            <h3 className="mt-4 font-semibold text-3xl leading-[0.9] tracking-normal sm:text-4xl">
+            <h3 className="mt-4 font-semibold text-2xl leading-tight tracking-tight sm:text-3xl">
               {activeStage.label}
             </h3>
             <p className="mt-3 max-w-xl text-muted-foreground text-sm leading-relaxed">

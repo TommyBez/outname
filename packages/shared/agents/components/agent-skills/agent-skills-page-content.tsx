@@ -280,7 +280,7 @@ export function AgentSkillsPageContent({
     <div className="flex flex-col gap-8">
       <header className="pt-6">
         <div className="min-w-0">
-          <p className="swiss-label mb-4 text-brand">{agentName}</p>
+          <p className="swiss-label mb-4 text-muted-foreground">{agentName}</p>
           <h1 className="font-semibold text-3xl tracking-tight">Skills</h1>
           <p className="mt-5 max-w-2xl text-muted-foreground text-sm leading-relaxed">
             Install one Agent Skill package for this agent and run its scripts
@@ -487,7 +487,7 @@ function AgentSkillInstallSurface({
   return (
     <section className="grid gap-5">
       <div className="grid gap-2 border-border border-t pt-4">
-        <p className="swiss-label text-brand">Catalog</p>
+        <p className="swiss-label text-muted-foreground">Catalog</p>
         <h2 className="font-semibold text-xl tracking-tight">Add skill</h2>
       </div>
 

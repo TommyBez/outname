@@ -20,7 +20,9 @@ export default function BlogIndexPage() {
         items={[{ href: '/', label: 'Home' }, { label: 'Blog' }]}
       />
       <header className="mb-16 pt-6 md:mb-20">
-        <p className="swiss-label mb-4 text-brand">The Outname Blog</p>
+        <p className="swiss-label mb-4 text-muted-foreground">
+          The Outname Blog
+        </p>
         <h1 className="text-balance font-semibold text-4xl tracking-tight">
           Personal AI Agents, Autonomous Work, and Life Inside the Machine
         </h1>

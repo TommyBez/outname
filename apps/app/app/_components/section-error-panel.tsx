@@ -27,7 +27,7 @@ export function SectionErrorPanel({
 }: SectionErrorPanelProps) {
   return (
     <div className="border border-border bg-background p-8" role="alert">
-      <p className="swiss-label text-brand">Error</p>
+      <p className="swiss-label text-muted-foreground">Error</p>
       <h1 className="mt-4 text-balance font-semibold text-4xl tracking-tight">
         {title}
       </h1>
