@@ -117,13 +117,10 @@ async function WaitlistSettingsContent({
 
   return (
     <>
-      <header className="mb-12 border-border border-t-4 pt-6 md:mb-16">
-        <p className="swiss-label mb-4 text-brand">10. Settings / Waitlist</p>
+      <header className="mb-12 border-border border-t pt-6 md:mb-16">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="font-semibold font-serif text-5xl leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
-              Waitlist
-            </h1>
+            <h1 className="font-semibold text-3xl tracking-tight">Waitlist</h1>
             <p className="mt-4 max-w-2xl text-muted-foreground text-sm leading-relaxed">
               Invite someone directly, review pending signups, provision
               accounts when access is ready, and resend confirmation or access
@@ -272,7 +269,7 @@ function WaitlistSettingsFallback() {
   return (
     <output
       aria-busy="true"
-      className="border-border border-t-4 pt-6 text-muted-foreground text-sm"
+      className="border-border border-t pt-6 text-muted-foreground text-sm"
     >
       Loading waitlist manager…
     </output>

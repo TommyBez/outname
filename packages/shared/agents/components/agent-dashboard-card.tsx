@@ -80,7 +80,7 @@ export function AgentDashboardCard({
                   </span>
                 )}
               </p>
-              <h2 className="mt-2 text-pretty font-semibold font-serif text-4xl leading-[0.95] tracking-tighter md:text-5xl">
+              <h2 className="mt-2 text-pretty font-semibold text-3xl tracking-tight">
                 {agent.name}
               </h2>
               {entries.length > 0 && (

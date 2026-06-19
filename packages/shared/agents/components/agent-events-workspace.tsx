@@ -234,7 +234,7 @@ function EventTranscriptHeader({
               <Badge variant="outline">{event.source}</Badge>
               <Badge variant="secondary">{streamStatus}</Badge>
             </div>
-            <h2 className="mt-3 truncate font-semibold font-serif text-3xl leading-none tracking-tighter">
+            <h2 className="mt-3 truncate font-semibold text-xl tracking-tight">
               {formatEventLabel(event)}
             </h2>
           </div>

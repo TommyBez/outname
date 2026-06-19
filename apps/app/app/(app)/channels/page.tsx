@@ -22,12 +22,9 @@ export default function ChannelsPage({
 }) {
   return (
     <>
-      <header className="mb-12 border-border border-t-4 pt-6 md:mb-16">
-        <p className="swiss-label mb-4 text-brand">08. Channels</p>
-        <h1 className="font-semibold font-serif text-5xl leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
-          Channels
-        </h1>
-        <p className="mt-5 max-w-2xl border-border border-l pl-4 text-muted-foreground text-sm leading-relaxed">
+      <header className="mb-12 border-border border-t pt-6 md:mb-16">
+        <h1 className="font-semibold text-3xl tracking-tight">Channels</h1>
+        <p className="mt-5 max-w-2xl text-muted-foreground text-sm leading-relaxed">
           External chat surfaces that can send work into agents. Install a
           channel provider here, then bind specific workspaces, channels, or DMs
           from an agent workspace.
@@ -100,7 +97,7 @@ async function ChannelsSection() {
         <div>
           <div className="flex flex-wrap items-center gap-3">
             <h2
-              className="font-semibold font-serif text-3xl leading-none tracking-tighter"
+              className="font-semibold text-xl tracking-tight"
               id="slack-channel-heading"
             >
               Slack

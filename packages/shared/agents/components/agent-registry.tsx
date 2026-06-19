@@ -51,7 +51,7 @@ export function AgentRegistry({
       <div className="mb-6 grid gap-4 border-border border-y py-5 md:grid-cols-[minmax(0,1fr)_18rem] md:items-center">
         <div>
           <h2
-            className="font-semibold font-serif text-3xl leading-none tracking-tighter"
+            className="font-semibold text-xl tracking-tight"
             id="agent-registry-heading"
           >
             Registry
@@ -154,7 +154,7 @@ function AgentRegistryRow({
           </span>
         </p>
         <Link
-          className="mt-2 block text-pretty font-semibold font-serif text-3xl leading-none tracking-tighter transition-colors hover:text-brand"
+          className="mt-2 block text-pretty font-semibold text-xl tracking-tight transition-colors hover:text-brand"
           href={`/agents/${agent.id}`}
         >
           {agent.name}

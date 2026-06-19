@@ -22,14 +22,13 @@ export default function LoginPage({
   const waitlistEnabled = isWaitlistPublicEnabled()
 
   return (
-    <main className="swiss-grid-pattern grid min-h-svh place-items-center bg-background px-6">
+    <main className="grid min-h-svh place-items-center bg-background px-6">
       <div className="w-full max-w-md border border-border bg-background p-8">
-        <div className="mb-10 border-border border-t-4 pt-5">
-          <p className="swiss-label text-brand">00. agents</p>
-          <h1 className="mt-4 font-semibold font-serif text-5xl leading-[0.9] tracking-tighter">
+        <div className="mb-10 border-border border-t pt-5">
+          <h1 className="mt-4 font-semibold text-4xl tracking-tight">
             Sign in
           </h1>
-          <p className="mt-4 border-border border-l pl-4 text-muted-foreground text-sm leading-relaxed">
+          <p className="mt-4 text-muted-foreground text-sm leading-relaxed">
             Request a one-time code by email to access your scheduled agents and
             live dashboard.
           </p>

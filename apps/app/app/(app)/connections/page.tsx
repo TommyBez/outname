@@ -20,12 +20,9 @@ export default function ConnectionsPage({
 }) {
   return (
     <>
-      <header className="mb-12 border-border border-t-4 pt-6 md:mb-16">
-        <p className="swiss-label mb-4 text-brand">09. Connections</p>
-        <h1 className="font-semibold font-serif text-5xl leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
-          Connections
-        </h1>
-        <p className="mt-5 max-w-2xl border-border border-l pl-4 text-muted-foreground text-sm leading-relaxed">
+      <header className="mb-12 border-border border-t pt-6 md:mb-16">
+        <h1 className="font-semibold text-3xl tracking-tight">Connections</h1>
+        <p className="mt-5 max-w-2xl text-muted-foreground text-sm leading-relaxed">
           Shared provider credentials used by agent tools. Connect each provider
           once, then attach tools from an agent workspace.
         </p>

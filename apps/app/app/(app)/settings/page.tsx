@@ -32,9 +32,8 @@ export const metadata: Metadata = createPrivatePageMetadata(
 export default function SettingsPage() {
   return (
     <>
-      <header className="mb-12 border-border border-t-4 pt-6 md:mb-16">
-        <p className="swiss-label mb-4 text-brand">10. Settings</p>
-        <h1 className="font-semibold font-serif text-5xl leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
+      <header className="mb-12 border-border border-t pt-6 md:mb-16">
+        <h1 className="font-semibold text-3xl tracking-tight">
           Your assistant
         </h1>
       </header>

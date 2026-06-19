@@ -12,9 +12,8 @@ export const metadata = createPrivatePageMetadata(
 export default function NewAgentPage() {
   return (
     <>
-      <header className="mb-8 border-border border-t-4 pt-6">
-        <p className="swiss-label mb-4 text-brand">03. New agent</p>
-        <h1 className="max-w-4xl font-semibold font-serif text-4xl leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl xl:text-7xl">
+      <header className="mb-8 border-border border-t pt-6">
+        <h1 className="max-w-4xl font-semibold text-3xl tracking-tight">
           Create a new agent
         </h1>
         <p className="mt-4 max-w-2xl text-muted-foreground text-sm leading-relaxed">

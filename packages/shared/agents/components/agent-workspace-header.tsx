@@ -51,7 +51,7 @@ export function AgentWorkspaceHeader({
 
   return (
     <>
-      <header className="border-border border-t-4 pt-6">
+      <header className="border-border border-t pt-6">
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
           <div className="min-w-0">
             <nav
@@ -85,7 +85,7 @@ export function AgentWorkspaceHeader({
                   {`Dreaming ${agent.dreamingEnabled ? 'daily' : 'off'}`}
                 </Badge>
               </div>
-              <h1 className="text-pretty font-semibold font-serif text-4xl leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl xl:text-7xl">
+              <h1 className="text-pretty font-semibold text-3xl tracking-tight">
                 {agent.name}
               </h1>
             </div>

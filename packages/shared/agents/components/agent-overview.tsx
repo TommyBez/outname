@@ -148,7 +148,7 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
         <div className="mb-6 flex flex-wrap items-baseline justify-between gap-4">
           <div>
             <p className="swiss-label text-brand">Activity</p>
-            <h2 className="mt-3 font-semibold font-serif text-3xl leading-none tracking-tighter">
+            <h2 className="mt-3 font-semibold text-xl tracking-tight">
               Current state
             </h2>
           </div>
@@ -186,7 +186,7 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
         <div className="mb-6 flex flex-wrap items-baseline justify-between gap-4">
           <div>
             <p className="swiss-label text-brand">Events</p>
-            <h2 className="mt-3 font-semibold font-serif text-3xl leading-none tracking-tighter">
+            <h2 className="mt-3 font-semibold text-xl tracking-tight">
               Recent event ledger
             </h2>
           </div>
@@ -277,9 +277,7 @@ function StateTile({ label, value }: { label: string; value: string }) {
   return (
     <div className="border-border border-l pl-4">
       <p className="font-bold text-[10px] text-muted-foreground">{label}</p>
-      <p className="mt-2 font-semibold font-serif text-3xl leading-none tracking-tighter">
-        {value}
-      </p>
+      <p className="mt-2 font-semibold text-xl tracking-tight">{value}</p>
     </div>
   )
 }

@@ -51,15 +51,14 @@ async function AgentsListPageBody() {
 
   return (
     <>
-      <header className="mb-12 border-border border-t-4 pt-6">
+      <header className="mb-12 border-border border-t pt-6">
         <div className="grid gap-8 md:grid-cols-[minmax(0,7fr)_minmax(14rem,3fr)] md:items-end">
           <div>
-            <p className="swiss-label mb-4 text-brand">02. Agents</p>
-            <h1 className="font-semibold font-serif text-5xl leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
+            <h1 className="font-semibold text-3xl tracking-tight">
               Your agents
             </h1>
           </div>
-          <p className="max-w-xs border-border border-l pl-4 text-muted-foreground text-sm leading-relaxed">
+          <p className="max-w-xs text-muted-foreground text-sm leading-relaxed">
             The registry for every agent, with direct routes into chat,
             configuration, tools, and memory.
           </p>
@@ -73,10 +72,8 @@ async function AgentsListPageBody() {
       </header>
 
       {agents.length === 0 ? (
-        <div className="swiss-dots border border-border bg-muted p-8 md:p-12">
-          <p className="font-semibold font-serif text-3xl leading-none tracking-tighter">
-            No agents yet.
-          </p>
+        <div className="border border-border bg-muted p-8 md:p-12">
+          <p className="font-semibold text-xl tracking-tight">No agents yet.</p>
           <p className="mt-4 max-w-lg text-muted-foreground text-sm leading-relaxed">
             Add an agent to automate recurring work. Each agent runs on its own
             schedule and keeps its memory in a persistent sandbox.
@@ -115,15 +112,14 @@ function toRegistryAgent(agent: Agent): RegistryAgent {
 function AgentsListPageFallback() {
   return (
     <>
-      <header className="mb-12 border-border border-t-4 pt-6">
+      <header className="mb-12 border-border border-t pt-6">
         <div className="grid gap-8 md:grid-cols-[minmax(0,7fr)_minmax(14rem,3fr)] md:items-end">
           <div>
-            <p className="swiss-label mb-4 text-brand">02. Agents</p>
-            <h1 className="font-semibold font-serif text-5xl leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
+            <h1 className="font-semibold text-3xl tracking-tight">
               Your agents
             </h1>
           </div>
-          <p className="max-w-xs border-border border-l pl-4 text-muted-foreground text-sm leading-relaxed">
+          <p className="max-w-xs text-muted-foreground text-sm leading-relaxed">
             The registry for every agent, with direct routes into chat,
             configuration, tools, and memory.
           </p>

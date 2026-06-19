@@ -19,9 +19,7 @@ export function CreationSuccessCard({
       </div>
       <div className="space-y-4 p-4">
         <div>
-          <p className="font-semibold font-serif text-3xl leading-none tracking-tighter">
-            {result.name}
-          </p>
+          <p className="font-semibold text-xl tracking-tight">{result.name}</p>
           <p className="mt-2 text-muted-foreground text-sm">
             {result.created
               ? 'Created and queued for its first sandbox boot.'

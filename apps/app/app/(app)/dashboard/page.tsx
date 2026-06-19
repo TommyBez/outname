@@ -62,18 +62,18 @@ async function DashboardPageBody() {
 
   return (
     <>
-      <header className="mb-12 border-border border-t-4 pt-6 md:mb-16">
+      <header className="mb-12 border-border border-t pt-6 md:mb-16">
         <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(14rem,18rem)] xl:items-end">
           <div className="min-w-0">
             <p className="swiss-label mb-4 text-brand">
               01. <TodayDate label={todayLabel} />
             </p>
-            <h1 className="text-balance font-semibold font-serif text-5xl leading-[0.86] tracking-tighter sm:text-6xl lg:text-[clamp(4.5rem,7vw,7rem)]">
+            <h1 className="text-balance font-semibold text-3xl tracking-tight">
               Dashboard
             </h1>
           </div>
           <div className="flex flex-col items-start gap-6 xl:items-stretch xl:justify-self-end">
-            <p className="max-w-xs border-border border-l pl-4 text-muted-foreground text-sm leading-relaxed">
+            <p className="max-w-xs text-muted-foreground text-sm leading-relaxed">
               Live cockpit for event queues, budgets, and agents that need
               attention.
             </p>
@@ -111,10 +111,8 @@ async function DashboardCockpit({
 }) {
   if (agents.length === 0) {
     return (
-      <div className="swiss-dots border border-border bg-muted p-8 md:p-12">
-        <p className="font-semibold font-serif text-3xl leading-none tracking-tighter">
-          No agents yet.
-        </p>
+      <div className="border border-border bg-muted p-8 md:p-12">
+        <p className="font-semibold text-xl tracking-tight">No agents yet.</p>
         <p className="mt-4 max-w-md text-muted-foreground text-sm leading-relaxed">
           Create your first agent to start automating recurring work.
         </p>
@@ -232,7 +230,7 @@ async function DashboardCockpit({
         <div className="mb-5 flex flex-wrap items-baseline justify-between gap-4">
           <div>
             <p className="swiss-label text-brand">Run monitor</p>
-            <h2 className="mt-3 font-semibold font-serif text-3xl leading-none tracking-tighter">
+            <h2 className="mt-3 font-semibold text-xl tracking-tight">
               Event-ready agents
             </h2>
           </div>
@@ -316,9 +314,7 @@ function DashboardMetric({
   return (
     <div className="border-border border-l pl-4">
       <p className="font-bold text-[10px] text-muted-foreground">{label}</p>
-      <p className="mt-2 font-semibold font-serif text-4xl leading-none tracking-tighter">
-        {value}
-      </p>
+      <p className="mt-2 font-semibold text-4xl tracking-tight">{value}</p>
       {hint ? (
         <p className="mt-1 font-mono text-[10px] text-muted-foreground">
           {hint}
@@ -354,7 +350,7 @@ function isBudgetAttention(entry: BudgetSummaryEntry): boolean {
 function DashboardPageFallback() {
   return (
     <>
-      <header className="mb-12 border-border border-t-4 pt-6 md:mb-16">
+      <header className="mb-12 border-border border-t pt-6 md:mb-16">
         <div className="h-24 animate-pulse bg-muted" />
       </header>
       <RunResultSkeleton />

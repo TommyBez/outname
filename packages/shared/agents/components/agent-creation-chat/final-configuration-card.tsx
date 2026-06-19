@@ -36,7 +36,7 @@ export function FinalConfigurationCard({
       <div className="grid gap-5 p-4 md:grid-cols-[minmax(0,1fr)_16rem]">
         <div className="min-w-0 space-y-5">
           <div>
-            <p className="font-semibold font-serif text-3xl leading-none tracking-tighter">
+            <p className="font-semibold text-xl tracking-tight">
               {config.name}
             </p>
             <p className="mt-2 text-muted-foreground text-sm">{config.role}</p>

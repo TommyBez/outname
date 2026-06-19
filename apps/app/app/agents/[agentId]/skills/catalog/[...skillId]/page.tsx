@@ -116,15 +116,15 @@ function SkillCatalogDetailContent({
         </Link>
       </Button>
 
-      <header className="grid gap-5 border-border border-t-4 pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
+      <header className="grid gap-5 border-border border-t pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
         <div className="min-w-0">
           <p className="swiss-label mb-4 text-brand">
             skills / {detail.source}
           </p>
-          <h1 className="break-words font-semibold font-serif text-4xl leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl">
+          <h1 className="break-words font-semibold text-3xl tracking-tight">
             {skillPackage.name}
           </h1>
-          <p className="mt-5 max-w-3xl border-border border-l pl-4 text-muted-foreground text-sm leading-relaxed">
+          <p className="mt-5 max-w-3xl text-muted-foreground text-sm leading-relaxed">
             {skillPackage.description}
           </p>
           <div className="mt-5 flex flex-wrap gap-2">

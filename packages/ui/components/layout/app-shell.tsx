@@ -44,7 +44,7 @@ export function AppShell({
       <Suspense fallback={null}>
         <TimezoneBootstrapLoader />
       </Suspense>
-      <SidebarInset className="swiss-grid-pattern min-w-0 bg-background">
+      <SidebarInset className="min-w-0 bg-background">
         <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-border border-b bg-background px-3 lg:h-12 lg:px-4">
           <SidebarTrigger className="-ml-1 size-10 border-border lg:size-9" />
           <Link

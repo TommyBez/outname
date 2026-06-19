@@ -4,7 +4,7 @@ export default function AgentNotFound() {
   return (
     <div className="border border-border bg-background p-8">
       <p className="swiss-label text-brand">404</p>
-      <h1 className="mt-4 text-balance font-semibold font-serif text-4xl leading-[0.9] tracking-tighter">
+      <h1 className="mt-4 text-balance font-semibold text-4xl tracking-tight">
         Agent not found
       </h1>
       <p className="mt-4 max-w-md text-pretty text-muted-foreground text-sm">

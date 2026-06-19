@@ -25,7 +25,7 @@ export function HeartbeatSettings({
   timezoneLabel: string
 }) {
   return (
-    <div className="swiss-diagonal grid gap-4 border border-border bg-muted p-5 md:grid-cols-[12rem_minmax(0,1fr)]">
+    <div className="grid gap-4 border border-border bg-muted p-5 md:grid-cols-[12rem_minmax(0,1fr)]">
       <Label className="font-bold text-sm" htmlFor="agent-heartbeat">
         Heartbeat
       </Label>
