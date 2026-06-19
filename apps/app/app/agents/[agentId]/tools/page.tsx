@@ -228,7 +228,7 @@ async function Resolved({ params }: { params: Params }) {
 
   return (
     <>
-      <header className="mb-12 border-foreground border-t-4 pt-6">
+      <header className="mb-12 border-border border-t-4 pt-6">
         <div className="grid gap-8 md:grid-cols-[minmax(0,7fr)_minmax(16rem,3fr)]">
           <div className="flex flex-col gap-4">
             <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
@@ -243,15 +243,15 @@ async function Resolved({ params }: { params: Params }) {
               required provider once on the connections page.
             </p>
           </div>
-          <div className="flex flex-wrap items-start gap-3 border-foreground border-l-2 pl-4 md:justify-end">
+          <div className="flex flex-wrap items-start gap-3 border-border border-l pl-4 md:justify-end">
             <Link
-              className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+              className="inline-flex h-10 items-center justify-center border border-border px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
               href={`/agents/${agentId}`}
             >
               ← Overview
             </Link>
             <Link
-              className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+              className="inline-flex h-10 items-center justify-center border border-border px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
               href="/connections"
             >
               Connections →
@@ -267,7 +267,7 @@ async function Resolved({ params }: { params: Params }) {
         connections={connections}
       />
 
-      <section className="mt-16 border-foreground border-t-4 pt-6">
+      <section className="mt-16 border-border border-t-4 pt-6">
         <div className="mb-6 flex flex-col gap-2">
           <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
             Delegation
@@ -293,7 +293,7 @@ async function Resolved({ params }: { params: Params }) {
 
 function PageSkeleton() {
   return (
-    <header className="mb-12 border-foreground border-t-4 pt-6">
+    <header className="mb-12 border-border border-t-4 pt-6">
       <div className="h-3 w-24 animate-pulse rounded-sm bg-muted" />
       <div className="mt-4 h-12 w-64 animate-pulse rounded-sm bg-muted" />
     </header>

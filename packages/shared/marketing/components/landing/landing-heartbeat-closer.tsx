@@ -45,11 +45,11 @@ export function LandingHeartbeatCloser({
           whileInView="visible"
         >
           <motion.div
-            className="grid gap-5 border-foreground border-t-4 pt-5 md:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)] md:items-end"
+            className="grid gap-5 border-border border-t-4 pt-5 md:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)] md:items-end"
             variants={revealVariants}
           >
             <div>
-              <p className="swiss-label text-accent">
+              <p className="swiss-label text-brand">
                 One day · INBOX SENTINEL · 2026-05-11
               </p>
               <h2 className="mt-4 text-balance font-black text-5xl uppercase leading-[0.88] tracking-normal md:text-7xl">
@@ -64,7 +64,7 @@ export function LandingHeartbeatCloser({
           </motion.div>
 
           <motion.div
-            className="mt-10 hidden gap-3 border-2 border-foreground bg-foreground p-3 text-background lg:grid lg:grid-cols-3"
+            className="mt-10 hidden gap-3 border border-border bg-foreground p-3 text-background lg:grid lg:grid-cols-3"
             variants={revealVariants}
           >
             {heartbeatStats.map((stat) => (
@@ -99,7 +99,7 @@ export function LandingHeartbeatCloser({
           </motion.div>
 
           <motion.div
-            className="mt-12 grid gap-6 border-foreground border-t-2 pt-8 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] md:items-end"
+            className="mt-12 grid gap-6 border-border border-t pt-8 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] md:items-end"
             variants={revealVariants}
           >
             <h3 className="home-display text-balance font-black text-6xl uppercase leading-[0.84] tracking-normal md:text-8xl">
@@ -144,8 +144,8 @@ function HeartbeatRow({ entry }: { entry: HeartbeatEvent }) {
   return (
     <li
       className={cn(
-        'grid items-center gap-3 border-2 border-foreground p-3 font-mono text-xs sm:grid-cols-[4rem_minmax(0,8rem)_minmax(0,1fr)_auto] sm:gap-4',
-        isMemory && 'bg-accent',
+        'grid items-center gap-3 border border-border p-3 font-mono text-xs sm:grid-cols-[4rem_minmax(0,8rem)_minmax(0,1fr)_auto] sm:gap-4',
+        isMemory && 'bg-brand',
         isHighlight && 'bg-foreground text-background',
         !(isMemory || isHighlight) && 'bg-background'
       )}
@@ -178,7 +178,7 @@ function HeartbeatRow({ entry }: { entry: HeartbeatEvent }) {
       <Badge
         className={cn(
           'justify-self-start sm:justify-self-end',
-          isMemory && 'border-foreground bg-background text-foreground',
+          isMemory && 'border-border bg-background text-foreground',
           isHighlight && 'border-background bg-background text-foreground'
         )}
         variant="outline"
@@ -228,7 +228,7 @@ function HeartbeatTerminalPinned() {
   return (
     <div className="relative h-[320vh]" ref={containerRef}>
       <div className="sticky top-6">
-        <div className="border-2 border-foreground bg-foreground p-2 text-background shadow-[8px_8px_0_0] shadow-foreground/30">
+        <div className="border border-border bg-foreground p-2 text-background shadow-[8px_8px_0_0] shadow-foreground/30">
           <div className="border border-background/15 bg-foreground p-4">
             <div className="flex items-center justify-between gap-3 border-background/25 border-b pb-3 font-mono text-[10px] uppercase tracking-normal">
               <span className="truncate text-background">
@@ -246,8 +246,8 @@ function HeartbeatTerminalPinned() {
                   <motion.li
                     animate={{ opacity: 1, y: 0 }}
                     className={cn(
-                      'grid gap-1 border-l-2 px-3 py-2',
-                      isMemory && 'border-accent bg-accent/15',
+                      'grid gap-1 border-l px-3 py-2',
+                      isMemory && 'border-brand bg-brand/15',
                       isHighlight && 'border-background bg-background/15',
                       !(isMemory || isHighlight) && 'border-background/25'
                     )}
@@ -262,7 +262,7 @@ function HeartbeatTerminalPinned() {
                       <span
                         className={cn(
                           'truncate font-mono text-[10px] uppercase tracking-normal',
-                          isMemory ? 'text-accent' : 'text-background/60'
+                          isMemory ? 'text-brand' : 'text-background/60'
                         )}
                       >
                         {entry.event}
@@ -273,7 +273,7 @@ function HeartbeatTerminalPinned() {
                         aria-hidden
                         className={cn(
                           'shrink-0',
-                          isMemory ? 'text-accent' : 'text-background/70'
+                          isMemory ? 'text-brand' : 'text-background/70'
                         )}
                       >
                         ▸
@@ -295,7 +295,7 @@ function HeartbeatTerminalPinned() {
                 <li className="flex items-center gap-2 px-3 pt-1 font-mono text-[11px]">
                   <span
                     aria-hidden
-                    className="inline-block h-[0.95em] w-[0.55em] animate-pulse bg-accent align-middle"
+                    className="inline-block h-[0.95em] w-[0.55em] animate-pulse bg-brand align-middle"
                   />
                   <span className="text-background/60 uppercase tracking-normal">
                     {isDone ? 'idle.' : 'streaming…'}

@@ -68,7 +68,7 @@ export function ToolRow({
                 </span>
               )}
             {entry.toolSandboxManifest !== null && (
-              <span className="inline-flex h-7 items-center border-2 border-foreground px-3 font-bold text-[10px] uppercase tracking-[0.16em]">
+              <span className="inline-flex h-7 items-center border border-border px-3 font-bold text-[10px] uppercase tracking-[0.16em]">
                 Sandbox: {entry.toolSandboxManifest}
               </span>
             )}
@@ -82,14 +82,14 @@ export function ToolRow({
         </div>
       </div>
       {!attached && missingConnectors.length > 0 && (
-        <p className="border-2 border-foreground bg-muted px-3 py-2 text-muted-foreground text-xs">
+        <p className="border border-border bg-muted px-3 py-2 text-muted-foreground text-xs">
           This tool needs{' '}
           {missingConnectors
             .map((connector) => connector.displayName)
             .join(', ')}{' '}
           before it can run.{' '}
           <Link
-            className="font-bold text-foreground underline underline-offset-2 hover:text-accent"
+            className="font-bold text-foreground underline underline-offset-2 hover:text-brand"
             href="/connections"
           >
             Set it up in Connections →
@@ -101,7 +101,7 @@ export function ToolRow({
       )}
       {attached?.toolSandboxError && (
         <p
-          className="border-2 border-destructive bg-destructive/5 px-3 py-2 font-mono text-destructive text-xs"
+          className="border border-destructive bg-destructive/5 px-3 py-2 font-mono text-destructive text-xs"
           role="alert"
         >
           Last build failed: {attached.toolSandboxError}

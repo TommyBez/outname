@@ -26,19 +26,19 @@ export default function SupportPage() {
 
   return (
     <MarketingLegalLayout>
-      <header className="mb-12 border-foreground border-t-4 pt-6 md:mb-16">
-        <p className="swiss-label mb-4 text-accent">Help</p>
+      <header className="mb-12 border-border border-t-4 pt-6 md:mb-16">
+        <p className="swiss-label mb-4 text-brand">Help</p>
         <h1 className="font-black font-serif text-5xl uppercase leading-[0.86] tracking-tighter sm:text-6xl">
           Support
         </h1>
-        <p className="mt-6 max-w-xl border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
+        <p className="mt-6 max-w-xl border-border border-l pl-4 text-muted-foreground text-sm leading-relaxed">
           {siteConfig.name} is in early access. If something is broken or
           unclear, reach out, we read every message.
         </p>
       </header>
 
-      <div className="mb-10 border-2 border-foreground bg-muted/30 p-6 md:p-8">
-        <p className="swiss-label text-accent">Primary contact</p>
+      <div className="mb-10 border border-border bg-muted/30 p-6 md:p-8">
+        <p className="swiss-label text-brand">Primary contact</p>
         <p className="mt-4 font-black font-serif text-3xl uppercase leading-none tracking-tighter">
           <LegalLink href={`mailto:${supportEmail}`}>{supportEmail}</LegalLink>
         </p>
@@ -143,9 +143,9 @@ export default function SupportPage() {
         </LegalSection>
       </div>
 
-      <div className="mt-12 border-foreground border-t-2 pt-6">
+      <div className="mt-12 border-border border-t pt-6">
         <Link
-          className="inline-flex min-h-11 items-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+          className="inline-flex min-h-11 items-center border border-border px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
           href="/"
         >
           Back to home

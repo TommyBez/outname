@@ -50,7 +50,7 @@ export function BindingsBlock({
           route a channel or DM.
         </p>
       ) : (
-        <ul className="flex flex-col divide-y-2 divide-foreground border-foreground border-y-2">
+        <ul className="flex flex-col divide-y-2 divide-foreground border-border border-y">
           {bindings.map((binding) => (
             <BindingRow
               binding={binding}
@@ -106,7 +106,7 @@ function BindingRow({
       </div>
       <Button
         aria-label="Remove binding"
-        className="inline-flex size-9 items-center justify-center border-2 border-foreground transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
+        className="inline-flex size-9 items-center justify-center border border-border transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
         disabled={disabled}
         onClick={onRemove}
         size="icon-xs"

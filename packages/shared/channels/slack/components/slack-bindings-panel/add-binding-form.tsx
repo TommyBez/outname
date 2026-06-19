@@ -51,7 +51,7 @@ export function AddBindingForm({
 
   return (
     <form
-      className="flex flex-col gap-4 border-2 border-foreground bg-muted p-4"
+      className="flex flex-col gap-4 border border-border bg-muted p-4"
       onSubmit={handleSubmit}
     >
       <div className="flex items-center justify-between">
@@ -60,7 +60,7 @@ export function AddBindingForm({
         </p>
         <Button
           aria-label="Cancel"
-          className="inline-flex size-7 items-center justify-center border-2 border-foreground hover:bg-foreground hover:text-background"
+          className="inline-flex size-7 items-center justify-center border border-border hover:bg-foreground hover:text-background"
           onClick={onCancel}
           size="icon-xs"
           type="button"
@@ -88,7 +88,7 @@ export function AddBindingForm({
 
       <div className="flex items-center gap-2">
         <Button
-          className="inline-flex h-10 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
+          className="inline-flex h-10 items-center justify-center border border-border bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
           disabled={pending}
           size="sm"
           type="submit"
@@ -96,7 +96,7 @@ export function AddBindingForm({
           {pending ? 'Saving…' : 'Save binding'}
         </Button>
         <Button
-          className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+          className="inline-flex h-10 items-center justify-center border border-border px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
           onClick={onCancel}
           size="sm"
           type="button"
@@ -124,7 +124,7 @@ function WorkspaceSelect({
         Workspace
       </span>
       <select
-        className="h-10 w-full border-2 border-foreground bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+        className="h-10 w-full border border-border bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"
         onChange={(event) => onChange(event.target.value)}
         value={teamId}
       >
@@ -151,7 +151,7 @@ function KindSelect({
         Routing kind
       </span>
       <select
-        className="h-10 w-full border-2 border-foreground bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+        className="h-10 w-full border border-border bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"
         onChange={(event) => onChange(event.target.value as NewBindingKind)}
         value={kind}
       >
@@ -182,7 +182,7 @@ function ExternalKeyField({
       </span>
       <input
         aria-label={label}
-        className="h-10 w-full border-2 border-foreground bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+        className="h-10 w-full border border-border bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         required

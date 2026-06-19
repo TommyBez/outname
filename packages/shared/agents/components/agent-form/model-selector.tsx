@@ -73,14 +73,14 @@ export function ModelSelector({
   )
 
   return (
-    <div className="grid gap-6 border-foreground border-b-2 pb-8 md:grid-cols-[12rem_minmax(0,1fr)]">
+    <div className="grid gap-6 border-border border-b pb-8 md:grid-cols-[12rem_minmax(0,1fr)]">
       <div className="flex flex-col gap-1">
         <Label htmlFor="agent-provider">Inference</Label>
       </div>
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <select
-            className="h-11 w-full border-2 border-foreground bg-background px-3 font-bold text-sm"
+            className="h-11 w-full border border-border bg-background px-3 font-bold text-sm"
             id="agent-provider"
             onChange={(event) =>
               setInferenceProvider(event.target.value as InferenceProvider)
@@ -124,7 +124,7 @@ export function ModelSelector({
           <ChevronsUpDownIcon className="size-4 shrink-0 opacity-50" />
         </Button>
         <CommandDialog
-          className="border-2 border-foreground sm:max-w-2xl"
+          className="border border-border sm:max-w-2xl"
           commandProps={{ shouldFilter: false }}
           description="Search models by name, id, or provider."
           onOpenChange={(open) => {

@@ -116,15 +116,15 @@ function SkillCatalogDetailContent({
         </Link>
       </Button>
 
-      <header className="grid gap-5 border-foreground border-t-4 pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
+      <header className="grid gap-5 border-border border-t-4 pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
         <div className="min-w-0">
-          <p className="swiss-label mb-4 text-accent">
+          <p className="swiss-label mb-4 text-brand">
             skills / {detail.source}
           </p>
           <h1 className="break-words font-black font-serif text-4xl uppercase leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl">
             {skillPackage.name}
           </h1>
-          <p className="mt-5 max-w-3xl border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
+          <p className="mt-5 max-w-3xl border-border border-l pl-4 text-muted-foreground text-sm leading-relaxed">
             {skillPackage.description}
           </p>
           <div className="mt-5 flex flex-wrap gap-2">
@@ -139,7 +139,7 @@ function SkillCatalogDetailContent({
           </div>
         </div>
 
-        <aside className="grid content-start gap-4 border-2 border-foreground p-4">
+        <aside className="grid content-start gap-4 border border-border p-4">
           <div>
             <p className="font-black text-xs uppercase tracking-[0.16em]">
               Installation
@@ -170,7 +170,7 @@ function SkillCatalogDetailContent({
       </section>
 
       <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
-        <article className="grid gap-3 border-2 border-foreground p-4">
+        <article className="grid gap-3 border border-border p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-black font-serif text-2xl uppercase leading-none tracking-tighter">
               SKILL.md
@@ -183,7 +183,7 @@ function SkillCatalogDetailContent({
         </article>
 
         <aside className="grid gap-5">
-          <section className="grid gap-3 border-2 border-foreground p-4">
+          <section className="grid gap-3 border border-border p-4">
             <h2 className="font-black font-serif text-xl uppercase leading-none tracking-tighter">
               Package files
             </h2>
@@ -195,13 +195,13 @@ function SkillCatalogDetailContent({
               <div className="grid gap-2">
                 {extraFiles.map((file) => (
                   <div
-                    className="grid gap-1 border-foreground border-l-2 pl-3"
+                    className="grid gap-1 border-border border-l pl-3"
                     key={file.path}
                   >
                     <div className="flex items-center gap-2">
                       <FileCode2
                         aria-hidden
-                        className="size-4 shrink-0 text-accent"
+                        className="size-4 shrink-0 text-brand"
                       />
                       <span className="break-all font-mono text-xs">
                         {file.path}
@@ -218,7 +218,7 @@ function SkillCatalogDetailContent({
             )}
           </section>
 
-          <section className="grid gap-3 border-2 border-foreground p-4">
+          <section className="grid gap-3 border border-border p-4">
             <h2 className="font-black font-serif text-xl uppercase leading-none tracking-tighter">
               Security audits
             </h2>
@@ -264,7 +264,7 @@ function AuditList({ audit }: { audit: SkillsShAuditResponse | null }) {
     <div className="grid gap-3">
       {audits.map((item) => (
         <div
-          className="grid gap-1 border-foreground border-l-2 pl-3"
+          className="grid gap-1 border-border border-l pl-3"
           key={`${item.provider}-${item.slug}`}
         >
           <div className="flex flex-wrap items-center gap-2">
@@ -285,7 +285,7 @@ function AuditList({ audit }: { audit: SkillsShAuditResponse | null }) {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 border-2 border-foreground p-4">
+    <div className="min-w-0 border border-border p-4">
       <p className="font-bold text-muted-foreground text-xs uppercase tracking-[0.16em]">
         {label}
       </p>

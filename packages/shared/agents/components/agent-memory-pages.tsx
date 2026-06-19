@@ -115,7 +115,7 @@ async function ResolvedAgentMemoryTimeline({ params }: { params: Params }) {
         <ul className="flex flex-col gap-12">
           {logs.map((log) => (
             <li key={log.path}>
-              <header className="mb-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-foreground border-b-2 pb-2">
+              <header className="mb-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-border border-b pb-2">
                 <h2 className="font-black font-serif text-3xl uppercase leading-none tracking-tighter">
                   {formatLogPath(log.path)}
                 </h2>
@@ -163,7 +163,7 @@ async function ResolvedAgentMemoryDreams({ params }: { params: Params }) {
       </div>
 
       <section>
-        <h2 className="swiss-label mb-6 text-accent">DREAMS.md</h2>
+        <h2 className="swiss-label mb-6 text-brand">DREAMS.md</h2>
         <RunResultView content={dreams?.content ?? null} />
       </section>
     </>
@@ -181,11 +181,11 @@ function MemorySectionHeader({
 }) {
   return (
     <header className="mb-12">
-      <p className="swiss-label mb-4 text-accent">{eyebrow}</p>
+      <p className="swiss-label mb-4 text-brand">{eyebrow}</p>
       <h1 className="font-black font-serif text-4xl uppercase leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl xl:text-7xl">
         {title}
       </h1>
-      <p className="mt-5 max-w-2xl border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
+      <p className="mt-5 max-w-2xl border-border border-l pl-4 text-muted-foreground text-sm leading-relaxed">
         {description}
       </p>
     </header>

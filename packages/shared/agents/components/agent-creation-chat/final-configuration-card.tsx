@@ -29,8 +29,8 @@ export function FinalConfigurationCard({
   const subAgents = config.tools?.subAgents ?? []
 
   return (
-    <section className="w-full border-2 border-foreground bg-background">
-      <div className="border-foreground border-b-2 bg-accent px-4 py-3">
+    <section className="w-full border border-border bg-background">
+      <div className="border-border border-b bg-brand px-4 py-3">
         <p className="font-bold text-xs uppercase tracking-[0.18em]">
           Review before creation
         </p>
@@ -74,7 +74,7 @@ export function FinalConfigurationCard({
           />
         </div>
 
-        <aside className="border-foreground border-t-2 pt-4 md:border-t-0 md:border-l-2 md:pt-0 md:pl-4">
+        <aside className="border-border border-t pt-4 md:border-t-0 md:border-l md:pt-0 md:pl-4">
           <ToolList maintainerTools={maintainerTools} subAgents={subAgents} />
         </aside>
       </div>
@@ -126,7 +126,7 @@ function ToolList({
 
 function ReviewBlock({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border-foreground border-t-2 pt-3">
+    <div className="border-border border-t pt-3">
       <p className="font-bold text-xs uppercase tracking-[0.16em]">{label}</p>
       <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">
         {value || 'None'}

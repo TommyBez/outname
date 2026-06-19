@@ -51,7 +51,7 @@ export function AgentSidebarWorkspace({
           aria-hidden
           className={cn(
             'inline-block size-1.5 shrink-0 rounded-full',
-            enabled ? 'bg-accent' : 'bg-muted-foreground'
+            enabled ? 'bg-brand' : 'bg-muted-foreground'
           )}
         />
         <span className="truncate">{agentName}</span>

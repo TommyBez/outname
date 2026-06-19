@@ -1,12 +1,13 @@
 import { siteConfig } from '@outname/shared/server/site-metadata'
+import { ThemeProvider } from '@outname/ui/components/theme-provider'
 import { Toaster } from '@outname/ui/components/ui/sonner'
 import { TooltipProvider } from '@outname/ui/components/ui/tooltip'
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
-import { Geist_Mono, Inter } from 'next/font/google'
+import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
+const geist = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
 const geistMono = Geist_Mono({
   subsets: ['latin'],
   variable: '--font-geist-mono',
@@ -53,8 +54,10 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#ffffff',
-  colorScheme: 'light',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#fafafa' },
+    { media: '(prefers-color-scheme: dark)', color: '#0a0a0a' },
+  ],
 }
 
 export default function RootLayout({
@@ -64,12 +67,20 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      className={`${inter.variable} ${geistMono.variable} bg-background`}
+      className={`${geist.variable} ${geistMono.variable} bg-background`}
       lang="en"
+      suppressHydrationWarning
     >
       <body className="font-sans antialiased">
-        <TooltipProvider>{children}</TooltipProvider>
-        <Toaster />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          disableTransitionOnChange
+          enableSystem
+        >
+          <TooltipProvider>{children}</TooltipProvider>
+          <Toaster />
+        </ThemeProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

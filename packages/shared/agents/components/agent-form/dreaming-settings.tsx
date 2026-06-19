@@ -9,7 +9,7 @@ export function DreamingSettings({
   setDreamingEnabled: (value: boolean) => void
 }) {
   return (
-    <div className="grid gap-4 border-2 border-foreground bg-background p-5 md:grid-cols-[12rem_minmax(0,1fr)]">
+    <div className="grid gap-4 border border-border bg-background p-5 md:grid-cols-[12rem_minmax(0,1fr)]">
       <Label
         className="font-bold text-sm uppercase tracking-[0.14em]"
         htmlFor="agent-dreaming"

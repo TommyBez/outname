@@ -71,13 +71,13 @@ function SubAgentSection({
 }) {
   return (
     <section>
-      <h3 className="swiss-label mb-4 text-accent">{title}</h3>
+      <h3 className="swiss-label mb-4 text-brand">{title}</h3>
       {candidates.length === 0 ? (
-        <p className="border-foreground border-y-2 py-6 text-muted-foreground text-sm">
+        <p className="border-border border-y py-6 text-muted-foreground text-sm">
           {emptyText}
         </p>
       ) : (
-        <ul className="flex flex-col divide-y-2 divide-foreground border-foreground border-y-2">
+        <ul className="flex flex-col divide-y-2 divide-foreground border-border border-y">
           {candidates.map((candidate) => (
             <li className="py-6" key={candidate.agentId}>
               <SubAgentRow entry={candidate} parentAgentId={parentAgentId} />
@@ -148,7 +148,7 @@ function SubAgentRow({
       <div className="flex flex-wrap items-center gap-2">
         {!attached && (
           <Button
-            className="inline-flex h-10 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
+            className="inline-flex h-10 items-center justify-center border border-border bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
             disabled={pending}
             onClick={handleAttach}
             size="sm"
@@ -159,7 +159,7 @@ function SubAgentRow({
         )}
         {attached && (
           <Button
-            className="inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
+            className="inline-flex h-10 items-center justify-center border border-border px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
             disabled={pending}
             onClick={handleDetach}
             size="sm"
@@ -170,7 +170,7 @@ function SubAgentRow({
           </Button>
         )}
         {attached && (
-          <output className="inline-flex h-10 items-center border-2 border-foreground bg-foreground px-3 font-bold text-[10px] text-background uppercase tracking-[0.16em]">
+          <output className="inline-flex h-10 items-center border border-border bg-foreground px-3 font-bold text-[10px] text-background uppercase tracking-[0.16em]">
             Attached
           </output>
         )}

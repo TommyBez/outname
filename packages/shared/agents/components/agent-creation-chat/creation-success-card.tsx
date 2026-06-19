@@ -13,8 +13,8 @@ export function CreationSuccessCard({
   )
 
   return (
-    <section className="w-full border-2 border-foreground bg-background">
-      <div className="border-foreground border-b-2 bg-foreground px-4 py-3 text-background">
+    <section className="w-full border border-border bg-background">
+      <div className="border-border border-b bg-foreground px-4 py-3 text-background">
         <p className="font-bold text-xs uppercase tracking-[0.18em]">
           Agent ready
         </p>
@@ -32,14 +32,14 @@ export function CreationSuccessCard({
         </div>
 
         {pendingAttachments.length > 0 && (
-          <p className="border-2 border-foreground bg-muted px-3 py-2 text-sm">
+          <p className="border border-border bg-muted px-3 py-2 text-sm">
             {pendingAttachments.length} tool environment{' '}
             {pendingAttachments.length === 1 ? 'is' : 'are'} building.
           </p>
         )}
 
         {failedAttachments.length > 0 && (
-          <div className="border-2 border-destructive bg-destructive/5 px-3 py-2 text-destructive text-sm">
+          <div className="border border-destructive bg-destructive/5 px-3 py-2 text-destructive text-sm">
             <p className="font-bold">Some tools were not attached.</p>
             <ul className="mt-2 list-disc pl-4">
               {failedAttachments.map((item) => (

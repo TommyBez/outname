@@ -63,7 +63,7 @@ export function MobileStageCard({
     <motion.article
       aria-current={active ? 'step' : undefined}
       className={cn(
-        'scroll-mt-24 border-2 border-foreground p-2 transition-colors duration-200 will-change-transform',
+        'scroll-mt-24 border border-border p-2 transition-colors duration-200 will-change-transform',
         mobileStageSurfaceTone(active, attached)
       )}
       data-stage-index={stageIndex}
@@ -74,19 +74,19 @@ export function MobileStageCard({
         className={cn(
           'border p-5',
           active
-            ? 'border-foreground bg-background'
-            : 'border-foreground/15 bg-background'
+            ? 'border-border bg-background'
+            : 'border-border/15 bg-background'
         )}
       >
-        <div className="flex items-start justify-between gap-3 border-foreground border-b-2 pb-4">
+        <div className="flex items-start justify-between gap-3 border-border border-b pb-4">
           <div>
-            <p className="swiss-label text-accent">{stage.eyebrow}</p>
+            <p className="swiss-label text-brand">{stage.eyebrow}</p>
             <h3 className="mt-3 font-black text-3xl uppercase leading-none tracking-normal">
               {stage.label}
             </h3>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <span className="grid size-11 place-items-center border-2 border-foreground bg-accent">
+            <span className="grid size-11 place-items-center border border-border bg-brand">
               <Icon className="size-5" />
             </span>
             <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-normal">
@@ -103,7 +103,7 @@ export function MobileStageCard({
           {stage.parts.map((part) => (
             <span
               className={cn(
-                'border-2 border-foreground px-3 py-2 font-mono text-[11px] uppercase tracking-normal',
+                'border border-border px-3 py-2 font-mono text-[11px] uppercase tracking-normal',
                 active || attached ? 'bg-background' : 'bg-muted'
               )}
               key={part.id}

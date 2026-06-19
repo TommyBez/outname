@@ -32,14 +32,14 @@ export const metadata: Metadata = createPrivatePageMetadata(
 export default function SettingsPage() {
   return (
     <>
-      <header className="mb-12 border-foreground border-t-4 pt-6 md:mb-16">
-        <p className="swiss-label mb-4 text-accent">10. Settings</p>
+      <header className="mb-12 border-border border-t-4 pt-6 md:mb-16">
+        <p className="swiss-label mb-4 text-brand">10. Settings</p>
         <h1 className="font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
           Your assistant
         </h1>
       </header>
 
-      <div className="border-foreground border-y-2">
+      <div className="border-border border-y">
         <Section title="Budget">
           <Suspense fallback={<div className="h-32" />}>
             <BudgetSection />
@@ -132,7 +132,7 @@ async function AgentsSummarySection() {
         </p>
       </div>
       <Link
-        className="inline-flex h-11 shrink-0 items-center justify-center self-start border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background sm:self-auto"
+        className="inline-flex h-11 shrink-0 items-center justify-center self-start border border-border px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background sm:self-auto"
         href="/agents"
       >
         Manage agents →
@@ -184,7 +184,7 @@ function WaitlistSection() {
         </p>
       </div>
       <Link
-        className="inline-flex h-11 shrink-0 items-center justify-center self-start border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background sm:self-auto"
+        className="inline-flex h-11 shrink-0 items-center justify-center self-start border border-border px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background sm:self-auto"
         href="/settings/waitlist"
       >
         Open waitlist →
@@ -201,8 +201,8 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <section className="grid grid-cols-1 gap-6 border-foreground border-b-2 py-10 last:border-b-0 lg:grid-cols-[160px_1fr] lg:gap-10">
-      <h2 className="swiss-label text-accent">{title}</h2>
+    <section className="grid grid-cols-1 gap-6 border-border border-b py-10 last:border-b-0 lg:grid-cols-[160px_1fr] lg:gap-10">
+      <h2 className="swiss-label text-brand">{title}</h2>
       <div className="min-w-0">{children}</div>
     </section>
   )

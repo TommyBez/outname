@@ -36,7 +36,7 @@ export function InstallationsBlock({
           channel and DM messages into your agents.
         </p>
       ) : (
-        <ul className="flex flex-col divide-y-2 divide-foreground border-foreground border-y-2">
+        <ul className="flex flex-col divide-y-2 divide-foreground border-border border-y">
           {installations.map((install) => (
             <li
               className="flex items-center justify-between gap-3 py-3"
@@ -65,7 +65,7 @@ export function InstallationsBlock({
                 title="Disconnect this workspace?"
                 trigger={
                   <Button
-                    className="inline-flex h-9 items-center justify-center border-2 border-foreground px-3 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
+                    className="inline-flex h-9 items-center justify-center border border-border px-3 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
                     size="xs"
                     type="button"
                     variant="outline"
@@ -79,7 +79,7 @@ export function InstallationsBlock({
         </ul>
       )}
       <a
-        className="inline-flex h-10 w-fit items-center gap-2 border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground"
+        className="inline-flex h-10 w-fit items-center gap-2 border border-border bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground"
         href={installHref}
       >
         <Plus aria-hidden className="size-3.5" />

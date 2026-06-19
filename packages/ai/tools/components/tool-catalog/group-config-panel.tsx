@@ -57,7 +57,7 @@ export function GroupConfigPanel({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-3 border-2 border-foreground bg-background p-3">
+      <div className="flex flex-col gap-3 border border-border bg-background p-3">
         <p className="font-black font-mono text-xs uppercase tracking-[0.08em]">
           Resource groups
         </p>
@@ -115,7 +115,7 @@ export function GroupConfigPanel({
           <span>Enabled</span>
           <span>Access</span>
         </div>
-        <div className="flex max-h-80 flex-col gap-2 overflow-y-auto border-2 border-foreground bg-background p-2">
+        <div className="flex max-h-80 flex-col gap-2 overflow-y-auto border border-border bg-background p-2">
           {groupSections.map((group) => (
             <GroupConfigRow
               disabled={disabled}
@@ -188,7 +188,7 @@ function GroupConfigRow({
   values: Record<string, string>
 }) {
   return (
-    <div className="grid gap-3 border border-foreground/20 p-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
+    <div className="grid gap-3 border border-border/20 p-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
       <div className="min-w-0">
         <p className="font-black font-mono text-xs uppercase tracking-[0.08em]">
           {group.section}

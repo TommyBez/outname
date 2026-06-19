@@ -31,11 +31,11 @@ export function LandingComposableWorkbench({
           whileInView="visible"
         >
           <motion.div
-            className="grid gap-5 border-foreground border-t-4 pt-5 md:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)] md:items-end"
+            className="grid gap-5 border-border border-t-4 pt-5 md:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)] md:items-end"
             variants={revealVariants}
           >
             <div>
-              <p className="swiss-label text-accent">Anatomy of an agent</p>
+              <p className="swiss-label text-brand">Anatomy of an agent</p>
               <h2 className="mt-4 text-balance font-black text-5xl uppercase leading-[0.88] tracking-normal md:text-7xl">
                 An agent is what you attach to it.
               </h2>

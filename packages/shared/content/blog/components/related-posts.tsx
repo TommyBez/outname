@@ -18,14 +18,14 @@ export function RelatedPosts({ posts }: RelatedPostsProps) {
       >
         Related posts
       </h2>
-      <ul className="divide-y-2 divide-foreground border-foreground border-y-2">
+      <ul className="divide-y-2 divide-foreground border-border border-y">
         {posts.map((relatedPost) => (
           <li key={relatedPost.slug}>
             <Link
               className="group block py-6 transition-colors hover:bg-accent/5"
               href={`/blog/${relatedPost.slug}`}
             >
-              <h3 className="font-black font-serif text-lg uppercase leading-none tracking-tighter transition-colors group-hover:text-accent">
+              <h3 className="font-black font-serif text-lg uppercase leading-none tracking-tighter transition-colors group-hover:text-brand">
                 {relatedPost.title}
               </h3>
               <p className="mt-2 max-w-2xl text-muted-foreground text-sm leading-relaxed">

@@ -1,6 +1,7 @@
 'use client'
 
 import { signOut } from '@outname/auth/server/auth-client'
+import { ThemeToggle } from '@outname/ui/components/theme-toggle'
 import {
   Sidebar,
   SidebarContent,
@@ -57,16 +58,13 @@ export function AppSidebar({ sidebarExtras }: AppSidebarProps = {}) {
   }, [isMobile, setOpenMobile])
 
   return (
-    <Sidebar className="border-sidebar-border border-r-2" collapsible="icon">
-      <SidebarHeader className="border-sidebar-border border-b-2 px-3 py-5">
+    <Sidebar className="border-sidebar-border border-r" collapsible="icon">
+      <SidebarHeader className="border-sidebar-border border-b px-3 py-5">
         <Link
-          className="flex min-h-11 items-center gap-3 font-black text-foreground text-sm uppercase tracking-[0.22em] transition-colors hover:text-accent"
+          className="flex min-h-11 items-center gap-2.5 font-semibold text-foreground text-sm tracking-tight transition-colors hover:text-brand"
           href="/dashboard"
         >
-          <span
-            aria-hidden
-            className="inline-block size-3 shrink-0 bg-accent"
-          />
+          <span aria-hidden className="inline-block size-3 shrink-0 bg-brand" />
           <span className="truncate group-data-[collapsible=icon]:hidden">
             outna.me
           </span>
@@ -81,7 +79,6 @@ export function AppSidebar({ sidebarExtras }: AppSidebarProps = {}) {
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     asChild
-                    className="font-bold uppercase tracking-[0.12em] data-[active=true]:border-foreground data-[active=true]:bg-accent data-[active=true]:text-foreground"
                     isActive={isActive(item.href)}
                     tooltip={item.label}
                   >
@@ -102,8 +99,14 @@ export function AppSidebar({ sidebarExtras }: AppSidebarProps = {}) {
         {sidebarExtras}
       </SidebarContent>
 
-      <SidebarFooter className="border-sidebar-border border-t-2">
+      <SidebarFooter className="border-sidebar-border border-t">
         <SidebarMenu>
+          <SidebarMenuItem className="flex items-center justify-between gap-2 px-1 group-data-[collapsible=icon]:justify-center">
+            <span className="text-muted-foreground text-xs group-data-[collapsible=icon]:hidden">
+              Theme
+            </span>
+            <ThemeToggle />
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SignOutMenuButton />
           </SidebarMenuItem>
@@ -115,13 +118,10 @@ export function AppSidebar({ sidebarExtras }: AppSidebarProps = {}) {
 
 export function AppSidebarFallback() {
   return (
-    <Sidebar className="border-sidebar-border border-r-2" collapsible="icon">
-      <SidebarHeader className="border-sidebar-border border-b-2 px-3 py-5">
-        <div className="flex min-h-11 items-center gap-3 font-black text-foreground text-sm uppercase tracking-[0.22em]">
-          <span
-            aria-hidden
-            className="inline-block size-3 shrink-0 bg-accent"
-          />
+    <Sidebar className="border-sidebar-border border-r" collapsible="icon">
+      <SidebarHeader className="border-sidebar-border border-b px-3 py-5">
+        <div className="flex min-h-11 items-center gap-2.5 font-semibold text-foreground text-sm tracking-tight">
+          <span aria-hidden className="inline-block size-3 shrink-0 bg-brand" />
           <span className="truncate group-data-[collapsible=icon]:hidden">
             outna.me
           </span>
@@ -168,7 +168,7 @@ function SignOutMenuButton() {
 
   return (
     <SidebarMenuButton
-      className="font-bold text-muted-foreground uppercase tracking-[0.12em] hover:bg-accent hover:text-foreground"
+      className="text-muted-foreground hover:bg-accent hover:text-foreground"
       disabled={isPending}
       onClick={handleSignOut}
       tooltip="Sign out"

@@ -19,10 +19,10 @@ export function CaptionRail({
   const Icon = stageIcons[activeStage.id]
 
   return (
-    <aside className="border-2 border-foreground bg-background p-6">
+    <aside className="border border-border bg-background p-6">
       <div className="flex items-center justify-between gap-3">
-        <p className="swiss-label text-accent">{activeStage.eyebrow}</p>
-        <span className="grid size-12 place-items-center border-2 border-foreground bg-accent">
+        <p className="swiss-label text-brand">{activeStage.eyebrow}</p>
+        <span className="grid size-12 place-items-center border border-border bg-brand">
           <Icon className="size-5" />
         </span>
       </div>
@@ -39,7 +39,7 @@ export function CaptionRail({
         {composabilityStages.map((stage, index) => (
           <div
             className={cn(
-              'border-2 border-foreground p-2',
+              'border border-border p-2',
               index === activeIndex
                 ? 'bg-foreground text-background'
                 : 'bg-background'
@@ -56,10 +56,10 @@ export function CaptionRail({
         ))}
       </div>
 
-      <div className="mt-6 h-2 overflow-hidden border-2 border-foreground bg-muted">
+      <div className="mt-6 h-2 overflow-hidden border border-border bg-muted">
         <motion.span
           aria-hidden
-          className="block h-full origin-left bg-accent"
+          className="block h-full origin-left bg-brand"
           style={{ scaleX: progressScaleX }}
         />
       </div>

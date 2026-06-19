@@ -20,7 +20,7 @@ export function BlogBreadcrumbs({ items }: BlogBreadcrumbsProps) {
             <li className="inline-flex items-center gap-2" key={item.label}>
               {item.href && !isLast ? (
                 <Link
-                  className="transition-colors hover:text-accent"
+                  className="transition-colors hover:text-brand"
                   href={item.href}
                 >
                   {item.label}

@@ -129,8 +129,8 @@ export function ConversationRow({
         <form
           action={submitRename}
           className={cn(
-            'flex items-center gap-1 border-2 border-sidebar-border bg-sidebar-accent px-2 py-1.5',
-            isActive && 'border-foreground'
+            'flex items-center gap-1 border border-sidebar-border bg-sidebar-accent px-2 py-1.5',
+            isActive && 'border-border'
           )}
         >
           <input

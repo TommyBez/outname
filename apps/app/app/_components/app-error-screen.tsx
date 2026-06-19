@@ -20,8 +20,8 @@ export function AppErrorScreen({
 }: AppErrorScreenProps) {
   return (
     <main className="swiss-grid-pattern grid min-h-svh place-items-center bg-background px-6">
-      <div className="max-w-md border-4 border-foreground bg-background p-8">
-        <p className="swiss-label text-accent">{eyebrow}</p>
+      <div className="max-w-md border border-border bg-background p-8">
+        <p className="swiss-label text-brand">{eyebrow}</p>
         <h1 className="mt-4 text-balance font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter">
           {title}
         </h1>

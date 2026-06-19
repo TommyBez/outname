@@ -22,8 +22,8 @@ export function LandingHeroDemo({
 }) {
   return (
     <section className="relative px-4 pt-24 pb-24 sm:px-6 sm:pt-28 md:px-10 md:pb-32 lg:px-12 lg:pt-32 lg:pb-40">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-10 border-foreground border-t-4 pt-5 lg:min-h-[calc(100vh-9rem)] lg:justify-between">
-        <p className="swiss-label text-accent">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-10 border-border border-t-4 pt-5 lg:min-h-[calc(100vh-9rem)] lg:justify-between">
+        <p className="swiss-label text-brand">
           OUTNA.ME /
           <TextLoop
             className="ml-2 inline-flex"
@@ -43,7 +43,7 @@ export function LandingHeroDemo({
           </h1>
         </div>
 
-        <div className="grid gap-8 border-foreground border-t-2 pt-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+        <div className="grid gap-8 border-border border-t pt-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
           <p className="max-w-2xl text-base leading-relaxed md:text-lg">
             They remember. They learn. They call other agents. Every run
             sharpens the next.

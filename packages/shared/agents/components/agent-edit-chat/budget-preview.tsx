@@ -139,8 +139,8 @@ export function BudgetApprovalPreview({
     },
   ]
   return (
-    <section className="border-2 border-foreground bg-background">
-      <div className="border-foreground border-b-2 px-3 py-2">
+    <section className="border border-border bg-background">
+      <div className="border-border border-b px-3 py-2">
         <p className="font-bold text-xs uppercase tracking-[0.16em]">
           Budget changes
         </p>

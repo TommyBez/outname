@@ -11,7 +11,7 @@ export function PrimaryLink({
 }) {
   return (
     <Link
-      className="group ease inline-flex min-h-14 w-full items-center justify-center gap-4 border-2 border-foreground bg-foreground py-2 pr-2 pl-6 font-bold text-background text-xs uppercase tracking-normal transition-[transform,background-color,color,border-color] duration-150 hover:border-accent hover:bg-accent hover:text-foreground active:scale-[0.98] sm:w-auto"
+      className="group ease inline-flex min-h-14 w-full items-center justify-center gap-4 border border-border bg-foreground py-2 pr-2 pl-6 font-bold text-background text-xs uppercase tracking-normal transition-[transform,background-color,color,border-color] duration-150 hover:border-brand hover:bg-brand hover:text-brand-foreground active:scale-[0.98] sm:w-auto"
       href={href}
     >
       {children}

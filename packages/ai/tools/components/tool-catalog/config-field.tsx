@@ -43,7 +43,7 @@ export function ConfigField({
       ) : (
         <input
           aria-label={field.label}
-          className="h-10 w-full border-2 border-foreground bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+          className="h-10 w-full border border-border bg-background px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"
           id={inputId}
           onChange={(event) => onChange(event.target.value)}
           placeholder={field.placeholder}

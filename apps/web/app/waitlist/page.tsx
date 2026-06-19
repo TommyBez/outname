@@ -25,7 +25,7 @@ export default async function WaitlistPage({
 }) {
   return (
     <main className="swiss-grid-pattern grid min-h-svh place-items-center bg-background px-6 py-12">
-      <div className="w-full max-w-2xl border-4 border-foreground bg-background p-8 md:p-10">
+      <div className="w-full max-w-2xl border border-border bg-background p-8 md:p-10">
         <Suspense fallback={<WaitlistFallback />}>
           <WaitlistPageContent searchParams={searchParams} />
         </Suspense>
@@ -49,12 +49,12 @@ async function WaitlistPageContent({
 
   return (
     <>
-      <div className="mb-10 border-foreground border-t-4 pt-5">
-        <p className="swiss-label text-accent">00. early access</p>
+      <div className="mb-10 border-border border-t-4 pt-5">
+        <p className="swiss-label text-brand">00. early access</p>
         <h1 className="mt-4 font-black font-serif text-4xl uppercase leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl">
           Join the waitlist
         </h1>
-        <p className="mt-4 max-w-xl border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
+        <p className="mt-4 max-w-xl border-border border-l pl-4 text-muted-foreground text-sm leading-relaxed">
           Request access to OUTNA.ME. We&apos;ll email a confirmation link, then
           notify you when your spot is ready.
         </p>
@@ -68,10 +68,10 @@ async function WaitlistPageContent({
         utmSource={params.utm_source}
       />
 
-      <div className="mt-8 border-foreground border-t-2 pt-5 text-xs uppercase tracking-[0.14em]">
+      <div className="mt-8 border-border border-t pt-5 text-xs uppercase tracking-[0.14em]">
         Already have access?{' '}
         <Link
-          className="font-bold text-accent underline-offset-4 hover:underline"
+          className="font-bold text-brand underline-offset-4 hover:underline"
           href={getAppLoginUrl('/dashboard')}
         >
           Sign in
@@ -83,7 +83,7 @@ async function WaitlistPageContent({
 
 function WaitlistFallback() {
   return (
-    <div className="border-foreground border-t-4 pt-5 text-muted-foreground text-sm">
+    <div className="border-border border-t-4 pt-5 text-muted-foreground text-sm">
       Loading waitlist…
     </div>
   )

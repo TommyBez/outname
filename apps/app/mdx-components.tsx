@@ -6,7 +6,7 @@ function MdxLink({ href, children, ...props }: ComponentPropsWithoutRef<'a'>) {
   if (href?.startsWith('/')) {
     return (
       <Link
-        className="text-accent underline-offset-4 hover:underline"
+        className="text-brand underline-offset-4 hover:underline"
         href={href}
         {...props}
       >
@@ -19,7 +19,7 @@ function MdxLink({ href, children, ...props }: ComponentPropsWithoutRef<'a'>) {
     return (
       <a
         {...props}
-        className="text-accent underline-offset-4 hover:underline"
+        className="text-brand underline-offset-4 hover:underline"
         href={href}
         rel="noreferrer"
         target="_blank"
@@ -32,7 +32,7 @@ function MdxLink({ href, children, ...props }: ComponentPropsWithoutRef<'a'>) {
   return (
     <a
       {...props}
-      className="text-accent underline-offset-4 hover:underline"
+      className="text-brand underline-offset-4 hover:underline"
       href={href}
     >
       {children}
@@ -69,7 +69,7 @@ const components = {
     <strong className="font-bold text-foreground">{children}</strong>
   ),
   em: ({ children }) => <em className="italic">{children}</em>,
-  hr: () => <hr className="my-10 border-foreground border-t-2" />,
+  hr: () => <hr className="my-10 border-border border-t" />,
   a: MdxLink,
 } satisfies MDXComponents
 

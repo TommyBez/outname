@@ -49,7 +49,7 @@ export function InviteUserForm() {
   return (
     <form
       action={submitInvite}
-      className="grid gap-4 border-foreground border-t-2 pt-8 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto]"
+      className="grid gap-4 border-border border-t pt-8 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto]"
     >
       <label className="flex flex-col gap-2">
         <span className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
@@ -58,7 +58,7 @@ export function InviteUserForm() {
         <input
           aria-label="Invitee email"
           autoComplete="email"
-          className="h-11 border-2 border-foreground bg-background px-3 text-sm"
+          className="h-11 border border-border bg-background px-3 text-sm"
           disabled={isPending}
           name="email"
           onChange={(event) => setEmail(event.target.value)}
@@ -76,7 +76,7 @@ export function InviteUserForm() {
         <input
           aria-label="Invitee name"
           autoComplete="name"
-          className="h-11 border-2 border-foreground bg-background px-3 text-sm"
+          className="h-11 border border-border bg-background px-3 text-sm"
           disabled={isPending}
           name="name"
           onChange={(event) => setName(event.target.value)}

@@ -53,7 +53,7 @@ export function CreateAgentToolCard({
           <FinalConfigurationCard config={part.input} timeZone={timeZone} />
           <Confirmation
             approval={part.approval as ConfirmationApproval}
-            className="rounded-none border-2 border-foreground"
+            className="rounded-none border border-border"
             state={part.state}
           >
             <ConfirmationRequest>
@@ -103,7 +103,7 @@ export function CreateAgentToolCard({
         <ToolContent>
           <Confirmation
             approval={part.approval as ConfirmationApproval}
-            className="rounded-none border-2 border-foreground"
+            className="rounded-none border border-border"
             state={part.state}
           >
             <ConfirmationAccepted>
@@ -142,7 +142,7 @@ export function CreateAgentToolCard({
         <ToolContent>
           <Confirmation
             approval={part.approval as ConfirmationApproval}
-            className="rounded-none border-2 border-foreground"
+            className="rounded-none border border-border"
             state={part.state}
           >
             <ConfirmationRejected>

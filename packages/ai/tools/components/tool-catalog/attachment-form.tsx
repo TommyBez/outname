@@ -113,7 +113,7 @@ export function AttachmentForm({
       />
       {open && hasFields && (
         <form
-          className="flex w-full max-w-2xl flex-col gap-3 border-2 border-foreground bg-muted p-4"
+          className="flex w-full max-w-2xl flex-col gap-3 border border-border bg-muted p-4"
           onSubmit={handleAttachSubmit}
         >
           {generalFields.map((field) => (
@@ -145,7 +145,7 @@ export function AttachmentForm({
                 </p>
                 {group.hasOverride && (
                   <Button
-                    className="inline-flex h-8 items-center justify-center border-2 border-foreground px-3 font-bold text-[10px] uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
+                    className="inline-flex h-8 items-center justify-center border border-border px-3 font-bold text-[10px] uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
                     disabled={pending}
                     onClick={() => handleClearOverride(group.connectorId)}
                     size="xs"
@@ -179,7 +179,7 @@ export function AttachmentForm({
             </div>
           ))}
           <Button
-            className="inline-flex h-10 items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
+            className="inline-flex h-10 items-center justify-center border border-border bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
             disabled={pending}
             size="sm"
             type="submit"

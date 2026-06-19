@@ -52,7 +52,7 @@ export function AgentEnabledToggle({
   // gives contradictory announcements.
   return (
     <button
-      className="inline-flex h-10 items-center justify-center gap-2 border-2 border-foreground px-4 font-bold text-[10px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background disabled:cursor-not-allowed disabled:opacity-60"
+      className="inline-flex h-10 items-center justify-center gap-2 border border-border px-4 font-bold text-[10px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background disabled:cursor-not-allowed disabled:opacity-60"
       disabled={pending}
       onClick={handleToggle}
       type="button"

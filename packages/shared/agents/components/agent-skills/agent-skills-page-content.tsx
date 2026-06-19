@@ -278,20 +278,20 @@ export function AgentSkillsPageContent({
 
   return (
     <div className="flex flex-col gap-8">
-      <header className="border-foreground border-t-4 pt-6">
+      <header className="border-border border-t-4 pt-6">
         <div className="min-w-0">
-          <p className="swiss-label mb-4 text-accent">{agentName}</p>
+          <p className="swiss-label mb-4 text-brand">{agentName}</p>
           <h1 className="font-black font-serif text-4xl uppercase leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl xl:text-7xl">
             Skills
           </h1>
-          <p className="mt-5 max-w-2xl border-foreground border-l-2 pl-4 text-muted-foreground text-sm leading-relaxed">
+          <p className="mt-5 max-w-2xl border-border border-l pl-4 text-muted-foreground text-sm leading-relaxed">
             Install one Agent Skill package for this agent and run its scripts
             in the dedicated Skill Sandbox.
           </p>
         </div>
       </header>
 
-      <Alert className="border-2 border-foreground bg-muted">
+      <Alert className="border border-border bg-muted">
         <AlertTriangle className="size-4" />
         <AlertTitle>Skill Sandbox execution</AlertTitle>
         <AlertDescription>
@@ -331,8 +331,8 @@ function InstalledSkillsList({
 }) {
   if (skills.length === 0) {
     return (
-      <div className="flex min-h-48 flex-col items-start justify-center border-2 border-foreground border-dashed p-6">
-        <BookOpenCheck aria-hidden className="mb-4 size-6 text-accent" />
+      <div className="flex min-h-48 flex-col items-start justify-center border border-border border-dashed p-6">
+        <BookOpenCheck aria-hidden className="mb-4 size-6 text-brand" />
         <p className="font-black font-serif text-2xl uppercase leading-none tracking-tighter">
           No skills installed.
         </p>
@@ -371,7 +371,7 @@ function SkillRow({
   skill: InstalledSkillView
 }) {
   return (
-    <article className="grid gap-4 border-2 border-foreground p-4 md:grid-cols-[minmax(0,1fr)_auto]">
+    <article className="grid gap-4 border border-border p-4 md:grid-cols-[minmax(0,1fr)_auto]">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="font-black font-serif text-2xl uppercase leading-none tracking-tighter">
@@ -413,7 +413,7 @@ function SkillRow({
 
 function SkillMeta({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 border-foreground border-l-2 pl-3">
+    <div className="min-w-0 border-border border-l pl-3">
       <dt className="font-bold text-muted-foreground uppercase tracking-[0.16em]">
         {label}
       </dt>
@@ -490,8 +490,8 @@ function AgentSkillInstallSurface({
 
   return (
     <section className="grid gap-5">
-      <div className="grid gap-2 border-foreground border-t-4 pt-4">
-        <p className="swiss-label text-accent">Catalog</p>
+      <div className="grid gap-2 border-border border-t-4 pt-4">
+        <p className="swiss-label text-brand">Catalog</p>
         <h2 className="font-black font-serif text-3xl uppercase leading-none tracking-tighter">
           Add skill
         </h2>
@@ -629,7 +629,7 @@ function SkillCatalogPicker({
   })
 
   return (
-    <section className="grid gap-5 border-2 border-foreground p-4 lg:p-5">
+    <section className="grid gap-5 border border-border p-4 lg:p-5">
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
         <div className="grid gap-2">
           <Label htmlFor="skill-catalog-search">Search catalog</Label>
@@ -649,7 +649,7 @@ function SkillCatalogPicker({
             />
           </div>
         </div>
-        <div className="flex items-center gap-2 border-foreground border-l-2 pl-3">
+        <div className="flex items-center gap-2 border-border border-l pl-3">
           <Switch
             checked={curated}
             id="skill-catalog-curated"
@@ -660,7 +660,7 @@ function SkillCatalogPicker({
       </div>
 
       {catalogError && (
-        <Alert className="border-2 border-destructive">
+        <Alert className="border border-destructive">
           <AlertTriangle className="size-4" />
           <AlertTitle>Catalog unavailable</AlertTitle>
           <AlertDescription>{catalogError}</AlertDescription>
@@ -690,7 +690,7 @@ function SkillCatalogPicker({
 
 function CatalogSkillListSkeleton() {
   return CATALOG_SKILL_SKELETON_IDS.map((id) => (
-    <div className="grid gap-2 border-2 border-foreground p-3" key={id}>
+    <div className="grid gap-2 border border-border p-3" key={id}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <Skeleton className="h-4 w-36" />
@@ -715,7 +715,7 @@ function CatalogSkillLink({
 }) {
   return (
     <Link
-      className="grid gap-2 border-2 border-foreground p-3 text-left transition-colors hover:bg-muted"
+      className="grid gap-2 border border-border p-3 text-left transition-colors hover:bg-muted"
       href={`/agents/${encodeURIComponent(agentId)}/skills/catalog/${encodeCatalogSkillIdForPath(skill.id)}`}
     >
       <div className="flex items-start justify-between gap-3">
@@ -750,7 +750,7 @@ function ManualSkillSourcePicker({
   sourceType: ManualSkillSourceType
 }) {
   return (
-    <details className="border-2 border-foreground p-4">
+    <details className="border border-border p-4">
       <summary className="cursor-pointer font-bold text-sm uppercase tracking-[0.16em]">
         Manual import
       </summary>
@@ -844,7 +844,7 @@ function SkillFileInput({
 
 function SkillInstallPreview({ conflict }: { conflict: SkillConflict }) {
   return (
-    <div className="grid gap-3 border-2 border-destructive p-4">
+    <div className="grid gap-3 border border-destructive p-4">
       <p className="font-black text-destructive text-xs uppercase tracking-[0.16em]">
         Name conflict
       </p>
@@ -874,7 +874,7 @@ function ConflictPanel({
   name: string
 }) {
   return (
-    <div className="border-foreground border-l-2 pl-3">
+    <div className="border-border border-l pl-3">
       <p className="font-bold text-muted-foreground text-xs uppercase tracking-[0.16em]">
         {label}
       </p>

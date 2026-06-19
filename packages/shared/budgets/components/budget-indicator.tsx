@@ -131,7 +131,7 @@ function BudgetMeter({
   }
 
   return (
-    <div className="border-foreground border-l-2 pl-4">
+    <div className="border-border border-l pl-4">
       <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
         {label}
         {disabled ? ' · off' : ''}

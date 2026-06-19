@@ -9,68 +9,120 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Swiss International system.
- * Light-first, high-contrast, border-defined, and intentionally flat.
- * Keep the shadcn semantic token surface stable while replacing the
- * terminal/lime identity with black, white, muted gray, and Swiss red.
+ * Geist-inspired design system (after vercel.com/design).
+ * Light-first with a true dark theme. Near-white surfaces, deep ink text,
+ * a deliberate grayscale ladder, hairline borders, and gentle radii.
+ * Red is the single signal color: focus, destructive, selection, and the
+ * dedicated `brand` token. Everything else stays calm and monochrome.
  */
 :root {
-  --background: #ffffff;
-  --foreground: #000000;
+  --background: #fafafa;
+  --foreground: #171717;
 
   --card: #ffffff;
-  --card-foreground: #000000;
+  --card-foreground: #171717;
   --popover: #ffffff;
-  --popover-foreground: #000000;
+  --popover-foreground: #171717;
 
-  --primary: #000000;
-  --primary-foreground: #ffffff;
+  /* Ink is the conversion target. */
+  --primary: #171717;
+  --primary-foreground: #fafafa;
 
   --secondary: #f2f2f2;
-  --secondary-foreground: #000000;
+  --secondary-foreground: #171717;
 
   --muted: #f2f2f2;
-  --muted-foreground: #4a4a4a;
+  --muted-foreground: #666666;
 
-  /* Swiss red is a signal, not decoration. */
-  --accent: #ff3000;
-  --accent-foreground: #000000;
+  /* Subtle neutral wash for hover/focus surfaces (not the brand color). */
+  --accent: #f2f2f2;
+  --accent-foreground: #171717;
 
-  --destructive: #ff3000;
-  --destructive-foreground: #000000;
+  /* Red keeps its role as the one signal across the system. */
+  --brand: #ee0000;
+  --brand-foreground: #ffffff;
+  --destructive: #ee0000;
+  --destructive-foreground: #ffffff;
 
-  --border: #000000;
-  --input: #000000;
-  --ring: #ff3000;
+  --border: #ebebeb;
+  --input: #ebebeb;
+  --ring: #ee0000;
 
-  --chart-1: #000000;
-  --chart-2: #ff3000;
-  --chart-3: #4a4a4a;
-  --chart-4: #9a9a9a;
-  --chart-5: #f2f2f2;
+  --chart-1: #171717;
+  --chart-2: #ee0000;
+  --chart-3: #666666;
+  --chart-4: #a1a1a1;
+  --chart-5: #d4d4d4;
 
-  --radius: 0px;
+  --radius: 0.5rem;
 
-  --sidebar: #ffffff;
-  --sidebar-foreground: #000000;
-  --sidebar-primary: #000000;
-  --sidebar-primary-foreground: #ffffff;
+  --sidebar: #fafafa;
+  --sidebar-foreground: #171717;
+  --sidebar-primary: #171717;
+  --sidebar-primary-foreground: #fafafa;
   --sidebar-accent: #f2f2f2;
-  --sidebar-accent-foreground: #000000;
-  --sidebar-border: #000000;
-  --sidebar-ring: #ff3000;
+  --sidebar-accent-foreground: #171717;
+  --sidebar-border: #ebebeb;
+  --sidebar-ring: #ee0000;
   color-scheme: light;
 }
 
-/* .dark kept only as a compatibility alias for generated shadcn rules. */
 .dark {
-  color-scheme: light;
+  --background: #0a0a0a;
+  --foreground: #ededed;
+
+  --card: #0a0a0a;
+  --card-foreground: #ededed;
+  --popover: #1a1a1a;
+  --popover-foreground: #ededed;
+
+  --primary: #ededed;
+  --primary-foreground: #0a0a0a;
+
+  --secondary: #1f1f1f;
+  --secondary-foreground: #ededed;
+
+  --muted: #1f1f1f;
+  --muted-foreground: #a1a1a1;
+
+  --accent: #1f1f1f;
+  --accent-foreground: #ededed;
+
+  --brand: #ff5c5c;
+  --brand-foreground: #0a0a0a;
+  --destructive: #ff5c5c;
+  --destructive-foreground: #0a0a0a;
+
+  --border: #2a2a2a;
+  --input: #2a2a2a;
+  --ring: #ff5c5c;
+
+  --chart-1: #ededed;
+  --chart-2: #ff5c5c;
+  --chart-3: #a1a1a1;
+  --chart-4: #666666;
+  --chart-5: #404040;
+
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #ededed;
+  --sidebar-primary: #ededed;
+  --sidebar-primary-foreground: #0a0a0a;
+  --sidebar-accent: #1f1f1f;
+  --sidebar-accent-foreground: #ededed;
+  --sidebar-border: #2a2a2a;
+  --sidebar-ring: #ff5c5c;
+  color-scheme: dark;
 }
 
 @theme inline {
-  --font-sans: "Inter", "Inter Fallback", "Helvetica Neue", Arial, sans-serif;
-  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
-  --font-serif: "Inter", "Inter Fallback", "Helvetica Neue", Arial, sans-serif;
+  --font-sans:
+    var(--font-geist-sans), "Geist Sans Fallback", "Helvetica Neue", Arial,
+    sans-serif;
+  --font-mono:
+    var(--font-geist-mono), "Geist Mono Fallback", ui-monospace, monospace;
+  --font-serif:
+    var(--font-geist-sans), "Geist Sans Fallback", "Helvetica Neue", Arial,
+    sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -85,6 +137,8 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
@@ -95,10 +149,10 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --radius-sm: 0px;
-  --radius-md: 0px;
-  --radius-lg: 0px;
-  --radius-xl: 0px;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -117,67 +171,63 @@
     scroll-behavior: smooth;
   }
   body {
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-feature-settings: "cv01", "cv09", "ss03";
     @apply bg-background text-foreground;
   }
 
+  /* Display type leans on Geist's tight negative tracking. */
   [class*="font-serif"] {
     font-style: normal;
-    letter-spacing: -0.04em;
-  }
-
-  body::before {
-    position: fixed;
-    inset: 0;
-    z-index: 2147483647;
-    pointer-events: none;
-    content: "";
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-    mix-blend-mode: multiply;
-    opacity: 0.035;
-  }
-
-  /* Native form controls inherit the light scheme. */
-  select,
-  input[type="time"],
-  input[type="text"] {
-    color-scheme: light;
+    letter-spacing: -0.03em;
   }
 
   ::selection {
-    color: var(--background);
-    background: var(--accent);
+    color: var(--brand-foreground);
+    background: var(--brand);
   }
 }
 
 @layer utilities {
+  /* Subtle Geist-style background textures. */
   .swiss-grid-pattern {
     background-image:
-      linear-gradient(to right, rgb(0 0 0 / 0.035) 1px, transparent 1px),
-      linear-gradient(to bottom, rgb(0 0 0 / 0.035) 1px, transparent 1px);
+      linear-gradient(
+        to right,
+        color-mix(in oklch, var(--foreground) 4%, transparent) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklch, var(--foreground) 4%, transparent) 1px,
+        transparent 1px
+      );
     background-size: 24px 24px;
   }
 
   .swiss-dots {
-    background-image: radial-gradient(rgb(0 0 0 / 0.06) 1px, transparent 1px);
+    background-image: radial-gradient(
+      color-mix(in oklch, var(--foreground) 6%, transparent) 1px,
+      transparent 1px
+    );
     background-size: 16px 16px;
   }
 
   .swiss-diagonal {
     background-image: repeating-linear-gradient(
       45deg,
-      rgb(0 0 0 / 0.04) 0,
-      rgb(0 0 0 / 0.04) 1px,
+      color-mix(in oklch, var(--foreground) 4%, transparent) 0,
+      color-mix(in oklch, var(--foreground) 4%, transparent) 1px,
       transparent 1px,
       transparent 10px
     );
   }
 
+  /* Quiet technical eyebrow label. */
   .swiss-label {
     font-size: 0.6875rem;
-    font-weight: 700;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.22em;
+    letter-spacing: 0.08em;
   }
 }
 

@@ -11,7 +11,7 @@ export function LegalSection({
 }) {
   return (
     <section
-      className="border-foreground border-t-2 pt-8 first:border-t-0 first:pt-0"
+      className="border-border border-t pt-8 first:border-t-0 first:pt-0"
       id={id}
     >
       <h2 className="font-black font-serif text-2xl uppercase leading-none tracking-tighter sm:text-3xl">

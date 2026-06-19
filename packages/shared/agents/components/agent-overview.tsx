@@ -144,10 +144,10 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
         </div>
       </section>
 
-      <section className="mt-12 border-foreground border-t-2 pt-8">
+      <section className="mt-12 border-border border-t pt-8">
         <div className="mb-6 flex flex-wrap items-baseline justify-between gap-4">
           <div>
-            <p className="swiss-label text-accent">Activity</p>
+            <p className="swiss-label text-brand">Activity</p>
             <h2 className="mt-3 font-black font-serif text-3xl uppercase leading-none tracking-tighter">
               Current state
             </h2>
@@ -182,10 +182,10 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
         </div>
       </section>
 
-      <section className="mt-12 border-foreground border-t-2 pt-8">
+      <section className="mt-12 border-border border-t pt-8">
         <div className="mb-6 flex flex-wrap items-baseline justify-between gap-4">
           <div>
-            <p className="swiss-label text-accent">Events</p>
+            <p className="swiss-label text-brand">Events</p>
             <h2 className="mt-3 font-black font-serif text-3xl uppercase leading-none tracking-tighter">
               Recent event ledger
             </h2>
@@ -198,14 +198,14 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
           </Link>
         </div>
         {recentEvents.length === 0 ? (
-          <p className="border-foreground border-y-2 py-6 text-muted-foreground text-sm">
+          <p className="border-border border-y py-6 text-muted-foreground text-sm">
             No events recorded yet.
           </p>
         ) : (
-          <ul className="border-foreground border-y-2">
+          <ul className="border-border border-y">
             {recentEvents.map((event) => (
               <li
-                className="border-foreground border-b-2 last:border-b-0"
+                className="border-border border-b last:border-b-0"
                 key={event.id}
               >
                 <Link
@@ -243,7 +243,7 @@ function OverviewPanel({
   title: string
 }) {
   return (
-    <section className="border-2 border-foreground bg-background p-5">
+    <section className="border border-border bg-background p-5">
       <div className="mb-5 flex items-center justify-between gap-4">
         <h3 className="font-bold text-xs uppercase tracking-[0.18em]">
           {title}
@@ -281,7 +281,7 @@ function OverviewList({
 
 function StateTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border-foreground border-l-2 pl-4">
+    <div className="border-border border-l pl-4">
       <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
         {label}
       </p>
@@ -297,7 +297,7 @@ function OverviewSkeleton() {
     <div className="grid gap-6 md:grid-cols-2">
       {[0, 1, 2, 3].map((i) => (
         <div
-          className="h-48 animate-pulse border-2 border-foreground bg-muted"
+          className="h-48 animate-pulse border border-border bg-muted"
           key={i}
         />
       ))}

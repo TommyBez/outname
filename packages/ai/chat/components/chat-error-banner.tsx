@@ -8,7 +8,7 @@ export function ChatErrorBanner({ className, message }: ChatErrorBannerProps) {
     <p
       className={
         className ??
-        'mb-3 border-2 border-destructive bg-destructive px-3 py-2 font-bold text-destructive-foreground text-xs uppercase tracking-[0.12em]'
+        'mb-3 border border-destructive bg-destructive px-3 py-2 font-bold text-destructive-foreground text-xs uppercase tracking-[0.12em]'
       }
       role="alert"
     >

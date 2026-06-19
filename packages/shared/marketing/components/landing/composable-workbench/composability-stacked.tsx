@@ -10,18 +10,18 @@ export function ComposabilityStacked() {
         const Icon = stageIcons[stage.id]
         return (
           <article
-            className="border-2 border-foreground bg-background p-2"
+            className="border border-border bg-background p-2"
             key={stage.id}
           >
-            <div className="border border-foreground/15 bg-muted p-5">
-              <div className="flex items-start justify-between gap-3 border-foreground border-b-2 pb-4">
+            <div className="border border-border/15 bg-muted p-5">
+              <div className="flex items-start justify-between gap-3 border-border border-b pb-4">
                 <div>
-                  <p className="swiss-label text-accent">{stage.eyebrow}</p>
+                  <p className="swiss-label text-brand">{stage.eyebrow}</p>
                   <h3 className="mt-3 font-black text-4xl uppercase leading-none tracking-normal md:text-5xl">
                     {stage.label}
                   </h3>
                 </div>
-                <span className="grid size-12 place-items-center border-2 border-foreground bg-accent">
+                <span className="grid size-12 place-items-center border border-border bg-brand">
                   <Icon className="size-5" />
                 </span>
               </div>
@@ -33,7 +33,7 @@ export function ComposabilityStacked() {
               <div className="mt-5 grid gap-2">
                 {stage.parts.map((part) => (
                   <span
-                    className="border-2 border-foreground bg-background px-3 py-2 font-mono text-[11px] uppercase tracking-normal"
+                    className="border border-border bg-background px-3 py-2 font-mono text-[11px] uppercase tracking-normal"
                     key={part.id}
                   >
                     {part.label}

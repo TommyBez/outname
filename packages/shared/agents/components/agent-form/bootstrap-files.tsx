@@ -27,7 +27,7 @@ interface BootstrapFilesProps {
 
 export function BootstrapFiles(props: BootstrapFilesProps) {
   return (
-    <div className="grid gap-3 border-foreground border-b-2 pb-8 md:grid-cols-[12rem_minmax(0,1fr)]">
+    <div className="grid gap-3 border-border border-b pb-8 md:grid-cols-[12rem_minmax(0,1fr)]">
       <div>
         <Label>Bootstrap files</Label>
       </div>
@@ -159,9 +159,9 @@ function BootstrapFilePicker({
             <Button
               aria-pressed={isActive}
               className={cn(
-                'flex min-h-16 flex-col items-start justify-between gap-2 border-2 px-4 py-3 text-left transition-colors',
+                'flex min-h-16 flex-col items-start justify-between gap-2 border px-4 py-3 text-left transition-colors',
                 isActive
-                  ? 'border-foreground bg-muted text-foreground'
+                  ? 'border-border bg-muted text-foreground'
                   : 'border-border bg-background text-muted-foreground hover:bg-muted'
               )}
               key={option.value}

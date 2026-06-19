@@ -5,13 +5,13 @@ import type { ReactNode } from 'react'
 export function MarketingLegalLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-20 border-foreground border-b-2 bg-background">
+      <header className="sticky top-0 z-20 border-border border-b bg-background">
         <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link
-            className="inline-flex items-center gap-2 font-bold text-sm uppercase tracking-[0.2em] transition-colors hover:text-accent"
+            className="inline-flex items-center gap-2 font-bold text-sm uppercase tracking-[0.2em] transition-colors hover:text-brand"
             href="/"
           >
-            <span aria-hidden className="inline-block size-3 bg-accent" />
+            <span aria-hidden className="inline-block size-3 bg-brand" />
             <span>{siteConfig.name}</span>
           </Link>
           <nav

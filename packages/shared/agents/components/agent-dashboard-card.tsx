@@ -58,7 +58,7 @@ export function AgentDashboardCard({
     <Collapsible onOpenChange={setOpen} open={open}>
       <article
         className={cn(
-          'border-foreground border-b-2 bg-background transition-colors last:border-b-0',
+          'border-border border-b bg-background transition-colors last:border-b-0',
           open ? 'bg-muted/70' : 'hover:bg-accent'
         )}
       >
@@ -90,7 +90,7 @@ export function AgentDashboardCard({
               )}
             </div>
 
-            <div className="flex items-end justify-between gap-6 border-foreground border-t-2 pt-5 md:border-t-0 md:border-l-2 md:pl-6">
+            <div className="flex items-end justify-between gap-6 border-border border-t pt-5 md:border-t-0 md:border-l md:pl-6">
               <p className="line-clamp-2 min-w-0 text-muted-foreground text-sm leading-relaxed group-hover:text-foreground">
                 {preview}
               </p>
@@ -146,7 +146,7 @@ function AgentActivityPanel({
   )
 
   return (
-    <div className="grid gap-6 border-foreground border-t-2 px-0 py-6 md:grid-cols-[minmax(0,1fr)_18rem] md:px-4">
+    <div className="grid gap-6 border-border border-t px-0 py-6 md:grid-cols-[minmax(0,1fr)_18rem] md:px-4">
       <section
         aria-label={`${agent.name} event monitor`}
         className="min-h-0 min-w-0"
@@ -167,7 +167,7 @@ function AgentActivityPanel({
         <AttentionList items={attentionItems} />
       </section>
 
-      <aside className="border-foreground border-t-2 pt-5 md:border-t-0 md:border-l-2 md:pl-6">
+      <aside className="border-border border-t pt-5 md:border-t-0 md:border-l md:pl-6">
         <p className="font-bold text-[10px] uppercase tracking-[0.2em]">
           Agent controls
         </p>
@@ -182,13 +182,13 @@ function AgentActivityPanel({
           ))}
         </dl>
         <Link
-          className="mt-6 inline-flex h-11 w-full items-center justify-center border-2 border-foreground bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-accent hover:bg-accent hover:text-foreground"
+          className="mt-6 inline-flex h-11 w-full items-center justify-center border border-border bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-brand hover:bg-brand hover:text-brand-foreground"
           href={`/agents/${agent.id}/events`}
         >
           Open events
         </Link>
         <Link
-          className="mt-2 inline-flex h-11 w-full items-center justify-center border-2 border-foreground px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-accent"
+          className="mt-2 inline-flex h-11 w-full items-center justify-center border border-border px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-accent"
           href={`/agents/${agent.id}/chat`}
         >
           Open chat
@@ -233,7 +233,7 @@ function EventStateList({
 }) {
   if (events.length === 0) {
     return (
-      <section className="border-foreground border-y-2 bg-background px-4 py-5">
+      <section className="border-border border-y bg-background px-4 py-5">
         <p className="font-bold text-xs uppercase tracking-[0.16em]">Idle</p>
         <p className="mt-2 text-muted-foreground text-sm">
           No active or queued events.
@@ -243,7 +243,7 @@ function EventStateList({
   }
 
   return (
-    <section className="border-foreground border-y-2 bg-background">
+    <section className="border-border border-y bg-background">
       <ul className="divide-y-2 divide-foreground">
         {events.map((event) => (
           <li key={event.id}>
@@ -286,12 +286,12 @@ function LatestWorkList({
       <p className="mb-3 font-bold text-[10px] uppercase tracking-[0.2em]">
         Latest work
       </p>
-      <div className="border-foreground border-y-2 bg-background">
+      <div className="border-border border-y bg-background">
         {WORK_EVENT_TYPES.map((type) => {
           const event = events.get(type)
           return event ? (
             <Link
-              className="grid gap-2 border-foreground border-b-2 px-4 py-3 transition-colors last:border-b-0 hover:bg-accent sm:grid-cols-[8rem_1fr_auto]"
+              className="grid gap-2 border-border border-b px-4 py-3 transition-colors last:border-b-0 hover:bg-accent sm:grid-cols-[8rem_1fr_auto]"
               href={eventHref(agentId, event.id)}
               key={type}
             >
@@ -305,7 +305,7 @@ function LatestWorkList({
             </Link>
           ) : (
             <div
-              className="grid gap-2 border-foreground border-b-2 px-4 py-3 last:border-b-0 sm:grid-cols-[8rem_1fr_auto]"
+              className="grid gap-2 border-border border-b px-4 py-3 last:border-b-0 sm:grid-cols-[8rem_1fr_auto]"
               key={type}
             >
               <span className="font-bold text-xs uppercase tracking-[0.16em]">
@@ -330,15 +330,15 @@ function AttentionList({ items }: { items: AttentionItem[] }) {
         Attention
       </p>
       {items.length === 0 ? (
-        <div className="border-foreground border-y-2 bg-background p-4">
+        <div className="border-border border-y bg-background p-4">
           <p className="font-medium text-sm">No recent failures.</p>
           <p className="mt-1 text-muted-foreground text-sm">Budget ok.</p>
         </div>
       ) : (
-        <ul className="border-foreground border-y-2 bg-background">
+        <ul className="border-border border-y bg-background">
           {items.map((item) => (
             <li
-              className="border-foreground border-b-2 last:border-b-0"
+              className="border-border border-b last:border-b-0"
               key={item.label}
             >
               <AttentionItemRow item={item} />

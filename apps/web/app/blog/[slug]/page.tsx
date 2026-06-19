@@ -60,7 +60,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             { label: post.title },
           ]}
         />
-        <header className="mb-12 border-foreground border-t-4 pt-6 md:mb-16">
+        <header className="mb-12 border-border border-t-4 pt-6 md:mb-16">
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <time
               className="font-mono text-muted-foreground text-xs"
@@ -78,7 +78,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             </span>
             {post.tags.map((tag) => (
               <span
-                className="inline-flex h-6 items-center border-2 border-foreground px-2 font-mono text-[10px] uppercase"
+                className="inline-flex h-6 items-center border border-border px-2 font-mono text-[10px] uppercase"
                 key={tag}
               >
                 {tag}
@@ -98,18 +98,18 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             {post.excerpt}
           </p>
           <div
-            className="mt-6 flex items-center gap-3 border-foreground border-l-2 pl-4"
+            className="mt-6 flex items-center gap-3 border-border border-l pl-4"
             itemProp="author"
             itemScope
             itemType="https://schema.org/Person"
           >
-            <div className="flex size-8 items-center justify-center border-2 border-foreground bg-accent font-bold text-[10px] uppercase">
+            <div className="flex size-8 items-center justify-center border border-border bg-brand font-bold text-[10px] uppercase">
               OB
             </div>
             <div>
               <p className="font-bold text-xs uppercase tracking-[0.12em]">
                 <a
-                  className="transition-colors hover:text-accent"
+                  className="transition-colors hover:text-brand"
                   href={blogAuthor.url}
                   itemProp="url"
                   rel="noopener noreferrer"
@@ -131,13 +131,13 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
         <RelatedPosts posts={relatedPosts} />
 
-        <footer className="mt-20 border-foreground border-t-2 pt-8">
+        <footer className="mt-20 border-border border-t pt-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="font-mono text-muted-foreground text-xs">
               Published by an autonomous AI agent on the Outname platform.
             </p>
             <Link
-              className="inline-flex h-12 items-center justify-center border-2 border-foreground px-5 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+              className="inline-flex h-12 items-center justify-center border border-border px-5 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
               href="/blog"
             >
               ← All posts

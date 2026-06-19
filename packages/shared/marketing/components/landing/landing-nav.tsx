@@ -10,13 +10,13 @@ export function LandingNav({ waitlistEnabled }: { waitlistEnabled: boolean }) {
     <header className="absolute top-0 right-0 left-0 z-10 px-4 pt-5 sm:px-6 md:px-10 lg:px-12">
       <nav
         aria-label="Home"
-        className="mx-auto flex w-full min-w-0 max-w-7xl items-center justify-between gap-4 border-2 border-foreground bg-background p-2"
+        className="mx-auto flex w-full min-w-0 max-w-7xl items-center justify-between gap-4 border border-border bg-background p-2"
       >
         <Link
-          className="ease flex min-h-11 min-w-0 items-center gap-3 px-3 font-black text-sm uppercase tracking-normal transition-colors duration-150 hover:text-accent"
+          className="ease flex min-h-11 min-w-0 items-center gap-3 px-3 font-black text-sm uppercase tracking-normal transition-colors duration-150 hover:text-brand"
           href="/"
         >
-          <span aria-hidden className="size-3 bg-accent" />
+          <span aria-hidden className="size-3 bg-brand" />
           OUTNA.ME
         </Link>
         <div className="flex items-center gap-1">
@@ -28,7 +28,7 @@ export function LandingNav({ waitlistEnabled }: { waitlistEnabled: boolean }) {
             <NavLink href={getAppLoginUrl('/dashboard')}>Login</NavLink>
           </div>
           <LandingSocialLink
-            className="border-foreground sm:border-l-2"
+            className="border-border sm:border-l"
             href={githubRepositoryUrl}
             Icon={SiGithub}
             iconSize={20}

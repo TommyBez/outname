@@ -48,7 +48,7 @@ export function AgentRegistry({
 
   return (
     <section aria-labelledby="agent-registry-heading">
-      <div className="mb-6 grid gap-4 border-foreground border-y-2 py-5 md:grid-cols-[minmax(0,1fr)_18rem] md:items-center">
+      <div className="mb-6 grid gap-4 border-border border-y py-5 md:grid-cols-[minmax(0,1fr)_18rem] md:items-center">
         <div>
           <h2
             className="font-black font-serif text-3xl uppercase leading-none tracking-tighter"
@@ -101,7 +101,7 @@ export function AgentRegistry({
       </div>
 
       {visibleAgents.length === 0 ? (
-        <div className="border-2 border-foreground bg-muted p-8">
+        <div className="border border-border bg-muted p-8">
           <p className="font-black font-serif text-2xl uppercase leading-none tracking-tighter">
             No agents match “{query}”.
           </p>
@@ -110,7 +110,7 @@ export function AgentRegistry({
             or clear the search to see all {agents.length} agents.
           </p>
           <button
-            className="mt-6 inline-flex h-10 items-center justify-center border-2 border-foreground px-4 font-bold text-[10px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+            className="mt-6 inline-flex h-10 items-center justify-center border border-border px-4 font-bold text-[10px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
             onClick={() => setQuery('')}
             type="button"
           >
@@ -118,7 +118,7 @@ export function AgentRegistry({
           </button>
         </div>
       ) : (
-        <ul className="border-foreground border-y-2">
+        <ul className="border-border border-y">
           {visibleAgents.map((agent) => (
             <li key={agent.id}>
               <AgentRegistryRow agent={agent} timeZone={timeZone} />
@@ -138,7 +138,7 @@ function AgentRegistryRow({
   timeZone: string
 }) {
   return (
-    <article className="grid gap-5 border-foreground border-b-2 py-6 last:border-b-0 md:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] md:items-center md:px-4">
+    <article className="grid gap-5 border-border border-b py-6 last:border-b-0 md:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] md:items-center md:px-4">
       <div className="min-w-0">
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
           <span>{agent.model}</span>
@@ -146,7 +146,7 @@ function AgentRegistryRow({
             className={cn(
               'border px-1.5 py-0.5',
               agent.enabled
-                ? 'border-foreground text-foreground'
+                ? 'border-border text-foreground'
                 : 'border-border text-muted-foreground'
             )}
           >
@@ -154,7 +154,7 @@ function AgentRegistryRow({
           </span>
         </p>
         <Link
-          className="mt-2 block text-pretty font-black font-serif text-3xl uppercase leading-none tracking-tighter transition-colors hover:text-accent"
+          className="mt-2 block text-pretty font-black font-serif text-3xl uppercase leading-none tracking-tighter transition-colors hover:text-brand"
           href={`/agents/${agent.id}`}
         >
           {agent.name}
@@ -189,7 +189,7 @@ function AgentRegistryRow({
 function RegistryAction({ href, label }: { href: string; label: string }) {
   return (
     <Link
-      className="inline-flex h-10 items-center justify-center border-2 border-foreground px-3 font-bold text-[10px] uppercase tracking-[0.14em] transition-colors hover:bg-foreground hover:text-background"
+      className="inline-flex h-10 items-center justify-center border border-border px-3 font-bold text-[10px] uppercase tracking-[0.14em] transition-colors hover:bg-foreground hover:text-background"
       href={href}
     >
       {label}
