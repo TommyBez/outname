@@ -26,6 +26,7 @@ import {
   getCachedUserConnections,
 } from '@outname/shared/server/data'
 import { describeConfigSchema } from '@outname/shared/server/zod-config-fields'
+import { Button } from '@outname/ui/components/ui/button'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
@@ -242,18 +243,12 @@ async function Resolved({ params }: { params: Params }) {
             </p>
           </div>
           <div className="flex flex-wrap items-start gap-3 border-border border-l pl-4 md:justify-end">
-            <Link
-              className="inline-flex h-10 items-center justify-center border border-border px-4 font-bold text-xs transition-colors hover:bg-foreground hover:text-background"
-              href={`/agents/${agentId}`}
-            >
-              ← Overview
-            </Link>
-            <Link
-              className="inline-flex h-10 items-center justify-center border border-border px-4 font-bold text-xs transition-colors hover:bg-foreground hover:text-background"
-              href="/connections"
-            >
-              Connections →
-            </Link>
+            <Button asChild variant="outline">
+              <Link href={`/agents/${agentId}`}>← Overview</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/connections">Connections →</Link>
+            </Button>
           </div>
         </div>
       </header>

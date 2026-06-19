@@ -1,3 +1,4 @@
+import { Button } from '@outname/ui/components/ui/button'
 import Link from 'next/link'
 
 export default function AgentNotFound() {
@@ -11,12 +12,9 @@ export default function AgentNotFound() {
         This agent doesn&apos;t exist or was deleted. Pick another agent from
         the registry.
       </p>
-      <Link
-        className="mt-8 inline-flex h-11 items-center gap-2 border border-border px-4 font-bold text-xs transition-colors hover:bg-foreground hover:text-background"
-        href="/agents"
-      >
-        Open agent registry →
-      </Link>
+      <Button asChild className="mt-8" variant="outline">
+        <Link href="/agents">Open agent registry →</Link>
+      </Button>
     </div>
   )
 }

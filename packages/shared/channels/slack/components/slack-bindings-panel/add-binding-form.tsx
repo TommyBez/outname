@@ -58,7 +58,6 @@ export function AddBindingForm({
         <p className="font-bold text-xs">New Slack binding</p>
         <Button
           aria-label="Cancel"
-          className="inline-flex size-7 items-center justify-center border border-border hover:bg-foreground hover:text-background"
           onClick={onCancel}
           size="icon-xs"
           type="button"
@@ -85,21 +84,10 @@ export function AddBindingForm({
       />
 
       <div className="flex items-center gap-2">
-        <Button
-          className="inline-flex h-10 items-center justify-center border border-border bg-foreground px-4 font-bold text-background text-xs transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
-          disabled={pending}
-          size="sm"
-          type="submit"
-        >
+        <Button disabled={pending} size="sm" type="submit">
           {pending ? 'Saving…' : 'Save binding'}
         </Button>
-        <Button
-          className="inline-flex h-10 items-center justify-center border border-border px-4 font-bold text-xs transition-colors hover:bg-foreground hover:text-background"
-          onClick={onCancel}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
+        <Button onClick={onCancel} size="sm" type="button" variant="outline">
           Cancel
         </Button>
       </div>

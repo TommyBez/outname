@@ -230,7 +230,6 @@ function ConnectionControls({
       <div className="flex items-center gap-2">
         {connector.authKind === 'api_key' ? (
           <Button
-            className="inline-flex h-10 items-center justify-center border border-border px-4 font-bold text-xs transition-colors hover:bg-foreground hover:text-background"
             onClick={() => setOpen((v) => !v)}
             size="sm"
             type="button"
@@ -239,14 +238,13 @@ function ConnectionControls({
             {connection ? 'Replace key' : 'Connect'}
           </Button>
         ) : (
-          <a
-            className="inline-flex h-10 items-center justify-center border border-border px-4 font-bold text-xs transition-colors hover:bg-foreground hover:text-background"
-            href={connectionOAuthStartPath(connector.connectorId)}
-          >
-            {connection
-              ? `Reconnect ${connector.displayName}`
-              : `Connect ${connector.displayName}`}
-          </a>
+          <Button asChild size="sm" variant="outline">
+            <a href={connectionOAuthStartPath(connector.connectorId)}>
+              {connection
+                ? `Reconnect ${connector.displayName}`
+                : `Connect ${connector.displayName}`}
+            </a>
+          </Button>
         )}
         {connection && (
           <ConfirmActionDialog

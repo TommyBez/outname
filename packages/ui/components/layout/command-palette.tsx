@@ -1,5 +1,6 @@
 'use client'
 
+import { Button } from '@outname/ui/components/ui/button'
 import {
   CommandDialog,
   CommandEmpty,
@@ -156,13 +157,15 @@ export function CommandPaletteTrigger() {
   }, [])
 
   return (
-    <button
+    <Button
       aria-keyshortcuts={isMac ? 'Meta+K' : 'Control+K'}
-      className="ml-auto inline-flex h-9 items-center gap-2 border border-border px-3 font-bold text-[10px] text-muted-foreground transition-colors hover:bg-foreground hover:text-background"
+      className="ml-auto text-muted-foreground"
       onClick={() => {
         window.dispatchEvent(new Event(OPEN_COMMAND_PALETTE_EVENT))
       }}
+      size="sm"
       type="button"
+      variant="outline"
     >
       <Search aria-hidden className="size-3.5" />
       <span className="hidden sm:inline">Search</span>
@@ -170,6 +173,6 @@ export function CommandPaletteTrigger() {
         <Kbd>{isMac ? '⌘' : 'Ctrl'}</Kbd>
         <Kbd>K</Kbd>
       </KbdGroup>
-    </button>
+    </Button>
   )
 }

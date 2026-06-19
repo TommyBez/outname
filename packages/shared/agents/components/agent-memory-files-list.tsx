@@ -1,5 +1,6 @@
 'use client'
 
+import { Button } from '@outname/ui/components/ui/button'
 import { Input } from '@outname/ui/components/ui/input'
 import { X } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -35,14 +36,16 @@ export function AgentMemoryFilesList({ files }: { files: MemoryFileRow[] }) {
             value={query}
           />
           {query ? (
-            <button
+            <Button
               aria-label="Clear search"
-              className="absolute top-1/2 right-2 inline-flex size-7 -translate-y-1/2 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+              className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground"
               onClick={() => setQuery('')}
+              size="icon-sm"
               type="button"
+              variant="ghost"
             >
               <X aria-hidden className="size-4" />
-            </button>
+            </Button>
           ) : null}
         </div>
         <p
@@ -63,13 +66,15 @@ export function AgentMemoryFilesList({ files }: { files: MemoryFileRow[] }) {
           <p className="mt-3 max-w-md text-muted-foreground text-sm">
             Search matches file names and file contents.
           </p>
-          <button
-            className="mt-6 inline-flex h-10 items-center justify-center border border-border px-4 font-bold text-[10px] transition-colors hover:bg-foreground hover:text-background"
+          <Button
+            className="mt-6"
             onClick={() => setQuery('')}
+            size="sm"
             type="button"
+            variant="outline"
           >
             Clear search
-          </button>
+          </Button>
         </div>
       ) : (
         <ul className="flex flex-col gap-10">

@@ -2,6 +2,7 @@ import { LoginForm } from '@outname/auth/components/login-form'
 import { auth } from '@outname/auth/server/auth'
 import { createPrivatePageMetadata } from '@outname/shared/server/site-metadata'
 import { isWaitlistPublicEnabled } from '@outname/shared/waitlist/server/public-config'
+import { Button } from '@outname/ui/components/ui/button'
 import { Skeleton } from '@outname/ui/components/ui/skeleton'
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
@@ -41,12 +42,9 @@ export default function LoginPage({
             <p className="font-mono text-[11px] text-muted-foreground tracking-normal">
               Need access first?
             </p>
-            <Link
-              className="mt-3 inline-flex min-h-11 items-center justify-center border border-border px-4 font-bold text-xs transition-colors hover:bg-foreground hover:text-background"
-              href="/waitlist?source=login-page"
-            >
-              Join the waitlist
-            </Link>
+            <Button asChild className="mt-3" variant="outline">
+              <Link href="/waitlist?source=login-page">Join the waitlist</Link>
+            </Button>
           </div>
         ) : null}
       </div>

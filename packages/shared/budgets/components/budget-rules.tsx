@@ -172,7 +172,6 @@ function BudgetRow({
         {rule && (
           <div className="flex items-center gap-2">
             <Button
-              className="h-9 border border-border px-3 font-bold text-[11px] transition-colors hover:bg-foreground hover:text-background disabled:opacity-50"
               disabled={pending}
               onClick={onToggle}
               size="xs"
@@ -284,7 +283,6 @@ function BudgetLimitForm({
           value={draftLimit}
         />
         <Button
-          className="h-9 border border-border px-3 font-bold text-[11px] transition-colors hover:bg-foreground hover:text-background disabled:opacity-50"
           disabled={pending || draftInvalid || draftLimit.trim().length === 0}
           size="xs"
           type="submit"

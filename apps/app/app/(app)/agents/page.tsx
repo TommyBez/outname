@@ -13,11 +13,9 @@ import { AgentCardSkeleton } from '@outname/ui/components/skeletons'
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 
-const NEW_AGENT_BUTTON_CLASS_NAME =
-  'inline-flex h-14 shrink-0 items-center justify-center self-start border border-border bg-foreground px-6 font-bold text-background text-xs transition-colors hover:border-brand hover:bg-brand hover:text-brand-foreground md:self-auto'
+const NEW_AGENT_BUTTON_CLASS_NAME = 'self-start md:self-auto'
 
-const CREATE_AGENT_BUTTON_CLASS_NAME =
-  'mt-8 inline-flex h-14 items-center justify-center border border-border bg-foreground px-6 font-bold text-background text-xs transition-colors hover:border-brand hover:bg-brand hover:text-brand-foreground'
+const CREATE_AGENT_BUTTON_CLASS_NAME = 'mt-8'
 
 const AGENTS_FALLBACK_KEYS = [
   'agents-fallback-1',
@@ -125,7 +123,7 @@ function AgentsListPageFallback() {
           </p>
           <div
             aria-hidden="true"
-            className="h-14 w-36 animate-pulse bg-muted"
+            className="h-10 w-36 animate-pulse bg-muted"
           />
         </div>
       </header>

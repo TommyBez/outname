@@ -18,6 +18,7 @@ import {
 import { createPrivatePageMetadata } from '@outname/shared/server/site-metadata'
 import { getUserTimezone } from '@outname/shared/server/user-timezone'
 import { AccountSkeleton } from '@outname/ui/components/skeletons'
+import { Button } from '@outname/ui/components/ui/button'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Suspense } from 'react'
@@ -130,12 +131,13 @@ async function AgentsSummarySection() {
           Per-agent configuration lives on each agent&apos;s page.
         </p>
       </div>
-      <Link
-        className="inline-flex h-11 shrink-0 items-center justify-center self-start border border-border px-4 font-bold text-xs transition-colors hover:bg-foreground hover:text-background sm:self-auto"
-        href="/agents"
+      <Button
+        asChild
+        className="shrink-0 self-start sm:self-auto"
+        variant="outline"
       >
-        Manage agents →
-      </Link>
+        <Link href="/agents">Manage agents →</Link>
+      </Button>
     </div>
   )
 }
@@ -182,12 +184,13 @@ function WaitlistSection() {
           or access messages.
         </p>
       </div>
-      <Link
-        className="inline-flex h-11 shrink-0 items-center justify-center self-start border border-border px-4 font-bold text-xs transition-colors hover:bg-foreground hover:text-background sm:self-auto"
-        href="/settings/waitlist"
+      <Button
+        asChild
+        className="shrink-0 self-start sm:self-auto"
+        variant="outline"
       >
-        Open waitlist →
-      </Link>
+        <Link href="/settings/waitlist">Open waitlist →</Link>
+      </Button>
     </div>
   )
 }

@@ -25,15 +25,10 @@ import {
   RunResultSkeleton,
 } from '@outname/ui/components/skeletons'
 import { TodayDate } from '@outname/ui/components/today-date'
+import { Button } from '@outname/ui/components/ui/button'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { DashboardAutoRefresh } from './dashboard-auto-refresh'
-
-const NEW_AGENT_BUTTON_CLASS_NAME =
-  'inline-flex h-14 shrink-0 items-center justify-center border border-border bg-foreground px-6 font-bold text-background text-xs transition-colors hover:border-brand hover:bg-brand hover:text-brand-foreground'
-
-const QUICK_ACTION_CLASS_NAME =
-  'inline-flex h-10 items-center justify-center border border-border px-3 font-bold text-[10px] transition-colors hover:bg-foreground hover:text-background'
 
 export const metadata = createPrivatePageMetadata(
   'Dashboard',
@@ -77,10 +72,7 @@ async function DashboardPageBody() {
               Live cockpit for event queues, budgets, and agents that need
               attention.
             </p>
-            <NewAgentLink
-              canCreate={canCreateAgent}
-              className={NEW_AGENT_BUTTON_CLASS_NAME}
-            >
+            <NewAgentLink canCreate={canCreateAgent} className="self-start">
               + New agent
             </NewAgentLink>
           </div>
@@ -116,10 +108,7 @@ async function DashboardCockpit({
         <p className="mt-4 max-w-md text-muted-foreground text-sm leading-relaxed">
           Create your first agent to start automating recurring work.
         </p>
-        <NewAgentLink
-          canCreate={canCreateAgent}
-          className={`mt-8 ${NEW_AGENT_BUTTON_CLASS_NAME}`}
-        >
+        <NewAgentLink canCreate={canCreateAgent} className="mt-8">
           Create agent
         </NewAgentLink>
       </div>
@@ -209,7 +198,9 @@ async function DashboardCockpit({
           <div className="mt-4 grid gap-2">
             <NewAgentLink
               canCreate={canCreateAgent}
-              className={QUICK_ACTION_CLASS_NAME}
+              className="w-full"
+              size="sm"
+              variant="outline"
             >
               New agent
             </NewAgentLink>
@@ -326,9 +317,9 @@ function DashboardMetric({
 
 function QuickAction({ href, label }: { href: string; label: string }) {
   return (
-    <Link className={QUICK_ACTION_CLASS_NAME} href={href}>
-      {label}
-    </Link>
+    <Button asChild className="w-full" size="sm" variant="outline">
+      <Link href={href}>{label}</Link>
+    </Button>
   )
 }
 

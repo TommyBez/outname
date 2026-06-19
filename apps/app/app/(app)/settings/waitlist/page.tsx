@@ -127,12 +127,9 @@ async function WaitlistSettingsContent({
               emails.
             </p>
           </div>
-          <Link
-            className="inline-flex min-h-11 items-center justify-center border border-border px-4 font-bold text-xs transition-colors hover:bg-foreground hover:text-background"
-            href="/settings"
-          >
-            Back to settings
-          </Link>
+          <Button asChild variant="outline">
+            <Link href="/settings">Back to settings</Link>
+          </Button>
         </div>
       </header>
 

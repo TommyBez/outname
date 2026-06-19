@@ -70,7 +70,6 @@ export function SlackBindingsPanel({
             />
           ) : (
             <Button
-              className="inline-flex h-10 items-center gap-2 border border-border px-4 font-bold text-xs transition-colors hover:bg-foreground hover:text-background disabled:opacity-50"
               disabled={!canBind}
               onClick={() => setShowForm(true)}
               size="sm"

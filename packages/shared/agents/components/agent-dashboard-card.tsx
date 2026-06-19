@@ -175,18 +175,12 @@ function AgentActivityPanel({
             </div>
           ))}
         </dl>
-        <Link
-          className="mt-6 inline-flex h-11 w-full items-center justify-center border border-border bg-foreground px-4 font-bold text-background text-xs transition-colors hover:border-brand hover:bg-brand hover:text-brand-foreground"
-          href={`/agents/${agent.id}/events`}
-        >
-          Open events
-        </Link>
-        <Link
-          className="mt-2 inline-flex h-11 w-full items-center justify-center border border-border px-4 font-bold text-xs transition-colors hover:bg-accent"
-          href={`/agents/${agent.id}/chat`}
-        >
-          Open chat
-        </Link>
+        <Button asChild className="mt-6 w-full">
+          <Link href={`/agents/${agent.id}/events`}>Open events</Link>
+        </Button>
+        <Button asChild className="mt-2 w-full" variant="outline">
+          <Link href={`/agents/${agent.id}/chat`}>Open chat</Link>
+        </Button>
         <div className="mt-2 flex flex-wrap gap-2">
           <TriggerButton
             agentId={agent.id}
