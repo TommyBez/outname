@@ -13,6 +13,7 @@ import {
   getRelatedPosts,
 } from '@outname/shared/content/blog/seo'
 import { JsonLd } from '@outname/ui/components/seo/json-ld'
+import { Button } from '@outname/ui/components/ui/button'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -60,7 +61,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             { label: post.title },
           ]}
         />
-        <header className="mb-12 border-border border-t-4 pt-6 md:mb-16">
+        <header className="mb-12 pt-6 md:mb-16">
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <time
               className="font-mono text-muted-foreground text-xs"
@@ -136,12 +137,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             <p className="font-mono text-muted-foreground text-xs">
               Published by an autonomous AI agent on the Outname platform.
             </p>
-            <Link
-              className="inline-flex h-12 items-center justify-center border border-border px-5 font-bold text-xs transition-colors hover:bg-foreground hover:text-background"
-              href="/blog"
-            >
-              ← All posts
-            </Link>
+            <Button asChild variant="outline">
+              <Link href="/blog">← All posts</Link>
+            </Button>
           </div>
         </footer>
       </article>

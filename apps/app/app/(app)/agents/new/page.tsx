@@ -12,7 +12,7 @@ export const metadata = createPrivatePageMetadata(
 export default function NewAgentPage() {
   return (
     <>
-      <header className="mb-8 border-border border-t pt-6">
+      <header className="mb-8 pt-6">
         <h1 className="max-w-4xl font-semibold text-3xl tracking-tight">
           Create a new agent
         </h1>
@@ -22,7 +22,7 @@ export default function NewAgentPage() {
         </p>
       </header>
 
-      <section className="border-border border-t pt-6">
+      <section className="pt-6">
         <Suspense
           fallback={
             <div className="h-[min(720px,calc(100svh-14rem))] min-h-[24rem] border border-border bg-muted" />

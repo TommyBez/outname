@@ -57,7 +57,7 @@ async function DashboardPageBody() {
 
   return (
     <>
-      <header className="mb-12 border-border border-t pt-6 md:mb-16">
+      <header className="mb-12 pt-6 md:mb-16">
         <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(14rem,18rem)] xl:items-end">
           <div className="min-w-0">
             <p className="swiss-label mb-4 text-brand">
@@ -164,7 +164,7 @@ async function DashboardCockpit({
       </h2>
       <DashboardAutoRefresh enabled={activeEventCount > 0} />
 
-      <div className="mb-8 grid gap-4 border-border border-y py-5 sm:grid-cols-3">
+      <div className="mb-8 grid gap-4 border-border border-b py-5 sm:grid-cols-3">
         <DashboardMetric label="Active" value={enabledCount} />
         <DashboardMetric
           hint={activeEventCount > 0 ? 'Live · auto-refreshing' : undefined}
@@ -233,11 +233,11 @@ async function DashboardCockpit({
           </Link>
         </div>
         {monitorAgents.length === 0 ? (
-          <p className="border-border border-y py-6 text-muted-foreground text-sm">
+          <p className="border-border border-b py-6 text-muted-foreground text-sm">
             No active agents yet.
           </p>
         ) : (
-          <ul className="border-border border-y">
+          <ul className="border-border border-b">
             {monitorAgents.map((agent) => (
               <li key={agent.id}>
                 <Suspense fallback={<AgentCardSkeleton />}>
@@ -260,7 +260,7 @@ async function DashboardCockpit({
 function PausedAgentsQueue({ agents }: { agents: Agent[] }) {
   if (agents.length === 0) {
     return (
-      <section className="border-border border-y py-6">
+      <section className="border-border border-b py-6">
         <p className="swiss-label text-brand">Paused agents</p>
         <p className="mt-3 text-muted-foreground text-sm">
           No paused agents right now.
@@ -270,7 +270,7 @@ function PausedAgentsQueue({ agents }: { agents: Agent[] }) {
   }
 
   return (
-    <section className="border-border border-y py-6">
+    <section className="border-border border-b py-6">
       <p className="swiss-label text-brand">Paused agents</p>
       <ul className="mt-5 grid gap-3 md:grid-cols-2">
         {agents.map((agent) => (
@@ -341,7 +341,7 @@ function isBudgetAttention(entry: BudgetSummaryEntry): boolean {
 function DashboardPageFallback() {
   return (
     <>
-      <header className="mb-12 border-border border-t pt-6 md:mb-16">
+      <header className="mb-12 pt-6 md:mb-16">
         <div className="h-24 animate-pulse bg-muted" />
       </header>
       <RunResultSkeleton />

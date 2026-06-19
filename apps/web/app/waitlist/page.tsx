@@ -24,7 +24,7 @@ export default async function WaitlistPage({
   }>
 }) {
   return (
-    <main className="swiss-grid-pattern grid min-h-svh place-items-center bg-background px-6 py-12">
+    <main className="grid min-h-svh place-items-center bg-background px-6 py-12">
       <div className="w-full max-w-2xl border border-border bg-background p-8 md:p-10">
         <Suspense fallback={<WaitlistFallback />}>
           <WaitlistPageContent searchParams={searchParams} />
@@ -49,12 +49,12 @@ async function WaitlistPageContent({
 
   return (
     <>
-      <div className="mb-10 border-border border-t-4 pt-5">
+      <div className="mb-10 pt-5">
         <p className="swiss-label text-brand">00. early access</p>
         <h1 className="mt-4 font-semibold font-serif text-4xl leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl">
           Join the waitlist
         </h1>
-        <p className="mt-4 max-w-xl border-border border-l pl-4 text-muted-foreground text-sm leading-relaxed">
+        <p className="mt-4 max-w-xl text-muted-foreground text-sm leading-relaxed">
           Request access to OUTNA.ME. We&apos;ll email a confirmation link, then
           notify you when your spot is ready.
         </p>
@@ -83,8 +83,6 @@ async function WaitlistPageContent({
 
 function WaitlistFallback() {
   return (
-    <div className="border-border border-t-4 pt-5 text-muted-foreground text-sm">
-      Loading waitlist…
-    </div>
+    <div className="pt-5 text-muted-foreground text-sm">Loading waitlist…</div>
   )
 }

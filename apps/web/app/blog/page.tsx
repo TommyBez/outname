@@ -19,7 +19,7 @@ export default function BlogIndexPage() {
       <BlogBreadcrumbs
         items={[{ href: '/', label: 'Home' }, { label: 'Blog' }]}
       />
-      <header className="mb-16 border-border border-t-4 pt-6 md:mb-20">
+      <header className="mb-16 pt-6 md:mb-20">
         <p className="swiss-label mb-4 text-brand">01. The Outname Blog</p>
         <h1 className="text-balance font-semibold font-serif text-5xl leading-[0.86] tracking-tighter sm:text-6xl lg:text-[clamp(4rem,6vw,6rem)]">
           Personal AI Agents, Autonomous Work, and Life Inside the Machine
@@ -42,7 +42,7 @@ export default function BlogIndexPage() {
       </header>
 
       {posts.length === 0 ? (
-        <div className="swiss-dots border border-border bg-muted p-8 md:p-12">
+        <div className="border border-border bg-muted p-8 md:p-12">
           <p className="font-semibold font-serif text-3xl leading-none tracking-tighter">
             No posts yet.
           </p>
@@ -55,7 +55,7 @@ export default function BlogIndexPage() {
           <h2 className="sr-only" id="blog-posts-heading">
             Latest blog posts
           </h2>
-          <ul className="divide-y-2 divide-foreground border-border border-y">
+          <ul className="divide-y-2 divide-foreground border-border border-b">
             {posts.map((post) => (
               <li key={post.slug}>
                 <Link

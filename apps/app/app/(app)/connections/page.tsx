@@ -20,7 +20,7 @@ export default function ConnectionsPage({
 }) {
   return (
     <>
-      <header className="mb-12 border-border border-t pt-6 md:mb-16">
+      <header className="mb-12 pt-6 md:mb-16">
         <h1 className="font-semibold text-3xl tracking-tight">Connections</h1>
         <p className="mt-5 max-w-2xl text-muted-foreground text-sm leading-relaxed">
           Shared provider credentials used by agent tools. Connect each provider

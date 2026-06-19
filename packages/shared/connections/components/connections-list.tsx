@@ -111,7 +111,7 @@ function ConnectorSection({
   return (
     <section className="flex flex-col gap-4">
       <h2 className="font-bold text-xs">{title}</h2>
-      <ul className="flex flex-col divide-y-2 divide-foreground border-border border-y">
+      <ul className="flex flex-col divide-y-2 divide-foreground border-border border-b">
         {rows.map(({ connection, connector }) => (
           <li className="py-6" key={connector.connectorId}>
             <ConnectorRow connection={connection} connector={connector} />

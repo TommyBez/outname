@@ -33,13 +33,13 @@ export const metadata: Metadata = createPrivatePageMetadata(
 export default function SettingsPage() {
   return (
     <>
-      <header className="mb-12 border-border border-t pt-6 md:mb-16">
+      <header className="mb-12 pt-6 md:mb-16">
         <h1 className="font-semibold text-3xl tracking-tight">
           Your assistant
         </h1>
       </header>
 
-      <div className="border-border border-y">
+      <div className="border-border border-b">
         <Section title="Budget">
           <Suspense fallback={<div className="h-32" />}>
             <BudgetSection />

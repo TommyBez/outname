@@ -229,7 +229,7 @@ async function Resolved({ params }: { params: Params }) {
 
   return (
     <>
-      <header className="mb-12 border-border border-t pt-6">
+      <header className="mb-12 pt-6">
         <div className="grid gap-8 md:grid-cols-[minmax(0,7fr)_minmax(16rem,3fr)]">
           <div className="flex flex-col gap-4">
             <p className="font-bold text-[10px] text-muted-foreground">
@@ -260,7 +260,7 @@ async function Resolved({ params }: { params: Params }) {
         connections={connections}
       />
 
-      <section className="mt-16 border-border border-t pt-6">
+      <section className="mt-16 pt-6">
         <div className="mb-6 flex flex-col gap-2">
           <p className="font-bold text-[10px] text-muted-foreground">
             Delegation
@@ -284,7 +284,7 @@ async function Resolved({ params }: { params: Params }) {
 
 function PageSkeleton() {
   return (
-    <header className="mb-12 border-border border-t pt-6">
+    <header className="mb-12 pt-6">
       <div className="h-3 w-24 animate-pulse rounded-sm bg-muted" />
       <div className="mt-4 h-12 w-64 animate-pulse rounded-sm bg-muted" />
     </header>

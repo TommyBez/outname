@@ -19,12 +19,12 @@ export const metadata: Metadata = {
 export default function PrivacyPage() {
   return (
     <MarketingLegalLayout>
-      <header className="mb-12 border-border border-t-4 pt-6 md:mb-16">
+      <header className="mb-12 pt-6 md:mb-16">
         <p className="swiss-label mb-4 text-brand">Legal</p>
         <h1 className="font-semibold font-serif text-5xl leading-[0.86] tracking-tighter sm:text-6xl">
           Privacy Policy
         </h1>
-        <p className="mt-6 max-w-xl border-border border-l pl-4 text-muted-foreground text-sm leading-relaxed">
+        <p className="mt-6 max-w-xl text-muted-foreground text-sm leading-relaxed">
           This policy describes how {siteConfig.name} handles personal data when
           you use our website and product. Last updated {lastUpdated}.
         </p>

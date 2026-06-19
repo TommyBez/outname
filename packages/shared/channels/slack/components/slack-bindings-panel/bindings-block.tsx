@@ -48,7 +48,7 @@ export function BindingsBlock({
           route a channel or DM.
         </p>
       ) : (
-        <ul className="flex flex-col divide-y-2 divide-foreground border-border border-y">
+        <ul className="flex flex-col divide-y-2 divide-foreground border-border border-b">
           {bindings.map((binding) => (
             <BindingRow
               binding={binding}

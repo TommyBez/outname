@@ -49,7 +49,7 @@ async function AgentsListPageBody() {
 
   return (
     <>
-      <header className="mb-12 border-border border-t pt-6">
+      <header className="mb-12 pt-6">
         <div className="grid gap-8 md:grid-cols-[minmax(0,7fr)_minmax(14rem,3fr)] md:items-end">
           <div>
             <h1 className="font-semibold text-3xl tracking-tight">
@@ -110,7 +110,7 @@ function toRegistryAgent(agent: Agent): RegistryAgent {
 function AgentsListPageFallback() {
   return (
     <>
-      <header className="mb-12 border-border border-t pt-6">
+      <header className="mb-12 pt-6">
         <div className="grid gap-8 md:grid-cols-[minmax(0,7fr)_minmax(14rem,3fr)] md:items-end">
           <div>
             <h1 className="font-semibold text-3xl tracking-tight">
@@ -128,7 +128,7 @@ function AgentsListPageFallback() {
         </div>
       </header>
 
-      <ul className="border-border border-y">
+      <ul className="border-border border-b">
         {AGENTS_FALLBACK_KEYS.map((key) => (
           <li key={key}>
             <AgentCardSkeleton />

@@ -116,7 +116,7 @@ function SkillCatalogDetailContent({
         </Link>
       </Button>
 
-      <header className="grid gap-5 border-border border-t pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
+      <header className="grid gap-5 pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
         <div className="min-w-0">
           <p className="swiss-label mb-4 text-brand">
             skills / {detail.source}

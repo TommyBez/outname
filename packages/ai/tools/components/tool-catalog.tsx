@@ -70,11 +70,11 @@ function ToolCatalogSection({
     <section>
       <h2 className="swiss-label mb-4 text-brand">{title}</h2>
       {entries.length === 0 ? (
-        <p className="border-border border-y py-6 text-muted-foreground text-sm">
+        <p className="border-border border-b py-6 text-muted-foreground text-sm">
           {emptyText}
         </p>
       ) : (
-        <ul className="flex flex-col divide-y-2 divide-foreground border-border border-y">
+        <ul className="flex flex-col divide-y-2 divide-foreground border-border border-b">
           {entries.map((entry) => (
             <li className="py-6" key={entry.toolId}>
               <ToolRow

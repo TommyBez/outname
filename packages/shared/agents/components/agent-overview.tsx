@@ -198,11 +198,11 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
           </Link>
         </div>
         {recentEvents.length === 0 ? (
-          <p className="border-border border-y py-6 text-muted-foreground text-sm">
+          <p className="border-border border-b py-6 text-muted-foreground text-sm">
             No events recorded yet.
           </p>
         ) : (
-          <ul className="border-border border-y">
+          <ul className="border-border border-b">
             {recentEvents.map((event) => (
               <li
                 className="border-border border-b last:border-b-0"

@@ -49,7 +49,7 @@ export function AgentRegistry({
 
   return (
     <section aria-labelledby="agent-registry-heading">
-      <div className="mb-6 grid gap-4 border-border border-y py-5 md:grid-cols-[minmax(0,1fr)_18rem] md:items-center">
+      <div className="mb-6 grid gap-4 border-border border-b py-5 md:grid-cols-[minmax(0,1fr)_18rem] md:items-center">
         <div>
           <h2
             className="font-semibold text-xl tracking-tight"
@@ -123,7 +123,7 @@ export function AgentRegistry({
           </Button>
         </div>
       ) : (
-        <ul className="border-border border-y">
+        <ul className="border-border border-b">
           {visibleAgents.map((agent) => (
             <li key={agent.id}>
               <AgentRegistryRow agent={agent} timeZone={timeZone} />

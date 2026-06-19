@@ -22,7 +22,7 @@ export default function ChannelsPage({
 }) {
   return (
     <>
-      <header className="mb-12 border-border border-t pt-6 md:mb-16">
+      <header className="mb-12 pt-6 md:mb-16">
         <h1 className="font-semibold text-3xl tracking-tight">Channels</h1>
         <p className="mt-5 max-w-2xl text-muted-foreground text-sm leading-relaxed">
           External chat surfaces that can send work into agents. Install a
@@ -90,7 +90,7 @@ async function ChannelsSection() {
   return (
     <section
       aria-labelledby="slack-channel-heading"
-      className="border-border border-y py-8"
+      className="border-border border-b py-8"
       id="slack"
     >
       <div className="mb-8 grid gap-4 md:grid-cols-[minmax(0,1fr)_16rem] md:items-start">

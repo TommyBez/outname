@@ -1,4 +1,5 @@
 import { WaitlistConfirmButton } from '@outname/shared/waitlist/components/waitlist-confirm-button'
+import { Button } from '@outname/ui/components/ui/button'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Suspense } from 'react'
@@ -21,7 +22,7 @@ export default async function WaitlistConfirmPage({
   }>
 }) {
   return (
-    <main className="swiss-grid-pattern grid min-h-svh place-items-center bg-background px-6 py-12">
+    <main className="grid min-h-svh place-items-center bg-background px-6 py-12">
       <div className="w-full max-w-xl border border-border bg-background p-8 md:p-10">
         <Suspense fallback={<ConfirmFallback />}>
           <ConfirmContent searchParams={searchParams} />
@@ -51,12 +52,9 @@ async function ConfirmContent({
           Your email is confirmed. We&apos;ll reach out when access is ready and
           prepare your account automatically.
         </p>
-        <Link
-          className="inline-flex min-h-11 items-center justify-center border border-border px-4 font-bold text-xs transition-colors hover:bg-foreground hover:text-background"
-          href="/"
-        >
-          Back to home
-        </Link>
+        <Button asChild variant="outline">
+          <Link href="/">Back to home</Link>
+        </Button>
       </div>
     )
   } else if (token) {
@@ -74,18 +72,15 @@ async function ConfirmContent({
         <p className="text-sm leading-relaxed">
           This confirmation link is invalid or has expired.
         </p>
-        <Link
-          className="inline-flex min-h-11 items-center justify-center border border-border px-4 font-bold text-xs transition-colors hover:bg-foreground hover:text-background"
-          href="/waitlist?source=confirm-page"
-        >
-          Request a new link
-        </Link>
+        <Button asChild variant="outline">
+          <Link href="/waitlist?source=confirm-page">Request a new link</Link>
+        </Button>
       </div>
     )
   }
 
   return (
-    <div className="border-border border-t-4 pt-5">
+    <div className="pt-5">
       <p className="swiss-label text-brand">00. waitlist confirm</p>
       <h1 className="mt-4 font-semibold font-serif text-5xl leading-[0.9] tracking-tighter">
         {title}

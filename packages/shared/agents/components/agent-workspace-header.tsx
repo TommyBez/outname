@@ -51,7 +51,7 @@ export function AgentWorkspaceHeader({
 
   return (
     <>
-      <header className="border-border border-t pt-6">
+      <header className="pt-6">
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
           <div className="min-w-0">
             <nav

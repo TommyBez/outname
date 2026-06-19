@@ -278,7 +278,7 @@ export function AgentSkillsPageContent({
 
   return (
     <div className="flex flex-col gap-8">
-      <header className="border-border border-t pt-6">
+      <header className="pt-6">
         <div className="min-w-0">
           <p className="swiss-label mb-4 text-brand">{agentName}</p>
           <h1 className="font-semibold text-3xl tracking-tight">Skills</h1>

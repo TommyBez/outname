@@ -73,11 +73,11 @@ function SubAgentSection({
     <section>
       <h3 className="swiss-label mb-4 text-brand">{title}</h3>
       {candidates.length === 0 ? (
-        <p className="border-border border-y py-6 text-muted-foreground text-sm">
+        <p className="border-border border-b py-6 text-muted-foreground text-sm">
           {emptyText}
         </p>
       ) : (
-        <ul className="flex flex-col divide-y-2 divide-foreground border-border border-y">
+        <ul className="flex flex-col divide-y-2 divide-foreground border-border border-b">
           {candidates.map((candidate) => (
             <li className="py-6" key={candidate.agentId}>
               <SubAgentRow entry={candidate} parentAgentId={parentAgentId} />

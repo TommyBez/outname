@@ -221,7 +221,7 @@ function EventStateList({
 }) {
   if (events.length === 0) {
     return (
-      <section className="border-border border-y bg-background px-4 py-5">
+      <section className="border-border border-b bg-background px-4 py-5">
         <p className="font-bold text-xs">Idle</p>
         <p className="mt-2 text-muted-foreground text-sm">
           No active or queued events.
@@ -231,7 +231,7 @@ function EventStateList({
   }
 
   return (
-    <section className="border-border border-y bg-background">
+    <section className="border-border border-b bg-background">
       <ul className="divide-y-2 divide-foreground">
         {events.map((event) => (
           <li key={event.id}>
@@ -270,7 +270,7 @@ function LatestWorkList({
   return (
     <section className="mt-5">
       <p className="mb-3 font-bold text-[10px]">Latest work</p>
-      <div className="border-border border-y bg-background">
+      <div className="border-border border-b bg-background">
         {WORK_EVENT_TYPES.map((type) => {
           const event = events.get(type)
           return event ? (
@@ -312,12 +312,12 @@ function AttentionList({ items }: { items: AttentionItem[] }) {
     <section className="mt-5">
       <p className="mb-3 font-bold text-[10px]">Attention</p>
       {items.length === 0 ? (
-        <div className="border-border border-y bg-background p-4">
+        <div className="border-border border-b bg-background p-4">
           <p className="font-medium text-sm">No recent failures.</p>
           <p className="mt-1 text-muted-foreground text-sm">Budget ok.</p>
         </div>
       ) : (
-        <ul className="border-border border-y bg-background">
+        <ul className="border-border border-b bg-background">
           {items.map((item) => (
             <li
               className="border-border border-b last:border-b-0"

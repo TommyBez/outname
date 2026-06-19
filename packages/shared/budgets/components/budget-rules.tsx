@@ -77,7 +77,7 @@ export function BudgetRules({ rules, scope }: Props) {
           ? 'General budgets cap total AI spend across every agent. Sub-agent invocations roll into the parent agent that the operator started.'
           : `Per-agent budgets cap AI spend on ${scope.agentName}. Sub-agents invoked from this agent count against this budget too. External-service tools are not counted.`}
       </p>
-      <ul className="flex flex-col divide-y-2 divide-foreground border-border border-y">
+      <ul className="flex flex-col divide-y-2 divide-foreground border-border border-b">
         {PERIODS.map((p) => (
           <li className="py-5" key={p.id}>
             <BudgetRow
