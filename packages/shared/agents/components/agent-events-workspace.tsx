@@ -106,7 +106,7 @@ function AgentEventsWorkspaceContent({
             <p className="font-bold text-[10px] text-muted-foreground">
               Event ledger
             </p>
-            <h2 className="mt-1 font-semibold font-serif text-2xl leading-none tracking-tighter">
+            <h2 className="mt-1 font-semibold text-2xl leading-none tracking-tighter">
               Events
             </h2>
           </div>
@@ -126,7 +126,7 @@ function AgentEventsWorkspaceContent({
               No non-chat events recorded yet.
             </div>
           ) : (
-            <ul className="divide-y-2 divide-foreground">
+            <ul className="divide-y divide-border">
               {ledgerEvents.map((event) => (
                 <li key={event.id}>
                   <Button

@@ -63,7 +63,7 @@ async function FlashNotice({
   if (sp.connection === 'connected') {
     return (
       <div className="mb-10 border-border border-l bg-muted py-3 pl-4">
-        <p className="font-semibold font-serif text-lg tracking-[-0.04em]">
+        <p className="font-semibold text-lg tracking-[-0.04em]">
           Connection saved.
         </p>
       </div>

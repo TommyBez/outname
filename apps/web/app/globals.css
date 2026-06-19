@@ -115,13 +115,10 @@
 
 @theme inline {
   --font-sans:
-    var(--font-geist-sans), "Geist Sans Fallback", "Helvetica Neue", Arial,
+    var(--font-geist-sans), "Geist Sans Fallback", "Helvetica Neue", arial,
     sans-serif;
   --font-mono:
     var(--font-geist-mono), "Geist Mono Fallback", ui-monospace, monospace;
-  --font-serif:
-    var(--font-geist-sans), "Geist Sans Fallback", "Helvetica Neue", Arial,
-    sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -172,12 +169,6 @@
   body {
     font-feature-settings: "cv01", "cv09", "ss03";
     @apply bg-background text-foreground;
-  }
-
-  /* Display type leans on Geist's tight negative tracking. */
-  [class*="font-serif"] {
-    font-style: normal;
-    letter-spacing: -0.03em;
   }
 
   ::selection {

@@ -72,7 +72,7 @@ function MemoryCard({
       className="group flex min-h-40 flex-col justify-between border border-border p-5 transition-colors hover:bg-accent"
       href={href}
     >
-      <p className="font-semibold font-serif text-2xl leading-none tracking-tighter">
+      <p className="font-semibold text-2xl leading-none tracking-tighter">
         {title}
       </p>
       <p className="mt-6 text-muted-foreground text-sm leading-relaxed group-hover:text-foreground">

@@ -279,7 +279,7 @@ function PausedAgentsQueue({ agents }: { agents: Agent[] }) {
               className="block border border-border p-4 transition-colors hover:bg-accent"
               href={`/agents/${agent.id}`}
             >
-              <p className="font-semibold font-serif text-xl leading-none tracking-tighter">
+              <p className="font-semibold text-xl leading-none tracking-tighter">
                 {agent.name}
               </p>
               <p className="mt-2 font-mono text-muted-foreground text-xs">

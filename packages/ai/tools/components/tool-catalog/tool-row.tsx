@@ -38,7 +38,7 @@ export function ToolRow({
       <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="min-w-0">
           <p className="font-mono font-semibold text-sm">{entry.toolId}</p>
-          <p className="mt-1 font-semibold font-serif text-xl tracking-[-0.04em]">
+          <p className="mt-1 font-semibold text-xl tracking-[-0.04em]">
             {entry.displayName}
           </p>
           <p className="mt-1 text-muted-foreground text-sm">

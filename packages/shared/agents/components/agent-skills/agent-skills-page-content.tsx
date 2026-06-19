@@ -331,7 +331,7 @@ function InstalledSkillsList({
     return (
       <div className="flex min-h-48 flex-col items-start justify-center border border-border border-dashed p-6">
         <BookOpenCheck aria-hidden className="mb-4 size-6 text-brand" />
-        <p className="font-semibold font-serif text-2xl leading-none tracking-tighter">
+        <p className="font-semibold text-2xl leading-none tracking-tighter">
           No skills installed.
         </p>
         <p className="mt-3 max-w-xl text-muted-foreground text-sm">
@@ -372,7 +372,7 @@ function SkillRow({
     <article className="grid gap-4 border border-border p-4 md:grid-cols-[minmax(0,1fr)_auto]">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="font-semibold font-serif text-2xl leading-none tracking-tighter">
+          <h2 className="font-semibold text-2xl leading-none tracking-tighter">
             {skill.name}
           </h2>
           <Badge variant="outline">{sourceLabel(skill.sourceType)}</Badge>
@@ -868,7 +868,7 @@ function ConflictPanel({
   return (
     <div className="border-border border-l pl-3">
       <p className="font-bold text-muted-foreground text-xs">{label}</p>
-      <p className="mt-2 font-semibold font-serif text-xl leading-none tracking-tighter">
+      <p className="mt-2 font-semibold text-xl leading-none tracking-tighter">
         {name}
       </p>
       <p className="mt-2 text-muted-foreground text-sm">{description}</p>

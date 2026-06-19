@@ -100,8 +100,8 @@ export function WaitlistSignupForm({
 
   if (state.submittedMessage) {
     return (
-      <div className="border border-border bg-brand p-6">
-        <p className="swiss-label text-foreground">Request received</p>
+      <div className="border border-border bg-brand p-6 text-brand-foreground">
+        <p className="swiss-label">Request received</p>
         <p className="mt-3 text-sm leading-relaxed">{state.submittedMessage}</p>
       </div>
     )

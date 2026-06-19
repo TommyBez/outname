@@ -170,7 +170,7 @@ function SkillCatalogDetailContent({
       <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
         <article className="grid gap-3 border border-border p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-semibold font-serif text-2xl leading-none tracking-tighter">
+            <h2 className="font-semibold text-2xl leading-none tracking-tighter">
               SKILL.md
             </h2>
             <Badge variant="outline">Preview</Badge>
@@ -182,7 +182,7 @@ function SkillCatalogDetailContent({
 
         <aside className="grid gap-5">
           <section className="grid gap-3 border border-border p-4">
-            <h2 className="font-semibold font-serif text-xl leading-none tracking-tighter">
+            <h2 className="font-semibold text-xl leading-none tracking-tighter">
               Package files
             </h2>
             {extraFiles.length === 0 ? (
@@ -217,7 +217,7 @@ function SkillCatalogDetailContent({
           </section>
 
           <section className="grid gap-3 border border-border p-4">
-            <h2 className="font-semibold font-serif text-xl leading-none tracking-tighter">
+            <h2 className="font-semibold text-xl leading-none tracking-tighter">
               Security audits
             </h2>
             <AuditList audit={audit} />

@@ -34,7 +34,7 @@ export function InstallationsBlock({
           channel and DM messages into your agents.
         </p>
       ) : (
-        <ul className="flex flex-col divide-y-2 divide-foreground border-border border-b">
+        <ul className="flex flex-col divide-y divide-border border-border border-b">
           {installations.map((install) => (
             <li
               className="flex items-center justify-between gap-3 py-3"

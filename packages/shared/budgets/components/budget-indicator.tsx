@@ -137,8 +137,8 @@ function BudgetMeter({
       <p
         className={
           overBudget && !disabled
-            ? 'mt-2 font-semibold font-serif text-2xl text-destructive leading-none tracking-tighter'
-            : 'mt-2 font-semibold font-serif text-2xl leading-none tracking-tighter'
+            ? 'mt-2 font-semibold text-2xl text-destructive leading-none tracking-tighter'
+            : 'mt-2 font-semibold text-2xl leading-none tracking-tighter'
         }
       >
         {formatUsd(entry.spentUsd)}

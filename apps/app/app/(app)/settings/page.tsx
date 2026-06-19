@@ -123,7 +123,7 @@ async function AgentsSummarySection() {
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
       <div>
-        <p className="font-semibold font-serif text-xl tracking-[-0.04em]">
+        <p className="font-semibold text-xl tracking-[-0.04em]">
           {agents.length} agent{agents.length === 1 ? '' : 's'} · {enabled}{' '}
           enabled
         </p>
@@ -146,7 +146,7 @@ async function AccountSection() {
   const session = await getSession()
   return (
     <Row label="Signed in as">
-      <p className="font-semibold font-serif text-xl leading-tight tracking-[-0.04em]">
+      <p className="font-semibold text-xl leading-tight tracking-[-0.04em]">
         {session?.user.email ?? '—'}
       </p>
     </Row>
@@ -176,7 +176,7 @@ function WaitlistSection() {
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
       <div>
-        <p className="font-semibold font-serif text-xl tracking-[-0.04em]">
+        <p className="font-semibold text-xl tracking-[-0.04em]">
           Invite users and manage the waitlist
         </p>
         <p className="mt-0.5 text-muted-foreground text-xs">

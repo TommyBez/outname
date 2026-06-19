@@ -111,7 +111,7 @@ function ConnectorSection({
   return (
     <section className="flex flex-col gap-4">
       <h2 className="font-bold text-xs">{title}</h2>
-      <ul className="flex flex-col divide-y-2 divide-foreground border-border border-b">
+      <ul className="flex flex-col divide-y divide-border border-border border-b">
         {rows.map(({ connection, connector }) => (
           <li className="py-6" key={connector.connectorId}>
             <ConnectorRow connection={connection} connector={connector} />
@@ -135,7 +135,7 @@ function ConnectorRow({
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="min-w-0">
-          <p className="font-semibold font-serif text-xl tracking-[-0.04em]">
+          <p className="font-semibold text-xl tracking-[-0.04em]">
             {connector.displayName}
           </p>
           <p className="mt-1 text-muted-foreground text-sm">

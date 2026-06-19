@@ -70,12 +70,12 @@ export function WaitlistEmailLayout({
               <Heading className="m-0 mt-[18px] font-semibold text-[38px] text-ink leading-[36px] tracking-[-1.6px]">
                 {title}
               </Heading>
-              <Text className="m-0 mt-[18px] border-ink border-l border-solid border-none pl-[12px] text-[14px] text-subtle leading-[22px]">
+              <Text className="m-0 mt-[18px] border-ink border-l border-solid pl-[12px] text-[14px] text-subtle leading-[22px]">
                 {lead}
               </Text>
             </Section>
 
-            <Hr className="mx-0 my-0 w-full border-ink border-t border-solid border-none" />
+            <Hr className="mx-0 my-0 w-full border-ink border-t border-solid" />
 
             <Section className="px-[32px] py-[28px]">
               {children}
@@ -101,7 +101,7 @@ export function WaitlistEmailLayout({
               ) : null}
             </Section>
 
-            <Hr className="mx-0 my-0 w-full border-ink border-t border-solid border-none" />
+            <Hr className="mx-0 my-0 w-full border-ink border-t border-solid" />
 
             <Section className="px-[32px] py-[20px]">
               {footer ?? (

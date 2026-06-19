@@ -232,7 +232,7 @@ function EventStateList({
 
   return (
     <section className="border-border border-b bg-background">
-      <ul className="divide-y-2 divide-foreground">
+      <ul className="divide-y divide-border">
         {events.map((event) => (
           <li key={event.id}>
             <Link

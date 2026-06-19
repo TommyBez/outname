@@ -77,7 +77,7 @@ function SubAgentSection({
           {emptyText}
         </p>
       ) : (
-        <ul className="flex flex-col divide-y-2 divide-foreground border-border border-b">
+        <ul className="flex flex-col divide-y divide-border border-border border-b">
           {candidates.map((candidate) => (
             <li className="py-6" key={candidate.agentId}>
               <SubAgentRow entry={candidate} parentAgentId={parentAgentId} />
@@ -134,7 +134,7 @@ function SubAgentRow({
           <p className="font-mono font-semibold text-sm">
             {entry.displayToolId}
           </p>
-          <p className="mt-1 font-semibold font-serif text-xl tracking-[-0.04em]">
+          <p className="mt-1 font-semibold text-xl tracking-[-0.04em]">
             {entry.name}
           </p>
           {!entry.enabled && (

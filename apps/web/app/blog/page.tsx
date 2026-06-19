@@ -55,7 +55,7 @@ export default function BlogIndexPage() {
           <h2 className="sr-only" id="blog-posts-heading">
             Latest blog posts
           </h2>
-          <ul className="divide-y-2 divide-foreground border-border border-b">
+          <ul className="divide-y divide-border border-border border-b">
             {posts.map((post) => (
               <li key={post.slug}>
                 <Link

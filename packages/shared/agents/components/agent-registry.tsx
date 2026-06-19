@@ -105,7 +105,7 @@ export function AgentRegistry({
 
       {visibleAgents.length === 0 ? (
         <div className="border border-border bg-muted p-8">
-          <p className="font-semibold font-serif text-2xl leading-none tracking-tighter">
+          <p className="font-semibold text-2xl leading-none tracking-tighter">
             No agents match “{query}”.
           </p>
           <p className="mt-3 max-w-md text-muted-foreground text-sm">

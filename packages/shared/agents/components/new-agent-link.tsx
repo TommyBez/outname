@@ -46,7 +46,7 @@ export function NewAgentLink({
           className={className}
           size={size}
           type="button"
-          variant="outline"
+          variant={variant}
         >
           {children}
         </Button>
