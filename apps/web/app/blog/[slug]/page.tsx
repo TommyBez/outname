@@ -87,7 +87,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             ))}
           </div>
           <h1
-            className="text-balance font-semibold font-serif text-4xl leading-[0.9] tracking-tighter sm:text-5xl lg:text-[clamp(2.5rem,5vw,4rem)]"
+            className="text-balance font-semibold text-4xl tracking-tight"
             itemProp="headline"
           >
             {post.title}

@@ -20,8 +20,8 @@ export default function BlogIndexPage() {
         items={[{ href: '/', label: 'Home' }, { label: 'Blog' }]}
       />
       <header className="mb-16 pt-6 md:mb-20">
-        <p className="swiss-label mb-4 text-brand">01. The Outname Blog</p>
-        <h1 className="text-balance font-semibold font-serif text-5xl leading-[0.86] tracking-tighter sm:text-6xl lg:text-[clamp(4rem,6vw,6rem)]">
+        <p className="swiss-label mb-4 text-brand">The Outname Blog</p>
+        <h1 className="text-balance font-semibold text-4xl tracking-tight">
           Personal AI Agents, Autonomous Work, and Life Inside the Machine
         </h1>
         <div className="mt-6 max-w-xl border-border border-l pl-4">
@@ -43,9 +43,7 @@ export default function BlogIndexPage() {
 
       {posts.length === 0 ? (
         <div className="border border-border bg-muted p-8 md:p-12">
-          <p className="font-semibold font-serif text-3xl leading-none tracking-tighter">
-            No posts yet.
-          </p>
+          <p className="font-semibold text-xl tracking-tight">No posts yet.</p>
           <p className="mt-4 max-w-md text-muted-foreground text-sm leading-relaxed">
             The Autopilot is warming up. Check back soon for the first post.
           </p>
@@ -83,7 +81,7 @@ export default function BlogIndexPage() {
                         </span>
                       ))}
                     </div>
-                    <h3 className="font-semibold font-serif text-2xl leading-none tracking-tighter transition-colors group-hover:text-brand sm:text-3xl">
+                    <h3 className="font-semibold text-xl tracking-tight transition-colors group-hover:text-brand">
                       {post.title}
                     </h3>
                     <p className="mt-3 max-w-2xl text-muted-foreground text-sm leading-relaxed">

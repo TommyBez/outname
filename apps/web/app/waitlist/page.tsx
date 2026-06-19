@@ -50,8 +50,8 @@ async function WaitlistPageContent({
   return (
     <>
       <div className="mb-10 pt-5">
-        <p className="swiss-label text-brand">00. early access</p>
-        <h1 className="mt-4 font-semibold font-serif text-4xl leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl">
+        <p className="swiss-label text-brand">early access</p>
+        <h1 className="mt-4 font-semibold text-3xl tracking-tight">
           Join the waitlist
         </h1>
         <p className="mt-4 max-w-xl text-muted-foreground text-sm leading-relaxed">

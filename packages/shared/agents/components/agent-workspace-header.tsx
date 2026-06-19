@@ -123,7 +123,7 @@ export function AgentWorkspaceHeader({
               className={cn(
                 'inline-flex h-12 shrink-0 items-center gap-2 border-border border-r px-4 font-bold text-xs transition-colors last:border-r-0 hover:bg-accent hover:text-foreground',
                 active
-                  ? 'bg-foreground text-background hover:bg-foreground hover:text-background'
+                  ? 'border-brand border-b-2 text-brand'
                   : 'text-muted-foreground'
               )}
               href={href}

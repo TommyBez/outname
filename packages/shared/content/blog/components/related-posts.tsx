@@ -13,7 +13,7 @@ export function RelatedPosts({ posts }: RelatedPostsProps) {
   return (
     <section aria-labelledby="related-posts-heading" className="mt-16">
       <h2
-        className="mb-6 font-semibold font-serif text-xl tracking-tighter"
+        className="mb-6 font-semibold text-xl tracking-tight"
         id="related-posts-heading"
       >
         Related posts

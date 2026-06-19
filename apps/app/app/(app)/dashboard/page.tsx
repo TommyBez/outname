@@ -61,7 +61,7 @@ async function DashboardPageBody() {
         <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(14rem,18rem)] xl:items-end">
           <div className="min-w-0">
             <p className="swiss-label mb-4 text-brand">
-              01. <TodayDate label={todayLabel} />
+              <TodayDate label={todayLabel} />
             </p>
             <h1 className="text-balance font-semibold text-3xl tracking-tight">
               Dashboard

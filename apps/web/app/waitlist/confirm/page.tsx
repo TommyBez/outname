@@ -81,10 +81,8 @@ async function ConfirmContent({
 
   return (
     <div className="pt-5">
-      <p className="swiss-label text-brand">00. waitlist confirm</p>
-      <h1 className="mt-4 font-semibold font-serif text-5xl leading-[0.9] tracking-tighter">
-        {title}
-      </h1>
+      <p className="swiss-label text-brand">waitlist confirm</p>
+      <h1 className="mt-4 font-semibold text-3xl tracking-tight">{title}</h1>
       {content}
     </div>
   )

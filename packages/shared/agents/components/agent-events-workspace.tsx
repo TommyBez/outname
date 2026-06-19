@@ -134,7 +134,7 @@ function AgentEventsWorkspaceContent({
                     className={cn(
                       'grid h-auto w-full items-stretch justify-normal gap-3 border-0 p-4 text-left font-normal normal-case tracking-normal transition-colors hover:bg-accent',
                       selectedEvent?.id === event.id &&
-                        'bg-foreground text-background hover:bg-foreground hover:text-background'
+                        'border-brand border-l-2 bg-accent text-foreground hover:bg-accent'
                     )}
                     onClick={() => selectEvent(event.id)}
                     size="xs"

@@ -6,7 +6,7 @@ export default function NotFound() {
     <main className="grid min-h-svh place-items-center bg-background px-6">
       <div className="max-w-md border border-border bg-background p-8">
         <p className="swiss-label text-brand">404</p>
-        <h1 className="mt-4 text-balance font-semibold font-serif text-5xl leading-[0.9] tracking-tighter">
+        <h1 className="mt-4 text-balance font-semibold text-3xl tracking-tight">
           Nothing here
         </h1>
         <p className="mt-4 text-pretty text-muted-foreground text-sm">

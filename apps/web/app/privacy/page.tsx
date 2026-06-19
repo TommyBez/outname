@@ -21,7 +21,7 @@ export default function PrivacyPage() {
     <MarketingLegalLayout>
       <header className="mb-12 pt-6 md:mb-16">
         <p className="swiss-label mb-4 text-brand">Legal</p>
-        <h1 className="font-semibold font-serif text-5xl leading-[0.86] tracking-tighter sm:text-6xl">
+        <h1 className="font-semibold text-3xl tracking-tight">
           Privacy Policy
         </h1>
         <p className="mt-6 max-w-xl text-muted-foreground text-sm leading-relaxed">
