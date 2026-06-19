@@ -14,11 +14,6 @@ export function AssemblyVisual({
 }) {
   return (
     <div className="relative h-full min-h-144 w-full">
-      <div
-        aria-hidden
-        className="swiss-diagonal pointer-events-none absolute inset-0 opacity-40"
-      />
-
       <div className="absolute inset-0">
         {composabilityStages.map((stage) =>
           stage.parts.map((part, partIndex) => (

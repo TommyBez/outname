@@ -187,40 +187,6 @@
 }
 
 @layer utilities {
-  /* Subtle Geist-style background textures. */
-  .swiss-grid-pattern {
-    background-image:
-      linear-gradient(
-        to right,
-        color-mix(in oklch, var(--foreground) 4%, transparent) 1px,
-        transparent 1px
-      ),
-      linear-gradient(
-        to bottom,
-        color-mix(in oklch, var(--foreground) 4%, transparent) 1px,
-        transparent 1px
-      );
-    background-size: 24px 24px;
-  }
-
-  .swiss-dots {
-    background-image: radial-gradient(
-      color-mix(in oklch, var(--foreground) 6%, transparent) 1px,
-      transparent 1px
-    );
-    background-size: 16px 16px;
-  }
-
-  .swiss-diagonal {
-    background-image: repeating-linear-gradient(
-      45deg,
-      color-mix(in oklch, var(--foreground) 4%, transparent) 0,
-      color-mix(in oklch, var(--foreground) 4%, transparent) 1px,
-      transparent 1px,
-      transparent 10px
-    );
-  }
-
   /* Quiet technical eyebrow label. */
   .swiss-label {
     font-size: 0.6875rem;

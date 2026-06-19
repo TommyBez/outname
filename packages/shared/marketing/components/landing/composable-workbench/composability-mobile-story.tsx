@@ -51,10 +51,6 @@ export function ComposabilityMobileStory() {
 
             <div className="mt-4 overflow-hidden border border-border bg-muted p-3">
               <div className="relative h-68 sm:h-76" ref={visualRef}>
-                <div
-                  aria-hidden
-                  className="swiss-diagonal pointer-events-none absolute inset-0 opacity-30"
-                />
                 <div className="absolute inset-0">
                   <MobileStageFlight activeIndex={activeIndex} size={size} />
                 </div>

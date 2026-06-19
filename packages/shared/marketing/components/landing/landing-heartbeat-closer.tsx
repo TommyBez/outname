@@ -45,7 +45,7 @@ export function LandingHeartbeatCloser({
           whileInView="visible"
         >
           <motion.div
-            className="grid gap-5 border-border border-t-4 pt-5 md:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)] md:items-end"
+            className="grid gap-5 border-border border-t pt-5 md:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)] md:items-end"
             variants={revealVariants}
           >
             <div>
