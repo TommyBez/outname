@@ -21,7 +21,7 @@ export default function BlogIndexPage() {
       />
       <header className="mb-16 border-border border-t-4 pt-6 md:mb-20">
         <p className="swiss-label mb-4 text-brand">01. The Outname Blog</p>
-        <h1 className="text-balance font-black font-serif text-5xl uppercase leading-[0.86] tracking-tighter sm:text-6xl lg:text-[clamp(4rem,6vw,6rem)]">
+        <h1 className="text-balance font-semibold font-serif text-5xl leading-[0.86] tracking-tighter sm:text-6xl lg:text-[clamp(4rem,6vw,6rem)]">
           Personal AI Agents, Autonomous Work, and Life Inside the Machine
         </h1>
         <div className="mt-6 max-w-xl border-border border-l pl-4">
@@ -43,7 +43,7 @@ export default function BlogIndexPage() {
 
       {posts.length === 0 ? (
         <div className="swiss-dots border border-border bg-muted p-8 md:p-12">
-          <p className="font-black font-serif text-3xl uppercase leading-none tracking-tighter">
+          <p className="font-semibold font-serif text-3xl leading-none tracking-tighter">
             No posts yet.
           </p>
           <p className="mt-4 max-w-md text-muted-foreground text-sm leading-relaxed">
@@ -76,14 +76,14 @@ export default function BlogIndexPage() {
                       </time>
                       {post.tags.map((tag) => (
                         <span
-                          className="inline-flex h-6 items-center border border-border px-2 font-mono text-[10px] uppercase"
+                          className="inline-flex h-6 items-center border border-border px-2 font-mono text-[10px]"
                           key={tag}
                         >
                           {tag}
                         </span>
                       ))}
                     </div>
-                    <h3 className="font-black font-serif text-2xl uppercase leading-none tracking-tighter transition-colors group-hover:text-brand sm:text-3xl">
+                    <h3 className="font-semibold font-serif text-2xl leading-none tracking-tighter transition-colors group-hover:text-brand sm:text-3xl">
                       {post.title}
                     </h3>
                     <p className="mt-3 max-w-2xl text-muted-foreground text-sm leading-relaxed">

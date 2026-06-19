@@ -34,7 +34,7 @@ export default function SettingsPage() {
     <>
       <header className="mb-12 border-border border-t-4 pt-6 md:mb-16">
         <p className="swiss-label mb-4 text-brand">10. Settings</p>
-        <h1 className="font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
+        <h1 className="font-semibold font-serif text-5xl leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
           Your assistant
         </h1>
       </header>
@@ -123,7 +123,7 @@ async function AgentsSummarySection() {
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
       <div>
-        <p className="font-black font-serif text-xl uppercase tracking-[-0.04em]">
+        <p className="font-semibold font-serif text-xl tracking-[-0.04em]">
           {agents.length} agent{agents.length === 1 ? '' : 's'} · {enabled}{' '}
           enabled
         </p>
@@ -132,7 +132,7 @@ async function AgentsSummarySection() {
         </p>
       </div>
       <Link
-        className="inline-flex h-11 shrink-0 items-center justify-center self-start border border-border px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background sm:self-auto"
+        className="inline-flex h-11 shrink-0 items-center justify-center self-start border border-border px-4 font-bold text-xs transition-colors hover:bg-foreground hover:text-background sm:self-auto"
         href="/agents"
       >
         Manage agents →
@@ -145,7 +145,7 @@ async function AccountSection() {
   const session = await getSession()
   return (
     <Row label="Signed in as">
-      <p className="font-black font-serif text-xl uppercase leading-tight tracking-[-0.04em]">
+      <p className="font-semibold font-serif text-xl leading-tight tracking-[-0.04em]">
         {session?.user.email ?? '—'}
       </p>
     </Row>
@@ -175,7 +175,7 @@ function WaitlistSection() {
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
       <div>
-        <p className="font-black font-serif text-xl uppercase tracking-[-0.04em]">
+        <p className="font-semibold font-serif text-xl tracking-[-0.04em]">
           Invite users and manage the waitlist
         </p>
         <p className="mt-0.5 text-muted-foreground text-xs">
@@ -184,7 +184,7 @@ function WaitlistSection() {
         </p>
       </div>
       <Link
-        className="inline-flex h-11 shrink-0 items-center justify-center self-start border border-border px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background sm:self-auto"
+        className="inline-flex h-11 shrink-0 items-center justify-center self-start border border-border px-4 font-bold text-xs transition-colors hover:bg-foreground hover:text-background sm:self-auto"
         href="/settings/waitlist"
       >
         Open waitlist →
@@ -217,7 +217,7 @@ function Row({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <p className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
+      <p className="font-bold text-muted-foreground text-xs tracking-wider">
         {label}
       </p>
       <div>{children}</div>

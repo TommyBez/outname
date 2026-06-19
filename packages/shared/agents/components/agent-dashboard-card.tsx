@@ -71,7 +71,7 @@ export function AgentDashboardCard({
             variant="ghost"
           >
             <div className="min-w-0">
-              <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em] group-hover:text-foreground">
+              <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-bold text-[10px] text-muted-foreground group-hover:text-foreground">
                 <span>{agent.model}</span>
                 <span>{status}</span>
                 {!agent.enabled && (
@@ -80,7 +80,7 @@ export function AgentDashboardCard({
                   </span>
                 )}
               </p>
-              <h2 className="mt-2 text-pretty font-black font-serif text-4xl uppercase leading-[0.95] tracking-tighter md:text-5xl">
+              <h2 className="mt-2 text-pretty font-semibold font-serif text-4xl leading-[0.95] tracking-tighter md:text-5xl">
                 {agent.name}
               </h2>
               {entries.length > 0 && (
@@ -152,11 +152,9 @@ function AgentActivityPanel({
         className="min-h-0 min-w-0"
       >
         <div className="mb-4 flex items-center justify-between gap-4">
-          <p className="font-bold text-[10px] uppercase tracking-[0.2em]">
-            Event state
-          </p>
+          <p className="font-bold text-[10px]">Event state</p>
           <Link
-            className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.18em] hover:text-foreground"
+            className="font-bold text-[10px] text-muted-foreground hover:text-foreground"
             href={`/agents/${agent.id}/events`}
           >
             Open events →
@@ -168,27 +166,23 @@ function AgentActivityPanel({
       </section>
 
       <aside className="border-border border-t pt-5 md:border-t-0 md:border-l md:pl-6">
-        <p className="font-bold text-[10px] uppercase tracking-[0.2em]">
-          Agent controls
-        </p>
+        <p className="font-bold text-[10px]">Agent controls</p>
         <dl className="mt-5 grid gap-4 text-sm">
           {schedule.map((item) => (
             <div key={item.label}>
-              <dt className="text-muted-foreground text-xs uppercase tracking-[0.16em]">
-                {item.label}
-              </dt>
+              <dt className="text-muted-foreground text-xs">{item.label}</dt>
               <dd className="mt-1 font-medium">{item.value}</dd>
             </div>
           ))}
         </dl>
         <Link
-          className="mt-6 inline-flex h-11 w-full items-center justify-center border border-border bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-brand hover:bg-brand hover:text-brand-foreground"
+          className="mt-6 inline-flex h-11 w-full items-center justify-center border border-border bg-foreground px-4 font-bold text-background text-xs transition-colors hover:border-brand hover:bg-brand hover:text-brand-foreground"
           href={`/agents/${agent.id}/events`}
         >
           Open events
         </Link>
         <Link
-          className="mt-2 inline-flex h-11 w-full items-center justify-center border border-border px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-accent"
+          className="mt-2 inline-flex h-11 w-full items-center justify-center border border-border px-4 font-bold text-xs transition-colors hover:bg-accent"
           href={`/agents/${agent.id}/chat`}
         >
           Open chat
@@ -234,7 +228,7 @@ function EventStateList({
   if (events.length === 0) {
     return (
       <section className="border-border border-y bg-background px-4 py-5">
-        <p className="font-bold text-xs uppercase tracking-[0.16em]">Idle</p>
+        <p className="font-bold text-xs">Idle</p>
         <p className="mt-2 text-muted-foreground text-sm">
           No active or queued events.
         </p>
@@ -251,9 +245,7 @@ function EventStateList({
               className="grid gap-2 p-4 transition-colors hover:bg-accent sm:grid-cols-[8rem_1fr_auto]"
               href={eventHref(agentId, event.id)}
             >
-              <span className="font-bold text-xs uppercase tracking-[0.16em]">
-                {event.status}
-              </span>
+              <span className="font-bold text-xs">{event.status}</span>
               <span className="min-w-0 text-sm">
                 {formatEventLabel(event)}
                 {event.blockedByEventId ? (
@@ -283,9 +275,7 @@ function LatestWorkList({
 }) {
   return (
     <section className="mt-5">
-      <p className="mb-3 font-bold text-[10px] uppercase tracking-[0.2em]">
-        Latest work
-      </p>
+      <p className="mb-3 font-bold text-[10px]">Latest work</p>
       <div className="border-border border-y bg-background">
         {WORK_EVENT_TYPES.map((type) => {
           const event = events.get(type)
@@ -295,7 +285,7 @@ function LatestWorkList({
               href={eventHref(agentId, event.id)}
               key={type}
             >
-              <span className="font-bold text-xs uppercase tracking-[0.16em]">
+              <span className="font-bold text-xs">
                 {formatAgentEventTypeLabel(type)}
               </span>
               <span className="text-sm">{event.status}</span>
@@ -308,7 +298,7 @@ function LatestWorkList({
               className="grid gap-2 border-border border-b px-4 py-3 last:border-b-0 sm:grid-cols-[8rem_1fr_auto]"
               key={type}
             >
-              <span className="font-bold text-xs uppercase tracking-[0.16em]">
+              <span className="font-bold text-xs">
                 {formatAgentEventTypeLabel(type)}
               </span>
               <span className="text-muted-foreground text-sm">
@@ -326,9 +316,7 @@ function LatestWorkList({
 function AttentionList({ items }: { items: AttentionItem[] }) {
   return (
     <section className="mt-5">
-      <p className="mb-3 font-bold text-[10px] uppercase tracking-[0.2em]">
-        Attention
-      </p>
+      <p className="mb-3 font-bold text-[10px]">Attention</p>
       {items.length === 0 ? (
         <div className="border-border border-y bg-background p-4">
           <p className="font-medium text-sm">No recent failures.</p>
@@ -359,9 +347,7 @@ function AttentionItemRow({ item }: { item: AttentionItem }) {
   )
   const content = (
     <>
-      <p className="font-bold text-xs uppercase tracking-[0.16em]">
-        {item.label}
-      </p>
+      <p className="font-bold text-xs">{item.label}</p>
       <p className="mt-1 text-sm">{item.detail}</p>
     </>
   )

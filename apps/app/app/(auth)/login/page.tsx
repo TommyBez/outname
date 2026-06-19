@@ -26,7 +26,7 @@ export default function LoginPage({
       <div className="w-full max-w-md border border-border bg-background p-8">
         <div className="mb-10 border-border border-t-4 pt-5">
           <p className="swiss-label text-brand">00. agents</p>
-          <h1 className="mt-4 font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter">
+          <h1 className="mt-4 font-semibold font-serif text-5xl leading-[0.9] tracking-tighter">
             Sign in
           </h1>
           <p className="mt-4 border-border border-l pl-4 text-muted-foreground text-sm leading-relaxed">
@@ -39,11 +39,11 @@ export default function LoginPage({
         </Suspense>
         {waitlistEnabled ? (
           <div className="mt-8 border-border border-t pt-5">
-            <p className="font-mono text-[11px] text-muted-foreground uppercase tracking-normal">
+            <p className="font-mono text-[11px] text-muted-foreground tracking-normal">
               Need access first?
             </p>
             <Link
-              className="mt-3 inline-flex min-h-11 items-center justify-center border border-border px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+              className="mt-3 inline-flex min-h-11 items-center justify-center border border-border px-4 font-bold text-xs transition-colors hover:bg-foreground hover:text-background"
               href="/waitlist?source=login-page"
             >
               Join the waitlist

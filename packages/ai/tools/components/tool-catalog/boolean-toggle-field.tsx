@@ -11,7 +11,7 @@ const TOGGLE_GROUP_CLASS =
   'rounded-none border border-border data-[variant=outline]:shadow-none'
 
 const TOGGLE_ITEM_CLASS =
-  'rounded-none font-bold text-[10px] uppercase tracking-[0.16em] data-[state=on]:bg-foreground data-[state=on]:text-background'
+  'rounded-none font-bold text-[10px] data-[state=on]:bg-foreground data-[state=on]:text-background'
 
 export function BooleanToggleField({
   ariaLabel,

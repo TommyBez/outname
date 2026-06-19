@@ -41,9 +41,7 @@ export function BindingsBlock({
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="font-bold text-xs uppercase tracking-[0.16em]">
-        Routing bindings
-      </p>
+      <p className="font-bold text-xs">Routing bindings</p>
       {bindings.length === 0 ? (
         <p className="text-muted-foreground text-sm">
           No Slack messages route to this agent yet. Add a binding below to
@@ -97,7 +95,7 @@ function BindingRow({
               workspaceName: binding.workspaceName,
             })}
             {!binding.installed && (
-              <span className="ml-2 inline-flex items-center gap-1 font-bold text-destructive uppercase tracking-[0.12em]">
+              <span className="ml-2 inline-flex items-center gap-1 font-bold text-destructive">
                 Workspace not installed
               </span>
             )}

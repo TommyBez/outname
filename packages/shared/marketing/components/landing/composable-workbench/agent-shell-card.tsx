@@ -40,12 +40,12 @@ export function AgentShellCard({
           )}
         >
           <div>
-            <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-normal">
+            <p className="font-mono text-[10px] text-muted-foreground tracking-normal">
               Agent
             </p>
             <p
               className={cn(
-                'mt-2 font-black uppercase leading-none tracking-normal',
+                'mt-2 font-semibold leading-none tracking-normal',
                 compact ? 'text-lg' : 'text-2xl'
               )}
             >
@@ -54,8 +54,7 @@ export function AgentShellCard({
           </div>
           <Badge
             className={cn(
-              compact &&
-                'h-auto px-2 py-1 font-mono text-[9px] uppercase tracking-normal'
+              compact && 'h-auto px-2 py-1 font-mono text-[9px] tracking-normal'
             )}
             variant="outline"
           >
@@ -83,7 +82,7 @@ export function AgentShellCard({
                 <Icon className={compact ? 'size-3.5' : 'size-4'} />
                 <p
                   className={cn(
-                    'font-black uppercase tracking-normal',
+                    'font-semibold tracking-normal',
                     compact ? 'text-[11px] leading-tight' : 'text-sm'
                   )}
                 >
@@ -105,7 +104,7 @@ export function AgentShellCard({
 
         <p
           className={cn(
-            'border-border border-t font-mono text-muted-foreground uppercase tracking-normal',
+            'border-border border-t font-mono text-muted-foreground tracking-normal',
             compact ? 'mt-3 pt-2 text-[9px]' : 'mt-4 pt-3 text-[10px]'
           )}
         >

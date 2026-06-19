@@ -24,7 +24,7 @@ export default function ChannelsPage({
     <>
       <header className="mb-12 border-border border-t-4 pt-6 md:mb-16">
         <p className="swiss-label mb-4 text-brand">08. Channels</p>
-        <h1 className="font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
+        <h1 className="font-semibold font-serif text-5xl leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
           Channels
         </h1>
         <p className="mt-5 max-w-2xl border-border border-l pl-4 text-muted-foreground text-sm leading-relaxed">
@@ -54,7 +54,7 @@ async function ChannelFlashNotice({
   if (sp.connection === 'error') {
     return (
       <div className="mb-10 border-destructive border-l bg-muted py-3 pl-4">
-        <p className="font-bold text-destructive text-xs uppercase tracking-[0.2em]">
+        <p className="font-bold text-destructive text-xs">
           Channel connection failed
         </p>
         <p className="mt-1 text-muted-foreground text-sm">
@@ -71,7 +71,7 @@ async function ChannelFlashNotice({
   if (sp.connection === 'connected') {
     return (
       <div className="mb-10 border-border border-l bg-muted py-3 pl-4">
-        <p className="font-black font-serif text-lg uppercase tracking-[-0.04em]">
+        <p className="font-semibold font-serif text-lg tracking-[-0.04em]">
           Channel connected.
         </p>
       </div>
@@ -100,13 +100,13 @@ async function ChannelsSection() {
         <div>
           <div className="flex flex-wrap items-center gap-3">
             <h2
-              className="font-black font-serif text-3xl uppercase leading-none tracking-tighter"
+              className="font-semibold font-serif text-3xl leading-none tracking-tighter"
               id="slack-channel-heading"
             >
               Slack
             </h2>
             {!isSlackAvailable && (
-              <span className="inline-flex h-7 items-center border border-border bg-muted px-3 font-bold text-[10px] uppercase tracking-[0.16em]">
+              <span className="inline-flex h-7 items-center border border-border bg-muted px-3 font-bold text-[10px]">
                 Coming soon
               </span>
             )}

@@ -187,9 +187,7 @@ async function AgentConfigure({ params }: { params: Params }) {
 
       <section className="flex flex-col gap-3 border-destructive border-t pt-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div>
-          <p className="font-bold text-destructive text-xs uppercase tracking-[0.2em]">
-            Danger zone
-          </p>
+          <p className="font-bold text-destructive text-xs">Danger zone</p>
           <p className="mt-1 text-muted-foreground text-xs">
             Deleting this agent removes all of its run history and results.
           </p>

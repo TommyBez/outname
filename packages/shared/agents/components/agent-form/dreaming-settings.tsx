@@ -10,10 +10,7 @@ export function DreamingSettings({
 }) {
   return (
     <div className="grid gap-4 border border-border bg-background p-5 md:grid-cols-[12rem_minmax(0,1fr)]">
-      <Label
-        className="font-bold text-sm uppercase tracking-[0.14em]"
-        htmlFor="agent-dreaming"
-      >
+      <Label className="font-bold text-sm" htmlFor="agent-dreaming">
         Dreaming
       </Label>
       <div className="flex items-center justify-between gap-4">

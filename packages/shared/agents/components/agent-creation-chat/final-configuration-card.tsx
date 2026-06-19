@@ -31,14 +31,12 @@ export function FinalConfigurationCard({
   return (
     <section className="w-full border border-border bg-background">
       <div className="border-border border-b bg-brand px-4 py-3">
-        <p className="font-bold text-xs uppercase tracking-[0.18em]">
-          Review before creation
-        </p>
+        <p className="font-bold text-xs">Review before creation</p>
       </div>
       <div className="grid gap-5 p-4 md:grid-cols-[minmax(0,1fr)_16rem]">
         <div className="min-w-0 space-y-5">
           <div>
-            <p className="font-black font-serif text-3xl uppercase leading-none tracking-tighter">
+            <p className="font-semibold font-serif text-3xl leading-none tracking-tighter">
               {config.name}
             </p>
             <p className="mt-2 text-muted-foreground text-sm">{config.role}</p>
@@ -97,7 +95,7 @@ function ToolList({
 }) {
   return (
     <div>
-      <p className="font-bold text-xs uppercase tracking-[0.16em]">Tools</p>
+      <p className="font-bold text-xs">Tools</p>
       {maintainerTools.length === 0 && subAgents.length === 0 ? (
         <p className="mt-2 text-muted-foreground text-sm">No optional tools</p>
       ) : (
@@ -127,7 +125,7 @@ function ToolList({
 function ReviewBlock({ label, value }: { label: string; value: string }) {
   return (
     <div className="border-border border-t pt-3">
-      <p className="font-bold text-xs uppercase tracking-[0.16em]">{label}</p>
+      <p className="font-bold text-xs">{label}</p>
       <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">
         {value || 'None'}
       </p>

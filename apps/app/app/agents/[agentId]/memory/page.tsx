@@ -31,7 +31,7 @@ async function ResolvedAgentMemoryPage({ params }: { params: Params }) {
     <>
       <header className="mb-12">
         <p className="swiss-label mb-4 text-brand">Memory</p>
-        <h1 className="font-black font-serif text-4xl uppercase leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl xl:text-7xl">
+        <h1 className="font-semibold font-serif text-4xl leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl xl:text-7xl">
           Agent memory
         </h1>
         <p className="mt-5 max-w-2xl border-border border-l pl-4 text-muted-foreground text-sm leading-relaxed">
@@ -74,7 +74,7 @@ function MemoryCard({
       className="group flex min-h-40 flex-col justify-between border border-border p-5 transition-colors hover:bg-accent"
       href={href}
     >
-      <p className="font-black font-serif text-2xl uppercase leading-none tracking-tighter">
+      <p className="font-semibold font-serif text-2xl leading-none tracking-tighter">
         {title}
       </p>
       <p className="mt-6 text-muted-foreground text-sm leading-relaxed group-hover:text-foreground">

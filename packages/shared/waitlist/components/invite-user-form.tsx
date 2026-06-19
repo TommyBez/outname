@@ -52,7 +52,7 @@ export function InviteUserForm() {
       className="grid gap-4 border-border border-t pt-8 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto]"
     >
       <label className="flex flex-col gap-2">
-        <span className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
+        <span className="font-bold text-muted-foreground text-xs tracking-wider">
           Email
         </span>
         <input
@@ -70,7 +70,7 @@ export function InviteUserForm() {
       </label>
 
       <label className="flex flex-col gap-2">
-        <span className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
+        <span className="font-bold text-muted-foreground text-xs tracking-wider">
           Name (optional)
         </span>
         <input

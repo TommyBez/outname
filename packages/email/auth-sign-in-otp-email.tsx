@@ -34,7 +34,7 @@ export function AuthSignInOtpEmail({
       </Text>
 
       <Section className="mt-[20px] border border-ink border-solid bg-canvas px-[20px] py-[18px] text-center">
-        <Text className="m-0 font-black font-mono text-[32px] text-ink tracking-[8px]">
+        <Text className="m-0 font-mono font-semibold text-[32px] text-ink tracking-[8px]">
           {code}
         </Text>
       </Section>

@@ -4,7 +4,7 @@ export default function AgentNotFound() {
   return (
     <div className="border border-border bg-background p-8">
       <p className="swiss-label text-brand">404</p>
-      <h1 className="mt-4 text-balance font-black font-serif text-4xl uppercase leading-[0.9] tracking-tighter">
+      <h1 className="mt-4 text-balance font-semibold font-serif text-4xl leading-[0.9] tracking-tighter">
         Agent not found
       </h1>
       <p className="mt-4 max-w-md text-pretty text-muted-foreground text-sm">
@@ -12,7 +12,7 @@ export default function AgentNotFound() {
         the registry.
       </p>
       <Link
-        className="mt-8 inline-flex h-11 items-center gap-2 border border-border px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+        className="mt-8 inline-flex h-11 items-center gap-2 border border-border px-4 font-bold text-xs transition-colors hover:bg-foreground hover:text-background"
         href="/agents"
       >
         Open agent registry →

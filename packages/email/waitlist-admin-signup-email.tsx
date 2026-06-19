@@ -20,7 +20,7 @@ export interface WaitlistAdminSignupEmailProps {
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <Text className="m-0 mt-[10px] text-[14px] text-ink leading-[22px]">
-      <span className="font-black uppercase tracking-[1px]">{label}: </span>
+      <span className="font-semibold tracking-[1px]">{label}: </span>
       {value}
     </Text>
   )

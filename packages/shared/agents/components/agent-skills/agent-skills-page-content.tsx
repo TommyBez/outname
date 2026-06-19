@@ -281,7 +281,7 @@ export function AgentSkillsPageContent({
       <header className="border-border border-t-4 pt-6">
         <div className="min-w-0">
           <p className="swiss-label mb-4 text-brand">{agentName}</p>
-          <h1 className="font-black font-serif text-4xl uppercase leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl xl:text-7xl">
+          <h1 className="font-semibold font-serif text-4xl leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl xl:text-7xl">
             Skills
           </h1>
           <p className="mt-5 max-w-2xl border-border border-l pl-4 text-muted-foreground text-sm leading-relaxed">
@@ -333,7 +333,7 @@ function InstalledSkillsList({
     return (
       <div className="flex min-h-48 flex-col items-start justify-center border border-border border-dashed p-6">
         <BookOpenCheck aria-hidden className="mb-4 size-6 text-brand" />
-        <p className="font-black font-serif text-2xl uppercase leading-none tracking-tighter">
+        <p className="font-semibold font-serif text-2xl leading-none tracking-tighter">
           No skills installed.
         </p>
         <p className="mt-3 max-w-xl text-muted-foreground text-sm">
@@ -374,7 +374,7 @@ function SkillRow({
     <article className="grid gap-4 border border-border p-4 md:grid-cols-[minmax(0,1fr)_auto]">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="font-black font-serif text-2xl uppercase leading-none tracking-tighter">
+          <h2 className="font-semibold font-serif text-2xl leading-none tracking-tighter">
             {skill.name}
           </h2>
           <Badge variant="outline">{sourceLabel(skill.sourceType)}</Badge>
@@ -414,9 +414,7 @@ function SkillRow({
 function SkillMeta({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 border-border border-l pl-3">
-      <dt className="font-bold text-muted-foreground uppercase tracking-[0.16em]">
-        {label}
-      </dt>
+      <dt className="font-bold text-muted-foreground">{label}</dt>
       <dd className="mt-1 truncate font-mono text-foreground">{value}</dd>
     </div>
   )
@@ -492,7 +490,7 @@ function AgentSkillInstallSurface({
     <section className="grid gap-5">
       <div className="grid gap-2 border-border border-t-4 pt-4">
         <p className="swiss-label text-brand">Catalog</p>
-        <h2 className="font-black font-serif text-3xl uppercase leading-none tracking-tighter">
+        <h2 className="font-semibold font-serif text-3xl leading-none tracking-tighter">
           Add skill
         </h2>
       </div>
@@ -751,7 +749,7 @@ function ManualSkillSourcePicker({
 }) {
   return (
     <details className="border border-border p-4">
-      <summary className="cursor-pointer font-bold text-sm uppercase tracking-[0.16em]">
+      <summary className="cursor-pointer font-bold text-sm">
         Manual import
       </summary>
       <Tabs
@@ -845,9 +843,7 @@ function SkillFileInput({
 function SkillInstallPreview({ conflict }: { conflict: SkillConflict }) {
   return (
     <div className="grid gap-3 border border-destructive p-4">
-      <p className="font-black text-destructive text-xs uppercase tracking-[0.16em]">
-        Name conflict
-      </p>
+      <p className="font-semibold text-destructive text-xs">Name conflict</p>
       <div className="grid gap-3 md:grid-cols-2">
         <ConflictPanel
           description={conflict.existing.description}
@@ -875,10 +871,8 @@ function ConflictPanel({
 }) {
   return (
     <div className="border-border border-l pl-3">
-      <p className="font-bold text-muted-foreground text-xs uppercase tracking-[0.16em]">
-        {label}
-      </p>
-      <p className="mt-2 font-black font-serif text-xl uppercase leading-none tracking-tighter">
+      <p className="font-bold text-muted-foreground text-xs">{label}</p>
+      <p className="mt-2 font-semibold font-serif text-xl leading-none tracking-tighter">
         {name}
       </p>
       <p className="mt-2 text-muted-foreground text-sm">{description}</p>

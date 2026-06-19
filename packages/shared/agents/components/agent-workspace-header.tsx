@@ -59,7 +59,7 @@ export function AgentWorkspaceHeader({
               className="mb-4 flex min-w-0 items-center gap-2"
             >
               <Link
-                className="font-bold text-muted-foreground text-xs uppercase tracking-[0.2em] transition-colors hover:text-brand"
+                className="font-bold text-muted-foreground text-xs transition-colors hover:text-brand"
                 href="/agents"
               >
                 Agents
@@ -68,7 +68,7 @@ export function AgentWorkspaceHeader({
                 aria-hidden
                 className="size-3 shrink-0 text-muted-foreground/60"
               />
-              <span className="truncate font-bold text-muted-foreground text-xs uppercase tracking-[0.2em]">
+              <span className="truncate font-bold text-muted-foreground text-xs">
                 {agent.name}
               </span>
             </nav>
@@ -85,7 +85,7 @@ export function AgentWorkspaceHeader({
                   {`Dreaming ${agent.dreamingEnabled ? 'daily' : 'off'}`}
                 </Badge>
               </div>
-              <h1 className="text-pretty font-black font-serif text-4xl uppercase leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl xl:text-7xl">
+              <h1 className="text-pretty font-semibold font-serif text-4xl leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl xl:text-7xl">
                 {agent.name}
               </h1>
             </div>
@@ -121,7 +121,7 @@ export function AgentWorkspaceHeader({
             <Link
               aria-current={active ? 'page' : undefined}
               className={cn(
-                'inline-flex h-12 shrink-0 items-center gap-2 border-border border-r px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors last:border-r-0 hover:bg-accent hover:text-foreground',
+                'inline-flex h-12 shrink-0 items-center gap-2 border-border border-r px-4 font-bold text-xs transition-colors last:border-r-0 hover:bg-accent hover:text-foreground',
                 active
                   ? 'bg-foreground text-background hover:bg-foreground hover:text-background'
                   : 'text-muted-foreground'

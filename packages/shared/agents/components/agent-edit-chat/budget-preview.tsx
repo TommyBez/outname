@@ -141,9 +141,7 @@ export function BudgetApprovalPreview({
   return (
     <section className="border border-border bg-background">
       <div className="border-border border-b px-3 py-2">
-        <p className="font-bold text-xs uppercase tracking-[0.16em]">
-          Budget changes
-        </p>
+        <p className="font-bold text-xs">Budget changes</p>
       </div>
       <dl className="divide-y divide-border">
         {rows.map((row) => (
@@ -151,9 +149,7 @@ export function BudgetApprovalPreview({
             className="grid gap-2 px-3 py-2 text-xs sm:grid-cols-[8rem_minmax(0,1fr)]"
             key={row.label}
           >
-            <dt className="font-bold uppercase tracking-[0.12em]">
-              {row.label}
-            </dt>
+            <dt className="font-bold">{row.label}</dt>
             <dd className="min-w-0 font-mono">
               <span className="text-muted-foreground line-through">
                 {formatLimitForReview(row.current)}

@@ -140,12 +140,12 @@ export function AttachmentForm({
           {entry.credentialOverrideFields.map((group) => (
             <div className="flex flex-col gap-3" key={group.connectorId}>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="font-black font-mono text-xs uppercase tracking-[0.08em]">
+                <p className="font-mono font-semibold text-xs">
                   {group.displayName} credential override
                 </p>
                 {group.hasOverride && (
                   <Button
-                    className="inline-flex h-8 items-center justify-center border border-border px-3 font-bold text-[10px] uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
+                    className="inline-flex h-8 items-center justify-center border border-border px-3 font-bold text-[10px] transition-colors hover:bg-destructive hover:text-background disabled:opacity-50"
                     disabled={pending}
                     onClick={() => handleClearOverride(group.connectorId)}
                     size="xs"
@@ -179,7 +179,7 @@ export function AttachmentForm({
             </div>
           ))}
           <Button
-            className="inline-flex h-10 items-center justify-center border border-border bg-foreground px-4 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
+            className="inline-flex h-10 items-center justify-center border border-border bg-foreground px-4 font-bold text-background text-xs transition-colors hover:bg-background hover:text-foreground disabled:opacity-50"
             disabled={pending}
             size="sm"
             type="submit"

@@ -14,10 +14,10 @@ import type { Metadata } from 'next'
 import { Suspense } from 'react'
 
 const NEW_AGENT_BUTTON_CLASS_NAME =
-  'inline-flex h-14 shrink-0 items-center justify-center self-start border border-border bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-brand hover:bg-brand hover:text-brand-foreground md:self-auto'
+  'inline-flex h-14 shrink-0 items-center justify-center self-start border border-border bg-foreground px-6 font-bold text-background text-xs transition-colors hover:border-brand hover:bg-brand hover:text-brand-foreground md:self-auto'
 
 const CREATE_AGENT_BUTTON_CLASS_NAME =
-  'mt-8 inline-flex h-14 items-center justify-center border border-border bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-brand hover:bg-brand hover:text-brand-foreground'
+  'mt-8 inline-flex h-14 items-center justify-center border border-border bg-foreground px-6 font-bold text-background text-xs transition-colors hover:border-brand hover:bg-brand hover:text-brand-foreground'
 
 const AGENTS_FALLBACK_KEYS = [
   'agents-fallback-1',
@@ -55,7 +55,7 @@ async function AgentsListPageBody() {
         <div className="grid gap-8 md:grid-cols-[minmax(0,7fr)_minmax(14rem,3fr)] md:items-end">
           <div>
             <p className="swiss-label mb-4 text-brand">02. Agents</p>
-            <h1 className="font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
+            <h1 className="font-semibold font-serif text-5xl leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
               Your agents
             </h1>
           </div>
@@ -74,7 +74,7 @@ async function AgentsListPageBody() {
 
       {agents.length === 0 ? (
         <div className="swiss-dots border border-border bg-muted p-8 md:p-12">
-          <p className="font-black font-serif text-3xl uppercase leading-none tracking-tighter">
+          <p className="font-semibold font-serif text-3xl leading-none tracking-tighter">
             No agents yet.
           </p>
           <p className="mt-4 max-w-lg text-muted-foreground text-sm leading-relaxed">
@@ -119,7 +119,7 @@ function AgentsListPageFallback() {
         <div className="grid gap-8 md:grid-cols-[minmax(0,7fr)_minmax(14rem,3fr)] md:items-end">
           <div>
             <p className="swiss-label mb-4 text-brand">02. Agents</p>
-            <h1 className="font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
+            <h1 className="font-semibold font-serif text-5xl leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
               Your agents
             </h1>
           </div>

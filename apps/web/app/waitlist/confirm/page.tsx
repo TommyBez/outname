@@ -52,7 +52,7 @@ async function ConfirmContent({
           prepare your account automatically.
         </p>
         <Link
-          className="inline-flex min-h-11 items-center justify-center border border-border px-4 font-bold text-xs uppercase tracking-[0.14em] transition-colors hover:bg-foreground hover:text-background"
+          className="inline-flex min-h-11 items-center justify-center border border-border px-4 font-bold text-xs transition-colors hover:bg-foreground hover:text-background"
           href="/"
         >
           Back to home
@@ -75,7 +75,7 @@ async function ConfirmContent({
           This confirmation link is invalid or has expired.
         </p>
         <Link
-          className="inline-flex min-h-11 items-center justify-center border border-border px-4 font-bold text-xs uppercase tracking-[0.14em] transition-colors hover:bg-foreground hover:text-background"
+          className="inline-flex min-h-11 items-center justify-center border border-border px-4 font-bold text-xs transition-colors hover:bg-foreground hover:text-background"
           href="/waitlist?source=confirm-page"
         >
           Request a new link
@@ -87,7 +87,7 @@ async function ConfirmContent({
   return (
     <div className="border-border border-t-4 pt-5">
       <p className="swiss-label text-brand">00. waitlist confirm</p>
-      <h1 className="mt-4 font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter">
+      <h1 className="mt-4 font-semibold font-serif text-5xl leading-[0.9] tracking-tighter">
         {title}
       </h1>
       {content}

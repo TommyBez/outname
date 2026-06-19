@@ -121,7 +121,7 @@ function SkillCatalogDetailContent({
           <p className="swiss-label mb-4 text-brand">
             skills / {detail.source}
           </p>
-          <h1 className="break-words font-black font-serif text-4xl uppercase leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl">
+          <h1 className="break-words font-semibold font-serif text-4xl leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl">
             {skillPackage.name}
           </h1>
           <p className="mt-5 max-w-3xl border-border border-l pl-4 text-muted-foreground text-sm leading-relaxed">
@@ -141,9 +141,7 @@ function SkillCatalogDetailContent({
 
         <aside className="grid content-start gap-4 border border-border p-4">
           <div>
-            <p className="font-black text-xs uppercase tracking-[0.16em]">
-              Installation
-            </p>
+            <p className="font-semibold text-xs">Installation</p>
             <p className="mt-2 text-muted-foreground text-sm">
               Install this catalog skill into the agent&apos;s dedicated Skill
               Sandbox.
@@ -172,7 +170,7 @@ function SkillCatalogDetailContent({
       <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
         <article className="grid gap-3 border border-border p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-black font-serif text-2xl uppercase leading-none tracking-tighter">
+            <h2 className="font-semibold font-serif text-2xl leading-none tracking-tighter">
               SKILL.md
             </h2>
             <Badge variant="outline">Preview</Badge>
@@ -184,7 +182,7 @@ function SkillCatalogDetailContent({
 
         <aside className="grid gap-5">
           <section className="grid gap-3 border border-border p-4">
-            <h2 className="font-black font-serif text-xl uppercase leading-none tracking-tighter">
+            <h2 className="font-semibold font-serif text-xl leading-none tracking-tighter">
               Package files
             </h2>
             {extraFiles.length === 0 ? (
@@ -219,7 +217,7 @@ function SkillCatalogDetailContent({
           </section>
 
           <section className="grid gap-3 border border-border p-4">
-            <h2 className="font-black font-serif text-xl uppercase leading-none tracking-tighter">
+            <h2 className="font-semibold font-serif text-xl leading-none tracking-tighter">
               Security audits
             </h2>
             <AuditList audit={audit} />
@@ -286,9 +284,7 @@ function AuditList({ audit }: { audit: SkillsShAuditResponse | null }) {
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 border border-border p-4">
-      <p className="font-bold text-muted-foreground text-xs uppercase tracking-[0.16em]">
-        {label}
-      </p>
+      <p className="font-bold text-muted-foreground text-xs">{label}</p>
       <p className="mt-2 truncate font-mono text-sm">{value}</p>
     </div>
   )

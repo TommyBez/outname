@@ -58,9 +58,7 @@ export function GroupConfigPanel({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-3 border border-border bg-background p-3">
-        <p className="font-black font-mono text-xs uppercase tracking-[0.08em]">
-          Resource groups
-        </p>
+        <p className="font-mono font-semibold text-xs">Resource groups</p>
         {(hasEnableFields || hasReadOnlyFields) && (
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
             {hasEnableFields ? (
@@ -110,7 +108,7 @@ export function GroupConfigPanel({
       </div>
 
       <div className="flex flex-col gap-2">
-        <div className="hidden gap-3 px-1 font-bold text-[10px] uppercase tracking-[0.2em] sm:grid sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+        <div className="hidden gap-3 px-1 font-bold text-[10px] sm:grid sm:grid-cols-[minmax(0,1fr)_auto_auto]">
           <span>Group</span>
           <span>Enabled</span>
           <span>Access</span>
@@ -159,9 +157,7 @@ function BulkToggleControl({
 
   return (
     <div className="flex min-w-[12rem] flex-col gap-1">
-      <span className="font-bold text-[10px] uppercase tracking-[0.2em]">
-        {label}
-      </span>
+      <span className="font-bold text-[10px]">{label}</span>
       <BooleanToggleField
         ariaLabel={label}
         disabled={disabled}
@@ -190,9 +186,7 @@ function GroupConfigRow({
   return (
     <div className="grid gap-3 border border-border/20 p-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
       <div className="min-w-0">
-        <p className="font-black font-mono text-xs uppercase tracking-[0.08em]">
-          {group.section}
-        </p>
+        <p className="font-mono font-semibold text-xs">{group.section}</p>
         {(group.enable?.description || group.readOnly?.description) && (
           <p className="mt-1 text-muted-foreground text-xs">
             {group.enable?.description ?? group.readOnly?.description}

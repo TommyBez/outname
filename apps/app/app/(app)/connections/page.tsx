@@ -22,7 +22,7 @@ export default function ConnectionsPage({
     <>
       <header className="mb-12 border-border border-t-4 pt-6 md:mb-16">
         <p className="swiss-label mb-4 text-brand">09. Connections</p>
-        <h1 className="font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
+        <h1 className="font-semibold font-serif text-5xl leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
           Connections
         </h1>
         <p className="mt-5 max-w-2xl border-border border-l pl-4 text-muted-foreground text-sm leading-relaxed">
@@ -51,9 +51,7 @@ async function FlashNotice({
   if (sp.connection === 'error') {
     return (
       <div className="mb-10 border-destructive border-l bg-muted py-3 pl-4">
-        <p className="font-bold text-destructive text-xs uppercase tracking-[0.2em]">
-          Connection failed
-        </p>
+        <p className="font-bold text-destructive text-xs">Connection failed</p>
         <p className="mt-1 text-muted-foreground text-sm">
           {humanizeConnectionFlashReason(sp.reason)}
         </p>
@@ -68,7 +66,7 @@ async function FlashNotice({
   if (sp.connection === 'connected') {
     return (
       <div className="mb-10 border-border border-l bg-muted py-3 pl-4">
-        <p className="font-black font-serif text-lg uppercase tracking-[-0.04em]">
+        <p className="font-semibold font-serif text-lg tracking-[-0.04em]">
           Connection saved.
         </p>
       </div>

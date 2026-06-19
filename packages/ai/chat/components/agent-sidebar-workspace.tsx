@@ -117,7 +117,7 @@ function ChatHistoryGroup({
         </SidebarMenuItem>
 
         {conversations.length === 0 ? (
-          <li className="px-2 py-3 text-center font-mono text-[10px] text-muted-foreground/70 uppercase tracking-[0.15em]">
+          <li className="px-2 py-3 text-center font-mono text-[10px] text-muted-foreground/70">
             No conversations yet
           </li>
         ) : (

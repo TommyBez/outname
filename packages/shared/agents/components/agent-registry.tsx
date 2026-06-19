@@ -51,7 +51,7 @@ export function AgentRegistry({
       <div className="mb-6 grid gap-4 border-border border-y py-5 md:grid-cols-[minmax(0,1fr)_18rem] md:items-center">
         <div>
           <h2
-            className="font-black font-serif text-3xl uppercase leading-none tracking-tighter"
+            className="font-semibold font-serif text-3xl leading-none tracking-tighter"
             id="agent-registry-heading"
           >
             Registry
@@ -102,7 +102,7 @@ export function AgentRegistry({
 
       {visibleAgents.length === 0 ? (
         <div className="border border-border bg-muted p-8">
-          <p className="font-black font-serif text-2xl uppercase leading-none tracking-tighter">
+          <p className="font-semibold font-serif text-2xl leading-none tracking-tighter">
             No agents match “{query}”.
           </p>
           <p className="mt-3 max-w-md text-muted-foreground text-sm">
@@ -110,7 +110,7 @@ export function AgentRegistry({
             or clear the search to see all {agents.length} agents.
           </p>
           <button
-            className="mt-6 inline-flex h-10 items-center justify-center border border-border px-4 font-bold text-[10px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+            className="mt-6 inline-flex h-10 items-center justify-center border border-border px-4 font-bold text-[10px] transition-colors hover:bg-foreground hover:text-background"
             onClick={() => setQuery('')}
             type="button"
           >
@@ -140,7 +140,7 @@ function AgentRegistryRow({
   return (
     <article className="grid gap-5 border-border border-b py-6 last:border-b-0 md:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] md:items-center md:px-4">
       <div className="min-w-0">
-        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-bold text-[10px] text-muted-foreground">
           <span>{agent.model}</span>
           <span
             className={cn(
@@ -154,7 +154,7 @@ function AgentRegistryRow({
           </span>
         </p>
         <Link
-          className="mt-2 block text-pretty font-black font-serif text-3xl uppercase leading-none tracking-tighter transition-colors hover:text-brand"
+          className="mt-2 block text-pretty font-semibold font-serif text-3xl leading-none tracking-tighter transition-colors hover:text-brand"
           href={`/agents/${agent.id}`}
         >
           {agent.name}
@@ -189,7 +189,7 @@ function AgentRegistryRow({
 function RegistryAction({ href, label }: { href: string; label: string }) {
   return (
     <Link
-      className="inline-flex h-10 items-center justify-center border border-border px-3 font-bold text-[10px] uppercase tracking-[0.14em] transition-colors hover:bg-foreground hover:text-background"
+      className="inline-flex h-10 items-center justify-center border border-border px-3 font-bold text-[10px] transition-colors hover:bg-foreground hover:text-background"
       href={href}
     >
       {label}

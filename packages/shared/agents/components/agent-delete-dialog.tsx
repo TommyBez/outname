@@ -27,7 +27,7 @@ export function AgentDeleteDialog({
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <Button
-          className="h-11 border border-destructive px-4 font-bold text-destructive text-xs uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-destructive-foreground"
+          className="h-11 border border-destructive px-4 font-bold text-destructive text-xs transition-colors hover:bg-destructive hover:text-destructive-foreground"
           type="button"
           variant="outline"
         >

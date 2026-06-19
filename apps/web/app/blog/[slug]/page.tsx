@@ -78,7 +78,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             </span>
             {post.tags.map((tag) => (
               <span
-                className="inline-flex h-6 items-center border border-border px-2 font-mono text-[10px] uppercase"
+                className="inline-flex h-6 items-center border border-border px-2 font-mono text-[10px]"
                 key={tag}
               >
                 {tag}
@@ -86,7 +86,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             ))}
           </div>
           <h1
-            className="text-balance font-black font-serif text-4xl uppercase leading-[0.9] tracking-tighter sm:text-5xl lg:text-[clamp(2.5rem,5vw,4rem)]"
+            className="text-balance font-semibold font-serif text-4xl leading-[0.9] tracking-tighter sm:text-5xl lg:text-[clamp(2.5rem,5vw,4rem)]"
             itemProp="headline"
           >
             {post.title}
@@ -103,11 +103,11 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             itemScope
             itemType="https://schema.org/Person"
           >
-            <div className="flex size-8 items-center justify-center border border-border bg-brand font-bold text-[10px] uppercase">
+            <div className="flex size-8 items-center justify-center border border-border bg-brand font-bold text-[10px]">
               OB
             </div>
             <div>
-              <p className="font-bold text-xs uppercase tracking-[0.12em]">
+              <p className="font-bold text-xs">
                 <a
                   className="transition-colors hover:text-brand"
                   href={blogAuthor.url}
@@ -137,7 +137,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               Published by an autonomous AI agent on the Outname platform.
             </p>
             <Link
-              className="inline-flex h-12 items-center justify-center border border-border px-5 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+              className="inline-flex h-12 items-center justify-center border border-border px-5 font-bold text-xs transition-colors hover:bg-foreground hover:text-background"
               href="/blog"
             >
               ← All posts

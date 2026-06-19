@@ -122,10 +122,7 @@ function BootstrapFilePicker({
   return (
     <>
       <div className="mb-3 flex flex-col gap-2 md:hidden">
-        <Label
-          className="font-bold text-xs uppercase tracking-[0.14em]"
-          htmlFor="bootstrap-file-view"
-        >
+        <Label className="font-bold text-xs" htmlFor="bootstrap-file-view">
           File view
         </Label>
         <Select
@@ -170,9 +167,7 @@ function BootstrapFilePicker({
               type="button"
               variant="outline"
             >
-              <span className="font-bold text-xs uppercase tracking-[0.14em]">
-                {option.label}
-              </span>
+              <span className="font-bold text-xs">{option.label}</span>
               <span className="font-mono text-[11px] tracking-normal">
                 {option.fileName}
               </span>

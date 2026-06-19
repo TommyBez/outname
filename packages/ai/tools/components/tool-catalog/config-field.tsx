@@ -20,10 +20,7 @@ export function ConfigField({
 
   return (
     <div className="flex flex-col gap-1">
-      <label
-        className="font-bold text-[10px] uppercase tracking-[0.2em]"
-        htmlFor={inputId}
-      >
+      <label className="font-bold text-[10px]" htmlFor={inputId}>
         {field.label}
         {field.required && <span className="ml-1 text-destructive">*</span>}
       </label>

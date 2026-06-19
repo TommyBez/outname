@@ -37,12 +37,12 @@ export function ComposabilityMobileStory() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="swiss-label text-brand">{activeStage.eyebrow}</p>
-                <p className="mt-1 font-mono text-[10px] text-muted-foreground uppercase tracking-normal">
+                <p className="mt-1 font-mono text-[10px] text-muted-foreground tracking-normal">
                   Scroll to compose
                 </p>
               </div>
               <Badge
-                className="h-auto border px-2 py-1 font-mono text-[10px] uppercase tracking-normal"
+                className="h-auto border px-2 py-1 font-mono text-[10px] tracking-normal"
                 variant="outline"
               >
                 {attached} / {totalParts} attached
@@ -64,7 +64,7 @@ export function ComposabilityMobileStory() {
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-4 gap-1 font-mono text-[10px] uppercase tracking-normal">
+            <div className="mt-4 grid grid-cols-4 gap-1 font-mono text-[10px] tracking-normal">
               {composabilityStages.map((stage, index) => {
                 const isActive = index === activeIndex
                 const isAttached = index < activeIndex
@@ -80,7 +80,7 @@ export function ComposabilityMobileStory() {
                     <span className="block font-bold">
                       {String(index + 1).padStart(2, '0')}
                     </span>
-                    <span className="mt-1 block truncate font-black text-[11px]">
+                    <span className="mt-1 block truncate font-semibold text-[11px]">
                       {stage.label}
                     </span>
                   </div>
@@ -98,7 +98,7 @@ export function ComposabilityMobileStory() {
               />
             </div>
 
-            <h3 className="mt-4 font-black text-3xl uppercase leading-[0.9] tracking-normal sm:text-4xl">
+            <h3 className="mt-4 font-semibold text-3xl leading-[0.9] tracking-normal sm:text-4xl">
               {activeStage.label}
             </h3>
             <p className="mt-3 max-w-xl text-muted-foreground text-sm leading-relaxed">

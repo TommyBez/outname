@@ -13,7 +13,7 @@ export function LandingNav({ waitlistEnabled }: { waitlistEnabled: boolean }) {
         className="mx-auto flex w-full min-w-0 max-w-7xl items-center justify-between gap-4 border border-border bg-background p-2"
       >
         <Link
-          className="ease flex min-h-11 min-w-0 items-center gap-3 px-3 font-black text-sm uppercase tracking-normal transition-colors duration-150 hover:text-brand"
+          className="ease flex min-h-11 min-w-0 items-center gap-3 px-3 font-semibold text-sm tracking-normal transition-colors duration-150 hover:text-brand"
           href="/"
         >
           <span aria-hidden className="size-3 bg-brand" />

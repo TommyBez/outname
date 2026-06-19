@@ -197,11 +197,11 @@ function ModelCommandItem({
           {option.id}
         </span>
       </span>
-      <span className="shrink-0 border border-border px-1.5 py-0.5 font-bold text-[10px] text-muted-foreground uppercase tracking-[0.14em]">
+      <span className="shrink-0 border border-border px-1.5 py-0.5 font-bold text-[10px] text-muted-foreground">
         {option.ownedBy}
       </span>
       {isSelected ? (
-        <span className="shrink-0 border border-current px-1.5 py-0.5 font-bold text-[10px] uppercase tracking-[0.14em]">
+        <span className="shrink-0 border border-current px-1.5 py-0.5 font-bold text-[10px]">
           Current
         </span>
       ) : null}

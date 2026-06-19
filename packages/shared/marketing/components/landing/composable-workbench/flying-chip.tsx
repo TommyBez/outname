@@ -41,7 +41,7 @@ export function FlyingChip({
     <span
       aria-hidden
       className={cn(
-        'pointer-events-none absolute z-0 font-mono text-[15px] uppercase tracking-normal transition-opacity duration-150',
+        'pointer-events-none absolute z-0 font-mono text-[15px] tracking-normal transition-opacity duration-150',
         'border border-border px-5 py-3 shadow-[5px_5px_0_0] shadow-foreground/15',
         stageColor === 'accent'
           ? 'bg-brand text-foreground'

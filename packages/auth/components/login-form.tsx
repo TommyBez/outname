@@ -169,7 +169,7 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
               </p>
             </div>
             <Button
-              className="h-auto px-0 py-0 text-[11px] text-foreground tracking-[0.14em] underline hover:text-foreground"
+              className="h-auto px-0 py-0 text-[11px] text-foreground underline hover:text-foreground"
               onClick={() => {
                 dispatch({ type: 'back_to_request' })
               }}

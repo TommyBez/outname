@@ -11,7 +11,7 @@ export function LandingFooter() {
     <footer className="border-border border-t px-4 sm:px-6 md:px-10 lg:px-12">
       <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-4 py-8 sm:flex-row">
         <Link
-          className="ease font-black text-sm uppercase tracking-normal transition-colors duration-150 hover:text-brand"
+          className="ease font-semibold text-sm tracking-normal transition-colors duration-150 hover:text-brand"
           href="/"
         >
           OUTNA.ME

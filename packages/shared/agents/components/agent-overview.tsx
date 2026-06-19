@@ -148,7 +148,7 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
         <div className="mb-6 flex flex-wrap items-baseline justify-between gap-4">
           <div>
             <p className="swiss-label text-brand">Activity</p>
-            <h2 className="mt-3 font-black font-serif text-3xl uppercase leading-none tracking-tighter">
+            <h2 className="mt-3 font-semibold font-serif text-3xl leading-none tracking-tighter">
               Current state
             </h2>
           </div>
@@ -159,7 +159,7 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
               enabled={agent.enabled}
             />
             <Link
-              className="font-bold text-muted-foreground text-xs uppercase tracking-[0.18em] hover:text-foreground"
+              className="font-bold text-muted-foreground text-xs hover:text-foreground"
               href={`/agents/${agent.id}/chat`}
             >
               Open chat →
@@ -186,12 +186,12 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
         <div className="mb-6 flex flex-wrap items-baseline justify-between gap-4">
           <div>
             <p className="swiss-label text-brand">Events</p>
-            <h2 className="mt-3 font-black font-serif text-3xl uppercase leading-none tracking-tighter">
+            <h2 className="mt-3 font-semibold font-serif text-3xl leading-none tracking-tighter">
               Recent event ledger
             </h2>
           </div>
           <Link
-            className="font-bold text-muted-foreground text-xs uppercase tracking-[0.18em] hover:text-foreground"
+            className="font-bold text-muted-foreground text-xs hover:text-foreground"
             href={`/agents/${agent.id}/events`}
           >
             Open events →
@@ -212,9 +212,7 @@ async function ResolvedAgentOverview({ params }: { params: Params }) {
                   className="grid gap-2 py-4 transition-colors hover:bg-accent md:grid-cols-[10rem_1fr_10rem]"
                   href={`/agents/${agent.id}/events?event=${event.id}`}
                 >
-                  <span className="font-bold text-xs uppercase tracking-[0.16em]">
-                    {event.status}
-                  </span>
+                  <span className="font-bold text-xs">{event.status}</span>
                   <span className="text-sm">
                     {event.type} · {event.source}
                   </span>
@@ -245,11 +243,9 @@ function OverviewPanel({
   return (
     <section className="border border-border bg-background p-5">
       <div className="mb-5 flex items-center justify-between gap-4">
-        <h3 className="font-bold text-xs uppercase tracking-[0.18em]">
-          {title}
-        </h3>
+        <h3 className="font-bold text-xs">{title}</h3>
         <Link
-          className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.16em] hover:text-foreground"
+          className="font-bold text-[10px] text-muted-foreground hover:text-foreground"
           href={actionHref}
         >
           {actionLabel} →
@@ -269,9 +265,7 @@ function OverviewList({
     <dl className="grid gap-4">
       {items.map((item) => (
         <div key={item.label}>
-          <dt className="text-muted-foreground text-xs uppercase tracking-[0.16em]">
-            {item.label}
-          </dt>
+          <dt className="text-muted-foreground text-xs">{item.label}</dt>
           <dd className="mt-1 font-medium text-sm">{item.value}</dd>
         </div>
       ))}
@@ -282,10 +276,8 @@ function OverviewList({
 function StateTile({ label, value }: { label: string; value: string }) {
   return (
     <div className="border-border border-l pl-4">
-      <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
-        {label}
-      </p>
-      <p className="mt-2 font-black font-serif text-3xl uppercase leading-none tracking-tighter">
+      <p className="font-bold text-[10px] text-muted-foreground">{label}</p>
+      <p className="mt-2 font-semibold font-serif text-3xl leading-none tracking-tighter">
         {value}
       </p>
     </div>

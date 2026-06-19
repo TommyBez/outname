@@ -181,7 +181,7 @@ function WorkflowStatusMessage({
     <output
       aria-live="polite"
       className={cn(
-        'flex w-full max-w-[95%] items-center gap-2 border px-3 py-3 font-medium text-xs uppercase leading-5 tracking-[0.12em]',
+        'flex w-full max-w-[95%] items-center gap-2 border px-3 py-3 font-medium text-xs leading-5',
         tone === 'error'
           ? 'border-destructive bg-destructive/10 text-destructive'
           : 'border-border bg-muted/40 text-muted-foreground'

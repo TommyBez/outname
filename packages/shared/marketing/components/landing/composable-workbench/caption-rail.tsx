@@ -27,7 +27,7 @@ export function CaptionRail({
         </span>
       </div>
 
-      <h3 className="mt-6 font-black text-5xl uppercase leading-[0.88] tracking-normal md:text-7xl">
+      <h3 className="mt-6 font-semibold text-5xl leading-[0.88] tracking-normal md:text-7xl">
         {activeStage.label}
       </h3>
 
@@ -35,7 +35,7 @@ export function CaptionRail({
         {activeStage.caption}
       </p>
 
-      <div className="mt-8 grid grid-cols-4 gap-1 font-mono text-[10px] uppercase tracking-normal">
+      <div className="mt-8 grid grid-cols-4 gap-1 font-mono text-[10px] tracking-normal">
         {composabilityStages.map((stage, index) => (
           <div
             className={cn(
@@ -49,7 +49,7 @@ export function CaptionRail({
             <span className="block font-bold">
               {String(index + 1).padStart(2, '0')}
             </span>
-            <span className="mt-1 block truncate font-black text-[11px]">
+            <span className="mt-1 block truncate font-semibold text-[11px]">
               {stage.label}
             </span>
           </div>
@@ -64,7 +64,7 @@ export function CaptionRail({
         />
       </div>
 
-      <p className="mt-4 font-mono text-[10px] text-muted-foreground uppercase tracking-normal">
+      <p className="mt-4 font-mono text-[10px] text-muted-foreground tracking-normal">
         scroll to attach · {attached} / {totalParts} parts attached
       </p>
     </aside>

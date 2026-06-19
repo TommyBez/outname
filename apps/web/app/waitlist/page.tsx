@@ -51,7 +51,7 @@ async function WaitlistPageContent({
     <>
       <div className="mb-10 border-border border-t-4 pt-5">
         <p className="swiss-label text-brand">00. early access</p>
-        <h1 className="mt-4 font-black font-serif text-4xl uppercase leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl">
+        <h1 className="mt-4 font-semibold font-serif text-4xl leading-[0.9] tracking-tighter sm:text-5xl lg:text-6xl">
           Join the waitlist
         </h1>
         <p className="mt-4 max-w-xl border-border border-l pl-4 text-muted-foreground text-sm leading-relaxed">
@@ -68,7 +68,7 @@ async function WaitlistPageContent({
         utmSource={params.utm_source}
       />
 
-      <div className="mt-8 border-border border-t pt-5 text-xs uppercase tracking-[0.14em]">
+      <div className="mt-8 border-border border-t pt-5 text-xs">
         Already have access?{' '}
         <Link
           className="font-bold text-brand underline-offset-4 hover:underline"

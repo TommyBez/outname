@@ -121,7 +121,7 @@ async function WaitlistSettingsContent({
         <p className="swiss-label mb-4 text-brand">10. Settings / Waitlist</p>
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="font-black font-serif text-5xl uppercase leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
+            <h1 className="font-semibold font-serif text-5xl leading-[0.9] tracking-tighter sm:text-6xl lg:text-7xl xl:text-8xl">
               Waitlist
             </h1>
             <p className="mt-4 max-w-2xl text-muted-foreground text-sm leading-relaxed">
@@ -131,7 +131,7 @@ async function WaitlistSettingsContent({
             </p>
           </div>
           <Link
-            className="inline-flex min-h-11 items-center justify-center border border-border px-4 font-bold text-xs uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+            className="inline-flex min-h-11 items-center justify-center border border-border px-4 font-bold text-xs transition-colors hover:bg-foreground hover:text-background"
             href="/settings"
           >
             Back to settings
@@ -152,7 +152,7 @@ async function WaitlistSettingsContent({
 
         <form className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_repeat(5,minmax(0,1fr))_auto]">
           <label className="flex flex-col gap-2">
-            <span className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
+            <span className="font-bold text-muted-foreground text-xs tracking-wider">
               Search email
             </span>
             <input
@@ -292,7 +292,7 @@ function FilterSelect({
 }) {
   return (
     <label className="flex flex-col gap-2">
-      <span className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
+      <span className="font-bold text-muted-foreground text-xs tracking-wider">
         {label}
       </span>
       <select

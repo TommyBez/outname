@@ -103,16 +103,16 @@ function AgentEventsWorkspaceContent({
       <aside className="flex h-[min(42rem,calc(100svh-12rem))] min-h-[20rem] min-w-0 flex-col overflow-hidden border border-border bg-background xl:h-[42rem]">
         <div className="flex shrink-0 items-center justify-between gap-4 border-border border-b px-4 py-3">
           <div>
-            <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.18em]">
+            <p className="font-bold text-[10px] text-muted-foreground">
               Event ledger
             </p>
-            <h2 className="mt-1 font-black font-serif text-2xl uppercase leading-none tracking-tighter">
+            <h2 className="mt-1 font-semibold font-serif text-2xl leading-none tracking-tighter">
               Events
             </h2>
           </div>
           <div className="flex items-center gap-2">
             {ledgerStale && (
-              <span className="font-bold text-[10px] text-amber-600 uppercase tracking-[0.14em]">
+              <span className="font-bold text-[10px] text-amber-600">
                 Stale
               </span>
             )}
@@ -144,7 +144,7 @@ function AgentEventsWorkspaceContent({
                     <span className="flex min-w-0 items-center justify-between gap-3">
                       <span className="inline-flex min-w-0 items-center gap-2">
                         <EventStatusIcon status={event.status} />
-                        <span className="truncate font-bold text-xs uppercase tracking-[0.14em]">
+                        <span className="truncate font-bold text-xs">
                           {formatEventLabel(event)}
                         </span>
                       </span>
@@ -192,7 +192,7 @@ function AgentEventsWorkspaceContent({
         />
         {transcript.warning && !transcript.error && (
           <p
-            className="mx-4 mb-2 border border-amber-500 bg-amber-500/10 px-3 py-2 font-bold text-amber-800 text-xs uppercase tracking-[0.12em] dark:text-amber-200"
+            className="mx-4 mb-2 border border-amber-500 bg-amber-500/10 px-3 py-2 font-bold text-amber-800 text-xs dark:text-amber-200"
             role="status"
           >
             {transcript.warning}
@@ -200,7 +200,7 @@ function AgentEventsWorkspaceContent({
         )}
         {transcript.error && (
           <p
-            className="mx-4 mb-4 border border-destructive bg-destructive/10 px-3 py-2 font-bold text-destructive text-xs uppercase tracking-[0.12em]"
+            className="mx-4 mb-4 border border-destructive bg-destructive/10 px-3 py-2 font-bold text-destructive text-xs"
             role="alert"
           >
             {transcript.error}
@@ -234,7 +234,7 @@ function EventTranscriptHeader({
               <Badge variant="outline">{event.source}</Badge>
               <Badge variant="secondary">{streamStatus}</Badge>
             </div>
-            <h2 className="mt-3 truncate font-black font-serif text-3xl uppercase leading-none tracking-tighter">
+            <h2 className="mt-3 truncate font-semibold font-serif text-3xl leading-none tracking-tighter">
               {formatEventLabel(event)}
             </h2>
           </div>
@@ -253,14 +253,12 @@ function EventTranscriptHeader({
       ) : (
         <div className="flex items-center gap-3 text-muted-foreground">
           <Activity aria-hidden className="size-5" />
-          <span className="font-bold text-xs uppercase tracking-[0.16em]">
-            No event selected
-          </span>
+          <span className="font-bold text-xs">No event selected</span>
         </div>
       )}
       {blockedByEventId && (
         <Button
-          className="mt-4 border border-border px-3 py-2 font-bold text-xs uppercase tracking-[0.14em] transition-colors hover:bg-accent"
+          className="mt-4 border border-border px-3 py-2 font-bold text-xs transition-colors hover:bg-accent"
           onClick={() => onSelectEvent(blockedByEventId)}
           size="xs"
           type="button"

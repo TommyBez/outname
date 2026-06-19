@@ -57,14 +57,14 @@ export function AgentMemoryFilesList({ files }: { files: MemoryFileRow[] }) {
 
       {visibleFiles.length === 0 ? (
         <div className="border border-border bg-muted p-8">
-          <p className="font-black font-serif text-2xl uppercase leading-none tracking-tighter">
+          <p className="font-semibold font-serif text-2xl leading-none tracking-tighter">
             No files match “{query}”.
           </p>
           <p className="mt-3 max-w-md text-muted-foreground text-sm">
             Search matches file names and file contents.
           </p>
           <button
-            className="mt-6 inline-flex h-10 items-center justify-center border border-border px-4 font-bold text-[10px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+            className="mt-6 inline-flex h-10 items-center justify-center border border-border px-4 font-bold text-[10px] transition-colors hover:bg-foreground hover:text-background"
             onClick={() => setQuery('')}
             type="button"
           >
@@ -76,9 +76,7 @@ export function AgentMemoryFilesList({ files }: { files: MemoryFileRow[] }) {
           {visibleFiles.map((row) => (
             <li className="flex flex-col gap-3" key={row.path}>
               <header className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-border border-b pb-2">
-                <h2 className="font-bold font-mono text-sm uppercase tracking-[0.12em]">
-                  {row.path}
-                </h2>
+                <h2 className="font-bold font-mono text-sm">{row.path}</h2>
                 <span className="font-mono text-muted-foreground text-xs">
                   Updated {row.updatedLabel}
                 </span>

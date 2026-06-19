@@ -150,9 +150,7 @@ function BudgetRow({
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <p className="font-bold text-xs uppercase tracking-[0.18em]">
-            {period.label}
-          </p>
+          <p className="font-bold text-xs">{period.label}</p>
           {rule ? (
             <p
               className={
@@ -174,7 +172,7 @@ function BudgetRow({
         {rule && (
           <div className="flex items-center gap-2">
             <Button
-              className="h-9 border border-border px-3 font-bold text-[11px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background disabled:opacity-50"
+              className="h-9 border border-border px-3 font-bold text-[11px] transition-colors hover:bg-foreground hover:text-background disabled:opacity-50"
               disabled={pending}
               onClick={onToggle}
               size="xs"
@@ -190,7 +188,7 @@ function BudgetRow({
               title={`Remove the ${period.label.toLowerCase()} budget?`}
               trigger={
                 <Button
-                  className="h-9 border border-destructive px-3 font-bold text-[11px] text-destructive uppercase tracking-[0.16em] transition-colors hover:bg-destructive hover:text-destructive-foreground disabled:opacity-50"
+                  className="h-9 border border-destructive px-3 font-bold text-[11px] text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground disabled:opacity-50"
                   disabled={pending}
                   size="xs"
                   type="button"
@@ -286,7 +284,7 @@ function BudgetLimitForm({
           value={draftLimit}
         />
         <Button
-          className="h-9 border border-border px-3 font-bold text-[11px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background disabled:opacity-50"
+          className="h-9 border border-border px-3 font-bold text-[11px] transition-colors hover:bg-foreground hover:text-background disabled:opacity-50"
           disabled={pending || draftInvalid || draftLimit.trim().length === 0}
           size="xs"
           type="submit"

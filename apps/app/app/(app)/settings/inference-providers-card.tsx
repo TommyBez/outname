@@ -133,7 +133,7 @@ function InferenceProviderForm({ provider }: { provider: ProviderState }) {
       />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="font-black font-serif text-xl uppercase leading-tight tracking-[-0.04em]">
+          <p className="font-semibold font-serif text-xl leading-tight tracking-[-0.04em]">
             {provider.label}
           </p>
           <p className="mt-1 text-muted-foreground text-xs">

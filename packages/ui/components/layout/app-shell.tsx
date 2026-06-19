@@ -33,7 +33,7 @@ export function AppShell({
   return (
     <SidebarProvider defaultOpen>
       <a
-        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:border focus:border-border focus:bg-accent focus:px-4 focus:py-3 focus:font-bold focus:text-foreground focus:text-xs focus:uppercase focus:tracking-[0.18em]"
+        className="focus: sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:border focus:border-border focus:bg-accent focus:px-4 focus:py-3 focus:font-bold focus:text-foreground focus:text-xs"
         href="#main-content"
       >
         Skip to content
@@ -48,7 +48,7 @@ export function AppShell({
         <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-border border-b bg-background px-3 lg:h-12 lg:px-4">
           <SidebarTrigger className="-ml-1 size-10 border-border lg:size-9" />
           <Link
-            className="inline-flex min-h-11 items-center gap-2 font-bold text-sm uppercase tracking-[0.2em] transition-colors hover:text-brand lg:hidden"
+            className="inline-flex min-h-11 items-center gap-2 font-bold text-sm transition-colors hover:text-brand lg:hidden"
             href="/dashboard"
           >
             <span aria-hidden className="inline-block size-3 bg-brand" />

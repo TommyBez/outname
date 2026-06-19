@@ -10,7 +10,7 @@ export function NavLink({
 }) {
   return (
     <Link
-      className="ease inline-flex min-h-11 items-center px-4 font-bold text-xs uppercase tracking-normal transition-colors duration-150 hover:bg-foreground hover:text-background"
+      className="ease inline-flex min-h-11 items-center px-4 font-bold text-xs tracking-normal transition-colors duration-150 hover:bg-foreground hover:text-background"
       href={href}
     >
       {children}

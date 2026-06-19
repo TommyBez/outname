@@ -566,7 +566,7 @@ export function LandingChatShowcase({
           >
             <div>
               <p className="swiss-label text-brand">Live agent · /chat/:id</p>
-              <h2 className="mt-4 text-balance font-black text-5xl uppercase leading-[0.88] tracking-normal md:text-7xl">
+              <h2 className="mt-4 text-balance font-semibold text-5xl leading-[0.88] tracking-normal md:text-7xl">
                 Same agent. Every surface.
               </h2>
             </div>
@@ -587,15 +587,15 @@ export function LandingChatShowcase({
                       <BotIcon className="size-4" />
                     </span>
                     <div className="min-w-0">
-                      <p className="hidden font-bold text-[10px] text-muted-foreground uppercase tracking-normal lg:block">
+                      <p className="hidden font-bold text-[10px] text-muted-foreground tracking-normal lg:block">
                         Workspace
                       </p>
                       <div className="lg:mt-3 lg:flex lg:items-start lg:justify-between lg:gap-3">
                         <div className="min-w-0">
-                          <p className="font-black text-sm uppercase leading-none tracking-normal lg:text-lg">
+                          <p className="font-semibold text-sm leading-none tracking-normal lg:text-lg">
                             {agentMeta.name}
                           </p>
-                          <p className="mt-1 font-mono text-[10px] text-muted-foreground uppercase tracking-normal lg:mt-2">
+                          <p className="mt-1 font-mono text-[10px] text-muted-foreground tracking-normal lg:mt-2">
                             {agentMeta.attached}
                           </p>
                         </div>
@@ -608,7 +608,7 @@ export function LandingChatShowcase({
                 </div>
 
                 <nav className="hidden border-border border-b p-3 lg:block">
-                  <ul className="grid gap-0.5 font-mono text-[11px] uppercase tracking-normal">
+                  <ul className="grid gap-0.5 font-mono text-[11px] tracking-normal">
                     {[
                       { active: true, label: 'Chat' },
                       { active: false, label: 'Configure' },
@@ -636,7 +636,7 @@ export function LandingChatShowcase({
                 </nav>
 
                 <div className="min-w-0 border-border border-b p-2 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:border-b-0 lg:p-3">
-                  <p className="hidden px-2 pt-1 pb-2 font-bold text-[10px] text-muted-foreground uppercase tracking-normal lg:block">
+                  <p className="hidden px-2 pt-1 pb-2 font-bold text-[10px] text-muted-foreground tracking-normal lg:block">
                     Conversations
                   </p>
                   <ul className="-mx-2 flex gap-1.5 overflow-x-auto px-2 lg:mx-0 lg:grid lg:gap-1.5 lg:overflow-visible lg:px-0">
@@ -655,10 +655,10 @@ export function LandingChatShowcase({
                           variant="ghost"
                         >
                           <span className="flex items-baseline justify-between gap-2">
-                            <span className="truncate font-black text-xs uppercase tracking-normal">
+                            <span className="truncate font-semibold text-xs tracking-normal">
                               {scenario.title}
                             </span>
-                            <span className="shrink-0 font-mono text-[9px] text-muted-foreground uppercase tracking-normal">
+                            <span className="shrink-0 font-mono text-[9px] text-muted-foreground tracking-normal">
                               {scenario.relativeTime}
                             </span>
                           </span>
@@ -682,10 +682,10 @@ export function LandingChatShowcase({
                       <BotIcon className="size-4" />
                     </span>
                     <div className="min-w-0">
-                      <p className="font-black text-sm uppercase leading-none tracking-normal">
+                      <p className="font-semibold text-sm leading-none tracking-normal">
                         {agentMeta.name}
                       </p>
-                      <p className="mt-1.5 font-mono text-[10px] text-muted-foreground uppercase tracking-normal">
+                      <p className="mt-1.5 font-mono text-[10px] text-muted-foreground tracking-normal">
                         {activeScenario.model}
                       </p>
                     </div>
@@ -693,7 +693,7 @@ export function LandingChatShowcase({
                   <div className="flex items-center gap-2">
                     <span
                       className={cn(
-                        'inline-flex items-center gap-2 border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-normal',
+                        'inline-flex items-center gap-2 border border-border px-2 py-1 font-mono text-[10px] tracking-normal',
                         isPlaying
                           ? 'bg-foreground text-background'
                           : 'bg-background'

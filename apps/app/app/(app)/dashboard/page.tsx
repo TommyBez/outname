@@ -30,10 +30,10 @@ import { Suspense } from 'react'
 import { DashboardAutoRefresh } from './dashboard-auto-refresh'
 
 const NEW_AGENT_BUTTON_CLASS_NAME =
-  'inline-flex h-14 shrink-0 items-center justify-center border border-border bg-foreground px-6 font-bold text-background text-xs uppercase tracking-[0.16em] transition-colors hover:border-brand hover:bg-brand hover:text-brand-foreground'
+  'inline-flex h-14 shrink-0 items-center justify-center border border-border bg-foreground px-6 font-bold text-background text-xs transition-colors hover:border-brand hover:bg-brand hover:text-brand-foreground'
 
 const QUICK_ACTION_CLASS_NAME =
-  'inline-flex h-10 items-center justify-center border border-border px-3 font-bold text-[10px] uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background'
+  'inline-flex h-10 items-center justify-center border border-border px-3 font-bold text-[10px] transition-colors hover:bg-foreground hover:text-background'
 
 export const metadata = createPrivatePageMetadata(
   'Dashboard',
@@ -68,7 +68,7 @@ async function DashboardPageBody() {
             <p className="swiss-label mb-4 text-brand">
               01. <TodayDate label={todayLabel} />
             </p>
-            <h1 className="text-balance font-black font-serif text-5xl uppercase leading-[0.86] tracking-tighter sm:text-6xl lg:text-[clamp(4.5rem,7vw,7rem)]">
+            <h1 className="text-balance font-semibold font-serif text-5xl leading-[0.86] tracking-tighter sm:text-6xl lg:text-[clamp(4.5rem,7vw,7rem)]">
               Dashboard
             </h1>
           </div>
@@ -112,7 +112,7 @@ async function DashboardCockpit({
   if (agents.length === 0) {
     return (
       <div className="swiss-dots border border-border bg-muted p-8 md:p-12">
-        <p className="font-black font-serif text-3xl uppercase leading-none tracking-tighter">
+        <p className="font-semibold font-serif text-3xl leading-none tracking-tighter">
           No agents yet.
         </p>
         <p className="mt-4 max-w-md text-muted-foreground text-sm leading-relaxed">
@@ -190,11 +190,9 @@ async function DashboardCockpit({
       <div className="mb-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="border-border border-b pb-6">
           <div className="mb-4 flex items-center justify-between gap-4">
-            <p className="font-bold text-[10px] uppercase tracking-[0.2em]">
-              General budget
-            </p>
+            <p className="font-bold text-[10px]">General budget</p>
             <Link
-              className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.18em] hover:text-foreground"
+              className="font-bold text-[10px] text-muted-foreground hover:text-foreground"
               href="/settings"
             >
               Manage →
@@ -209,9 +207,7 @@ async function DashboardCockpit({
         </div>
 
         <div className="border-border border-l pl-4">
-          <p className="font-bold text-[10px] uppercase tracking-[0.2em]">
-            Quick actions
-          </p>
+          <p className="font-bold text-[10px]">Quick actions</p>
           <div className="mt-4 grid gap-2">
             <NewAgentLink
               canCreate={canCreateAgent}
@@ -236,12 +232,12 @@ async function DashboardCockpit({
         <div className="mb-5 flex flex-wrap items-baseline justify-between gap-4">
           <div>
             <p className="swiss-label text-brand">Run monitor</p>
-            <h2 className="mt-3 font-black font-serif text-3xl uppercase leading-none tracking-tighter">
+            <h2 className="mt-3 font-semibold font-serif text-3xl leading-none tracking-tighter">
               Event-ready agents
             </h2>
           </div>
           <Link
-            className="font-bold text-muted-foreground text-xs uppercase tracking-[0.18em] hover:text-foreground"
+            className="font-bold text-muted-foreground text-xs hover:text-foreground"
             href="/agents"
           >
             Open registry →
@@ -294,7 +290,7 @@ function PausedAgentsQueue({ agents }: { agents: Agent[] }) {
               className="block border border-border p-4 transition-colors hover:bg-accent"
               href={`/agents/${agent.id}`}
             >
-              <p className="font-black font-serif text-xl uppercase leading-none tracking-tighter">
+              <p className="font-semibold font-serif text-xl leading-none tracking-tighter">
                 {agent.name}
               </p>
               <p className="mt-2 font-mono text-muted-foreground text-xs">
@@ -319,10 +315,8 @@ function DashboardMetric({
 }) {
   return (
     <div className="border-border border-l pl-4">
-      <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
-        {label}
-      </p>
-      <p className="mt-2 font-black font-serif text-4xl leading-none tracking-tighter">
+      <p className="font-bold text-[10px] text-muted-foreground">{label}</p>
+      <p className="mt-2 font-semibold font-serif text-4xl leading-none tracking-tighter">
         {value}
       </p>
       {hint ? (

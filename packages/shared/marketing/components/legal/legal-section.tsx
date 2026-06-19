@@ -14,7 +14,7 @@ export function LegalSection({
       className="border-border border-t pt-8 first:border-t-0 first:pt-0"
       id={id}
     >
-      <h2 className="font-black font-serif text-2xl uppercase leading-none tracking-tighter sm:text-3xl">
+      <h2 className="font-semibold font-serif text-2xl leading-none tracking-tighter sm:text-3xl">
         {title}
       </h2>
       <div className="mt-4 space-y-4 text-muted-foreground text-sm leading-relaxed">

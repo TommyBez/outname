@@ -109,7 +109,7 @@ export function CommandPalette({ agents }: { agents: CommandPaletteAgent[] }) {
                 >
                   <Bot aria-hidden />
                   <span className="truncate">{agent.name}</span>
-                  <span className="ml-auto text-muted-foreground text-xs uppercase">
+                  <span className="ml-auto text-muted-foreground text-xs">
                     {agent.enabled ? 'Active' : 'Paused'}
                   </span>
                 </CommandItem>
@@ -158,7 +158,7 @@ export function CommandPaletteTrigger() {
   return (
     <button
       aria-keyshortcuts={isMac ? 'Meta+K' : 'Control+K'}
-      className="ml-auto inline-flex h-9 items-center gap-2 border border-border px-3 font-bold text-[10px] text-muted-foreground uppercase tracking-[0.16em] transition-colors hover:bg-foreground hover:text-background"
+      className="ml-auto inline-flex h-9 items-center gap-2 border border-border px-3 font-bold text-[10px] text-muted-foreground transition-colors hover:bg-foreground hover:text-background"
       onClick={() => {
         window.dispatchEvent(new Event(OPEN_COMMAND_PALETTE_EVENT))
       }}

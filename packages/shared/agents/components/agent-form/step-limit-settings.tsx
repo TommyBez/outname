@@ -22,10 +22,7 @@ export function StepLimitSettings({
 }) {
   return (
     <div className="grid gap-4 border border-border bg-background p-5 md:grid-cols-[12rem_minmax(0,1fr)]">
-      <Label
-        className="font-bold text-sm uppercase tracking-[0.14em]"
-        htmlFor="agent-step-limit-mode"
-      >
+      <Label className="font-bold text-sm" htmlFor="agent-step-limit-mode">
         Step limit
       </Label>
       <div className="flex flex-col gap-2">

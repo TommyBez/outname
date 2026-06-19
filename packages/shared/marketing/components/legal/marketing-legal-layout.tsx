@@ -8,7 +8,7 @@ export function MarketingLegalLayout({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-20 border-border border-b bg-background">
         <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link
-            className="inline-flex items-center gap-2 font-bold text-sm uppercase tracking-[0.2em] transition-colors hover:text-brand"
+            className="inline-flex items-center gap-2 font-bold text-sm transition-colors hover:text-brand"
             href="/"
           >
             <span aria-hidden className="inline-block size-3 bg-brand" />
@@ -19,19 +19,19 @@ export function MarketingLegalLayout({ children }: { children: ReactNode }) {
             className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2"
           >
             <Link
-              className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.18em] transition-colors hover:text-foreground"
+              className="font-bold text-[10px] text-muted-foreground transition-colors hover:text-foreground"
               href="/terms"
             >
               Terms
             </Link>
             <Link
-              className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.18em] transition-colors hover:text-foreground"
+              className="font-bold text-[10px] text-muted-foreground transition-colors hover:text-foreground"
               href="/privacy"
             >
               Privacy
             </Link>
             <Link
-              className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.18em] transition-colors hover:text-foreground"
+              className="font-bold text-[10px] text-muted-foreground transition-colors hover:text-foreground"
               href="/support"
             >
               Support

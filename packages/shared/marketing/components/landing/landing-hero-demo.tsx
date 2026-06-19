@@ -38,7 +38,7 @@ export function LandingHeroDemo({
         </p>
 
         <div className="min-w-0">
-          <h1 className="home-display text-balance font-black text-6xl uppercase leading-[0.84] tracking-normal sm:text-7xl md:text-[6rem] lg:text-[8rem] xl:text-[10rem] 2xl:text-[12rem]">
+          <h1 className="home-display text-balance font-semibold text-6xl leading-[0.84] tracking-normal sm:text-7xl md:text-[6rem] lg:text-[8rem] xl:text-[10rem] 2xl:text-[12rem]">
             Agents that keep working.
           </h1>
         </div>

@@ -37,10 +37,8 @@ export function ToolRow({
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="min-w-0">
-          <p className="font-black font-mono text-sm uppercase tracking-[0.04em]">
-            {entry.toolId}
-          </p>
-          <p className="mt-1 font-black font-serif text-xl uppercase tracking-[-0.04em]">
+          <p className="font-mono font-semibold text-sm">{entry.toolId}</p>
+          <p className="mt-1 font-semibold font-serif text-xl tracking-[-0.04em]">
             {entry.displayName}
           </p>
           <p className="mt-1 text-muted-foreground text-sm">
@@ -48,7 +46,7 @@ export function ToolRow({
           </p>
           {entry.exposedTools.length > 1 && (
             <div className="mt-2 flex flex-col gap-1">
-              <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
+              <p className="font-bold text-[10px] text-muted-foreground">
                 Exposes {entry.exposedTools.length} child tools
               </p>
               <p className="font-mono text-muted-foreground text-xs">
@@ -63,12 +61,12 @@ export function ToolRow({
           <div className="mt-3 flex flex-wrap gap-3">
             {connectorStates.length === 0 &&
               entry.toolSandboxManifest === null && (
-                <span className="font-bold text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
+                <span className="font-bold text-[10px] text-muted-foreground">
                   No connection required
                 </span>
               )}
             {entry.toolSandboxManifest !== null && (
-              <span className="inline-flex h-7 items-center border border-border px-3 font-bold text-[10px] uppercase tracking-[0.16em]">
+              <span className="inline-flex h-7 items-center border border-border px-3 font-bold text-[10px]">
                 Sandbox: {entry.toolSandboxManifest}
               </span>
             )}

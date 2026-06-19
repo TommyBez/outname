@@ -15,13 +15,11 @@ export function CreationSuccessCard({
   return (
     <section className="w-full border border-border bg-background">
       <div className="border-border border-b bg-foreground px-4 py-3 text-background">
-        <p className="font-bold text-xs uppercase tracking-[0.18em]">
-          Agent ready
-        </p>
+        <p className="font-bold text-xs">Agent ready</p>
       </div>
       <div className="space-y-4 p-4">
         <div>
-          <p className="font-black font-serif text-3xl uppercase leading-none tracking-tighter">
+          <p className="font-semibold font-serif text-3xl leading-none tracking-tighter">
             {result.name}
           </p>
           <p className="mt-2 text-muted-foreground text-sm">

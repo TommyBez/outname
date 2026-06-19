@@ -52,7 +52,7 @@ export function LandingHeartbeatCloser({
               <p className="swiss-label text-brand">
                 One day · INBOX SENTINEL · 2026-05-11
               </p>
-              <h2 className="mt-4 text-balance font-black text-5xl uppercase leading-[0.88] tracking-normal md:text-7xl">
+              <h2 className="mt-4 text-balance font-semibold text-5xl leading-[0.88] tracking-normal md:text-7xl">
                 It runs while you sleep. It learns while it runs.
               </h2>
             </div>
@@ -72,10 +72,10 @@ export function LandingHeartbeatCloser({
                 className="min-h-28 border border-background/25 p-4"
                 key={stat.label}
               >
-                <p className="font-bold text-[10px] text-background/60 uppercase tracking-normal">
+                <p className="font-bold text-[10px] text-background/60 tracking-normal">
                   {stat.label}
                 </p>
-                <p className="mt-3 font-black text-6xl uppercase leading-none tracking-normal">
+                <p className="mt-3 font-semibold text-6xl leading-none tracking-normal">
                   {stat.value}
                 </p>
               </div>
@@ -102,7 +102,7 @@ export function LandingHeartbeatCloser({
             className="mt-12 grid gap-6 border-border border-t pt-8 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] md:items-end"
             variants={revealVariants}
           >
-            <h3 className="home-display text-balance font-black text-6xl uppercase leading-[0.84] tracking-normal md:text-8xl">
+            <h3 className="home-display text-balance font-semibold text-6xl leading-[0.84] tracking-normal md:text-8xl">
               Get early access.
             </h3>
             <div className="flex min-w-0 flex-col gap-3 md:items-end">
@@ -116,7 +116,7 @@ export function LandingHeartbeatCloser({
                   Login
                 </SecondaryLink>
               </div>
-              <p className="font-mono text-[11px] text-muted-foreground uppercase tracking-normal">
+              <p className="font-mono text-[11px] text-muted-foreground tracking-normal">
                 Confirm by email, then wait for invite.
               </p>
             </div>
@@ -152,7 +152,7 @@ function HeartbeatRow({ entry }: { entry: HeartbeatEvent }) {
     >
       <span
         className={cn(
-          'font-black text-sm uppercase tracking-normal',
+          'font-semibold text-sm tracking-normal',
           isHighlight ? 'text-background' : ''
         )}
       >
@@ -160,7 +160,7 @@ function HeartbeatRow({ entry }: { entry: HeartbeatEvent }) {
       </span>
       <span
         className={cn(
-          'truncate font-bold text-[11px] uppercase tracking-normal',
+          'truncate font-bold text-[11px] tracking-normal',
           isMemory ? 'text-foreground' : '',
           isHighlight ? 'text-background/70' : 'text-muted-foreground'
         )}
@@ -230,7 +230,7 @@ function HeartbeatTerminalPinned() {
       <div className="sticky top-6">
         <div className="border border-border bg-foreground p-2 text-background shadow-[8px_8px_0_0] shadow-foreground/30">
           <div className="border border-background/15 bg-foreground p-4">
-            <div className="flex items-center justify-between gap-3 border-background/25 border-b pb-3 font-mono text-[10px] uppercase tracking-normal">
+            <div className="flex items-center justify-between gap-3 border-background/25 border-b pb-3 font-mono text-[10px] tracking-normal">
               <span className="truncate text-background">
                 $ outname watch inbox-sentinel
               </span>
@@ -256,12 +256,12 @@ function HeartbeatTerminalPinned() {
                     transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
                   >
                     <div className="flex items-baseline justify-between gap-3">
-                      <span className="font-black text-[13px] text-background uppercase tabular-nums tracking-normal">
+                      <span className="font-semibold text-[13px] text-background tabular-nums tracking-normal">
                         {entry.time}
                       </span>
                       <span
                         className={cn(
-                          'truncate font-mono text-[10px] uppercase tracking-normal',
+                          'truncate font-mono text-[10px] tracking-normal',
                           isMemory ? 'text-brand' : 'text-background/60'
                         )}
                       >
@@ -283,7 +283,7 @@ function HeartbeatTerminalPinned() {
                       </span>
                     </div>
                     {isHighlight ? (
-                      <span className="mt-1 self-end font-mono text-[9px] text-background/70 uppercase tracking-normal">
+                      <span className="mt-1 self-end font-mono text-[9px] text-background/70 tracking-normal">
                         ✓ Done
                       </span>
                     ) : null}
@@ -297,33 +297,33 @@ function HeartbeatTerminalPinned() {
                     aria-hidden
                     className="inline-block h-[0.95em] w-[0.55em] animate-pulse bg-brand align-middle"
                   />
-                  <span className="text-background/60 uppercase tracking-normal">
+                  <span className="text-background/60 tracking-normal">
                     {isDone ? 'idle.' : 'streaming…'}
                   </span>
                 </li>
               ) : (
-                <li className="flex items-center gap-2 px-3 pt-1 font-mono text-[11px] text-background/40 uppercase tracking-normal">
+                <li className="flex items-center gap-2 px-3 pt-1 font-mono text-[11px] text-background/40 tracking-normal">
                   Scroll to watch the day
                 </li>
               )}
             </ol>
 
-            <div className="mt-4 grid grid-cols-3 gap-2 border-background/25 border-t pt-3 font-mono text-[10px] text-background/60 uppercase tracking-normal">
+            <div className="mt-4 grid grid-cols-3 gap-2 border-background/25 border-t pt-3 font-mono text-[10px] text-background/60 tracking-normal">
               <div>
                 <p>Runs</p>
-                <p className="mt-1 font-black text-2xl text-background tabular-nums">
+                <p className="mt-1 font-semibold text-2xl text-background tabular-nums">
                   {revealed.toString().padStart(2, '0')}
                 </p>
               </div>
               <div>
                 <p>Memory</p>
-                <p className="mt-1 font-black text-2xl text-background tabular-nums">
+                <p className="mt-1 font-semibold text-2xl text-background tabular-nums">
                   +{memoryCount}
                 </p>
               </div>
               <div>
                 <p>Questions</p>
-                <p className="mt-1 font-black text-2xl text-background tabular-nums">
+                <p className="mt-1 font-semibold text-2xl text-background tabular-nums">
                   00
                 </p>
               </div>
@@ -331,7 +331,7 @@ function HeartbeatTerminalPinned() {
           </div>
         </div>
 
-        <p className="mt-3 font-mono text-[10px] text-muted-foreground uppercase tracking-normal">
+        <p className="mt-3 font-mono text-[10px] text-muted-foreground tracking-normal">
           scroll to advance · {revealed} / {heartbeatEvents.length} events
         </p>
       </div>

@@ -17,7 +17,7 @@ export function ComposabilityStacked() {
               <div className="flex items-start justify-between gap-3 border-border border-b pb-4">
                 <div>
                   <p className="swiss-label text-brand">{stage.eyebrow}</p>
-                  <h3 className="mt-3 font-black text-4xl uppercase leading-none tracking-normal md:text-5xl">
+                  <h3 className="mt-3 font-semibold text-4xl leading-none tracking-normal md:text-5xl">
                     {stage.label}
                   </h3>
                 </div>
@@ -33,7 +33,7 @@ export function ComposabilityStacked() {
               <div className="mt-5 grid gap-2">
                 {stage.parts.map((part) => (
                   <span
-                    className="border border-border bg-background px-3 py-2 font-mono text-[11px] uppercase tracking-normal"
+                    className="border border-border bg-background px-3 py-2 font-mono text-[11px] tracking-normal"
                     key={part.id}
                   >
                     {part.label}
@@ -41,7 +41,7 @@ export function ComposabilityStacked() {
                 ))}
               </div>
 
-              <p className="mt-4 font-mono text-[10px] text-muted-foreground uppercase tracking-normal">
+              <p className="mt-4 font-mono text-[10px] text-muted-foreground tracking-normal">
                 Attaches to {cornerLabels[stage.corner]} slot of the agent
                 shell.
               </p>

@@ -67,7 +67,7 @@ export function AgentEditChat({ agentId, currentBudget }: AgentEditChatProps) {
 
   return (
     <div className="mt-8 flex h-[min(620px,calc(100svh-10rem))] min-h-[24rem] min-w-0 flex-col overflow-hidden border border-border bg-background">
-      <div className="shrink-0 border-border border-b px-4 py-3 font-bold text-xs uppercase tracking-[0.14em]">
+      <div className="shrink-0 border-border border-b px-4 py-3 font-bold text-xs">
         Edit via chat
       </div>
       <Conversation className="min-h-0 flex-1">
