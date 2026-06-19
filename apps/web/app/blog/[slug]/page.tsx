@@ -99,7 +99,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             {post.excerpt}
           </p>
           <div
-            className="mt-6 flex items-center gap-3 border-border border-l pl-4"
+            className="mt-6 flex items-center gap-3"
             itemProp="author"
             itemScope
             itemType="https://schema.org/Person"

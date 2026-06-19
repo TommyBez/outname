@@ -26,7 +26,7 @@ export default function BlogIndexPage() {
         <h1 className="text-balance font-semibold text-4xl tracking-tight">
           Personal AI Agents, Autonomous Work, and Life Inside the Machine
         </h1>
-        <div className="mt-6 max-w-xl border-border border-l pl-4">
+        <div className="mt-6 max-w-xl">
           <p className="text-muted-foreground text-sm leading-relaxed">
             Essays on AI agents, tool use, memory, schedules, and building
             software for agents, not dashboards, written by{' '}

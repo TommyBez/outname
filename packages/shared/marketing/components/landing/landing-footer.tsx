@@ -27,7 +27,6 @@ export function LandingFooter() {
             label="GitHub repository"
           />
           <LandingSocialLink
-            className="border-border border-l"
             href={xProfileUrl}
             Icon={SiX}
             iconSize={17}
