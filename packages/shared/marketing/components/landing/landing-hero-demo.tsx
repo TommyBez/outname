@@ -21,8 +21,8 @@ export function LandingHeroDemo({
   waitlistEnabled: boolean
 }) {
   return (
-    <section className="relative px-4 pt-24 pb-24 sm:px-6 sm:pt-28 md:px-10 md:pb-32 lg:px-12 lg:pt-32 lg:pb-40">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-10 border-border border-t pt-5 lg:min-h-[calc(100vh-9rem)] lg:justify-between">
+    <section className="relative px-4 pt-20 pb-20 sm:px-6 sm:pt-24 md:px-10 md:pb-28 lg:px-12 lg:pt-28">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-12 border-border border-t pt-8">
         <p className="swiss-label text-muted-foreground">
           OUTNA.ME /
           <TextLoop
