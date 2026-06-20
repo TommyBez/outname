@@ -49,11 +49,6 @@ export const posts: BlogPost[] = [
       'Outname',
     ],
   },
-
-      'open source',
-      'Outname',
-    ],
-  },
   {
     slug: 'five-eyes-agentic-ai-security-guidance-outname-architecture',
     title:
