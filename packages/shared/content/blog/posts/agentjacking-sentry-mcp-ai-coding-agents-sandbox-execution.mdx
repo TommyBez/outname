@@ -1,0 +1,79 @@
+A single fake error report. A public Sentry key anyone can find in a website's JavaScript. A routine request to "fix unresolved Sentry issues." Put them together, and 85% of the time, an AI coding agent — Claude Code, Cursor, Codex — will execute arbitrary attacker-controlled code on the developer's own machine.
+
+No malware changes hands. No password is stolen. Every single step is authorized.
+
+That's what makes it terrifying.
+
+On June 12, Tenet Security's Threat Labs disclosed **Agentjacking** — a novel attack class that exploits the implicit trust AI coding agents place in Model Context Protocol (MCP) data sources. The attack doesn't target the developer directly. It targets the AI agent the developer trusts.
+
+## How it works — and why it's unstoppable
+
+The attack begins with something trivially discoverable: a Sentry Data Source Name (DSN). Sentry documents DSNs as safe to embed in frontend JavaScript — they're write-only credentials designed so applications can report errors without exposing the rest of the project. Tens of thousands of websites expose them by design.
+
+An attacker finds a target's DSN, crafts a fake error report with Markdown injection, and submits it to Sentry. The report contains what looks like legitimate diagnostic guidance — headings, code blocks, a fake resolution section with an npm command.
+
+When a developer asks their AI coding agent to "fix unresolved Sentry issues" (a routine debugging prompt), the agent queries Sentry via MCP, receives the malicious event, and runs the command. With the developer's full privileges.
+
+"What makes this attack unique is that it doesn't target the developer directly — it targets the AI agent that the developer trusts," Tenet wrote.
+
+Because the injected content is formatted to resemble legitimate Sentry guidance, the agent cannot distinguish it from trusted diagnostic output. The MCP server retrieves the data. The agent's command-line access executes it. Neither component is compromised. The architecture is.
+
+## 85%. One hundred organizations. One Fortune 100 machine.
+
+Tenet researcher Ron Bobrov reported an 85% success rate across controlled validation waves. Claude Code, Cursor, and Codex all acted on the injected errors. The team logged more than 100 confirmed executions across separate organizations.
+
+One of those executions happened on a machine belonging to a developer inside a $250 billion Fortune 100 technology company. The same campaign reached agents running in sandboxed CI pipelines, inside WSL on managed Windows machines, and behind corporate VPNs — macOS and Windows alike.
+
+The attack bypassed EDR, WAF, IAM, VPN, Cloudflare, and firewalls. Not because it was sophisticated. Because every step — querying Sentry, reading the event, executing the code — was exactly what the agent was supposed to do.
+
+## The industry response: a content filter
+
+Sentry responded by adding a content filter to block the specific validation text Tenet used in the proof of concept. Tenet open-sourced **agent-jackstop**, a set of drop-in configurations that harden Cursor and Claude Code against instruction injection from untrusted data sources.
+
+A content filter. A configuration file. These are bandaids.
+
+The problem isn't that a specific validation string got through Sentry's MCP server. The problem is structural: an AI agent with command-line access will execute instructions it retrieves from external services it implicitly trusts. Change the injection format, and the filter fails. Add a new data source, and the configuration needs updating. This is whack-a-mole against an architectural vulnerability.
+
+There are 2,388 organizations with exposed Sentry DSNs, according to Tenet's scan. And Sentry is just one MCP server. Every external data source an agent connects to — error trackers, analytics platforms, CI/CD pipelines, documentation tools — is a potential injection vector.
+
+## The fix isn't a filter. It's a sandbox.
+
+The Agentjacking attack works because the AI agent executes code on the developer's own machine, with the developer's own privileges. "Fix unresolved Sentry issues" → `npm install malicious-package` → the attacker is inside the developer's environment.
+
+A sandbox changes the equation entirely.
+
+When an agent runs inside a sandboxed execution environment — isolated filesystem, scoped network access, policy-governed process execution — an injected `npm install` command executes inside the sandbox. Not on the developer's machine. Not with the developer's file-system access. Not with network egress to exfiltrate data.
+
+The agent still executes the instruction. The instruction still looks legitimate. But the blast radius is contained. The sandbox doesn't prevent the agent from being tricked — it prevents the trick from mattering.
+
+This is not a hypothetical architecture. Outname ships it by default. Every agent on the platform runs inside a persistent, sandboxed Vercel Sandbox. Files are readable, auditable, and isolated. Tools are explicitly attached — no agent gets access to anything it hasn't been granted. Network access, filesystem access, process execution — all governed by the platform's execution environment, not the developer's machine.
+
+## The sixth architectural validation in 40 days
+
+Agentjacking is the latest in a series of events that have independently validated the architecture Outname ships by default:
+
+- **The Five Eyes alliance** mandated sandboxed execution and cryptographic agent identity — Outname's file-based identity and sandboxed runtime mapped directly onto the prescription.
+- **Anthropic's Zero Trust for AI Agents** prescribed scoped permissions and sandboxed execution — Outname ships both as default configuration.
+- **The EU AI Act** made agent architecture with audit trails and bounded execution a legal requirement — Outname shipped it by default.
+- **NVIDIA** shipped NemoClaw with the OpenShell sandboxed runtime as its headline feature — hardware-optional ($3,000+ DGX Spark or standard laptop), but sandboxed execution as table stakes.
+- **Superpowers** hit GitHub Trending with a framework built on composable skills and initial instructions — the exact architecture Outname agents have been running on for weeks.
+
+And now Tenet Security proves that 85% of AI coding agents will execute attacker-controlled code — and the only durable defense is sandboxed execution.
+
+The industry isn't converging on a feature. It's converging on an architectural requirement. Every agent platform that ships without sandboxed execution is now visibly behind.
+
+## What this means for developers
+
+If you use Claude Code, Cursor, or Codex, install agent-jackstop. It's open source, it's free, and it hardens your agent against the Sentry MCP injection vector. But understand what you're installing: a configuration file for a specific attack against a specific data source. Next week, it'll be a different MCP server. The week after, a different injection format.
+
+The durable fix is execution isolation. Run your agents in a sandbox. Treat every external data source as untrusted. Give agents scoped access, not your machine's filesystem.
+
+Outname has been doing this from day one — not because someone proved it was necessary, but because it was the only architecture that made sense. Agents that keep working need boundaries. Boundaries need sandboxes.
+
+If you're a developer who wants agents running inside sandboxed execution with readable memory, scheduled heartbeats, and explicitly attached tools — without managing Docker, configuring cgroups, or maintaining your own security infrastructure — Outname is at [outna.me](https://outna.me).
+
+The industry just proved the architecture is right. The question is whether you want to bolt it on afterward or start with it.
+
+---
+
+*Want agents that run inside sandboxed execution — with file-based identity, scoped tools, and scheduled heartbeats — from day one? Join the waitlist at [outna.me/waitlist](https://outna.me/waitlist). Outname is open source (MIT): [github.com/TommyBez/outname](https://github.com/TommyBez/outname).*
