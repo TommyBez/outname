@@ -38,15 +38,18 @@ test('does not fail signup when welcome email sending fails', async () => {
   const consoleError = vi
     .spyOn(console, 'error')
     .mockImplementation(() => undefined)
-  mockedSendWelcomeEmail.mockRejectedValueOnce(new Error('send failed'))
+  try {
+    mockedSendWelcomeEmail.mockRejectedValueOnce(new Error('send failed'))
 
-  await expect(
-    sendWelcomeEmailForCreatedUser({
-      email: 'new-user@example.com',
-      id: 'user_123',
-    })
-  ).resolves.toBeUndefined()
+    await expect(
+      sendWelcomeEmailForCreatedUser({
+        email: 'new-user@example.com',
+        id: 'user_123',
+      })
+    ).resolves.toBeUndefined()
 
-  expect(consoleError).toHaveBeenCalled()
-  consoleError.mockRestore()
+    expect(consoleError).toHaveBeenCalled()
+  } finally {
+    consoleError.mockRestore()
+  }
 })

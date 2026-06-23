@@ -202,7 +202,7 @@ The main application tables are:
 | Vercel Sandbox | Persistent agent filesystem and tool execution | `agent-runtime/server/agent-sandbox.ts`, `tools/sandbox-runtime/*` |
 | Upstash Redis | Locks, cache, and scheduling coordination | `agent-runtime/server/redis-lock.ts`, `agent-runtime/server/file-cache.ts` |
 | Slack Chat SDK | Slack ingress, routing, and streaming replies | `channels/slack/server/*`, `app/api/channels/slack/*` |
-| Resend | OTP and invitation email delivery | `auth/server/auth-email.ts`, `email/*` |
+| Resend | OTP and transactional/welcome email delivery | `auth/server/auth-email.ts`, `email/*` |
 
 ## Repository layout
 
