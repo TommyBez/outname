@@ -1,8 +1,6 @@
 import { ac, roles } from '@outname/auth/access-control'
-import {
-  sendAuthNewUserWelcomeEmail,
-  sendAuthSignInOtpEmail,
-} from '@outname/auth/server/auth-email'
+import { sendAuthSignInOtpEmail } from '@outname/auth/server/auth-email'
+import { sendWelcomeEmailForCreatedUser } from '@outname/auth/server/user-welcome-email-hook'
 import { db } from '@outname/db'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
@@ -80,39 +78,6 @@ function devTrustedOriginsList(request: Request | undefined): string[] {
 const AUTH_EMAIL_OTP_LENGTH = 6
 const AUTH_EMAIL_OTP_EXPIRES_IN_SECONDS = 60 * 10
 const authCookieDomain = process.env.AUTH_COOKIE_DOMAIN?.trim()
-
-interface CreatedAuthUser {
-  email: string
-  id: string
-}
-
-function isCreatedAuthUser(value: unknown): value is CreatedAuthUser {
-  if (!(value && typeof value === 'object')) {
-    return false
-  }
-
-  return (
-    'email' in value &&
-    typeof value.email === 'string' &&
-    'id' in value &&
-    typeof value.id === 'string'
-  )
-}
-
-async function sendWelcomeEmailForCreatedUser(user: unknown) {
-  if (!isCreatedAuthUser(user)) {
-    return
-  }
-
-  try {
-    await sendAuthNewUserWelcomeEmail({
-      email: user.email,
-      userId: user.id,
-    })
-  } catch (error) {
-    console.error('[auth] welcome email failed', error)
-  }
-}
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
