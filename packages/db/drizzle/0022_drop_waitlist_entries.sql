@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS "waitlist_entries";
+DROP TABLE IF EXISTS "waitlist_entries" CASCADE;
