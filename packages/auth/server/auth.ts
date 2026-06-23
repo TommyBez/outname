@@ -1,5 +1,8 @@
 import { ac, roles } from '@outname/auth/access-control'
-import { sendAuthSignInOtpEmail } from '@outname/auth/server/auth-email'
+import {
+  sendAuthNewUserWelcomeEmail,
+  sendAuthSignInOtpEmail,
+} from '@outname/auth/server/auth-email'
 import { db } from '@outname/db'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
@@ -78,10 +81,50 @@ const AUTH_EMAIL_OTP_LENGTH = 6
 const AUTH_EMAIL_OTP_EXPIRES_IN_SECONDS = 60 * 10
 const authCookieDomain = process.env.AUTH_COOKIE_DOMAIN?.trim()
 
+interface CreatedAuthUser {
+  email: string
+  id: string
+}
+
+function isCreatedAuthUser(value: unknown): value is CreatedAuthUser {
+  if (!(value && typeof value === 'object')) {
+    return false
+  }
+
+  return (
+    'email' in value &&
+    typeof value.email === 'string' &&
+    'id' in value &&
+    typeof value.id === 'string'
+  )
+}
+
+async function sendWelcomeEmailForCreatedUser(user: unknown) {
+  if (!isCreatedAuthUser(user)) {
+    return
+  }
+
+  try {
+    await sendAuthNewUserWelcomeEmail({
+      email: user.email,
+      userId: user.id,
+    })
+  } catch (error) {
+    console.error('[auth] welcome email failed', error)
+  }
+}
+
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: 'pg',
   }),
+  databaseHooks: {
+    user: {
+      create: {
+        after: sendWelcomeEmailForCreatedUser,
+      },
+    },
+  },
   session: {
     expiresIn: 60 * 60 * 24 * 30, // 30 days
     updateAge: 60 * 60 * 24, // 1 day

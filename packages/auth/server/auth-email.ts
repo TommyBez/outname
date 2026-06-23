@@ -1,8 +1,12 @@
 import 'server-only'
 
 import { AuthSignInOtpEmail } from '@outname/email/auth-sign-in-otp-email'
+import { NewUserWelcomeEmail } from '@outname/email/new-user-welcome-email'
 import { getEmailLogoUrl } from '@outname/shared/server/email-logo-url'
-import { getEmailAppLoginUrl } from '@outname/shared/server/email-urls'
+import {
+  buildEmailAppUrl,
+  getEmailAppLoginUrl,
+} from '@outname/shared/server/email-urls'
 import { sendResendReactEmail } from '@outname/shared/server/resend'
 import { createElement } from 'react'
 
@@ -28,6 +32,10 @@ function createOtpIdempotencyKey(email: string, otp: string): string {
   return `auth-email-otp/${encodeURIComponent(email.toLowerCase())}/${otp}`
 }
 
+function createWelcomeIdempotencyKey(userId: string): string {
+  return `auth-new-user-welcome/${encodeURIComponent(userId)}`
+}
+
 export async function sendAuthSignInOtpEmail(input: {
   email: string
   otp: string
@@ -42,6 +50,23 @@ export async function sendAuthSignInOtpEmail(input: {
       code: input.otp,
       expiresInMinutes: AUTH_EMAIL_OTP_EXPIRES_IN_SECONDS / 60,
       loginUrl: getEmailAppLoginUrl(),
+      logoUrl: getEmailLogoUrl(),
+    }),
+  })
+}
+
+export async function sendAuthNewUserWelcomeEmail(input: {
+  email: string
+  userId: string
+}) {
+  await sendResendReactEmail({
+    from: getAuthFromEmail(),
+    idempotencyKey: createWelcomeIdempotencyKey(input.userId),
+    replyTo: getAuthReplyTo(),
+    subject: 'Your OUTNA.ME account is ready',
+    to: input.email,
+    react: createElement(NewUserWelcomeEmail, {
+      dashboardUrl: buildEmailAppUrl('/dashboard'),
       logoUrl: getEmailLogoUrl(),
     }),
   })
