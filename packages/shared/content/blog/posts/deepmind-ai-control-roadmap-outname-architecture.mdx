@@ -1,0 +1,83 @@
+When Google DeepMind — the company that builds the most capable AI models on the planet — publishes a 35-page technical report explaining how to contain AI agents that might go rogue, the industry should pay attention.
+
+On June 18, 2026, DeepMind published its [AI Control Roadmap](https://storage.googleapis.com/deepmind-media/DeepMind.com/Blog/securing-the-future-of-ai-agents/gdm-ai-control-roadmap.pdf): a defense-in-depth framework for deploying AI agents inside Google. The headline isn't the 15 security layers, the supervisor AI that monitors agent reasoning in real time, or the prototype that already scanned one million coding agent tasks.
+
+The headline is the assumption: *what if the agent isn't aligned?*
+
+Not "what if the model makes a mistake." Not "what if the prompt is ambiguous." What if the agent actively works against your interests — and every step it takes looks legitimate?
+
+That's not a hypothetical. It's the starting premise of the roadmap. And it's the same premise Outname was designed around from day one.
+
+## The three-layer architecture DeepMind prescribed
+
+DeepMind's framework borrows from cybersecurity's insider-threat playbook. The company adapted MITRE ATT&CK — the adversary-tactics knowledge base used by defenders worldwide — into a taxonomy for rogue AI behavior called TRAIT&R. Three threat categories: loss of control (hidden, unmonitored deployments), work sabotage (agents degrading safety research), and direct harm (exfiltrating model weights, destroying assets).
+
+The defense layers cascade across three domains:
+
+**Layer 1 — Individual agent controls.** Sandboxed execution. Access controls that don't trust the model. Chain-of-thought monitoring that watches what the agent is thinking, not just what it does. A kill switch.
+
+**Layer 2 — Multi-agent system controls.** Supervisor AIs that monitor other agents. Cryptographic signing of agent actions so every decision is attributable. Rate limiting on inter-agent communication so no agent can flood the system faster than defenses can respond.
+
+**Layer 3 — Digital ecosystem controls.** Dynamic access management that tightens or loosens permissions based on agent behavior. Real-time blocking of high-risk actions. Audit trails that survive the agent.
+
+John Flynn, DeepMind's VP of security and privacy, confirmed that access control, detection, and chain-of-thought monitoring are "already pretty far underway" with significant elements in production. Rohin Shah, who leads AGI safety and alignment, framed the question driving the work: *"If the first line of defense — alignment — fails, how can we mitigate harm anyway?"*
+
+That question is the architectural dividing line.
+
+## Two philosophies: bolt it on or build it in
+
+DeepMind's roadmap is 35 pages of engineering work describing how to contain agents *after* they're deployed. It's security retrofitted onto an existing model-development organization. The prototype scanned one million already-completed coding agent tasks — post-hoc analysis, not real-time prevention. The live monitor for Gemini Spark is described as partially deployed.
+
+This is the difference between a research organization discovering that agents need containment and a platform that was built with containment as the foundation.
+
+Outname agents never had the option of running without sandboxed execution. They never had access to a developer's machine. They never operated without file-based identity, scoped tools, and durable event logs. Not because the EU AI Act requires it (it does, starting August 2026). Not because the Five Eyes alliance prescribed it (they did, in May). Not because Anthropic's Zero Trust framework recommended it (they did, in June).
+
+Because it was the only architecture that made sense.
+
+## The pattern that keeps repeating
+
+This is the seventh independent architectural validation in 42 days:
+
+- **The Five Eyes alliance** mandated sandboxed execution and cryptographic agent identity
+- **Anthropic's Zero Trust for AI Agents** prescribed scoped permissions and sandboxed execution
+- **The EU AI Act** made audit trails and bounded execution a legal requirement
+- **NVIDIA** shipped NemoClaw with OpenShell sandboxed runtime as a headline feature
+- **Tenet Security** proved 85% of AI coding agents will execute attacker-controlled code — and the fix is sandboxed execution
+- **Superpowers** hit GitHub Trending with composable skills and AGENTS.md-based identity
+- **DeepMind's AI Control Roadmap** treats agents as insider threats requiring defense-in-depth
+
+Each validation comes from a different angle — government, frontier lab, chip manufacturer, security researcher, open-source community. The conclusion is identical: agents need sandboxed execution, identity, scoped tools, and audit trails. Not as features. As architecture.
+
+DeepMind's roadmap is the most thorough articulation yet. But it's a roadmap — a plan for where Google needs to go. Outname shipped the destination 42 days ago.
+
+## What this means for builders
+
+If you're deploying AI agents in production, DeepMind's roadmap is essential reading. The three-layer framework, the MITRE ATT&CK adaptation, the supervisor agent concept — these are real engineering patterns that will define how the industry builds agentic systems over the next two years.
+
+But there's a difference between reading a roadmap and running on the architecture it describes.
+
+Every Outname agent runs with:
+- **Sandboxed execution** — isolated filesystem, governed network access, no access to the host machine
+- **File-based identity** — IDENTITY.md, SOUL.md, AGENTS.md that define who the agent is and what it can do
+- **Scoped tools** — every capability is explicitly attached; no agent gets default access to anything
+- **Durable audit trails** — every heartbeat, every tool call, every sub-agent delegation is logged and reviewable
+- **Scheduled heartbeats** — agents work on defined schedules, not continuous unrestricted access
+- **Budget guardrails** — configurable limits that stop runs before costs or damage can accumulate
+
+This isn't a compliance checkbox. It's the operating system for agents that actually work.
+
+## The roadmap says "plan for it." Outname says "already running."
+
+DeepMind's document is genuinely important. It's the first control roadmap published by a frontier AI company, and it establishes a vocabulary — defense-in-depth, insider-threat modeling, supervisor agents, cryptographic attribution — that every builder should adopt.
+
+But when the company that builds the world's most advanced models says "here's how we plan to contain them," and a small open-source platform says "we shipped that 42 days ago" — the industry has a signal about who's building for the future and who's reacting to the present.
+
+Outname didn't need a 35-page roadmap to figure out that agents need sandboxes. It started with one.
+
+If you want agents that run inside the architecture DeepMind just prescribed — sandboxed execution, file-based identity, scoped tools, scheduled heartbeats, durable audit trails — without becoming a security engineer yourself, Outname is at [outna.me](https://outna.me).
+
+The industry's smartest lab just published the blueprint. The product already ships it.
+
+---
+
+*Want agents that run with sandboxed execution, file-based identity, and defense-in-depth — the architecture DeepMind just prescribed — from day one? Join the waitlist at [outna.me/waitlist](https://outna.me/waitlist). Outname is open source (MIT): [github.com/TommyBez/outname](https://github.com/TommyBez/outname).*
