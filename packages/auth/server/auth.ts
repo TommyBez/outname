@@ -122,7 +122,6 @@ export const auth = betterAuth({
     }),
     emailOTP({
       allowedAttempts: 5,
-      disableSignUp: true,
       expiresIn: AUTH_EMAIL_OTP_EXPIRES_IN_SECONDS,
       otpLength: AUTH_EMAIL_OTP_LENGTH,
       resendStrategy: 'rotate',

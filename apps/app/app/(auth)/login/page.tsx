@@ -1,18 +1,15 @@
 import { LoginForm } from '@outname/auth/components/login-form'
 import { auth } from '@outname/auth/server/auth'
 import { createPrivatePageMetadata } from '@outname/shared/server/site-metadata'
-import { isWaitlistPublicEnabled } from '@outname/shared/waitlist/server/public-config'
-import { Button } from '@outname/ui/components/ui/button'
 import { Skeleton } from '@outname/ui/components/ui/skeleton'
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 
 export const metadata: Metadata = createPrivatePageMetadata(
-  'Sign in',
-  "Access your OUTNA.ME agents, schedules, tools, and today's run with an email code."
+  'Sign in or create an account',
+  "Start using OUTNA.ME agents, schedules, tools, and today's run with an email code."
 )
 
 export default function LoginPage({
@@ -20,33 +17,21 @@ export default function LoginPage({
 }: {
   searchParams: Promise<{ from?: string }>
 }) {
-  const waitlistEnabled = isWaitlistPublicEnabled()
-
   return (
     <main className="grid min-h-svh place-items-center bg-background px-6">
       <div className="w-full max-w-md border border-border bg-background p-8">
         <div className="mb-10 border-border border-t pt-5">
           <h1 className="mt-4 font-semibold text-4xl tracking-tight">
-            Sign in
+            Sign in or create an account
           </h1>
           <p className="mt-4 text-muted-foreground text-sm leading-relaxed">
-            Request a one-time code by email to access your scheduled agents and
-            live dashboard.
+            Request a one-time code by email to access your scheduled agents or
+            start a new account.
           </p>
         </div>
         <Suspense fallback={<LoginFormSkeleton />}>
           <LoginGate searchParams={searchParams} />
         </Suspense>
-        {waitlistEnabled ? (
-          <div className="mt-8 border-border border-t pt-5">
-            <p className="font-mono text-[11px] text-muted-foreground tracking-normal">
-              Need access first?
-            </p>
-            <Button asChild className="mt-3" variant="outline">
-              <Link href="/waitlist?source=login-page">Join the waitlist</Link>
-            </Button>
-          </div>
-        ) : null}
       </div>
     </main>
   )

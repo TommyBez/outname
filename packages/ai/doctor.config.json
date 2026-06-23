@@ -1,9 +1,5 @@
 {
-  "serverAuthFunctionNames": [
-    "requireSession",
-    "requireUserId",
-    "requireWaitlistManageAccess"
-  ],
+  "serverAuthFunctionNames": ["requireSession", "requireUserId"],
   "ignore": {
     "files": ["components/ai-elements/**"],
     "overrides": [

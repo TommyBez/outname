@@ -8,28 +8,18 @@ import { LandingHeroDemo } from '@outname/shared/marketing/components/landing/la
 import { LandingNav } from '@outname/shared/marketing/components/landing/landing-nav'
 import { useReducedMotion } from 'motion/react'
 
-export function LandingHomePage({
-  waitlistEnabled,
-}: {
-  waitlistEnabled: boolean
-}) {
+export function LandingHomePage() {
   const shouldReduceMotion = useReducedMotion()
   const reduceMotionFlag = Boolean(shouldReduceMotion)
 
   return (
     <main className="relative isolate overflow-x-clip bg-background text-foreground">
-      <LandingNav waitlistEnabled={waitlistEnabled} />
+      <LandingNav />
 
-      <LandingHeroDemo
-        shouldReduceMotion={reduceMotionFlag}
-        waitlistEnabled={waitlistEnabled}
-      />
+      <LandingHeroDemo shouldReduceMotion={reduceMotionFlag} />
       <LandingChatShowcase shouldReduceMotion={reduceMotionFlag} />
       <LandingComposableWorkbench shouldReduceMotion={reduceMotionFlag} />
-      <LandingHeartbeatCloser
-        shouldReduceMotion={reduceMotionFlag}
-        waitlistEnabled={waitlistEnabled}
-      />
+      <LandingHeartbeatCloser shouldReduceMotion={reduceMotionFlag} />
       <LandingFooter />
     </main>
   )

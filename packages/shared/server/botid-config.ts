@@ -11,14 +11,4 @@ export const BOTID_PROTECTED_ROUTES = [
     method: 'POST',
     advancedOptions: { checkLevel: BOTID_CHECK_LEVEL },
   },
-  {
-    path: '/api/waitlist',
-    method: 'POST',
-    advancedOptions: { checkLevel: BOTID_CHECK_LEVEL },
-  },
-  {
-    path: '/api/waitlist/confirm',
-    method: 'POST',
-    advancedOptions: { checkLevel: BOTID_CHECK_LEVEL },
-  },
 ] as const

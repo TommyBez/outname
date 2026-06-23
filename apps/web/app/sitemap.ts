@@ -45,14 +45,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
     })
   }
 
-  if (process.env.WAITLIST_PUBLIC_ENABLED === 'true') {
-    entries.push({
-      url: `${siteConfig.url}/waitlist`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    })
-  }
-
   return entries
 }

@@ -3,14 +3,7 @@ import {
   getOtpEmailRateLimiter,
   getOtpIpRateLimiter,
 } from '@outname/auth/server/request-otp-rate-limit'
-import { db } from '@outname/db'
-import { user } from '@outname/db/schema'
 import { denyIfBot } from '@outname/shared/server/botid-guard'
-import {
-  getWaitlistEntryByEmail,
-  provisionWaitlistAccessByEmail,
-} from '@outname/shared/waitlist/server/service'
-import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
@@ -86,63 +79,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    const [existingUser] = await db
-      .select({
-        id: user.id,
-      })
-      .from(user)
-      .where(eq(user.email, email))
-      .limit(1)
-
-    if (!existingUser) {
-      const waitlistEntry = await getWaitlistEntryByEmail(email)
-
-      if (!waitlistEntry) {
-        return NextResponse.json(
-          {
-            error:
-              'This email does not have access yet. Join the waitlist first.',
-          },
-          { status: 403 }
-        )
-      }
-
-      if (waitlistEntry.status === 'pending') {
-        return NextResponse.json(
-          {
-            error:
-              'Confirm your waitlist email before requesting a sign-in code.',
-          },
-          { status: 403 }
-        )
-      }
-
-      if (waitlistEntry.status === 'confirmed') {
-        return NextResponse.json(
-          {
-            error:
-              'Your waitlist email is confirmed. Access must be granted before you can sign in.',
-          },
-          { status: 403 }
-        )
-      }
-
-      if (
-        waitlistEntry.status === 'invited' ||
-        waitlistEntry.status === 'converted'
-      ) {
-        await provisionWaitlistAccessByEmail(email)
-      } else if (waitlistEntry.status === 'unsubscribed') {
-        return NextResponse.json(
-          {
-            error:
-              'This waitlist request is inactive. Join again to restore access.',
-          },
-          { status: 403 }
-        )
-      }
-    }
-
     await auth.api.sendVerificationOTP({
       body: {
         email,

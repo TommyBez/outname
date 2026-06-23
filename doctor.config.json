@@ -1,9 +1,5 @@
 {
-  "serverAuthFunctionNames": [
-    "requireSession",
-    "requireUserId",
-    "requireWaitlistManageAccess"
-  ],
+  "serverAuthFunctionNames": ["requireSession", "requireUserId"],
   "ignore": {
     "files": [
       ".agents/skills/**",
@@ -149,8 +145,6 @@
         "files": [
           "packages/shared/server/inference-credentials.ts",
           "server/inference-credentials.ts",
-          "packages/shared/waitlist/server/actions.ts",
-          "waitlist/server/actions.ts",
           "packages/shared/budgets/server/spend.ts",
           "budgets/server/spend.ts",
           "packages/shared/channels/server/dispatch.ts",

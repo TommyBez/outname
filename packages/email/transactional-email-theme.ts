@@ -1,6 +1,6 @@
 import { pixelBasedPreset } from 'react-email'
 
-export const waitlistEmailTailwind = {
+export const transactionalEmailTailwind = {
   presets: [pixelBasedPreset],
   theme: {
     extend: {

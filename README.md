@@ -208,10 +208,8 @@ pnpm dev:app                 # http://localhost:3000
 Other workspaces: `pnpm dev:web` (`:3002`), `pnpm dev:api` (`:3001`),
 `pnpm dev:email` (`:3004`), and `pnpm dev:video` (`:3005`).
 
-> **Signing in:** Public sign-up is disabled. Accounts are provisioned from the
-> waitlist and sign in with one-time codes sent by email. In development, use a
-> provisioned address (e.g. `TEST_USER_EMAIL`) and request an OTP from the login
-> page. See [AGENTS.md](AGENTS.md) for the full dev sign-in flow.
+> **Signing in:** Enter any email address on the login page. The OTP flow signs
+> in existing users and creates new accounts when the email is new.
 
 ## ▲ Deploy on Vercel
 
@@ -254,7 +252,6 @@ VERCEL_WEB_PROJECT_ID=
 | ---------------------- | ----------------------------------------------------------------- |
 | Slack                  | `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, `SLACK_SIGNING_SECRET`   |
 | Redis (Upstash / KV)   | `KV_REST_API_URL`, `KV_REST_API_TOKEN`                            |
-| Waitlist email         | `WAITLIST_FROM_EMAIL`, `WAITLIST_REPLY_TO`, `WAITLIST_ADMIN_EMAIL` |
 | Cron hardening         | `CRON_SECRET`                                                      |
 
 Cross-project public URLs are derived in each app's `next.config.ts` from Vercel

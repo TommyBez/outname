@@ -1,5 +1,5 @@
 import { InferenceProviderSetupNote } from '@outname/email/components/inference-provider-setup-note'
-import { WaitlistEmailLayout } from '@outname/email/components/waitlist-email-layout'
+import { TransactionalEmailLayout } from '@outname/email/components/transactional-email-layout'
 import { EMAIL_BRAND_NAME } from '@outname/email/email-brand'
 import { EMAIL_PREVIEW_URLS } from '@outname/email/email-preview-urls'
 import { siteConfig } from '@outname/shared/server/site-metadata'
@@ -15,7 +15,7 @@ export function ApplicationInviteEmail({
   logoUrl,
 }: ApplicationInviteEmailProps) {
   return (
-    <WaitlistEmailLayout
+    <TransactionalEmailLayout
       ctaHref={loginUrl}
       ctaLabel={`Open ${EMAIL_BRAND_NAME}`}
       eyebrow={`${EMAIL_BRAND_NAME} / invitation`}
@@ -45,7 +45,7 @@ export function ApplicationInviteEmail({
         If you were not expecting this invitation, ignore the message or reply
         to this email and we will help.
       </Text>
-    </WaitlistEmailLayout>
+    </TransactionalEmailLayout>
   )
 }
 

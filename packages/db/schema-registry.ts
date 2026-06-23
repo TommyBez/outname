@@ -16,7 +16,6 @@ import {
   userConnections,
   userInferenceCredentials,
   verification,
-  waitlistEntry,
 } from './schema'
 
 export const dbSchema = {
@@ -37,5 +36,4 @@ export const dbSchema = {
   channelInstallations,
   agentChannelBindings,
   channelThreadConversations,
-  waitlistEntry,
 } as const

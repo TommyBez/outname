@@ -102,7 +102,7 @@ const VERCEL_STACK_SLUG = '2026-05-20-vercel-stack'
 
 const videoMeta: Record<LaunchVideoSlug, VideoMeta> = {
   '2026-05-18-why-outname-exists': {
-    cta: 'OUTNA.ME / waitlist open',
+    cta: 'OUTNA.ME / accounts open',
     eyebrow: 'why outna.me',
     headline: 'Less context rebuilding.',
     subline: 'Solo work should resume.',
@@ -4373,7 +4373,7 @@ function FilmEndCard({
               textTransform: 'uppercase',
             }}
           >
-            waitlist open
+            accounts open
           </span>
         </div>
       </div>

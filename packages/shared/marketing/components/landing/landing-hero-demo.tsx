@@ -15,10 +15,8 @@ const loopWords = [
 
 export function LandingHeroDemo({
   shouldReduceMotion,
-  waitlistEnabled,
 }: {
   shouldReduceMotion: boolean
-  waitlistEnabled: boolean
 }) {
   return (
     <section className="relative px-4 pt-20 pb-20 sm:px-6 sm:pt-24 md:px-10 md:pb-28 lg:px-12 lg:pt-28">
@@ -49,12 +47,10 @@ export function LandingHeroDemo({
             sharpens the next.
           </p>
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row md:justify-end">
-            {waitlistEnabled ? (
-              <PrimaryLink href="/waitlist?source=landing-hero">
-                Join the waitlist
-              </PrimaryLink>
-            ) : null}
-            <SecondaryLink href={getAppLoginUrl('/agents/new')}>
+            <PrimaryLink href={getAppLoginUrl('/agents/new')}>
+              Start building
+            </PrimaryLink>
+            <SecondaryLink href={getAppLoginUrl('/dashboard')}>
               Login
             </SecondaryLink>
           </div>

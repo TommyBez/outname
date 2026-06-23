@@ -77,7 +77,7 @@ export function getEmailAppOrigin(): string {
   return resolveEmailOrigin('app')
 }
 
-/** Marketing web origin for waitlist confirmation and hosted assets. */
+/** Marketing web origin for hosted assets. */
 export function getEmailWebOrigin(): string {
   return resolveEmailOrigin('web')
 }
@@ -105,12 +105,4 @@ export function buildEmailWebUrl(
 
 export function getEmailAppLoginUrl(): string {
   return buildEmailAppUrl('/login')
-}
-
-export function getEmailWaitlistConfirmationUrl(token: string): string {
-  return buildEmailWebUrl('/waitlist/confirm', { token })
-}
-
-export function getEmailWaitlistAdminUrl(): string {
-  return buildEmailAppUrl('/settings/waitlist')
 }

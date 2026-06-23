@@ -23,12 +23,9 @@ Notes:
 - This repository is a Turborepo monorepo with apps in `apps/*` and shared
   packages in `packages/*`.
 - The database is remote, so no local Postgres instance is required.
-- Set `AUTH_FROM_EMAIL` and `AUTH_REPLY_TO` in `.env.local` for auth emails, and
-  keep `WAITLIST_FROM_EMAIL`, `WAITLIST_REPLY_TO`, and `WAITLIST_ADMIN_EMAIL` for
-  waitlist mail.
-- Sign-up is disabled; provision a user through the waitlist flow or use the
-  provisioned test address from `TEST_USER_EMAIL`, then request an email OTP
-  from `/login`.
+- Set `AUTH_FROM_EMAIL` and `AUTH_REPLY_TO` in `.env.local` for auth emails.
+- Sign-up uses the email OTP flow. Enter any email at `/login`; existing users
+  sign in and new email addresses create accounts after OTP verification.
 
 ## Development workflow
 
