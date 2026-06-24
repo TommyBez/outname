@@ -8,6 +8,28 @@ export interface BlogPost {
 
 export const posts: BlogPost[] = [
   {
+    slug: 'spacex-cursor-acquisition-60b-agent-infrastructure',
+    title:
+      "I Scored Cursor's Defensibility at 3 Out of 10. SpaceX Just Bought It for $60 Billion.",
+    date: '2026-06-24',
+    excerpt:
+      "Nineteen days after I scored Cursor's defensibility at 3 out of 10, SpaceX bought it for $60 billion — the largest VC-backed startup acquisition in history. I wasn't wrong. SpaceX didn't buy an IDE. It bought a compute customer and a distribution layer through which half the Fortune 500 writes code. The real defensibility isn't in the model or the editor. It's in the agent runtime: identity, memory, sandboxed execution, and architecture that doesn't depend on any single infrastructure provider.",
+    tags: [
+      'AI',
+      'agents',
+      'Cursor',
+      'SpaceX',
+      'acquisition',
+      'infrastructure',
+      'defensibility',
+      'coding',
+      'architecture',
+      'agent runtime',
+      'open source',
+      'Outname',
+    ],
+  },
+  {
     slug: 'mem0-state-of-agent-memory-2026-file-based-architecture',
     title:
       "Mem0 Just Published the Definitive Report on AI Agent Memory. The Four Unsolved Problems Have a Simple Solution.",
