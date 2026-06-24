@@ -16,6 +16,15 @@ const sendVerificationOtpSchema = z.object({
   type: z.literal('sign-in'),
 })
 
+interface RateLimitResult {
+  pending: Promise<unknown>
+  success: boolean
+}
+
+interface RateLimiter {
+  limit: (key: string) => Promise<RateLimitResult>
+}
+
 function getRequestIp(request: Request): string {
   if (request.headers instanceof Headers) {
     const forwardedFor = request.headers.get('x-forwarded-for')
@@ -42,18 +51,51 @@ function rateLimitResponse(): Response {
   )
 }
 
+function observePendingRateLimit(
+  pending: Promise<unknown>,
+  scope: string
+): void {
+  pending.catch((error) => {
+    console.error(
+      `[auth] ${scope} OTP rate-limit background write failed`,
+      error
+    )
+  })
+}
+
+async function isRateLimited(input: {
+  key: string
+  limiter: RateLimiter
+  scope: string
+}): Promise<boolean> {
+  try {
+    const result = await input.limiter.limit(input.key)
+    observePendingRateLimit(result.pending, input.scope)
+    return !result.success
+  } catch (error) {
+    console.error(`[auth] ${input.scope} OTP rate-limit check failed`, error)
+    return false
+  }
+}
+
 async function enforceOtpRequestLimits(request: Request, email: string) {
-  const ipLimiter = getOtpIpRateLimiter()
-  const ipRateLimitResult = await ipLimiter.limit(`ip:${getRequestIp(request)}`)
-  await ipRateLimitResult.pending
-  if (!ipRateLimitResult.success) {
+  if (
+    await isRateLimited({
+      key: `ip:${getRequestIp(request)}`,
+      limiter: getOtpIpRateLimiter(),
+      scope: 'ip',
+    })
+  ) {
     return rateLimitResponse()
   }
 
-  const emailLimiter = getOtpEmailRateLimiter()
-  const emailRateLimitResult = await emailLimiter.limit(`email:${email}`)
-  await emailRateLimitResult.pending
-  if (!emailRateLimitResult.success) {
+  if (
+    await isRateLimited({
+      key: `email:${email}`,
+      limiter: getOtpEmailRateLimiter(),
+      scope: 'email',
+    })
+  ) {
     return rateLimitResponse()
   }
 
