@@ -112,9 +112,6 @@ export function LandingHeartbeatCloser({
                   Login
                 </SecondaryLink>
               </div>
-              <p className="font-mono text-[11px] text-muted-foreground tracking-normal">
-                One email code opens the dashboard.
-              </p>
             </div>
           </motion.div>
         </motion.div>
