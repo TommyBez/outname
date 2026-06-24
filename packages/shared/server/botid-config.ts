@@ -2,7 +2,7 @@ export const BOTID_CHECK_LEVEL = 'basic' as const
 
 export const BOTID_PROTECTED_ROUTES = [
   {
-    path: '/api/auth/request-otp',
+    path: '/api/auth/email-otp/send-verification-otp',
     method: 'POST',
     advancedOptions: { checkLevel: BOTID_CHECK_LEVEL },
   },

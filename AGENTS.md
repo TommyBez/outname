@@ -160,7 +160,7 @@ AUTH_REPLY_TO=<verified reply-to sender>
 
 ### Known caveats
 
-- **Dev sign-in flow**: Request an OTP via `POST /api/auth/request-otp` with `{"email":"<email>"}`, then read the code from the `verification` table (`SELECT value FROM verification ORDER BY "createdAt" DESC LIMIT 1` — the OTP is the part before the `:`). Submit it to `POST /api/auth/sign-in/email-otp` with `{"email":"...","otp":"..."}` to get a `better-auth.session_token` cookie. If the email is new, Better Auth creates the account during OTP verification.
+- **Dev sign-in flow**: Request an OTP via `POST /api/auth/email-otp/send-verification-otp` with `{"email":"<email>","type":"sign-in"}`, then read the code from the `verification` table (`SELECT value FROM verification ORDER BY "createdAt" DESC LIMIT 1` — the OTP is the part before the `:`). Submit it to `POST /api/auth/sign-in/email-otp` with `{"email":"...","otp":"..."}` to get a `better-auth.session_token` cookie. If the email is new, Better Auth creates the account during OTP verification.
 - **`drizzle-kit push`** requires a TTY for confirmation prompts. Use `drizzle-kit push --force` or run interactively if schema changes are needed.
 - **Do not commit `pnpm-workspace.yaml` allow-build overrides.** They make the production build fail in this app.
 - **UI/auth changes should be tested manually** via the browser. There is no comprehensive automated product test suite for authentication flows.

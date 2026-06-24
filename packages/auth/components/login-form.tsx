@@ -4,7 +4,7 @@ import {
   initialLoginFormState,
   loginFormReducer,
 } from '@outname/auth/components/login-form-state'
-import { signIn } from '@outname/auth/server/auth-client'
+import { emailOtp, signIn } from '@outname/auth/server/auth-client'
 import { Button } from '@outname/ui/components/ui/button'
 import { Input } from '@outname/ui/components/ui/input'
 import {
@@ -46,33 +46,20 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
     dispatch({ type: 'set_requesting_otp', value: true })
 
     try {
-      const response = await fetch('/api/auth/request-otp', {
-        credentials: 'include',
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-        }),
+      const result = await emailOtp.sendVerificationOtp({
+        email,
+        type: 'sign-in',
       })
 
-      const payload = (await response.json().catch(() => null)) as {
-        error?: string
-        message?: string
-      } | null
-
-      if (!response.ok) {
-        toast.error(payload?.error || 'Could not send a sign-in code')
+      if (result.error) {
+        toast.error(result.error.message || 'Could not send a sign-in code')
         dispatch({ type: 'set_requesting_otp', value: false })
         return
       }
 
       dispatch({
         type: 'otp_sent',
-        message:
-          payload?.message ||
-          'Check your inbox for the one-time code, then enter it here.',
+        message: 'Check your inbox for the one-time code, then enter it here.',
       })
       toast.success('Sign-in code sent')
     } catch {

@@ -1,5 +1,6 @@
 import { ac, roles } from '@outname/auth/access-control'
 import { sendAuthSignInOtpEmail } from '@outname/auth/server/auth-email'
+import { emailOtpRequestGuardPlugin } from '@outname/auth/server/email-otp-request-guard'
 import { sendWelcomeEmailForCreatedUser } from '@outname/auth/server/user-welcome-email-hook'
 import { db } from '@outname/db'
 import { betterAuth } from 'better-auth'
@@ -128,6 +129,7 @@ export const auth = betterAuth({
       adminUserIds: parseAdminUserIds(),
       defaultRole: 'user',
     }),
+    emailOtpRequestGuardPlugin(),
     emailOTP({
       allowedAttempts: 5,
       expiresIn: AUTH_EMAIL_OTP_EXPIRES_IN_SECONDS,
