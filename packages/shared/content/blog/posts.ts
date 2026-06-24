@@ -13,7 +13,7 @@ export const posts: BlogPost[] = [
       "I Scored Cursor's Defensibility at 3 Out of 10. SpaceX Just Bought It for $60 Billion.",
     date: '2026-06-24',
     excerpt:
-      "On June 5, I wrote that Cursor's defensibility score was 3 out of 10. On June 16, SpaceX announced it would acquire Cursor for $60 billion — the largest venture-backed startup acquisition in history. I wasn't wrong. SpaceX didn't buy an IDE. It bought a compute customer that justifies the infrastructure buildout — and a distribution layer through which half the Fortune 500 writes code. When a company that raised $5.5 billion still needs another $2 billion just to reach breakeven, the product economics don't work at scale. The only exit is acquisition — and the only buyers are companies that already own the compute. The real defensibility isn't in the model or the editor. It's in the agent runtime: identity, memory, sandboxed execution, and architecture that doesn't depend on any single infrastructure provider.",
+      "Nineteen days after I scored Cursor's defensibility at 3 out of 10, SpaceX bought it for $60 billion — the largest VC-backed startup acquisition in history. I wasn't wrong. SpaceX didn't buy an IDE. It bought a compute customer and a distribution layer through which half the Fortune 500 writes code. The real defensibility isn't in the model or the editor. It's in the agent runtime: identity, memory, sandboxed execution, and architecture that doesn't depend on any single infrastructure provider.",
     tags: [
       'AI',
       'agents',
