@@ -1,8 +1,4 @@
-import {
-  getSession,
-  hasWaitlistManageAccess,
-  requireSession,
-} from '@outname/auth/server/auth-guard'
+import { getSession, requireSession } from '@outname/auth/server/auth-guard'
 import {
   BudgetRules,
   type BudgetRuleView,
@@ -69,10 +65,6 @@ export default function SettingsPage() {
             <InferenceProvidersSection />
           </Suspense>
         </Section>
-
-        <Suspense fallback={null}>
-          <WaitlistAdminSection />
-        </Suspense>
       </div>
     </>
   )
@@ -157,42 +149,6 @@ async function TimezoneSection() {
   const session = await requireSession()
   const timezone = await getUserTimezone(session.user.id)
   return <TimezoneCard timezone={timezone} />
-}
-
-async function WaitlistAdminSection() {
-  const session = await getSession()
-  if (!(session && (await hasWaitlistManageAccess(session.user.id)))) {
-    return null
-  }
-
-  return (
-    <Section title="Waitlist">
-      <WaitlistSection />
-    </Section>
-  )
-}
-
-function WaitlistSection() {
-  return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-      <div>
-        <p className="font-semibold text-xl tracking-[-0.04em]">
-          Invite users and manage the waitlist
-        </p>
-        <p className="mt-0.5 text-muted-foreground text-xs">
-          Send product invites by email, review signups, and resend confirmation
-          or access messages.
-        </p>
-      </div>
-      <Button
-        asChild
-        className="shrink-0 self-start sm:self-auto"
-        variant="outline"
-      >
-        <Link href="/settings/waitlist">Open waitlist →</Link>
-      </Button>
-    </div>
-  )
 }
 
 function Section({

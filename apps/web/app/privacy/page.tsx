@@ -52,12 +52,6 @@ export default function PrivacyPage() {
               sign-in and security.
             </li>
             <li>
-              <strong className="text-foreground">Waitlist data</strong>, if you
-              request early access, we store your email and any optional details
-              you submit (such as use case or profile type), plus signup
-              metadata like source and UTM parameters.
-            </li>
-            <li>
               <strong className="text-foreground">Product usage data</strong>,
               agent configuration, conversations, memory files, scheduled runs,
               tool activity, and related operational logs needed to run your
@@ -87,7 +81,7 @@ export default function PrivacyPage() {
             <li>
               Run agents, schedules, tools, and integrations you configure
             </li>
-            <li>Send transactional email (sign-in codes, waitlist messages)</li>
+            <li>Send transactional email, including sign-in codes</li>
             <li>Improve reliability, prevent abuse, and debug issues</li>
             <li>Comply with legal obligations</li>
           </LegalList>

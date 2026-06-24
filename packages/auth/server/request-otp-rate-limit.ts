@@ -76,7 +76,7 @@ function createRedisRateLimiter(scope: Scope, redis: Redis): RateLimiter {
       OTP_REQUEST_RATE_LIMIT_MAX_REQUESTS,
       OTP_REQUEST_RATE_LIMIT_WINDOW
     ),
-    prefix: `auth:request-otp:${scope}`,
+    prefix: `auth:email-otp-request:${scope}`,
     redis,
   })
 }

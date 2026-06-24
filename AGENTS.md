@@ -156,16 +156,12 @@ SANDBOX_ACCESS_TOKEN=<from env>
 RESEND_API_KEY=<from env>
 AUTH_FROM_EMAIL=<verified sender>
 AUTH_REPLY_TO=<verified reply-to sender>
-WAITLIST_FROM_EMAIL=<verified sender for waitlist emails>
-WAITLIST_REPLY_TO=<reply-to sender for waitlist emails>
-WAITLIST_ADMIN_EMAIL=<admin inbox for new waitlist signup notifications>
 ```
 
 ### Known caveats
 
-- **Sign-up is disabled** at the Better Auth level (`packages/auth/server/auth.ts`); new users are provisioned from the waitlist and sign in with email OTP codes. The data model is multi-user — every user-owned table is scoped by `user_id` and routes verify ownership. Use a provisioned address such as `TEST_USER_EMAIL` to request a login code in dev.
-- **Dev sign-in flow**: Request an OTP via `POST /api/auth/request-otp` with `{"email":"<existing-user>"}`, then read the code from the `verification` table (`SELECT value FROM verification ORDER BY "createdAt" DESC LIMIT 1` — the OTP is the part before the `:`). Submit it to `POST /api/auth/sign-in/email-otp` with `{"email":"...","otp":"..."}` to get a `better-auth.session_token` cookie. Existing test users can be found with `SELECT email FROM "user" LIMIT 5`.
+- **Dev sign-in flow**: Request an OTP via `POST /api/auth/email-otp/send-verification-otp` with `{"email":"<email>","type":"sign-in"}`, then read the code from the `verification` table (`SELECT value FROM verification ORDER BY "createdAt" DESC LIMIT 1` — the OTP is the part before the `:`). Submit it to `POST /api/auth/sign-in/email-otp` with `{"email":"...","otp":"..."}` to get a `better-auth.session_token` cookie. If the email is new, Better Auth creates the account during OTP verification.
 - **`drizzle-kit push`** requires a TTY for confirmation prompts. Use `drizzle-kit push --force` or run interactively if schema changes are needed.
 - **Do not commit `pnpm-workspace.yaml` allow-build overrides.** They make the production build fail in this app.
-- **UI/auth changes should be tested manually** via the browser. There is no comprehensive automated product test suite for waitlist and authentication flows.
+- **UI/auth changes should be tested manually** via the browser. There is no comprehensive automated product test suite for authentication flows.
 - **Running `pnpm test`** requires `DATABASE_URL` to be set in the environment. Export it before running tests or source it from `.env.local`. Some test files import `@outname/db` which throws at module load time if the variable is missing.

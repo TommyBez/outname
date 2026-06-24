@@ -1,5 +1,5 @@
 import { EMAIL_BRAND_NAME } from '@outname/email/email-brand'
-import { waitlistEmailTailwind } from '@outname/email/waitlist-email-theme'
+import { transactionalEmailTailwind } from '@outname/email/transactional-email-theme'
 import { siteConfig } from '@outname/shared/server/site-metadata'
 import type { ReactNode } from 'react'
 import {
@@ -18,7 +18,7 @@ import {
   Text,
 } from 'react-email'
 
-interface WaitlistEmailLayoutProps {
+interface TransactionalEmailLayoutProps {
   children: ReactNode
   ctaHref?: string
   ctaLabel?: string
@@ -32,7 +32,7 @@ interface WaitlistEmailLayoutProps {
   title: string
 }
 
-export function WaitlistEmailLayout({
+export function TransactionalEmailLayout({
   children,
   ctaHref,
   ctaLabel,
@@ -44,10 +44,10 @@ export function WaitlistEmailLayout({
   logoUrl,
   preview,
   title,
-}: WaitlistEmailLayoutProps) {
+}: TransactionalEmailLayoutProps) {
   return (
     <Html lang="en">
-      <Tailwind config={waitlistEmailTailwind}>
+      <Tailwind config={transactionalEmailTailwind}>
         <Head />
         <Body className="bg-canvas px-[12px] py-[24px] font-sans text-ink">
           <Preview>{preview}</Preview>
@@ -107,7 +107,7 @@ export function WaitlistEmailLayout({
               {footer ?? (
                 <>
                   <Text className="m-0 font-semibold text-[11px] text-subtle tracking-[2px]">
-                    {footerEyebrow ?? `${EMAIL_BRAND_NAME} / waitlist`}
+                    {footerEyebrow ?? `${EMAIL_BRAND_NAME} / email`}
                   </Text>
                   {footerText ? (
                     <Text className="m-0 mt-[12px] text-[12px] text-subtle leading-[20px]">

@@ -1,5 +1,7 @@
 import { ac, roles } from '@outname/auth/access-control'
 import { sendAuthSignInOtpEmail } from '@outname/auth/server/auth-email'
+import { emailOtpRequestGuardPlugin } from '@outname/auth/server/email-otp-request-guard'
+import { sendWelcomeEmailForCreatedUser } from '@outname/auth/server/user-welcome-email-hook'
 import { db } from '@outname/db'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
@@ -82,6 +84,13 @@ export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: 'pg',
   }),
+  databaseHooks: {
+    user: {
+      create: {
+        after: sendWelcomeEmailForCreatedUser,
+      },
+    },
+  },
   session: {
     expiresIn: 60 * 60 * 24 * 30, // 30 days
     updateAge: 60 * 60 * 24, // 1 day
@@ -120,9 +129,9 @@ export const auth = betterAuth({
       adminUserIds: parseAdminUserIds(),
       defaultRole: 'user',
     }),
+    emailOtpRequestGuardPlugin(),
     emailOTP({
       allowedAttempts: 5,
-      disableSignUp: true,
       expiresIn: AUTH_EMAIL_OTP_EXPIRES_IN_SECONDS,
       otpLength: AUTH_EMAIL_OTP_LENGTH,
       resendStrategy: 'rotate',

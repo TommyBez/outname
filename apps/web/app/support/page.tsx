@@ -9,7 +9,6 @@ import {
 } from '@outname/shared/marketing/data/contact'
 import { githubRepositoryUrl } from '@outname/shared/marketing/data/social-links'
 import { siteConfig } from '@outname/shared/server/site-metadata'
-import { isWaitlistPublicEnabled } from '@outname/shared/waitlist/server/public-config'
 import { Button } from '@outname/ui/components/ui/button'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -23,8 +22,6 @@ export const metadata: Metadata = {
 }
 
 export default function SupportPage() {
-  const waitlistEnabled = isWaitlistPublicEnabled()
-
   return (
     <MarketingLegalLayout>
       <header className="mb-12 pt-6 md:mb-16">
@@ -57,20 +54,11 @@ export default function SupportPage() {
               <LegalLink href={getAppLoginUrl('/dashboard')}>/login</LegalLink>.
               Codes expire quickly; request a new one if needed.
             </li>
-            {waitlistEnabled ? (
-              <li>
-                <strong className="text-foreground">Waitlist</strong>, no
-                account yet? Join at{' '}
-                <LegalLink href="/waitlist?source=support-page">
-                  /waitlist
-                </LegalLink>{' '}
-                and confirm via the email link we send.
-              </li>
-            ) : null}
             <li>
-              <strong className="text-foreground">No access</strong>, sign-up is
-              invite-only. If you were provisioned from the waitlist, use the
-              same email you registered with.
+              <strong className="text-foreground">New account</strong>, enter
+              your email at{' '}
+              <LegalLink href={getAppLoginUrl('/dashboard')}>/login</LegalLink>{' '}
+              and use the one-time code we send to create an account.
             </li>
           </LegalList>
         </LegalSection>

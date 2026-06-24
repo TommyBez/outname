@@ -1,30 +1,30 @@
 import { InferenceProviderSetupNote } from '@outname/email/components/inference-provider-setup-note'
-import { WaitlistEmailLayout } from '@outname/email/components/waitlist-email-layout'
+import { TransactionalEmailLayout } from '@outname/email/components/transactional-email-layout'
 import { EMAIL_BRAND_NAME } from '@outname/email/email-brand'
 import { EMAIL_PREVIEW_URLS } from '@outname/email/email-preview-urls'
 import { siteConfig } from '@outname/shared/server/site-metadata'
 import { Text } from 'react-email'
 
-export interface ApplicationInviteEmailProps {
-  loginUrl: string
+export interface NewUserWelcomeEmailProps {
+  dashboardUrl: string
   logoUrl: string
 }
 
-export function ApplicationInviteEmail({
-  loginUrl,
+export function NewUserWelcomeEmail({
+  dashboardUrl,
   logoUrl,
-}: ApplicationInviteEmailProps) {
+}: NewUserWelcomeEmailProps) {
   return (
-    <WaitlistEmailLayout
-      ctaHref={loginUrl}
+    <TransactionalEmailLayout
+      ctaHref={dashboardUrl}
       ctaLabel={`Open ${EMAIL_BRAND_NAME}`}
-      eyebrow={`${EMAIL_BRAND_NAME} / invitation`}
-      footerEyebrow={`${EMAIL_BRAND_NAME} / invitation`}
-      footerText={`You received this email because someone invited you to try ${EMAIL_BRAND_NAME}. If that was not you, you can safely ignore it.`}
+      eyebrow={`${EMAIL_BRAND_NAME} / welcome`}
+      footerEyebrow={`${EMAIL_BRAND_NAME} / account`}
+      footerText={`You received this email because an account was created for ${EMAIL_BRAND_NAME}. If this was not you, reply to this email and we will help.`}
       lead={siteConfig.shortDescription}
       logoUrl={logoUrl}
-      preview={`You're invited to ${EMAIL_BRAND_NAME}.`}
-      title="You're invited"
+      preview={`Your ${EMAIL_BRAND_NAME} account is ready.`}
+      title="Your account is ready"
     >
       <Text className="m-0 text-[14px] text-ink leading-[22px]">
         {EMAIL_BRAND_NAME} is for work that should not stall when you step away:
@@ -37,21 +37,17 @@ export function ApplicationInviteEmail({
         clear updates instead of making you restart from scratch.
       </Text>
       <Text className="m-0 mt-[16px] text-[14px] text-subtle leading-[22px]">
-        Your account is ready. Use the button below, enter this email address,
-        and we will send you a one-time sign-in code.
+        Open the dashboard, add an inference provider key, and create your first
+        agent when you are ready.
       </Text>
       <InferenceProviderSetupNote />
-      <Text className="m-0 mt-[16px] text-[14px] text-subtle leading-[22px]">
-        If you were not expecting this invitation, ignore the message or reply
-        to this email and we will help.
-      </Text>
-    </WaitlistEmailLayout>
+    </TransactionalEmailLayout>
   )
 }
 
-ApplicationInviteEmail.PreviewProps = {
-  loginUrl: EMAIL_PREVIEW_URLS.appLogin,
+NewUserWelcomeEmail.PreviewProps = {
+  dashboardUrl: 'https://app.outna.me/dashboard',
   logoUrl: EMAIL_PREVIEW_URLS.logo,
-} satisfies ApplicationInviteEmailProps
+} satisfies NewUserWelcomeEmailProps
 
-export default ApplicationInviteEmail
+export default NewUserWelcomeEmail

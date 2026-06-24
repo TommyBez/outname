@@ -7,7 +7,7 @@
 ## Code-Derived Claim Hygiene
 | Status | Safe to claim | Do not claim without more verification |
 |--------|---------------|----------------------------------------|
-| Shipped / code-backed | Browser chat, authenticated dashboard, agent registry, guided agent creation, manual configuration, persistent sandbox files, scheduled heartbeat/dreaming events, durable invocation events, event ledger, Slack ingress/routing when enabled, attached maintainer tools, sub-agents, installed skills, budget rules, token usage ledger, waitlist/invite/OTP access, dedicated `maintainer-tool-implementation` skill in the repo | Production reliability, customer outcomes, paid billing, native channels beyond browser chat and Slack, automatic acceptance or hosting of community PRs |
+| Shipped / code-backed | Browser chat, authenticated dashboard, agent registry, guided agent creation, manual configuration, persistent sandbox files, scheduled heartbeat/dreaming events, durable invocation events, event ledger, Slack ingress/routing when enabled, attached maintainer tools, sub-agents, installed skills, budget rules, token usage ledger, open email OTP sign-up, dedicated `maintainer-tool-implementation` skill in the repo | Production reliability, customer outcomes, paid billing, native channels beyond browser chat and Slack, automatic acceptance or hosting of community PRs |
 | Tool surface | Resend email, Cal.com scheduling, GitHub repo workspace, Typefully, X, PostHog, Firecrawl, Context7, Parallel, Vercel, Supabase, v0, browser automation | Native Gmail inbox, native calendar inbox, email as a runtime channel, calendar as a runtime channel |
 | Demo / illustrative | Landing chat showcase, heartbeat-day animation, composability visual, launch social content | Live telemetry, customer proof, production metrics, shipped Telegram/Discord/webhook channels |
 | Roadmap / unverified | Telegram, Discord, generic webhooks, email inbound channel, broader channel plugins, complete workflow/sandbox USD COGS ledger, paid tiers | Public copy that implies these are available today |
@@ -21,12 +21,12 @@
 
 **Product type:** Hosted SaaS product, backed by an open-source codebase.
 
-**Business model:** SaaS-first, early-access/waitlist motion. The codebase does not include billing, checkout, subscriptions, or a pricing page. Terms copy says early access may be offered without charge or with experimental pricing before paid plans are introduced. Inference is user-provided: users save personal inference provider credentials instead of OUTNA.ME relying on a server fallback key. "BYOK" is useful technical shorthand, but public product copy should usually say "use your own inference provider key." Open source supports trust, technical adoption, and contribution to the hosted capability layer; it should not be framed as shorthand for self-hosting.
+**Business model:** SaaS-first, open account creation, no billing yet. The codebase does not include billing, checkout, subscriptions, or a pricing page. Terms copy says early access may be offered without charge or with experimental pricing before paid plans are introduced. Inference is user-provided: users save personal inference provider credentials instead of OUTNA.ME relying on a server fallback key. "BYOK" is useful technical shorthand, but public product copy should usually say "use your own inference provider key." Open source supports trust, technical adoption, and contribution to the hosted capability layer; it should not be framed as shorthand for self-hosting.
 
 ## Pricing & Packaging
-**Current model:** Early access through waitlist/invite flow. Sign-up is disabled; provisioned users sign in with email OTP. There is no shipped billing or paid-plan implementation in the codebase. Non-admin users currently have a creation limit of 3 agents.
+**Current model:** Open account creation through email OTP. Existing users sign in with OTP, and new email addresses create accounts after OTP verification. There is no shipped billing or paid-plan implementation in the codebase. Non-admin users currently have a creation limit of 3 agents.
 
-**Beta rationale:** Keep access curated while validating recurring agent workflows, onboarding, reliability, provider-key setup, and willingness to pay before publishing paid tiers. Do not describe this as a permanent free plan or freemium promise.
+**Beta rationale:** Keep product usage bounded with agent limits while validating recurring agent workflows, onboarding, reliability, provider-key setup, and willingness to pay before publishing paid tiers. Do not describe this as a permanent free plan or freemium promise.
 
 **Inference cost model:** User-provided inference credentials. Supported inference provider paths are Vercel AI Gateway, LLM Gateway, and OpenRouter. Users must save an enabled provider key before creating/running agents on that provider. Model usage is tracked internally through token usage and cost estimates/actuals where available.
 
@@ -68,8 +68,6 @@
 **Primary ICP:** Technical solo founders, founder-operators, developers, and AI-native builders who already use AI tools, have recurring operational work, and are willing to configure agents, tools, memory files, schedules, provider keys, and integrations to get leverage.
 
 **Target companies:** The current audience is more role-based than company-based. Best current fit: solo builders and small early-stage teams where one technical operator owns product, growth, operations, and follow-up work.
-
-**Waitlist profile options in product:** Developer, founder/operator, product/design, technical leader, and other. This is the cleanest code-backed audience signal.
 
 **Secondary audiences:** Technical leaders who need reliable follow-through, product/design operators who want agent-assisted workflows, developers who want inspectable agent infrastructure without wiring everything from scratch, and small technical teams exploring agent-based internal operations.
 
@@ -168,7 +166,7 @@
 | "Is this just a wrapper around open-source tooling?" | No. OUTNA.ME is a productized agent runtime: hosted execution, persistent sandboxes, scheduled workflows, readable files, browser chat, Slack routing when enabled, tools, skills, and sub-agents in one coherent system. The repo proves what you're buying into. |
 | "What if the tool I need is missing?" | The maintainer tool layer is open source. Technical users can implement a missing tool in the repo, use the `maintainer-tool-implementation` skill as guidance, and open a PR. Be precise: review and merge are required before it can become part of the hosted product. |
 | "Why do I need to bring my own model key?" | The current product requires user-provided inference credentials. That gives users provider choice and model-spend visibility, but it is a setup step; do not hide that friction. |
-| "Is early access the same as a free plan?" | No. The shipped flow is waitlist/invite/OTP access, and the codebase has no billing or pricing-page implementation yet. Future paid plans remain a packaging hypothesis. |
+| "Is early access the same as a free plan?" | No. The shipped access flow is open email OTP sign-up, and the codebase has no billing or pricing-page implementation yet. Future paid plans remain a packaging hypothesis. |
 | "Will this get expensive or unpredictable?" | Users can configure daily/weekly/monthly budget rules for model spend, and token usage is tracked. Be precise: this is not a billing guarantee and does not yet account for every workflow/sandbox/tool-provider COGS line. |
 | "Why not unlimited agents?" | The current non-admin limit is 3 agents. Agents carry real hosted execution, memory, sandbox, tool, and support costs; limits keep early access controlled and create a path to paid packaging. |
 | "Which channels actually work today?" | Be precise. Current product proof is strongest around browser chat, Slack ingress/routing, scheduled runs, persistent memory, tool attachments, and sandboxed execution. Email, calendar, Discord, Telegram, and webhooks can be discussed as tool surfaces, demos, or roadmap only when their shipped status is clear. |
@@ -184,7 +182,7 @@
 
 **Habit:** Existing workflows rely on manual reminders, generic AI chats, self-managed tools, and personal memory to keep work moving.
 
-**Anxiety:** Trusting agents with real recurring work, setting up the right scopes and tools, and adopting an early-stage product before proof is fully established. Open source reduces black-box anxiety for technical buyers; the waitlist/onboarding path reduces infra anxiety for everyone else.
+**Anxiety:** Trusting agents with real recurring work, setting up the right scopes and tools, and adopting an early-stage product before proof is fully established. Open source reduces black-box anxiety for technical buyers; email OTP sign-up keeps account creation simple.
 
 ## Customer Language
 **Founder/problem language from launch content, not customer quotes:**
@@ -218,7 +216,7 @@
 - "Use your own inference provider key. OUTNA.ME runs the agents."
 - "Pay for the hosted agent layer, not a bundled-token black box." (future pricing hypothesis, not shipped pricing page)
 
-**Words to use:** hosted, personal AI agents, recurring work, continuity, configurable agents, composable agent configuration, attached tools, bound Slack routing, traced sub-agent calls, installed skills, scheduled runs, heartbeat, dreaming, future runs, readable memory files, persistent sandbox, browser chat, Slack when enabled, early access, waitlist, invite-only, user-provided inference provider key, provider choice, hosted agent runtime, operating layer, execution capacity, runtime limits, Vercel AI Gateway, LLM Gateway, OpenRouter, open source as trust and contribution layer, community-extensible tool layer, maintainer tool PRs, review and merge.
+**Words to use:** hosted, personal AI agents, recurring work, continuity, configurable agents, composable agent configuration, attached tools, bound Slack routing, traced sub-agent calls, installed skills, scheduled runs, heartbeat, dreaming, future runs, readable memory files, persistent sandbox, browser chat, Slack when enabled, open account creation, email OTP sign-up, user-provided inference provider key, provider choice, hosted agent runtime, operating layer, execution capacity, runtime limits, Vercel AI Gateway, LLM Gateway, OpenRouter, open source as trust and contribution layer, community-extensible tool layer, maintainer tool PRs, review and merge.
 
 **Words to avoid:** generic assistant, one giant agent, AI magic, memory as a buzzword, chatbot replacement, free forever, freemium promise, unlimited agents, bundled-token black box, DIY-only, self-host first, open source as shorthand for self-hosted, every channel, all integrations, native Gmail inbox, native calendar channel, Telegram/Discord/webhooks as shipped, fully autonomous employee, automatic learning, automatic PR acceptance, instant hosted support for any contributed tool.
 
@@ -258,13 +256,12 @@
 ## Proof Points
 **Metrics:** No public performance or customer metrics are documented in the repo yet. Needs confirmation.
 
-**Customers:** Founder/problem narrative exists in launch content. Early-access waitlist exists. Named customers, logos, testimonials, reliability benchmarks, conversion, retention, and revenue metrics are not documented in code.
+**Customers:** Founder/problem narrative exists in launch content. Named customers, logos, testimonials, reliability benchmarks, conversion, retention, and revenue metrics are not documented in code.
 
 **Code-backed product evidence:**
-- Public landing page, waitlist page, waitlist confirmation, support, privacy, terms, and blog routes exist.
-- Waitlist captures email, name, profile type, primary interest, use case, UTM/source/referrer metadata, and confirmation/provisioning state.
-- Sign-up is disabled; provisioned users sign in with email OTP codes.
-- Authenticated app includes dashboard, agent registry, private agent workspaces, channels, connections, settings, and waitlist admin for authorized users.
+- Public landing page, support, privacy, terms, and blog routes exist.
+- Email OTP signs in existing users and creates accounts for new email addresses.
+- Authenticated app includes dashboard, agent registry, private agent workspaces, channels, connections, and settings.
 - Guided agent creation chat can produce a reviewed `create_requested_agent` tool call before saving.
 - Agents persist provider/model, step limit, heartbeat schedule, dreaming toggle, enabled/paused state, and sandbox ids.
 - Agent bootstrap files include `AGENTS.md`, `IDENTITY.md`, `SOUL.md`, and `USER.md`; memory UI exposes files, timeline, and dreaming output.
@@ -308,11 +305,11 @@
 | Community-extensible capabilities | Missing maintainer tools can be proposed through PRs, with the repo's `maintainer-tool-implementation` skill guiding the expected development path |
 
 ## Goals
-**Business goal:** Build early demand and validate OUTNA.ME as the faster, SaaS-first way to get personal agents running for recurring work. Use early-access usage to validate onboarding, provider-key setup, scheduled-run reliability, Slack/tool workflows, budget guardrails, willingness to pay, and hosted-runtime unit economics before publishing paid tiers.
+**Business goal:** Validate OUTNA.ME as the faster, SaaS-first way to get personal agents running for recurring work. Use product usage to validate onboarding, provider-key setup, scheduled-run reliability, Slack/tool workflows, budget guardrails, willingness to pay, and hosted-runtime unit economics before publishing paid tiers.
 
-**Conversion action:** Join the waitlist / request early access to the hosted product. GitHub star/fork is secondary discovery, not the primary CTA.
+**Conversion action:** Create an account for the hosted product. GitHub star/fork is secondary discovery, not the primary CTA.
 
-**Current metrics:** Waitlist exists and signups are tracked in-product, but no public benchmark numbers are documented in the repo. Needs confirmation.
+**Current metrics:** No public benchmark numbers are documented in the repo. Needs confirmation.
 
 ## Messaging hierarchy (SaaS-first)
 1. **Lead:** Agents that keep working — hosted, with readable memory, schedules, and tools.
@@ -322,4 +319,4 @@
 5. **Extension:** Hosted by default, open source at the capability layer: missing maintainer tools can be implemented and proposed for the hosted product through PR review.
 6. **Packaging:** Future pricing should charge for hosted agent operating capacity, not a bundled-token black box.
 7. **Proof:** Open source (MIT) — inspect the stack, contribute tools, fork if you want, no black box; do not collapse this into a self-hosting claim.
-8. **CTA:** Join the waitlist / request early access.
+8. **CTA:** Create an account.

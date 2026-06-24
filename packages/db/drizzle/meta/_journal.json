@@ -162,6 +162,13 @@
       "when": 1781308800000,
       "tag": "0021_simplify_agent_events",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1782259200000,
+      "tag": "0022_drop_waitlist_entries",
+      "breakpoints": true
     }
   ]
 }

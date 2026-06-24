@@ -1,9 +1,5 @@
 {
-  "serverAuthFunctionNames": [
-    "requireSession",
-    "requireUserId",
-    "requireWaitlistManageAccess"
-  ],
+  "serverAuthFunctionNames": ["requireSession", "requireUserId"],
   "ignore": {
     "overrides": [
       {
@@ -71,7 +67,6 @@
       {
         "files": [
           "server/inference-credentials.ts",
-          "waitlist/server/actions.ts",
           "budgets/server/spend.ts",
           "channels/server/dispatch.ts",
           "channels/server/routing.ts",

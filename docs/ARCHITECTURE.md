@@ -34,13 +34,12 @@ flowchart LR
 ### Next.js control plane
 
 The Next.js application owns routing, authentication, configuration screens,
-browser chat APIs, Slack installation endpoints, waitlist endpoints, and
-scheduler ingress.
+browser chat APIs, Slack installation endpoints, and scheduler ingress.
 
 Key files:
 
 - `app/` for pages and route handlers
-- `proxy.ts` for auth and waitlist gating
+- `proxy.ts` for auth gating where needed
 - `auth/server/auth.ts` for Better Auth configuration
 - `app/api/cron/liveness/route.ts` for scheduler ingress
 
@@ -191,8 +190,7 @@ The main application tables are:
 - `agent_tools` for tool attachments and sub-agent wiring;
 - `channel_installations`, `agent_channel_bindings`, and
   `channel_thread_conversations` for Slack integration;
-- `user_connections` for user-provided provider credentials;
-- `waitlist_entry` for public waitlist capture.
+- `user_connections` for user-provided provider credentials.
 
 ## External integrations
 
@@ -204,7 +202,7 @@ The main application tables are:
 | Vercel Sandbox | Persistent agent filesystem and tool execution | `agent-runtime/server/agent-sandbox.ts`, `tools/sandbox-runtime/*` |
 | Upstash Redis | Locks, cache, and scheduling coordination | `agent-runtime/server/redis-lock.ts`, `agent-runtime/server/file-cache.ts` |
 | Slack Chat SDK | Slack ingress, routing, and streaming replies | `channels/slack/server/*`, `app/api/channels/slack/*` |
-| Resend | Waitlist confirmation email delivery | `waitlist/server/email.ts` |
+| Resend | OTP and transactional/welcome email delivery | `auth/server/auth-email.ts`, `email/*` |
 
 ## Repository layout
 
@@ -219,7 +217,6 @@ The main application tables are:
 | `connections/` | User-managed provider credentials |
 | `shared/` | Shared database, metadata, and server utilities |
 | `tools/` | Tool catalog, providers, and sandbox execution helpers |
-| `waitlist/` | Public waitlist flow and email integration |
 
 ## Local versus deployed behavior
 

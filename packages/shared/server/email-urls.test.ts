@@ -7,8 +7,6 @@ import {
   buildEmailWebUrl,
   getEmailAppLoginUrl,
   getEmailAppOrigin,
-  getEmailWaitlistAdminUrl,
-  getEmailWaitlistConfirmationUrl,
   getEmailWebOrigin,
 } from './email-urls'
 
@@ -65,21 +63,9 @@ test('builds app login URL on the app origin', () => {
   expect(getEmailAppLoginUrl()).toBe('https://app.example.com/login')
 })
 
-test('builds waitlist confirmation URL on the web origin', () => {
-  expect(getEmailWaitlistConfirmationUrl('abc123')).toBe(
-    'https://web.example.com/waitlist/confirm?token=abc123'
-  )
-})
-
-test('builds waitlist admin URL on the app origin', () => {
-  expect(getEmailWaitlistAdminUrl()).toBe(
-    'https://app.example.com/settings/waitlist'
-  )
-})
-
 test('normalizes paths without a leading slash', () => {
   expect(buildEmailAppUrl('login')).toBe('https://app.example.com/login')
-  expect(buildEmailWebUrl('waitlist')).toBe('https://web.example.com/waitlist')
+  expect(buildEmailWebUrl('blog')).toBe('https://web.example.com/blog')
 })
 
 test('prefers related-project resolution over NEXT_PUBLIC_* values', () => {

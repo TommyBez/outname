@@ -26,10 +26,8 @@ import { useRef, useState } from 'react'
 
 export function LandingHeartbeatCloser({
   shouldReduceMotion,
-  waitlistEnabled,
 }: {
   shouldReduceMotion: boolean
-  waitlistEnabled: boolean
 }) {
   return (
     <section
@@ -103,21 +101,19 @@ export function LandingHeartbeatCloser({
             variants={revealVariants}
           >
             <h3 className="home-display text-balance font-semibold text-4xl leading-[1.05] tracking-tight md:text-5xl">
-              Get early access.
+              Start your first agent.
             </h3>
             <div className="flex min-w-0 flex-col gap-3 md:items-end">
               <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
-                {waitlistEnabled ? (
-                  <PrimaryLink href="/waitlist?source=landing-closer">
-                    Join the waitlist
-                  </PrimaryLink>
-                ) : null}
-                <SecondaryLink href={getAppLoginUrl('/agents/new')}>
+                <PrimaryLink href={getAppLoginUrl('/agents/new')}>
+                  Create an account
+                </PrimaryLink>
+                <SecondaryLink href={getAppLoginUrl('/dashboard')}>
                   Login
                 </SecondaryLink>
               </div>
               <p className="font-mono text-[11px] text-muted-foreground tracking-normal">
-                Confirm by email, then wait for invite.
+                One email code opens the dashboard.
               </p>
             </div>
           </motion.div>

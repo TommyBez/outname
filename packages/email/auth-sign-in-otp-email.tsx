@@ -1,4 +1,4 @@
-import { WaitlistEmailLayout } from '@outname/email/components/waitlist-email-layout'
+import { TransactionalEmailLayout } from '@outname/email/components/transactional-email-layout'
 import { EMAIL_BRAND_NAME } from '@outname/email/email-brand'
 import { EMAIL_PREVIEW_URLS } from '@outname/email/email-preview-urls'
 import { Link, Section, Text } from 'react-email'
@@ -17,7 +17,7 @@ export function AuthSignInOtpEmail({
   logoUrl,
 }: AuthSignInOtpEmailProps) {
   return (
-    <WaitlistEmailLayout
+    <TransactionalEmailLayout
       ctaHref={loginUrl}
       ctaLabel={`Open ${EMAIL_BRAND_NAME}`}
       eyebrow={`${EMAIL_BRAND_NAME} / sign in`}
@@ -46,7 +46,7 @@ export function AuthSignInOtpEmail({
         </Link>{' '}
         and request a fresh code there.
       </Text>
-    </WaitlistEmailLayout>
+    </TransactionalEmailLayout>
   )
 }
 
