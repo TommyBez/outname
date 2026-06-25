@@ -112,7 +112,30 @@ export async function handleInvocation(input: {
 
     await emitStep(runId, 'read', 'start', 'Running sub-agent instruction')
     const result = await built.agent.stream({
+      experimental_onStart: async () => {
+        await emitActivity(runId, 'Sub-agent: Agent loop started')
+      },
+      experimental_onStepStart: async ({ stepNumber }) => {
+        await emitActivity(runId, 'Sub-agent: Model step started', {
+          stepNumber,
+        })
+      },
       messages: modelMessages,
+      onToolExecutionEnd: async ({ durationMs, success, toolCall }) => {
+        await emitActivity(
+          runId,
+          success ? 'Sub-agent: Tool finished' : 'Sub-agent: Tool failed',
+          {
+            durationMs,
+            toolName: toolCall.toolName,
+          }
+        )
+      },
+      onToolExecutionStart: async ({ toolCall }) => {
+        await emitActivity(runId, 'Sub-agent: Tool started', {
+          toolName: toolCall.toolName,
+        })
+      },
       writable,
       stopWhen: resolveStepLimit(stepLimitInput),
       preventClose: true,

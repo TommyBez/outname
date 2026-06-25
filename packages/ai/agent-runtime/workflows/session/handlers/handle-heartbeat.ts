@@ -111,7 +111,30 @@ export async function handleHeartbeat(input: {
         : buildHeartbeatKickoff({ nowIso, previousIso })
 
     const result = await agent.stream({
+      experimental_onStart: async () => {
+        await emitActivity(runId, activityMessage(mode, 'Agent loop started'))
+      },
+      experimental_onStepStart: async ({ stepNumber }) => {
+        await emitActivity(runId, activityMessage(mode, 'Model step started'), {
+          stepNumber,
+        })
+      },
       messages: [{ role: 'user', content: kickoff }],
+      onToolExecutionEnd: async ({ durationMs, success, toolCall }) => {
+        await emitActivity(
+          runId,
+          activityMessage(mode, success ? 'Tool finished' : 'Tool failed'),
+          {
+            durationMs,
+            toolName: toolCall.toolName,
+          }
+        )
+      },
+      onToolExecutionStart: async ({ toolCall }) => {
+        await emitActivity(runId, activityMessage(mode, 'Tool started'), {
+          toolName: toolCall.toolName,
+        })
+      },
       writable,
       stopWhen: resolveStepLimit(stepLimitInput),
     })

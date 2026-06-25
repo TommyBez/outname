@@ -41,11 +41,8 @@ const {
 }))
 
 vi.mock('@outname/workflow/runtime', () => ({
-  getWritable: mockGetWritable,
-}))
-
-vi.mock('@outname/shared/server/workflow-run-id', () => ({
   currentWorkflowRunId: mockCurrentWorkflowRunId,
+  getWritable: mockGetWritable,
 }))
 
 vi.mock('@outname/ai/agent-runtime/server/run-events', () => ({
