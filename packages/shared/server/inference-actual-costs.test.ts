@@ -12,12 +12,8 @@ vi.mock('node:timers/promises', () => ({
   setTimeout: mockSleep,
 }))
 
-vi.mock('@llmgateway/ai-sdk-provider', () => ({
-  createLLMGateway: vi.fn(),
-}))
-
-vi.mock('@openrouter/ai-sdk-provider', () => ({
-  createOpenRouter: vi.fn(),
+vi.mock('@ai-sdk/openai-compatible', () => ({
+  createOpenAICompatible: vi.fn(),
 }))
 
 vi.mock('ai', () => ({

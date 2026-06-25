@@ -7,7 +7,7 @@ import {
 } from '@outname/shared/server/inference-providers'
 import {
   createAgentUIStreamResponse,
-  stepCountIs,
+  isStepCount,
   ToolLoopAgent,
   tool,
   type UIMessage,
@@ -40,7 +40,10 @@ export async function POST(req: Request) {
   const agent = new ToolLoopAgent({
     model,
     instructions: creatorInstructions({ enabledProviders }),
-    stopWhen: stepCountIs(8),
+    stopWhen: isStepCount(8),
+    toolApproval: {
+      create_requested_agent: 'user-approval',
+    },
     tools: {
       list_available_tools: tool({
         description:
@@ -65,7 +68,6 @@ export async function POST(req: Request) {
         description:
           'Create the reviewed agent after the user approves the final configuration. This mutates the database, attaches selected tools, and persists the per-agent budget rules.',
         inputSchema: createAgentInputSchema,
-        needsApproval: true,
         execute: async (input, options) =>
           createRequestedAgent({
             input,

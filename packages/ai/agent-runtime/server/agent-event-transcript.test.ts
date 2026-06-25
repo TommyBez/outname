@@ -2,12 +2,14 @@ import type { AgentEvent } from '@outname/db/schema'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
+  mockCreateModelCallToUIChunkTransform,
   mockGetReadable,
   mockGetRun,
   mockListAgentEventTranscriptMessages,
   mockReadUIMessageStream,
   mockSummarizeAgentEvent,
 } = vi.hoisted(() => ({
+  mockCreateModelCallToUIChunkTransform: vi.fn(() => 'model-call-transform'),
   mockGetReadable: vi.fn(),
   mockGetRun: vi.fn(),
   mockListAgentEventTranscriptMessages: vi.fn(),
@@ -17,6 +19,10 @@ const {
 
 vi.mock('ai', () => ({
   readUIMessageStream: mockReadUIMessageStream,
+}))
+
+vi.mock('@ai-sdk/workflow', () => ({
+  createModelCallToUIChunkTransform: mockCreateModelCallToUIChunkTransform,
 }))
 
 vi.mock('server-only', () => ({}))
@@ -150,8 +156,9 @@ describe('agent event transcript service', () => {
   })
 
   it('reconstructs final messages from the workflow output stream', async () => {
+    const pipeThrough = vi.fn().mockReturnValue('ui-readable-stream')
     mockGetRun.mockReturnValue({
-      getReadable: mockGetReadable.mockReturnValue('readable-stream'),
+      getReadable: mockGetReadable.mockReturnValue({ pipeThrough }),
     })
     mockReadUIMessageStream.mockReturnValue(
       (async function* () {
@@ -180,6 +187,7 @@ describe('agent event transcript service', () => {
       namespace: 'stream_123',
       startIndex: 0,
     })
+    expect(pipeThrough).toHaveBeenCalledWith('model-call-transform')
     expect(result).toEqual([
       {
         id: 'msg_1',

@@ -59,7 +59,7 @@ interface BashToolSandboxAdapter {
 
 type BashToolExecutor<TInput> = (
   input: TInput,
-  options?: ToolExecutionOptions
+  options?: ToolExecutionOptions<unknown>
 ) => Promise<unknown>
 
 export function createSkillTools(ctx: {
@@ -142,7 +142,7 @@ async function loadSkillStep(input: {
 async function executeSkillBashStep(input: {
   agentId: string
   command: string
-  options?: ToolExecutionOptions
+  options?: ToolExecutionOptions<unknown>
   skills: RuntimeSkill[]
 }): Promise<unknown> {
   'use step'

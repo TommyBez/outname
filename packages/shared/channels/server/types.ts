@@ -36,7 +36,7 @@ export interface IncomingChannelTurn {
 }
 
 export interface ChannelReplySink {
-  // AI SDK fullStream passed through to Chat SDK.
+  // AI SDK stream passed through to Chat SDK.
   postAgentStream: (stream: AsyncIterable<unknown>) => Promise<void>
   // Notify the user that the turn failed. Kept best-effort.
   postError: (text: string) => Promise<void>

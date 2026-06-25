@@ -1,12 +1,13 @@
+import { WorkflowAgent } from '@ai-sdk/workflow'
 import { buildAgentRuntimeSpec } from '@outname/ai/agent-runtime/server/runtime-spec'
 import { buildRuntimeToolset } from '@outname/ai/agent-runtime/server/runtime-toolset'
 import type { BuildAgentTool } from '@outname/ai/tools/sub-agents/agent-tool'
 import type { SubAgentProgressTarget } from '@outname/ai/tools/sub-agents/progress-target'
 import { workflowParentStreamTarget } from '@outname/ai/tools/sub-agents/progress-target'
+import { readUserInferenceCredentialApiKey } from '@outname/shared/server/inference-credentials'
 import { MissingInferenceCredentialError } from '@outname/shared/server/inference-provider-errors'
-import { getUserLanguageModel } from '@outname/shared/server/inference-providers'
+import { createProviderLanguageModel } from '@outname/shared/server/inference-provider-registry'
 import { nonRetryableStepErrorFromUnknown } from '@outname/shared/server/workflow-step-errors'
-import { DurableAgent } from '@workflow/ai/agent'
 import type { Tool } from 'ai'
 import {
   type AgentRuntimeEventKind,
@@ -31,7 +32,7 @@ export interface BuildAgentArgs {
 }
 
 export interface BuildAgentResult {
-  agent: DurableAgent
+  agent: WorkflowAgent
   meta: AgentRuntimeMeta
   tools: Record<string, Tool>
 }
@@ -48,7 +49,7 @@ export async function buildAgent(
     runId: args.runId,
   })
 
-  return buildDurableAgentRuntime(spec, {
+  return await buildWorkflowAgentRuntime(spec, {
     buildSubAgentTool: args.buildSubAgentTool,
     conversationId: args.conversationId,
     currentRunId: args.currentRunId,
@@ -56,7 +57,7 @@ export async function buildAgent(
   })
 }
 
-function buildDurableAgentRuntime(
+async function buildWorkflowAgentRuntime(
   spec: AgentRuntimeSpec,
   options: {
     buildSubAgentTool: BuildAgentTool
@@ -64,36 +65,46 @@ function buildDurableAgentRuntime(
     currentRunId?: string | null
     progressTarget?: SubAgentProgressTarget
   }
-): BuildAgentResult {
+): Promise<BuildAgentResult> {
   const tools = buildRuntimeToolset(spec, {
     ...options,
     buildSubAgentTool: options.buildSubAgentTool,
   })
+  const apiKey = await readAgentLanguageModelApiKeyStep({
+    inferenceProvider: spec.inferenceProvider,
+    userId: spec.userId,
+  })
+  const model = createProviderLanguageModel({
+    apiKey,
+    inferenceProvider: spec.inferenceProvider,
+    modelId: spec.modelId,
+  })
 
-  const durableAgent = new DurableAgent({
-    model: async () => {
-      'use step'
-      try {
-        return await getUserLanguageModel({
-          inferenceProvider: spec.inferenceProvider,
-          modelId: spec.modelId,
-          userId: spec.userId,
-        })
-      } catch (error) {
-        if (error instanceof MissingInferenceCredentialError) {
-          throw nonRetryableStepErrorFromUnknown(error, error.message)
-        }
-        throw error
-      }
-    },
-    system: spec.systemPrompt,
+  const agent = new WorkflowAgent({
+    model,
+    instructions: spec.systemPrompt,
     tools,
   })
 
   return {
-    agent: durableAgent,
+    agent,
     tools,
     meta: runtimeMetaFromSpec(spec),
+  }
+}
+
+async function readAgentLanguageModelApiKeyStep(input: {
+  inferenceProvider: AgentRuntimeSpec['inferenceProvider']
+  userId: string
+}): Promise<string> {
+  'use step'
+  try {
+    return await readUserInferenceCredentialApiKey(input)
+  } catch (error) {
+    if (error instanceof MissingInferenceCredentialError) {
+      throw nonRetryableStepErrorFromUnknown(error, error.message)
+    }
+    throw error
   }
 }
 

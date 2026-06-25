@@ -33,7 +33,7 @@ export async function refreshAgentCapabilitySummary(input: {
     try {
       const { text } = await generateText({
         model: await getSummaryModel(context.userId),
-        system: [
+        instructions: [
           'You write model-facing descriptions for AI sub-agents.',
           'Return one short paragraph, 1-2 sentences, maximum 450 characters.',
           'Describe when a parent agent should delegate to this sub-agent.',

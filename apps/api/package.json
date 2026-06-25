@@ -13,6 +13,7 @@
     "reset:workflow": "rm -rf .swc .next app/.well-known"
   },
   "dependencies": {
+    "@ai-sdk/workflow": "1.0.2",
     "@outname/ai": "workspace:*",
     "@outname/auth": "workspace:*",
     "@outname/db": "workspace:*",

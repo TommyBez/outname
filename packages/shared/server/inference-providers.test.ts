@@ -1,9 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
-  mockCreateLLMGateway,
   mockCreateGateway,
-  mockCreateOpenRouter,
+  mockCreateOpenAICompatible,
   mockDbSelect,
   mockDbSelectLimit,
   mockDecryptCredential,
@@ -13,9 +12,8 @@ const {
   mockRedisGet,
   mockRedisSet,
 } = vi.hoisted(() => {
-  const mockCreateLLMGateway = vi.fn()
   const mockCreateGateway = vi.fn()
-  const mockCreateOpenRouter = vi.fn()
+  const mockCreateOpenAICompatible = vi.fn()
   const mockDecryptCredential = vi.fn()
   const mockFetch = vi.fn()
   const mockGetUpstashRedis = vi.fn()
@@ -29,9 +27,8 @@ const {
   const mockDbSelect = vi.fn(() => ({ from: mockDbSelectFrom }))
 
   return {
-    mockCreateLLMGateway,
     mockCreateGateway,
-    mockCreateOpenRouter,
+    mockCreateOpenAICompatible,
     mockDbSelect,
     mockDbSelectLimit,
     mockDecryptCredential,
@@ -45,16 +42,12 @@ const {
 
 vi.mock('server-only', () => ({}))
 
-vi.mock('@llmgateway/ai-sdk-provider', () => ({
-  createLLMGateway: mockCreateLLMGateway,
+vi.mock('@ai-sdk/openai-compatible', () => ({
+  createOpenAICompatible: mockCreateOpenAICompatible,
 }))
 
 vi.mock('ai', () => ({
   createGateway: mockCreateGateway,
-}))
-
-vi.mock('@openrouter/ai-sdk-provider', () => ({
-  createOpenRouter: mockCreateOpenRouter,
 }))
 
 vi.mock('@outname/shared/connections/crypto', () => ({
@@ -103,19 +96,11 @@ describe('inference-providers', () => {
           modelId,
         })
     )
-    mockCreateLLMGateway.mockImplementation(
-      ({ apiKey }: { apiKey: string }) =>
+    mockCreateOpenAICompatible.mockImplementation(
+      ({ apiKey, name }: { apiKey: string; name: string }) =>
         (modelId: string) => ({
           apiKey,
-          kind: 'llm-gateway',
-          modelId,
-        })
-    )
-    mockCreateOpenRouter.mockImplementation(
-      ({ apiKey }: { apiKey: string }) =>
-        (modelId: string) => ({
-          apiKey,
-          kind: 'openrouter',
+          kind: name,
           modelId,
         })
     )
@@ -146,13 +131,14 @@ describe('inference-providers', () => {
       })
     ).resolves.toEqual({
       apiKey: 'provider_secret',
-      kind: 'llm-gateway',
+      kind: 'llmgateway',
       modelId: 'gpt-5-mini',
     })
 
-    expect(mockCreateLLMGateway).toHaveBeenCalledWith({
+    expect(mockCreateOpenAICompatible).toHaveBeenCalledWith({
       apiKey: 'provider_secret',
-      compatibility: 'strict',
+      baseURL: 'https://api.llmgateway.io/v1',
+      name: 'llmgateway',
     })
     expect(mockRedisSet).toHaveBeenCalledWith(
       'user:user_123:provider:llm-gateway:inference-credential',
@@ -201,16 +187,14 @@ describe('inference-providers', () => {
       modelId: 'anthropic/claude-sonnet-4.5',
     })
 
-    expect(mockCreateOpenRouter).toHaveBeenCalledWith({
+    expect(mockCreateOpenAICompatible).toHaveBeenCalledWith({
       apiKey: 'provider_secret',
-      appName: 'OUTNA.ME',
-      compatibility: 'strict',
-      extraBody: {
-        provider: {
-          allow_fallbacks: false,
-          require_parameters: true,
-        },
+      baseURL: 'https://openrouter.ai/api/v1',
+      headers: {
+        'X-OpenRouter-Title': 'OUTNA.ME',
       },
+      name: 'openrouter',
+      transformRequestBody: expect.any(Function),
     })
   })
 

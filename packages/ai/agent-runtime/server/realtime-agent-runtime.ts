@@ -8,11 +8,7 @@ import {
 import type { BuildAgentTool } from '@outname/ai/tools/sub-agents/agent-tool'
 import type { SubAgentProgressTarget } from '@outname/ai/tools/sub-agents/progress-target'
 import { getUserLanguageModel } from '@outname/shared/server/inference-providers'
-import {
-  type Tool,
-  ToolLoopAgent,
-  type ToolLoopAgentOnFinishCallback,
-} from 'ai'
+import { type GenerateTextOnEndCallback, type Tool, ToolLoopAgent } from 'ai'
 import { buildRuntimeToolset } from './runtime-toolset'
 
 export interface BuiltRealtimeAgentRuntime {
@@ -27,7 +23,7 @@ export async function buildRealtimeAgentRuntime(
     buildSubAgentTool?: BuildAgentTool
     conversationId?: string | null
     currentRunId?: string | null
-    onFinish?: ToolLoopAgentOnFinishCallback<Record<string, Tool>>
+    onEnd?: GenerateTextOnEndCallback<Record<string, Tool>>
     progressTarget?: SubAgentProgressTarget
   } = {}
 ): Promise<BuiltRealtimeAgentRuntime> {
@@ -48,7 +44,7 @@ export async function buildRealtimeAgentRuntime(
       model,
       tools,
       stopWhen: stopWhenFromSpec(spec),
-      onFinish: options.onFinish,
+      onEnd: options.onEnd,
     }),
     meta: runtimeMetaFromSpec(spec),
     tools,

@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
 
 const {
+  mockCreateModelCallToUIChunkTransform,
   mockGetReadable,
   mockGetRun,
   mockGetWritable,
   mockReadUIMessageStream,
 } = vi.hoisted(() => ({
+  mockCreateModelCallToUIChunkTransform: vi.fn(() => 'model-call-transform'),
   mockGetReadable: vi.fn(),
   mockGetRun: vi.fn(),
   mockGetWritable: vi.fn(),
@@ -14,6 +16,10 @@ const {
 
 vi.mock('@outname/workflow/runtime', () => ({
   getWritable: mockGetWritable,
+}))
+
+vi.mock('@ai-sdk/workflow', () => ({
+  createModelCallToUIChunkTransform: mockCreateModelCallToUIChunkTransform,
 }))
 
 vi.mock('workflow/api', () => ({
@@ -28,11 +34,12 @@ import { collectSubAgentMessages } from './invocation-stream'
 
 describe('collectSubAgentMessages', () => {
   it('emits progressive parent updates as child messages arrive', async () => {
+    const pipeThrough = vi.fn().mockReturnValue('ui-readable-stream')
     const write = vi.fn().mockResolvedValue(undefined)
     const releaseLock = vi.fn()
 
     mockGetRun.mockReturnValue({
-      getReadable: mockGetReadable.mockReturnValue('readable-stream'),
+      getReadable: mockGetReadable.mockReturnValue({ pipeThrough }),
     })
     mockGetWritable.mockReturnValue({
       getWriter: () => ({
@@ -75,10 +82,13 @@ describe('collectSubAgentMessages', () => {
       namespace: 'stream_123',
       startIndex: 0,
     })
+    expect(pipeThrough).toHaveBeenCalledWith('model-call-transform')
     expect(mockGetWritable).toHaveBeenCalledWith({
       namespace: 'reply:parent',
     })
     expect(write).toHaveBeenNthCalledWith(1, {
+      dynamic: true,
+      input: {},
       output: {
         childAgentId: 'child_123',
         childName: 'Haiku-San',
@@ -95,9 +105,12 @@ describe('collectSubAgentMessages', () => {
       },
       preliminary: true,
       toolCallId: 'tool_call_123',
-      type: 'tool-output-available',
+      toolName: 'agent_haiku_san',
+      type: 'tool-result',
     })
     expect(write).toHaveBeenNthCalledWith(2, {
+      dynamic: true,
+      input: {},
       output: {
         childAgentId: 'child_123',
         childName: 'Haiku-San',
@@ -119,7 +132,8 @@ describe('collectSubAgentMessages', () => {
       },
       preliminary: true,
       toolCallId: 'tool_call_123',
-      type: 'tool-output-available',
+      toolName: 'agent_haiku_san',
+      type: 'tool-result',
     })
     expect(releaseLock).toHaveBeenCalledTimes(2)
     expect(result).toEqual({
@@ -140,10 +154,11 @@ describe('collectSubAgentMessages', () => {
   })
 
   it('emits progressive parent updates to the realtime UI writer', async () => {
+    const pipeThrough = vi.fn().mockReturnValue('ui-readable-stream')
     const write = vi.fn()
 
     mockGetRun.mockReturnValue({
-      getReadable: mockGetReadable.mockReturnValue('readable-stream'),
+      getReadable: mockGetReadable.mockReturnValue({ pipeThrough }),
     })
     mockGetWritable.mockImplementation(() => {
       throw new Error('getWritable should not be called')
@@ -207,8 +222,9 @@ describe('collectSubAgentMessages', () => {
   })
 
   it('does not touch workflow writable streams when progress target is none', async () => {
+    const pipeThrough = vi.fn().mockReturnValue('ui-readable-stream')
     mockGetRun.mockReturnValue({
-      getReadable: mockGetReadable.mockReturnValue('readable-stream'),
+      getReadable: mockGetReadable.mockReturnValue({ pipeThrough }),
     })
     mockGetWritable.mockImplementation(() => {
       throw new Error('getWritable should not be called')

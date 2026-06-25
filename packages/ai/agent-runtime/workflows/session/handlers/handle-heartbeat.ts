@@ -1,9 +1,10 @@
+import type { AgentModelCallChunk } from '@outname/ai/agent-runtime/server/chat-status'
 import { emitActivity } from '@outname/ai/agent-runtime/server/run-events'
 import { createAssistantTextMessage } from '@outname/ai/agent-runtime/shared/message-utils'
 import type { BuildAgentTool } from '@outname/ai/tools/sub-agents/agent-tool'
 import { currentWorkflowRunId } from '@outname/shared/server/workflow-run-id'
 import { getWritable } from '@outname/workflow/runtime'
-import type { StepResult, ToolSet, UIMessageChunk } from 'ai'
+import type { StepResult, ToolSet } from 'ai'
 import {
   buildAgent,
   buildDreamingKickoff,
@@ -50,7 +51,9 @@ export async function handleHeartbeat(input: {
   const dreamingLocalDate = input.localDate ?? nowIso.slice(0, 10)
   const runId = currentWorkflowRunId()
   const outputNamespace = input.replyToken
-  const writable = getWritable<UIMessageChunk>({ namespace: outputNamespace })
+  const writable = getWritable<AgentModelCallChunk>({
+    namespace: outputNamespace,
+  })
 
   try {
     await initRun(runId)
@@ -82,7 +85,7 @@ export async function handleHeartbeat(input: {
     const previousIso = await readPreviousCompletion(agentId, mode)
     await prepareHeartbeatSandbox({ agentId, mode, previousIso, runId })
 
-    const { agent: durableAgent, meta } = await buildAgent({
+    const { agent, meta } = await buildAgent({
       agentId,
       buildSubAgentTool: input.buildSubAgentTool,
       runId,
@@ -108,8 +111,7 @@ export async function handleHeartbeat(input: {
           })
         : buildHeartbeatKickoff({ nowIso, previousIso })
 
-    const result = await durableAgent.stream({
-      collectUIMessages: true,
+    const result = await agent.stream({
       messages: [{ role: 'user', content: kickoff }],
       writable,
       stopWhen: resolveStepLimit(stepLimitInput),

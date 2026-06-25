@@ -17,7 +17,7 @@ import {
 } from '@outname/shared/server/inference-providers'
 import {
   createAgentUIStreamResponse,
-  stepCountIs,
+  isStepCount,
   ToolLoopAgent,
   tool,
   type UIMessage,
@@ -78,8 +78,15 @@ export async function POST(
   ])
   const agent = new ToolLoopAgent({
     model,
-    stopWhen: stepCountIs(8),
+    stopWhen: isStepCount(8),
     instructions: buildEditInstructions(toolVisibility),
+    toolApproval: {
+      apply_agent_edit: 'user-approval',
+      attach_maintainer_tool: 'user-approval',
+      attach_sub_agent_tool: 'user-approval',
+      detach_agent_tool: 'user-approval',
+      set_agent_budget: 'user-approval',
+    },
     tools: buildEditTools({ agentId, userId: session.user.id }),
   })
 
@@ -110,7 +117,6 @@ function buildEditTools(input: { agentId: string; userId: string }) {
     apply_agent_edit: tool({
       description: 'Apply the final edit after user approval.',
       inputSchema: updateSchema,
-      needsApproval: true,
       execute: async (edit) => {
         const current = await getCurrent(agentId, userId)
         await updateAgentForUser({
@@ -130,7 +136,6 @@ function buildEditTools(input: { agentId: string; userId: string }) {
       description:
         'Attach or update a maintainer tool on this agent after user approval. Use get_available_agent_tools first so you know the required config fields.',
       inputSchema: attachMaintainerToolSchema,
-      needsApproval: true,
       execute: async (edit) => {
         const result = await attachMaintainerToolForUser({
           agentId,
@@ -149,7 +154,6 @@ function buildEditTools(input: { agentId: string; userId: string }) {
       description:
         'Attach one of the user-owned agents as a callable sub-agent tool after user approval.',
       inputSchema: attachSubAgentToolSchema,
-      needsApproval: true,
       execute: async (edit) => {
         const result = await attachSubAgentForUser({
           parentAgentId: agentId,
@@ -166,7 +170,6 @@ function buildEditTools(input: { agentId: string; userId: string }) {
       description:
         'Detach a maintainer or sub-agent tool from this agent after user approval. Use the exact attached toolId from get_available_agent_tools.',
       inputSchema: detachToolSchema,
-      needsApproval: true,
       execute: async (edit) => {
         const result = await detachToolForUser({
           agentId,
@@ -203,7 +206,6 @@ function buildEditTools(input: { agentId: string; userId: string }) {
       description:
         'Persist the per-agent USD spend caps after user approval. Pass `null` for any period to clear that cap. Use the values the user confirmed via propose_agent_budget.',
       inputSchema: setBudgetSchema,
-      needsApproval: true,
       execute: async (edit) => {
         const result = await applyAgentBudget({ agentId, userId, ...edit })
         revalidateAgentEditSurfaces(agentId, userId)

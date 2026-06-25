@@ -77,6 +77,7 @@ export function buildAgentToolCore(
         }),
         progressTarget: handle.progressTarget,
         toolCallId,
+        toolName: handle.parentToolId,
       })
 
       try {
@@ -152,12 +153,14 @@ async function emitPreliminarySubAgentOutput(input: {
   output: SubAgentToolOutput
   progressTarget: SubAgentProgressTarget
   toolCallId: string
+  toolName: string
 }): Promise<void> {
   'use step'
   await writePreliminarySubAgentOutput({
     output: input.output,
     target: input.progressTarget,
     toolCallId: input.toolCallId,
+    toolName: input.toolName,
   })
 }
 

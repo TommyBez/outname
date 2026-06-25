@@ -1,3 +1,4 @@
+import type { AgentModelCallChunk } from '@outname/ai/agent-runtime/server/chat-status'
 import {
   emitActivity,
   emitRun,
@@ -8,7 +9,7 @@ import type { BuildAgentTool } from '@outname/ai/tools/sub-agents/agent-tool'
 import { formatBudgetExceededMessage } from '@outname/shared/budgets/server/errors'
 import { currentWorkflowRunId } from '@outname/shared/server/workflow-run-id'
 import { getWritable } from '@outname/workflow/runtime'
-import { convertToModelMessages, type UIMessage, type UIMessageChunk } from 'ai'
+import { convertToModelMessages, type UIMessage } from 'ai'
 import { buildAgent } from '../agent-factory'
 import {
   buildStepLimitNotice,
@@ -25,8 +26,8 @@ import { startupSystemSandboxStep } from '../steps/db/system-sandbox'
 import { persistAgentEventTranscriptStep } from '../steps/persist-event-transcript'
 import { finishSuccessfulInvocation } from './handle-invocation/finish-success'
 import {
-  finishUiMessageStream,
-  writeUiMessageStreamError,
+  finishModelCallStream,
+  writeModelCallStreamError,
 } from './handle-invocation/stream-control'
 
 export async function handleInvocation(input: {
@@ -96,7 +97,7 @@ export async function handleInvocation(input: {
     await emitActivity(runId, 'Sub-agent: Streaming model work', {
       model: built.meta.model,
     })
-    const writable = getWritable<UIMessageChunk>({
+    const writable = getWritable<AgentModelCallChunk>({
       namespace: streamNamespace,
     })
     const stepLimitInput = {
@@ -115,7 +116,6 @@ export async function handleInvocation(input: {
       messages: modelMessages,
       writable,
       stopWhen: resolveStepLimit(stepLimitInput),
-      collectUIMessages: true,
       preventClose: true,
       sendFinish: false,
     })
@@ -164,7 +164,7 @@ export async function handleInvocation(input: {
 }
 
 async function finishInvocationStream(namespace: string): Promise<void> {
-  await finishUiMessageStream(namespace).catch((err) => {
+  await finishModelCallStream(namespace).catch((err) => {
     console.error('handleInvocation: failed to close transcript', err)
   })
 }
@@ -201,10 +201,10 @@ async function refuseBudgetExceeded(input: {
   })
   await emitStep(input.runId, 'read', 'error', message)
   await emitRun(input.runId, 'failed', message)
-  await writeUiMessageStreamError(input.streamNamespace, message).catch(() => {
+  await writeModelCallStreamError(input.streamNamespace, message).catch(() => {
     // Best-effort signal so the parent-side collector doesn't hang.
   })
-  await finishUiMessageStream(input.streamNamespace).catch(() => {
+  await finishModelCallStream(input.streamNamespace).catch(() => {
     // Best-effort close.
   })
   await replaceAgentEventTranscriptMessagesBestEffortStep({
@@ -236,10 +236,10 @@ async function failInvocation(input: {
       innerErr
     )
   }
-  await writeUiMessageStreamError(input.streamNamespace, message).catch(() => {
+  await writeModelCallStreamError(input.streamNamespace, message).catch(() => {
     // Best-effort signal for the parent-side collector.
   })
-  await finishUiMessageStream(input.streamNamespace).catch(() => {
+  await finishModelCallStream(input.streamNamespace).catch(() => {
     // Best-effort close so the parent-side sub-agent tool stream can settle.
   })
 }

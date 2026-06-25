@@ -1,4 +1,9 @@
-import type { UIMessage, UIMessageChunk } from 'ai'
+import type {
+  Experimental_LanguageModelStreamPart as ModelCallStreamPart,
+  ToolSet,
+  UIMessage,
+  UIMessageChunk,
+} from 'ai'
 
 export const CHAT_STATUS_PART_TYPE = 'data-workflow-status' as const
 
@@ -23,3 +28,4 @@ export type AgentChatDataParts = Record<string, unknown> & {
 
 export type AgentChatMessage = UIMessage<unknown, AgentChatDataParts>
 export type AgentChatChunk = UIMessageChunk<unknown, AgentChatDataParts>
+export type AgentModelCallChunk = ModelCallStreamPart<ToolSet>
