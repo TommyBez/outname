@@ -6,7 +6,6 @@ import type {
   MaintainerTool,
   ToolErrorCode,
 } from '@outname/ai/tools/catalog/types'
-import { tool } from 'ai'
 import { z } from 'zod'
 import {
   stripCredentialOverrides,
@@ -269,10 +268,10 @@ function buildChildTool<TInput, TConfig, TData>(input: {
   toolConfig: Record<string, unknown>
   toolId: string
 }) {
-  return tool({
+  return {
     description: input.description,
     inputSchema: input.inputSchema,
-    execute: async (toolInput) => {
+    execute: async (toolInput: TInput) => {
       const runtime = createRuntimeContext({
         agentId: input.ctx.agentId,
         attachmentToolId: input.attachmentToolId,
@@ -297,7 +296,7 @@ function buildChildTool<TInput, TConfig, TData>(input: {
         runtime,
       })
     },
-  })
+  }
 }
 
 function toExposedTool(input: MaintainerExposedTool): MaintainerExposedTool {

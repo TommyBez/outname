@@ -7,8 +7,7 @@ import {
 import { createAssistantTextMessage } from '@outname/ai/agent-runtime/shared/message-utils'
 import type { BuildAgentTool } from '@outname/ai/tools/sub-agents/agent-tool'
 import { formatBudgetExceededMessage } from '@outname/shared/budgets/server/errors'
-import { currentWorkflowRunId } from '@outname/shared/server/workflow-run-id'
-import { getWritable } from '@outname/workflow/runtime'
+import { currentWorkflowRunId, getWritable } from '@outname/workflow/runtime'
 import { convertToModelMessages, type UIMessage } from 'ai'
 import { buildAgent } from '../agent-factory'
 import {

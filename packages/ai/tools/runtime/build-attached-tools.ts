@@ -119,7 +119,7 @@ function buildSubAgentEntry(args: {
         parentToolId,
         parentCallStack: callStack,
         parentDepth: depth,
-      }),
+      }) as Tool,
     }
   } catch (err) {
     reconnects.push({

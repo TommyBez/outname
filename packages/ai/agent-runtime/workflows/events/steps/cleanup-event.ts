@@ -1,5 +1,5 @@
 import { withVercelSandboxCredentials } from '@outname/shared/server/vercel-sandbox-config'
-import { Sandbox } from '@vercel/sandbox'
+import type { Sandbox } from '@vercel/sandbox'
 
 const VERCEL_SANDBOX_PAGE_LIMIT = 50
 const VERCEL_SANDBOX_REQUEST_TIMEOUT_MS = 5000
@@ -84,6 +84,7 @@ async function cleanupTaggedEphemeralSandboxesForRun(
 }
 
 async function listProjectSandboxes(): Promise<ListedSandbox[]> {
+  const { Sandbox } = await import('@vercel/sandbox')
   const sandboxes: ListedSandbox[] = []
   let cursor = ''
   const seenCursors = new Set<string>()
@@ -124,6 +125,7 @@ function shouldDeleteTaggedEphemeralSandbox(input: {
 }
 
 async function deleteListedSandbox(sandbox: ListedSandbox): Promise<void> {
+  const { Sandbox } = await import('@vercel/sandbox')
   const handle = await Sandbox.get(
     withVercelSandboxCredentials({
       name: sandbox.name,

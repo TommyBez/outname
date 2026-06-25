@@ -9,7 +9,7 @@ import {
   type VercelSandboxGetOrCreateOptions,
   type VercelSandboxGetOrCreateRuntimeOptions,
 } from '@outname/shared/server/vercel-sandbox-config'
-import { Sandbox } from '@vercel/sandbox'
+import type { Sandbox } from '@vercel/sandbox'
 import { createAgentSandboxAccessor } from './agent-sandbox-accessor'
 
 // Keep this object narrower than the full SDK union: skill sandboxes only use
@@ -39,6 +39,7 @@ export async function ensureSkillSandbox(
 ): Promise<EnsureSkillSandboxResult> {
   const desiredName = skillSandboxAccessor.nameFor(agentId)
   const persistedName = await skillSandboxAccessor.readSandboxId(agentId)
+  const { Sandbox } = await import('@vercel/sandbox')
   let created = false
   const options: VercelSandboxGetOrCreateOptions = {
     ...SKILL_SANDBOX_CREATE_OPTIONS,

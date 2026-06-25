@@ -393,6 +393,12 @@ importers:
       '@outname/workflow':
         specifier: workspace:*
         version: link:../../packages/workflow
+      '@vercel/oidc':
+        specifier: ^3.5.0
+        version: 3.5.0
+      ajv:
+        specifier: ^8.20.0
+        version: 8.20.0
       next:
         specifier: 16.2.4
         version: 16.2.4(@opentelemetry/api@1.9.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)

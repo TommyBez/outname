@@ -5,7 +5,7 @@ import {
   type VercelSandboxCreateRuntimeOptions,
   withVercelSandboxCredentials,
 } from '@outname/shared/server/vercel-sandbox-config'
-import { Sandbox } from '@vercel/sandbox'
+import type { Sandbox } from '@vercel/sandbox'
 import { createAgentSandboxAccessor } from './agent-sandbox-accessor'
 
 // Persistent root for bootstrap files, memory files, logs, and any other
@@ -42,6 +42,7 @@ export async function ensureSystemSandbox(
   // stores that stable name rather than an opaque SDK id.
   const persistedName = await systemSandboxAccessor.readSandboxId(agentId)
   const desiredName = systemSandboxAccessor.nameFor(agentId)
+  const { Sandbox } = await import('@vercel/sandbox')
   let sandbox: Sandbox | null = null
 
   if (persistedName) {

@@ -8,7 +8,6 @@ import {
   nonRetryableStepError,
   nonRetryableStepErrorFromUnknown,
 } from '@outname/workflow/runtime'
-import { Sandbox } from '@vercel/sandbox'
 import {
   buildToolSandboxNamespace,
   type ToolSandboxBuildEvent,
@@ -54,7 +53,8 @@ export async function runSandboxBuild(input: {
     }
   }
 
-  let sandbox: Sandbox | null = null
+  const { Sandbox } = await import('@vercel/sandbox')
+  let sandbox: Awaited<ReturnType<typeof Sandbox.create>> | null = null
   try {
     await emit('Creating build sandbox...')
     sandbox = await Sandbox.create(

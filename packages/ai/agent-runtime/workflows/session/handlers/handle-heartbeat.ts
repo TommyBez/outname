@@ -2,8 +2,7 @@ import type { AgentModelCallChunk } from '@outname/ai/agent-runtime/server/chat-
 import { emitActivity } from '@outname/ai/agent-runtime/server/run-events'
 import { createAssistantTextMessage } from '@outname/ai/agent-runtime/shared/message-utils'
 import type { BuildAgentTool } from '@outname/ai/tools/sub-agents/agent-tool'
-import { currentWorkflowRunId } from '@outname/shared/server/workflow-run-id'
-import { getWritable } from '@outname/workflow/runtime'
+import { currentWorkflowRunId, getWritable } from '@outname/workflow/runtime'
 import type { StepResult, ToolSet } from 'ai'
 import {
   buildAgent,

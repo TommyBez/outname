@@ -30,13 +30,18 @@ export function buildRuntimeToolset(
     depth: spec.depth,
     progressTarget: options.progressTarget ?? noSubAgentProgressTarget,
   })
+  const skillTools = createSkillTools({
+    agentId: spec.agentId,
+    skillPlan: spec.skillPlan,
+  }) as Record<string, Tool>
+  const fileTools = createFileTools({ agentId: spec.agentId }) as Record<
+    string,
+    Tool
+  >
 
   return {
     ...attached.tools,
-    ...createFileTools({ agentId: spec.agentId }),
-    ...createSkillTools({
-      agentId: spec.agentId,
-      skillPlan: spec.skillPlan,
-    }),
+    ...fileTools,
+    ...skillTools,
   }
 }

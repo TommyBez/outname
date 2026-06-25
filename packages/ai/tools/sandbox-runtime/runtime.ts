@@ -11,7 +11,7 @@ import {
   nonRetryableStepError,
   nonRetryableStepErrorFromUnknown,
 } from '@outname/shared/server/workflow-step-errors'
-import { Sandbox } from '@vercel/sandbox'
+import type { Sandbox } from '@vercel/sandbox'
 import { eq } from 'drizzle-orm'
 
 // Cache tool sandboxes per workflow run so repeated tool calls can reuse the
@@ -74,6 +74,7 @@ export async function getOrStartToolSandbox(
   }
 
   // Snapshot-backed sandboxes already encode their runtime in the snapshot.
+  const { Sandbox } = await import('@vercel/sandbox')
   const sandbox = await Sandbox.create(
     withVercelSandboxCredentials({
       source: { type: 'snapshot' as const, snapshotId },

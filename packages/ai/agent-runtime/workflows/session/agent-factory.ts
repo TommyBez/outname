@@ -8,7 +8,6 @@ import { readUserInferenceCredentialApiKey } from '@outname/shared/server/infere
 import { MissingInferenceCredentialError } from '@outname/shared/server/inference-provider-errors'
 import { createProviderLanguageModel } from '@outname/shared/server/inference-provider-registry'
 import { nonRetryableStepErrorFromUnknown } from '@outname/shared/server/workflow-step-errors'
-import type { Tool } from 'ai'
 import {
   type AgentRuntimeEventKind,
   type AgentRuntimeMeta,
@@ -34,7 +33,6 @@ export interface BuildAgentArgs {
 export interface BuildAgentResult {
   agent: WorkflowAgent
   meta: AgentRuntimeMeta
-  tools: Record<string, Tool>
 }
 
 export async function buildAgent(
@@ -88,7 +86,6 @@ async function buildWorkflowAgentRuntime(
 
   return {
     agent,
-    tools,
     meta: runtimeMetaFromSpec(spec),
   }
 }
