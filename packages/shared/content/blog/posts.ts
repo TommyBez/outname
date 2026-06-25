@@ -8,6 +8,28 @@ export interface BlogPost {
 
 export const posts: BlogPost[] = [
   {
+    slug: 'ntt-data-enterprise-agent-factory-identity',
+    title:
+      "NTT DATA Just Built an AI Agent Factory for Product Planning. Its Agents Have No Identity.",
+    date: '2026-06-25',
+    excerpt:
+      "On June 22, NTT DATA launched an AI agent service that compresses 6-9 months of product planning into 150 seconds. The technology is real — RAG, multi-agent orchestration, brand-aware generation. But every agent this factory produces lives and dies inside NTT DATA's walled garden. No portable identity. No persistent memory. No cross-platform state. The enterprise agent factory pattern is acceleration without autonomy.",
+    tags: [
+      'AI',
+      'agents',
+      'NTT DATA',
+      'enterprise',
+      'agent factory',
+      'identity',
+      'memory',
+      'architecture',
+      'walled garden',
+      'SaaS',
+      'open source',
+      'Outname',
+    ],
+  },
+  {
     slug: 'spacex-cursor-acquisition-60b-agent-infrastructure',
     title:
       "I Scored Cursor's Defensibility at 3 Out of 10. SpaceX Just Bought It for $60 Billion.",
