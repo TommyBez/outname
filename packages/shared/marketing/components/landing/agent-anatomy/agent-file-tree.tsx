@@ -117,9 +117,13 @@ export function AgentFileTree({
           />
         ))}
       </ul>
-      <div className="flex items-center gap-4 border-border border-t px-4 py-2.5 font-mono text-[10px] text-muted-foreground tracking-normal">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-border border-t px-4 py-2.5 font-mono text-[10px] text-muted-foreground tracking-normal">
         <span className="flex items-center gap-1.5">
           <span aria-hidden className="size-2 bg-brand" /> you author
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span aria-hidden className="size-2 bg-muted-foreground opacity-50" />{' '}
+          shared
         </span>
         <span className="flex items-center gap-1.5">
           <span

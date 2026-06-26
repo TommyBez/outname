@@ -86,7 +86,7 @@ export const channelsCard = {
   ],
   eyebrow: 'Channels & connectors',
   product: {
-    name: 'Vercel Chat SDK',
+    name: 'Chat SDK',
     role: 'In-app chat and Slack today; new surfaces drop in on the same agent.',
   },
   surfaces: ['in-app chat', 'Slack'],

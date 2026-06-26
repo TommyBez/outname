@@ -15,9 +15,10 @@ import { domAnimation, LazyMotion, m as motion } from 'motion/react'
 import type { ReactNode } from 'react'
 
 // Durable execution: the phases a single autonomous run checkpoints through.
+// States use the real agent-event status vocabulary (queued/running/completed).
 const runPhases = [
-  { fill: 1, label: 'load memory', state: 'done' },
-  { fill: 1, label: 'scan channels', state: 'done' },
+  { fill: 1, label: 'load memory', state: 'completed' },
+  { fill: 1, label: 'scan channels', state: 'completed' },
   { fill: 0.66, label: 'call sub-agent', state: 'running' },
   { fill: 0.2, label: 'write memory', state: 'queued' },
   { fill: 0, label: 'append log', state: 'queued' },
