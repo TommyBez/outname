@@ -5,97 +5,64 @@ import {
   staggerVariants,
 } from '@outname/shared/marketing/components/landing/landing-motion'
 import {
-  type AnatomyStep,
-  anatomyStepCount,
+  type AnatomyStepId,
+  agentTree,
   anatomySteps,
   ownerLabel,
 } from '@outname/shared/marketing/data/agent-anatomy'
 import { Badge } from '@outname/ui/components/ui/badge'
 import { cn } from '@outname/ui/lib/utils'
-import { domAnimation, LazyMotion, m as motion } from 'motion/react'
+import {
+  AnimatePresence,
+  domAnimation,
+  LazyMotion,
+  m as motion,
+} from 'motion/react'
+import { useEffect, useState } from 'react'
 import { AgentFileTree } from './agent-file-tree'
 import { AnatomyCodeBlock } from './anatomy-step-detail'
 import { stepIcons } from './constants'
 
-function DirectoryOverview() {
-  return (
-    <motion.div
-      className="mt-10 grid gap-5 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:items-start"
-      variants={revealVariants}
-    >
-      <AgentFileTree />
-      <ol className="grid gap-px self-stretch border border-border bg-border sm:grid-cols-2 [&>li:last-child]:sm:col-span-2">
-        {anatomySteps.map((step) => (
-          <li key={step.id}>
-            <a
-              className="ease flex h-full items-baseline gap-3 bg-background px-4 py-3 transition-colors duration-150 hover:bg-muted"
-              href={`#anatomy-${step.id}`}
-            >
-              <span className="font-mono text-[11px] text-muted-foreground tabular-nums">
-                {step.index}
-              </span>
-              <span className="min-w-0">
-                <span className="block font-mono text-xs">
-                  {fileNameFor(step)}
-                </span>
-                <span className="mt-0.5 block text-muted-foreground text-xs leading-snug">
-                  {step.title}
-                </span>
-              </span>
-            </a>
-          </li>
-        ))}
-      </ol>
-    </motion.div>
-  )
-}
+const CYCLE_MS = 2800
+const fileNameByNode = new Map(agentTree.map((node) => [node.id, node.label]))
 
-const fileLabels: Record<string, string> = {
-  calendar: 'CALENDAR.md',
-  dreams: 'DREAMS.md',
-  goals: 'GOALS.md',
-  identity: 'IDENTITY.md',
-  instructions: 'AGENTS.md',
-  memory: 'MEMORY.md',
-  soul: 'SOUL.md',
-  tasks: 'TASKS.md',
-  user: 'USER.md',
-}
-
-function fileNameFor(step: AnatomyStep): string {
-  return fileLabels[step.node] ?? step.node
-}
-
-function AnatomyRow({ step, index }: { step: AnatomyStep; index: number }) {
+function FileViewer({ activeId }: { activeId: AnatomyStepId }) {
+  const step =
+    anatomySteps.find((entry) => entry.id === activeId) ?? anatomySteps[0]
   const Icon = stepIcons[step.id]
-  const codeOnLeft = index % 2 === 1
+  const fileName = fileNameByNode.get(step.node) ?? step.node
 
   return (
-    <motion.li
-      className="border-border border-t pt-10 md:pt-14"
-      id={`anatomy-${step.id}`}
-      variants={revealVariants}
-    >
-      <div className="grid gap-8 md:grid-cols-2 md:gap-12 lg:items-center">
-        <div className={cn(codeOnLeft && 'md:order-2')}>
-          <div className="flex items-center gap-4">
-            <span className="font-mono text-2xl text-muted-foreground tabular-nums">
-              {step.index}
-            </span>
-            <span className="grid size-10 place-items-center border border-border bg-brand text-brand-foreground">
-              <Icon className="size-4" />
-            </span>
-            <span className="font-mono text-muted-foreground text-xs">
-              {fileNameFor(step)}
-            </span>
-          </div>
-          <h3 className="mt-6 text-balance font-semibold text-2xl leading-tight tracking-tight md:text-3xl">
+    <div className="flex min-h-[26rem] flex-col border border-border bg-background lg:min-h-[30rem]">
+      <div className="flex items-center justify-between gap-3 border-border border-b px-5 py-3">
+        <span className="flex items-center gap-2.5">
+          <span className="grid size-7 place-items-center border border-border bg-brand text-brand-foreground">
+            <Icon className="size-3.5" />
+          </span>
+          <span className="font-mono text-sm tracking-normal">{fileName}</span>
+        </span>
+        <span className="font-mono text-[11px] text-muted-foreground tabular-nums">
+          {step.index} / {String(anatomySteps.length).padStart(2, '0')}
+        </span>
+      </div>
+
+      <AnimatePresence initial={false} mode="wait">
+        <motion.div
+          animate={{ opacity: 1, y: 0 }}
+          className="flex min-h-0 flex-1 flex-col p-5 lg:p-7"
+          exit={{ opacity: 0, y: -6 }}
+          initial={{ opacity: 0, y: 6 }}
+          key={step.id}
+          transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <h3 className="font-semibold text-2xl leading-tight tracking-tight md:text-3xl">
             {step.title}
           </h3>
-          <p className="mt-4 max-w-md text-muted-foreground leading-relaxed">
+          <p className="mt-3 max-w-md text-muted-foreground text-sm leading-relaxed">
             {step.caption}
           </p>
-          <div className="mt-6 flex flex-wrap items-center gap-2">
+          <AnatomyCodeBlock className="mt-5" code={step.code} />
+          <div className="mt-5 flex flex-wrap items-center gap-2">
             <Badge
               className={cn(
                 step.owner === 'user' &&
@@ -109,12 +76,9 @@ function AnatomyRow({ step, index }: { step: AnatomyStep; index: number }) {
               {step.note}
             </span>
           </div>
-        </div>
-        <div className={cn(codeOnLeft && 'md:order-1')}>
-          <AnatomyCodeBlock code={step.code} />
-        </div>
-      </div>
-    </motion.li>
+        </motion.div>
+      </AnimatePresence>
+    </div>
   )
 }
 
@@ -123,6 +87,27 @@ export function LandingAgentAnatomy({
 }: {
   shouldReduceMotion: boolean
 }) {
+  const [activeId, setActiveId] = useState<AnatomyStepId>(anatomySteps[0].id)
+  const [paused, setPaused] = useState(false)
+
+  useEffect(() => {
+    if (shouldReduceMotion || paused) {
+      return
+    }
+    const timer = setInterval(() => {
+      setActiveId((current) => {
+        const index = anatomySteps.findIndex((entry) => entry.id === current)
+        return anatomySteps[(index + 1) % anatomySteps.length].id
+      })
+    }, CYCLE_MS)
+    return () => clearInterval(timer)
+  }, [shouldReduceMotion, paused])
+
+  const handleSelect = (id: AnatomyStepId) => {
+    setPaused(true)
+    setActiveId(id)
+  }
+
   return (
     <section
       className="px-4 py-20 sm:px-6 md:px-10 md:py-28 lg:px-12"
@@ -150,25 +135,20 @@ export function LandingAgentAnatomy({
             </div>
             <p className="max-w-2xl text-muted-foreground leading-relaxed">
               Nine canonical markdown files in a sandbox, each with a job. Some
-              you author; the rest the agent keeps current itself. No black box
-              — every file is one you could open and edit.
+              you author; the rest it keeps current itself. Open one.
             </p>
           </motion.div>
 
-          <DirectoryOverview />
-
-          <ol className="mt-16 grid gap-0">
-            {anatomySteps.map((step, index) => (
-              <AnatomyRow index={index} key={step.id} step={step} />
-            ))}
-          </ol>
-
-          <motion.p
-            className="mt-12 border-border border-t pt-6 font-mono text-[11px] text-muted-foreground tracking-normal"
+          <motion.div
+            className="mt-10 grid gap-5 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:items-start"
             variants={revealVariants}
           >
-            {anatomyStepCount} files · one folder you can read end to end
-          </motion.p>
+            <AgentFileTree
+              activeStepId={activeId}
+              onSelectStep={handleSelect}
+            />
+            <FileViewer activeId={activeId} />
+          </motion.div>
         </motion.div>
       </LazyMotion>
     </section>

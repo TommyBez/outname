@@ -1,3 +1,5 @@
+'use client'
+
 import {
   type AgentTreeNode,
   type AnatomyStepId,
@@ -16,43 +18,71 @@ const ownerDot: Record<FileOwner, string> = {
   user: 'bg-brand',
 }
 
-function TreeRow({ active, node }: { active: boolean; node: AgentTreeNode }) {
+function rowClasses(active: boolean, interactive: boolean) {
+  return cn(
+    'ease flex w-full items-center gap-2 border-l-2 py-1.5 pr-3 text-left font-mono text-xs tracking-normal transition-colors duration-150',
+    active
+      ? 'border-brand bg-foreground text-background'
+      : 'border-transparent text-muted-foreground',
+    interactive && !active && 'hover:bg-muted hover:text-foreground'
+  )
+}
+
+function TreeRow({
+  active,
+  node,
+  onSelectStep,
+}: {
+  active: boolean
+  node: AgentTreeNode
+  onSelectStep?: (id: AnatomyStepId) => void
+}) {
   const Icon = node.kind === 'dir' ? FolderIcon : FileTextIcon
   const isStepNode = Boolean(node.stepId)
+  const paddingLeft = `${node.depth * DEPTH_INDENT_REM + 0.5}rem`
+
+  const inner = (
+    <>
+      <Icon
+        className={cn(
+          'size-3.5 shrink-0',
+          active ? 'text-background' : 'text-muted-foreground'
+        )}
+      />
+      <span
+        className={cn(
+          'truncate',
+          active && 'font-semibold',
+          !(active || isStepNode) && 'opacity-70'
+        )}
+      >
+        {node.label}
+      </span>
+      {node.owner ? (
+        <span
+          aria-hidden
+          className={cn('ml-auto size-2 shrink-0', ownerDot[node.owner])}
+        />
+      ) : null}
+    </>
+  )
 
   return (
     <li>
-      <span
-        className={cn(
-          'ease flex items-center gap-2 border-l-2 py-1.5 pr-3 font-mono text-xs tracking-normal transition-colors duration-200',
-          active
-            ? 'border-brand bg-foreground text-background'
-            : 'border-transparent text-muted-foreground'
-        )}
-        style={{ paddingLeft: `${node.depth * DEPTH_INDENT_REM + 0.5}rem` }}
-      >
-        <Icon
-          className={cn(
-            'size-3.5 shrink-0',
-            active ? 'text-background' : 'text-muted-foreground'
-          )}
-        />
-        <span
-          className={cn(
-            'truncate',
-            active && 'font-semibold',
-            !(active || isStepNode) && 'opacity-70'
-          )}
+      {node.stepId && onSelectStep ? (
+        <button
+          className={rowClasses(active, true)}
+          onClick={() => onSelectStep(node.stepId as AnatomyStepId)}
+          style={{ paddingLeft }}
+          type="button"
         >
-          {node.label}
+          {inner}
+        </button>
+      ) : (
+        <span className={rowClasses(active, false)} style={{ paddingLeft }}>
+          {inner}
         </span>
-        {node.owner ? (
-          <span
-            aria-hidden
-            className={cn('ml-auto size-2 shrink-0', ownerDot[node.owner])}
-          />
-        ) : null}
-      </span>
+      )}
     </li>
   )
 }
@@ -60,9 +90,11 @@ function TreeRow({ active, node }: { active: boolean; node: AgentTreeNode }) {
 export function AgentFileTree({
   activeStepId,
   className,
+  onSelectStep,
 }: {
   activeStepId?: AnatomyStepId
   className?: string
+  onSelectStep?: (id: AnatomyStepId) => void
 }) {
   return (
     <div className={cn('border border-border bg-background', className)}>
@@ -81,6 +113,7 @@ export function AgentFileTree({
             active={Boolean(node.stepId && node.stepId === activeStepId)}
             key={node.id}
             node={node}
+            onSelectStep={onSelectStep}
           />
         ))}
       </ul>
