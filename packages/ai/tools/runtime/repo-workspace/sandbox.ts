@@ -5,7 +5,7 @@ import {
   repoWorkspaceSandboxTags,
   withVercelSandboxCredentials,
 } from '@outname/shared/server/vercel-sandbox-config'
-import type { NetworkPolicy, Sandbox } from '@vercel/sandbox'
+import { type NetworkPolicy, Sandbox } from '@vercel/sandbox'
 import { createRepoWorkspaceBashTool } from './bash-tool'
 import { RepoWorkspaceProviderError } from './errors'
 import { REPO_WORKSPACE_ROOT } from './paths'
@@ -202,7 +202,6 @@ async function provisionWorkspaceSandbox(
   input: RepoWorkspaceCreateInput
 ): Promise<void> {
   'use step'
-  const { Sandbox } = await import('@vercel/sandbox')
   let sandbox: Sandbox
   try {
     sandbox = await Sandbox.getOrCreate(
@@ -448,7 +447,6 @@ function sandboxApiErrorCode(error: object): string | null {
 async function stopWorkspaceSandboxByHandle(
   handle: RepoWorkspaceHandle
 ): Promise<void> {
-  const { Sandbox } = await import('@vercel/sandbox')
   let sandbox: Sandbox
   try {
     sandbox = await Sandbox.get(

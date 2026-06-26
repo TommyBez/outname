@@ -1,6 +1,6 @@
 import { withVercelSandboxCredentials } from '@outname/shared/server/vercel-sandbox-config'
 import { nonRetryableStepError } from '@outname/shared/server/workflow-step-errors'
-import type { Sandbox as VercelSandbox } from '@vercel/sandbox'
+import { Sandbox, type Sandbox as VercelSandbox } from '@vercel/sandbox'
 import { RepoWorkspaceProviderError } from './errors'
 import {
   assertReadableRepoWorkspacePath,
@@ -148,7 +148,6 @@ async function createStepBashTool(input: {
 async function getRepoWorkspaceSandbox(
   handle: RepoWorkspaceHandle
 ): Promise<VercelSandbox> {
-  const { Sandbox } = await import('@vercel/sandbox')
   return await Sandbox.get(
     withVercelSandboxCredentials({ name: handle.sandboxName })
   )

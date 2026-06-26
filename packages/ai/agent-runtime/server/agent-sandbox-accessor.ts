@@ -2,7 +2,7 @@ import 'server-only'
 import { db } from '@outname/db'
 import { agent } from '@outname/db/schema'
 import { withVercelSandboxCredentials } from '@outname/shared/server/vercel-sandbox-config'
-import type { Sandbox } from '@vercel/sandbox'
+import { Sandbox } from '@vercel/sandbox'
 import { eq } from 'drizzle-orm'
 
 type AgentSandboxField = 'sandboxSkillsId' | 'sandboxSystemId'
@@ -46,7 +46,6 @@ export function createAgentSandboxAccessor(input: {
     agentId: string,
     sandboxName?: string
   ): Promise<Sandbox> => {
-    const { Sandbox } = await import('@vercel/sandbox')
     const name = sandboxName ?? (await readSandboxId(agentId))
     if (!name) {
       throw new Error(input.missingMessage(agentId))
@@ -60,7 +59,6 @@ export function createAgentSandboxAccessor(input: {
       return
     }
     try {
-      const { Sandbox } = await import('@vercel/sandbox')
       const sandbox = await Sandbox.get(
         withVercelSandboxCredentials({ name, resume: false })
       )

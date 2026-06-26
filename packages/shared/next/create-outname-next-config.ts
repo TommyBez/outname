@@ -20,8 +20,6 @@ const BASE_WORKSPACE_PACKAGES = [
 ] as const
 
 const SERVER_EXTERNAL_PACKAGES = [
-  '@vercel/oidc',
-  'ajv',
   'better-auth',
   'bash-tool',
   'just-bash',

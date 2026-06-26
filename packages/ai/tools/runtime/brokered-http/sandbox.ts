@@ -9,7 +9,7 @@ import {
   brokeredHttpSandboxTags,
   withVercelSandboxCredentials,
 } from '@outname/shared/server/vercel-sandbox-config'
-import type { Sandbox } from '@vercel/sandbox'
+import { Sandbox } from '@vercel/sandbox'
 import { validateInjectedHeaders } from './validation'
 
 interface CachedBrokerSandbox {
@@ -84,7 +84,6 @@ export async function createBrokerSandbox(input: {
     injectedHeaders,
     unauthenticatedHosts: input.unauthenticatedHosts,
   })
-  const { Sandbox } = await import('@vercel/sandbox')
   return await Sandbox.create(
     withVercelSandboxCredentials({
       runtime: 'node24',
