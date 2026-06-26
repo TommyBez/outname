@@ -121,6 +121,7 @@ export async function handleInvocation(input: {
         })
       },
       messages: modelMessages,
+      headers: built.modelCallHeaders,
       onToolExecutionEnd: async ({ durationMs, success, toolCall }) => {
         await emitActivity(
           runId,

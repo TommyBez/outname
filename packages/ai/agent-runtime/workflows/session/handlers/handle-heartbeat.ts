@@ -84,7 +84,7 @@ export async function handleHeartbeat(input: {
     const previousIso = await readPreviousCompletion(agentId, mode)
     await prepareHeartbeatSandbox({ agentId, mode, previousIso, runId })
 
-    const { agent, meta } = await buildAgent({
+    const { agent, meta, modelCallHeaders } = await buildAgent({
       agentId,
       buildSubAgentTool: input.buildSubAgentTool,
       runId,
@@ -120,6 +120,7 @@ export async function handleHeartbeat(input: {
         })
       },
       messages: [{ role: 'user', content: kickoff }],
+      headers: modelCallHeaders,
       onToolExecutionEnd: async ({ durationMs, success, toolCall }) => {
         await emitActivity(
           runId,

@@ -1,4 +1,4 @@
-import { WorkflowAgent } from '@ai-sdk/workflow'
+import { type CompatibleLanguageModel, WorkflowAgent } from '@ai-sdk/workflow'
 import { buildAgentRuntimeSpec } from '@outname/ai/agent-runtime/server/runtime-spec'
 import { buildRuntimeToolset } from '@outname/ai/agent-runtime/server/runtime-toolset'
 import type { BuildAgentTool } from '@outname/ai/tools/sub-agents/agent-tool'
@@ -33,7 +33,15 @@ export interface BuildAgentArgs {
 export interface BuildAgentResult {
   agent: WorkflowAgent
   meta: AgentRuntimeMeta
+  modelCallHeaders?: Record<string, string | undefined>
 }
+
+interface WorkflowModelConfig {
+  headers?: Record<string, string | undefined>
+  model: CompatibleLanguageModel | string
+}
+
+const AI_GATEWAY_PROTOCOL_VERSION = '0.0.1'
 
 export async function buildAgent(
   args: BuildAgentArgs
@@ -72,14 +80,10 @@ async function buildWorkflowAgentRuntime(
     inferenceProvider: spec.inferenceProvider,
     userId: spec.userId,
   })
-  const model = createProviderLanguageModel({
-    apiKey,
-    inferenceProvider: spec.inferenceProvider,
-    modelId: spec.modelId,
-  })
+  const modelConfig = createWorkflowModelConfig({ apiKey, spec })
 
   const agent = new WorkflowAgent({
-    model,
+    model: modelConfig.model,
     instructions: spec.systemPrompt,
     tools,
   })
@@ -87,6 +91,31 @@ async function buildWorkflowAgentRuntime(
   return {
     agent,
     meta: runtimeMetaFromSpec(spec),
+    modelCallHeaders: modelConfig.headers,
+  }
+}
+
+function createWorkflowModelConfig(input: {
+  apiKey: string
+  spec: AgentRuntimeSpec
+}): WorkflowModelConfig {
+  if (input.spec.inferenceProvider === 'vercel-ai-gateway') {
+    return {
+      model: input.spec.modelId,
+      headers: {
+        Authorization: `Bearer ${input.apiKey}`,
+        'ai-gateway-auth-method': 'api-key',
+        'ai-gateway-protocol-version': AI_GATEWAY_PROTOCOL_VERSION,
+      },
+    }
+  }
+
+  return {
+    model: createProviderLanguageModel({
+      apiKey: input.apiKey,
+      inferenceProvider: input.spec.inferenceProvider,
+      modelId: input.spec.modelId,
+    }),
   }
 }
 
