@@ -44,24 +44,59 @@ function CodePanel({ step }: { step: AnatomyStep }) {
   const fileName = fileNameFor(step)
 
   return (
-    <div className="border border-border bg-card">
-      <div className="flex items-center justify-between gap-3 border-border border-b px-5 py-3">
-        <span className="font-mono text-muted-foreground text-xs tracking-normal">
-          {agentSlug}/
+    <div className="overflow-hidden border border-border bg-card">
+      <div className="flex items-center justify-between gap-3 border-border border-b px-4 py-3">
+        <span className="flex items-center gap-2">
+          <span aria-hidden className="size-2.5 bg-brand" />
+          <span className="font-mono text-foreground text-xs tracking-normal">
+            {agentSlug}/
+          </span>
         </span>
         <span className="font-mono text-[10px] text-muted-foreground tracking-normal">
           {step.index} / {String(anatomySteps.length).padStart(2, '0')}
         </span>
       </div>
-      <div className="flex items-center gap-2 border-border border-b bg-muted px-5 py-2.5">
-        <Icon className="size-3.5 text-brand" />
-        <span className="font-mono text-foreground text-xs">{fileName}</span>
-        <span className="swiss-label ml-auto text-muted-foreground">
-          {ownerLabel[step.owner]}
-        </span>
-      </div>
-      <div className="min-h-[12rem] px-5 py-5">
-        <CodeLines code={step.code} />
+
+      <div className="lg:grid lg:grid-cols-[minmax(0,10.5rem)_minmax(0,1fr)]">
+        <ul className="hidden border-border py-2 lg:block lg:border-r">
+          {anatomySteps.map((entry) => {
+            const isActive = entry.id === step.id
+            const EntryIcon = stepIcons[entry.id]
+            return (
+              <li key={entry.id}>
+                <span
+                  className={cn(
+                    'ease flex items-center gap-2 border-l-2 px-3 py-1.5 font-mono text-[11px] tracking-normal transition-colors duration-200',
+                    isActive
+                      ? 'border-brand bg-muted text-foreground'
+                      : 'border-transparent text-muted-foreground'
+                  )}
+                >
+                  <EntryIcon
+                    className={cn(
+                      'size-3 shrink-0',
+                      isActive ? 'text-brand' : 'text-muted-foreground'
+                    )}
+                  />
+                  <span className="truncate">{fileNameFor(entry)}</span>
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+
+        <div className="flex min-w-0 flex-col">
+          <div className="flex items-center gap-2 border-border border-b bg-muted px-4 py-2.5">
+            <Icon className="size-3.5 text-brand" />
+            <span className="font-mono text-foreground text-xs">{fileName}</span>
+            <span className="swiss-label ml-auto text-muted-foreground">
+              {ownerLabel[step.owner]}
+            </span>
+          </div>
+          <div className="min-h-[15rem] px-4 py-4">
+            <CodeLines code={step.code} />
+          </div>
+        </div>
       </div>
     </div>
   )
