@@ -4,13 +4,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const {
   mockBuildAgentRuntimeSpec,
   mockBuildRuntimeToolset,
-  mockCreateProviderLanguageModel,
   mockReadUserInferenceCredentialApiKey,
   mockWorkflowAgent,
 } = vi.hoisted(() => ({
   mockBuildAgentRuntimeSpec: vi.fn(),
   mockBuildRuntimeToolset: vi.fn(),
-  mockCreateProviderLanguageModel: vi.fn(),
   mockReadUserInferenceCredentialApiKey: vi.fn(),
   mockWorkflowAgent: vi.fn(function WorkflowAgent(options: unknown) {
     return { options }
@@ -37,10 +35,6 @@ vi.mock('@outname/shared/server/inference-provider-errors', () => ({
   MissingInferenceCredentialError: class MissingInferenceCredentialError extends Error {},
 }))
 
-vi.mock('@outname/shared/server/inference-provider-registry', () => ({
-  createProviderLanguageModel: mockCreateProviderLanguageModel,
-}))
-
 vi.mock('@outname/shared/server/workflow-step-errors', () => ({
   nonRetryableStepErrorFromUnknown: vi.fn((error) => error),
 }))
@@ -54,9 +48,6 @@ describe('buildAgent', () => {
     mockBuildRuntimeToolset.mockReturnValue({
       testTool: { description: 'test' },
     })
-    mockCreateProviderLanguageModel.mockReturnValue({
-      provider: 'openrouter.chat',
-    })
     mockReadUserInferenceCredentialApiKey.mockResolvedValue('vck_test')
   })
 
@@ -67,7 +58,6 @@ describe('buildAgent', () => {
       runId: 'wrun_123',
     })
 
-    expect(mockCreateProviderLanguageModel).not.toHaveBeenCalled()
     expect(mockWorkflowAgent).toHaveBeenCalledWith(
       expect.objectContaining({
         instructions: 'system prompt',
@@ -81,30 +71,24 @@ describe('buildAgent', () => {
     })
   })
 
-  it('keeps non-Gateway providers on the provider registry path', async () => {
-    const providerModel = { provider: 'openrouter.chat' }
-    mockCreateProviderLanguageModel.mockReturnValue(providerModel)
+  it('rejects non-Gateway providers before building the workflow agent runtime', async () => {
     mockBuildAgentRuntimeSpec.mockResolvedValue(
       createRuntimeSpec({ inferenceProvider: 'openrouter' })
     )
 
-    const result = await buildAgent({
-      agentId: 'agent_123',
-      buildSubAgentTool: vi.fn() as unknown as BuildAgentTool,
-      runId: 'wrun_123',
-    })
-
-    expect(mockCreateProviderLanguageModel).toHaveBeenCalledWith({
-      apiKey: 'vck_test',
-      inferenceProvider: 'openrouter',
-      modelId: 'anthropic/claude-haiku-4.5',
-    })
-    expect(mockWorkflowAgent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        model: providerModel,
+    await expect(
+      buildAgent({
+        agentId: 'agent_123',
+        buildSubAgentTool: vi.fn() as unknown as BuildAgentTool,
+        runId: 'wrun_123',
       })
+    ).rejects.toThrow(
+      'Workflow agent runs require vercel-ai-gateway; this agent is configured for openrouter.'
     )
-    expect(result.modelCallHeaders).toBeUndefined()
+
+    expect(mockBuildRuntimeToolset).not.toHaveBeenCalled()
+    expect(mockReadUserInferenceCredentialApiKey).not.toHaveBeenCalled()
+    expect(mockWorkflowAgent).not.toHaveBeenCalled()
   })
 })
 

@@ -6,7 +6,6 @@ import type { SubAgentProgressTarget } from '@outname/ai/tools/sub-agents/progre
 import { workflowParentStreamTarget } from '@outname/ai/tools/sub-agents/progress-target'
 import { readUserInferenceCredentialApiKey } from '@outname/shared/server/inference-credentials'
 import { MissingInferenceCredentialError } from '@outname/shared/server/inference-provider-errors'
-import { createProviderLanguageModel } from '@outname/shared/server/inference-provider-registry'
 import { nonRetryableStepErrorFromUnknown } from '@outname/shared/server/workflow-step-errors'
 import {
   type AgentRuntimeEventKind,
@@ -42,6 +41,7 @@ interface WorkflowModelConfig {
 }
 
 const AI_GATEWAY_PROTOCOL_VERSION = '0.0.1'
+const WORKFLOW_AGENT_INFERENCE_PROVIDER = 'vercel-ai-gateway'
 
 export async function buildAgent(
   args: BuildAgentArgs
@@ -55,6 +55,8 @@ export async function buildAgent(
     runId: args.runId,
   })
 
+  assertWorkflowAgentRuntimeSpec(spec)
+
   return await buildWorkflowAgentRuntime(spec, {
     buildSubAgentTool: args.buildSubAgentTool,
     conversationId: args.conversationId,
@@ -63,8 +65,24 @@ export async function buildAgent(
   })
 }
 
+type WorkflowAgentRuntimeSpec = AgentRuntimeSpec & {
+  inferenceProvider: typeof WORKFLOW_AGENT_INFERENCE_PROVIDER
+}
+
+function assertWorkflowAgentRuntimeSpec(
+  spec: AgentRuntimeSpec
+): asserts spec is WorkflowAgentRuntimeSpec {
+  if (spec.inferenceProvider === WORKFLOW_AGENT_INFERENCE_PROVIDER) {
+    return
+  }
+
+  throw new Error(
+    `Workflow agent runs require ${WORKFLOW_AGENT_INFERENCE_PROVIDER}; this agent is configured for ${spec.inferenceProvider}.`
+  )
+}
+
 async function buildWorkflowAgentRuntime(
-  spec: AgentRuntimeSpec,
+  spec: WorkflowAgentRuntimeSpec,
   options: {
     buildSubAgentTool: BuildAgentTool
     conversationId?: string | null
@@ -97,25 +115,15 @@ async function buildWorkflowAgentRuntime(
 
 function createWorkflowModelConfig(input: {
   apiKey: string
-  spec: AgentRuntimeSpec
+  spec: WorkflowAgentRuntimeSpec
 }): WorkflowModelConfig {
-  if (input.spec.inferenceProvider === 'vercel-ai-gateway') {
-    return {
-      model: input.spec.modelId,
-      headers: {
-        Authorization: `Bearer ${input.apiKey}`,
-        'ai-gateway-auth-method': 'api-key',
-        'ai-gateway-protocol-version': AI_GATEWAY_PROTOCOL_VERSION,
-      },
-    }
-  }
-
   return {
-    model: createProviderLanguageModel({
-      apiKey: input.apiKey,
-      inferenceProvider: input.spec.inferenceProvider,
-      modelId: input.spec.modelId,
-    }),
+    model: input.spec.modelId,
+    headers: {
+      Authorization: `Bearer ${input.apiKey}`,
+      'ai-gateway-auth-method': 'api-key',
+      'ai-gateway-protocol-version': AI_GATEWAY_PROTOCOL_VERSION,
+    },
   }
 }
 
