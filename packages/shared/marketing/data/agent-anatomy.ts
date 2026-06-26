@@ -133,10 +133,19 @@ export const anatomySteps: readonly AnatomyStep[] = [
     caption:
       'Its operational manual. You write the custom instructions; the agent reads them at the start of every event.',
     code: `# AGENTS.md
+Your operational manual. Read it at the
+start of every event.
+
+## Conventions
+- Dates are ISO-8601.
+- Append one bullet to today's log.
+- Terse output; bullets over prose.
+
 ## User custom instructions
-- Triage Slack before 09:00.
-- Never send external email
-  without a confirm.`,
+- Triage the #ops Slack channel by 09:00.
+- Never send external email without a
+  confirm.
+- Keep replies short; prefer "Tomas".`,
     id: 'instructions',
     index: '01',
     node: 'instructions',
@@ -149,7 +158,12 @@ export const anatomySteps: readonly AnatomyStep[] = [
       'A compact identity card: name, role, vibe. Short by design, it is injected into every prompt the agent runs.',
     code: `# Inbox Sentinel
 Role: personal chief of staff
-Vibe: terse, proactive`,
+Vibe: terse, calm, proactive
+Emoji: 🛰️
+
+Read every turn — keep it short.
+First-impression cues only; the
+deeper self-model lives in SOUL.md.`,
     id: 'identity',
     index: '02',
     node: 'identity',
@@ -161,9 +175,17 @@ Vibe: terse, proactive`,
     caption:
       'Its persona, voice, and self-model. Also injected every turn — if behavior drifts from it, the agent flags the contradiction.',
     code: `# SOUL.md
-I default to action over
-explanation. I surface conflicts
-instead of working around them.`,
+I default to action over explanation.
+Bullets over prose. I do one small
+useful thing well, then stop.
+
+I surface contradictions instead of
+working around them. If my behavior
+drifts from this file, I raise it.
+
+I protect the user's focus: batch the
+low-signal updates, interrupt only for
+what truly needs them.`,
     id: 'soul',
     index: '03',
     node: 'soul',
@@ -177,8 +199,15 @@ instead of working around them.`,
     code: `## Basic Info
 - Preferred name: Tomas
 - Timezone: Europe/Rome
+- Language: English
+
+## My World
+- Founder, shipping outname.
+- Mornings are deep-work; protect them.
+
 ## Hard Boundaries
-- Ask before external email.`,
+- Ask before sending external email.
+- Never invent facts about people.`,
     id: 'user',
     index: '04',
     node: 'user',
@@ -191,8 +220,13 @@ instead of working around them.`,
       'Broader durable facts, commitments, and evidence. Append-only by convention, with a citation back to where each fact came from.',
     code: `## 2026-05-13
 - Skip auto-summary on Sundays.
-- Prefers "Tomas" in replies.
-  (msg_8f12)`,
+- Prefers "Tomas" in replies. (msg_8f12)
+- #ops blocker is owned by Dana. (msg_77a1)
+
+## 2026-05-11
+- Weekly digest ships Mondays 18:00.
+- Cal.com is the source of truth for
+  meetings, not email. (msg_5c0e)`,
     id: 'memory',
     index: '05',
     node: 'memory',
@@ -203,9 +237,17 @@ instead of working around them.`,
   {
     caption:
       'Active tactical items with status and dependencies, kept current without waiting for a reminder. Plain GitHub-flavored checkboxes.',
-    code: `- [x] Draft weekly digest
-- [ ] Confirm Tue 15:00 move
-- [ ] Chase invoice #204`,
+    code: `## In progress
+- [ ] Confirm Tue 15:00 → Wed 10:00 move
+- [ ] Chase invoice #204 (due Fri)
+
+## Done
+- [x] Draft weekly digest
+- [x] Summarize #ops overnight threads
+- [x] Update USER.md timezone
+
+## Blocked
+- [ ] Onboarding rewrite — waiting on Dana`,
     id: 'tasks',
     index: '06',
     node: 'tasks',
@@ -216,8 +258,14 @@ instead of working around them.`,
   {
     caption:
       'Known time-bound events and deadlines, ISO-8601 dated. The agent adds, updates, and removes entries as plans change.',
-    code: `- 2026-05-14T10:00Z Design review
-- 2026-05-16 Invoice #204 due`,
+    code: `# CALENDAR.md
+ISO-8601 dated. Add, update, and remove
+entries as plans change.
+
+- 2026-05-14T10:00Z Design review
+- 2026-05-14T15:00Z Tomas / 1:1 (moved)
+- 2026-05-16 Invoice #204 due
+- 2026-05-18T09:00Z Weekly planning`,
     id: 'calendar',
     index: '07',
     node: 'calendar',
@@ -228,8 +276,14 @@ instead of working around them.`,
   {
     caption:
       'Long-horizon objectives, updated rarely. The agent consults them before deciding what is worth surfacing in a heartbeat.',
-    code: `- Keep inbox under 10 threads.
-- Protect deep-work mornings.`,
+    code: `# GOALS.md
+Long-horizon. Updated rarely; consult
+before surfacing work in a heartbeat.
+
+- Keep the inbox under 10 open threads.
+- Protect Tomas's deep-work mornings.
+- Reduce onboarding to three steps.
+- Zero missed invoices this quarter.`,
     id: 'goals',
     index: '08',
     node: 'goals',
@@ -240,9 +294,17 @@ instead of working around them.`,
   {
     caption:
       'Notes from dreaming passes: pattern anticipation and self-evaluation, written only when there is real signal, with log citations.',
-    code: `## 2026-05-12
-- Replies spike on Mondays.
-  (logs/2026-05-11.md:14)`,
+    code: `# DREAMS.md
+Pattern notes from dreaming passes.
+Written only when there is real signal.
+
+## 2026-05-12
+- Replies spike on Mondays; pre-draft
+  the digest Sunday night.
+  (logs/2026-05-11.md:14)
+- "Tomas" preference is firm across 12
+  threads — promote it to USER.md.
+  (logs/2026-05-10.md:6)`,
     id: 'dreams',
     index: '09',
     node: 'dreams',
