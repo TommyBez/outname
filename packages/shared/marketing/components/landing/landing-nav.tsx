@@ -20,6 +20,11 @@ export function LandingNav() {
           OUTNA.ME
         </Link>
         <div className="flex items-center gap-1">
+          <div className="hidden items-center gap-1 lg:flex">
+            <NavLink href="/#concept">How it works</NavLink>
+            <NavLink href="/#primitives">Built on</NavLink>
+            <NavLink href="/#production">Production</NavLink>
+          </div>
           <div className="hidden items-center gap-1 sm:flex">
             <NavLink href="/blog">Blog</NavLink>
             <NavLink href={getAppLoginUrl('/dashboard')}>Login</NavLink>

@@ -15,13 +15,8 @@ export function LandingAgentAnatomy({
   shouldReduceMotion: boolean
 }) {
   const isDesktop = useIsDesktopViewport()
-
-  const renderWalkthrough = () => {
-    if (shouldReduceMotion || isDesktop === undefined || !isDesktop) {
-      return <AnatomyStacked shouldReduceMotion={shouldReduceMotion} />
-    }
-    return <AnatomyPinned />
-  }
+  const useStackedFallback =
+    shouldReduceMotion || isDesktop === undefined || !isDesktop
 
   return (
     <section
@@ -42,21 +37,24 @@ export function LandingAgentAnatomy({
           >
             <div>
               <p className="swiss-label text-muted-foreground">
-                Anatomy of an agent
+                The capability tour
               </p>
               <h2 className="mt-4 text-balance font-semibold text-3xl leading-tight tracking-tight md:text-4xl">
-                An agent is a folder you can read.
+                Open the folder, one capability at a time.
               </h2>
             </div>
             <p className="max-w-2xl text-muted-foreground leading-relaxed">
-              No black box. Memory, model, tools, channels, schedule: every
-              capability is a file or a binding you can open, edit, and watch
-              run.
+              Eight files and bindings, eight things the agent can do. Scroll to
+              walk the tree — each one is a snippet you could write yourself.
             </p>
           </motion.div>
         </motion.div>
 
-        {renderWalkthrough()}
+        {useStackedFallback ? (
+          <AnatomyStacked shouldReduceMotion={shouldReduceMotion} />
+        ) : (
+          <AnatomyPinned />
+        )}
       </LazyMotion>
     </section>
   )

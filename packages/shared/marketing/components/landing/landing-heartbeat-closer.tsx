@@ -1,12 +1,9 @@
 'use client'
 
-import { getAppLoginUrl } from '@outname/shared/app-url'
 import {
   revealVariants,
   staggerVariants,
 } from '@outname/shared/marketing/components/landing/landing-motion'
-import { PrimaryLink } from '@outname/shared/marketing/components/landing/primary-link'
-import { SecondaryLink } from '@outname/shared/marketing/components/landing/secondary-link'
 import {
   type HeartbeatEvent,
   type HeartbeatKind,
@@ -94,25 +91,6 @@ export function LandingHeartbeatCloser({
 
           <motion.div className="mt-8 lg:hidden" variants={revealVariants}>
             <HeartbeatTerminalPinned />
-          </motion.div>
-
-          <motion.div
-            className="mt-12 grid gap-6 border-border border-t pt-8 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] md:items-end"
-            variants={revealVariants}
-          >
-            <h3 className="home-display text-balance font-semibold text-4xl leading-[1.05] tracking-tight md:text-5xl">
-              Start your first agent.
-            </h3>
-            <div className="flex min-w-0 flex-col gap-3 md:items-end">
-              <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
-                <PrimaryLink href={getAppLoginUrl('/agents/new')}>
-                  Create an account
-                </PrimaryLink>
-                <SecondaryLink href={getAppLoginUrl('/dashboard')}>
-                  Login
-                </SecondaryLink>
-              </div>
-            </div>
           </motion.div>
         </motion.div>
       </LazyMotion>
