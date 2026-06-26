@@ -11,12 +11,19 @@ type ArtifactView = 'human' | 'agent'
 // A real excerpt of the AGENTS.md the runtime seeds — the first thing the
 // agent reads on every event.
 const AGENT_VIEW_CODE = `# AGENTS.md
-Read this at the start of every event.
+Your operational manual. Read it at
+the start of every event.
+
+## Conventions
+- Dates are ISO-8601.
+- Append one bullet to today's log.
+- Terse output; bullets over prose.
 
 ## User custom instructions
-- Triage Slack before 09:00.
-- Never send external email
-  without a confirm.`
+- Triage the #ops Slack channel by 09:00.
+- Never send external email without a
+  confirm.
+- Keep replies short; prefer "Tomas".`
 
 const views: readonly { id: ArtifactView; label: string }[] = [
   { id: 'human', label: 'For you' },

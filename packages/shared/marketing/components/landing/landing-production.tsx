@@ -190,29 +190,44 @@ export function LandingProduction({
             </p>
           </motion.div>
 
+          {/* Shared visual panel: three mocks in equal-height cells. */}
           <motion.div
             className="mt-12 grid gap-px border border-border bg-border lg:grid-cols-3"
             variants={revealVariants}
           >
             {pillars.map((pillar) => {
-              const Icon = pillar.icon
               const Mock = mocks[pillar.id]
               return (
-                <div className="flex flex-col bg-background" key={pillar.id}>
-                  <div className="min-h-52 border-border border-b p-6">
+                <div
+                  className="flex min-h-[16rem] items-center bg-background p-6"
+                  key={pillar.id}
+                >
+                  <div className="w-full">
                     <Mock />
                   </div>
-                  <div className="p-6">
-                    <div className="flex items-center gap-2">
-                      <Icon className="size-4 text-foreground" />
-                      <p className="swiss-label text-muted-foreground">
-                        {pillar.title}
-                      </p>
-                    </div>
-                    <p className="mt-3 text-muted-foreground text-sm leading-relaxed">
-                      {pillar.text}
+                </div>
+              )
+            })}
+          </motion.div>
+
+          {/* Aligned text row: one label + description per column. */}
+          <motion.div
+            className="mt-8 grid gap-8 sm:grid-cols-3"
+            variants={revealVariants}
+          >
+            {pillars.map((pillar) => {
+              const Icon = pillar.icon
+              return (
+                <div key={pillar.id}>
+                  <div className="flex items-center gap-2">
+                    <Icon className="size-4 text-foreground" />
+                    <p className="swiss-label text-muted-foreground">
+                      {pillar.title}
                     </p>
                   </div>
+                  <p className="mt-3 max-w-xs text-muted-foreground text-sm leading-relaxed">
+                    {pillar.text}
+                  </p>
                 </div>
               )
             })}
