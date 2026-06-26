@@ -569,11 +569,12 @@ export function LandingChatShowcase({
                 Live agent · /chat/:id
               </p>
               <h2 className="mt-4 text-balance font-semibold text-3xl leading-tight tracking-tight md:text-4xl">
-                Same agent. Every surface.
+                Watch the folder come alive.
               </h2>
             </div>
             <p className="max-w-2xl text-muted-foreground leading-relaxed">
-              Heartbeat runs, in-app chat, Slack, Discord, Telegram.
+              Same memory, same tools, same sub-agents — running live across
+              heartbeat, in-app chat, and Slack.
             </p>
           </motion.div>
 

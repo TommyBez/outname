@@ -1,6 +1,7 @@
 'use client'
 
 import { getAppLoginUrl } from '@outname/shared/app-url'
+import { AgentFileTree } from '@outname/shared/marketing/components/landing/agent-anatomy/agent-file-tree'
 import { PrimaryLink } from '@outname/shared/marketing/components/landing/primary-link'
 import { SecondaryLink } from '@outname/shared/marketing/components/landing/secondary-link'
 import { TextLoop } from '@outname/shared/marketing/components/motion-primitives/text-loop'
@@ -35,10 +36,18 @@ export function LandingHeroDemo({
           </TextLoop>
         </p>
 
-        <div className="min-w-0">
-          <h1 className="home-display text-balance font-semibold text-5xl leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
-            Agents that keep working.
-          </h1>
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] lg:items-center">
+          <div className="min-w-0">
+            <h1 className="home-display text-balance font-semibold text-5xl leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
+              Agents that keep working.
+            </h1>
+          </div>
+          <div className="hidden lg:block">
+            <AgentFileTree />
+            <p className="mt-3 font-mono text-[10px] text-muted-foreground tracking-normal">
+              one agent · one folder you can read
+            </p>
+          </div>
         </div>
 
         <div className="grid gap-8 border-border border-t pt-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">

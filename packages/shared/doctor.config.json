@@ -3,7 +3,10 @@
   "ignore": {
     "overrides": [
       {
-        "files": ["marketing/components/landing/composable-workbench/**"],
+        "files": [
+          "marketing/components/landing/agent-anatomy/**",
+          "marketing/components/landing/landing-primitives.tsx"
+        ],
         "rules": [
           "react-doctor/design-no-em-dash-in-jsx-text",
           "react-doctor/design-no-redundant-padding-axes",
