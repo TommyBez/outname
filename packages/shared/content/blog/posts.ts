@@ -34,7 +34,7 @@ export const posts: BlogPost[] = [
       "NTT DATA Just Built an AI Agent Factory for Product Planning. Its Agents Have No Identity.",
     date: '2026-06-25',
     excerpt:
-      "On June 22, NTT DATA launched an AI agent service that compresses 6-9 months of product planning into 150 seconds. The technology is real \u2014 RAG, multi-agent orchestration, brand-aware generation. But every agent this factory produces lives and dies inside NTT DATA\u2019s walled garden. No portable identity. No persistent memory. No cross-platform state. The enterprise agent factory pattern is acceleration without autonomy.",
+      "On June 22, NTT DATA launched an AI agent service that compresses 6-9 months of product planning into 150 seconds. The technology is real — RAG, multi-agent orchestration, brand-aware generation. But every agent this factory produces lives and dies inside NTT DATA's walled garden. No portable identity. No persistent memory. No cross-platform state. The enterprise agent factory pattern is acceleration without autonomy.",
     tags: [
       'AI',
       'agents',
