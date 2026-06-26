@@ -5,7 +5,9 @@
       {
         "files": [
           "marketing/components/landing/agent-anatomy/**",
-          "marketing/components/landing/landing-primitives.tsx"
+          "marketing/components/landing/code-block.tsx",
+          "marketing/components/landing/landing-primitives.tsx",
+          "marketing/components/landing/landing-production.tsx"
         ],
         "rules": [
           "react-doctor/design-no-em-dash-in-jsx-text",

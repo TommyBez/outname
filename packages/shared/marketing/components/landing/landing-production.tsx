@@ -1,68 +1,158 @@
 'use client'
 
-import { ChatShowcasePanel } from '@outname/shared/marketing/components/landing/landing-chat-showcase'
-import { HeartbeatPanel } from '@outname/shared/marketing/components/landing/landing-heartbeat-closer'
 import {
   revealVariants,
   staggerVariants,
 } from '@outname/shared/marketing/components/landing/landing-motion'
-import { ProductionCard } from '@outname/shared/marketing/components/landing/production-card'
+import { cn } from '@outname/ui/lib/utils'
 import {
   ActivityIcon,
-  GaugeIcon,
-  GitBranchIcon,
+  BoxIcon,
   type LucideIcon,
-  MoonIcon,
-  WalletIcon,
-  ZapIcon,
+  RadioTowerIcon,
 } from 'lucide-react'
 import { domAnimation, LazyMotion, m as motion } from 'motion/react'
+import type { ReactNode } from 'react'
 
-interface ReadinessCard {
+// Durable execution: the phases a single autonomous run checkpoints through.
+const runPhases = [
+  { fill: 1, label: 'load memory', state: 'done' },
+  { fill: 1, label: 'scan channels', state: 'done' },
+  { fill: 0.66, label: 'call sub-agent', state: 'running' },
+  { fill: 0.2, label: 'write memory', state: 'queued' },
+  { fill: 0, label: 'append log', state: 'queued' },
+] as const
+
+// Sandboxed compute: recent agent events with their real status vocabulary.
+const computeRuns = [
+  { id: 'heartbeat · 06:00', status: 'completed', meta: '4.2s' },
+  { id: 'dreaming · 14:01', status: 'completed', meta: '11s' },
+  { id: 'invocation · now', status: 'running', meta: 'live' },
+  { id: 'heartbeat · 18:00', status: 'queued', meta: '—' },
+] as const
+
+const statusTone: Record<string, string> = {
+  completed: 'bg-muted-foreground/40',
+  queued: 'bg-muted-foreground/25',
+  running: 'bg-brand',
+}
+
+// Every surface: real channels (highlighted) and connectors.
+const surfaces = [
+  'in-app chat',
+  'Slack',
+  'GitHub',
+  'Cal.com',
+  'Resend',
+  'Firecrawl',
+  'PostHog',
+  'X',
+  'Supabase',
+  'Vercel',
+] as const
+
+interface Pillar {
   icon: LucideIcon
   id: string
   text: string
   title: string
 }
 
-const readinessCards: readonly ReadinessCard[] = [
+const pillars: readonly Pillar[] = [
   {
     icon: ActivityIcon,
-    id: 'events',
-    text: 'Every heartbeat, dreaming, and invocation run is a traced agent event you can open and read end to end.',
-    title: 'Observable by default',
-  },
-  {
-    icon: ZapIcon,
     id: 'durable',
-    text: 'Autonomous turns run as event-driven Vercel Workflows against a per-agent Sandbox — durable, not fire-and-forget.',
+    text: 'Runs survive crashes and restarts. Every step is an event-driven Vercel Workflow, checkpointed and resumable.',
     title: 'Durable execution',
   },
   {
-    icon: GaugeIcon,
-    id: 'steplimits',
-    text: 'Cap how hard a single run works — low, medium, high, or grind — so autonomous turns stay bounded.',
-    title: 'Step limits',
+    icon: BoxIcon,
+    id: 'sandbox',
+    text: 'Each agent owns a persistent Vercel Sandbox — isolated filesystem and execution. Every run is a traced agent event.',
+    title: 'Sandboxed compute',
   },
   {
-    icon: WalletIcon,
-    id: 'budget',
-    text: 'Spend ceilings in USD, per agent or shared, with estimated and actual cost tracked on every run.',
-    title: 'Budgets that bind',
-  },
-  {
-    icon: GitBranchIcon,
-    id: 'subagents',
-    text: 'A sub-agent is just another agent bound as a tool; its delegated run returns a full trace inline.',
-    title: 'Sub-agents, traced',
-  },
-  {
-    icon: MoonIcon,
-    id: 'dreaming',
-    text: 'Dedicated dreaming passes review recent logs and improve long-running memory between work runs.',
-    title: 'Memory that compounds',
+    icon: RadioTowerIcon,
+    id: 'surface',
+    text: 'One agent answers in-app and in Slack, wired to typed connectors. Budgets and step limits keep it bounded.',
+    title: 'Every surface',
   },
 ]
+
+function DurableMock() {
+  return (
+    <ul className="grid gap-3">
+      {runPhases.map((phase) => (
+        <li className="grid gap-2" key={phase.label}>
+          <div className="flex items-center justify-between gap-3 font-mono text-[11px] tracking-normal">
+            <span className="text-foreground">{phase.label}</span>
+            <span className="text-muted-foreground">{phase.state}</span>
+          </div>
+          <div className="h-1.5 overflow-hidden bg-muted">
+            <div
+              className={cn(
+                'h-full',
+                phase.state === 'running' ? 'bg-brand' : 'bg-foreground'
+              )}
+              style={{ width: `${phase.fill * 100}%` }}
+            />
+          </div>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function ComputeMock() {
+  return (
+    <ul className="grid gap-2">
+      {computeRuns.map((run) => (
+        <li
+          className="flex items-center justify-between gap-3 border border-border bg-background px-3 py-2.5 font-mono text-[11px] tracking-normal"
+          key={run.id}
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <span
+              className={cn(
+                'size-2 shrink-0 rounded-full',
+                statusTone[run.status]
+              )}
+            />
+            <span className="truncate text-foreground">{run.id}</span>
+          </span>
+          <span className="shrink-0 text-muted-foreground">{run.meta}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function SurfaceMock() {
+  return (
+    <ul className="flex flex-wrap gap-2">
+      {surfaces.map((surface, index) => (
+        <li key={surface}>
+          <span
+            className={cn(
+              'border border-border px-2.5 py-1 font-mono text-[11px] tracking-normal',
+              index < 2
+                ? 'bg-foreground text-background'
+                : 'bg-background text-muted-foreground'
+            )}
+          >
+            {surface}
+          </span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+const mocks: Record<string, () => ReactNode> = {
+  durable: DurableMock,
+  sandbox: ComputeMock,
+  surface: SurfaceMock,
+}
 
 export function LandingProduction({
   shouldReduceMotion,
@@ -90,64 +180,43 @@ export function LandingProduction({
               <p className="swiss-label text-muted-foreground">
                 Production agents
               </p>
-              <h2 className="mt-4 text-balance font-semibold text-3xl leading-tight tracking-tight md:text-4xl">
-                Everything an autonomous agent needs to be trusted.
+              <h2 className="mt-4 text-balance font-semibold text-4xl leading-[1.05] tracking-tight md:text-5xl">
+                Everything you need for production agents.
               </h2>
             </div>
-            <p className="max-w-2xl text-muted-foreground leading-relaxed">
-              Letting software act on its own is only safe when you can see what
-              it does, cap what it spends, and step in when it matters. Here it
-              is, proven live.
+            <p className="max-w-2xl text-lg text-muted-foreground leading-relaxed">
+              Governance, observability, and sandboxed compute come standard.
+              Focus on what the agent does, not the infrastructure under it.
             </p>
           </motion.div>
 
-          <div className="mt-10 grid gap-5">
-            <ProductionCard
-              index="01"
-              text="The same memory, tools, and sub-agents answer in-app and in Slack. Pick a scenario and watch a run stream."
-              title="One agent, every surface"
-            >
-              <ChatShowcasePanel shouldReduceMotion={shouldReduceMotion} />
-            </ProductionCard>
-
-            <ProductionCard
-              index="02"
-              text="Schedules fire, channels light up, sub-agents return, the memory grows. You read the log in the morning."
-              title="It runs while you sleep"
-            >
-              <HeartbeatPanel shouldReduceMotion={shouldReduceMotion} />
-            </ProductionCard>
-
-            <ProductionCard
-              index="03"
-              text="Observability, durable execution, step limits, and budgets are built in — not bolted on after the fact."
-              title="Guardrails that bind"
-            >
-              <ul className="grid gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
-                {readinessCards.map((card) => {
-                  const Icon = card.icon
-                  return (
-                    <li
-                      className="ease group flex min-h-44 flex-col bg-background p-5 transition-colors duration-200 hover:bg-muted/50"
-                      key={card.id}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="ease grid size-9 place-items-center border border-border bg-background text-foreground transition-colors duration-200 group-hover:border-brand group-hover:bg-brand group-hover:text-brand-foreground">
-                          <Icon className="size-4" />
-                        </span>
-                        <h4 className="font-semibold text-sm tracking-tight">
-                          {card.title}
-                        </h4>
-                      </div>
-                      <p className="mt-3 text-muted-foreground text-sm leading-relaxed">
-                        {card.text}
+          <motion.div
+            className="mt-12 grid gap-px border border-border bg-border lg:grid-cols-3"
+            variants={revealVariants}
+          >
+            {pillars.map((pillar) => {
+              const Icon = pillar.icon
+              const Mock = mocks[pillar.id]
+              return (
+                <div className="flex flex-col bg-background" key={pillar.id}>
+                  <div className="min-h-52 border-border border-b p-6">
+                    <Mock />
+                  </div>
+                  <div className="p-6">
+                    <div className="flex items-center gap-2">
+                      <Icon className="size-4 text-foreground" />
+                      <p className="swiss-label text-muted-foreground">
+                        {pillar.title}
                       </p>
-                    </li>
-                  )
-                })}
-              </ul>
-            </ProductionCard>
-          </div>
+                    </div>
+                    <p className="mt-3 text-muted-foreground text-sm leading-relaxed">
+                      {pillar.text}
+                    </p>
+                  </div>
+                </div>
+              )
+            })}
+          </motion.div>
         </motion.div>
       </LazyMotion>
     </section>

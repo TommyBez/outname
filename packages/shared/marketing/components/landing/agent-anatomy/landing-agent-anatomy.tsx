@@ -79,7 +79,7 @@ function StepBlock({
   return (
     <li
       className={cn(
-        'ease border-border border-t py-10 transition-opacity duration-300 first:border-t-0 lg:flex lg:min-h-[44vh] lg:flex-col lg:justify-center lg:border-t-0 lg:py-0',
+        'ease border-border border-t py-10 transition-opacity duration-300 first:border-t-0 lg:flex lg:min-h-[24vh] lg:flex-col lg:justify-center lg:border-t-0 lg:py-0',
         active ? 'lg:opacity-100' : 'lg:opacity-35'
       )}
       ref={registerRef}
@@ -143,7 +143,7 @@ export function LandingAgentAnatomy({
 
   return (
     <section
-      className="px-4 py-24 sm:px-6 md:px-10 md:py-36 lg:px-12"
+      className="px-4 py-20 sm:px-6 md:px-10 md:py-28 lg:px-12"
       id="anatomy"
     >
       <LazyMotion features={domAnimation}>

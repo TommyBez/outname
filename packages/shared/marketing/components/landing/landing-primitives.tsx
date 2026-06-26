@@ -5,7 +5,6 @@ import {
   staggerVariants,
 } from '@outname/shared/marketing/components/landing/landing-motion'
 import { platformPrimitives } from '@outname/shared/marketing/data/primitives'
-import { cn } from '@outname/ui/lib/utils'
 import {
   BoxIcon,
   CpuIcon,
@@ -29,25 +28,6 @@ const primitiveIcons: Record<string, LucideIcon> = {
   upstash: ZapIcon,
   workflow: WorkflowIcon,
 }
-
-// Real channels and connectors an agent can be wired to (see the channel types
-// and the connection registry).
-const integrations = [
-  'in-app chat',
-  'Slack',
-  'GitHub',
-  'Cal.com',
-  'Resend',
-  'Firecrawl',
-  'PostHog',
-  'Parallel',
-  'Typefully',
-  'X',
-  'Supabase',
-  'v0',
-  'Vercel',
-  'Context7',
-] as const
 
 export function LandingPrimitives({
   shouldReduceMotion,
@@ -123,31 +103,6 @@ export function LandingPrimitives({
               )
             })}
           </motion.ul>
-
-          <motion.div
-            className="mt-10 flex flex-col gap-4 border border-border bg-muted p-6 md:flex-row md:items-center md:gap-8"
-            variants={revealVariants}
-          >
-            <p className="swiss-label shrink-0 text-muted-foreground">
-              Channels &amp; connectors
-            </p>
-            <ul className="flex flex-wrap gap-2">
-              {integrations.map((integration, index) => (
-                <li key={integration}>
-                  <span
-                    className={cn(
-                      'border border-border px-2.5 py-1 font-mono text-[11px] tracking-normal',
-                      index < 2
-                        ? 'bg-foreground text-background'
-                        : 'bg-background text-muted-foreground'
-                    )}
-                  >
-                    {integration}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </motion.div>
         </motion.div>
       </LazyMotion>
     </section>
