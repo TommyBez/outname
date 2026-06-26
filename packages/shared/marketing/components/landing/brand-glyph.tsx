@@ -4,6 +4,7 @@ import {
   SiGithub,
   SiNextdotjs,
   SiOpenrouter,
+  SiPostgresql,
   SiPosthog,
   SiResend,
   SiSupabase,
@@ -12,23 +13,37 @@ import {
   SiVercel,
   SiX,
 } from '@icons-pack/react-simple-icons'
+import {
+  Context7Icon,
+  FirecrawlIcon,
+  ParallelIcon,
+  SlackIcon,
+  TypefullyIcon,
+} from '@outname/shared/marketing/components/landing/brand-icons'
 import { cn } from '@outname/ui/lib/utils'
 import { MessagesSquareIcon } from 'lucide-react'
 import type { ComponentType } from 'react'
 
 type GlyphComponent = ComponentType<{ className?: string }>
 
-// Official monochrome marks (Simple Icons). Rendered in currentColor so they
-// stay inside the monochrome + red system — never the brand's own color.
+// Official monochrome marks. Simple Icons for what it ships (Neon uses the
+// Postgres elephant); hand-built faithful marks for the rest. All render in
+// currentColor so they stay inside the monochrome + red system.
 const ICONS: Record<string, GlyphComponent> = {
   betterauth: SiBetterauth,
   calcom: SiCaldotcom,
+  context7: Context7Icon,
+  firecrawl: FirecrawlIcon,
   github: SiGithub,
+  neon: SiPostgresql,
   nextjs: SiNextdotjs,
   openrouter: SiOpenrouter,
+  parallel: ParallelIcon,
   posthog: SiPosthog,
   resend: SiResend,
+  slack: SlackIcon,
   supabase: SiSupabase,
+  typefully: TypefullyIcon,
   upstash: SiUpstash,
   v0: SiV0,
   vercel: SiVercel,
@@ -40,17 +55,10 @@ const LUCIDE: Record<string, GlyphComponent> = {
   inappchat: MessagesSquareIcon,
 }
 
-// Brands Simple Icons doesn't ship (pulled for trademark, or too niche) fall
-// back to a clean two-letter monogram in the same square.
+// Conceptual products with no real mark fall back to a two-letter monogram.
 const MONOGRAMS: Record<string, string> = {
   chatsdk: 'Ch',
-  context7: 'C7',
-  firecrawl: 'Fc',
   llmgateway: 'LM',
-  neon: 'Ne',
-  parallel: 'Pl',
-  slack: 'Sl',
-  typefully: 'Tf',
 }
 
 function brandKey(name: string): string {
