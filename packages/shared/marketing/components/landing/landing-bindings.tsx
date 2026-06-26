@@ -126,17 +126,18 @@ export function LandingBindings({
 
           <motion.ul
             className="mt-10 grid gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-4"
-            variants={revealVariants}
+            variants={staggerVariants}
           >
             {bindings.map((binding) => {
               const Icon = binding.icon
               return (
-                <li
-                  className="flex min-h-56 flex-col bg-background p-6"
+                <motion.li
+                  className="ease group flex min-h-56 flex-col bg-background p-6 transition-colors duration-200 hover:bg-muted/50"
                   key={binding.id}
+                  variants={revealVariants}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="grid size-9 place-items-center border border-border bg-background text-foreground">
+                    <span className="ease grid size-9 place-items-center border border-border bg-background text-foreground transition-colors duration-200 group-hover:border-brand group-hover:bg-brand group-hover:text-brand-foreground">
                       <Icon className="size-4" />
                     </span>
                     <h3 className="font-semibold text-base tracking-tight">
@@ -156,7 +157,7 @@ export function LandingBindings({
                       </span>
                     ))}
                   </div>
-                </li>
+                </motion.li>
               )
             })}
           </motion.ul>

@@ -2,10 +2,10 @@
 
 import { getAppLoginUrl } from '@outname/shared/app-url'
 import { HeroArtifact } from '@outname/shared/marketing/components/landing/hero-artifact'
-import { HeroTerminal } from '@outname/shared/marketing/components/landing/hero-terminal'
 import { PrimaryLink } from '@outname/shared/marketing/components/landing/primary-link'
 import { SecondaryLink } from '@outname/shared/marketing/components/landing/secondary-link'
 import { TextLoop } from '@outname/shared/marketing/components/motion-primitives/text-loop'
+import { CopyIcon } from 'lucide-react'
 
 const loopWords = [
   'agents',
@@ -13,12 +13,6 @@ const loopWords = [
   'sub-agents',
   'channels',
   'memory',
-] as const
-
-const terminalLines = [
-  '$ git clone github.com/TommyBez/outname',
-  '$ pnpm install',
-  '$ pnpm dev:app',
 ] as const
 
 export function LandingHeroDemo({
@@ -53,14 +47,18 @@ export function LandingHeroDemo({
               bind, and a heartbeat that keeps working while you sleep.
             </p>
 
-            <div className="mt-8">
-              <HeroTerminal
-                lines={terminalLines}
-                shouldReduceMotion={shouldReduceMotion}
+            <div className="mt-8 flex max-w-md items-center gap-3 border border-border bg-card px-4 py-3">
+              <span className="font-mono text-muted-foreground text-sm">$</span>
+              <span className="truncate font-mono text-foreground text-sm">
+                git clone github.com/TommyBez/outname
+              </span>
+              <CopyIcon
+                aria-hidden
+                className="ml-auto size-4 shrink-0 text-muted-foreground"
               />
             </div>
 
-            <div className="mt-8 flex min-w-0 flex-col gap-3 sm:flex-row">
+            <div className="mt-6 flex min-w-0 flex-col gap-3 sm:flex-row">
               <PrimaryLink href={getAppLoginUrl('/agents/new')}>
                 Start building
               </PrimaryLink>

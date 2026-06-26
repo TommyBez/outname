@@ -1,9 +1,9 @@
 'use client'
 
 import { AgentFileTree } from '@outname/shared/marketing/components/landing/agent-anatomy/agent-file-tree'
-import { CodeWindow } from '@outname/shared/marketing/components/landing/code-window'
-import { Button } from '@outname/ui/components/ui/button'
+import { CodeLines } from '@outname/shared/marketing/components/landing/code-block'
 import { cn } from '@outname/ui/lib/utils'
+import { FileTextIcon } from 'lucide-react'
 import { useState } from 'react'
 
 type ArtifactView = 'human' | 'agent'
@@ -28,45 +28,48 @@ export function HeroArtifact() {
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-3">
-        <div
-          aria-label="Artifact view"
-          className="inline-flex border border-border"
-          role="tablist"
-        >
-          {views.map((option) => {
-            const active = view === option.id
-            return (
-              <Button
-                aria-selected={active}
-                className={cn(
-                  'rounded-none border-border not-last:border-r font-normal normal-case tracking-normal',
-                  active
-                    ? 'bg-foreground text-background hover:bg-foreground'
-                    : 'text-muted-foreground'
-                )}
-                key={option.id}
-                onClick={() => setView(option.id)}
-                role="tab"
-                size="sm"
-                type="button"
-                variant="ghost"
-              >
-                {option.label}
-              </Button>
-            )
-          })}
-        </div>
-        <span className="swiss-label text-muted-foreground">
-          {view === 'human' ? 'directory' : 'read every event'}
-        </span>
+      <div
+        aria-label="Artifact view"
+        className="inline-flex items-center gap-5 text-sm"
+        role="tablist"
+      >
+        {views.map((option) => {
+          const active = view === option.id
+          return (
+            <button
+              aria-selected={active}
+              className={cn(
+                'ease border-b-2 pb-1 font-medium transition-colors duration-150',
+                active
+                  ? 'border-foreground text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              )}
+              key={option.id}
+              onClick={() => setView(option.id)}
+              role="tab"
+              type="button"
+            >
+              {option.label}
+            </button>
+          )
+        })}
       </div>
 
-      <div className="mt-3">
+      <div className="mt-4">
         {view === 'human' ? (
           <AgentFileTree />
         ) : (
-          <CodeWindow code={AGENT_VIEW_CODE} filename="AGENTS.md" />
+          <div className="border border-border bg-card">
+            <div className="flex items-center gap-2 border-border border-b bg-muted px-4 py-2.5">
+              <FileTextIcon className="size-3.5 text-brand" />
+              <span className="font-mono text-foreground text-xs">
+                AGENTS.md
+              </span>
+            </div>
+            <div className="px-4 py-4">
+              <CodeLines code={AGENT_VIEW_CODE} />
+            </div>
+          </div>
         )}
       </div>
     </div>

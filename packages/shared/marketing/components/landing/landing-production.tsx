@@ -128,11 +128,11 @@ export function LandingProduction({
                   const Icon = card.icon
                   return (
                     <li
-                      className="flex min-h-44 flex-col bg-background p-5"
+                      className="ease group flex min-h-44 flex-col bg-background p-5 transition-colors duration-200 hover:bg-muted/50"
                       key={card.id}
                     >
                       <div className="flex items-center gap-3">
-                        <span className="grid size-9 place-items-center border border-border bg-background text-foreground">
+                        <span className="ease grid size-9 place-items-center border border-border bg-background text-foreground transition-colors duration-200 group-hover:border-brand group-hover:bg-brand group-hover:text-brand-foreground">
                           <Icon className="size-4" />
                         </span>
                         <h4 className="font-semibold text-sm tracking-tight">

@@ -88,20 +88,21 @@ export function LandingPrimitives({
 
           <motion.ul
             className="mt-10 border-border border-t"
-            variants={revealVariants}
+            variants={staggerVariants}
           >
             {platformPrimitives.map((primitive, index) => {
               const Icon = primitiveIcons[primitive.id] ?? LayersIcon
               return (
-                <li
-                  className="grid gap-3 border-border border-b py-6 md:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] md:items-baseline md:gap-10"
+                <motion.li
+                  className="ease group grid gap-3 border-border border-b px-3 py-6 transition-colors duration-200 hover:bg-muted/40 md:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] md:items-baseline md:gap-10"
                   key={primitive.id}
+                  variants={revealVariants}
                 >
                   <div className="flex items-center gap-4">
                     <span className="font-mono text-muted-foreground text-xs tabular-nums">
                       {String(index + 1).padStart(2, '0')}
                     </span>
-                    <span className="grid size-9 place-items-center border border-border bg-background text-foreground">
+                    <span className="ease grid size-9 place-items-center border border-border bg-background text-foreground transition-colors duration-200 group-hover:border-brand group-hover:bg-brand group-hover:text-brand-foreground">
                       <Icon className="size-4" />
                     </span>
                     <div className="min-w-0">
@@ -118,7 +119,7 @@ export function LandingPrimitives({
                   <p className="text-muted-foreground leading-relaxed">
                     {primitive.role}
                   </p>
-                </li>
+                </motion.li>
               )
             })}
           </motion.ul>
