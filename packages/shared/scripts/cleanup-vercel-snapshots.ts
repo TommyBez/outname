@@ -2,6 +2,7 @@ import path from 'node:path'
 import process from 'node:process'
 import readline from 'node:readline/promises'
 import {
+  executeVercelSandboxSnapshotCleanupPlan,
   formatGb,
   formatMonthlyUsd,
   SANDBOX_STORAGE_USD_PER_GB_MONTH,
@@ -316,10 +317,8 @@ async function main(): Promise<void> {
     return
   }
 
-  const result = await sweepUnusedVercelSandboxSnapshots({
-    execute: true,
-    olderThanDays: options.olderThanDays,
-    sandboxName: options.sandboxName,
+  const result = await executeVercelSandboxSnapshotCleanupPlan({
+    plan: dryRun.plan,
   })
   const summary = summarizeVercelSandboxSnapshotCleanup(result)
 

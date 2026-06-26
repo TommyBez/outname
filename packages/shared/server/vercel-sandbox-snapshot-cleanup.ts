@@ -119,6 +119,11 @@ export interface VercelSandboxSnapshotCleanupResult {
   updatedRetentionCount: number
 }
 
+export interface VercelSandboxSnapshotCleanupPlanExecutionOptions {
+  client?: SandboxSnapshotCleanupClient
+  plan: VercelSandboxSnapshotCleanupPlan
+}
+
 export interface VercelSandboxSnapshotCleanupSummary {
   candidateBytes: number
   candidateCount: number
@@ -225,22 +230,32 @@ export async function sweepUnusedVercelSandboxSnapshots(
     }
   }
 
-  const execution = await applyCleanup({
-    candidates: plan.candidates,
+  return await executeVercelSandboxSnapshotCleanupPlan({
     client: options.client ?? createVercelSandboxSnapshotCleanupClient(),
-    plans: plan.plans,
+    plan,
   })
+}
 
+export async function executeVercelSandboxSnapshotCleanupPlan(
+  options: VercelSandboxSnapshotCleanupPlanExecutionOptions
+): Promise<VercelSandboxSnapshotCleanupResult> {
+  const execution = await applyCleanup({
+    candidates: options.plan.candidates,
+    client: options.client ?? createVercelSandboxSnapshotCleanupClient(),
+    plans: options.plan.plans,
+  })
   return {
     ...execution,
     executed: true,
-    plan,
+    plan: options.plan,
   }
 }
 
 export async function buildVercelSandboxSnapshotCleanupPlan(
   options: Omit<VercelSandboxSnapshotCleanupOptions, 'execute'>
 ): Promise<VercelSandboxSnapshotCleanupPlan> {
+  validateCleanupTimingOptions(options)
+
   const client = options.client ?? createVercelSandboxSnapshotCleanupClient()
   const project = resolveSandboxProject()
   const cutoffTimestamp =
@@ -282,6 +297,21 @@ export async function buildVercelSandboxSnapshotCleanupPlan(
     project,
     retentionUpdateCount: plans.filter((plan) => plan.needsRetentionUpdate)
       .length,
+  }
+}
+
+function validateCleanupTimingOptions(
+  options: Pick<VercelSandboxSnapshotCleanupOptions, 'now' | 'olderThanDays'>
+): void {
+  if (
+    options.olderThanDays !== null &&
+    !(Number.isInteger(options.olderThanDays) && options.olderThanDays > 0)
+  ) {
+    throw new Error('olderThanDays must be a positive integer, or null.')
+  }
+
+  if (options.now !== undefined && !Number.isFinite(options.now)) {
+    throw new Error('now must be a finite timestamp.')
   }
 }
 

@@ -28,14 +28,18 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  const olderThanDays = readCronOlderThanDays()
+  const olderThanDays = readCronOlderThanDaysResponse()
+  if (!olderThanDays.ok) {
+    return NextResponse.json({ error: olderThanDays.error }, { status: 500 })
+  }
+
   const result = await withRedisLock(
     'vercel-sandbox-snapshots:cleanup',
     LOCK_TTL_SECONDS,
     async () =>
       await sweepUnusedVercelSandboxSnapshots({
         execute: true,
-        olderThanDays,
+        olderThanDays: olderThanDays.value,
       })
   )
 
@@ -51,10 +55,23 @@ export async function GET(req: NextRequest) {
     {
       ok: summary.failureCount === 0,
       ...summary,
-      olderThanDays,
+      olderThanDays: olderThanDays.value,
     },
     { status: summary.failureCount === 0 ? 200 : 500 }
   )
+}
+
+function readCronOlderThanDaysResponse():
+  | { ok: true; value: number | null }
+  | { error: string; ok: false } {
+  try {
+    return { ok: true, value: readCronOlderThanDays() }
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : 'invalid configuration',
+      ok: false,
+    }
+  }
 }
 
 function readCronOlderThanDays(): number | null {
