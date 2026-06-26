@@ -21,7 +21,8 @@ export function LandingNav() {
         </Link>
         <div className="flex items-center gap-1">
           <div className="hidden items-center gap-1 lg:flex">
-            <NavLink href="/#concept">How it works</NavLink>
+            <NavLink href="/#anatomy">How it works</NavLink>
+            <NavLink href="/#bindings">Bindings</NavLink>
             <NavLink href="/#primitives">Built on</NavLink>
             <NavLink href="/#production">Production</NavLink>
           </div>

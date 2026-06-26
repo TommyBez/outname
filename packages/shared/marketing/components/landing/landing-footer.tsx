@@ -17,8 +17,7 @@ const footerColumns: readonly FooterColumn[] = [
   {
     id: 'product',
     links: [
-      { href: '/#concept', label: 'How it works' },
-      { href: '/#anatomy', label: 'Anatomy' },
+      { href: '/#anatomy', label: 'How it works' },
       { href: '/#bindings', label: 'Bindings' },
       { href: '/#primitives', label: 'Built on' },
       { href: '/#production', label: 'Production' },

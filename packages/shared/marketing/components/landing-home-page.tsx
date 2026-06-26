@@ -3,7 +3,6 @@
 import { LandingAgentAnatomy } from '@outname/shared/marketing/components/landing/agent-anatomy/landing-agent-anatomy'
 import { LandingBindings } from '@outname/shared/marketing/components/landing/landing-bindings'
 import { LandingChatShowcase } from '@outname/shared/marketing/components/landing/landing-chat-showcase'
-import { LandingConcept } from '@outname/shared/marketing/components/landing/landing-concept'
 import { LandingFinalCta } from '@outname/shared/marketing/components/landing/landing-final-cta'
 import { LandingFooter } from '@outname/shared/marketing/components/landing/landing-footer'
 import { LandingHeartbeatCloser } from '@outname/shared/marketing/components/landing/landing-heartbeat-closer'
@@ -21,19 +20,16 @@ export function LandingHomePage() {
     <main className="relative isolate overflow-x-clip bg-background text-foreground">
       <LandingNav />
 
-      {/* 1 — Positioning + artifact */}
+      {/* 1 — Positioning, command, and the directory artifact */}
       <LandingHeroDemo shouldReduceMotion={reduceMotionFlag} />
 
-      {/* 2 — The mental model: an agent is a directory */}
-      <LandingConcept shouldReduceMotion={reduceMotionFlag} />
-
-      {/* 3 — The capability tour through the directory */}
+      {/* 2 — An agent is a directory: overview + alternating file walkthrough */}
       <LandingAgentAnatomy shouldReduceMotion={reduceMotionFlag} />
 
-      {/* 4 — What you bind around the folder */}
+      {/* 3 — What you bind around the folder */}
       <LandingBindings shouldReduceMotion={reduceMotionFlag} />
 
-      {/* 5 — What it's built on */}
+      {/* 4 — What it's built on */}
       <LandingPrimitives shouldReduceMotion={reduceMotionFlag} />
 
       {/* 5 — Production readiness, then proven live */}
