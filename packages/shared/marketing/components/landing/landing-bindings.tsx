@@ -1,5 +1,6 @@
 'use client'
 
+import { BrandGlyph } from '@outname/shared/marketing/components/landing/brand-glyph'
 import {
   revealVariants,
   staggerVariants,
@@ -18,6 +19,8 @@ import {
 import { domAnimation, LazyMotion, m as motion } from 'motion/react'
 
 interface Binding {
+  // When true, each chip is a real brand and gets its logo glyph.
+  brandChips?: boolean
   chips: readonly string[]
   icon: LucideIcon
   id: string
@@ -30,6 +33,7 @@ interface Binding {
 // budget periods from the budget schema.
 const bindings: readonly Binding[] = [
   {
+    brandChips: true,
     chips: ['Vercel AI Gateway', 'LLM Gateway', 'OpenRouter'],
     icon: CpuIcon,
     id: 'model',
@@ -65,6 +69,7 @@ const bindings: readonly Binding[] = [
     title: 'Channels',
   },
   {
+    brandChips: true,
     chips: ['GitHub', 'Cal.com', 'Resend', 'Firecrawl', '+8'],
     icon: HammerIcon,
     id: 'tools',
@@ -148,14 +153,24 @@ export function LandingBindings({
                     {binding.text}
                   </p>
                   <div className="mt-auto flex flex-wrap gap-1.5 pt-5">
-                    {binding.chips.map((chip) => (
-                      <span
-                        className="border border-border bg-muted px-2 py-1 font-mono text-[10px] text-muted-foreground tracking-normal"
-                        key={chip}
-                      >
-                        {chip}
-                      </span>
-                    ))}
+                    {binding.chips.map((chip) => {
+                      const showGlyph =
+                        binding.brandChips && !chip.startsWith('+')
+                      return (
+                        <span
+                          className="inline-flex items-center gap-1 border border-border bg-muted px-2 py-1 font-mono text-[10px] text-muted-foreground tracking-normal"
+                          key={chip}
+                        >
+                          {showGlyph ? (
+                            <BrandGlyph
+                              className="size-2.5 text-foreground"
+                              name={chip}
+                            />
+                          ) : null}
+                          {chip}
+                        </span>
+                      )
+                    })}
                   </div>
                 </motion.li>
               )

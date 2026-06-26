@@ -1,5 +1,6 @@
 'use client'
 
+import { BrandGlyph } from '@outname/shared/marketing/components/landing/brand-glyph'
 import {
   revealVariants,
   staggerVariants,
@@ -14,7 +15,10 @@ import { domAnimation, LazyMotion, m as motion } from 'motion/react'
 function ProductRow({ product }: { product: PrimitiveProduct }) {
   return (
     <div className="ease flex items-start gap-3 border border-transparent p-3 transition-colors duration-200 hover:border-border hover:bg-muted">
-      <span aria-hidden className="mt-1.5 size-1.5 shrink-0 bg-brand" />
+      <BrandGlyph
+        className="mt-0.5 size-4 text-foreground"
+        name={product.name}
+      />
       <div className="min-w-0">
         <p className="font-medium text-sm tracking-tight">{product.name}</p>
         <p className="mt-0.5 text-muted-foreground text-sm leading-relaxed">
@@ -99,7 +103,11 @@ export function LandingPrimitives({
                   <ul className="mt-3 flex flex-wrap gap-2">
                     {channelsCard.channels.map((channel) => (
                       <li key={channel}>
-                        <span className="border border-border bg-foreground px-2.5 py-1 font-mono text-[11px] text-background tracking-normal">
+                        <span className="inline-flex items-center gap-1.5 border border-border bg-foreground px-2.5 py-1 font-mono text-[11px] text-background tracking-normal">
+                          <BrandGlyph
+                            className="size-3 text-background"
+                            name={channel}
+                          />
                           {channel}
                         </span>
                       </li>
@@ -113,7 +121,11 @@ export function LandingPrimitives({
                   <ul className="mt-3 flex flex-wrap gap-2">
                     {channelsCard.connections.map((connection) => (
                       <li key={connection}>
-                        <span className="border border-border bg-background px-2.5 py-1 font-mono text-[11px] text-muted-foreground tracking-normal">
+                        <span className="inline-flex items-center gap-1.5 border border-border bg-background px-2.5 py-1 font-mono text-[11px] text-muted-foreground tracking-normal">
+                          <BrandGlyph
+                            className="size-3 text-foreground"
+                            name={connection}
+                          />
                           {connection}
                         </span>
                       </li>
