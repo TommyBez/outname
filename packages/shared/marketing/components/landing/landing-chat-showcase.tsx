@@ -38,15 +38,15 @@ interface ChatShowcaseScenario {
 }
 
 const agentMeta = {
-  attached: '3 tools · 1 sub-agent · 2 channels',
-  defaultModel: 'claude-sonnet-4-6',
+  attached: 'file tools · 1 sub-agent · 2 channels',
+  defaultModel: 'openai/gpt-5.4-mini',
   name: 'INBOX SENTINEL',
 }
 
 const showcaseScenarios: readonly ChatShowcaseScenario[] = [
   {
     description:
-      'Reads Slack + email overnight, drafts replies, surfaces calendar conflicts to confirm.',
+      'Reads its Slack channel and CALENDAR.md overnight, drafts a reschedule into TASKS.md, waits for your confirm.',
     id: 'triage',
     model: agentMeta.defaultModel,
     prompt: 'Check the morning queue and prep what needs my attention.',
@@ -73,46 +73,50 @@ const showcaseScenarios: readonly ChatShowcaseScenario[] = [
         parts: [
           {
             state: 'done',
-            text: 'I should scan Slack first since the team posts overnight, then cross-check the calendar for any conflict before 10:00. I will hold off on email until both signals are in.',
+            text: 'The blocker came in over the Slack channel overnight. I will grep my open tasks, read CALENDAR.md for today, then draft the reschedule into TASKS.md and wait for a confirm.',
             type: 'reasoning',
           },
           {
             input: {
-              channel: '#ops',
-              includeThreads: true,
-              since: 'today 06:00',
+              pathPrefix: 'TASKS.md',
+              pattern: 'open|blocked',
             },
             output: {
-              channel: '#ops',
-              flagged: 2,
-              threads: 14,
+              matches: 3,
             },
             state: 'output-available',
-            toolCallId: 'triage-slack',
-            toolName: 'slack.search_threads',
+            toolCallId: 'triage-grep',
+            toolName: 'grepFiles',
             type: 'dynamic-tool',
           },
           {
             input: {
-              from: '2026-05-13T09:00',
-              to: '2026-05-13T18:00',
+              path: 'CALENDAR.md',
             },
             output: {
-              conflicts: [
-                {
-                  at: 'tue 15:00',
-                  suggested: 'wed 10:00',
-                  with: 'Design review',
-                },
-              ],
+              conflict: 'Tue 15:00 · Design review',
+              today: 2,
             },
             state: 'output-available',
             toolCallId: 'triage-cal',
-            toolName: 'cal.find_conflicts',
+            toolName: 'readFile',
             type: 'dynamic-tool',
           },
           {
-            text: 'Three items need you. Two flagged Slack threads in #ops (engineering blocker + customer reply). One calendar conflict at 15:00 with Design review — I drafted a reschedule to wed 10:00, awaiting your confirm.',
+            input: {
+              content: '- [ ] Confirm Tue 15:00 → Wed 10:00',
+              path: 'TASKS.md',
+            },
+            output: {
+              status: 'updated',
+            },
+            state: 'output-available',
+            toolCallId: 'triage-write',
+            toolName: 'writeFile',
+            type: 'dynamic-tool',
+          },
+          {
+            text: 'Three things need you: a blocker in the #ops Slack channel, a customer reply to approve, and a 15:00 conflict with Design review. I drafted a reschedule to Wed 10:00 in TASKS.md and left it awaiting your confirm.',
             type: 'text',
           },
         ],
@@ -169,7 +173,7 @@ const showcaseScenarios: readonly ChatShowcaseScenario[] = [
                   id: 'sub-research-1',
                   parts: [
                     {
-                      text: 'Loading both feedback windows from the memory mirror.',
+                      text: 'Grepping both feedback windows out of the logs.',
                       type: 'text',
                     },
                   ],
@@ -179,11 +183,11 @@ const showcaseScenarios: readonly ChatShowcaseScenario[] = [
                   id: 'sub-research-2',
                   parts: [
                     {
-                      input: { window: '2026-05-06..2026-05-12' },
+                      input: { pathPrefix: 'logs/', pattern: 'feedback' },
                       output: { entries: 12, sentiment: 'mixed' },
                       state: 'output-available',
                       toolCallId: 'sub-research-mem',
-                      toolName: 'memory.read',
+                      toolName: 'grepFiles',
                       type: 'dynamic-tool',
                     },
                     {
@@ -213,7 +217,7 @@ const showcaseScenarios: readonly ChatShowcaseScenario[] = [
   },
   {
     description:
-      'Heartbeat-fired weekly run. Appends to memory, drafts the digest, sends it. No human prompt.',
+      'Heartbeat-fired weekly run. Appends to DREAMS.md, writes the digest, sends it via Resend. No human prompt.',
     id: 'digest',
     model: agentMeta.defaultModel,
     prompt: '(heartbeat) Prepare and send the weekly digest.',
@@ -240,54 +244,39 @@ const showcaseScenarios: readonly ChatShowcaseScenario[] = [
         parts: [
           {
             state: 'done',
-            text: 'No human in the loop right now — heartbeat fired this run. I will append three lines to DREAMS.md, draft the digest email, and send it to myself.',
+            text: 'No human in the loop — the heartbeat fired this run. I will append three lines to DREAMS.md, then write and log the weekly digest before it goes out over Resend.',
             type: 'reasoning',
           },
           {
             input: {
-              append:
+              content:
                 '+ Follow up on channel bindings\n+ Validate webhook intake design\n+ Reduce onboarding to 3 steps',
-              file: 'DREAMS.md',
+              path: 'DREAMS.md',
             },
             output: {
-              appended: 3,
-              file: 'DREAMS.md',
               status: 'committed',
             },
             state: 'output-available',
             toolCallId: 'digest-mem',
-            toolName: 'memory.append',
+            toolName: 'writeFile',
             type: 'dynamic-tool',
           },
           {
             input: {
-              subject: 'Week of May 4 — composability is the recurring ask',
-              to: 'self',
+              content:
+                'Sent weekly digest via Resend · composability is the recurring ask.',
+              path: 'logs/2026-05-12.md',
             },
             output: {
-              draftId: 'd_8f12',
-              status: 'drafted',
+              status: 'appended',
             },
             state: 'output-available',
-            toolCallId: 'digest-gmail',
-            toolName: 'gmail.draft',
+            toolCallId: 'digest-log',
+            toolName: 'writeFile',
             type: 'dynamic-tool',
           },
           {
-            input: {
-              draftId: 'd_8f12',
-            },
-            output: {
-              messageId: 'm_a01c',
-              status: 'sent',
-            },
-            state: 'output-available',
-            toolCallId: 'digest-send',
-            toolName: 'gmail.send',
-            type: 'dynamic-tool',
-          },
-          {
-            text: 'Digest sent (m_a01c). Three lines appended to DREAMS.md. Ready for you in the morning.',
+            text: 'Weekly digest written and sent over the Resend connector. Three lines appended to DREAMS.md and logged. Ready for you in the morning.',
             type: 'text',
           },
         ],

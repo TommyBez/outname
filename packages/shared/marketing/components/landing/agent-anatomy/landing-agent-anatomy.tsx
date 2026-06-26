@@ -37,15 +37,15 @@ export function LandingAgentAnatomy({
           >
             <div>
               <p className="swiss-label text-muted-foreground">
-                The capability tour
+                Inside the sandbox
               </p>
               <h2 className="mt-4 text-balance font-semibold text-3xl leading-tight tracking-tight md:text-4xl">
-                Open the folder, one capability at a time.
+                Open the folder, file by file.
               </h2>
             </div>
             <p className="max-w-2xl text-muted-foreground leading-relaxed">
-              Eight files and bindings, eight things the agent can do. Scroll to
-              walk the tree — each one is a snippet you could write yourself.
+              Nine canonical markdown files, each with a job. Scroll to walk the
+              tree — some you author, the rest the agent keeps current itself.
             </p>
           </motion.div>
         </motion.div>

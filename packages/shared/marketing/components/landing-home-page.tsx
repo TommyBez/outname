@@ -1,6 +1,7 @@
 'use client'
 
 import { LandingAgentAnatomy } from '@outname/shared/marketing/components/landing/agent-anatomy/landing-agent-anatomy'
+import { LandingBindings } from '@outname/shared/marketing/components/landing/landing-bindings'
 import { LandingChatShowcase } from '@outname/shared/marketing/components/landing/landing-chat-showcase'
 import { LandingConcept } from '@outname/shared/marketing/components/landing/landing-concept'
 import { LandingFinalCta } from '@outname/shared/marketing/components/landing/landing-final-cta'
@@ -29,7 +30,10 @@ export function LandingHomePage() {
       {/* 3 — The capability tour through the directory */}
       <LandingAgentAnatomy shouldReduceMotion={reduceMotionFlag} />
 
-      {/* 4 — What it's built on */}
+      {/* 4 — What you bind around the folder */}
+      <LandingBindings shouldReduceMotion={reduceMotionFlag} />
+
+      {/* 5 — What it's built on */}
       <LandingPrimitives shouldReduceMotion={reduceMotionFlag} />
 
       {/* 5 — Production readiness, then proven live */}

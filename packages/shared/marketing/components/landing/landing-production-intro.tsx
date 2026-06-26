@@ -6,10 +6,10 @@ import {
 } from '@outname/shared/marketing/components/landing/landing-motion'
 import {
   ActivityIcon,
-  BrainIcon,
+  GaugeIcon,
   GitBranchIcon,
   type LucideIcon,
-  ShieldCheckIcon,
+  MoonIcon,
   WalletIcon,
   ZapIcon,
 } from 'lucide-react'
@@ -25,38 +25,38 @@ interface ReadinessCard {
 const readinessCards: readonly ReadinessCard[] = [
   {
     icon: ActivityIcon,
-    id: 'timeline',
-    text: 'Every run, tool call, and sub-agent is a traced event in the Timeline. Read exactly what it did.',
+    id: 'events',
+    text: 'Every heartbeat, dreaming, and invocation run is a traced agent event you can open and read end to end.',
     title: 'Observable by default',
   },
   {
     icon: ZapIcon,
     id: 'durable',
-    text: 'Autonomous turns run as event-driven Vercel Workflows against a per-agent sandbox — durable, not fire-and-forget.',
+    text: 'Autonomous turns run as event-driven Vercel Workflows against a per-agent Sandbox — durable, not fire-and-forget.',
     title: 'Durable execution',
   },
   {
-    icon: ShieldCheckIcon,
-    id: 'hitl',
-    text: 'The agent drafts and waits for your confirm on anything that reaches outside its sandbox.',
-    title: 'Human in the loop',
+    icon: GaugeIcon,
+    id: 'steplimits',
+    text: 'Cap how hard a single run works — low, medium, high, or grind — so autonomous turns stay bounded.',
+    title: 'Step limits',
   },
   {
     icon: WalletIcon,
     id: 'budget',
-    text: 'Per-agent spend ceilings with estimated and actual cost. Autonomous work can never run away.',
+    text: 'Spend ceilings in USD, per agent or shared, with estimated and actual cost tracked on every run.',
     title: 'Budgets that bind',
   },
   {
     icon: GitBranchIcon,
     id: 'subagents',
-    text: 'Delegated work returns a full child trace inline. Nesting stays legible, never opaque.',
+    text: 'A sub-agent is just another agent bound as a tool; its delegated run returns a full trace inline.',
     title: 'Sub-agents, traced',
   },
   {
-    icon: BrainIcon,
-    id: 'memory',
-    text: 'Every run appends to readable markdown. Context compounds, so the next run is sharper.',
+    icon: MoonIcon,
+    id: 'dreaming',
+    text: 'Dedicated dreaming passes review recent logs and improve long-running memory between work runs.',
     title: 'Memory that compounds',
   },
 ]

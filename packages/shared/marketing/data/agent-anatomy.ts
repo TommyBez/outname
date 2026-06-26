@@ -1,17 +1,21 @@
-// The agent-anatomy section reframes an outname agent as a concrete, readable
-// directory — the way vercel.com/eve grounds its product in "an agent is a
-// directory". Each walkthrough step highlights one node in the tree and shows
-// the snippet plus the platform primitive that backs it.
+// The agent-anatomy section walks a real outname agent's sandbox. Every file
+// below is canonical in the runtime (see the AGENTS.md template and
+// sandbox-file-helpers/paths.ts). Snippets reflect the documented conventions
+// for each file — nothing here is invented product surface.
 
 export type AnatomyStepId =
+  | 'instructions'
+  | 'identity'
+  | 'soul'
+  | 'user'
   | 'memory'
-  | 'model'
-  | 'tools'
-  | 'channels'
-  | 'subagents'
-  | 'heartbeat'
-  | 'skills'
-  | 'budget'
+  | 'tasks'
+  | 'calendar'
+  | 'goals'
+  | 'dreams'
+
+/** Who owns each file: the operator authors some, the agent maintains others. */
+export type FileOwner = 'user' | 'agent' | 'shared'
 
 export interface AgentTreeNode {
   /** Indentation level inside the tree. Root children are depth 1. */
@@ -20,176 +24,231 @@ export interface AgentTreeNode {
   id: string
   kind: 'dir' | 'file'
   label: string
+  owner?: FileOwner
   /** The step that highlights this node, when any. */
   stepId?: AnatomyStepId
 }
 
 export interface AnatomyStep {
   caption: string
-  /** Short code/markdown snippet rendered as a mono block. */
+  /** Short markdown excerpt rendered as a mono block. */
   code: string
   id: AnatomyStepId
   /** Two-digit ordinal, e.g. "01". */
   index: string
   /** Tree node this step focuses. */
   node: string
-  /** The platform primitive that powers the capability. */
-  primitive: string
+  /** A real convention from the runtime, shown as a tag. */
+  note: string
+  owner: FileOwner
   title: string
 }
 
 export const agentSlug = 'inbox-sentinel'
 
+export const ownerLabel: Record<FileOwner, string> = {
+  agent: 'Agent writes it',
+  shared: 'Shared',
+  user: 'You author it',
+}
+
 export const agentTree: readonly AgentTreeNode[] = [
+  {
+    depth: 1,
+    id: 'instructions',
+    kind: 'file',
+    label: 'AGENTS.md',
+    owner: 'user',
+    stepId: 'instructions',
+  },
+  {
+    depth: 1,
+    id: 'identity',
+    kind: 'file',
+    label: 'IDENTITY.md',
+    owner: 'user',
+    stepId: 'identity',
+  },
+  {
+    depth: 1,
+    id: 'soul',
+    kind: 'file',
+    label: 'SOUL.md',
+    owner: 'user',
+    stepId: 'soul',
+  },
+  {
+    depth: 1,
+    id: 'user',
+    kind: 'file',
+    label: 'USER.md',
+    owner: 'shared',
+    stepId: 'user',
+  },
   {
     depth: 1,
     id: 'memory',
     kind: 'file',
     label: 'MEMORY.md',
+    owner: 'agent',
     stepId: 'memory',
   },
-  { depth: 1, id: 'tasks', kind: 'file', label: 'TASKS.md' },
-  { depth: 1, id: 'dreams', kind: 'file', label: 'DREAMS.md' },
   {
     depth: 1,
-    id: 'config',
+    id: 'tasks',
     kind: 'file',
-    label: 'agent.config.ts',
-    stepId: 'model',
-  },
-  { depth: 1, id: 'tools', kind: 'dir', label: 'tools/', stepId: 'tools' },
-  {
-    depth: 1,
-    id: 'channels',
-    kind: 'dir',
-    label: 'channels/',
-    stepId: 'channels',
+    label: 'TASKS.md',
+    owner: 'agent',
+    stepId: 'tasks',
   },
   {
     depth: 1,
-    id: 'subagents',
-    kind: 'dir',
-    label: 'subagents/',
-    stepId: 'subagents',
-  },
-  { depth: 1, id: 'skills', kind: 'dir', label: 'skills/', stepId: 'skills' },
-  {
-    depth: 1,
-    id: 'schedule',
+    id: 'calendar',
     kind: 'file',
-    label: 'schedule.cron',
-    stepId: 'heartbeat',
+    label: 'CALENDAR.md',
+    owner: 'agent',
+    stepId: 'calendar',
   },
   {
     depth: 1,
-    id: 'budget',
+    id: 'goals',
     kind: 'file',
-    label: 'budget.json',
-    stepId: 'budget',
+    label: 'GOALS.md',
+    owner: 'agent',
+    stepId: 'goals',
   },
+  {
+    depth: 1,
+    id: 'dreams',
+    kind: 'file',
+    label: 'DREAMS.md',
+    owner: 'agent',
+    stepId: 'dreams',
+  },
+  { depth: 1, id: 'logs', kind: 'dir', label: 'logs/', owner: 'agent' },
 ]
 
 export const anatomySteps: readonly AnatomyStep[] = [
   {
     caption:
-      'One human-readable markdown file per agent. It appends its own notes as it works. You read or edit them anytime.',
-    code: `## 2026-05-13
-+ skip auto-summary on Sundays
-+ user prefers "Tomas" in replies`,
-    id: 'memory',
+      'Its operational manual. You write the custom instructions; the agent reads them at the start of every event.',
+    code: `# AGENTS.md
+## User custom instructions
+- Triage Slack before 09:00.
+- Never send external email
+  without a confirm.`,
+    id: 'instructions',
     index: '01',
-    node: 'memory',
-    primitive: 'Vercel Sandbox',
-    title: 'Memory it writes itself',
+    node: 'instructions',
+    note: 'Read every event',
+    owner: 'user',
+    title: 'How it should behave',
   },
   {
     caption:
-      'Pick the inference provider and model per agent. Bring your own keys — the runtime stays model-agnostic.',
-    code: `model: {
-  provider: "ai-gateway",
-  id: "claude-sonnet-4-6",
-}`,
-    id: 'model',
+      'A compact identity card: name, role, vibe. Short by design, it is injected into every prompt the agent runs.',
+    code: `# Inbox Sentinel
+Role: personal chief of staff
+Vibe: terse, proactive`,
+    id: 'identity',
     index: '02',
-    node: 'config',
-    primitive: 'AI Gateway',
-    title: 'Any model you trust',
+    node: 'identity',
+    note: 'Injected every turn',
+    owner: 'user',
+    title: 'Who it is, at a glance',
   },
   {
     caption:
-      'Typed contracts, rate-limited, scoped per agent. The agent only ever calls what you bind to it.',
-    code: `tools: [
-  slack.search_threads,
-  gmail.draft,
-  cal.create_event,
-]`,
-    id: 'tools',
+      'Its persona, voice, and self-model. Also injected every turn — if behavior drifts from it, the agent flags the contradiction.',
+    code: `# SOUL.md
+I default to action over
+explanation. I surface conflicts
+instead of working around them.`,
+    id: 'soul',
     index: '03',
-    node: 'tools',
-    primitive: 'Tool providers',
-    title: 'Tools, bound not guessed',
+    node: 'soul',
+    note: 'Injected every turn',
+    owner: 'user',
+    title: 'Its voice and self-model',
   },
   {
     caption:
-      'Where the agent listens and speaks. In-app chat and Slack today — same agent, every surface.',
-    code: `channels: [
-  "chat:in-app",
-  "slack:@you",
-]`,
-    id: 'channels',
+      'The profile of the human it serves. You can seed it; the agent keeps it current as conversations reveal stable facts.',
+    code: `## Basic Info
+- Preferred name: Tomas
+- Timezone: Europe/Rome
+## Hard Boundaries
+- Ask before external email.`,
+    id: 'user',
     index: '04',
-    node: 'channels',
-    primitive: 'Vercel Chat SDK',
-    title: 'One agent, every surface',
+    node: 'user',
+    note: 'It maintains, you can edit',
+    owner: 'shared',
+    title: 'What it knows about you',
   },
   {
     caption:
-      'Hand work to a specialist agent. Each call is its own traced run; the parent waits or fires-and-forgets.',
-    code: `delegate("research-synthesizer", {
-  task: "compare this week vs last",
-})`,
-    id: 'subagents',
+      'Broader durable facts, commitments, and evidence. Append-only by convention, with a citation back to where each fact came from.',
+    code: `## 2026-05-13
+- Skip auto-summary on Sundays.
+- Prefers "Tomas" in replies.
+  (msg_8f12)`,
+    id: 'memory',
     index: '05',
-    node: 'subagents',
-    primitive: 'Vercel Workflow',
-    title: 'Sub-agents on call',
+    node: 'memory',
+    note: 'Append-only',
+    owner: 'agent',
+    title: 'Durable facts it commits',
   },
   {
     caption:
-      'Wakes on a schedule and works unprompted. Heartbeat and dreaming runs need no human in the loop.',
-    code: `schedule: "0 6 * * *"   # daily 06:00
-on: ["heartbeat", "dream"]`,
-    id: 'heartbeat',
+      'Active tactical items with status and dependencies, kept current without waiting for a reminder. Plain GitHub-flavored checkboxes.',
+    code: `- [x] Draft weekly digest
+- [ ] Confirm Tue 15:00 move
+- [ ] Chase invoice #204`,
+    id: 'tasks',
     index: '06',
-    node: 'schedule',
-    primitive: 'Vercel Workflow',
-    title: 'A heartbeat of its own',
+    node: 'tasks',
+    note: 'Checkbox conventions',
+    owner: 'agent',
+    title: 'The work it is tracking',
   },
   {
     caption:
-      'Installable capability packages that run in a dedicated, persistent Skill Sandbox — isolated from memory.',
-    code: `skills/
-└─ weekly-digest/
-   ├─ SKILL.md
-   └─ run.ts`,
-    id: 'skills',
+      'Known time-bound events and deadlines, ISO-8601 dated. The agent adds, updates, and removes entries as plans change.',
+    code: `- 2026-05-14T10:00Z Design review
+- 2026-05-16 Invoice #204 due`,
+    id: 'calendar',
     index: '07',
-    node: 'skills',
-    primitive: 'Skill Sandbox',
-    title: 'Skills it can install',
+    node: 'calendar',
+    note: 'ISO-8601 dated',
+    owner: 'agent',
+    title: 'Its time-bound context',
   },
   {
     caption:
-      'Per-agent spend guardrails with estimated and actual cost. Autonomous work can never run away.',
-    code: `budget: {
-  monthly_usd: 20,
-  per_run_usd: 0.50,
-}`,
-    id: 'budget',
+      'Long-horizon objectives, updated rarely. The agent consults them before deciding what is worth surfacing in a heartbeat.',
+    code: `- Keep inbox under 10 threads.
+- Protect deep-work mornings.`,
+    id: 'goals',
     index: '08',
-    node: 'budget',
-    primitive: 'Budgets',
-    title: 'A budget it respects',
+    node: 'goals',
+    note: 'Steers every heartbeat',
+    owner: 'agent',
+    title: 'The long horizon',
+  },
+  {
+    caption:
+      'Notes from dreaming passes: pattern anticipation and self-evaluation, written only when there is real signal, with log citations.',
+    code: `## 2026-05-12
+- Replies spike on Mondays.
+  (logs/2026-05-11.md:14)`,
+    id: 'dreams',
+    index: '09',
+    node: 'dreams',
+    note: 'Written while dreaming',
+    owner: 'agent',
+    title: 'What it learns in its sleep',
   },
 ]
 

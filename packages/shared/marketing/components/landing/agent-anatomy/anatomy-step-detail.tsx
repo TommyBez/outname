@@ -1,7 +1,13 @@
-import type { AnatomyStep } from '@outname/shared/marketing/data/agent-anatomy'
+import {
+  type AnatomyStep,
+  agentTree,
+  ownerLabel,
+} from '@outname/shared/marketing/data/agent-anatomy'
 import { Badge } from '@outname/ui/components/ui/badge'
 import { cn } from '@outname/ui/lib/utils'
 import { stepIcons } from './constants'
+
+const fileNameByNode = new Map(agentTree.map((node) => [node.id, node.label]))
 
 export function AnatomyCodeBlock({
   code,
@@ -30,6 +36,7 @@ export function AnatomyStepDetail({
   total: number
 }) {
   const Icon = stepIcons[step.id]
+  const fileName = fileNameByNode.get(step.node) ?? step.node
 
   return (
     <div className="flex h-full flex-col">
@@ -42,7 +49,10 @@ export function AnatomyStepDetail({
         </span>
       </div>
 
-      <h3 className="mt-6 font-semibold text-3xl leading-tight tracking-tight md:text-4xl">
+      <p className="mt-6 font-mono text-muted-foreground text-xs tracking-normal">
+        {fileName}
+      </p>
+      <h3 className="mt-2 font-semibold text-3xl leading-tight tracking-tight md:text-4xl">
         {step.title}
       </h3>
 
@@ -52,9 +62,17 @@ export function AnatomyStepDetail({
 
       <AnatomyCodeBlock className="mt-7" code={step.code} />
 
-      <div className="mt-6 flex items-center gap-2">
-        <span className="swiss-label text-muted-foreground">runs on</span>
-        <Badge variant="outline">{step.primitive}</Badge>
+      <div className="mt-6 flex flex-wrap items-center gap-2">
+        <Badge
+          className={cn(
+            step.owner === 'user' &&
+              'border-transparent bg-brand text-brand-foreground'
+          )}
+          variant={step.owner === 'user' ? 'default' : 'outline'}
+        >
+          {ownerLabel[step.owner]}
+        </Badge>
+        <span className="swiss-label text-muted-foreground">{step.note}</span>
       </div>
     </div>
   )

@@ -7,9 +7,9 @@ import {
 import { cn } from '@outname/ui/lib/utils'
 import {
   BrainIcon,
-  HeartPulseIcon,
+  ContactIcon,
   type LucideIcon,
-  PlugIcon,
+  TargetIcon,
 } from 'lucide-react'
 import { domAnimation, LazyMotion, m as motion } from 'motion/react'
 
@@ -23,25 +23,25 @@ interface ConceptFacet {
 
 const facets: readonly ConceptFacet[] = [
   {
-    files: ['MEMORY.md', 'DREAMS.md', 'GOALS.md'],
+    files: ['AGENTS.md', 'IDENTITY.md', 'SOUL.md'],
+    icon: ContactIcon,
+    id: 'authored',
+    text: 'You write its instructions, identity card, and persona. They are injected into every prompt it runs.',
+    title: 'You author who it is',
+  },
+  {
+    files: ['MEMORY.md', 'TASKS.md', 'DREAMS.md'],
     icon: BrainIcon,
     id: 'memory',
-    text: 'Plain markdown the agent appends to as it works. You read it, edit it, version it.',
-    title: 'Readable memory',
+    text: 'It keeps its own durable facts, open tasks, and reflection notes as markdown — append-only, with citations.',
+    title: 'It writes what it learns',
   },
   {
-    files: ['tools/', 'channels/', 'subagents/'],
-    icon: PlugIcon,
-    id: 'bindings',
-    text: 'Typed tools, the surfaces it speaks on, and the agents it can delegate to. Scoped, never guessed.',
-    title: 'Bound capabilities',
-  },
-  {
-    files: ['schedule.cron', 'budget.json'],
-    icon: HeartPulseIcon,
-    id: 'heartbeat',
-    text: 'A schedule it wakes on and a spend ceiling it respects. It works unprompted, within limits.',
-    title: 'Its own heartbeat',
+    files: ['GOALS.md', 'CALENDAR.md', 'logs/'],
+    icon: TargetIcon,
+    id: 'horizon',
+    text: 'Long-horizon goals, a dated calendar, and a per-day log bullet at the end of every run. All readable, all editable.',
+    title: 'It tracks time and goals',
   },
 ]
 

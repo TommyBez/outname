@@ -1,11 +1,14 @@
+// A heartbeat day-in-the-life. Event kinds map to real runtime concepts:
+// scheduled heartbeat runs, the Slack channel, file tools writing the sandbox
+// markdown, sub-agent delegation, the Resend connector, and dreaming passes.
+
 export type HeartbeatKind =
-  | 'cron'
-  | 'slack'
-  | 'memory'
   | 'heartbeat'
-  | 'cal'
+  | 'slack'
+  | 'file'
   | 'subagent'
-  | 'gmail'
+  | 'resend'
+  | 'dreaming'
 
 export interface HeartbeatEvent {
   detail: string
@@ -23,66 +26,60 @@ export const heartbeatStats = [
 
 export const heartbeatEvents: readonly HeartbeatEvent[] = [
   {
-    detail: 'daily.triage queued',
-    event: 'cron.fire',
-    kind: 'cron',
+    detail: 'Daily run fired',
+    event: 'heartbeat',
+    kind: 'heartbeat',
     time: '06:00',
   },
   {
-    detail: '14 threads scanned · 2 flagged',
-    event: 'slack.read',
+    detail: '#ops blocker flagged · customer reply waiting',
+    event: 'channel',
     kind: 'slack',
     time: '06:00',
   },
   {
-    detail: '+ skip auto-summary on Sundays',
+    detail: '+ skip auto-summary on Sundays → MEMORY.md',
     emphasis: 'memory',
-    event: 'memory.write',
-    kind: 'memory',
+    event: 'writeFile',
+    kind: 'file',
     time: '06:01',
   },
   {
-    detail: 'calendar conflict spotted · draft sent',
+    detail: 'Calendar conflict spotted in CALENDAR.md',
     event: 'heartbeat',
     kind: 'heartbeat',
     time: '09:14',
   },
   {
-    detail: 'tue 15:00 → wed 10:00 proposed',
-    event: 'cal.draft',
-    kind: 'cal',
+    detail: 'Tue 15:00 → Wed 10:00 drafted in TASKS.md',
+    event: 'writeFile',
+    kind: 'file',
     time: '09:14',
   },
   {
     detail: 'research-synthesizer · 4.2s',
-    event: 'subagent.call',
+    event: 'subagent',
     kind: 'subagent',
     time: '11:02',
   },
   {
-    detail: '+ user prefers "Tomas" in replies',
+    detail: '+ user prefers "Tomas" in replies → MEMORY.md',
     emphasis: 'memory',
-    event: 'memory.write',
-    kind: 'memory',
+    event: 'writeFile',
+    kind: 'file',
     time: '11:02',
   },
   {
-    detail: 'weekly.digest queued',
-    event: 'cron.fire',
-    kind: 'cron',
-    time: '14:00',
-  },
-  {
-    detail: '5 threads summarized · digest ready',
-    event: 'gmail.draft',
-    kind: 'gmail',
+    detail: '5 logs reviewed → DREAMS.md',
+    event: 'dreaming',
+    kind: 'dreaming',
     time: '14:01',
   },
   {
-    detail: 'weekly digest sent · 0 follow-ups',
+    detail: 'Weekly digest sent · 0 follow-ups',
     emphasis: 'highlight',
-    event: 'gmail.send',
-    kind: 'gmail',
+    event: 'resend',
+    kind: 'resend',
     time: '18:00',
   },
 ]

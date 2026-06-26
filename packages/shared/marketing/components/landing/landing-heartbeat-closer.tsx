@@ -99,11 +99,10 @@ export function LandingHeartbeatCloser({
 }
 
 const kindLabel: Record<HeartbeatKind, string> = {
-  cal: 'Calendar',
-  cron: 'Cron',
-  gmail: 'Email',
+  dreaming: 'Dreaming',
+  file: 'Sandbox',
   heartbeat: 'Heartbeat',
-  memory: 'Memory',
+  resend: 'Resend',
   slack: 'Slack',
   subagent: 'Sub-agent',
 }
@@ -203,7 +202,7 @@ function HeartbeatTerminalPinned() {
           <div className="border border-background/15 bg-foreground p-4">
             <div className="flex items-center justify-between gap-3 border-background/25 border-b pb-3 font-mono text-[10px] tracking-normal">
               <span className="truncate text-background">
-                $ outname watch inbox-sentinel
+                inbox-sentinel · agent events
               </span>
               <span className="shrink-0 text-background/60">2026-05-11</span>
             </div>
