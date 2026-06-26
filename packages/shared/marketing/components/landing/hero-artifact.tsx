@@ -55,22 +55,33 @@ export function HeroArtifact() {
         })}
       </div>
 
-      <div className="mt-4">
-        {view === 'human' ? (
+      {/* Both views share one grid cell so the panel keeps the taller height
+          and switching tabs never shifts the layout. */}
+      <div className="mt-4 grid">
+        <div
+          aria-hidden={view !== 'human'}
+          className={cn(
+            'col-start-1 row-start-1',
+            view === 'human' ? '' : 'invisible'
+          )}
+        >
           <AgentFileTree />
-        ) : (
-          <div className="border border-border bg-card">
-            <div className="flex items-center gap-2 border-border border-b bg-muted px-4 py-2.5">
-              <FileTextIcon className="size-3.5 text-brand" />
-              <span className="font-mono text-foreground text-xs">
-                AGENTS.md
-              </span>
-            </div>
-            <div className="px-4 py-4">
-              <CodeLines code={AGENT_VIEW_CODE} />
-            </div>
+        </div>
+        <div
+          aria-hidden={view !== 'agent'}
+          className={cn(
+            'col-start-1 row-start-1 flex flex-col border border-border bg-card',
+            view === 'agent' ? '' : 'invisible'
+          )}
+        >
+          <div className="flex items-center gap-2 border-border border-b bg-muted px-4 py-2.5">
+            <FileTextIcon className="size-3.5 text-brand" />
+            <span className="font-mono text-foreground text-xs">AGENTS.md</span>
           </div>
-        )}
+          <div className="flex-1 px-4 py-4">
+            <CodeLines code={AGENT_VIEW_CODE} />
+          </div>
+        </div>
       </div>
     </div>
   )
