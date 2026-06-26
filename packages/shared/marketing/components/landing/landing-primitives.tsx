@@ -32,7 +32,7 @@ export function LandingPrimitives({
 }) {
   return (
     <section
-      className="px-4 py-20 sm:px-6 md:px-10 md:py-28 lg:px-12"
+      className="px-4 py-14 sm:px-6 md:px-10 md:py-28 lg:px-12"
       id="primitives"
     >
       <LazyMotion features={domAnimation}>

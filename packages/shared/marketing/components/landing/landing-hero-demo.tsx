@@ -37,7 +37,7 @@ export function LandingHeroDemo({
           </TextLoop>
         </p>
 
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:items-center lg:gap-16">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:items-start lg:gap-16">
           <div className="min-w-0">
             <h1 className="home-display text-balance font-semibold text-5xl leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
               Agents that keep working.
@@ -62,6 +62,10 @@ export function LandingHeroDemo({
                 Login
               </SecondaryLink>
             </div>
+
+            <p className="mt-8 font-mono text-[11px] text-muted-foreground tracking-normal">
+              Open source · MIT licensed · bring your own keys
+            </p>
           </div>
 
           <div className="min-w-0">

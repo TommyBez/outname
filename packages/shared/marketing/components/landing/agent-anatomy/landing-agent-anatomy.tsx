@@ -88,12 +88,14 @@ function CodePanel({ step }: { step: AnatomyStep }) {
         <div className="flex min-w-0 flex-col">
           <div className="flex items-center gap-2 border-border border-b bg-muted px-4 py-2.5">
             <Icon className="size-3.5 text-brand" />
-            <span className="font-mono text-foreground text-xs">{fileName}</span>
+            <span className="font-mono text-foreground text-xs">
+              {fileName}
+            </span>
             <span className="swiss-label ml-auto text-muted-foreground">
               {ownerLabel[step.owner]}
             </span>
           </div>
-          <div className="min-h-[15rem] px-4 py-4">
+          <div className="px-4 py-4 lg:min-h-[15rem]">
             <CodeLines code={step.code} />
           </div>
         </div>
@@ -105,15 +107,20 @@ function CodePanel({ step }: { step: AnatomyStep }) {
 function StepBlock({
   step,
   active,
+  isLast,
   registerRef,
 }: {
   step: AnatomyStep
   active: boolean
+  isLast: boolean
   registerRef: (el: HTMLLIElement | null) => void
 }) {
   return (
     <li
-      className="border-border border-t py-10 first:border-t-0 lg:min-h-[32vh] lg:border-t-0 lg:py-0"
+      className={cn(
+        'border-border border-t py-8 first:border-t-0 lg:border-t-0 lg:py-0',
+        isLast ? 'lg:min-h-0' : 'lg:min-h-[32vh]'
+      )}
       ref={registerRef}
     >
       <div
@@ -175,7 +182,7 @@ export function LandingAgentAnatomy({
 
   return (
     <section
-      className="px-4 py-20 sm:px-6 md:px-10 md:py-28 lg:px-12"
+      className="px-4 py-14 sm:px-6 md:px-10 md:py-28 lg:px-12"
       id="anatomy"
     >
       <LazyMotion features={domAnimation}>
@@ -209,6 +216,7 @@ export function LandingAgentAnatomy({
               {anatomySteps.map((step, index) => (
                 <StepBlock
                   active={index === active}
+                  isLast={index === anatomySteps.length - 1}
                   key={step.id}
                   registerRef={(el) => {
                     stepEls.current[index] = el

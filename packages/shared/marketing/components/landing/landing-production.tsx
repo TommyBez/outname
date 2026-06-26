@@ -105,22 +105,22 @@ function DurableMock() {
 
 function ComputeMock() {
   return (
-    <ul className="grid gap-2">
+    <ul className="grid gap-3">
       {computeRuns.map((run) => (
-        <li
-          className="flex items-center justify-between gap-3 border border-border bg-background px-3 py-2.5 font-mono text-[11px] tracking-normal"
-          key={run.id}
-        >
-          <span className="flex min-w-0 items-center gap-2">
-            <span
-              className={cn(
-                'size-2 shrink-0 rounded-full',
-                statusTone[run.status]
-              )}
-            />
-            <span className="truncate text-foreground">{run.id}</span>
-          </span>
-          <span className="shrink-0 text-muted-foreground">{run.meta}</span>
+        <li className="grid gap-2" key={run.id}>
+          <div className="flex items-center justify-between gap-3 font-mono text-[11px] tracking-normal">
+            <span className="flex min-w-0 items-center gap-2">
+              <span
+                className={cn(
+                  'size-2 shrink-0 rounded-full',
+                  statusTone[run.status]
+                )}
+              />
+              <span className="truncate text-foreground">{run.id}</span>
+            </span>
+            <span className="shrink-0 text-muted-foreground">{run.meta}</span>
+          </div>
+          <div className="h-px bg-border" />
         </li>
       ))}
     </ul>
@@ -161,7 +161,7 @@ export function LandingProduction({
 }) {
   return (
     <section
-      className="px-4 py-20 sm:px-6 md:px-10 md:py-28 lg:px-12"
+      className="px-4 py-14 sm:px-6 md:px-10 md:py-28 lg:px-12"
       id="production"
     >
       <LazyMotion features={domAnimation}>
