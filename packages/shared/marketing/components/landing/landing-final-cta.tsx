@@ -36,7 +36,7 @@ export function LandingFinalCta({
             </p>
             <div className="mt-6 grid gap-8 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] md:items-end">
               <h2 className="home-display text-balance font-semibold text-4xl leading-[1.05] tracking-tight md:text-5xl lg:text-6xl">
-                Give it a folder. Watch it work.
+                Give it a sandbox. Watch it work.
               </h2>
               <div className="flex min-w-0 flex-col gap-3 sm:flex-row md:justify-end">
                 <PrimaryLink href={getAppLoginUrl('/agents/new')}>
