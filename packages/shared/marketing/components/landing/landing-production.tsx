@@ -7,15 +7,15 @@ import {
 import { cn } from '@outname/ui/lib/utils'
 import {
   ActivityIcon,
-  BoxIcon,
+  GaugeIcon,
   type LucideIcon,
-  RadioTowerIcon,
+  RefreshCwIcon,
 } from 'lucide-react'
 import { domAnimation, LazyMotion, m as motion } from 'motion/react'
 import type { ReactNode } from 'react'
 
-// Durable execution: the phases a single autonomous run checkpoints through.
-// States use the real agent-event status vocabulary (queued/running/completed).
+// Durable execution: the phases a single run checkpoints through, so a crash
+// resumes mid-step instead of restarting.
 const runPhases = [
   { fill: 1, label: 'load memory', state: 'completed' },
   { fill: 1, label: 'scan channels', state: 'completed' },
@@ -24,8 +24,9 @@ const runPhases = [
   { fill: 0, label: 'append log', state: 'queued' },
 ] as const
 
-// Sandboxed compute: recent agent events with their real status vocabulary.
-const computeRuns = [
+// Observability: the Events log — every run is an Event with a real type and
+// status from the runtime vocabulary.
+const eventLog = [
   { id: 'heartbeat · 06:00', status: 'completed', meta: '4.2s' },
   { id: 'dreaming · 14:01', status: 'completed', meta: '11s' },
   { id: 'invocation · now', status: 'running', meta: 'live' },
@@ -38,18 +39,12 @@ const statusTone: Record<string, string> = {
   running: 'bg-brand',
 }
 
-// Every surface: real channels (highlighted) and connectors.
-const surfaces = [
-  'in-app chat',
-  'Slack',
-  'GitHub',
-  'Cal.com',
-  'Resend',
-  'Firecrawl',
-  'PostHog',
-  'X',
-  'Supabase',
-  'Vercel',
+// Governance: real budget periods (USD spend vs. ceiling) plus the per-run
+// step limit.
+const budgetRules = [
+  { ceiling: '$5.00', fill: 0.48, label: 'daily', spent: '$2.40' },
+  { ceiling: '$25.00', fill: 0.47, label: 'weekly', spent: '$11.80' },
+  { ceiling: '$100.00', fill: 0.36, label: 'monthly', spent: '$36.00' },
 ] as const
 
 interface Pillar {
@@ -61,22 +56,22 @@ interface Pillar {
 
 const pillars: readonly Pillar[] = [
   {
-    icon: ActivityIcon,
+    icon: RefreshCwIcon,
     id: 'durable',
-    text: 'Runs survive crashes and restarts. Every step is an event-driven Vercel Workflow, checkpointed and resumable.',
+    text: 'A crash or redeploy resumes the run mid-step — no lost work, no double-sends. Every run is an event-driven Vercel Workflow.',
     title: 'Durable execution',
   },
   {
-    icon: BoxIcon,
-    id: 'sandbox',
-    text: 'Each agent owns a persistent Vercel Sandbox — isolated filesystem and execution. Every run is a traced agent event.',
-    title: 'Sandboxed compute',
+    icon: ActivityIcon,
+    id: 'events',
+    text: 'Heartbeats, dreaming passes, and sub-agent calls all land in one Events log — type, status, and duration on every run.',
+    title: 'Observable by default',
   },
   {
-    icon: RadioTowerIcon,
-    id: 'surface',
-    text: 'One agent answers in-app and in Slack, wired to typed connectors. Budgets and step limits keep it bounded.',
-    title: 'Every surface',
+    icon: GaugeIcon,
+    id: 'bounded',
+    text: 'Per-agent and account-wide budgets in USD, plus a step limit on every run. Estimated and actual cost is tracked per Event.',
+    title: 'Bounded spend',
   },
 ]
 
@@ -104,22 +99,22 @@ function DurableMock() {
   )
 }
 
-function ComputeMock() {
+function EventsMock() {
   return (
     <ul className="grid gap-3">
-      {computeRuns.map((run) => (
-        <li className="grid gap-2" key={run.id}>
+      {eventLog.map((event) => (
+        <li className="grid gap-2" key={event.id}>
           <div className="flex items-center justify-between gap-3 font-mono text-[11px] tracking-normal">
             <span className="flex min-w-0 items-center gap-2">
               <span
                 className={cn(
                   'size-2 shrink-0 rounded-full',
-                  statusTone[run.status]
+                  statusTone[event.status]
                 )}
               />
-              <span className="truncate text-foreground">{run.id}</span>
+              <span className="truncate text-foreground">{event.id}</span>
             </span>
-            <span className="shrink-0 text-muted-foreground">{run.meta}</span>
+            <span className="shrink-0 text-muted-foreground">{event.meta}</span>
           </div>
           <div className="h-px bg-border" />
         </li>
@@ -128,31 +123,39 @@ function ComputeMock() {
   )
 }
 
-function SurfaceMock() {
+function BudgetMock() {
   return (
-    <ul className="flex flex-wrap gap-2">
-      {surfaces.map((surface, index) => (
-        <li key={surface}>
-          <span
-            className={cn(
-              'border border-border px-2.5 py-1 font-mono text-[11px] tracking-normal',
-              index < 2
-                ? 'bg-foreground text-background'
-                : 'bg-background text-muted-foreground'
-            )}
-          >
-            {surface}
-          </span>
-        </li>
-      ))}
-    </ul>
+    <div className="grid gap-3">
+      <ul className="grid gap-3">
+        {budgetRules.map((rule) => (
+          <li className="grid gap-2" key={rule.label}>
+            <div className="flex items-center justify-between gap-3 font-mono text-[11px] tracking-normal">
+              <span className="text-foreground">{rule.label}</span>
+              <span className="text-muted-foreground">
+                {rule.spent} / {rule.ceiling}
+              </span>
+            </div>
+            <div className="h-1.5 overflow-hidden bg-muted">
+              <div
+                className="h-full bg-foreground"
+                style={{ width: `${rule.fill * 100}%` }}
+              />
+            </div>
+          </li>
+        ))}
+      </ul>
+      <div className="flex items-center justify-between gap-3 border-border border-t pt-3 font-mono text-[11px] tracking-normal">
+        <span className="text-foreground">step limit</span>
+        <span className="text-muted-foreground">medium · 40 / run</span>
+      </div>
+    </div>
   )
 }
 
 const mocks: Record<string, () => ReactNode> = {
+  bounded: BudgetMock,
   durable: DurableMock,
-  sandbox: ComputeMock,
-  surface: SurfaceMock,
+  events: EventsMock,
 }
 
 export function LandingProduction({
@@ -186,8 +189,8 @@ export function LandingProduction({
               </h2>
             </div>
             <p className="max-w-2xl text-lg text-muted-foreground leading-relaxed">
-              Governance, observability, and sandboxed compute come standard.
-              Focus on what the agent does, not the infrastructure under it.
+              Durability, observability, and governance come standard. Focus on
+              what the agent does, not the plumbing that keeps it running.
             </p>
           </motion.div>
 

@@ -97,10 +97,10 @@ export function LandingPrimitives({
                 <div>
                   <p className="swiss-label text-muted-foreground">Channels</p>
                   <ul className="mt-3 flex flex-wrap gap-2">
-                    {channelsCard.surfaces.map((surface) => (
-                      <li key={surface}>
+                    {channelsCard.channels.map((channel) => (
+                      <li key={channel}>
                         <span className="border border-border bg-foreground px-2.5 py-1 font-mono text-[11px] text-background tracking-normal">
-                          {surface}
+                          {channel}
                         </span>
                       </li>
                     ))}
@@ -108,13 +108,13 @@ export function LandingPrimitives({
                 </div>
                 <div>
                   <p className="swiss-label text-muted-foreground">
-                    Connectors
+                    Connections
                   </p>
                   <ul className="mt-3 flex flex-wrap gap-2">
-                    {channelsCard.connectors.map((connector) => (
-                      <li key={connector}>
+                    {channelsCard.connections.map((connection) => (
+                      <li key={connection}>
                         <span className="border border-border bg-background px-2.5 py-1 font-mono text-[11px] text-muted-foreground tracking-normal">
-                          {connector}
+                          {connection}
                         </span>
                       </li>
                     ))}

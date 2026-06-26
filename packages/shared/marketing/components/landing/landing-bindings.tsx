@@ -33,7 +33,7 @@ const bindings: readonly Binding[] = [
     chips: ['Vercel AI Gateway', 'LLM Gateway', 'OpenRouter'],
     icon: CpuIcon,
     id: 'model',
-    text: 'Choose the inference provider and model per agent. Bring your own keys; the runtime stays model-agnostic.',
+    text: 'Choose the inference provider and model per agent. The runtime stays model-agnostic, so you can switch without touching the files.',
     title: 'Model',
   },
   {
@@ -61,14 +61,14 @@ const bindings: readonly Binding[] = [
     chips: ['in-app chat', 'Slack'],
     icon: RadioTowerIcon,
     id: 'channels',
-    text: 'Bind the surfaces it listens and speaks on. The same agent answers in-app and in your Slack workspace.',
+    text: 'Bind the channels it listens and speaks on. The same agent answers in-app and in your Slack workspace.',
     title: 'Channels',
   },
   {
     chips: ['GitHub', 'Cal.com', 'Resend', 'Firecrawl', '+8'],
     icon: HammerIcon,
     id: 'tools',
-    text: 'Attach maintainer tools backed by real connectors. The agent only ever calls what you bind to it.',
+    text: 'Attach maintainer tools backed by real connections. The agent only ever calls what you bind to it.',
     title: 'Tools',
   },
   {
@@ -83,7 +83,7 @@ const bindings: readonly Binding[] = [
     icon: PuzzleIcon,
     id: 'skills',
     text: 'Install capability packages that run in a dedicated, persistent Skill Sandbox, isolated from the memory files.',
-    title: 'Agent Skills',
+    title: 'Skills',
   },
 ]
 

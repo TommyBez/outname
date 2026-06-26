@@ -1,6 +1,6 @@
 // "Built on primitives" mirrors eve's "Leverages all Vercel AI primitives":
 // a row of category cards, each listing the real products behind it, plus a
-// channels/connectors block. Everything here is real to the outname stack.
+// channels/connections block. Everything here is real to the outname stack.
 
 export interface PrimitiveProduct {
   name: string
@@ -48,7 +48,7 @@ export const primitiveCards: readonly PrimitiveCard[] = [
       { name: 'LLM Gateway', role: 'Alternate provider, same interface.' },
       { name: 'OpenRouter', role: 'Hundreds of models behind one key.' },
     ],
-    summary: 'Model-agnostic. Bring your own keys.',
+    summary: 'Swap providers without touching the agent.',
   },
   {
     eyebrow: 'Foundation',
@@ -70,7 +70,8 @@ export const primitiveCards: readonly PrimitiveCard[] = [
 ]
 
 export const channelsCard = {
-  connectors: [
+  channels: ['in-app chat', 'Slack'],
+  connections: [
     'GitHub',
     'Cal.com',
     'Resend',
@@ -84,11 +85,10 @@ export const channelsCard = {
     'Vercel',
     'Context7',
   ],
-  eyebrow: 'Channels & connectors',
+  eyebrow: 'Channels & connections',
   product: {
     name: 'Chat SDK',
-    role: 'In-app chat and Slack today; new surfaces drop in on the same agent.',
+    role: 'In-app chat and Slack today; new channels drop in on the same agent.',
   },
-  surfaces: ['in-app chat', 'Slack'],
-  summary: 'One agent, every surface.',
+  summary: 'One agent, every channel.',
 } as const
