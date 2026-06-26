@@ -113,7 +113,7 @@ function StepBlock({
 }) {
   return (
     <li
-      className="border-border border-t py-10 first:border-t-0 lg:min-h-[26vh] lg:border-t-0 lg:py-0"
+      className="border-border border-t py-10 first:border-t-0 lg:min-h-[32vh] lg:border-t-0 lg:py-0"
       ref={registerRef}
     >
       <div
