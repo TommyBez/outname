@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/liveness",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/sandbox-snapshots",
+      "schedule": "17 3 * * *"
     }
   ],
   "relatedProjects": [
