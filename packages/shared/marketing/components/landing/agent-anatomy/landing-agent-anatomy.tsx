@@ -113,42 +113,39 @@ function StepBlock({
 }) {
   return (
     <li
-      className={cn(
-        'ease border-border border-t py-10 transition-opacity duration-300 first:border-t-0 lg:flex lg:min-h-[24vh] lg:flex-col lg:justify-center lg:border-t-0 lg:py-0',
-        active ? 'lg:opacity-100' : 'lg:opacity-35'
-      )}
+      className="border-border border-t py-10 first:border-t-0 lg:min-h-[26vh] lg:border-t-0 lg:py-0"
       ref={registerRef}
     >
-      <div className="flex flex-wrap items-center gap-3">
-        <span
-          className={cn(
-            'ease grid size-7 shrink-0 place-items-center border font-mono text-xs tabular-nums transition-colors duration-300',
-            active
-              ? 'border-foreground bg-foreground text-background'
-              : 'border-border text-muted-foreground'
-          )}
-        >
-          {step.index}
-        </span>
-        <h3 className="font-semibold text-xl tracking-tight md:text-2xl">
-          {step.title}
-        </h3>
-        <span className="border border-border bg-muted px-2 py-0.5 font-mono text-[11px] text-muted-foreground tracking-normal">
-          {fileNameFor(step)}
-        </span>
-      </div>
-      <p className="mt-4 max-w-md text-muted-foreground leading-relaxed">
-        {step.caption}
-      </p>
-      <div className="mt-5 flex items-center gap-2">
-        <span className="swiss-label text-muted-foreground">runs in</span>
-        <span className="border border-border bg-background px-2 py-0.5 font-mono text-[11px] text-foreground tracking-normal">
-          Vercel Sandbox
-        </span>
-      </div>
+      <div
+        className={cn(
+          'ease transition-opacity duration-300 lg:sticky lg:top-24 lg:pb-8',
+          active ? 'lg:opacity-100' : 'lg:opacity-40'
+        )}
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="grid size-7 shrink-0 place-items-center border border-foreground font-mono text-foreground text-xs tabular-nums">
+            {step.index}
+          </span>
+          <h3 className="font-semibold text-xl tracking-tight md:text-2xl">
+            {step.title}
+          </h3>
+          <span className="border border-border bg-muted px-2 py-0.5 font-mono text-[11px] text-muted-foreground tracking-normal">
+            {fileNameFor(step)}
+          </span>
+        </div>
+        <p className="mt-4 max-w-md text-muted-foreground leading-relaxed">
+          {step.caption}
+        </p>
+        <div className="mt-5 flex items-center gap-2">
+          <span className="swiss-label text-muted-foreground">runs in</span>
+          <span className="border border-border bg-background px-2 py-0.5 font-mono text-[11px] text-foreground tracking-normal">
+            Vercel Sandbox
+          </span>
+        </div>
 
-      <div className="mt-6 lg:hidden">
-        <CodePanel step={step} />
+        <div className="mt-6 lg:hidden">
+          <CodePanel step={step} />
+        </div>
       </div>
     </li>
   )
