@@ -1,55 +1,94 @@
-// The "built on primitives" grid mirrors how vercel.com/eve leans on its
-// underlying platform. outname is open-source and self-hostable, so the value
-// here is "trusted, swappable building blocks" rather than lock-in.
+// "Built on primitives" mirrors eve's "Leverages all Vercel AI primitives":
+// a row of category cards, each listing the real products behind it, plus a
+// channels/connectors block. Everything here is real to the outname stack.
 
-export interface PlatformPrimitive {
-  id: string
-  /** Optional secondary line, e.g. interchangeable providers. */
-  meta?: string
+export interface PrimitiveProduct {
   name: string
   role: string
 }
 
-export const platformPrimitives: readonly PlatformPrimitive[] = [
+export interface PrimitiveCard {
+  eyebrow: string
+  id: string
+  products: readonly PrimitiveProduct[]
+  summary: string
+}
+
+export const primitiveCards: readonly PrimitiveCard[] = [
   {
-    id: 'next',
-    name: 'Next.js 16',
-    role: 'A single control plane orchestrates agents, chat, and configuration.',
+    eyebrow: 'Runtime',
+    id: 'runtime',
+    products: [
+      {
+        name: 'Vercel Workflow',
+        role: 'Heartbeat, dreaming, and sub-agent runs — checkpointed and resumable.',
+      },
+    ],
+    summary: 'Durable, event-driven execution.',
   },
   {
-    id: 'workflow',
-    name: 'Vercel Workflow',
-    role: 'Durable, event-driven runs for heartbeat, dreaming, and sub-agents.',
+    eyebrow: 'Compute',
+    id: 'compute',
+    products: [
+      {
+        name: 'Vercel Sandbox',
+        role: 'A persistent, isolated filesystem and skill execution per agent.',
+      },
+    ],
+    summary: 'A filesystem of its own.',
   },
   {
-    id: 'sandbox',
-    name: 'Vercel Sandbox',
-    role: "Each agent's persistent filesystem and isolated skill execution.",
-  },
-  {
+    eyebrow: 'Inference',
     id: 'inference',
-    meta: 'LLM Gateway · OpenRouter',
-    name: 'AI Gateway',
-    role: 'Model-agnostic inference. Bring your own provider and keys.',
+    products: [
+      {
+        name: 'Vercel AI Gateway',
+        role: 'Default gateway for model calls and streaming.',
+      },
+      { name: 'LLM Gateway', role: 'Alternate provider, same interface.' },
+      { name: 'OpenRouter', role: 'Hundreds of models behind one key.' },
+    ],
+    summary: 'Model-agnostic. Bring your own keys.',
   },
   {
-    id: 'neon',
-    name: 'Neon Postgres',
-    role: 'The control-plane database, typed end to end with Drizzle.',
-  },
-  {
-    id: 'upstash',
-    name: 'Upstash Redis',
-    role: 'Coordination, caching, and per-agent rate limits.',
-  },
-  {
-    id: 'auth',
-    name: 'Better Auth',
-    role: 'Passwordless sign-in with email one-time codes.',
-  },
-  {
-    id: 'chat-sdk',
-    name: 'Vercel Chat SDK',
-    role: 'Slack and in-app chat — one agent across every surface.',
+    eyebrow: 'Foundation',
+    id: 'foundation',
+    products: [
+      { name: 'Next.js 16', role: 'The single control plane.' },
+      {
+        name: 'Neon Postgres',
+        role: 'Typed control-plane database via Drizzle.',
+      },
+      {
+        name: 'Upstash Redis',
+        role: 'Coordination, caching, and rate limits.',
+      },
+      { name: 'Better Auth', role: 'Passwordless email one-time codes.' },
+    ],
+    summary: 'Control plane, data, and sign-in.',
   },
 ]
+
+export const channelsCard = {
+  connectors: [
+    'GitHub',
+    'Cal.com',
+    'Resend',
+    'Firecrawl',
+    'PostHog',
+    'Parallel',
+    'Typefully',
+    'X',
+    'Supabase',
+    'v0',
+    'Vercel',
+    'Context7',
+  ],
+  eyebrow: 'Channels & connectors',
+  product: {
+    name: 'Vercel Chat SDK',
+    role: 'In-app chat and Slack today; new surfaces drop in on the same agent.',
+  },
+  surfaces: ['in-app chat', 'Slack'],
+  summary: 'One agent, every surface.',
+} as const

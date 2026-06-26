@@ -4,29 +4,25 @@ import {
   revealVariants,
   staggerVariants,
 } from '@outname/shared/marketing/components/landing/landing-motion'
-import { platformPrimitives } from '@outname/shared/marketing/data/primitives'
 import {
-  BoxIcon,
-  CpuIcon,
-  DatabaseIcon,
-  KeyRoundIcon,
-  LayersIcon,
-  type LucideIcon,
-  MessagesSquareIcon,
-  WorkflowIcon,
-  ZapIcon,
-} from 'lucide-react'
+  channelsCard,
+  type PrimitiveProduct,
+  primitiveCards,
+} from '@outname/shared/marketing/data/primitives'
 import { domAnimation, LazyMotion, m as motion } from 'motion/react'
 
-const primitiveIcons: Record<string, LucideIcon> = {
-  auth: KeyRoundIcon,
-  'chat-sdk': MessagesSquareIcon,
-  inference: CpuIcon,
-  neon: DatabaseIcon,
-  next: LayersIcon,
-  sandbox: BoxIcon,
-  upstash: ZapIcon,
-  workflow: WorkflowIcon,
+function ProductRow({ product }: { product: PrimitiveProduct }) {
+  return (
+    <div className="ease flex items-start gap-3 border border-transparent p-3 transition-colors duration-200 hover:border-border hover:bg-muted">
+      <span aria-hidden className="mt-1.5 size-1.5 shrink-0 bg-brand" />
+      <div className="min-w-0">
+        <p className="font-medium text-sm tracking-tight">{product.name}</p>
+        <p className="mt-0.5 text-muted-foreground text-sm leading-relaxed">
+          {product.role}
+        </p>
+      </div>
+    </div>
+  )
 }
 
 export function LandingPrimitives({
@@ -55,54 +51,78 @@ export function LandingPrimitives({
               <p className="swiss-label text-muted-foreground">
                 Built on primitives
               </p>
-              <h2 className="mt-4 text-balance font-semibold text-3xl leading-tight tracking-tight md:text-4xl">
+              <h2 className="mt-4 text-balance font-semibold text-4xl leading-[1.05] tracking-tight md:text-5xl">
                 Nothing you can't host yourself.
               </h2>
             </div>
-            <p className="max-w-2xl text-muted-foreground leading-relaxed">
-              outname is open source and sits on building blocks you already
-              trust. Bring your own keys, swap the providers, run the whole
-              thing on your own infrastructure.
+            <p className="max-w-2xl text-lg text-muted-foreground leading-relaxed">
+              Open source, sitting on building blocks you already trust. Bring
+              your own keys, swap the providers, run the whole thing on your own
+              infrastructure.
             </p>
           </motion.div>
 
-          <motion.ul
-            className="mt-10 border-border border-t"
-            variants={staggerVariants}
+          <motion.div
+            className="mt-10 grid gap-px border border-border bg-border lg:grid-cols-2"
+            variants={revealVariants}
           >
-            {platformPrimitives.map((primitive, index) => {
-              const Icon = primitiveIcons[primitive.id] ?? LayersIcon
-              return (
-                <motion.li
-                  className="ease group grid gap-3 border-border border-b px-3 py-6 transition-colors duration-200 hover:bg-muted/40 md:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] md:items-baseline md:gap-10"
-                  key={primitive.id}
-                  variants={revealVariants}
-                >
-                  <div className="flex items-center gap-4">
-                    <span className="font-mono text-muted-foreground text-xs tabular-nums">
-                      {String(index + 1).padStart(2, '0')}
-                    </span>
-                    <span className="ease grid size-9 place-items-center border border-border bg-background text-foreground transition-colors duration-200 group-hover:border-brand group-hover:bg-brand group-hover:text-brand-foreground">
-                      <Icon className="size-4" />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-base tracking-tight">
-                        {primitive.name}
-                      </p>
-                      {primitive.meta ? (
-                        <p className="font-mono text-[10px] text-muted-foreground tracking-normal">
-                          {primitive.meta}
-                        </p>
-                      ) : null}
-                    </div>
-                  </div>
-                  <p className="text-muted-foreground leading-relaxed">
-                    {primitive.role}
+            {primitiveCards.map((card) => (
+              <div className="flex flex-col bg-background p-6" key={card.id}>
+                <p className="swiss-label text-foreground">{card.eyebrow}</p>
+                <p className="mt-2 text-muted-foreground text-sm leading-relaxed">
+                  {card.summary}
+                </p>
+                <div className="mt-5 grid gap-1">
+                  {card.products.map((product) => (
+                    <ProductRow key={product.name} product={product} />
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            <div className="bg-background p-6 lg:col-span-2 lg:grid lg:grid-cols-[minmax(0,21rem)_minmax(0,1fr)] lg:gap-10">
+              <div>
+                <p className="swiss-label text-foreground">
+                  {channelsCard.eyebrow}
+                </p>
+                <p className="mt-2 text-muted-foreground text-sm leading-relaxed">
+                  {channelsCard.summary}
+                </p>
+                <div className="mt-5">
+                  <ProductRow product={channelsCard.product} />
+                </div>
+              </div>
+
+              <div className="mt-6 flex flex-col gap-5 lg:mt-0 lg:justify-center">
+                <div>
+                  <p className="swiss-label text-muted-foreground">Channels</p>
+                  <ul className="mt-3 flex flex-wrap gap-2">
+                    {channelsCard.surfaces.map((surface) => (
+                      <li key={surface}>
+                        <span className="border border-border bg-foreground px-2.5 py-1 font-mono text-[11px] text-background tracking-normal">
+                          {surface}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <p className="swiss-label text-muted-foreground">
+                    Connectors
                   </p>
-                </motion.li>
-              )
-            })}
-          </motion.ul>
+                  <ul className="mt-3 flex flex-wrap gap-2">
+                    {channelsCard.connectors.map((connector) => (
+                      <li key={connector}>
+                        <span className="border border-border bg-background px-2.5 py-1 font-mono text-[11px] text-muted-foreground tracking-normal">
+                          {connector}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </motion.div>
         </motion.div>
       </LazyMotion>
     </section>
