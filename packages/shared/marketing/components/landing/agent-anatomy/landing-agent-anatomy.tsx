@@ -1,5 +1,6 @@
 'use client'
 
+import { CodeWindow } from '@outname/shared/marketing/components/landing/code-window'
 import {
   revealVariants,
   staggerVariants,
@@ -18,9 +19,8 @@ import {
   LazyMotion,
   m as motion,
 } from 'motion/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AgentFileTree } from './agent-file-tree'
-import { AnatomyCodeBlock } from './anatomy-step-detail'
 import { stepIcons } from './constants'
 
 const CYCLE_MS = 2800
@@ -31,50 +31,49 @@ function FileViewer({ activeId }: { activeId: AnatomyStepId }) {
     anatomySteps.find((entry) => entry.id === activeId) ?? anatomySteps[0]
   const Icon = stepIcons[step.id]
   const fileName = fileNameByNode.get(step.node) ?? step.node
+  const total = String(anatomySteps.length).padStart(2, '0')
 
   return (
-    <div className="flex min-h-[26rem] flex-col border border-border bg-background lg:min-h-[30rem]">
-      <div className="flex items-center justify-between gap-3 border-border border-b px-5 py-3">
-        <span className="flex items-center gap-2.5">
-          <span className="grid size-7 place-items-center border border-border bg-brand text-brand-foreground">
-            <Icon className="size-3.5" />
-          </span>
-          <span className="font-mono text-sm tracking-normal">{fileName}</span>
-        </span>
-        <span className="font-mono text-[11px] text-muted-foreground tabular-nums">
-          {step.index} / {String(anatomySteps.length).padStart(2, '0')}
-        </span>
-      </div>
-
+    <div className="min-h-[26rem] lg:min-h-[30rem]">
       <AnimatePresence initial={false} mode="wait">
         <motion.div
           animate={{ opacity: 1, y: 0 }}
-          className="flex min-h-0 flex-1 flex-col p-5 lg:p-7"
           exit={{ opacity: 0, y: -6 }}
           initial={{ opacity: 0, y: 6 }}
           key={step.id}
-          transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
         >
-          <h3 className="font-semibold text-2xl leading-tight tracking-tight md:text-3xl">
-            {step.title}
-          </h3>
-          <p className="mt-3 max-w-md text-muted-foreground text-sm leading-relaxed">
-            {step.caption}
-          </p>
-          <AnatomyCodeBlock className="mt-5" code={step.code} />
-          <div className="mt-5 flex flex-wrap items-center gap-2">
-            <Badge
-              className={cn(
-                step.owner === 'user' &&
-                  'border-transparent bg-brand text-brand-foreground'
-              )}
-              variant={step.owner === 'user' ? 'default' : 'outline'}
-            >
-              {ownerLabel[step.owner]}
-            </Badge>
-            <span className="swiss-label text-muted-foreground">
-              {step.note}
+          <CodeWindow
+            code={step.code}
+            filename={fileName}
+            label={`${step.index} / ${total}`}
+          />
+          <div className="mt-6 flex items-start gap-4">
+            <span className="grid size-9 shrink-0 place-items-center border border-border bg-brand text-brand-foreground">
+              <Icon className="size-4" />
             </span>
+            <div className="min-w-0">
+              <h3 className="font-semibold text-xl tracking-tight md:text-2xl">
+                {step.title}
+              </h3>
+              <p className="mt-2 max-w-md text-muted-foreground text-sm leading-relaxed">
+                {step.caption}
+              </p>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <Badge
+                  className={cn(
+                    step.owner === 'user' &&
+                      'border-transparent bg-brand text-brand-foreground'
+                  )}
+                  variant={step.owner === 'user' ? 'default' : 'outline'}
+                >
+                  {ownerLabel[step.owner]}
+                </Badge>
+                <span className="swiss-label text-muted-foreground">
+                  {step.note}
+                </span>
+              </div>
+            </div>
           </div>
         </motion.div>
       </AnimatePresence>
@@ -88,23 +87,30 @@ export function LandingAgentAnatomy({
   shouldReduceMotion: boolean
 }) {
   const [activeId, setActiveId] = useState<AnatomyStepId>(anatomySteps[0].id)
-  const [paused, setPaused] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
-    if (shouldReduceMotion || paused) {
+    if (shouldReduceMotion) {
       return
     }
-    const timer = setInterval(() => {
+    timerRef.current = setInterval(() => {
       setActiveId((current) => {
         const index = anatomySteps.findIndex((entry) => entry.id === current)
         return anatomySteps[(index + 1) % anatomySteps.length].id
       })
     }, CYCLE_MS)
-    return () => clearInterval(timer)
-  }, [shouldReduceMotion, paused])
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+      }
+    }
+  }, [shouldReduceMotion])
 
   const handleSelect = (id: AnatomyStepId) => {
-    setPaused(true)
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
     setActiveId(id)
   }
 

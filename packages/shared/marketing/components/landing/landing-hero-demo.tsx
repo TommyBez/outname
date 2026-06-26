@@ -2,6 +2,7 @@
 
 import { getAppLoginUrl } from '@outname/shared/app-url'
 import { HeroArtifact } from '@outname/shared/marketing/components/landing/hero-artifact'
+import { HeroTerminal } from '@outname/shared/marketing/components/landing/hero-terminal'
 import { PrimaryLink } from '@outname/shared/marketing/components/landing/primary-link'
 import { SecondaryLink } from '@outname/shared/marketing/components/landing/secondary-link'
 import { TextLoop } from '@outname/shared/marketing/components/motion-primitives/text-loop'
@@ -52,12 +53,11 @@ export function LandingHeroDemo({
               bind, and a heartbeat that keeps working while you sleep.
             </p>
 
-            <div className="mt-8 border border-border bg-foreground p-4 font-mono text-background text-xs leading-relaxed">
-              {terminalLines.map((line) => (
-                <p className="truncate" key={line}>
-                  {line}
-                </p>
-              ))}
+            <div className="mt-8">
+              <HeroTerminal
+                lines={terminalLines}
+                shouldReduceMotion={shouldReduceMotion}
+              />
             </div>
 
             <div className="mt-8 flex min-w-0 flex-col gap-3 sm:flex-row">

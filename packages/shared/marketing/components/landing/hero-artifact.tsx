@@ -1,7 +1,7 @@
 'use client'
 
 import { AgentFileTree } from '@outname/shared/marketing/components/landing/agent-anatomy/agent-file-tree'
-import { AnatomyCodeBlock } from '@outname/shared/marketing/components/landing/agent-anatomy/anatomy-step-detail'
+import { CodeWindow } from '@outname/shared/marketing/components/landing/code-window'
 import { Button } from '@outname/ui/components/ui/button'
 import { cn } from '@outname/ui/lib/utils'
 import { useState } from 'react'
@@ -58,7 +58,7 @@ export function HeroArtifact() {
           })}
         </div>
         <span className="swiss-label text-muted-foreground">
-          {view === 'human' ? 'directory' : 'AGENTS.md'}
+          {view === 'human' ? 'directory' : 'read every event'}
         </span>
       </div>
 
@@ -66,10 +66,7 @@ export function HeroArtifact() {
         {view === 'human' ? (
           <AgentFileTree />
         ) : (
-          <AnatomyCodeBlock
-            className="min-h-[15.5rem] bg-foreground text-background"
-            code={AGENT_VIEW_CODE}
-          />
+          <CodeWindow code={AGENT_VIEW_CODE} filename="AGENTS.md" />
         )}
       </div>
     </div>
