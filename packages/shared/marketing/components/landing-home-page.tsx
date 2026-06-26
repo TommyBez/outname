@@ -2,14 +2,12 @@
 
 import { LandingAgentAnatomy } from '@outname/shared/marketing/components/landing/agent-anatomy/landing-agent-anatomy'
 import { LandingBindings } from '@outname/shared/marketing/components/landing/landing-bindings'
-import { LandingChatShowcase } from '@outname/shared/marketing/components/landing/landing-chat-showcase'
 import { LandingFinalCta } from '@outname/shared/marketing/components/landing/landing-final-cta'
 import { LandingFooter } from '@outname/shared/marketing/components/landing/landing-footer'
-import { LandingHeartbeatCloser } from '@outname/shared/marketing/components/landing/landing-heartbeat-closer'
 import { LandingHeroDemo } from '@outname/shared/marketing/components/landing/landing-hero-demo'
 import { LandingNav } from '@outname/shared/marketing/components/landing/landing-nav'
 import { LandingPrimitives } from '@outname/shared/marketing/components/landing/landing-primitives'
-import { LandingProductionIntro } from '@outname/shared/marketing/components/landing/landing-production-intro'
+import { LandingProduction } from '@outname/shared/marketing/components/landing/landing-production'
 import { useReducedMotion } from 'motion/react'
 
 export function LandingHomePage() {
@@ -32,10 +30,8 @@ export function LandingHomePage() {
       {/* 4 — What it's built on */}
       <LandingPrimitives shouldReduceMotion={reduceMotionFlag} />
 
-      {/* 5 — Production readiness, then proven live */}
-      <LandingProductionIntro shouldReduceMotion={reduceMotionFlag} />
-      <LandingChatShowcase shouldReduceMotion={reduceMotionFlag} />
-      <LandingHeartbeatCloser shouldReduceMotion={reduceMotionFlag} />
+      {/* 5 — Production, proven live in stacked cards */}
+      <LandingProduction shouldReduceMotion={reduceMotionFlag} />
 
       {/* 6 — Final call to action */}
       <LandingFinalCta shouldReduceMotion={reduceMotionFlag} />

@@ -5,7 +5,49 @@ import {
   staggerVariants,
 } from '@outname/shared/marketing/components/landing/landing-motion'
 import { platformPrimitives } from '@outname/shared/marketing/data/primitives'
+import { cn } from '@outname/ui/lib/utils'
+import {
+  BoxIcon,
+  CpuIcon,
+  DatabaseIcon,
+  KeyRoundIcon,
+  LayersIcon,
+  type LucideIcon,
+  MessagesSquareIcon,
+  WorkflowIcon,
+  ZapIcon,
+} from 'lucide-react'
 import { domAnimation, LazyMotion, m as motion } from 'motion/react'
+
+const primitiveIcons: Record<string, LucideIcon> = {
+  auth: KeyRoundIcon,
+  'chat-sdk': MessagesSquareIcon,
+  inference: CpuIcon,
+  neon: DatabaseIcon,
+  next: LayersIcon,
+  sandbox: BoxIcon,
+  upstash: ZapIcon,
+  workflow: WorkflowIcon,
+}
+
+// Real channels and connectors an agent can be wired to (see the channel types
+// and the connection registry).
+const integrations = [
+  'in-app chat',
+  'Slack',
+  'GitHub',
+  'Cal.com',
+  'Resend',
+  'Firecrawl',
+  'PostHog',
+  'Parallel',
+  'Typefully',
+  'X',
+  'Supabase',
+  'v0',
+  'Vercel',
+  'Context7',
+] as const
 
 export function LandingPrimitives({
   shouldReduceMotion,
@@ -45,31 +87,66 @@ export function LandingPrimitives({
           </motion.div>
 
           <motion.ul
-            className="mt-10 grid gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-4"
+            className="mt-10 border-border border-t"
             variants={revealVariants}
           >
-            {platformPrimitives.map((primitive, index) => (
-              <li
-                className="flex min-h-44 flex-col bg-background p-5"
-                key={primitive.id}
-              >
-                <span className="font-mono text-[10px] text-muted-foreground tracking-normal">
-                  {String(index + 1).padStart(2, '0')}
-                </span>
-                <p className="mt-4 font-semibold text-base tracking-tight">
-                  {primitive.name}
-                </p>
-                {primitive.meta ? (
-                  <p className="mt-1 font-mono text-[10px] text-muted-foreground tracking-normal">
-                    {primitive.meta}
+            {platformPrimitives.map((primitive, index) => {
+              const Icon = primitiveIcons[primitive.id] ?? LayersIcon
+              return (
+                <li
+                  className="grid gap-3 border-border border-b py-6 md:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] md:items-baseline md:gap-10"
+                  key={primitive.id}
+                >
+                  <div className="flex items-center gap-4">
+                    <span className="font-mono text-muted-foreground text-xs tabular-nums">
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
+                    <span className="grid size-9 place-items-center border border-border bg-background text-foreground">
+                      <Icon className="size-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-base tracking-tight">
+                        {primitive.name}
+                      </p>
+                      {primitive.meta ? (
+                        <p className="font-mono text-[10px] text-muted-foreground tracking-normal">
+                          {primitive.meta}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                  <p className="text-muted-foreground leading-relaxed">
+                    {primitive.role}
                   </p>
-                ) : null}
-                <p className="mt-auto pt-4 text-muted-foreground text-sm leading-relaxed">
-                  {primitive.role}
-                </p>
-              </li>
-            ))}
+                </li>
+              )
+            })}
           </motion.ul>
+
+          <motion.div
+            className="mt-10 flex flex-col gap-4 border border-border bg-muted p-6 md:flex-row md:items-center md:gap-8"
+            variants={revealVariants}
+          >
+            <p className="swiss-label shrink-0 text-muted-foreground">
+              Channels &amp; connectors
+            </p>
+            <ul className="flex flex-wrap gap-2">
+              {integrations.map((integration, index) => (
+                <li key={integration}>
+                  <span
+                    className={cn(
+                      'border border-border px-2.5 py-1 font-mono text-[11px] tracking-normal',
+                      index < 2
+                        ? 'bg-foreground text-background'
+                        : 'bg-background text-muted-foreground'
+                    )}
+                  >
+                    {integration}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </motion.div>
         </motion.div>
       </LazyMotion>
     </section>

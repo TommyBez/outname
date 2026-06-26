@@ -11,10 +11,7 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
 } from '@outname/ai/components/ai-elements/prompt-input'
-import {
-  revealVariants,
-  staggerVariants,
-} from '@outname/shared/marketing/components/landing/landing-motion'
+import { revealVariants } from '@outname/shared/marketing/components/landing/landing-motion'
 import { Button } from '@outname/ui/components/ui/button'
 import { cn } from '@outname/ui/lib/utils'
 import { BotIcon, ChevronRightIcon, CircleIcon } from 'lucide-react'
@@ -439,7 +436,7 @@ function showcaseReducer(
   }
 }
 
-export function LandingChatShowcase({
+export function ChatShowcasePanel({
   shouldReduceMotion,
 }: {
   shouldReduceMotion: boolean
@@ -450,7 +447,7 @@ export function LandingChatShowcase({
   const [state, dispatch] = useReducer(showcaseReducer, initialShowcaseState)
   const { activeId, frameIndex, input, isPlaying } = state
   const hasAutoPlayedRef = useRef(false)
-  const sectionRef = useRef<HTMLElement | null>(null)
+  const sectionRef = useRef<HTMLDivElement | null>(null)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const activeScenario = useMemo(
@@ -536,211 +533,184 @@ export function LandingChatShowcase({
   const displayStatus = reduceMotionFlag ? null : currentFrame.workflowStatus
 
   return (
-    <section
-      className="px-4 py-20 sm:px-6 md:px-10 md:py-28 lg:px-12"
-      id="chat"
-      ref={sectionRef}
-    >
+    <div ref={sectionRef}>
       <LazyMotion features={domAnimation}>
         <motion.div
-          className="mx-auto max-w-7xl"
+          className="border border-border bg-background p-2"
           initial={reduceMotionFlag ? false : 'hidden'}
-          variants={staggerVariants}
-          viewport={{ once: true, margin: '-80px' }}
+          variants={revealVariants}
+          viewport={{ margin: '-80px', once: true }}
           whileInView="visible"
         >
-          <motion.div
-            className="grid gap-5 border-border border-t pt-5 md:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)] md:items-end"
-            variants={revealVariants}
-          >
-            <div>
-              <p className="swiss-label text-muted-foreground">
-                Live agent · /chat/:id
-              </p>
-              <h2 className="mt-4 text-balance font-semibold text-3xl leading-tight tracking-tight md:text-4xl">
-                Watch the folder come alive.
-              </h2>
-            </div>
-            <p className="max-w-2xl text-muted-foreground leading-relaxed">
-              Same memory, same tools, same sub-agents — running live across
-              heartbeat, in-app chat, and Slack.
-            </p>
-          </motion.div>
-
-          <motion.div
-            className="mt-8 border border-border bg-background p-2"
-            variants={revealVariants}
-          >
-            <div className="grid min-h-[32rem] border border-border/15 bg-background lg:min-h-[44rem] lg:grid-cols-[18rem_minmax(0,1fr)]">
-              <aside className="min-w-0 border-border border-b bg-muted lg:flex lg:flex-col lg:border-r lg:border-b-0">
-                <div className="flex items-center justify-between gap-3 border-border border-b p-3 lg:block lg:p-5">
-                  <div className="flex min-w-0 items-center gap-3 lg:block">
-                    <span className="grid size-9 shrink-0 place-items-center border border-border bg-brand text-brand-foreground lg:hidden">
-                      <BotIcon className="size-4" />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="hidden font-bold text-[10px] text-muted-foreground tracking-normal lg:block">
-                        Workspace
-                      </p>
-                      <div className="lg:mt-3 lg:flex lg:items-start lg:justify-between lg:gap-3">
-                        <div className="min-w-0">
-                          <p className="font-semibold text-sm leading-none tracking-normal lg:text-lg">
-                            {agentMeta.name}
-                          </p>
-                          <p className="mt-1 font-mono text-[10px] text-muted-foreground tracking-normal lg:mt-2">
-                            {agentMeta.attached}
-                          </p>
-                        </div>
-                        <span className="hidden size-9 shrink-0 place-items-center border border-border bg-brand text-brand-foreground lg:grid">
-                          <BotIcon className="size-4" />
-                        </span>
+          <div className="grid min-h-[32rem] border border-border/15 bg-background lg:min-h-[44rem] lg:grid-cols-[18rem_minmax(0,1fr)]">
+            <aside className="min-w-0 border-border border-b bg-muted lg:flex lg:flex-col lg:border-r lg:border-b-0">
+              <div className="flex items-center justify-between gap-3 border-border border-b p-3 lg:block lg:p-5">
+                <div className="flex min-w-0 items-center gap-3 lg:block">
+                  <span className="grid size-9 shrink-0 place-items-center border border-border bg-brand text-brand-foreground lg:hidden">
+                    <BotIcon className="size-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="hidden font-bold text-[10px] text-muted-foreground tracking-normal lg:block">
+                      Workspace
+                    </p>
+                    <div className="lg:mt-3 lg:flex lg:items-start lg:justify-between lg:gap-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm leading-none tracking-normal lg:text-lg">
+                          {agentMeta.name}
+                        </p>
+                        <p className="mt-1 font-mono text-[10px] text-muted-foreground tracking-normal lg:mt-2">
+                          {agentMeta.attached}
+                        </p>
                       </div>
+                      <span className="hidden size-9 shrink-0 place-items-center border border-border bg-brand text-brand-foreground lg:grid">
+                        <BotIcon className="size-4" />
+                      </span>
                     </div>
                   </div>
-                </div>
-
-                <nav className="hidden border-border border-b p-3 lg:block">
-                  <ul className="grid gap-0.5 font-mono text-[11px] tracking-normal">
-                    {[
-                      { active: true, label: 'Chat' },
-                      { active: false, label: 'Configure' },
-                      { active: false, label: 'Memory' },
-                      { active: false, label: 'Tools' },
-                      { active: false, label: 'Timeline' },
-                    ].map((item) => (
-                      <li key={item.label}>
-                        <span
-                          className={cn(
-                            'flex items-center justify-between gap-2 px-3 py-2',
-                            item.active
-                              ? 'bg-foreground text-background'
-                              : 'text-muted-foreground'
-                          )}
-                        >
-                          {item.label}
-                          {item.active ? (
-                            <ChevronRightIcon className="size-3" />
-                          ) : null}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </nav>
-
-                <div className="min-w-0 border-border border-b p-2 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:border-b-0 lg:p-3">
-                  <p className="hidden px-2 pt-1 pb-2 font-bold text-[10px] text-muted-foreground tracking-normal lg:block">
-                    Conversations
-                  </p>
-                  <ul className="-mx-2 flex gap-1.5 overflow-x-auto px-2 lg:mx-0 lg:grid lg:gap-1.5 lg:overflow-visible lg:px-0">
-                    {showcaseScenarios.map((scenario) => (
-                      <li className="shrink-0 lg:shrink" key={scenario.id}>
-                        <Button
-                          className={cn(
-                            'ease grid h-full w-44 items-stretch justify-normal gap-1 border border-border px-3 py-2 text-left font-normal normal-case tracking-normal transition-colors duration-150 lg:w-full lg:px-3 lg:py-2.5',
-                            activeScenario.id === scenario.id
-                              ? 'bg-background'
-                              : 'bg-muted hover:bg-background'
-                          )}
-                          onClick={() => handleScenarioSelect(scenario)}
-                          size="xs"
-                          type="button"
-                          variant="ghost"
-                        >
-                          <span className="flex items-baseline justify-between gap-2">
-                            <span className="truncate font-semibold text-xs tracking-normal">
-                              {scenario.title}
-                            </span>
-                            <span className="shrink-0 font-mono text-[9px] text-muted-foreground tracking-normal">
-                              {scenario.relativeTime}
-                            </span>
-                          </span>
-                          <span className="line-clamp-2 hidden whitespace-normal text-[11px] text-muted-foreground leading-snug lg:block">
-                            {scenario.description}
-                          </span>
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </aside>
-
-              <div className="flex min-w-0 flex-col">
-                <header className="flex flex-wrap items-center justify-between gap-3 border-border border-b bg-background px-5 py-3">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span
-                      aria-hidden
-                      className="grid size-9 place-items-center border border-border bg-foreground text-background"
-                    >
-                      <BotIcon className="size-4" />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-sm leading-none tracking-normal">
-                        {agentMeta.name}
-                      </p>
-                      <p className="mt-1.5 font-mono text-[10px] text-muted-foreground tracking-normal">
-                        {activeScenario.model}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={cn(
-                        'inline-flex items-center gap-2 border border-border px-2 py-1 font-mono text-[10px] tracking-normal',
-                        isPlaying
-                          ? 'bg-foreground text-background'
-                          : 'bg-background'
-                      )}
-                    >
-                      <CircleIcon
-                        className={cn(
-                          'size-2 stroke-none',
-                          isPlaying
-                            ? 'animate-pulse fill-accent'
-                            : 'fill-foreground'
-                        )}
-                      />
-                      {isPlaying ? 'streaming' : 'idle'}
-                    </span>
-                  </div>
-                </header>
-
-                <div className="min-h-0 flex-1 overflow-hidden bg-background">
-                  <AgentChatTranscript
-                    className="h-full"
-                    emptyDescription="Pick a scenario to preview an agent run."
-                    emptyTitle="No run selected"
-                    messages={[...displayMessages]}
-                    workflowStatus={displayStatus}
-                  />
-                </div>
-
-                <div className="border-border border-t bg-muted px-5 py-4">
-                  <PromptInput
-                    onSubmit={() => {
-                      /* static demo */
-                    }}
-                  >
-                    <PromptInputTextarea
-                      onChange={(event) =>
-                        dispatch({
-                          type: 'input',
-                          value: event.currentTarget.value,
-                        })
-                      }
-                      placeholder="Ask this agent…"
-                      value={input}
-                    />
-                    <PromptInputFooter>
-                      <div />
-                      <PromptInputSubmit disabled />
-                    </PromptInputFooter>
-                  </PromptInput>
                 </div>
               </div>
+
+              <nav className="hidden border-border border-b p-3 lg:block">
+                <ul className="grid gap-0.5 font-mono text-[11px] tracking-normal">
+                  {[
+                    { active: true, label: 'Chat' },
+                    { active: false, label: 'Configure' },
+                    { active: false, label: 'Memory' },
+                    { active: false, label: 'Tools' },
+                    { active: false, label: 'Timeline' },
+                  ].map((item) => (
+                    <li key={item.label}>
+                      <span
+                        className={cn(
+                          'flex items-center justify-between gap-2 px-3 py-2',
+                          item.active
+                            ? 'bg-foreground text-background'
+                            : 'text-muted-foreground'
+                        )}
+                      >
+                        {item.label}
+                        {item.active ? (
+                          <ChevronRightIcon className="size-3" />
+                        ) : null}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+
+              <div className="min-w-0 border-border border-b p-2 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:border-b-0 lg:p-3">
+                <p className="hidden px-2 pt-1 pb-2 font-bold text-[10px] text-muted-foreground tracking-normal lg:block">
+                  Conversations
+                </p>
+                <ul className="-mx-2 flex gap-1.5 overflow-x-auto px-2 lg:mx-0 lg:grid lg:gap-1.5 lg:overflow-visible lg:px-0">
+                  {showcaseScenarios.map((scenario) => (
+                    <li className="shrink-0 lg:shrink" key={scenario.id}>
+                      <Button
+                        className={cn(
+                          'ease grid h-full w-44 items-stretch justify-normal gap-1 border border-border px-3 py-2 text-left font-normal normal-case tracking-normal transition-colors duration-150 lg:w-full lg:px-3 lg:py-2.5',
+                          activeScenario.id === scenario.id
+                            ? 'bg-background'
+                            : 'bg-muted hover:bg-background'
+                        )}
+                        onClick={() => handleScenarioSelect(scenario)}
+                        size="xs"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <span className="flex items-baseline justify-between gap-2">
+                          <span className="truncate font-semibold text-xs tracking-normal">
+                            {scenario.title}
+                          </span>
+                          <span className="shrink-0 font-mono text-[9px] text-muted-foreground tracking-normal">
+                            {scenario.relativeTime}
+                          </span>
+                        </span>
+                        <span className="line-clamp-2 hidden whitespace-normal text-[11px] text-muted-foreground leading-snug lg:block">
+                          {scenario.description}
+                        </span>
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </aside>
+
+            <div className="flex min-w-0 flex-col">
+              <header className="flex flex-wrap items-center justify-between gap-3 border-border border-b bg-background px-5 py-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span
+                    aria-hidden
+                    className="grid size-9 place-items-center border border-border bg-foreground text-background"
+                  >
+                    <BotIcon className="size-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm leading-none tracking-normal">
+                      {agentMeta.name}
+                    </p>
+                    <p className="mt-1.5 font-mono text-[10px] text-muted-foreground tracking-normal">
+                      {activeScenario.model}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-2 border border-border px-2 py-1 font-mono text-[10px] tracking-normal',
+                      isPlaying
+                        ? 'bg-foreground text-background'
+                        : 'bg-background'
+                    )}
+                  >
+                    <CircleIcon
+                      className={cn(
+                        'size-2 stroke-none',
+                        isPlaying
+                          ? 'animate-pulse fill-accent'
+                          : 'fill-foreground'
+                      )}
+                    />
+                    {isPlaying ? 'streaming' : 'idle'}
+                  </span>
+                </div>
+              </header>
+
+              <div className="min-h-0 flex-1 overflow-hidden bg-background">
+                <AgentChatTranscript
+                  className="h-full"
+                  emptyDescription="Pick a scenario to preview an agent run."
+                  emptyTitle="No run selected"
+                  messages={[...displayMessages]}
+                  workflowStatus={displayStatus}
+                />
+              </div>
+
+              <div className="border-border border-t bg-muted px-5 py-4">
+                <PromptInput
+                  onSubmit={() => {
+                    /* static demo */
+                  }}
+                >
+                  <PromptInputTextarea
+                    onChange={(event) =>
+                      dispatch({
+                        type: 'input',
+                        value: event.currentTarget.value,
+                      })
+                    }
+                    placeholder="Ask this agent…"
+                    value={input}
+                  />
+                  <PromptInputFooter>
+                    <div />
+                    <PromptInputSubmit disabled />
+                  </PromptInputFooter>
+                </PromptInput>
+              </div>
             </div>
-          </motion.div>
+          </div>
         </motion.div>
       </LazyMotion>
-    </section>
+    </div>
   )
 }

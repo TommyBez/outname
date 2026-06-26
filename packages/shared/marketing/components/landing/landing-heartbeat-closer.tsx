@@ -21,80 +21,55 @@ import {
 } from 'motion/react'
 import { useRef, useState } from 'react'
 
-export function LandingHeartbeatCloser({
+export function HeartbeatPanel({
   shouldReduceMotion,
 }: {
   shouldReduceMotion: boolean
 }) {
   return (
-    <section
-      className="px-4 pt-10 pb-24 sm:px-6 md:px-10 md:pb-32 lg:px-12"
-      id="heartbeat"
-    >
-      <LazyMotion features={domAnimation}>
+    <LazyMotion features={domAnimation}>
+      <motion.div
+        initial={shouldReduceMotion ? false : 'hidden'}
+        variants={staggerVariants}
+        viewport={{ margin: '-80px', once: true }}
+        whileInView="visible"
+      >
         <motion.div
-          className="mx-auto max-w-7xl"
-          initial={shouldReduceMotion ? false : 'hidden'}
-          variants={staggerVariants}
-          viewport={{ once: true, margin: '-80px' }}
-          whileInView="visible"
+          className="hidden gap-3 border border-border bg-foreground p-3 text-background lg:grid lg:grid-cols-3"
+          variants={revealVariants}
         >
-          <motion.div
-            className="grid gap-5 border-border border-t pt-5 md:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)] md:items-end"
-            variants={revealVariants}
-          >
-            <div>
-              <p className="swiss-label text-muted-foreground">
-                One day · INBOX SENTINEL · 2026-05-11
+          {heartbeatStats.map((stat) => (
+            <div
+              className="min-h-28 border border-background/25 p-4"
+              key={stat.label}
+            >
+              <p className="font-bold text-[10px] text-background/60 tracking-normal">
+                {stat.label}
               </p>
-              <h2 className="mt-4 text-balance font-semibold text-3xl leading-tight tracking-tight md:text-4xl">
-                It runs while you sleep. It learns while it runs.
-              </h2>
+              <p className="mt-3 font-semibold text-4xl leading-none tracking-tight">
+                {stat.value}
+              </p>
             </div>
-            <p className="max-w-xl text-muted-foreground leading-relaxed">
-              Schedules fire. Channels light up. Sub-agents return. The memory
-              file grows. The agent gets sharper. You read the log in the
-              morning.
-            </p>
-          </motion.div>
-
-          <motion.div
-            className="mt-10 hidden gap-3 border border-border bg-foreground p-3 text-background lg:grid lg:grid-cols-3"
-            variants={revealVariants}
-          >
-            {heartbeatStats.map((stat) => (
-              <div
-                className="min-h-28 border border-background/25 p-4"
-                key={stat.label}
-              >
-                <p className="font-bold text-[10px] text-background/60 tracking-normal">
-                  {stat.label}
-                </p>
-                <p className="mt-3 font-semibold text-4xl leading-none tracking-tight">
-                  {stat.value}
-                </p>
-              </div>
-            ))}
-          </motion.div>
-
-          <motion.ol
-            className="mt-6 hidden gap-2 lg:grid"
-            variants={revealVariants}
-          >
-            {heartbeatEvents.map((entry) => (
-              <HeartbeatRow
-                entry={entry}
-                key={`${entry.time}-${entry.event}-${entry.detail}`}
-              />
-            ))}
-          </motion.ol>
-
-          <motion.div className="mt-8 lg:hidden" variants={revealVariants}>
-            <HeartbeatTerminalPinned />
-          </motion.div>
+          ))}
         </motion.div>
-      </LazyMotion>
-    </section>
+
+        <motion.ol
+          className="mt-6 hidden gap-2 lg:grid"
+          variants={revealVariants}
+        >
+          {heartbeatEvents.map((entry) => (
+            <HeartbeatRow
+              entry={entry}
+              key={`${entry.time}-${entry.event}-${entry.detail}`}
+            />
+          ))}
+        </motion.ol>
+
+        <motion.div className="mt-8 lg:hidden" variants={revealVariants}>
+          <HeartbeatTerminalPinned />
+        </motion.div>
+      </motion.div>
+    </LazyMotion>
   )
 }
 
