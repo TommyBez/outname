@@ -9,4 +9,8 @@ const nextConfig = createOutnameNextConfig({
   extraTranspilePackages: ['@outname/workflow'],
 })
 
-export default withWorkflow(wrapOutnameNextConfig(nextConfig))
+export default withWorkflow(wrapOutnameNextConfig(nextConfig), {
+  workflows: {
+    lazyDiscovery: true,
+  },
+})

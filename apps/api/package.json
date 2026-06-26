@@ -13,6 +13,7 @@
     "reset:workflow": "rm -rf .swc .next app/.well-known"
   },
   "dependencies": {
+    "@ai-sdk/provider-utils": "5.0.0",
     "@ai-sdk/workflow": "1.0.2",
     "@outname/ai": "workspace:*",
     "@outname/auth": "workspace:*",
@@ -21,8 +22,18 @@
     "@outname/shared": "workspace:*",
     "@outname/ui": "workspace:*",
     "@outname/workflow": "workspace:*",
+    "@v0-sdk/ai-tools": "^0.3.8",
+    "@vercel/sandbox": "2.0.0",
+    "@workflow/serde": "4.1.0-beta.2",
+    "ai": "7.0.2",
+    "ajv": "8.20.0",
+    "bash-tool": "^1.3.16",
+    "drizzle-orm": "^0.45.2",
+    "nanoid": "^5.1.9",
     "next": "16.2.4",
     "react": "19.2.5",
-    "react-dom": "19.2.5"
+    "react-dom": "19.2.5",
+    "workflow": "^4.2.4",
+    "zod": "^4.4.3"
   }
 }
