@@ -1,6 +1,7 @@
+import { createModelCallToUIChunkTransform } from '@ai-sdk/workflow'
 import type {
-  AgentChatChunk,
   AgentChatMessage,
+  AgentModelCallChunk,
 } from '@outname/ai/agent-runtime/server/chat-status'
 import type { SubAgentToolOutput } from '@outname/ai/agent-runtime/server/sub-agent-tool-output'
 import { upsertMessage } from '@outname/ai/agent-runtime/shared/message-utils'
@@ -25,10 +26,12 @@ export async function collectSubAgentMessages(input: {
   'use step'
   let messages: AgentChatMessage[] = []
   let streamError: string | null = null
-  const readable = getRun(input.sessionRunId).getReadable<AgentChatChunk>({
-    namespace: input.streamToken,
-    startIndex: 0,
-  })
+  const readable = getRun(input.sessionRunId)
+    .getReadable<AgentModelCallChunk>({
+      namespace: input.streamToken,
+      startIndex: 0,
+    })
+    .pipeThrough(createModelCallToUIChunkTransform())
 
   for await (const message of readUIMessageStream<AgentChatMessage>({
     onError(error) {
@@ -74,5 +77,6 @@ async function emitProgressUpdate(input: {
     output,
     target: progress.target,
     toolCallId: progress.toolCallId,
+    toolName: progress.toolName,
   })
 }

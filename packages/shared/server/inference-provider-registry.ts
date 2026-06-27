@@ -1,7 +1,6 @@
 import 'server-only'
 
-import { createLLMGateway } from '@llmgateway/ai-sdk-provider'
-import { createOpenRouter } from '@openrouter/ai-sdk-provider'
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import {
   type InferenceProvider,
   inferenceProviderValues,
@@ -12,8 +11,10 @@ export type { InferenceProvider } from '@outname/db/schema'
 
 export const DEFAULT_INFERENCE_PROVIDER: InferenceProvider = 'vercel-ai-gateway'
 
-type LlmGatewayModelId = Parameters<ReturnType<typeof createLLMGateway>>[0]
 type ProviderLanguageModel = ReturnType<ReturnType<typeof createGateway>>
+
+const LLM_GATEWAY_BASE_URL = 'https://api.llmgateway.io/v1'
+const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1'
 
 const OPENROUTER_EXTRA_BODY = {
   provider: {
@@ -52,11 +53,12 @@ interface ProviderGenerationLookupRequest {
 const PROVIDER_DEFINITIONS = {
   'llm-gateway': {
     createLanguageModel: ({ apiKey, modelId }) => {
-      const llmGateway = createLLMGateway({
+      const llmGateway = createOpenAICompatible({
         apiKey,
-        compatibility: 'strict',
+        baseURL: LLM_GATEWAY_BASE_URL,
+        name: 'llmgateway',
       })
-      return llmGateway(modelId as LlmGatewayModelId)
+      return llmGateway(modelId)
     },
     keyPlaceholder: 'llmgtwy_...',
     label: 'LLM Gateway',
@@ -68,11 +70,17 @@ const PROVIDER_DEFINITIONS = {
   },
   openrouter: {
     createLanguageModel: ({ apiKey, modelId }) => {
-      const openrouter = createOpenRouter({
+      const openrouter = createOpenAICompatible({
         apiKey,
-        appName: 'OUTNA.ME',
-        compatibility: 'strict',
-        extraBody: OPENROUTER_EXTRA_BODY,
+        baseURL: OPENROUTER_BASE_URL,
+        headers: {
+          'X-OpenRouter-Title': 'OUTNA.ME',
+        },
+        name: 'openrouter',
+        transformRequestBody: (body) => ({
+          ...body,
+          ...OPENROUTER_EXTRA_BODY,
+        }),
       })
       return openrouter(modelId)
     },

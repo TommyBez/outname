@@ -1,4 +1,3 @@
-import { type Tool, tool } from 'ai'
 import { z } from 'zod'
 import {
   grepFilesStep,
@@ -14,31 +13,32 @@ export interface FileToolsContext {
   agentId: string
 }
 
-export function createFileTools(ctx: FileToolsContext): Record<string, Tool> {
+export function createFileTools(ctx: FileToolsContext) {
   return {
-    readFile: tool({
+    readFile: {
       description:
         'Read the contents of a file from the system sandbox. If the file does not exist, returns exists=false instead of failing.',
       inputSchema: z.object({
         path: z.string().describe('The path to the file to read'),
       }),
-      execute: async ({ path }) => readFileStep({ agentId: ctx.agentId, path }),
-    }),
-    writeFile: tool({
+      execute: async ({ path }: { path: string }) =>
+        readFileStep({ agentId: ctx.agentId, path }),
+    },
+    writeFile: {
       description:
         'Write content to a file in the system sandbox. Creates parent directories if needed.',
       inputSchema: z.object({
         content: z.string().describe('The content to write to the file'),
         path: z.string().describe('The path where the file should be written'),
       }),
-      execute: async ({ content, path }) =>
+      execute: async ({ content, path }: { content: string; path: string }) =>
         await writeFileStep({
           agentId: ctx.agentId,
           content,
           path,
         }),
-    }),
-    listFiles: tool({
+    },
+    listFiles: {
       description:
         'List files in the persistent system sandbox. Paths are relative to /vercel/sandbox.',
       inputSchema: z.object({
@@ -56,13 +56,19 @@ export function createFileTools(ctx: FileToolsContext): Record<string, Tool> {
             "Optional relative or /vercel/sandbox path prefix, e.g. 'logs/' or 'projects/demo'."
           ),
       }),
-      execute: async ({ maxResults, pathPrefix }) =>
+      execute: async ({
+        maxResults,
+        pathPrefix,
+      }: {
+        maxResults?: number
+        pathPrefix?: string
+      }) =>
         listFilesStep(ctx.agentId, {
           maxResults: maxResults ?? 200,
           pathPrefix: pathPrefix ?? '',
         }),
-    }),
-    grepFiles: tool({
+    },
+    grepFiles: {
       description:
         'Search text files in the persistent system sandbox with internal fixed-argv grep. No shell is exposed.',
       inputSchema: z.object({
@@ -103,6 +109,12 @@ export function createFileTools(ctx: FileToolsContext): Record<string, Tool> {
         maxResults,
         pathPrefix,
         pattern,
+      }: {
+        caseInsensitive?: boolean
+        fixedString?: boolean
+        maxResults?: number
+        pathPrefix?: string
+        pattern: string
       }) =>
         grepFilesStep(ctx.agentId, {
           caseInsensitive: caseInsensitive ?? false,
@@ -111,6 +123,6 @@ export function createFileTools(ctx: FileToolsContext): Record<string, Tool> {
           pathPrefix: pathPrefix ?? '',
           pattern,
         }),
-    }),
+    },
   }
 }

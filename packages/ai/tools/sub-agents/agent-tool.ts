@@ -4,7 +4,6 @@ import {
   type SubAgentToolOutput,
   subAgentModelText,
 } from '@outname/ai/agent-runtime/server/sub-agent-tool-output'
-import { type Tool, tool } from 'ai'
 import { z } from 'zod'
 import { collectSubAgentMessages } from './invocation-stream'
 import {
@@ -39,7 +38,20 @@ export type DispatchSubAgentInvocation = (
   input: DispatchSubAgentInvocationInput
 ) => Promise<{ sessionRunId: string }>
 
-export type BuildAgentTool = (handle: AgentToolHandle) => Tool
+export interface AgentRuntimeTool {
+  description: string
+  execute: (
+    input: { instruction: string },
+    options: { toolCallId: string }
+  ) => Promise<SubAgentToolOutput>
+  inputSchema: z.ZodTypeAny
+  toModelOutput: (input: { output: unknown }) => {
+    type: 'text'
+    value: string
+  }
+}
+
+export type BuildAgentTool = (handle: AgentToolHandle) => AgentRuntimeTool
 
 // This tool dispatches an invocation event to a child agent and then tails the
 // child's stream until completion. Cycle and depth checks already happened in
@@ -47,10 +59,10 @@ export type BuildAgentTool = (handle: AgentToolHandle) => Tool
 export function buildAgentToolCore(
   handle: AgentToolHandle,
   dispatchSubAgentInvocation: DispatchSubAgentInvocation
-) {
+): AgentRuntimeTool {
   const description = composeDescription(handle)
 
-  return tool({
+  return {
     description,
     inputSchema: z.object({
       instruction: z
@@ -66,7 +78,10 @@ export function buildAgentToolCore(
           ].join(' ')
         ),
     }),
-    async execute({ instruction }, { toolCallId }) {
+    async execute(
+      { instruction }: { instruction: string },
+      { toolCallId }: { toolCallId: string }
+    ) {
       const streamToken = newInvocationStreamToken()
       const messages: AgentChatMessage[] = []
       await emitPreliminarySubAgentOutput({
@@ -77,6 +92,7 @@ export function buildAgentToolCore(
         }),
         progressTarget: handle.progressTarget,
         toolCallId,
+        toolName: handle.parentToolId,
       })
 
       try {
@@ -131,11 +147,11 @@ export function buildAgentToolCore(
         })
       }
     },
-    toModelOutput: ({ output }) => ({
+    toModelOutput: ({ output }: { output: unknown }) => ({
       type: 'text',
       value: modelOutputText(output),
     }),
-  })
+  }
 }
 
 function modelOutputText(output: unknown): string {
@@ -152,12 +168,14 @@ async function emitPreliminarySubAgentOutput(input: {
   output: SubAgentToolOutput
   progressTarget: SubAgentProgressTarget
   toolCallId: string
+  toolName: string
 }): Promise<void> {
   'use step'
   await writePreliminarySubAgentOutput({
     output: input.output,
     target: input.progressTarget,
     toolCallId: input.toolCallId,
+    toolName: input.toolName,
   })
 }
 

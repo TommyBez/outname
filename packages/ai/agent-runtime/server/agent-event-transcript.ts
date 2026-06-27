@@ -1,11 +1,12 @@
 import 'server-only'
+import { createModelCallToUIChunkTransform } from '@ai-sdk/workflow'
 import { replyNamespaceForEvent } from '@outname/ai/agent-runtime/server/agent-event-keys'
 import type { AgentEventPayloads } from '@outname/ai/agent-runtime/server/agent-event-store'
 import { summarizeAgentEvent } from '@outname/ai/agent-runtime/server/agent-event-summaries'
 import { listAgentEventTranscriptMessages } from '@outname/ai/agent-runtime/server/agent-event-transcript-store'
 import type {
-  AgentChatChunk,
   AgentChatMessage,
+  AgentModelCallChunk,
   WorkflowStatusData,
 } from '@outname/ai/agent-runtime/server/chat-status'
 import {
@@ -72,10 +73,12 @@ export async function readAgentEventTranscriptFromWorkflowRun(input: {
   workflowRunId: string
 }): Promise<AgentChatMessage[]> {
   const run = getRun(input.workflowRunId)
-  const source = run.getReadable<AgentChatChunk>({
-    namespace: outputNamespaceForAgentEvent(input.event),
-    startIndex: 0,
-  })
+  const source = run
+    .getReadable<AgentModelCallChunk>({
+      namespace: outputNamespaceForAgentEvent(input.event),
+      startIndex: 0,
+    })
+    .pipeThrough(createModelCallToUIChunkTransform())
   let messages: AgentChatMessage[] = []
 
   for await (const message of readUIMessageStream<AgentChatMessage>({

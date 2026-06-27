@@ -210,7 +210,7 @@ async function streamUiMessageTurn(input: {
     buildSubAgentTool: turn.buildSubAgentTool,
     conversationId: turn.conversationId,
     currentRunId: turn.runId,
-    onFinish: (event) => {
+    onEnd: (event) => {
       stepLimitInput.steps = event.steps
       scheduleUsageRecording({
         agentId: turn.agentId,
@@ -234,7 +234,7 @@ async function streamUiMessageTurn(input: {
     // sub-agent outputs to the model. We only persist the new responseMessage.
     originalMessages: turn.messages as never,
     generateMessageId: () => `msg_${nanoid(12)}`,
-    onFinish: async ({ responseMessage, isAborted, finishReason }) => {
+    onEnd: async ({ responseMessage, isAborted, finishReason }) => {
       await handleUiMessageFinish({
         agentId: turn.agentId,
         conversationId: turn.conversationId,
@@ -274,7 +274,7 @@ async function runTextOnlyTurn(input: {
     buildSubAgentTool: turn.buildSubAgentTool,
     conversationId: turn.conversationId,
     currentRunId: turn.runId,
-    onFinish: (event) => {
+    onEnd: (event) => {
       finishState.event = event
       scheduleUsageRecording({
         agentId: turn.agentId,
@@ -295,7 +295,7 @@ async function runTextOnlyTurn(input: {
 
   try {
     await turn.delivery.postAgentStream(
-      tapFullStream(result.fullStream, accumulator)
+      tapFullStream(result.stream, accumulator)
     )
   } catch (err) {
     console.error('[realtime-chat] channel stream failed', {

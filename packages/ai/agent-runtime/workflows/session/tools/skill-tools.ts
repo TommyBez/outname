@@ -11,7 +11,6 @@ import {
 import type { SkillPlan } from '@outname/ai/agent-runtime/workflows/session/steps/resolve-skill-plan'
 import { ensureParentDirectories } from '@outname/ai/agent-runtime/workflows/session/tools/sandbox-file-helpers/write'
 import type { Sandbox } from '@vercel/sandbox'
-import { type Tool, type ToolExecutionOptions, tool } from 'ai'
 import { z } from 'zod'
 
 const MAX_BASH_OUTPUT_CHARS = 30_000
@@ -59,39 +58,39 @@ interface BashToolSandboxAdapter {
 
 type BashToolExecutor<TInput> = (
   input: TInput,
-  options?: ToolExecutionOptions
+  options?: unknown
 ) => Promise<unknown>
 
 export function createSkillTools(ctx: {
   agentId: string
   skillPlan: SkillPlan
-}): Record<string, Tool> {
+}) {
   if (ctx.skillPlan.skills.length === 0) {
     return {}
   }
 
   return {
-    skill: tool({
+    skill: {
       description: generateSkillDescription(ctx.skillPlan.skills),
       inputSchema: skillInputSchema,
-      execute: async ({ skillName }) =>
+      execute: async ({ skillName }: { skillName: string }) =>
         await loadSkillStep({
           agentId: ctx.agentId,
           skillName,
           skills: ctx.skillPlan.skills,
         }),
-    }),
-    bash: tool({
+    },
+    bash: {
       description: generateBashDescription(ctx.skillPlan.skills),
       inputSchema: bashInputSchema,
-      execute: async ({ command }, options) =>
+      execute: async ({ command }: { command: string }, options?: unknown) =>
         await executeSkillBashStep({
           agentId: ctx.agentId,
           command,
           options,
           skills: ctx.skillPlan.skills,
         }),
-    }),
+    },
   }
 }
 
@@ -142,7 +141,7 @@ async function loadSkillStep(input: {
 async function executeSkillBashStep(input: {
   agentId: string
   command: string
-  options?: ToolExecutionOptions
+  options?: unknown
   skills: RuntimeSkill[]
 }): Promise<unknown> {
   'use step'
@@ -157,11 +156,11 @@ async function createSkillBashToolForStep(input: {
   agentId: string
   skills: RuntimeSkill[]
 }): Promise<{
-  bash: Tool & { execute: BashToolExecutor<{ command: string }> }
+  bash: { execute: BashToolExecutor<{ command: string }> }
   tools: {
-    bash: Tool & { execute: BashToolExecutor<{ command: string }> }
-    readFile: Tool
-    writeFile: Tool
+    bash: { execute: BashToolExecutor<{ command: string }> }
+    readFile: unknown
+    writeFile: unknown
   }
 }> {
   const sandbox = await getSkillSandbox(input.agentId)
@@ -174,11 +173,11 @@ async function createSkillBashToolForStep(input: {
       promptOptions: { toolPrompt: string }
       sandbox: BashToolSandboxAdapter
     }): Promise<{
-      bash: Tool & { execute: BashToolExecutor<{ command: string }> }
+      bash: { execute: BashToolExecutor<{ command: string }> }
       tools: {
-        bash: Tool & { execute: BashToolExecutor<{ command: string }> }
-        readFile: Tool
-        writeFile: Tool
+        bash: { execute: BashToolExecutor<{ command: string }> }
+        readFile: unknown
+        writeFile: unknown
       }
     }>
   }

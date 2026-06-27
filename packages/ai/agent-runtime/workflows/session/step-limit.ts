@@ -1,4 +1,4 @@
-import { type StepResult, stepCountIs, type ToolSet, type UIMessage } from 'ai'
+import { isStepCount, type StepResult, type ToolSet, type UIMessage } from 'ai'
 
 const DEFAULT_STEP_LIMIT = 30
 const HIGH_STEP_LIMIT = 50
@@ -29,9 +29,9 @@ export function resolveStepLimitCount(input: StepLimitInput): number | null {
 
 export function resolveStepLimit(
   input: StepLimitInput
-): ReturnType<typeof stepCountIs> | undefined {
+): ReturnType<typeof isStepCount> | undefined {
   const limit = resolveStepLimitCount(input)
-  return limit === null ? undefined : stepCountIs(limit)
+  return limit === null ? undefined : isStepCount(limit)
 }
 
 export function didReachStepLimit<TOOLS extends ToolSet>(

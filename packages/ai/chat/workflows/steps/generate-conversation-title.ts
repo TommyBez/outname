@@ -96,7 +96,7 @@ export async function maybeGenerateConversationTitle(input: {
   try {
     const { text } = await generateText({
       model: await getTitleModel(agentRow.userId),
-      system: [
+      instructions: [
         'You name chat conversations.',
         'Return a concise 3-6 word title summarising what the user is asking.',
         'Use title case. No quotes. No trailing punctuation.',

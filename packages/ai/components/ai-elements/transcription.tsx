@@ -3,7 +3,7 @@
 import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import { Button } from "@outname/ui/components/ui/button";
 import { cn } from "@outname/ui/lib/utils";
-import type { Experimental_TranscriptionResult as TranscriptionResult } from "ai";
+import type { TranscriptionResult } from "ai";
 import type { ComponentProps, ReactNode } from "react";
 import { createContext, useCallback, use, useMemo } from "react";
 

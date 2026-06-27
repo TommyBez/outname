@@ -1,13 +1,12 @@
+import { type CompatibleLanguageModel, WorkflowAgent } from '@ai-sdk/workflow'
 import { buildAgentRuntimeSpec } from '@outname/ai/agent-runtime/server/runtime-spec'
 import { buildRuntimeToolset } from '@outname/ai/agent-runtime/server/runtime-toolset'
 import type { BuildAgentTool } from '@outname/ai/tools/sub-agents/agent-tool'
 import type { SubAgentProgressTarget } from '@outname/ai/tools/sub-agents/progress-target'
 import { workflowParentStreamTarget } from '@outname/ai/tools/sub-agents/progress-target'
+import { readUserInferenceCredentialApiKey } from '@outname/shared/server/inference-credentials'
 import { MissingInferenceCredentialError } from '@outname/shared/server/inference-provider-errors'
-import { getUserLanguageModel } from '@outname/shared/server/inference-providers'
 import { nonRetryableStepErrorFromUnknown } from '@outname/shared/server/workflow-step-errors'
-import { DurableAgent } from '@workflow/ai/agent'
-import type { Tool } from 'ai'
 import {
   type AgentRuntimeEventKind,
   type AgentRuntimeMeta,
@@ -31,10 +30,18 @@ export interface BuildAgentArgs {
 }
 
 export interface BuildAgentResult {
-  agent: DurableAgent
+  agent: WorkflowAgent
   meta: AgentRuntimeMeta
-  tools: Record<string, Tool>
+  modelCallHeaders?: Record<string, string | undefined>
 }
+
+interface WorkflowModelConfig {
+  headers?: Record<string, string | undefined>
+  model: CompatibleLanguageModel | string
+}
+
+const AI_GATEWAY_PROTOCOL_VERSION = '0.0.1'
+const WORKFLOW_AGENT_INFERENCE_PROVIDER = 'vercel-ai-gateway'
 
 export async function buildAgent(
   args: BuildAgentArgs
@@ -48,7 +55,9 @@ export async function buildAgent(
     runId: args.runId,
   })
 
-  return buildDurableAgentRuntime(spec, {
+  assertWorkflowAgentRuntimeSpec(spec)
+
+  return await buildWorkflowAgentRuntime(spec, {
     buildSubAgentTool: args.buildSubAgentTool,
     conversationId: args.conversationId,
     currentRunId: args.currentRunId,
@@ -56,44 +65,80 @@ export async function buildAgent(
   })
 }
 
-function buildDurableAgentRuntime(
-  spec: AgentRuntimeSpec,
+type WorkflowAgentRuntimeSpec = AgentRuntimeSpec & {
+  inferenceProvider: typeof WORKFLOW_AGENT_INFERENCE_PROVIDER
+}
+
+function assertWorkflowAgentRuntimeSpec(
+  spec: AgentRuntimeSpec
+): asserts spec is WorkflowAgentRuntimeSpec {
+  if (spec.inferenceProvider === WORKFLOW_AGENT_INFERENCE_PROVIDER) {
+    return
+  }
+
+  throw new Error(
+    `Workflow agent runs require ${WORKFLOW_AGENT_INFERENCE_PROVIDER}; this agent is configured for ${spec.inferenceProvider}.`
+  )
+}
+
+async function buildWorkflowAgentRuntime(
+  spec: WorkflowAgentRuntimeSpec,
   options: {
     buildSubAgentTool: BuildAgentTool
     conversationId?: string | null
     currentRunId?: string | null
     progressTarget?: SubAgentProgressTarget
   }
-): BuildAgentResult {
+): Promise<BuildAgentResult> {
   const tools = buildRuntimeToolset(spec, {
     ...options,
     buildSubAgentTool: options.buildSubAgentTool,
   })
+  const apiKey = await readAgentLanguageModelApiKeyStep({
+    inferenceProvider: spec.inferenceProvider,
+    userId: spec.userId,
+  })
+  const modelConfig = createWorkflowModelConfig({ apiKey, spec })
 
-  const durableAgent = new DurableAgent({
-    model: async () => {
-      'use step'
-      try {
-        return await getUserLanguageModel({
-          inferenceProvider: spec.inferenceProvider,
-          modelId: spec.modelId,
-          userId: spec.userId,
-        })
-      } catch (error) {
-        if (error instanceof MissingInferenceCredentialError) {
-          throw nonRetryableStepErrorFromUnknown(error, error.message)
-        }
-        throw error
-      }
-    },
-    system: spec.systemPrompt,
+  const agent = new WorkflowAgent({
+    model: modelConfig.model,
+    instructions: spec.systemPrompt,
     tools,
   })
 
   return {
-    agent: durableAgent,
-    tools,
+    agent,
     meta: runtimeMetaFromSpec(spec),
+    modelCallHeaders: modelConfig.headers,
+  }
+}
+
+function createWorkflowModelConfig(input: {
+  apiKey: string
+  spec: WorkflowAgentRuntimeSpec
+}): WorkflowModelConfig {
+  return {
+    model: input.spec.modelId,
+    headers: {
+      Authorization: `Bearer ${input.apiKey}`,
+      'ai-gateway-auth-method': 'api-key',
+      'ai-gateway-protocol-version': AI_GATEWAY_PROTOCOL_VERSION,
+    },
+  }
+}
+
+async function readAgentLanguageModelApiKeyStep(input: {
+  inferenceProvider: AgentRuntimeSpec['inferenceProvider']
+  userId: string
+}): Promise<string> {
+  'use step'
+  try {
+    return await readUserInferenceCredentialApiKey(input)
+  } catch (error) {
+    if (error instanceof MissingInferenceCredentialError) {
+      throw nonRetryableStepErrorFromUnknown(error, error.message)
+    }
+    throw error
   }
 }
 

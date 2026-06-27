@@ -1,8 +1,12 @@
+import { createModelCallToUIChunkTransform } from '@ai-sdk/workflow'
 import { reconcileActiveAgentEvent } from '@outname/ai/agent-runtime/server/agent-event-reconciliation'
 import { getAgentEvent } from '@outname/ai/agent-runtime/server/agent-event-store'
 import { outputNamespaceForAgentEvent } from '@outname/ai/agent-runtime/server/agent-event-transcript'
 import { readableAgentEventWorkflowRunId } from '@outname/ai/agent-runtime/server/agent-event-workflow-run-id'
-import type { AgentChatChunk } from '@outname/ai/agent-runtime/server/chat-status'
+import type {
+  AgentChatChunk,
+  AgentModelCallChunk,
+} from '@outname/ai/agent-runtime/server/chat-status'
 import {
   type RunEvent,
   runEventsNamespace,
@@ -46,14 +50,18 @@ export async function GET(
 
   const streamKind = readStreamKind(request)
   const startIndex = readStartIndex(request)
-  const namespace =
+  const source =
     streamKind === 'activity'
-      ? runEventsNamespace(workflowRunId)
-      : outputNamespaceForAgentEvent(event)
-  const source = run.getReadable<AgentChatChunk | RunEvent>({
-    namespace,
-    startIndex,
-  })
+      ? run.getReadable<RunEvent>({
+          namespace: runEventsNamespace(workflowRunId),
+          startIndex,
+        })
+      : run
+          .getReadable<AgentModelCallChunk>({
+            namespace: outputNamespaceForAgentEvent(event),
+            startIndex,
+          })
+          .pipeThrough(createModelCallToUIChunkTransform())
 
   const encoder = new TextEncoder()
   const body = source.pipeThrough(

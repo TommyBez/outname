@@ -1,5 +1,6 @@
+import type { AgentModelCallChunk } from '@outname/ai/agent-runtime/server/chat-status'
 import { getWritable } from '@outname/workflow/runtime'
-import type { UIMessage, UIMessageChunk, UIMessageStreamWriter } from 'ai'
+import type { UIMessage, UIMessageStreamWriter } from 'ai'
 
 export type SubAgentProgressTarget =
   | { kind: 'workflow-parent-stream'; streamNamespace: string }
@@ -51,13 +52,14 @@ export async function writePreliminarySubAgentOutput(input: {
   output: unknown
   target: SubAgentProgressTarget
   toolCallId: string
+  toolName: string
 }): Promise<void> {
   if (input.target.kind === 'none') {
     return
   }
 
   try {
-    const chunk = {
+    const uiChunk = {
       type: 'tool-output-available',
       output: input.output,
       preliminary: true,
@@ -65,16 +67,26 @@ export async function writePreliminarySubAgentOutput(input: {
     } as const
 
     if (input.target.kind === 'realtime-ui-writer') {
-      input.target.writer.write(chunk)
+      input.target.writer.write(uiChunk)
       return
     }
 
-    const writable = getWritable<UIMessageChunk>({
+    const modelPart = {
+      type: 'tool-result',
+      dynamic: true,
+      input: {},
+      output: input.output,
+      preliminary: true,
+      toolCallId: input.toolCallId,
+      toolName: input.toolName,
+    } satisfies AgentModelCallChunk
+
+    const writable = getWritable<AgentModelCallChunk>({
       namespace: input.target.streamNamespace,
     })
     const writer = writable.getWriter()
     try {
-      await writer.write(chunk)
+      await writer.write(modelPart)
     } finally {
       writer.releaseLock()
     }

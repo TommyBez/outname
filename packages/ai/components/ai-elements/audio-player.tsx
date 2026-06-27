@@ -6,7 +6,7 @@ import {
   ButtonGroupText,
 } from "@outname/ui/components/ui/button-group";
 import { cn } from "@outname/ui/lib/utils";
-import type { Experimental_SpeechResult as SpeechResult } from "ai";
+import type { SpeechResult } from "ai";
 import {
   MediaControlBar,
   MediaController,

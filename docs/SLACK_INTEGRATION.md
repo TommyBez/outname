@@ -18,8 +18,8 @@ flowchart TD
   Messages --> Canonical["load Postgres chat_message history"]
   Canonical --> Runner["runRealtimeChatTurn"]
   Runner --> Agent["ToolLoopAgent"]
-  Agent --> Stream["AI SDK fullStream"]
-  Stream --> Thread["thread.post(fullStream)"]
+  Agent --> Stream["AI SDK stream"]
+  Stream --> Thread["thread.post(stream)"]
   Runner --> Persist["persist assistant text-only chat_message"]
 ```
 
@@ -72,7 +72,7 @@ as `context.skipped`.
 
 ## Streaming And Persistence
 
-Slack receives AI SDK `result.fullStream` through Chat SDK `thread.post(...)`.
+Slack receives AI SDK `result.stream` through Chat SDK `thread.post(...)`.
 The runner wraps the stream with `tapFullStream`, a single-consumer async
 generator that:
 
@@ -117,5 +117,5 @@ Another realtime channel should reuse the same pattern:
 4. Persist skipped and current user turns with deterministic ids.
 5. Load model context from Postgres `chat_message`.
 6. Resolve ordered route objects and run agents sequentially.
-7. Stream AI SDK `fullStream` through the channel adapter.
+7. Stream AI SDK `stream` through the channel adapter.
 8. Persist the assistant transcript in the channel-specific format.

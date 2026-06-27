@@ -39,6 +39,7 @@ export async function emitStep(
   message: string,
   meta?: Record<string, unknown>
 ): Promise<void> {
+  'use step'
   await writeOne(runId, {
     type: 'step',
     step,
@@ -55,6 +56,7 @@ export async function emitRun(
   message: string,
   meta?: Record<string, unknown>
 ): Promise<void> {
+  'use step'
   await writeOne(runId, {
     type: 'run',
     status,
@@ -69,6 +71,7 @@ export async function emitActivity(
   message: string,
   meta?: Record<string, unknown>
 ): Promise<void> {
+  'use step'
   await writeOne(runId, {
     type: 'activity',
     message,

@@ -302,7 +302,7 @@ describe('realtime chat runner persistence policy', () => {
     mocks.buildRealtimeAgentRuntime.mockResolvedValue({
       agent: {
         stream: async () => ({
-          fullStream: streamFromChunks([{ text: 'hello', type: 'text-delta' }]),
+          stream: streamFromChunks([{ text: 'hello', type: 'text-delta' }]),
         }),
       },
       meta: {
@@ -341,19 +341,17 @@ describe('realtime chat runner persistence policy', () => {
     mocks.buildRealtimeAgentRuntime.mockImplementation(
       async (
         _spec: AgentRuntimeSpec,
-        options: { onFinish?: (event: unknown) => void }
+        options: { onEnd?: (event: unknown) => void }
       ) => {
         await Promise.resolve()
-        options.onFinish?.({
+        options.onEnd?.({
           generations: [testGeneration()],
           steps: [],
         })
         return {
           agent: {
             stream: async () => ({
-              fullStream: streamFromChunks([
-                { text: 'hello', type: 'text-delta' },
-              ]),
+              stream: streamFromChunks([{ text: 'hello', type: 'text-delta' }]),
             }),
           },
           meta: {
@@ -422,19 +420,17 @@ describe('realtime chat runner persistence policy', () => {
     mocks.buildRealtimeAgentRuntime.mockImplementation(
       async (
         _spec: AgentRuntimeSpec,
-        options: { onFinish?: (event: unknown) => void }
+        options: { onEnd?: (event: unknown) => void }
       ) => {
         await Promise.resolve()
-        options.onFinish?.({
+        options.onEnd?.({
           generations: [testGeneration()],
           steps: [],
         })
         return {
           agent: {
             stream: async () => ({
-              fullStream: streamFromChunks([
-                { text: 'hello', type: 'text-delta' },
-              ]),
+              stream: streamFromChunks([{ text: 'hello', type: 'text-delta' }]),
             }),
           },
           meta: {
@@ -488,9 +484,7 @@ describe('realtime chat runner persistence policy', () => {
     mocks.buildRealtimeAgentRuntime.mockResolvedValue({
       agent: {
         stream: async () => ({
-          fullStream: streamFromChunks([
-            { text: 'partial', type: 'text-delta' },
-          ]),
+          stream: streamFromChunks([{ text: 'partial', type: 'text-delta' }]),
         }),
       },
       meta: {

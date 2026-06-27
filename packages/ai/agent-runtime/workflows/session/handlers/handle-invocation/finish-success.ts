@@ -3,7 +3,7 @@ import {
   emitRun,
   emitStep,
 } from '@outname/ai/agent-runtime/server/run-events'
-import type { StepResult, ToolSet, UIMessage } from 'ai'
+import type { ModelMessage, StepResult, ToolSet } from 'ai'
 import {
   buildStepLimitNotice,
   didReachStepLimit,
@@ -18,8 +18,8 @@ import {
 type StepLimitInput = Parameters<typeof resolveStepLimit>[0]
 
 interface InvocationStreamResult {
+  messages: readonly ModelMessage[]
   steps: readonly StepResult<ToolSet>[]
-  uiMessages?: UIMessage[]
 }
 
 export async function finishSuccessfulInvocation(input: {
@@ -59,7 +59,7 @@ export async function finishSuccessfulInvocation(input: {
         writeAssistantNotice(
           namespace,
           formatStepLimitStreamText(
-            result.uiMessages ?? [],
+            result.messages,
             buildStepLimitNotice(stepLimitInput)
           )
         )

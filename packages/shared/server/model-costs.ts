@@ -118,7 +118,6 @@ export function extractTotalUsage(
   }
 
   return {
-    cachedInputTokens: cacheReadTokens,
     inputTokenDetails: {
       cacheReadTokens,
       cacheWriteTokens,
@@ -133,9 +132,8 @@ export function extractTotalUsage(
       textTokens: Math.max(0, outputTokens - reasoningTokens),
     },
     outputTokens,
-    reasoningTokens,
     totalTokens: totalTokens || inputTokens + outputTokens,
-  } as LanguageModelUsage
+  }
 }
 
 export function buildGenerationUsageObservations(
