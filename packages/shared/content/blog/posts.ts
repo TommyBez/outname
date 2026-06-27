@@ -8,6 +8,27 @@ export interface BlogPost {
 
 export const posts: BlogPost[] = [
   {
+    slug: 'tabnine-enterprise-context-engine-agent-identity',
+    title:
+      "Tabnine Just Built the Enterprise Context Layer for AI Agents. It Forgot to Give Them Identity.",
+    date: '2026-06-27',
+    excerpt:
+      "On May 27, 2026, Tabnine was named a Visionary in the first-ever Gartner Magic Quadrant for Enterprise AI Coding Agents — its Enterprise Context Engine gives every agent shared organizational knowledge across Cursor, Copilot, and Claude Code. Context without identity is cached code search: a shared graph tells agents what the codebase looks like, but an IDENTITY.md file tells you who the agent is.",
+    tags: [
+      'AI',
+      'agents',
+      'Tabnine',
+      'Gartner',
+      'enterprise',
+      'context engine',
+      'identity',
+      'coding',
+      'architecture',
+      'open source',
+      'Outname',
+    ],
+  },
+  {
     slug: 'aws-quick-autonomous-agents-identity-lockin',
     title:
       "Amazon Just Gave Every Non-Engineer an Autonomous Agent Factory. Here's What It Didn't Give Them.",
