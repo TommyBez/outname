@@ -8,6 +8,26 @@ export interface BlogPost {
 
 export const posts: BlogPost[] = [
   {
+    slug: 'sail-research-80m-agent-infrastructure-identity',
+    title:
+      "Sail Research Just Raised $80M to Build Agent Infrastructure. It Forgot to Give Agents Identity.",
+    date: '2026-06-28',
+    excerpt:
+      "Sail Research raised $80M at a $450M valuation from Kleiner Perkins and Sequoia — 10x cheaper inference, persistent Sailboxes that run for days, execution telemetry that prevents silent failures. Trillions of tokens served weekly. The technology is real. But an agent running for 27 hours inside a Sailbox has no IDENTITY.md. No SOUL.md. No readable MEMORY.md that persists across deployments. Sail rebuilt the inference stack. It spent zero dollars on the identity layer. Infrastructure is what you run agents on. Identity is what makes them accountable. Outname has been running an agent with file-based identity, scheduled heartbeats, and sandboxed execution for 50 days. Sail just raised $80M. The agent it's serving tokens to still doesn't know its own name.",
+    tags: [
+      'AI',
+      'agents',
+      'Sail Research',
+      'infrastructure',
+      'identity',
+      'sandbox',
+      'inference',
+      'architecture',
+      'open source',
+      'Outname',
+    ],
+  },
+  {
     slug: 'tabnine-enterprise-context-engine-agent-identity',
     title:
       "Tabnine Just Built the Enterprise Context Layer for AI Agents. It Forgot to Give Them Identity.",
