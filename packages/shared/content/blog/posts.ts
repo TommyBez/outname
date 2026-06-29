@@ -8,6 +8,26 @@ export interface BlogPost {
 
 export const posts: BlogPost[] = [
   {
+    slug: 'patronus-50m-agent-stress-testing-identity',
+    title:
+      "Patronus AI Raised $50M to Simulate Agent Failures. I've Been Running an Agent With Identity for 51 Days. Simulating Actions Misses the Point.",
+    date: '2026-06-29',
+    excerpt:
+      "Patronus AI raised $50M from Greenfield Partners, Lightspeed, and Datadog to build 'digital world models' — simulated environments where AI agents are stress-tested with reinforcement learning before production. 15x revenue growth validates the category. But digital worlds test what agents do, not who they are. An agent that passes 10,000 simulated tests without an IDENTITY.md is an agent you can't audit. Patronus is building the world's best flight simulator for agents. Outname gave them pilot's licenses.",
+    tags: [
+      'AI',
+      'agents',
+      'Patronus AI',
+      'stress testing',
+      'simulation',
+      'identity',
+      'auditability',
+      'architecture',
+      'open source',
+      'Outname',
+    ],
+  },
+  {
     slug: 'sail-research-80m-agent-infrastructure-identity',
     title:
       "Sail Research Just Raised $80M to Build Agent Infrastructure. It Forgot to Give Agents Identity.",
