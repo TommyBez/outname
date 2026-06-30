@@ -1,0 +1,183 @@
+'use client'
+
+import { BrandGlyph } from '@outname/shared/marketing/components/landing/brand-glyph'
+import {
+  revealVariants,
+  staggerVariants,
+} from '@outname/shared/marketing/components/landing/landing-motion'
+import {
+  CpuIcon,
+  GitBranchIcon,
+  HammerIcon,
+  HeartPulseIcon,
+  type LucideIcon,
+  MoonIcon,
+  PuzzleIcon,
+  RadioTowerIcon,
+  WalletIcon,
+} from 'lucide-react'
+import { domAnimation, LazyMotion, m as motion } from 'motion/react'
+
+interface Binding {
+  // When true, each chip is a real brand and gets its logo glyph.
+  brandChips?: boolean
+  chips: readonly string[]
+  icon: LucideIcon
+  id: string
+  text: string
+  title: string
+}
+
+// Every value below is real: providers and models from the inference layer,
+// connectors from the connection registry, schedule modes from the agent form,
+// budget periods from the budget schema.
+const bindings: readonly Binding[] = [
+  {
+    brandChips: true,
+    chips: ['Vercel AI Gateway', 'LLM Gateway', 'OpenRouter'],
+    icon: CpuIcon,
+    id: 'model',
+    text: 'Choose the inference provider and model per agent. The runtime stays model-agnostic, so you can switch without touching the files.',
+    title: 'Model',
+  },
+  {
+    chips: ['every 30 min', 'or daily at set times'],
+    icon: HeartPulseIcon,
+    id: 'heartbeat',
+    text: 'Wake it on an interval (5 min to daily) or at specific times. Each run does one small useful unit of work.',
+    title: 'Heartbeat',
+  },
+  {
+    chips: ['once per day'],
+    icon: MoonIcon,
+    id: 'dreaming',
+    text: 'A separate reflection pass that reviews recent logs and sharpens long-running memory, even when heartbeat work is off.',
+    title: 'Dreaming',
+  },
+  {
+    chips: ['daily', 'weekly', 'monthly'],
+    icon: WalletIcon,
+    id: 'budget',
+    text: 'Set a spend ceiling in USD per agent or across all of them, with estimated and actual cost tracked per run.',
+    title: 'Budget',
+  },
+  {
+    chips: ['in-app chat', 'Slack'],
+    icon: RadioTowerIcon,
+    id: 'channels',
+    text: 'Bind the channels it listens and speaks on. The same agent answers in-app and in your Slack workspace.',
+    title: 'Channels',
+  },
+  {
+    brandChips: true,
+    chips: ['GitHub', 'Cal.com', 'Resend', 'Firecrawl', '+8'],
+    icon: HammerIcon,
+    id: 'tools',
+    text: 'Attach maintainer tools backed by real connections. The agent only ever calls what you bind to it.',
+    title: 'Tools',
+  },
+  {
+    chips: ['attach an agent as a tool'],
+    icon: GitBranchIcon,
+    id: 'subagents',
+    text: 'Bind another agent as a callable tool. The parent delegates work and gets a traced run back inline.',
+    title: 'Sub-agents',
+  },
+  {
+    chips: ['from GitHub', 'or a SKILL.md'],
+    icon: PuzzleIcon,
+    id: 'skills',
+    text: 'Install capability packages that run in a dedicated, persistent Skill Sandbox, isolated from the memory files.',
+    title: 'Skills',
+  },
+]
+
+export function LandingBindings({
+  shouldReduceMotion,
+}: {
+  shouldReduceMotion: boolean
+}) {
+  return (
+    <section
+      className="px-4 py-14 sm:px-6 md:px-10 md:py-28 lg:px-12"
+      id="bindings"
+    >
+      <LazyMotion features={domAnimation}>
+        <motion.div
+          className="mx-auto max-w-7xl"
+          initial={shouldReduceMotion ? false : 'hidden'}
+          variants={staggerVariants}
+          viewport={{ margin: '-80px', once: true }}
+          whileInView="visible"
+        >
+          <motion.div
+            className="grid gap-5 border-border border-t pt-5 md:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)] md:items-end"
+            variants={revealVariants}
+          >
+            <div>
+              <p className="swiss-label text-muted-foreground">
+                What you bind to it
+              </p>
+              <h2 className="mt-4 text-balance font-semibold text-3xl leading-tight tracking-tight md:text-4xl">
+                The files are the agent. These are its powers.
+              </h2>
+            </div>
+            <p className="max-w-2xl text-muted-foreground leading-relaxed">
+              Around that folder you wire up the model it thinks with, when it
+              wakes, what it can touch, and what it may spend. Every binding is
+              a setting, not a guess.
+            </p>
+          </motion.div>
+
+          <motion.ul
+            className="mt-10 grid gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-4"
+            variants={staggerVariants}
+          >
+            {bindings.map((binding) => {
+              const Icon = binding.icon
+              return (
+                <motion.li
+                  className="ease group flex min-h-56 flex-col bg-background p-6 transition-colors duration-200 hover:bg-muted/50"
+                  key={binding.id}
+                  variants={revealVariants}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="ease grid size-9 place-items-center border border-border bg-background text-foreground transition-colors duration-200 group-hover:border-brand group-hover:bg-brand group-hover:text-brand-foreground">
+                      <Icon className="size-4" />
+                    </span>
+                    <h3 className="font-semibold text-base tracking-tight">
+                      {binding.title}
+                    </h3>
+                  </div>
+                  <p className="mt-4 text-muted-foreground text-sm leading-relaxed">
+                    {binding.text}
+                  </p>
+                  <div className="mt-auto flex flex-wrap gap-1.5 pt-5">
+                    {binding.chips.map((chip) => {
+                      const showGlyph =
+                        binding.brandChips && !chip.startsWith('+')
+                      return (
+                        <span
+                          className="inline-flex items-center gap-1 border border-border bg-muted px-2 py-1 font-mono text-[10px] text-muted-foreground tracking-normal"
+                          key={chip}
+                        >
+                          {showGlyph ? (
+                            <BrandGlyph
+                              className="size-2.5 text-foreground"
+                              name={chip}
+                            />
+                          ) : null}
+                          {chip}
+                        </span>
+                      )
+                    })}
+                  </div>
+                </motion.li>
+              )
+            })}
+          </motion.ul>
+        </motion.div>
+      </LazyMotion>
+    </section>
+  )
+}

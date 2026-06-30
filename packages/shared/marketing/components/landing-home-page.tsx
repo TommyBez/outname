@@ -1,11 +1,13 @@
 'use client'
 
-import { LandingComposableWorkbench } from '@outname/shared/marketing/components/landing/composable-workbench/landing-composable-workbench'
-import { LandingChatShowcase } from '@outname/shared/marketing/components/landing/landing-chat-showcase'
+import { LandingAgentAnatomy } from '@outname/shared/marketing/components/landing/agent-anatomy/landing-agent-anatomy'
+import { LandingBindings } from '@outname/shared/marketing/components/landing/landing-bindings'
+import { LandingFinalCta } from '@outname/shared/marketing/components/landing/landing-final-cta'
 import { LandingFooter } from '@outname/shared/marketing/components/landing/landing-footer'
-import { LandingHeartbeatCloser } from '@outname/shared/marketing/components/landing/landing-heartbeat-closer'
 import { LandingHeroDemo } from '@outname/shared/marketing/components/landing/landing-hero-demo'
 import { LandingNav } from '@outname/shared/marketing/components/landing/landing-nav'
+import { LandingPrimitives } from '@outname/shared/marketing/components/landing/landing-primitives'
+import { LandingProduction } from '@outname/shared/marketing/components/landing/landing-production'
 import { useReducedMotion } from 'motion/react'
 
 export function LandingHomePage() {
@@ -16,10 +18,24 @@ export function LandingHomePage() {
     <main className="relative isolate overflow-x-clip bg-background text-foreground">
       <LandingNav />
 
+      {/* 1 — Positioning, command, and the directory artifact */}
       <LandingHeroDemo shouldReduceMotion={reduceMotionFlag} />
-      <LandingChatShowcase shouldReduceMotion={reduceMotionFlag} />
-      <LandingComposableWorkbench shouldReduceMotion={reduceMotionFlag} />
-      <LandingHeartbeatCloser shouldReduceMotion={reduceMotionFlag} />
+
+      {/* 2 — An agent is a directory: overview + alternating file walkthrough */}
+      <LandingAgentAnatomy shouldReduceMotion={reduceMotionFlag} />
+
+      {/* 3 — What you bind around the folder */}
+      <LandingBindings shouldReduceMotion={reduceMotionFlag} />
+
+      {/* 4 — What it's built on */}
+      <LandingPrimitives shouldReduceMotion={reduceMotionFlag} />
+
+      {/* 5 — Production, proven live in stacked cards */}
+      <LandingProduction shouldReduceMotion={reduceMotionFlag} />
+
+      {/* 6 — Final call to action */}
+      <LandingFinalCta shouldReduceMotion={reduceMotionFlag} />
+
       <LandingFooter />
     </main>
   )
